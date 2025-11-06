@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # 服务 1: aether Spring Boot API
+  # ========================================
+  aether-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aether-api
+    ports:
+      - "8080:8080"
+    environment:
+      # 数据库连接配置（覆盖 application.properties）
+      - SPRING_DATASOURCE_URL=jdbc:mysql://aether-db:3306/aether_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=aether_password
+      
+      # JPA 配置
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=false
+      - SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=true
+      
+      # 应用配置
+      - SPRING_APPLICATION_NAME=aether
+      - SERVER_PORT=8080
+    depends_on:
+      aether-db:
+        condition: service_healthy
+    networks:
+      - aether-network
+    restart: unless-stopped
+
+  # ========================================
+  # 服务 2: MySQL 数据库
+  # ========================================
+  aether-db:
+    image: mysql:8.0
+    container_name: aether-db
+    ports:
+      - "3307:3306"  # 映射到主机 3307 端口，避免与本地 MySQL 冲突
+    environment:
+      - MYSQL_ROOT_PASSWORD=aether_password
+      - MYSQL_DATABASE=aether_db
+      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
+      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+    volumes:
+      # 数据持久化卷
+      - aether-mysql-data:/var/lib/mysql
+      # 初始化脚本（可选）
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-paether_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - aether-network
+    restart: unless-stopped
+
+# ========================================
+# 网络配置
+# ========================================
+networks:
+  aether-network:
+    driver: bridge
+
+# ========================================
+# 数据卷配置
+# ========================================
+volumes:
+  aether-mysql-data:
+    driver: local

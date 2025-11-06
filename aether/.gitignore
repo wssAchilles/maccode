@@ -32,3 +32,28 @@ build/
 ### VS Code ###
 .vscode/
 serviceAccountKey.json
+
+# =========================
+# 前端 (aether-web) 专属忽略
+# =========================
+
+# 本地依赖 (非常重要!)
+aether-web/node_modules/
+
+# Next.js 构建产物
+aether-web/.next/
+
+# Next.js 导出
+aether-web/out/
+aether-web/build/
+
+# 日志
+aether-web/npm-debug.log*
+aether-web/yarn-debug.log*
+aether-web/yarn-error.log*
+
+# 本地环境变量 (非常重要!)
+aether-web/.env.local
+aether-web/.env.development.local
+aether-web/.env.test.local
+aether-web/.env.production.local
