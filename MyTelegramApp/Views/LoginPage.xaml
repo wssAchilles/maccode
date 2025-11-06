@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MyTelegramApp.Views.LoginPage"
+             xmlns:viewmodels="clr-namespace:MyTelegramApp.ViewModels"
+             xmlns:converters="clr-namespace:MyTelegramApp.Converters"
+             x:DataType="viewmodels:LoginViewModel"
+             Title="登录 Telegram">
+    
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter"/>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    
+    <Grid Padding="40" VerticalOptions="Center">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <Label Grid.Row="0" 
+               Text="欢迎使用 Telegram"
+               FontSize="32"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               Margin="0,0,0,40"/>
+
+        <!-- Phone Number Input Area -->
+        <VerticalStackLayout Grid.Row="2"
+                            IsVisible="{Binding IsWaitingForPhoneNumber}"
+                            Spacing="15">
+            <Label Text="请输入手机号"
+                   FontSize="18"
+                   HorizontalOptions="Center"/>
+            <Entry Text="{Binding PhoneNumber}"
+                   Placeholder="例如 +8613800138000"
+                   Keyboard="Telephone"
+                   HorizontalTextAlignment="Center"
+                   FontSize="16"
+                   IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"/>
+            <Button Text="下一步"
+                    Command="{Binding SubmitCommand}"
+                    IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"
+                    HorizontalOptions="Center"
+                    WidthRequest="200"
+                    Margin="0,10,0,0"/>
+        </VerticalStackLayout>
+
+        <!-- Verification Code Input Area -->
+        <VerticalStackLayout Grid.Row="2"
+                            IsVisible="{Binding IsWaitingForCode}"
+                            Spacing="15">
+            <Label Text="请输入验证码"
+                   FontSize="18"
+                   HorizontalOptions="Center"/>
+            <Label Text="我们已发送验证码到您的手机"
+                   FontSize="14"
+                   TextColor="Gray"
+                   HorizontalOptions="Center"/>
+            <Entry Text="{Binding VerificationCode}"
+                   Placeholder="输入验证码"
+                   Keyboard="Numeric"
+                   HorizontalTextAlignment="Center"
+                   FontSize="16"
+                   MaxLength="6"
+                   IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"/>
+            <Button Text="登录"
+                    Command="{Binding SubmitCommand}"
+                    IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"
+                    HorizontalOptions="Center"
+                    WidthRequest="200"
+                    Margin="0,10,0,0"/>
+        </VerticalStackLayout>
+
+        <!-- 2FA Password Input Area -->
+        <VerticalStackLayout Grid.Row="2"
+                            IsVisible="{Binding IsWaitingForPassword}"
+                            Spacing="15">
+            <Label Text="请输入两步验证密码"
+                   FontSize="18"
+                   HorizontalOptions="Center"/>
+            <Label Text="您的账户已启用两步验证"
+                   FontSize="14"
+                   TextColor="Gray"
+                   HorizontalOptions="Center"/>
+            <Entry Text="{Binding TwoFactorPassword}"
+                   Placeholder="输入密码"
+                   IsPassword="True"
+                   HorizontalTextAlignment="Center"
+                   FontSize="16"
+                   IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"/>
+            <Button Text="提交"
+                    Command="{Binding SubmitCommand}"
+                    IsEnabled="{Binding IsSubmitting, Converter={StaticResource InvertedBoolConverter}}"
+                    HorizontalOptions="Center"
+                    WidthRequest="200"
+                    Margin="0,10,0,0"/>
+        </VerticalStackLayout>
+
+        <!-- Loading Indicator -->
+        <ActivityIndicator Grid.Row="2"
+                          IsRunning="{Binding IsSubmitting}"
+                          IsVisible="{Binding IsSubmitting}"
+                          VerticalOptions="Center"
+                          HorizontalOptions="Center"
+                          Color="{StaticResource Primary}"/>
+    </Grid>
+    
+</ContentPage>

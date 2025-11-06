@@ -60,8 +60,17 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
-		<PackageReference Include="TdLib.Api" Version="1.8.45" />
+		<PackageReference Include="TdLib" Version="1.8.45" />
 		<PackageReference Include="TdLib.Native" Version="1.8.45" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+	</ItemGroup>
+
+	<!-- Include TDLib native library for Mac Catalyst -->
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+		<NativeReference Include="Platforms\MacCatalyst\Frameworks\libtdjson.dylib">
+			<Kind>Dynamic</Kind>
+			<SmartLink>False</SmartLink>
+		</NativeReference>
 	</ItemGroup>
 
 </Project>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MyTelegramApp.Views.ChatListPage"
+             xmlns:viewmodels="clr-namespace:MyTelegramApp.ViewModels"
+             x:DataType="viewmodels:ChatListViewModel"
+             Title="Chats">
+    <VerticalStackLayout>
+        <Label Text="Chat List Page"
+               VerticalOptions="Center" 
+               HorizontalOptions="Center" />
+    </VerticalStackLayout>
+</ContentPage>
