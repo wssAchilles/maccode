@@ -93,6 +93,10 @@ def require_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # OPTIONS 预检请求不需要认证
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+        
         # 从请求头获取 Token
         auth_header = request.headers.get('Authorization', '')
         

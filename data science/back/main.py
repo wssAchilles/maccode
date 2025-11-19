@@ -22,6 +22,7 @@ from api.auth import auth_bp
 from api.data import data_bp
 from api.analysis import analysis_bp
 from api.history import history_bp
+from api.ml import ml_bp
 
 
 def create_app(config_name=None):
@@ -44,7 +45,11 @@ def create_app(config_name=None):
     config[config_name].init_app(app)
     
     # 配置 CORS
-    CORS(app, origins=app.config['CORS_ORIGINS'])
+    CORS(app, 
+         origins=app.config['CORS_ORIGINS'],
+         supports_credentials=app.config.get('CORS_SUPPORTS_CREDENTIALS', True),
+         allow_headers=app.config.get('CORS_ALLOW_HEADERS', ['Content-Type', 'Authorization']),
+         methods=app.config.get('CORS_METHODS', ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']))
     
     # 设置日志中间件
     setup_logging(app)
@@ -63,6 +68,7 @@ def create_app(config_name=None):
     app.register_blueprint(data_bp)
     app.register_blueprint(analysis_bp)
     app.register_blueprint(history_bp)
+    app.register_blueprint(ml_bp)
     
     # 根路由
     @app.route('/')

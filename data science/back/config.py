@@ -33,6 +33,11 @@ class Config:
         'https://data-science-44398.firebaseapp.com', # Firebase Hosting 备用域名
     ]
     
+    # CORS 详细配置
+    CORS_SUPPORTS_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = ['Content-Type', 'Authorization']
+    CORS_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    
     # API 配置
     API_VERSION = 'v1'
     

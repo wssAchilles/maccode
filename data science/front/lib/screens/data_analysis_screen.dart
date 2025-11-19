@@ -16,6 +16,7 @@ import '../models/analysis_result.dart';
 import '../widgets/analysis/quality_dashboard.dart';
 import '../widgets/analysis/correlation_matrix_view.dart';
 import '../widgets/analysis/statistical_panel.dart';
+import 'history_screen.dart';
 
 class DataAnalysisScreen extends StatefulWidget {
   const DataAnalysisScreen({super.key});
@@ -458,12 +459,25 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         title: const Text('数据科学即服务'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          if (_currentUser != null)
+          if (_currentUser != null) ...[
+            IconButton(
+              icon: const Icon(Icons.history),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HistoryScreen(),
+                  ),
+                );
+              },
+              tooltip: '分析历史',
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: _signOut,
               tooltip: '登出',
             ),
+          ],
         ],
       ),
       body: _isLoading

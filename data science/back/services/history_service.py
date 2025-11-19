@@ -6,8 +6,7 @@
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
-import firebase_admin
-from firebase_admin import firestore
+from google.cloud import firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 logger = logging.getLogger(__name__)
@@ -18,9 +17,11 @@ class HistoryService:
     
     @staticmethod
     def _get_firestore_client():
-        """获取 Firestore 客户端"""
+        """获取 Firestore 客户端，使用 Native Mode 数据库"""
         try:
-            return firestore.client()
+            # 使用 google-cloud-firestore 直接访问指定数据库
+            # 而不是通过 firebase-admin（它不支持多数据库）
+            return firestore.Client(database='my-datasci-project-bucket')
         except Exception as e:
             logger.error(f"Failed to get Firestore client: {e}")
             raise

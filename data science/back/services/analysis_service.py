@@ -11,6 +11,33 @@ from werkzeug.datastructures import FileStorage
 from scipy import stats
 
 
+def convert_to_json_serializable(obj):
+    """
+    将 numpy/pandas 类型转换为 JSON 可序列化的 Python 原生类型
+    
+    Args:
+        obj: 需要转换的对象
+        
+    Returns:
+        转换后的对象
+    """
+    if isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_to_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_json_serializable(item) for item in obj]
+    elif pd.isna(obj):
+        return None
+    return obj
+
+
 class AnalysisService:
     """数据分析服务类"""
     
@@ -86,6 +113,9 @@ class AnalysisService:
                 'correlation_matrix': correlation_matrix,
                 'message': f'成功分析数据集：{df.shape[0]} 行 x {df.shape[1]} 列'
             }
+            
+            # 转换所有数据为 JSON 可序列化格式
+            result = convert_to_json_serializable(result)
             
             return result
             
@@ -196,7 +226,7 @@ class AnalysisService:
             corr = df[numeric_cols].corr()
             correlation_matrix = corr.to_dict()
         
-        return {
+        return convert_to_json_serializable({
             'success': True,
             'user_id': uid,
             'filename': filename,
@@ -207,7 +237,7 @@ class AnalysisService:
             'preview': preview_data,
             'correlation_matrix': correlation_matrix,
             'message': f'成功分析数据集：{df.shape[0]} 行 x {df.shape[1]} 列'
-        }
+        })
     
     @staticmethod
     def perform_quality_check(df: pd.DataFrame) -> Dict[str, Any]:
@@ -366,7 +396,7 @@ class AnalysisService:
             
             quality_score = max(0, 100 - missing_penalty - outlier_penalty - duplicate_penalty)
             
-            return {
+            return convert_to_json_serializable({
                 'success': True,
                 'missing_analysis': missing_analysis,
                 'high_risk_columns': high_risk_columns,
@@ -384,7 +414,7 @@ class AnalysisService:
                 'recommendations': AnalysisService._generate_quality_recommendations(
                     high_risk_columns, duplicate_count, total_outliers
                 )
-            }
+            })
             
         except Exception as e:
             return {
@@ -471,7 +501,7 @@ class AnalysisService:
             # 生成建议
             suggestions = AnalysisService._generate_correlation_suggestions(high_correlations)
             
-            return {
+            return convert_to_json_serializable({
                 'success': True,
                 'correlations': correlations,
                 'high_correlations': high_correlations,
@@ -479,7 +509,7 @@ class AnalysisService:
                 'spearman_matrix': spearman_matrix,
                 'suggestions': suggestions,
                 'numeric_columns': numeric_cols
-            }
+            })
             
         except Exception as e:
             return {
@@ -558,7 +588,7 @@ class AnalysisService:
                 non_normal_columns, normality_tests
             )
             
-            return {
+            return convert_to_json_serializable({
                 'success': True,
                 'normality_tests': normality_tests,
                 'non_normal_columns': non_normal_columns,
@@ -568,7 +598,7 @@ class AnalysisService:
                     'non_normal_distribution_count': len(non_normal_columns)
                 },
                 'suggestions': suggestions
-            }
+            })
             
         except Exception as e:
             return {

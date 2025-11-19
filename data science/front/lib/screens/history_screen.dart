@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import 'analysis_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -278,7 +279,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
                   ],
-                </Row),
+                ],
+              ),
               
               const SizedBox(height: 12),
               
@@ -316,95 +318,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   /// 显示记录详情
   void _showRecordDetail(Map<String, dynamic> record) {
-    final summary = record['summary'] as Map<String, dynamic>?;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.info_outline),
-            const SizedBox(width: 8),
-            const Text('分析摘要'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow('文件名', record['filename'] ?? 'Unknown'),
-                
-                if (record['quality_score'] != null)
-                  _buildDetailRow(
-                    '质量分数',
-                    record['quality_score'].toStringAsFixed(1),
-                  ),
-                
-                const Divider(height: 24),
-                
-                // 基本信息
-                if (summary?['basic_info'] != null) ...[
-                  const Text(
-                    '基本信息',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildDetailRow(
-                    '行数',
-                    summary!['basic_info']['rows'].toString(),
-                  ),
-                  _buildDetailRow(
-                    '列数',
-                    summary['basic_info']['columns'].toString(),
-                  ),
-                ],
-                
-                const Divider(height: 24),
-                
-                // 质量分析
-                if (summary?['quality_analysis'] != null &&
-                    summary!['quality_analysis']['success'] == true) ...[
-                  const Text(
-                    '数据质量',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  if (summary['quality_analysis']['quality_metrics'] != null) ...[
-                    final metrics = summary['quality_analysis']['quality_metrics'];
-                    _buildDetailRow(
-                      '缺失率',
-                      '${metrics['missing_rate'].toStringAsFixed(2)}%',
-                    ),
-                    _buildDetailRow(
-                      '异常值',
-                      metrics['total_outliers'].toString(),
-                    ),
-                    _buildDetailRow(
-                      '重复行',
-                      metrics['duplicate_rows'].toString(),
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
+    // 导航到详细分析页面
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AnalysisDetailScreen(record: record),
       ),
     );
   }

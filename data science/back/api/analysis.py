@@ -22,8 +22,8 @@ analysis_bp = Blueprint('analysis', __name__, url_prefix='/api/analysis')
 
 
 @analysis_bp.route('/analyze-csv', methods=['POST', 'OPTIONS'])
-@require_auth
 @rate_limit(max_requests=20, window_seconds=60)
+@require_auth
 def analyze_csv():
     """
     分析 CSV 文件
@@ -41,6 +41,10 @@ def analyze_csv():
             "analysis_result": {...}
         }
     """
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
     try:
         user = request.user
         uid = user.get('uid')
@@ -230,8 +234,8 @@ def analyze_csv():
 
 
 @analysis_bp.route('/analyze-excel', methods=['POST', 'OPTIONS'])
-@require_auth
 @rate_limit(max_requests=20, window_seconds=60)
+@require_auth
 def analyze_excel():
     """
     分析 Excel 文件
@@ -247,6 +251,10 @@ def analyze_excel():
     响应:
         与 analyze-csv 相同的格式
     """
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
     try:
         user = request.user
         uid = user.get('uid')
