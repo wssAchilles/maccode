@@ -1,0 +1,299 @@
+# ===================================
+# Python
+# ===================================
+*.py[cod]
+*$py.class
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.Python
+*.pyc
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===================================
+# Virtual Environment
+# ===================================
+venv/
+env/
+ENV/
+.venv/
+.venv*/
+env.bak/
+venv.bak/
+pyvenv.cfg
+
+# ===================================
+# Jupyter Notebook
+# ===================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*.ipynb~
+
+# ===================================
+# Data files (不上传数据文件)
+# ===================================
+*.csv
+*.xlsx
+*.xls
+*.xlsm
+*.json
+*.xml
+*.sqlite
+*.sqlite3
+*.db
+*.h5
+*.hdf5
+*.parquet
+*.feather
+*.tsv
+*.dat
+*.data
+
+# 但保留配置文件
+!firebase.json
+!package.json
+!pubspec.yaml
+!app.yaml
+!.firebaserc
+
+# ===================================
+# Model files (不上传模型文件)
+# ===================================
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.pb
+*.onnx
+*.pth
+*.pt
+*.model
+*.weights
+*.bin
+*.safetensors
+
+# ===================================
+# Large files
+# ===================================
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
+*.gz
+*.bz2
+*.iso
+*.dmg
+
+# ===================================
+# IDE & Editors
+# ===================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ===================================
+# Operating System
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ===================================
+# Environment variables & Secrets
+# ===================================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Google Cloud credentials
+*-key.json
+*-credentials.json
+service-account*.json
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firebaserc.backup
+
+# ===================================
+# Logs
+# ===================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===================================
+# Cache & Temporary
+# ===================================
+.cache/
+*.cache
+.temp/
+temp/
+tmp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ===================================
+# Testing
+# ===================================
+# Pytest
+.pytest_cache/
+.tox/
+.nox/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# ===================================
+# Type checking
+# ===================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ===================================
+# Machine Learning specific
+# ===================================
+# 只忽略训练好的模型文件和实验数据
+# 不忽略代码中的 models/ 目录
+/data/models/
+checkpoints/
+wandb/
+mlruns/
+tensorboard/
+runs/
+experiments/
+*.ckpt
+
+# ===================================
+# Flutter / Dart specific
+# ===================================
+# Build outputs
+/front/build/
+/front/.dart_tool/
+/front/.flutter-plugins
+/front/.flutter-plugins-dependencies
+/front/.packages
+/front/pubspec.lock
+
+# Generated files
+/front/lib/generated/
+/front/*.g.dart
+/front/*.freezed.dart
+
+# iOS
+/front/ios/Pods/
+/front/ios/.symlinks/
+/front/ios/Flutter/App.framework
+/front/ios/Flutter/Flutter.framework
+/front/ios/Flutter/Flutter.podspec
+/front/ios/ServiceDefinitions.json
+/front/ios/Runner/GeneratedPluginRegistrant.*
+
+# Android
+/front/android/app/debug
+/front/android/app/profile
+/front/android/app/release
+/front/android/.gradle/
+/front/android/gradle/
+/front/android/captures/
+/front/android/local.properties
+/front/android/key.properties
+/front/android/*.jks
+/front/android/*.keystore
+
+# macOS
+/front/macos/Pods/
+/front/macos/Flutter/ephemeral/
+
+# Web
+/front/web/flutter_service_worker.js
+/front/web/CNAME
+
+# ===================================
+# Node modules (如果使用)
+# ===================================
+node_modules/
+package-lock.json
+yarn.lock
+
+# ===================================
+# Documentation
+# ===================================
+# 保留 docs/ 目录下的文件
+# (不忽略文档)
+
+# ===================================
+# 项目特定
+# ===================================
+# 忽略 data 目录下的实际数据文件
+/data/raw/*
+/data/processed/*
+/data/models/*
+
+# 但保留 .gitkeep 文件
+!**/.gitkeep
+
+# 忽略测试生成的文件
+/back/tests/output/
+/back/tests/fixtures/*.generated.*

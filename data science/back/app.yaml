@@ -1,0 +1,13 @@
+runtime: python311  # 运行时环境：指定 Python 3.11
+
+# 启动命令：
+# GAE 将使用 gunicorn 来启动你
+# 在 'main.py' 文件中的 'app' 实例
+entrypoint: gunicorn -b :$PORT main:app
+
+instance_class: F1  # 实例类型：F1 是最小的，最适合免费额度和低成本
+
+# 自动扩缩容配置（成本控制的关键！）
+automatic_scaling:
+  min_instances: 0      # 最小实例数：0 (没有流量时关闭，不产生费用)
+  max_instances: 1      # 最大实例数：1 (防止意外流量导致高额账单)
