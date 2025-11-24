@@ -17,3 +17,7 @@
 __pycache__/
 # Ignored by the build system
 /setup.cfg
+
+# 确保包含模型文件（取消忽略）
+!models/
+!models/*.joblib

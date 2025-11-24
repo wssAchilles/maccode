@@ -1,12 +1,16 @@
-/// 机器学习建模页面 - 引导式建模体验
-/// 让用户感受到"我在做一个严谨的科学实验"
+/// 能源优化仪表盘
+/// 交互式能源调度优化界面
 library;
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../models/optimization_result.dart';
+import '../widgets/power_chart_widget.dart';
+import '../widgets/soc_chart_widget.dart';
+import '../widgets/responsive_wrapper.dart';
+import '../utils/responsive_helper.dart';
+import '../config/constants.dart';
 
 class ModelingScreen extends StatefulWidget {
   const ModelingScreen({super.key});
@@ -16,552 +20,608 @@ class ModelingScreen extends StatefulWidget {
 }
 
 class _ModelingScreenState extends State<ModelingScreen> {
-  int _currentStep = 0;
-  List<String> _availableFiles = [];
-  String? _selectedFile;
-  List<String> _columnNames = [];
-  Map<String, String> _columnTypes = {};
-  bool _loadingColumns = false;
-  String? _targetColumn;
-  String _problemType = 'regression';
-  String _inferredType = '';
-  String _modelAlgorithm = 'gradient_boosting';
-  int _nClusters = 3;
-  bool _isTraining = false;
-  String _trainingStatus = '';
-  List<String> _trainingSteps = [];
-  Map<String, dynamic>? _trainingResult;
-  String? _modelPath;
-  final Map<String, TextEditingController> _predictionControllers = {};
-  Map<String, dynamic>? _predictionResult;
-  bool _isPredicting = false;
-  
-  static const String _baseUrl = 'https://data-science-44398.an.r.appspot.com';
-  
+  // 状态变量
+  bool _isLoading = false;
+  double _initialSoc = AppConstants.defaultInitialSoc; // 默认 50%
+  OptimizationResponse? _result;
+  String? _errorMessage;
+  DateTime? _selectedDate;
+
   @override
   void initState() {
     super.initState();
-    _loadUserFiles();
+    // 默认选择明天
+    _selectedDate = DateTime.now().add(const Duration(days: 1));
   }
-  
-  @override
-  void dispose() {
-    for (var controller in _predictionControllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-  
-  Future<void> _loadUserFiles() async {
-    try {
-      final files = await ApiService.listUserFiles();
-      setState(() {
-        _availableFiles = files.where((f) => f.endsWith('.csv')).toList();
-      });
-    } catch (e) {
-      _showError('加载文件列表失败: $e');
-    }
-  }
-  
-  Future<void> _loadColumnInfo(String storagePath) async {
+
+  /// 执行优化
+  Future<void> _runOptimization() async {
     setState(() {
-      _loadingColumns = true;
-      _columnNames = [];
-      _columnTypes = {};
-      _targetColumn = null;
-      _inferredType = '';
+      _isLoading = true;
+      _errorMessage = null;
+      _result = null;
     });
-    
+
     try {
-      final result = await ApiService.analyzeCsv(
-        storagePath: storagePath,
-        filename: storagePath.split('/').last,
+      final result = await ApiService.runOptimization(
+        initialSoc: _initialSoc,
+        targetDate: _selectedDate,
       );
-      
-      setState(() {
-        _columnNames = result.basicInfo.columnNames;
-        _columnTypes = result.basicInfo.columnTypes;
-        _loadingColumns = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loadingColumns = false;
-      });
-      _showError('加载列信息失败: $e');
-    }
-  }
-  
-  void _inferProblemType(String column) {
-    if (_columnTypes[column] == null) return;
-    final colType = _columnTypes[column]!;
-    
-    if (colType.contains('int') || colType.contains('object') || colType.contains('category')) {
-      setState(() {
-        _inferredType = '分类问题';
-        _problemType = 'classification';
-      });
-    } else if (colType.contains('float')) {
-      setState(() {
-        _inferredType = '回归问题';
-        _problemType = 'regression';
-      });
-    }
-  }
-  
-  Future<void> _trainModel() async {
-    if (_selectedFile == null) {
-      _showError('请选择数据集');
-      return;
-    }
-    
-    if (_problemType != 'clustering' && _targetColumn == null) {
-      _showError('请选择目标变量');
-      return;
-    }
-    
-    setState(() {
-      _isTraining = true;
-      _trainingStatus = '正在准备训练...';
-      _trainingSteps = [];
-      _trainingResult = null;
-    });
-    
-    try {
-      await _updateTrainingStep('正在进行数据类型降维...');
-      await Future.delayed(const Duration(milliseconds: 800));
-      
-      await _updateTrainingStep('执行科学采样（保留统计显著性）...');
-      await Future.delayed(const Duration(milliseconds: 600));
-      
-      await _updateTrainingStep('构建智能预处理 Pipeline...');
-      await Future.delayed(const Duration(milliseconds: 600));
-      
-      await _updateTrainingStep('运行 3 折交叉验证...');
-      
-      final headers = await _getAuthHeaders();
-      final requestBody = {
-        'storage_path': _selectedFile!,
-        'problem_type': _problemType,
-        'model_name': _modelAlgorithm == 'linear' ? 'linear' : null,
-      };
-      
-      if (_problemType != 'clustering') {
-        requestBody['target_column'] = _targetColumn;
-      } else {
-        requestBody['n_clusters'] = _nClusters;
-      }
-      
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/ml/train'),
-        headers: headers,
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 60));
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
+
+      if (mounted) {
         setState(() {
-          _trainingResult = data;
-          _modelPath = data['model_path'];
-          _trainingStatus = '训练完成！';
-          _isTraining = false;
+          _result = result;
+          _isLoading = false;
         });
-        
-        await _updateTrainingStep('✓ 模型训练成功完成');
-        setState(() {
-          _currentStep = 3;
-        });
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? '训练失败');
-      }
-    } catch (e) {
-      setState(() {
-        _isTraining = false;
-        _trainingStatus = '训练失败';
-      });
-      _showError('训练失败: $e');
-    }
-  }
-  
-  Future<void> _updateTrainingStep(String step) async {
-    setState(() {
-      _trainingSteps.add(step);
-      _trainingStatus = step;
-    });
-  }
-  
-  Future<void> _predictSingle() async {
-    if (_modelPath == null) {
-      _showError('请先训练模型');
-      return;
-    }
-    
-    setState(() {
-      _isPredicting = true;
-      _predictionResult = null;
-    });
-    
-    try {
-      final inputData = <String, dynamic>{};
-      for (var entry in _predictionControllers.entries) {
-        final value = entry.value.text;
-        if (value.isEmpty) continue;
-        
-        if (double.tryParse(value) != null) {
-          inputData[entry.key] = double.parse(value);
+
+        if (result.isSuccess) {
+          _showSuccessSnackBar('优化完成！节省 ${result.optimization?.summary.savingsFormatted ?? "0"}');
         } else {
-          inputData[entry.key] = value;
+          setState(() {
+            _errorMessage = result.message ?? result.error ?? '优化失败';
+          });
         }
       }
-      
-      if (inputData.isEmpty) {
-        throw Exception('请输入至少一个特征值');
-      }
-      
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/ml/predict'),
-        headers: headers,
-        body: jsonEncode({
-          'model_path': _modelPath,
-          'input_data': [inputData],
-        }),
-      ).timeout(const Duration(seconds: 30));
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _predictionResult = data;
-          _isPredicting = false;
-        });
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? '预测失败');
-      }
     } catch (e) {
-      setState(() {
-        _isPredicting = false;
-      });
-      _showError('预测失败: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+        _showErrorSnackBar(_errorMessage!);
+      }
     }
   }
-  
-  Future<Map<String, String>> _getAuthHeaders() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('未登录');
-    final token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
-  
-  void _showError(String message) {
+
+  void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
-  
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('智能建模实验室'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        title: const Text(
+          '⚡ 能源优化仪表盘',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        child: Stepper(
-          currentStep: _currentStep,
-          onStepContinue: () {
-            if (_currentStep < 4) {
-              if (_currentStep == 0 && _selectedFile == null) {
-                _showError('请选择数据集');
-                return;
-              }
-              if (_currentStep == 1 && _problemType != 'clustering' && _targetColumn == null) {
-                _showError('请选择目标变量');
-                return;
-              }
-              
-              setState(() {
-                _currentStep += 1;
-              });
-            }
-          },
-          onStepCancel: () {
-            if (_currentStep > 0) {
-              setState(() {
-                _currentStep -= 1;
-              });
-            }
-          },
-          onStepTapped: (step) {
-            setState(() {
-              _currentStep = step;
-            });
-          },
-          controlsBuilder: (context, details) {
-            return Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: Row(
-                children: [
-                  if (_currentStep < 4)
-                    ElevatedButton(
-                      onPressed: details.onStepContinue,
-                      child: Text(_currentStep == 2 ? '开始训练' : '下一步'),
-                    ),
-                  const SizedBox(width: 8),
-                  if (_currentStep > 0)
-                    TextButton(
-                      onPressed: details.onStepCancel,
-                      child: const Text('上一步'),
-                    ),
-                ],
-              ),
-            );
-          },
-          steps: [
-            Step(
-              title: const Text('选择数据集'),
-              subtitle: _selectedFile != null ? Text(_selectedFile!.split('/').last) : null,
-              content: _buildStep1DataSelection(),
-              isActive: _currentStep >= 0,
-              state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-            ),
-            Step(
-              title: const Text('模型配置'),
-              subtitle: _targetColumn != null ? Text('目标: $_targetColumn') : null,
-              content: _buildStep2ModelConfig(),
-              isActive: _currentStep >= 1,
-              state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-            ),
-            Step(
-              title: const Text('模型训练'),
-              subtitle: _isTraining ? const Text('训练中...') : null,
-              content: _buildStep3Training(),
-              isActive: _currentStep >= 2,
-              state: _trainingResult != null ? StepState.complete : StepState.indexed,
-            ),
-            Step(
-              title: const Text('训练结果'),
-              content: _buildStep4Results(),
-              isActive: _currentStep >= 3,
-              state: _currentStep > 3 ? StepState.complete : StepState.indexed,
-            ),
-            Step(
-              title: const Text('预测演练'),
-              content: _buildStep5Prediction(),
-              isActive: _currentStep >= 4,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildStep1DataSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('📊 选择用于建模的数据集',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        
-        if (_availableFiles.isEmpty)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('暂无可用数据集，请先上传 CSV 文件'),
-            ),
-          )
-        else
-          ...(_availableFiles.map((file) {
-            final fileName = file.split('/').last;
-            return Card(
-              child: ListTile(
-                leading: const Icon(Icons.insert_drive_file, color: Colors.blue),
-                title: Text(fileName),
-                subtitle: Text(file),
-                selected: _selectedFile == file,
-                selectedTileColor: Colors.blue.withOpacity(0.1),
-                onTap: () {
-                  setState(() {
-                    _selectedFile = file;
-                  });
-                  _loadColumnInfo(file);
-                },
-              ),
-            );
-          })),
-        
-        if (_loadingColumns)
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(child: CircularProgressIndicator()),
+        elevation: 0,
+        backgroundColor: Colors.blue[700],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => _showInfoDialog(),
+            tooltip: '关于',
           ),
-        
-        if (_columnNames.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 8),
-          Text('✓ 数据集包含 ${_columnNames.length} 个特征',
-              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
         ],
-      ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (!_isLoading && _initialSoc > 0) {
+            await _runOptimization();
+          }
+        },
+        child: ResponsiveWrapper(
+          maxWidth: ResponsiveHelper.getMaxContentWidth(context),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: ResponsiveHelper.getPagePadding(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              // 1. 顶部控制卡片
+              _buildControlPanel(),
+              
+              const SizedBox(height: 16),
+              
+              // 2. 错误提示
+              if (_errorMessage != null) _buildErrorCard(),
+              
+              // 3. 加载指示器
+              if (_isLoading) _buildLoadingCard(),
+              
+              // 4. 关键指标卡片
+              if (_result?.optimization != null) ...[
+                const SizedBox(height: 16),
+                _buildKeyMetrics(_result!.optimization!),
+                
+                const SizedBox(height: 24),
+                
+                // 5. 电网交互策略图
+                PowerChartWidget(
+                  chartData: _result!.optimization!.chartData,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // 6. 电池电量变化图
+                SocChartWidget(
+                  chartData: _result!.optimization!.chartData,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // 7. 策略详情
+                _buildStrategyDetails(_result!.optimization!),
+              ],
+              
+              // 空状态提示
+              if (_result == null && !_isLoading && _errorMessage == null)
+                _buildEmptyState(),
+              
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+        ),
+      ),
     );
   }
-  
-  Widget _buildStep2ModelConfig() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('🎯 选择建模任务类型',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'regression', label: Text('回归'), icon: Icon(Icons.show_chart)),
-            ButtonSegment(value: 'classification', label: Text('分类'), icon: Icon(Icons.category)),
-            ButtonSegment(value: 'clustering', label: Text('聚类'), icon: Icon(Icons.scatter_plot)),
-          ],
-          selected: {_problemType},
-          onSelectionChanged: (Set<String> newSelection) {
-            setState(() {
-              _problemType = newSelection.first;
-              _targetColumn = null;
-            });
-          },
-        ),
-        
-        const SizedBox(height: 24),
-        
-        if (_problemType != 'clustering') ...[
-          const Text('🎯 选择目标变量 (Target Column)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          
-          if (_columnNames.isEmpty)
-            const Text('请先选择数据集', style: TextStyle(color: Colors.grey))
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _columnNames.map((col) {
-                final isSelected = _targetColumn == col;
-                return ChoiceChip(
-                  label: Text(col),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      _targetColumn = col;
-                    });
-                    _inferProblemType(col);
-                  },
-                  selectedColor: Colors.deepPurple.withOpacity(0.3),
-                );
-              }).toList(),
+
+  /// 1. 顶部控制卡片
+  Widget _buildControlPanel() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.settings, color: Colors.blue[700], size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  '优化参数配置',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          
-          if (_inferredType.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            
+            // 初始电量滑块
+            Row(
+              children: [
+                const Icon(Icons.battery_charging_full, color: Colors.green),
+                const SizedBox(width: 8),
+                const Text(
+                  '初始电量 (Initial SOC)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: _initialSoc,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 20,
+                    label: '${(_initialSoc * 100).toInt()}%',
+                    activeColor: Colors.blue[700],
+                    onChanged: _isLoading
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _initialSoc = value;
+                            });
+                          },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${(_initialSoc * 100).toInt()}%',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // 日期选择
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text(
+                  '目标日期',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            InkWell(
+              onTap: _isLoading ? null : () => _selectDate(context),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _selectedDate != null
+                          ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
+                          : '选择日期',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // 开始优化按钮
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _runOptimization,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.bolt, size: 24),
+                label: Text(
+                  _isLoading ? '优化中...' : '开始智能调度',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[700],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // 提示信息
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lightbulb, color: Colors.orange, size: 20),
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
                   const SizedBox(width: 8),
-                  Text('AI 推荐: $_inferredType',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text(
+                      '系统将基于负载预测和电价优化充放电策略',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[900],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
-        ],
-        
-        if (_problemType == 'clustering') ...[
-          const Text('🔢 设置聚类数',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text('聚类数: $_nClusters'),
-              Expanded(
-                child: Slider(
-                  value: _nClusters.toDouble(),
-                  min: 2,
-                  max: 10,
-                  divisions: 8,
-                  label: _nClusters.toString(),
-                  onChanged: (value) {
-                    setState(() {
-                      _nClusters = value.round();
-                    });
-                  },
-                ),
-              ),
-            ],
+        ),
+      ),
+    );
+  }
+
+  /// 选择日期
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 7)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue[700]!,
+              onPrimary: Colors.white,
+            ),
           ),
-        ],
-        
-        const SizedBox(height: 24),
-        const Text('⚙️ 训练模式',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  /// 2. 错误卡片
+  Widget _buildErrorCard() {
+    return Card(
+      color: Colors.red[50],
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.red[300]!, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[700], size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '优化失败',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[900],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _errorMessage ?? '未知错误',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red[800],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              color: Colors.red[700],
+              onPressed: () {
+                setState(() {
+                  _errorMessage = null;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 3. 加载卡片
+  Widget _buildLoadingCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              '正在执行优化...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '预计需要 30-60 秒',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 4. 关键指标卡片
+  Widget _buildKeyMetrics(OptimizationData optimization) {
+    final summary = optimization.summary;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.analytics, color: Colors.blue[700], size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              '关键指标',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         
+        // 三个指标卡片 - 响应式布局
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = ResponsiveHelper.isMobile(context);
+            
+            if (isMobile) {
+              // 移动端：垂直排列
+              return Column(
+                children: [
+                  _buildMetricCard(
+                    icon: Icons.savings,
+                    iconColor: Colors.green,
+                    label: '节省金额',
+                    value: summary.savingsFormatted,
+                    backgroundColor: Colors.green[50]!,
+                    valueColor: Colors.green[700]!,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMetricCard(
+                    icon: Icons.percent,
+                    iconColor: Colors.orange,
+                    label: '节省比例',
+                    value: summary.savingsPercentFormatted,
+                    backgroundColor: Colors.orange[50]!,
+                    valueColor: Colors.orange[700]!,
+                  ),
+                ],
+              );
+            } else {
+              // 平板/桌面端：水平排列
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      icon: Icons.savings,
+                      iconColor: Colors.green,
+                      label: '节省金额',
+                      value: summary.savingsFormatted,
+                      backgroundColor: Colors.green[50]!,
+                      valueColor: Colors.green[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      icon: Icons.percent,
+                      iconColor: Colors.orange,
+                      label: '节省比例',
+                      value: summary.savingsPercentFormatted,
+                      backgroundColor: Colors.orange[50]!,
+                      valueColor: Colors.orange[700]!,
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // 成本对比卡片
         Card(
-          color: Colors.green.withOpacity(0.1),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.auto_awesome, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text('AutoML (Smart Sampling)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  children: [
+                    Icon(Icons.compare_arrows, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '成本对比',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text('自动优化内存并使用分层采样以保证统计显著性',
-                    style: TextStyle(fontSize: 13, color: Colors.black87)),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 
-                RadioListTile<String>(
-                  title: const Text('Gradient Boosting (推荐)'),
-                  subtitle: const Text('高精度，适合复杂模式'),
-                  value: 'gradient_boosting',
-                  groupValue: _modelAlgorithm,
-                  onChanged: (value) {
-                    setState(() {
-                      _modelAlgorithm = value!;
-                    });
-                  },
+                _buildCostComparisonRow(
+                  '无电池成本',
+                  summary.totalCostWithoutBattery,
+                  Colors.grey,
+                ),
+                const SizedBox(height: 8),
+                _buildCostComparisonRow(
+                  '有电池成本',
+                  summary.totalCostWithBattery,
+                  Colors.blue,
                 ),
                 
-                RadioListTile<String>(
-                  title: const Text('Linear Model'),
-                  subtitle: const Text('快速，适合线性关系'),
-                  value: 'linear',
-                  groupValue: _modelAlgorithm,
-                  onChanged: (value) {
-                    setState(() {
-                      _modelAlgorithm = value!;
-                    });
-                  },
+                const Divider(height: 24),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '总计节省',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      summary.savingsFormatted,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -570,262 +630,331 @@ class _ModelingScreenState extends State<ModelingScreen> {
       ],
     );
   }
-  
-  Widget _buildStep3Training() {
-    if (!_isTraining && _trainingResult == null) {
-      return Column(
-        children: [
-          const Icon(Icons.rocket_launch, size: 80, color: Colors.deepPurple),
-          const SizedBox(height: 16),
-          const Text('准备开始训练',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('点击下方"开始训练"按钮启动 AutoML 流程'),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _trainModel,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('开始训练'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-          ),
-        ],
-      );
-    }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_isTraining) ...[
-          const LinearProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(_trainingStatus,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          
-          ..._trainingSteps.map((step) {
-            final isComplete = step.startsWith('✓');
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    isComplete ? Icons.check_circle : Icons.hourglass_empty,
-                    color: isComplete ? Colors.green : Colors.orange,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(step)),
-                ],
+
+  Widget _buildMetricCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required Color backgroundColor,
+    required Color valueColor,
+  }) {
+    return Card(
+      elevation: 2,
+      color: backgroundColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
               ),
-            );
-          }),
-        ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: valueColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCostComparisonRow(String label, double cost, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        Text(
+          '¥${cost.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
       ],
     );
   }
-  
-  Widget _buildStep4Results() {
-    if (_trainingResult == null) {
-      return const Center(child: Text('请先完成模型训练'));
-    }
+
+  /// 7. 策略详情
+  Widget _buildStrategyDetails(OptimizationData optimization) {
+    final strategy = optimization.strategy;
     
-    final metrics = _trainingResult!['metrics'] as Map<String, dynamic>?;
-    final warning = _trainingResult!['warning'] as String?;
-    
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Colors.green, size: 40),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('✓ 模型训练成功',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 4),
-                      Text('您的模型已准备就绪'),
-                    ],
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule, color: Colors.blue[700], size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  '⚡ 充放电策略',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-          ),
-          
-          if (warning != null) ...[
             const SizedBox(height: 16),
+            
+            // 充电时段
+            _buildStrategyRow(
+              icon: Icons.battery_charging_full,
+              iconColor: Colors.green,
+              label: '充电时段',
+              value: strategy.chargingHoursFormatted,
+              count: '${strategy.chargingCount} 小时',
+              backgroundColor: Colors.green[50]!,
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // 放电时段
+            _buildStrategyRow(
+              icon: Icons.flash_on,
+              iconColor: Colors.red,
+              label: '放电时段',
+              value: strategy.dischargingHoursFormatted,
+              count: '${strategy.dischargingCount} 小时',
+              backgroundColor: Colors.red[50]!,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 统计信息
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const Icon(Icons.warning, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(warning)),
+                  _buildStatRow(
+                    '总充电量',
+                    '${optimization.summary.totalCharged.toStringAsFixed(2)} kWh',
+                  ),
+                  const Divider(height: 16),
+                  _buildStatRow(
+                    '总放电量',
+                    '${optimization.summary.totalDischarged.toStringAsFixed(2)} kWh',
+                  ),
+                  const Divider(height: 16),
+                  _buildStatRow(
+                    '循环效率',
+                    '${optimization.summary.cycleEfficiency.toStringAsFixed(1)}%',
+                  ),
                 ],
               ),
             ),
           ],
-          
-          const SizedBox(height: 24),
-          
-          if (metrics != null) ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('📈 性能指标',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    
-                    if (_problemType == 'regression') ...[
-                      _buildMetricRow('R² Score', metrics['r2']),
-                      _buildMetricRow('RMSE', metrics['rmse']),
-                      if (metrics['cv_score'] != null)
-                        _buildMetricRow('CV Score', metrics['cv_score']),
-                    ] else if (_problemType == 'classification') ...[
-                      _buildMetricRow('Accuracy', metrics['accuracy']),
-                      _buildMetricRow('F1 Score', metrics['f1_weighted']),
-                      if (metrics['cv_score'] != null)
-                        _buildMetricRow('CV Score', metrics['cv_score']),
-                    ] else if (_problemType == 'clustering') ...[
-                      _buildMetricRow('Silhouette Score', metrics['silhouette_score']),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            
-            if (metrics['cv_score'] != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.science, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '交叉验证分数体现了模型的泛化能力，这是科学严谨性的铁证',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ],
+        ),
       ),
     );
   }
-  
-  Widget _buildMetricRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(value?.toStringAsFixed(4) ?? '-',
-              style: const TextStyle(fontSize: 16, color: Colors.blue)),
-        ],
+
+  Widget _buildStrategyRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String count,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
       ),
-    );
-  }
-  
-  Widget _buildStep5Prediction() {
-    if (_modelPath == null) {
-      return const Center(child: Text('请先完成模型训练'));
-    }
-    
-    // 初始化输入控制器
-    if (_predictionControllers.isEmpty && _columnNames.isNotEmpty) {
-      for (var col in _columnNames) {
-        if (col != _targetColumn) {
-          _predictionControllers[col] = TextEditingController();
-        }
-      }
-    }
-    
-    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('🔮 输入特征值进行预测',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          
-          ..._predictionControllers.entries.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: TextField(
-                controller: entry.value,
-                decoration: InputDecoration(
-                  labelText: entry.key,
-                  border: const OutlineInputBorder(),
+          Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            );
-          }),
-          
-          const SizedBox(height: 16),
-          
-          ElevatedButton.icon(
-            onPressed: _isPredicting ? null : _predictSingle,
-            icon: _isPredicting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.play_arrow),
-            label: Text(_isPredicting ? '预测中...' : '开始预测'),
-          ),
-          
-          if (_predictionResult != null) ...[
-            const SizedBox(height: 24),
-            Card(
-              color: Colors.purple.withOpacity(0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('预测结果',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    Text(
-                      '预测值: ${_predictionResult!['predictions'][0]}',
-                      style: const TextStyle(fontSize: 20, color: Colors.purple),
-                    ),
-                  ],
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
                 ),
+                child: Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 空状态
+  Widget _buildEmptyState() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '开始优化',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '调整初始电量参数，点击"开始智能调度"按钮',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 信息对话框
+  void _showInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.info, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('关于能源优化'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '功能说明',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 基于机器学习预测未来24小时能源负载'),
+              Text('• 使用混合整数规划优化电池充放电策略'),
+              Text('• 考虑峰谷电价，最小化总购电成本'),
+              SizedBox(height: 16),
+              Text(
+                '电价时段',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 谷时 (00:00-08:00, 22:00-24:00): 0.3 元/kWh'),
+              Text('• 平时 (08:00-18:00): 0.6 元/kWh'),
+              Text('• 峰时 (18:00-22:00): 1.0 元/kWh'),
+              SizedBox(height: 16),
+              Text(
+                '电池参数',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 容量: 13.5 kWh (Tesla Powerwall)'),
+              Text('• 最大功率: 5.0 kW'),
+              Text('• 充放电效率: 95%'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
         ],
       ),
     );

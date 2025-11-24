@@ -42,6 +42,88 @@ class AnalysisService:
     """数据分析服务类"""
     
     @staticmethod
+    def analyze_dataframe(df: pd.DataFrame, filename: str, uid: str) -> Dict[str, Any]:
+        """
+        分析已加载的 DataFrame 并返回统计信息
+        
+        Args:
+            df: Pandas DataFrame
+            filename: 文件名
+            uid: 用户ID
+            
+        Returns:
+            dict: 包含分析结果的字典
+        """
+        try:
+            # 基本信息
+            basic_info = {
+                'rows': int(df.shape[0]),
+                'columns': int(df.shape[1]),
+                'column_names': df.columns.tolist(),
+                'column_types': {col: str(dtype) for col, dtype in df.dtypes.items()}
+            }
+            
+            # 描述性统计（数值列）
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            descriptive_stats = {}
+            
+            if numeric_cols:
+                desc = df[numeric_cols].describe()
+                descriptive_stats = {
+                    'statistics': desc.to_dict(),
+                    'numeric_columns': numeric_cols
+                }
+            
+            # 缺失值统计
+            missing_data = {
+                col: {
+                    'count': int(df[col].isna().sum()),
+                    'percentage': float(df[col].isna().sum() / len(df) * 100)
+                }
+                for col in df.columns
+                if df[col].isna().sum() > 0
+            }
+            
+            # 数据类型分布
+            type_distribution = df.dtypes.value_counts().to_dict()
+            type_distribution = {str(k): int(v) for k, v in type_distribution.items()}
+            
+            # 前5行数据预览
+            preview_data = df.head(5).to_dict(orient='records')
+            
+            # 数值列的相关性矩阵（如果有多个数值列）
+            correlation_matrix = None
+            if len(numeric_cols) > 1:
+                corr = df[numeric_cols].corr()
+                correlation_matrix = corr.to_dict()
+            
+            # 组装结果
+            result = {
+                'success': True,
+                'user_id': uid,
+                'filename': filename,
+                'basic_info': basic_info,
+                'descriptive_statistics': descriptive_stats,
+                'missing_data': missing_data,
+                'type_distribution': type_distribution,
+                'preview': preview_data,
+                'correlation_matrix': correlation_matrix,
+                'message': f'成功分析数据集：{df.shape[0]} 行 x {df.shape[1]} 列'
+            }
+            
+            # 转换所有数据为 JSON 可序列化格式
+            result = convert_to_json_serializable(result)
+            
+            return result
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': 'ANALYSIS_ERROR',
+                'message': f'分析过程出错：{str(e)}'
+            }
+    
+    @staticmethod
     def analyze_csv(file_stream, filename: str, uid: str) -> Dict[str, Any]:
         """
         分析 CSV 文件并返回统计信息

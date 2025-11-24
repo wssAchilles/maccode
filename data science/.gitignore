@@ -14,6 +14,8 @@ build/
 *.pyc
 pip-log.txt
 pip-delete-this-directory.txt
+*.manifest
+*.spec
 
 # ===================================
 # Virtual Environment
@@ -53,13 +55,18 @@ pyvenv.cfg
 *.tsv
 *.dat
 *.data
+*.txt
 
-# 但保留配置文件
+# 但保留配置文件和文档
 !firebase.json
 !package.json
 !pubspec.yaml
 !app.yaml
 !.firebaserc
+!requirements.txt
+!README.txt
+!README.md
+!*.md
 
 # ===================================
 # Model files (不上传模型文件)
@@ -89,6 +96,12 @@ pyvenv.cfg
 *.bz2
 *.iso
 *.dmg
+*.pdf
+*.docx
+*.pptx
+*.mp4
+*.avi
+*.mov
 
 # ===================================
 # IDE & Editors
@@ -99,27 +112,37 @@ pyvenv.cfg
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+*.code-workspace
 
 # IntelliJ / PyCharm
 .idea/
 *.iml
 *.iws
 *.ipr
+out/
 
 # Vim
 *.swp
 *.swo
 *~
+.netrwhist
 
 # Emacs
 *~
 \#*\#
 /.emacs.desktop
 /.emacs.desktop.lock
+.elc
+auto-save-list
+tramp
+.\#*
 
 # Sublime Text
 *.sublime-workspace
 *.sublime-project
+
+# Atom
+.atom/
 
 # ===================================
 # Operating System
@@ -130,37 +153,67 @@ pyvenv.cfg
 .LSOverride
 Icon
 ._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
 # Windows
 Thumbs.db
+Thumbs.db:encryptable
 ehthumbs.db
+ehthumbs_vista.db
 Desktop.ini
 $RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
 # Linux
 .directory
 .Trash-*
+.nfs*
 
 # ===================================
 # Environment variables & Secrets
 # ===================================
 .env
+.env.*
 .env.local
 .env.*.local
 .env.development.local
 .env.test.local
 .env.production.local
+.flaskenv
+*.sage.py
 
 # Google Cloud credentials
 *-key.json
 *-credentials.json
 service-account*.json
+gcp-key*.json
 
 # Firebase
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
 firebaserc.backup
+.firebaserc.backup
+
+# API Keys
+apikeys.txt
+secrets.txt
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
 
 # ===================================
 # Logs
@@ -172,6 +225,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+pip-log.txt
+pip-delete-this-directory.txt
+gunicorn-error.log
+gunicorn-access.log
+celery*.log
 
 # ===================================
 # Cache & Temporary
@@ -193,6 +251,7 @@ tmp/
 .pytest_cache/
 .tox/
 .nox/
+pytestdebug.log
 
 # Coverage reports
 htmlcov/
@@ -201,6 +260,7 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+*.coveragerc
 
 # ===================================
 # Type checking
@@ -217,6 +277,8 @@ dmypy.json
 # 只忽略训练好的模型文件和实验数据
 # 不忽略代码中的 models/ 目录
 /data/models/
+/back/models/*.joblib
+/back/models/*.pkl
 checkpoints/
 wandb/
 mlruns/
@@ -224,6 +286,15 @@ tensorboard/
 runs/
 experiments/
 *.ckpt
+
+# Gurobi Optimizer
+gurobi.log
+gurobi*.log
+*.mps
+*.lp
+*.sol
+*.ilp
+.gurobi_env
 
 # ===================================
 # Flutter / Dart specific
@@ -235,6 +306,8 @@ experiments/
 /front/.flutter-plugins-dependencies
 /front/.packages
 /front/pubspec.lock
+/front/.metadata
+/front/.last_build_id
 
 # Generated files
 /front/lib/generated/
@@ -249,6 +322,8 @@ experiments/
 /front/ios/Flutter/Flutter.podspec
 /front/ios/ServiceDefinitions.json
 /front/ios/Runner/GeneratedPluginRegistrant.*
+/front/ios/.generated/
+/front/ios/Flutter/flutter_export_environment.sh
 
 # Android
 /front/android/app/debug
@@ -261,10 +336,19 @@ experiments/
 /front/android/key.properties
 /front/android/*.jks
 /front/android/*.keystore
+/front/android/gradlew
+/front/android/gradlew.bat
 
 # macOS
 /front/macos/Pods/
 /front/macos/Flutter/ephemeral/
+/front/macos/Flutter/flutter_export_environment.sh
+
+# Linux
+/front/linux/flutter/ephemeral/
+
+# Windows  
+/front/windows/flutter/ephemeral/
 
 # Web
 /front/web/flutter_service_worker.js
@@ -290,10 +374,26 @@ yarn.lock
 /data/raw/*
 /data/processed/*
 /data/models/*
+/data/output/*
 
-# 但保留 .gitkeep 文件
+# 但保留 .gitkeep 文件和 README
 !**/.gitkeep
+!**/README.md
+!**/README.txt
 
 # 忽略测试生成的文件
 /back/tests/output/
 /back/tests/fixtures/*.generated.*
+
+# Google Cloud 部署文件(可选保留)
+.gcloudignore
+
+# 项目文档(如果很大的话)
+# capstone.pdf
+
+# 备份文件
+*.backup
+*.bak
+*.old
+*.orig
+*~

@@ -22,7 +22,8 @@ from api.auth import auth_bp
 from api.data import data_bp
 from api.analysis import analysis_bp
 from api.history import history_bp
-from api.ml import ml_bp
+# from api.ml import ml_bp  # 暂时禁用，MLService 未实现
+from api.optimization import optimization_bp
 
 
 def create_app(config_name=None):
@@ -62,13 +63,15 @@ def create_app(config_name=None):
         FirebaseService.initialize(project_id=app.config['GCP_PROJECT_ID'])
     except Exception as e:
         print(f"⚠️ Firebase 初始化失败: {e}")
+        # 不抛出异常，允许应用继续运行（某些路由可能不需要 Firebase）
     
     # 注册蓝图 (API 路由)
     app.register_blueprint(auth_bp)
     app.register_blueprint(data_bp)
     app.register_blueprint(analysis_bp)
     app.register_blueprint(history_bp)
-    app.register_blueprint(ml_bp)
+    # app.register_blueprint(ml_bp)  # 暂时禁用
+    app.register_blueprint(optimization_bp)
     
     # 根路由
     @app.route('/')

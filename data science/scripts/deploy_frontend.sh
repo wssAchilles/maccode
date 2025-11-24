@@ -50,5 +50,5 @@ echo "🚀 部署到 Firebase Hosting..."
 firebase deploy --only hosting
 
 echo "✅ 部署成功!"
-echo "🌐 访问你的应用:"
-firebase open hosting:site
+echo "🌐 访问你的应用: https://data-science-44398.web.app"
+echo "ℹ️ 如需查看 Firebase 控制台，请手动访问: https://console.firebase.google.com/project/data-science-44398/overview"

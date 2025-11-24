@@ -77,15 +77,14 @@ def analyze_csv():
         
         start_time = time.time()
         
-        # 读取 DataFrame 一次
+        # 读取 DataFrame 一次（避免重复读取）
         df = pd.read_csv(file_stream)
         load_time = time.time() - start_time
-        logger.info(f"[{uid}] 数据加载耗时: {load_time:.2f}s")
+        logger.info(f"[{uid}] 数据加载耗时: {load_time:.2f}s, 数据形状: {df.shape}")
         
-        # 执行基础分析
-        file_stream.seek(0)  # 重置流指针
+        # 执行基础分析（直接使用已加载的 DataFrame）
         basic_start = time.time()
-        basic_result = AnalysisService.analyze_csv(file_stream, filename, uid)
+        basic_result = AnalysisService.analyze_dataframe(df, filename, uid)
         basic_time = time.time() - basic_start
         logger.info(f"[{uid}] 基础分析耗时: {basic_time:.2f}s")
         

@@ -23,5 +23,6 @@ scipy==1.11.4  # 统计检验
 openpyxl==3.1.2  # Excel文件支持
 scikit-learn==1.3.2  # 机器学习
 joblib==1.3.2  # 模型持久化
+gurobipy>=9.5.0
 # matplotlib==3.8.2
 # seaborn==0.13.0

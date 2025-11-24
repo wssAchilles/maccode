@@ -1,734 +1,506 @@
 """
-机器学习服务
-为 GAE F1 (256MB RAM) 优化的精益且强大的 ML Service
+机器学习服务模块 - 能源负载预测
+ML Service Module for Energy Load Prediction
 
-核心理念：高效算法 + 科学采样 + 内存优化
-基于 course_essence.json 中的数据科学哲学
+使用随机森林回归模型预测未来24小时的能源负载
 """
 
 import pandas as pd
 import numpy as np
 import joblib
-import io
-import gc
-import logging
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime
+from pathlib import Path
+from typing import List, Dict, Optional, Union
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import warnings
 
-# Scikit-learn imports
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler, RobustScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.feature_selection import SelectKBest, f_classif, f_regression, SelectFromModel
-
-# Models - 使用内存高效的算法
-from sklearn.experimental import enable_hist_gradient_boosting  # noqa
-from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
-from sklearn.linear_model import SGDRegressor, LogisticRegression, Lasso
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-
-# Metrics
-from sklearn.metrics import (
-    mean_squared_error, r2_score, accuracy_score, 
-    f1_score, silhouette_score, mean_absolute_error
-)
-
-logger = logging.getLogger(__name__)
+warnings.filterwarnings('ignore')
 
 
-class MLServiceError(Exception):
-    """ML服务自定义异常"""
-    pass
-
-
-class MemoryError(MLServiceError):
-    """内存不足异常"""
-    pass
-
-
-class MLService:
+class EnergyPredictor:
     """
-    机器学习服务类
+    能源负载预测器
     
-    核心特性：
-    1. 内存优化 - 数据类型降维
-    2. 科学采样 - 保证统计显著性的分层采样
-    3. 智能预处理 - 自动化 Pipeline
-    4. 高效算法 - HistGradientBoosting, SGD, MiniBatchKMeans
-    5. 严谨评估 - 交叉验证
+    使用随机森林模型预测未来24小时的能源负载
+    支持模型训练、保存、加载和推理
     """
     
-    # 模型配置 (Week 08 & 09: ML Best Practices)
-    MAX_TRAINING_SAMPLES = 5000  # 科学采样上限
-    MAX_CATEGORIES = 20  # OneHot编码最大类别数
-    CV_FOLDS = 3  # 交叉验证折数
-    RANDOM_STATE = 42  # 保证可复现性
-    
-    @staticmethod
-    def _optimize_memory(df: pd.DataFrame) -> pd.DataFrame:
+    def __init__(self, model_path: str = None):
         """
-        内存优化 - 物理缩减数据体积
-        
-        Week 02 Implementation Tips: 理解向量化和内存管理
-        Week 03 Philosophical Core: Garbage in, garbage out
+        初始化预测器
         
         Args:
-            df: 原始 DataFrame
-            
-        Returns:
-            优化后的 DataFrame
+            model_path: 模型保存路径，默认为 back/models/rf_model.joblib
         """
-        logger.info("开始内存优化...")
-        initial_memory = df.memory_usage(deep=True).sum() / 1024**2
+        # 获取项目根目录
+        self.script_dir = Path(__file__).parent  # services 目录
+        self.back_dir = self.script_dir.parent  # back 目录
         
-        # 1. Float64 -> Float32
-        float_cols = df.select_dtypes(include=['float64']).columns
-        if len(float_cols) > 0:
-            df[float_cols] = df[float_cols].astype('float32')
-            logger.info(f"将 {len(float_cols)} 个 float64 列转为 float32")
-        
-        # 2. Int64 -> Int32 (如果值域允许)
-        int_cols = df.select_dtypes(include=['int64']).columns
-        for col in int_cols:
-            if df[col].min() >= np.iinfo(np.int32).min and df[col].max() <= np.iinfo(np.int32).max:
-                df[col] = df[col].astype('int32')
-        
-        # 3. Object -> Category (高基数检测)
-        object_cols = df.select_dtypes(include=['object']).columns
-        for col in object_cols:
-            num_unique = df[col].nunique()
-            num_total = len(df[col])
+        # 设置模型路径
+        if model_path:
+            self.model_path = Path(model_path)
+        else:
+            # 在 GAE 中，__file__ 是绝对路径，如 /workspace/services/ml_service.py
+            # 所以 back_dir 应该是 /workspace
+            # 模型文件应该在 /workspace/models/rf_model.joblib
+            self.model_path = self.back_dir / 'models' / 'rf_model.joblib'
             
-            # 如果唯一值 < 50% 总行数，转为 category
-            if num_unique / num_total < 0.5:
-                df[col] = df[col].astype('category')
-                logger.info(f"将列 '{col}' 转为 category (唯一值: {num_unique})")
+            # 如果模型文件不存在，尝试其他可能的路径
+            if not self.model_path.exists():
+                alternative_paths = [
+                    Path('/workspace/models/rf_model.joblib'),
+                    Path('./models/rf_model.joblib'),
+                    self.script_dir.parent.parent / 'back' / 'models' / 'rf_model.joblib',
+                ]
+                for alt_path in alternative_paths:
+                    if alt_path.exists():
+                        self.model_path = alt_path
+                        break
         
-        final_memory = df.memory_usage(deep=True).sum() / 1024**2
-        logger.info(f"内存优化完成: {initial_memory:.2f}MB -> {final_memory:.2f}MB "
-                   f"(减少 {(1 - final_memory/initial_memory)*100:.1f}%)")
-        
-        return df
-    
-    @staticmethod
-    def _scientific_sampling(
-        df: pd.DataFrame, 
-        target_col: str, 
-        problem_type: str,
-        max_samples: int = MAX_TRAINING_SAMPLES
-    ) -> Tuple[pd.DataFrame, bool]:
-        """
-        科学采样 - 保留统计特征
-        
-        Week 04 Philosophical Core: 统计思维允许我们量化不确定性
-        Week 08 Critical Limitations: 需要大量高质量数据，但要避免过拟合
-        
-        Args:
-            df: 数据集
-            target_col: 目标列
-            problem_type: 问题类型 ('regression', 'classification', 'clustering')
-            max_samples: 最大采样数
-            
-        Returns:
-            (采样后的df, 是否进行了采样)
-        """
-        if len(df) <= max_samples:
-            return df, False
-        
-        logger.info(f"数据集包含 {len(df)} 行，超过阈值 {max_samples}，进行科学采样...")
-        
+        # 尝试确保模型目录存在（在只读文件系统中会失败，但这是可以接受的）
         try:
-            if problem_type == 'classification':
-                # 分层采样 - 保留类别分布 (Week 04 Mathematical Essence)
-                sampled_df, _ = train_test_split(
-                    df,
-                    train_size=max_samples,
-                    stratify=df[target_col],
-                    random_state=MLService.RANDOM_STATE
-                )
-                logger.info(f"使用分层采样保留类别分布，采样 {len(sampled_df)} 行")
-                
-            elif problem_type == 'regression':
-                # 随机采样
-                sampled_df = df.sample(n=max_samples, random_state=MLService.RANDOM_STATE)
-                logger.info(f"使用随机采样，采样 {len(sampled_df)} 行")
-                
-            else:  # clustering
-                # 对于聚类，随机采样即可
-                sampled_df = df.sample(n=max_samples, random_state=MLService.RANDOM_STATE)
-                logger.info(f"聚类任务：随机采样 {len(sampled_df)} 行")
-            
-            return sampled_df, True
-            
-        except Exception as e:
-            logger.warning(f"科学采样失败: {str(e)}，使用简单随机采样")
-            sampled_df = df.sample(n=max_samples, random_state=MLService.RANDOM_STATE)
-            return sampled_df, True
-    
-    @staticmethod
-    def _build_preprocessing_pipeline(
-        numeric_features: List[str],
-        categorical_features: List[str]
-    ) -> ColumnTransformer:
-        """
-        构建智能预处理 Pipeline
+            self.model_path.parent.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            # 在只读文件系统中（如 GAE），跳过目录创建
+            # 模型文件应该已经存在于部署包中
+            pass
         
-        Week 03 Code Preferences: 使用 scikit-learn Pipelines 实现可复现预处理
-        Week 03 Mathematical Essence: 统计方法处理缺失值和异常值
+        # 初始化模型
+        self.model: Optional[RandomForestRegressor] = None
+        
+        # 特征列表
+        self.feature_columns = ['Hour', 'DayOfWeek', 'Temperature', 'Price']
+        self.target_column = 'Site_Load'
+        
+        print(f"📁 模型路径: {self.model_path}")
+        print(f"📁 模型文件存在: {self.model_path.exists()}")
+    
+    def _get_price(self, hour: int) -> float:
+        """
+        根据小时返回峰谷电价
         
         Args:
-            numeric_features: 数值特征列表
-            categorical_features: 类别特征列表
+            hour: 小时 (0-23)
             
         Returns:
-            ColumnTransformer
+            电价 (元/kWh)
         """
-        # 数值特征处理: Median Imputation + RobustScaler
-        # RobustScaler 使用中位数和 IQR，对异常值更稳健 (Week 03)
-        numeric_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', RobustScaler())
-        ])
+        if 8 <= hour < 18:
+            return 0.6  # 平时
+        elif 18 <= hour < 22:
+            return 1.0  # 峰时
+        else:
+            return 0.3  # 谷时
+    
+    def train_model(
+        self, 
+        data_path: str = None,
+        n_estimators: int = 100,
+        test_size: float = 0.2,
+        random_state: int = 42
+    ) -> Dict[str, float]:
+        """
+        训练随机森林模型
         
-        # 类别特征处理: Constant Imputation + OneHotEncoding
-        # 限制类别数防止内存爆炸
-        categorical_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(
-                handle_unknown='ignore',
-                max_categories=MLService.MAX_CATEGORIES,
-                sparse_output=False  # 对于小数据集，dense更快
-            ))
-        ])
+        Args:
+            data_path: 数据文件路径，默认为 data/processed/cleaned_energy_data_all.csv
+            n_estimators: 随机森林树的数量
+            test_size: 测试集比例
+            random_state: 随机种子
+            
+        Returns:
+            包含评估指标的字典 (MAE, RMSE)
+        """
+        print("\n" + "="*80)
+        print("🚀 开始训练能源负载预测模型")
+        print("="*80 + "\n")
         
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ('num', numeric_transformer, numeric_features),
-                ('cat', categorical_transformer, categorical_features)
-            ],
-            remainder='drop'
+        # 设置默认数据路径
+        if data_path is None:
+            # 尝试多个可能的路径
+            possible_paths = [
+                self.back_dir.parent / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+                self.back_dir / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+            ]
+            data_path = None
+            for path in possible_paths:
+                if path.exists():
+                    data_path = path
+                    break
+            if data_path is None:
+                data_path = possible_paths[0]  # 使用第一个作为默认
+        else:
+            data_path = Path(data_path)
+        
+        # 读取数据
+        print(f"📖 读取数据: {data_path}")
+        try:
+            df = pd.read_csv(data_path, parse_dates=['Date'])
+            print(f"   ✓ 数据读取成功: {len(df)} 行 × {len(df.columns)} 列")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"数据文件不存在: {data_path}")
+        except Exception as e:
+            raise Exception(f"读取数据时出错: {str(e)}")
+        
+        # 检查必需列
+        required_cols = self.feature_columns + [self.target_column]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"数据缺少必需列: {missing_cols}")
+        
+        # 处理缺失值
+        print(f"\n🔍 检查数据质量...")
+        null_counts = df[required_cols].isnull().sum()
+        if null_counts.sum() > 0:
+            print(f"   ⚠️  发现缺失值:")
+            for col, count in null_counts[null_counts > 0].items():
+                print(f"      - {col}: {count} 个")
+            
+            # 对于 Temperature，使用均值填充
+            if 'Temperature' in null_counts and null_counts['Temperature'] > 0:
+                mean_temp = df['Temperature'].mean()
+                df['Temperature'].fillna(mean_temp, inplace=True)
+                print(f"   ✓ Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
+        else:
+            print(f"   ✓ 无缺失值")
+        
+        # 准备特征和目标变量
+        print(f"\n📊 准备训练数据...")
+        X = df[self.feature_columns].copy()
+        y = df[self.target_column].copy()
+        
+        print(f"   - 特征列: {self.feature_columns}")
+        print(f"   - 目标变量: {self.target_column}")
+        print(f"   - 数据形状: X={X.shape}, y={y.shape}")
+        
+        # 划分训练集和测试集
+        print(f"\n✂️  划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
         )
         
-        logger.info(f"构建预处理 Pipeline: {len(numeric_features)} 数值特征, "
-                   f"{len(categorical_features)} 类别特征")
+        print(f"   - 训练集: {X_train.shape[0]} 样本")
+        print(f"   - 测试集: {X_test.shape[0]} 样本")
         
-        return preprocessor
+        # 训练模型
+        print(f"\n🌲 训练随机森林模型 (n_estimators={n_estimators})...")
+        self.model = RandomForestRegressor(
+            n_estimators=n_estimators,
+            random_state=random_state,
+            n_jobs=-1,  # 使用所有CPU核心
+            verbose=0
+        )
+        
+        self.model.fit(X_train, y_train)
+        print(f"   ✓ 模型训练完成!")
+        
+        # 评估模型
+        print(f"\n📈 评估模型性能...")
+        
+        # 训练集预测
+        y_train_pred = self.model.predict(X_train)
+        train_mae = mean_absolute_error(y_train, y_train_pred)
+        train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+        
+        # 测试集预测
+        y_test_pred = self.model.predict(X_test)
+        test_mae = mean_absolute_error(y_test, y_test_pred)
+        test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+        
+        print(f"\n   训练集性能:")
+        print(f"      - MAE:  {train_mae:.2f} kW")
+        print(f"      - RMSE: {train_rmse:.2f} kW")
+        
+        print(f"\n   测试集性能:")
+        print(f"      - MAE:  {test_mae:.2f} kW")
+        print(f"      - RMSE: {test_rmse:.2f} kW")
+        
+        # 特征重要性
+        print(f"\n🔍 特征重要性:")
+        feature_importance = pd.DataFrame({
+            'Feature': self.feature_columns,
+            'Importance': self.model.feature_importances_
+        }).sort_values('Importance', ascending=False)
+        
+        for _, row in feature_importance.iterrows():
+            print(f"      - {row['Feature']}: {row['Importance']:.4f}")
+        
+        # 保存模型
+        print(f"\n💾 保存模型到: {self.model_path}")
+        try:
+            joblib.dump(self.model, self.model_path)
+            print(f"   ✓ 模型保存成功!")
+        except Exception as e:
+            print(f"   ❌ 模型保存失败: {str(e)}")
+            raise
+        
+        print("\n" + "="*80)
+        print("✅ 模型训练完成!")
+        print("="*80 + "\n")
+        
+        # 返回评估指标
+        return {
+            'train_mae': train_mae,
+            'train_rmse': train_rmse,
+            'test_mae': test_mae,
+            'test_rmse': test_rmse,
+            'feature_importance': feature_importance.to_dict('records')
+        }
     
-    @staticmethod
-    def _select_model(problem_type: str, model_name: Optional[str] = None):
+    def load_model(self) -> bool:
         """
-        选择模型 - The "Smart" Choice
+        加载已保存的模型
         
-        Week 09 Implementation Tips: 优先使用集成方法而非单棵树
-        Week 08 Decision Heuristic: 预测准确性优先时使用ML
-        
-        Args:
-            problem_type: 问题类型
-            model_name: 指定模型名称（可选）
-            
         Returns:
-            model 实例
+            是否加载成功
+            
+        Raises:
+            FileNotFoundError: 模型文件不存在
+            Exception: 加载模型时出错
         """
-        if problem_type == 'regression':
-            if model_name == 'linear':
-                # SGDRegressor - 极快的线性回归
-                return SGDRegressor(
-                    max_iter=1000,
-                    tol=1e-3,
-                    random_state=MLService.RANDOM_STATE,
-                    early_stopping=True
-                )
-            else:
-                # HistGradientBoostingRegressor - 内存高效的梯度提升
-                # 原生支持缺失值，无需额外处理
-                return HistGradientBoostingRegressor(
-                    max_iter=100,
-                    max_depth=5,
-                    learning_rate=0.1,
-                    random_state=MLService.RANDOM_STATE,
-                    early_stopping=True,
-                    validation_fraction=0.1
-                )
+        print(f"📂 加载模型: {self.model_path}")
         
-        elif problem_type == 'classification':
-            if model_name == 'linear':
-                # Logistic Regression - 快速且可解释
-                return LogisticRegression(
-                    max_iter=1000,
-                    random_state=MLService.RANDOM_STATE,
-                    solver='saga',  # 适合大数据集
-                    penalty='l2'
-                )
-            else:
-                # HistGradientBoostingClassifier
-                return HistGradientBoostingClassifier(
-                    max_iter=100,
-                    max_depth=5,
-                    learning_rate=0.1,
-                    random_state=MLService.RANDOM_STATE,
-                    early_stopping=True,
-                    validation_fraction=0.1
-                )
-        
-        elif problem_type == 'clustering':
-            # MiniBatchKMeans - 比 KMeans 更省内存
-            n_clusters = 3  # 默认聚类数
-            return MiniBatchKMeans(
-                n_clusters=n_clusters,
-                random_state=MLService.RANDOM_STATE,
-                batch_size=1000,
-                max_iter=100
+        if not self.model_path.exists():
+            raise FileNotFoundError(
+                f"模型文件不存在: {self.model_path}\n"
+                f"请先调用 train_model() 训练模型。"
             )
         
+        try:
+            self.model = joblib.load(self.model_path)
+            print(f"   ✓ 模型加载成功!")
+            return True
+        except Exception as e:
+            raise Exception(f"加载模型时出错: {str(e)}")
+    
+    def predict_next_24h(
+        self,
+        start_time: Union[str, datetime],
+        temp_forecast_list: Optional[List[float]] = None
+    ) -> List[Dict[str, Union[datetime, float]]]:
+        """
+        预测未来24小时的能源负载
+        
+        Args:
+            start_time: 开始时间（字符串格式 'YYYY-MM-DD HH:00:00' 或 datetime 对象）
+            temp_forecast_list: 未来24小时的温度预测列表，如果为None则使用默认值25.0°C
+            
+        Returns:
+            包含预测结果的字典列表，每个字典包含:
+                - datetime: 时间戳
+                - predicted_load: 预测负载 (kW)
+                - temperature: 温度 (°C)
+                - price: 电价 (元/kWh)
+                - hour: 小时 (0-23)
+                - day_of_week: 星期几 (0-6)
+                
+        Raises:
+            ValueError: 模型未加载或参数错误
+        """
+        # 检查模型是否已加载
+        if self.model is None:
+            raise ValueError(
+                "模型未加载，请先调用 load_model() 或 train_model()"
+            )
+        
+        # 转换开始时间
+        if isinstance(start_time, str):
+            start_time = pd.to_datetime(start_time)
+        
+        print(f"\n🔮 预测未来24小时负载 (从 {start_time} 开始)...")
+        
+        # 处理温度预测
+        if temp_forecast_list is None:
+            print(f"   ⚠️  未提供温度预测，使用默认值 25.0°C")
+            temp_forecast_list = [25.0] * 24
+        elif len(temp_forecast_list) != 24:
+            raise ValueError(
+                f"温度预测列表长度必须为24，当前为 {len(temp_forecast_list)}"
+            )
+        
+        # 生成未来24小时的时间点
+        time_points = [start_time + timedelta(hours=i) for i in range(24)]
+        
+        # 构建预测数据
+        prediction_data = []
+        for i, dt in enumerate(time_points):
+            hour = dt.hour
+            day_of_week = dt.weekday()
+            temperature = temp_forecast_list[i]
+            price = self._get_price(hour)
+            
+            prediction_data.append({
+                'Hour': hour,
+                'DayOfWeek': day_of_week,
+                'Temperature': temperature,
+                'Price': price
+            })
+        
+        # 创建DataFrame
+        X_pred = pd.DataFrame(prediction_data)
+        
+        # 进行预测
+        try:
+            predictions = self.model.predict(X_pred)
+            print(f"   ✓ 预测完成!")
+        except Exception as e:
+            raise Exception(f"预测时出错: {str(e)}")
+        
+        # 构建结果
+        results = []
+        for i, (dt, pred_load) in enumerate(zip(time_points, predictions)):
+            results.append({
+                'datetime': dt,
+                'predicted_load': float(pred_load),
+                'temperature': temp_forecast_list[i],
+                'price': prediction_data[i]['Price'],
+                'hour': prediction_data[i]['Hour'],
+                'day_of_week': prediction_data[i]['DayOfWeek']
+            })
+        
+        # 打印统计信息
+        avg_load = np.mean(predictions)
+        max_load = np.max(predictions)
+        min_load = np.min(predictions)
+        
+        print(f"\n   📊 预测统计:")
+        print(f"      - 平均负载: {avg_load:.2f} kW")
+        print(f"      - 最大负载: {max_load:.2f} kW (时刻: {time_points[np.argmax(predictions)].strftime('%H:%M')})")
+        print(f"      - 最小负载: {min_load:.2f} kW (时刻: {time_points[np.argmin(predictions)].strftime('%H:%M')})")
+        
+        return results
+    
+    def predict_single(
+        self,
+        hour: int,
+        day_of_week: int,
+        temperature: float,
+        price: float = None
+    ) -> float:
+        """
+        单点预测
+        
+        Args:
+            hour: 小时 (0-23)
+            day_of_week: 星期几 (0-6)
+            temperature: 温度 (°C)
+            price: 电价，如果为None则自动根据hour计算
+            
+        Returns:
+            预测负载 (kW)
+        """
+        if self.model is None:
+            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        
+        if price is None:
+            price = self._get_price(hour)
+        
+        X = pd.DataFrame([{
+            'Hour': hour,
+            'DayOfWeek': day_of_week,
+            'Temperature': temperature,
+            'Price': price
+        }])
+        
+        prediction = self.model.predict(X)[0]
+        return float(prediction)
+
+
+def main():
+    """
+    主函数 - 测试代码
+    """
+    print("\n" + "🎯 " + "="*76)
+    print("能源负载预测系统 - 测试脚本")
+    print("="*78 + "\n")
+    
+    # 1. 实例化预测器
+    print("【步骤 1】实例化 EnergyPredictor")
+    print("-" * 80)
+    predictor = EnergyPredictor()
+    
+    # 2. 训练模型
+    print("\n【步骤 2】训练模型")
+    print("-" * 80)
+    metrics = predictor.train_model(n_estimators=100)
+    
+    # 3. 测试加载模型
+    print("\n【步骤 3】测试加载模型")
+    print("-" * 80)
+    predictor_new = EnergyPredictor()
+    predictor_new.load_model()
+    
+    # 4. 预测未来24小时
+    print("\n【步骤 4】预测未来24小时负载")
+    print("-" * 80)
+    
+    # 使用明天的日期
+    tomorrow = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    
+    # 模拟温度预测（夏季温度模式）
+    temp_forecast = [
+        24.0, 23.5, 23.0, 22.8, 22.5, 23.0,  # 00:00-05:00 (夜间降温)
+        24.0, 25.0, 26.5, 28.0, 29.5, 30.5,  # 06:00-11:00 (升温)
+        31.0, 31.5, 31.8, 31.5, 31.0, 30.0,  # 12:00-17:00 (高温)
+        28.5, 27.0, 26.0, 25.5, 25.0, 24.5   # 18:00-23:00 (降温)
+    ]
+    
+    predictions = predictor_new.predict_next_24h(
+        start_time=tomorrow,
+        temp_forecast_list=temp_forecast
+    )
+    
+    # 5. 显示预测结果
+    print("\n【步骤 5】预测结果展示")
+    print("-" * 80)
+    print(f"\n预测日期: {tomorrow.strftime('%Y-%m-%d')}\n")
+    print(f"{'时间':<12} {'预测负载':<12} {'温度':<10} {'电价':<10} {'时段':<10}")
+    print("-" * 80)
+    
+    for pred in predictions[:12]:  # 只显示前12小时
+        dt = pred['datetime']
+        load = pred['predicted_load']
+        temp = pred['temperature']
+        price = pred['price']
+        
+        # 判断时段
+        if price == 0.3:
+            period = "谷时"
+        elif price == 0.6:
+            period = "平时"
         else:
-            raise MLServiceError(f"不支持的问题类型: {problem_type}")
+            period = "峰时"
+        
+        print(f"{dt.strftime('%H:%M'):<12} {load:>8.2f} kW  {temp:>6.1f}°C  {price:>6.2f}元  {period:<10}")
     
-    @staticmethod
-    def train_model(
-        df: pd.DataFrame,
-        target_col: str,
-        problem_type: str,
-        model_name: Optional[str] = None,
-        n_clusters: Optional[int] = None
-    ) -> Dict[str, Any]:
-        """
-        训练模型 - 完整的 AutoML Pipeline
-        
-        Week 08 Philosophical Core: ML 自动化模式发现
-        Week 14 Implementation Tips: 端到端解决方案
-        
-        Args:
-            df: 数据集
-            target_col: 目标列名（clustering 时为 None）
-            problem_type: 'regression', 'classification', 或 'clustering'
-            model_name: 模型名称（可选，'linear' 或 None）
-            n_clusters: 聚类数（仅用于 clustering）
-            
-        Returns:
-            包含模型、指标、特征重要性等的字典
-        """
-        try:
-            start_time = datetime.now()
-            logger.info(f"开始训练 {problem_type} 模型...")
-            
-            # Step 1: 内存优化
-            df = MLService._optimize_memory(df.copy())
-            gc.collect()  # 手动触发垃圾回收
-            
-            # Step 2: 科学采样
-            if problem_type != 'clustering':
-                df_train, was_sampled = MLService._scientific_sampling(
-                    df, target_col, problem_type
-                )
-            else:
-                df_train, was_sampled = MLService._scientific_sampling(
-                    df, None, problem_type
-                )
-            
-            sampling_warning = None
-            if was_sampled:
-                sampling_warning = f"已对大数据集进行科学采样，保留 {len(df_train)} 条代表性样本用于训练"
-            
-            # Step 3: 特征和目标分离
-            if problem_type == 'clustering':
-                X = df_train.select_dtypes(include=[np.number]).copy()
-                y = None
-                
-                if X.shape[1] == 0:
-                    raise MLServiceError("聚类需要至少一个数值特征")
-                
-                feature_names = X.columns.tolist()
-                
-            else:
-                # 检查目标列是否存在
-                if target_col not in df_train.columns:
-                    raise MLServiceError(f"目标列 '{target_col}' 不存在于数据集中")
-                
-                X = df_train.drop(columns=[target_col])
-                y = df_train[target_col].copy()
-                
-                # 检查目标变量缺失值
-                if y.isna().any():
-                    logger.warning(f"目标列包含 {y.isna().sum()} 个缺失值，将被删除")
-                    valid_indices = y.notna()
-                    X = X[valid_indices]
-                    y = y[valid_indices]
-            
-            # Step 4: 识别特征类型
-            numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
-            categorical_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
-            
-            logger.info(f"特征统计: {len(numeric_features)} 数值, {len(categorical_features)} 类别")
-            
-            if len(numeric_features) == 0 and len(categorical_features) == 0:
-                raise MLServiceError("没有可用的特征进行训练")
-            
-            # Step 5: 构建 Pipeline
-            if problem_type == 'clustering':
-                # 聚类只使用数值特征，不需要复杂 Pipeline
-                from sklearn.preprocessing import StandardScaler
-                preprocessor = StandardScaler()
-                X_processed = preprocessor.fit_transform(X)
-                
-                # 调整聚类数
-                if n_clusters:
-                    model = MiniBatchKMeans(
-                        n_clusters=n_clusters,
-                        random_state=MLService.RANDOM_STATE,
-                        batch_size=1000,
-                        max_iter=100
-                    )
-                else:
-                    model = MLService._select_model(problem_type, model_name)
-                
-                # 训练聚类模型
-                labels = model.fit_predict(X_processed)
-                
-                # 评估
-                if len(set(labels)) > 1:
-                    silhouette_avg = silhouette_score(X_processed, labels)
-                    inertia = model.inertia_
-                else:
-                    silhouette_avg = 0
-                    inertia = model.inertia_
-                
-                metrics = {
-                    'silhouette_score': float(silhouette_avg),
-                    'inertia': float(inertia),
-                    'n_clusters': int(model.n_clusters),
-                    'n_samples': int(len(X))
-                }
-                
-                # 保存完整 Pipeline（包含预处理器）
-                full_pipeline = {
-                    'preprocessor': preprocessor,
-                    'model': model,
-                    'feature_names': feature_names,
-                    'problem_type': problem_type
-                }
-                
-                training_time = (datetime.now() - start_time).total_seconds()
-                
-                return {
-                    'success': True,
-                    'pipeline': full_pipeline,
-                    'metrics': metrics,
-                    'training_samples': len(X),
-                    'training_time_seconds': training_time,
-                    'warning': sampling_warning,
-                    'model_type': 'MiniBatchKMeans'
-                }
-            
-            else:
-                # 回归或分类
-                preprocessor = MLService._build_preprocessing_pipeline(
-                    numeric_features, categorical_features
-                )
-                
-                # 选择模型
-                model = MLService._select_model(problem_type, model_name)
-                
-                # 构建完整 Pipeline (包含特征选择)
-                if problem_type == 'regression':
-                    # 使用 SelectKBest 或 Lasso 特征选择
-                    feature_selector = SelectKBest(score_func=f_regression, k='all')
-                else:
-                    feature_selector = SelectKBest(score_func=f_classif, k='all')
-                
-                full_pipeline = Pipeline(steps=[
-                    ('preprocessor', preprocessor),
-                    ('feature_selector', feature_selector),
-                    ('model', model)
-                ])
-                
-                # Step 6: 训练集/测试集划分
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X, y,
-                    test_size=0.2,
-                    random_state=MLService.RANDOM_STATE,
-                    stratify=y if problem_type == 'classification' else None
-                )
-                
-                logger.info(f"训练集: {len(X_train)} 样本, 测试集: {len(X_test)} 样本")
-                
-                # Step 7: 训练模型
-                full_pipeline.fit(X_train, y_train)
-                logger.info("模型训练完成")
-                
-                gc.collect()  # 训练后清理内存
-                
-                # Step 8: 严谨评估 - 交叉验证 (Week 08 Implementation Tips)
-                logger.info(f"执行 {MLService.CV_FOLDS} 折交叉验证...")
-                try:
-                    if problem_type == 'regression':
-                        cv_scores = cross_val_score(
-                            full_pipeline, X_train, y_train,
-                            cv=MLService.CV_FOLDS,
-                            scoring='r2',
-                            n_jobs=1  # GAE 单核
-                        )
-                    else:
-                        cv_scores = cross_val_score(
-                            full_pipeline, X_train, y_train,
-                            cv=MLService.CV_FOLDS,
-                            scoring='accuracy',
-                            n_jobs=1
-                        )
-                    
-                    cv_mean = float(np.mean(cv_scores))
-                    cv_std = float(np.std(cv_scores))
-                    logger.info(f"交叉验证得分: {cv_mean:.4f} (+/- {cv_std:.4f})")
-                    
-                except Exception as e:
-                    logger.warning(f"交叉验证失败: {str(e)}")
-                    cv_mean = None
-                    cv_std = None
-                
-                # Step 9: 测试集评估
-                y_pred = full_pipeline.predict(X_test)
-                
-                if problem_type == 'regression':
-                    rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
-                    mae = float(mean_absolute_error(y_test, y_pred))
-                    r2 = float(r2_score(y_test, y_pred))
-                    
-                    metrics = {
-                        'rmse': rmse,
-                        'mae': mae,
-                        'r2': r2,
-                        'cv_score': cv_mean,
-                        'cv_std': cv_std
-                    }
-                    logger.info(f"回归指标: RMSE={rmse:.4f}, R²={r2:.4f}, CV={cv_mean:.4f}")
-                    
-                else:  # classification
-                    accuracy = float(accuracy_score(y_test, y_pred))
-                    f1 = float(f1_score(y_test, y_pred, average='weighted'))
-                    
-                    metrics = {
-                        'accuracy': accuracy,
-                        'f1_weighted': f1,
-                        'cv_score': cv_mean,
-                        'cv_std': cv_std
-                    }
-                    logger.info(f"分类指标: Accuracy={accuracy:.4f}, F1={f1:.4f}, CV={cv_mean:.4f}")
-                
-                # Step 10: 特征重要性（如果模型支持）
-                features_importance = MLService._extract_feature_importance(
-                    full_pipeline, numeric_features, categorical_features
-                )
-                
-                training_time = (datetime.now() - start_time).total_seconds()
-                
-                return {
-                    'success': True,
-                    'pipeline': full_pipeline,
-                    'metrics': metrics,
-                    'features_importance': features_importance,
-                    'training_samples': len(X_train),
-                    'test_samples': len(X_test),
-                    'training_time_seconds': training_time,
-                    'warning': sampling_warning,
-                    'model_type': type(model).__name__
-                }
-        
-        except MemoryError as e:
-            raise MemoryError(
-                "内存不足：数据集过大。请尝试减少数据量或使用更小的数据集。"
-            ) from e
-        
-        except Exception as e:
-            logger.error(f"训练模型失败: {str(e)}", exc_info=True)
-            raise MLServiceError(f"训练失败: {str(e)}") from e
-        
-        finally:
-            gc.collect()
+    print("... (后12小时省略)")
     
-    @staticmethod
-    def _extract_feature_importance(
-        pipeline: Pipeline,
-        numeric_features: List[str],
-        categorical_features: List[str]
-    ) -> Optional[List[Dict[str, Any]]]:
-        """
-        提取特征重要性
-        
-        Week 09 Implementation Tips: 提取特征重要性以提升可解释性
-        
-        Args:
-            pipeline: 训练好的 Pipeline
-            numeric_features: 数值特征名
-            categorical_features: 类别特征名
-            
-        Returns:
-            特征重要性列表（Top 10）
-        """
-        try:
-            model = pipeline.named_steps['model']
-            
-            # 检查模型是否有 feature_importances_
-            if not hasattr(model, 'feature_importances_'):
-                logger.info("模型不支持特征重要性提取")
-                return None
-            
-            # 获取预处理后的特征名
-            preprocessor = pipeline.named_steps['preprocessor']
-            
-            # 获取转换后的特征名
-            try:
-                feature_names_out = []
-                
-                # 数值特征（保持原名）
-                feature_names_out.extend(numeric_features)
-                
-                # 类别特征（OneHot 编码后的名称）
-                if len(categorical_features) > 0:
-                    cat_transformer = preprocessor.named_transformers_['cat']
-                    onehot = cat_transformer.named_steps['onehot']
-                    cat_feature_names = onehot.get_feature_names_out(categorical_features)
-                    feature_names_out.extend(cat_feature_names.tolist())
-                
-                importances = model.feature_importances_
-                
-                # 组合特征名和重要性
-                feature_importance_dict = dict(zip(feature_names_out, importances))
-                
-                # 排序并返回 Top 10
-                sorted_features = sorted(
-                    feature_importance_dict.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:10]
-                
-                result = [
-                    {'feature': name, 'importance': float(importance)}
-                    for name, importance in sorted_features
-                ]
-                
-                logger.info(f"提取了 Top {len(result)} 特征重要性")
-                return result
-                
-            except Exception as e:
-                logger.warning(f"特征名提取失败: {str(e)}")
-                return None
-        
-        except Exception as e:
-            logger.warning(f"特征重要性提取失败: {str(e)}")
-            return None
+    # 6. 单点预测测试
+    print("\n【步骤 6】单点预测测试")
+    print("-" * 80)
     
-    @staticmethod
-    def save_model(pipeline: Any, storage_service, uid: str, model_name: str) -> str:
-        """
-        保存模型到 GCS
-        
-        Week 14 Implementation Tips: 持久化模型以供后续使用
-        
-        Args:
-            pipeline: 训练好的 Pipeline
-            storage_service: StorageService 实例
-            uid: 用户 ID
-            model_name: 模型名称
-            
-        Returns:
-            GCS 路径
-        """
-        try:
-            # 使用 joblib 压缩保存
-            model_buffer = io.BytesIO()
-            joblib.dump(pipeline, model_buffer, compress=3)
-            model_buffer.seek(0)
-            
-            # 生成唯一文件名
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"model_{model_name}_{timestamp}.joblib"
-            gcs_path = f"models/{uid}/{filename}"
-            
-            # 上传到 GCS
-            full_path = storage_service.upload_file(
-                model_buffer,
-                gcs_path,
-                content_type='application/octet-stream'
-            )
-            
-            logger.info(f"模型已保存至: {full_path}")
-            return full_path
-            
-        except Exception as e:
-            logger.error(f"保存模型失败: {str(e)}")
-            raise MLServiceError(f"保存模型失败: {str(e)}") from e
+    test_cases = [
+        (0, 1, 24.0, "周一凌晨0点，24°C"),
+        (12, 1, 30.0, "周一中午12点，30°C"),
+        (20, 1, 28.0, "周一晚上8点，28°C"),
+    ]
     
-    @staticmethod
-    def load_model(storage_service, gcs_path: str) -> Any:
-        """
-        从 GCS 加载模型
-        
-        Args:
-            storage_service: StorageService 实例
-            gcs_path: GCS 路径（可以是 gs:// 格式或直接路径）
-            
-        Returns:
-            加载的 Pipeline
-        """
-        try:
-            # 处理 gs:// 格式
-            if gcs_path.startswith('gs://'):
-                # 移除 'gs://bucket_name/'
-                parts = gcs_path.replace('gs://', '').split('/', 1)
-                if len(parts) == 2:
-                    gcs_path = parts[1]
-            
-            # 从 GCS 下载
-            model_bytes = storage_service.download_file(gcs_path)
-            model_buffer = io.BytesIO(model_bytes)
-            
-            # 加载模型
-            pipeline = joblib.load(model_buffer)
-            
-            logger.info(f"成功加载模型: {gcs_path}")
-            return pipeline
-            
-        except Exception as e:
-            logger.error(f"加载模型失败: {str(e)}")
-            raise MLServiceError(f"加载模型失败: {str(e)}") from e
+    for hour, dow, temp, desc in test_cases:
+        pred = predictor_new.predict_single(hour, dow, temp)
+        print(f"   {desc}: {pred:.2f} kW")
     
-    @staticmethod
-    def predict(pipeline: Any, input_data: pd.DataFrame) -> Dict[str, Any]:
-        """
-        使用模型进行预测
-        
-        Args:
-            pipeline: 训练好的 Pipeline
-            input_data: 输入数据（DataFrame）
-            
-        Returns:
-            预测结果字典
-        """
-        try:
-            # 内存优化
-            input_data = MLService._optimize_memory(input_data.copy())
-            
-            # 预测
-            predictions = pipeline.predict(input_data)
-            
-            # 如果是分类且有 predict_proba
-            probabilities = None
-            if hasattr(pipeline, 'predict_proba'):
-                try:
-                    probabilities = pipeline.predict_proba(input_data)
-                    probabilities = probabilities.tolist()
-                except:
-                    pass
-            
-            return {
-                'success': True,
-                'predictions': predictions.tolist(),
-                'probabilities': probabilities,
-                'n_samples': len(predictions)
-            }
-            
-        except Exception as e:
-            logger.error(f"预测失败: {str(e)}")
-            raise MLServiceError(f"预测失败: {str(e)}") from e
+    # 7. 总结
+    print("\n" + "="*80)
+    print("✅ 测试完成!")
+    print("="*80)
+    print(f"\n模型性能:")
+    print(f"   - 测试集 MAE:  {metrics['test_mae']:.2f} kW")
+    print(f"   - 测试集 RMSE: {metrics['test_rmse']:.2f} kW")
+    print(f"\n模型已保存到: {predictor.model_path}")
+    print(f"可以通过 load_model() 加载使用\n")
+
+
+if __name__ == "__main__":
+    main()

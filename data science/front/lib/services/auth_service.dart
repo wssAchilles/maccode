@@ -3,9 +3,12 @@
 library;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   /// 获取当前用户
   User? get currentUser => _auth.currentUser;
@@ -43,9 +46,49 @@ class AuthService {
     }
   }
 
+  /// 谷歌登录
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      if (kIsWeb) {
+        // Web 平台使用 Firebase Auth 内建的 OAuth 流程
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({
+          'prompt': 'select_account',
+        });
+        return await _auth.signInWithPopup(googleProvider);
+      }
+
+      // 移动 & 桌面平台使用 google_sign_in 插件
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        throw '登录已取消';
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      return await _auth.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw '谷歌登录失败: $e';
+    }
+  }
+
   /// 登出
   Future<void> signOut() async {
     await _auth.signOut();
+
+    if (!kIsWeb) {
+      // Web 平台不使用 GoogleSignIn 插件
+      await _googleSignIn.signOut();
+    }
   }
 
   /// 发送密码重置邮件

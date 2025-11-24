@@ -1,12 +1,45 @@
 /// 应用常量配置
 library;
 
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class AppConstants {
   // API 配置
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8080',
-  );
+  // 根据平台自动选择合适的 API 地址
+  static String get apiBaseUrl {
+    // 1. 优先使用环境变量（构建时指定）
+    const envUrl = String.fromEnvironment('API_BASE_URL');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    
+    // 2. 生产环境地址（GAE 后端）
+    const prodUrl = 'https://data-science-44398.an.r.appspot.com';
+    
+    // 3. 开发环境检测
+    const bool isProduction = bool.fromEnvironment('dart.vm.product');
+    
+    if (isProduction) {
+      // 生产环境：使用 GAE 后端
+      return prodUrl;
+    }
+    
+    // 4. 开发环境地址（本地调试）
+    if (kIsWeb) {
+      // Web 平台使用 localhost
+      return 'http://localhost:8080';
+    } else if (Platform.isAndroid) {
+      // Android 模拟器使用 10.0.2.2 (主机的 localhost)
+      return 'http://10.0.2.2:8080';
+    } else if (Platform.isIOS) {
+      // iOS 模拟器可以直接使用 localhost
+      return 'http://localhost:8080';
+    }
+    
+    // 默认返回生产环境
+    return prodUrl;
+  }
   
   static const String apiVersion = 'v1';
   
@@ -42,6 +75,12 @@ class AppConstants {
   static const String serverError = '服务器错误，请稍后重试';
   static const String authError = '认证失败，请重新登录';
   static const String unknownError = '发生未知错误';
+  
+  // 优化服务配置
+  static const Duration optimizationTimeout = Duration(seconds: 60); // 优化计算可能需要更长时间
+  static const double defaultInitialSoc = 0.5; // 默认初始电量 50%
+  static const double minSoc = 0.0;
+  static const double maxSoc = 1.0;
 }
 
 class Routes {

@@ -3,7 +3,9 @@ runtime: python311  # 运行时环境：指定 Python 3.11
 # 启动命令：
 # GAE 将使用 gunicorn 来启动你
 # 在 'main.py' 文件中的 'app' 实例
-entrypoint: gunicorn -b :$PORT main:app
+# --timeout 300: 增加工作进程超时时间到 5 分钟（用于大文件分析）
+# --workers 1: 使用 1 个工作进程（F1 实例内存有限）
+entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 main:app
 
 instance_class: F1  # 实例类型：F1 是最小的，最适合免费额度和低成本
 
@@ -15,3 +17,6 @@ automatic_scaling:
 env_variables:
   STORAGE_BUCKET_NAME: "data-science-44398.firebasestorage.app"
   GCP_PROJECT_ID: "data-science-44398"
+  GRB_LICENSEID: '2743684'
+  GRB_WLSACCESSID: '11c64fa1-9c37-441e-9e99-e1a63e3c627c'
+  GRB_WLSSECRET: 'e1e51738-6517-4b2f-9c7d-49bda41f2df3'
