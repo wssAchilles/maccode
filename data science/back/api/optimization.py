@@ -50,10 +50,11 @@ optimization_bp = Blueprint('optimization', __name__, url_prefix='/api/optimizat
 
 
 # 电池配置（可以从配置文件或数据库读取）
+# 注意：负载规模约 20000-30000 kW，需要工业级储能
 BATTERY_CONFIG = {
-    'capacity': 13.5,      # kWh (Tesla Powerwall)
-    'max_power': 5.0,      # kW
-    'efficiency': 0.95     # 95%
+    'capacity': 5000,      # kWh (工业级储能，约负载的 20-25%)
+    'max_power': 2000,     # kW (C-rate 约 0.4)
+    'efficiency': 0.92     # 92% (工业级效率)
 }
 
 
@@ -187,6 +188,9 @@ def run_optimization():
         # 步骤 2: 负载预测
         # ====================================================================
         logger.info(f"[{uid}] 开始负载预测...")
+        
+        # 获取模型元数据
+        model_metadata = EnergyPredictor.get_model_metadata()
         
         try:
             predictor = EnergyPredictor()
@@ -354,6 +358,11 @@ def run_optimization():
                 'max_power': battery_power,
                 'efficiency': battery_efficiency,
                 'initial_soc': initial_soc
+            },
+            'model_info': model_metadata if model_metadata else {
+                'model_type': 'Random Forest Regressor',
+                'status': 'unknown',
+                'data_source': 'CAISO Real-Time Stream'
             }
         }
         
@@ -439,6 +448,80 @@ def get_config():
     
     except Exception as e:
         logger.error(f"获取配置失败: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'SERVER_ERROR',
+            'message': f'服务器错误: {str(e)}'
+        }), 500
+
+
+@optimization_bp.route('/model-info', methods=['GET', 'OPTIONS'])
+@rate_limit(max_requests=30, window_seconds=60)
+def get_model_info():
+    """
+    获取ML模型元数据和健康状态
+    
+    请求:
+        - Method: GET
+        - 无需认证
+    
+    响应:
+        {
+            "success": true,
+            "model_info": {
+                "model_type": "Random Forest Regressor",
+                "model_version": "20241125_120000",
+                "trained_at": "2024-11-25T12:00:00",
+                "metrics": {
+                    "test_mae": 125.4,
+                    "test_rmse": 180.2
+                },
+                "training_samples": 8760,
+                "data_source": "CAISO Real-Time Stream",
+                "status": "active"
+            }
+        }
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        logger.info("获取ML模型信息")
+        
+        # 检查服务是否已加载
+        if EnergyPredictor is None:
+            return jsonify({
+                'success': False,
+                'error': 'SERVICE_UNAVAILABLE',
+                'message': 'ML服务暂时不可用'
+            }), 503
+        
+        # 获取模型元数据
+        model_metadata = EnergyPredictor.get_model_metadata()
+        
+        if model_metadata:
+            # 格式化时间戳
+            if 'updated_at' in model_metadata and hasattr(model_metadata['updated_at'], 'isoformat'):
+                model_metadata['updated_at'] = model_metadata['updated_at'].isoformat()
+            
+            return jsonify({
+                'success': True,
+                'model_info': model_metadata
+            }), 200
+        else:
+            # 模型元数据不存在，返回默认信息
+            return jsonify({
+                'success': True,
+                'model_info': {
+                    'model_type': 'Random Forest Regressor',
+                    'status': 'not_trained',
+                    'data_source': 'CAISO Real-Time Stream',
+                    'message': '模型尚未训练或元数据不可用'
+                }
+            }), 200
+    
+    except Exception as e:
+        logger.error(f"获取模型信息失败: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'error': 'SERVER_ERROR',

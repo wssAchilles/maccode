@@ -40,19 +40,54 @@ class SocChartWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '🔋 电池电量变化',
-              style: TextStyle(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  '🔋 电池电量变化',
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 实时状态指示
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getOverallStatusColor().withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getOverallStatus(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _getOverallStatusColor(),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              '展示24小时内电池电量波动和电价时段',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
+            // 策略摘要
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_outline, size: 16, color: Colors.purple[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getStrategyExplanation(),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -305,5 +340,100 @@ class SocChartWidget extends StatelessWidget {
         ),
       ],
     );
+  }
+  
+  /// 获取整体状态
+  String _getOverallStatus() {
+    final chargingHours = chartData.where((d) => d.isCharging).length;
+    final dischargingHours = chartData.where((d) => d.isDischarging).length;
+    
+    if (chargingHours > dischargingHours) {
+      return '📥 充电为主';
+    } else if (dischargingHours > chargingHours) {
+      return '📤 放电为主';
+    } else {
+      return '⚖️ 平衡模式';
+    }
+  }
+  
+  /// 获取状态颜色
+  Color _getOverallStatusColor() {
+    final chargingHours = chartData.where((d) => d.isCharging).length;
+    final dischargingHours = chartData.where((d) => d.isDischarging).length;
+    
+    if (chargingHours > dischargingHours) {
+      return Colors.green;
+    } else if (dischargingHours > chargingHours) {
+      return Colors.orange;
+    } else {
+      return Colors.blue;
+    }
+  }
+  
+  /// 生成策略解释 (方案二核心功能)
+  String _getStrategyExplanation() {
+    // 找到主要充电时段
+    final chargingHours = <int>[];
+    final dischargingHours = <int>[];
+    
+    for (int i = 0; i < chartData.length; i++) {
+      if (chartData[i].isCharging) {
+        chargingHours.add(i);
+      } else if (chartData[i].isDischarging) {
+        dischargingHours.add(i);
+      }
+    }
+    
+    // 找到连续时段
+    String chargeRange = _formatHourRanges(chargingHours);
+    String dischargeRange = _formatHourRanges(dischargingHours);
+    
+    if (chargingHours.isEmpty && dischargingHours.isEmpty) {
+      return '当前策略: 电池保持待机状态';
+    }
+    
+    final buffer = StringBuffer('策略: ');
+    
+    if (chargingHours.isNotEmpty) {
+      buffer.write('$chargeRange 低价充电');
+    }
+    
+    if (chargingHours.isNotEmpty && dischargingHours.isNotEmpty) {
+      buffer.write(' → ');
+    }
+    
+    if (dischargingHours.isNotEmpty) {
+      buffer.write('$dischargeRange 高峰放电');
+    }
+    
+    return buffer.toString();
+  }
+  
+  /// 格式化小时范围
+  String _formatHourRanges(List<int> hours) {
+    if (hours.isEmpty) return '';
+    
+    hours.sort();
+    
+    // 简化：只显示第一个和最后一个
+    if (hours.length == 1) {
+      return '${hours.first}:00';
+    }
+    
+    // 检查是否连续
+    bool isContinuous = true;
+    for (int i = 1; i < hours.length; i++) {
+      if (hours[i] - hours[i - 1] > 1) {
+        isContinuous = false;
+        break;
+      }
+    }
+    
+    if (isContinuous) {
+      return '${hours.first}:00-${hours.last + 1}:00';
+    } else {
+      // 显示主要时段
+      return '${hours.first}:00-${hours.last + 1}:00';
+    }
   }
 }

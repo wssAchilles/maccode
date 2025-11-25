@@ -80,6 +80,78 @@ class EnergyPredictor:
         else:
             return 0.3  # 谷时
     
+    def _save_model_metadata(self, metadata: dict) -> bool:
+        """
+        保存模型元数据到 Firebase Storage (JSON 文件)
+        
+        Args:
+            metadata: 模型元数据字典
+            
+        Returns:
+            是否保存成功
+        """
+        try:
+            import json
+            from datetime import datetime
+            
+            # 添加更新时间戳
+            metadata['updated_at'] = datetime.now().isoformat()
+            
+            # 转换为 JSON 字符串
+            json_data = json.dumps(metadata, indent=2, ensure_ascii=False)
+            
+            # 上传到 Storage (使用临时文件确保 Content-Type 正确)
+            import tempfile
+            metadata_path = 'models/model_metadata.json'
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+                f.write(json_data)
+                temp_path = f.name
+            
+            try:
+                with open(temp_path, 'rb') as f:
+                    self.storage_service.bucket.blob(metadata_path).upload_from_file(
+                        f, 
+                        content_type='application/json'
+                    )
+            finally:
+                import os
+                os.unlink(temp_path)
+            
+            print(f"   ✓ 模型元数据已保存到 Firebase Storage: {metadata_path}")
+            return True
+            
+        except Exception as e:
+            print(f"   ❌ 保存模型元数据失败: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_model_metadata() -> Optional[dict]:
+        """
+        从 Firebase Storage 获取模型元数据 (JSON 文件)
+        
+        Returns:
+            模型元数据字典，如果不存在返回 None
+        """
+        try:
+            import json
+            from services.storage_service import StorageService
+            
+            # 创建 Storage 服务实例
+            storage = StorageService()
+            
+            # 下载元数据 JSON
+            metadata_path = 'models/model_metadata.json'
+            json_bytes = storage.download_file(metadata_path)
+            
+            # 解析 JSON
+            metadata = json.loads(json_bytes.decode('utf-8'))
+            return metadata
+                
+        except Exception as e:
+            print(f"获取模型元数据失败: {str(e)}")
+            return None
+    
     def train_model(
         self, 
         data_path: str = None,
@@ -271,6 +343,27 @@ class EnergyPredictor:
             print("\n" + "="*80)
             print("✅ 模型训练完成!")
             print("="*80 + "\n")
+            
+            # 保存模型元数据到 Firestore (全局元数据)
+            try:
+                self._save_model_metadata({
+                    'model_type': 'Random Forest Regressor',
+                    'model_version': datetime.now().strftime('%Y%m%d_%H%M%S'),
+                    'trained_at': datetime.now().isoformat(),
+                    'metrics': {
+                        'train_mae': float(train_mae),
+                        'train_rmse': float(train_rmse),
+                        'test_mae': float(test_mae),
+                        'test_rmse': float(test_rmse)
+                    },
+                    'training_samples': len(df),
+                    'data_source': 'CAISO Real-Time Stream',
+                    'feature_importance': feature_importance.to_dict('records'),
+                    'model_path': self.firebase_model_path,
+                    'status': 'active'
+                })
+            except Exception as e:
+                print(f"   ⚠️  保存模型元数据失败: {str(e)}")
             
             # 返回评估指标
             return {

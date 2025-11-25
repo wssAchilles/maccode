@@ -116,23 +116,15 @@ def get_history_detail(record_id):
         
         logger.info(f"[{uid}] 获取历史记录详情: {record_id}")
         
-        # 获取 Firestore 客户端
-        from firebase_admin import firestore
-        db = firestore.client()
+        # 使用 HistoryService 获取记录
+        record = HistoryService.get_history_detail(uid, record_id)
         
-        # 查询记录
-        doc_ref = db.collection('users').document(uid).collection('history').document(record_id)
-        doc = doc_ref.get()
-        
-        if not doc.exists:
+        if not record:
             return jsonify({
                 'success': False,
                 'error': 'RECORD_NOT_FOUND',
                 'message': '记录不存在'
             }), 404
-        
-        record = doc.to_dict()
-        record['id'] = doc.id
         
         # 转换时间戳
         if 'created_at' in record and record['created_at']:
@@ -182,13 +174,8 @@ def delete_history_record(record_id):
         
         logger.info(f"[{uid}] 删除历史记录: {record_id}")
         
-        # 获取 Firestore 客户端
-        from firebase_admin import firestore
-        db = firestore.client()
-        
-        # 删除记录
-        doc_ref = db.collection('users').document(uid).collection('history').document(record_id)
-        doc_ref.delete()
+        # 使用 HistoryService 删除记录
+        HistoryService.delete_history_record(uid, record_id)
         
         logger.info(f"[{uid}] 历史记录已删除: {record_id}")
         

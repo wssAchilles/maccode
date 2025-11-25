@@ -17,11 +17,11 @@ class HistoryService:
     
     @staticmethod
     def _get_firestore_client():
-        """获取 Firestore 客户端，使用 Native Mode 数据库"""
+        """获取 Firestore 客户端，使用默认数据库"""
         try:
-            # 使用 google-cloud-firestore 直接访问指定数据库
-            # 而不是通过 firebase-admin（它不支持多数据库）
-            return firestore.Client(database='my-datasci-project-bucket')
+            from config import Config
+            # 使用配置的 Firestore 数据库 (Native Mode)
+            return firestore.Client(database=Config.FIRESTORE_DATABASE)
         except Exception as e:
             logger.error(f"Failed to get Firestore client: {e}")
             raise
@@ -142,3 +142,39 @@ class HistoryService:
         except Exception as e:
             logger.error(f"Failed to get user history: {e}")
             return []
+
+    @staticmethod
+    def get_history_detail(uid: str, record_id: str) -> Optional[Dict]:
+        """获取单条历史记录详情"""
+        try:
+            db = HistoryService._get_firestore_client()
+            
+            doc_ref = db.collection('users').document(uid).collection('history').document(record_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                return None
+            
+            record = doc.to_dict()
+            record['id'] = doc.id
+            return record
+            
+        except Exception as e:
+            logger.error(f"Failed to get history detail: {e}")
+            raise
+
+    @staticmethod
+    def delete_history_record(uid: str, record_id: str) -> bool:
+        """删除历史记录"""
+        try:
+            db = HistoryService._get_firestore_client()
+            
+            doc_ref = db.collection('users').document(uid).collection('history').document(record_id)
+            doc_ref.delete()
+            
+            logger.info(f"Deleted history record {record_id} for user {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to delete history record: {e}")
+            raise

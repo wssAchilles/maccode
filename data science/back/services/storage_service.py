@@ -91,9 +91,9 @@ class StorageService:
         
         # 上传文件
         if isinstance(file_data, bytes):
-            blob.upload_from_string(file_data)
+            blob.upload_from_string(file_data, content_type=content_type)
         else:
-            blob.upload_from_file(file_data)
+            blob.upload_from_file(file_data, content_type=content_type)
         
         return f"gs://{self.bucket_name}/{destination_path}"
     

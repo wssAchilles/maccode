@@ -40,19 +40,46 @@ class PowerChartWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '⚡ 电网交互策略',
-              style: TextStyle(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  '⚡ 电网交互策略',
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.purple[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.psychology, size: 14, color: Colors.purple[700]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'AI 预测驱动',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             const Text(
-              '展示负载、电网功率和电池充放电策略',
+              '基于随机森林模型预测的24小时负载 + Gurobi优化的充放电策略',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 16),
@@ -121,14 +148,25 @@ class PowerChartWidget extends StatelessWidget {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 50,
-            reservedSize: 40,
+            interval: _getYAxisInterval(),
+            reservedSize: 65,  // 增加左侧预留空间，适应大数值
             getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toInt()}',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
+              // 格式化大数值：超过1000显示为 "XXk"
+              String label;
+              if (value.abs() >= 1000) {
+                label = '${(value / 1000).toStringAsFixed(1)}k';
+              } else {
+                label = value.toInt().toString();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.right,
                 ),
               );
             },
@@ -144,33 +182,67 @@ class PowerChartWidget extends StatelessWidget {
       minY: _getMinY(),
       maxY: _getMaxY(),
       lineBarsData: [
-        // 线条 1: 原始负载 (灰色虚线)
+        // 线条 1: 原始负载 (灰色虚线) - AI 预测
         LineChartBarData(
           spots: chartData.asMap().entries.map((entry) {
             return FlSpot(entry.key.toDouble(), entry.value.load);
           }).toList(),
           isCurved: true,
-          color: Colors.grey,
+          color: Colors.grey[600]!,
           barWidth: 2,
           isStrokeCapRound: true,
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(show: false),
           dashArray: [5, 5], // 虚线
         ),
-        // 线条 2: 电网功率 (蓝色实线)
+        // 线条 2: 优化后电网功率 (蓝色实线)
         LineChartBarData(
           spots: chartData.asMap().entries.map((entry) {
             return FlSpot(entry.key.toDouble(), entry.value.gridPower);
           }).toList(),
           isCurved: true,
-          color: Colors.blue,
+          gradient: LinearGradient(
+            colors: [Colors.blue[400]!, Colors.blue[700]!],
+          ),
           barWidth: 3,
           isStrokeCapRound: true,
-          dotData: const FlDotData(show: false),
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              final data = chartData[index];
+              // 根据电池状态显示不同颜色的点
+              Color dotColor = Colors.blue;
+              if (data.isCharging) {
+                dotColor = Colors.green; // 充电 = 填谷
+              } else if (data.isDischarging) {
+                dotColor = Colors.orange; // 放电 = 削峰
+              }
+              return FlDotCirclePainter(
+                radius: 3,
+                color: dotColor,
+                strokeWidth: 0,
+              );
+            },
+          ),
           belowBarData: BarAreaData(
             show: true,
-            color: Colors.blue.withOpacity(0.1),
+            gradient: LinearGradient(
+              colors: [
+                Colors.blue.withOpacity(0.2),
+                Colors.blue.withOpacity(0.05),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
+        ),
+      ],
+      // 显示削峰填谷区域（两条线之间的差异）
+      betweenBarsData: [
+        BetweenBarsData(
+          fromIndex: 0, // 原始负载
+          toIndex: 1,   // 电网功率
+          color: _getDifferenceColor(),
         ),
       ],
       // 添加电池充放电的标记
@@ -242,21 +314,72 @@ class PowerChartWidget extends StatelessWidget {
     double maxGrid = chartData.map((e) => e.gridPower).reduce((a, b) => a > b ? a : b);
     return (maxLoad > maxGrid ? maxLoad : maxGrid) * 1.1;
   }
+  
+  /// 根据数据范围动态计算 Y 轴间隔
+  double _getYAxisInterval() {
+    final range = _getMaxY() - _getMinY();
+    if (range > 10000) return 5000;
+    if (range > 5000) return 2000;
+    if (range > 1000) return 500;
+    if (range > 500) return 100;
+    return 50;
+  }
+  
+  /// 获取削峰填谷区域的颜色
+  Color _getDifferenceColor() {
+    // 计算总体差异来决定颜色
+    double totalCharging = 0;
+    double totalDischarging = 0;
+    
+    for (final data in chartData) {
+      if (data.isCharging) {
+        totalCharging += data.chargePower;
+      } else if (data.isDischarging) {
+        totalDischarging += data.dischargePower;
+      }
+    }
+    
+    // 混合颜色：充电多用绿色，放电多用橙色
+    if (totalCharging > totalDischarging) {
+      return Colors.green.withOpacity(0.15);
+    } else {
+      return Colors.orange.withOpacity(0.15);
+    }
+  }
 
   Widget _buildLegend(BuildContext context) {
     final isMobile = ResponsiveHelper.isMobile(context);
     
+    // 计算节省量用于显示
+    final totalSaving = chartData.fold<double>(0, (sum, d) => sum + (d.load - d.gridPower).abs());
+    
     if (isMobile) {
       // 移动端：垂直布局或换行
-      return Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
+      return Column(
         children: [
-          _buildLegendItem(Colors.grey, '原始负载', isDashed: true),
-          _buildLegendItem(Colors.blue, '电网功率'),
-          _buildLegendItem(Colors.green, '充电', isSmall: true),
-          _buildLegendItem(Colors.red, '放电', isSmall: true),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              _buildLegendItem(Colors.grey, 'AI 预测负载', isDashed: true, hasAiTag: true),
+              _buildLegendItem(Colors.blue, '优化后电网'),
+              _buildLegendItem(Colors.green, '充电(填谷)', isSmall: true),
+              _buildLegendItem(Colors.orange, '放电(削峰)', isSmall: true),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '⚡ 阴影区域 = 削峰填谷效果 (${totalSaving.toStringAsFixed(0)} kWh 优化)',
+              style: TextStyle(fontSize: 11, color: Colors.green[700], fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       );
     } else {
@@ -264,21 +387,34 @@ class PowerChartWidget extends StatelessWidget {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildLegendItem(Colors.grey, '原始负载', isDashed: true),
+          _buildLegendItem(Colors.grey, 'AI 预测负载', isDashed: true, hasAiTag: true),
           const SizedBox(width: 16),
-          _buildLegendItem(Colors.blue, '电网功率'),
+          _buildLegendItem(Colors.blue, '优化后电网'),
           const SizedBox(width: 16),
-          _buildLegendItem(Colors.green, '充电', isSmall: true),
+          _buildLegendItem(Colors.green, '充电(填谷)', isSmall: true),
           const SizedBox(width: 8),
-          _buildLegendItem(Colors.red, '放电', isSmall: true),
+          _buildLegendItem(Colors.orange, '放电(削峰)', isSmall: true),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '阴影 = 优化区域',
+              style: TextStyle(fontSize: 11, color: Colors.purple[700]),
+            ),
+          ),
         ],
       );
     }
   }
 
   Widget _buildLegendItem(Color color, String label,
-      {bool isDashed = false, bool isSmall = false}) {
+      {bool isDashed = false, bool isSmall = false, bool hasAiTag = false}) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: isSmall ? 12 : 20,
@@ -300,8 +436,17 @@ class PowerChartWidget extends StatelessWidget {
           style: TextStyle(
             fontSize: isSmall ? 11 : 12,
             color: Colors.grey[700],
+            fontWeight: hasAiTag ? FontWeight.bold : FontWeight.normal,
           ),
         ),
+        if (hasAiTag) ...[
+          const SizedBox(width: 4),
+          Icon(
+            Icons.psychology,
+            size: 14,
+            color: Colors.purple[600],
+          ),
+        ],
       ],
     );
   }

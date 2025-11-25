@@ -397,3 +397,18 @@ yarn.lock
 *.old
 *.orig
 *~
+
+# ===================================
+# Docker 相关
+# ===================================
+# 不忽略 Dockerfile 和 docker-compose (需要提交)
+# 但忽略本地 .env 文件
+/back/.env
+/.env
+
+# Docker 运行时生成的文件
+docker-compose.override.yml
+
+# GCP 服务账号凭证目录
+/credentials/
+/back/credentials/

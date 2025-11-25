@@ -1,0 +1,69 @@
+# =============================================================================
+# Docker 构建忽略文件 - 根目录 (前端构建)
+# 排除不需要复制到 Docker 镜像中的文件
+# =============================================================================
+
+# --- 后端目录 (前端构建不需要) ---
+back/
+
+# --- 数据目录 ---
+data/
+
+# --- 文档和报告 ---
+notebooks/
+reports/
+scripts/
+docs/
+*.md
+!front/README.md
+
+# --- Git ---
+.git/
+.gitignore
+.gitattributes
+.gcloudignore
+
+# --- IDE 与编辑器 ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# --- Flutter 构建缓存 (会在容器内重新生成) ---
+front/.dart_tool/
+front/.flutter-plugins
+front/.flutter-plugins-dependencies
+front/.packages
+front/build/
+front/.metadata
+front/pubspec.lock
+
+# --- 平台特定文件 (Web 构建不需要) ---
+front/android/
+front/ios/
+front/linux/
+front/macos/
+front/windows/
+
+# --- 测试文件 ---
+front/test/
+
+# --- Docker 相关 ---
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# --- 环境配置 ---
+.env
+.env.*
+*.env
+
+# --- 日志 ---
+*.log
+
+# --- PDF 和大文件 ---
+*.pdf
+*.zip
+*.tar.gz

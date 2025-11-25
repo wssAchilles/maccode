@@ -1,0 +1,120 @@
+# =============================================================================
+# Docker Compose 配置 - 数据科学全栈应用
+#
+# 使用方法:
+#   开发环境: docker-compose up --build
+#   后台运行: docker-compose up -d
+#   停止服务: docker-compose down
+#   查看日志: docker-compose logs -f
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # 后端服务 - Flask API + Gurobi + Firebase
+  # ===========================================================================
+  backend:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: datascience-backend
+    restart: unless-stopped
+
+    # 环境变量配置
+    env_file:
+      - ./back/.env
+
+    # 端口映射
+    ports:
+      - "8080:8080"
+
+    # 健康检查
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # 资源限制 (可选，防止容器占用过多资源)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 网络
+    networks:
+      - datascience-network
+
+  # ===========================================================================
+  # 前端服务 - Flutter Web + Nginx
+  # ===========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: datascience-frontend
+    restart: unless-stopped
+
+    # 端口映射 (本地 3000 -> 容器 80)
+    ports:
+      - "3000:80"
+
+    # 依赖后端服务
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # 健康检查
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+    # 网络
+    networks:
+      - datascience-network
+
+# =============================================================================
+# 网络配置
+# =============================================================================
+networks:
+  datascience-network:
+    driver: bridge
+    name: datascience-network
+
+# =============================================================================
+# 数据卷配置 (可选，用于持久化数据)
+# =============================================================================
+# volumes:
+#   backend-data:
+#     driver: local

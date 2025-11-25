@@ -8,6 +8,7 @@ class OptimizationResponse {
   final OptimizationData? optimization;
   final PredictionInfo? prediction;
   final BatteryConfig? batteryConfig;
+  final ModelInfo? modelInfo;
   final String? error;
   final String? message;
 
@@ -16,6 +17,7 @@ class OptimizationResponse {
     this.optimization,
     this.prediction,
     this.batteryConfig,
+    this.modelInfo,
     this.error,
     this.message,
   });
@@ -33,6 +35,9 @@ class OptimizationResponse {
         batteryConfig: json['battery_config'] != null
             ? BatteryConfig.fromJson(json['battery_config'] as Map<String, dynamic>)
             : null,
+        modelInfo: json['model_info'] != null
+            ? ModelInfo.fromJson(json['model_info'] as Map<String, dynamic>)
+            : null,
         error: json['error'] as String?,
         message: json['message'] as String?,
       );
@@ -47,6 +52,7 @@ class OptimizationResponse {
       if (optimization != null) 'optimization': optimization!.toJson(),
       if (prediction != null) 'prediction': prediction!.toJson(),
       if (batteryConfig != null) 'battery_config': batteryConfig!.toJson(),
+      if (modelInfo != null) 'model_info': modelInfo!.toJson(),
       if (error != null) 'error': error,
       if (message != null) 'message': message,
     };
@@ -401,4 +407,101 @@ class BatteryConfig {
 
   /// 格式化效率
   String get efficiencyFormatted => '${(efficiency * 100).toStringAsFixed(0)}%';
+}
+
+/// ML模型信息
+class ModelInfo {
+  final String modelType;
+  final String? modelVersion;
+  final String? trainedAt;
+  final Map<String, dynamic>? metrics;
+  final int? trainingSamples;
+  final String? dataSource;
+  final String? status;
+  final String? message;
+
+  ModelInfo({
+    required this.modelType,
+    this.modelVersion,
+    this.trainedAt,
+    this.metrics,
+    this.trainingSamples,
+    this.dataSource,
+    this.status,
+    this.message,
+  });
+
+  factory ModelInfo.fromJson(Map<String, dynamic> json) {
+    try {
+      return ModelInfo(
+        modelType: json['model_type'] as String? ?? 'Unknown',
+        modelVersion: json['model_version'] as String?,
+        trainedAt: json['trained_at'] as String?,
+        metrics: json['metrics'] as Map<String, dynamic>?,
+        trainingSamples: json['training_samples'] as int?,
+        dataSource: json['data_source'] as String?,
+        status: json['status'] as String?,
+        message: json['message'] as String?,
+      );
+    } catch (e) {
+      throw FormatException('Failed to parse ModelInfo: $e');
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'model_type': modelType,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (trainedAt != null) 'trained_at': trainedAt,
+      if (metrics != null) 'metrics': metrics,
+      if (trainingSamples != null) 'training_samples': trainingSamples,
+      if (dataSource != null) 'data_source': dataSource,
+      if (status != null) 'status': status,
+      if (message != null) 'message': message,
+    };
+  }
+
+  /// 是否有效
+  bool get isValid => status == 'active';
+
+  /// 测试集MAE
+  double? get testMae {
+    if (metrics == null) return null;
+    final mae = metrics!['test_mae'];
+    if (mae is num) return mae.toDouble();
+    return null;
+  }
+
+  /// 测试集RMSE
+  double? get testRmse {
+    if (metrics == null) return null;
+    final rmse = metrics!['test_rmse'];
+    if (rmse is num) return rmse.toDouble();
+    return null;
+  }
+
+  /// 格式化训练时间
+  String get trainedAtFormatted {
+    if (trainedAt == null) return '未知';
+    try {
+      final dt = DateTime.parse(trainedAt!);
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return trainedAt!;
+    }
+  }
+
+  /// 格式化MAE
+  String get maeFormatted {
+    final mae = testMae;
+    if (mae == null) return 'N/A';
+    return '${mae.toStringAsFixed(2)} kW';
+  }
+
+  /// 格式化RMSE
+  String get rmseFormatted {
+    final rmse = testRmse;
+    if (rmse == null) return 'N/A';
+    return '${rmse.toStringAsFixed(2)} kW';
+  }
 }
