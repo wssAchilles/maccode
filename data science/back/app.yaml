@@ -7,7 +7,7 @@ runtime: python311  # 运行时环境：指定 Python 3.11
 # --workers 1: 使用 1 个工作进程（F1 实例内存有限）
 entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 main:app
 
-instance_class: F1  # 实例类型：F1 是最小的，最适合免费额度和低成本
+instance_class: F4  # 实例类型：F4 高性能实例，解决 Pandas/Scikit-learn 内存溢出问题
 
 # 自动扩缩容配置（成本控制的关键！）
 automatic_scaling:
@@ -20,3 +20,6 @@ env_variables:
   GRB_LICENSEID: '2743684'
   GRB_WLSACCESSID: '11c64fa1-9c37-441e-9e99-e1a63e3c627c'
   GRB_WLSSECRET: 'e1e51738-6517-4b2f-9c7d-49bda41f2df3'
+  OPENWEATHER_API_KEY: "e8f11d28ce6faf3a9aa93828fb8fbff1"
+  WEATHER_CITY_LAT: "34.05"   # Los Angeles Latitude
+  WEATHER_CITY_LON: "-118.24" # Los Angeles Longitude

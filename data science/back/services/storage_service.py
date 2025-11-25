@@ -4,9 +4,13 @@ Google Cloud Storage 服务
 """
 
 from google.cloud import storage
+from google.oauth2 import service_account
 import os
+import pandas as pd
+import tempfile
 from datetime import datetime, timedelta
 from config import Config
+from typing import Dict, Optional
 
 
 class StorageService:
@@ -19,9 +23,54 @@ class StorageService:
         Args:
             bucket_name: 存储桶名称
         """
-        self.client = storage.Client()
+        self.project_id = os.getenv('GCP_PROJECT_ID') or Config.GCP_PROJECT_ID
+        self.credentials = self._load_credentials()
+        if self.credentials:
+            self.client = storage.Client(project=self.project_id, credentials=self.credentials)
+        else:
+            if not self._is_running_in_gae():
+                raise EnvironmentError(
+                    "未检测到本地 GCP 凭证。请设置 GOOGLE_APPLICATION_CREDENTIALS 或 GCP_SERVICE_ACCOUNT_JSON 环境变量。"
+                )
+            self.client = storage.Client(project=self.project_id)
+
         self.bucket_name = bucket_name or os.getenv('STORAGE_BUCKET_NAME') or Config.STORAGE_BUCKET_NAME
         self.bucket = self.client.bucket(self.bucket_name)
+
+    def _load_credentials(self):
+        """在本地环境加载显式服务账号凭证"""
+        # 优先使用 JSON 字符串 (CI/CD 或密钥管理服务常用)
+        service_account_json = os.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        if service_account_json:
+            try:
+                import json
+                info = json.loads(service_account_json)
+                creds = service_account.Credentials.from_service_account_info(info)
+                print("✅ 已通过 GCP_SERVICE_ACCOUNT_JSON 加载凭证")
+                return creds
+            except Exception as e:
+                print(f"❌ 解析 GCP_SERVICE_ACCOUNT_JSON 失败: {e}")
+                return None
+
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if not credentials_path:
+            return None
+
+        if not os.path.exists(credentials_path):
+            print(f"⚠️  指定的 GOOGLE_APPLICATION_CREDENTIALS 路径不存在: {credentials_path}")
+            return None
+
+        try:
+            creds = service_account.Credentials.from_service_account_file(credentials_path)
+            print("✅ 已通过 GOOGLE_APPLICATION_CREDENTIALS 加载凭证")
+            return creds
+        except Exception as e:
+            print(f"❌ 加载本地凭证失败: {e}")
+            return None
+
+    @staticmethod
+    def _is_running_in_gae() -> bool:
+        return bool(os.getenv('GAE_ENV') or os.getenv('K_SERVICE'))
     
     def upload_file(self, file_data, destination_path, content_type=None):
         """
@@ -175,3 +224,137 @@ class StorageService:
         """
         blob = self.bucket.blob(file_path)
         return blob.exists()
+    
+    def append_and_trim_csv(
+        self, 
+        file_path: str, 
+        new_row_dict: Dict, 
+        max_rows: int = 5000
+    ) -> bool:
+        """
+        智能 CSV 管理: 追加新行并保持滑动窗口
+        
+        此方法专为 GAE F1 环境设计，使用 /tmp 目录处理文件，
+        避免内存溢出。实现增量数据追加和自动修剪旧数据。
+        
+        Args:
+            file_path: Firebase Storage 中的 CSV 文件路径 (例如: 'data/processed/cleaned_energy_data_all.csv')
+            new_row_dict: 要追加的新行数据 (字典格式)
+            max_rows: 最大保留行数，超过则删除最旧的数据 (默认 5000 行约 7 个月)
+            
+        Returns:
+            bool: 操作是否成功
+            
+        Raises:
+            Exception: 文件操作失败时抛出异常
+            
+        Example:
+            >>> storage = StorageService()
+            >>> new_data = {
+            ...     'Date': '2024-11-24 08:00:00',
+            ...     'Hour': 8,
+            ...     'DayOfWeek': 6,
+            ...     'Temperature': 25.5,
+            ...     'Price': 0.6,
+            ...     'Site_Load': 1250.0
+            ... }
+            >>> storage.append_and_trim_csv('data/processed/cleaned_energy_data_all.csv', new_data)
+        """
+        temp_file_path = None
+        
+        try:
+            print(f"📝 开始 CSV 追加操作: {file_path}")
+            
+            # 使用 /tmp 目录 (GAE 唯一可写目录)
+            temp_file_path = os.path.join(tempfile.gettempdir(), f'temp_csv_{os.getpid()}.csv')
+            
+            # 1. 检查文件是否存在
+            blob = self.bucket.blob(file_path)
+            file_exists = blob.exists()
+            
+            if file_exists:
+                print(f"   ✓ 文件存在，下载到: {temp_file_path}")
+                
+                # 2. 下载现有文件到 /tmp
+                blob.download_to_filename(temp_file_path)
+                
+                # 3. 读取 CSV (使用 chunksize 避免大文件内存问题)
+                try:
+                    df = pd.read_csv(temp_file_path)
+                    original_rows = len(df)
+                    print(f"   ✓ 读取成功: {original_rows} 行")
+                    
+                    # 4. 修剪数据 (保留最新的 max_rows 行)
+                    if original_rows >= max_rows:
+                        df = df.iloc[-(max_rows - 1):]  # 保留最新的 max_rows-1 行，为新行留空间
+                        print(f"   ✂️  修剪数据: {original_rows} → {len(df)} 行")
+                    
+                except pd.errors.EmptyDataError:
+                    print(f"   ⚠️  文件为空，创建新 DataFrame")
+                    df = pd.DataFrame()
+                    
+            else:
+                print(f"   ℹ️  文件不存在，创建新文件")
+                df = pd.DataFrame()
+            
+            # 5. 追加新行
+            new_row_df = pd.DataFrame([new_row_dict])
+            df = pd.concat([df, new_row_df], ignore_index=True)
+            print(f"   ✓ 追加新行，当前总行数: {len(df)}")
+            
+            # 6. 保存到临时文件
+            df.to_csv(temp_file_path, index=False)
+            print(f"   ✓ 保存到临时文件")
+            
+            # 7. 上传回 Firebase Storage
+            blob.upload_from_filename(temp_file_path, content_type='text/csv')
+            print(f"   ✓ 上传到 Firebase Storage: gs://{self.bucket_name}/{file_path}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"   ❌ CSV 追加失败: {str(e)}")
+            raise Exception(f"Failed to append and trim CSV: {str(e)}")
+            
+        finally:
+            # 8. 清理临时文件
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    print(f"   🧹 清理临时文件")
+                except Exception as e:
+                    print(f"   ⚠️  清理临时文件失败: {str(e)}")
+    
+    def download_to_temp(self, file_path: str) -> Optional[str]:
+        """
+        下载文件到 /tmp 目录并返回临时文件路径
+        
+        Args:
+            file_path: Firebase Storage 中的文件路径
+            
+        Returns:
+            str: 临时文件的绝对路径，如果失败返回 None
+        """
+        try:
+            blob = self.bucket.blob(file_path)
+            
+            if not blob.exists():
+                print(f"❌ 文件不存在: {file_path}")
+                return None
+            
+            # 生成临时文件路径
+            file_extension = os.path.splitext(file_path)[1]
+            temp_file_path = os.path.join(
+                tempfile.gettempdir(), 
+                f'download_{os.getpid()}_{os.path.basename(file_path)}'
+            )
+            
+            # 下载文件
+            blob.download_to_filename(temp_file_path)
+            print(f"✓ 下载文件到: {temp_file_path}")
+            
+            return temp_file_path
+            
+        except Exception as e:
+            print(f"❌ 下载文件失败: {str(e)}")
+            return None

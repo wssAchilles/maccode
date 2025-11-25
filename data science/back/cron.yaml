@@ -1,0 +1,32 @@
+cron:
+# ===================================================================
+# Google App Engine Cron Service 配置
+# ===================================================================
+# 此文件定义了定时任务，GAE 会按计划通过 HTTP 请求触发任务
+# 
+# 部署命令: gcloud app deploy cron.yaml
+# 查看任务: gcloud app deploy cron.yaml
+# 
+# 重要说明:
+# - 所有时间使用 UTC 时区
+# - GAE Cron 会自动添加 X-Appengine-Cron: true 请求头
+# - 此请求头无法被外部伪造，确保安全性
+# ===================================================================
+
+# 任务 1: 每小时抓取 CAISO 和天气数据
+- description: "Hourly data fetching from CAISO and OpenWeather"
+  url: /tasks/fetch-data
+  schedule: every 1 hours
+  timezone: UTC
+  retry_parameters:
+    min_backoff_seconds: 60
+    max_doublings: 5
+
+# 任务 2: 每天凌晨 4:00 UTC 重训模型
+- description: "Daily model retraining at 4:00 AM UTC"
+  url: /tasks/train-model
+  schedule: every day 04:00
+  timezone: UTC
+  retry_parameters:
+    min_backoff_seconds: 120
+    max_doublings: 3
