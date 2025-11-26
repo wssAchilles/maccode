@@ -121,6 +121,10 @@ class AuthService {
         return '用户不存在';
       case 'wrong-password':
         return '密码错误';
+      case 'invalid-credential':
+      case 'INVALID_LOGIN_CREDENTIALS':
+        // Firebase 新版本合并了 user-not-found 和 wrong-password
+        return '用户不存在或密码错误';
       case 'email-already-in-use':
         return '邮箱已被注册';
       case 'invalid-email':

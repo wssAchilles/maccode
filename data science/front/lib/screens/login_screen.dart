@@ -26,34 +26,79 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleLoginOrRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    try {
-      await _authService.signInWithEmailPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-      // 登录成功！
-      // AuthWrapper 会自动监听到 authStateChanges 并跳转到 MainNavigation
-      // 无需手动调用 Navigator
-      
+    try {
+      // 先尝试登录
+      await _authService.signInWithEmailPassword(
+        email: email,
+        password: password,
+      );
+      // 登录成功！AuthWrapper 会自动跳转
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('登录失败: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      final errorMessage = e.toString();
+      
+      // 如果用户不存在或凭证无效，则自动注册
+      // Firebase 新版本使用 invalid-credential 代替 user-not-found
+      if (errorMessage.contains('用户不存在') || 
+          errorMessage.contains('user-not-found') ||
+          errorMessage.contains('用户不存在或密码错误') ||
+          errorMessage.contains('invalid-credential') ||
+          errorMessage.contains('INVALID_LOGIN_CREDENTIALS')) {
+        try {
+          await _authService.signUpWithEmailPassword(
+            email: email,
+            password: password,
+          );
+          
+          // 注册成功，显示弹窗
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('注册成功'),
+                content: const Text('您已成功注册！即将进入仪表盘。'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
+            );
+          }
+          // 注册成功后 AuthWrapper 会自动跳转到仪表盘
+        } catch (signUpError) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('注册失败: $signUpError'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        // 其他登录错误（如密码错误）
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('登录失败: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
-    // 注意：成功时不设置 _isLoading = false
-    // 因为 AuthWrapper 会立刻重建界面，保持加载状态直到跳转完成
   }
 
   /// 谷歌登录
@@ -80,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('登录'),
+        title: const Text('登录 / 注册'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
       ),
@@ -147,9 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // 登录按钮
+                  // 登录/注册按钮
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
+                    onPressed: _isLoading ? null : _handleLoginOrRegister,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(16),
                       backgroundColor: Colors.blue[700],
@@ -165,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : const Text(
-                            '登录',
+                            '登录 / 注册',
                             style: TextStyle(fontSize: 16),
                           ),
                   ),
