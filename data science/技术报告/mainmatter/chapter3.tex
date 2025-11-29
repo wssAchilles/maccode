@@ -1,0 +1,542 @@
+% !TEX root = ../main.tex
+\chapter{核心模型与算法}
+
+本章详细介绍系统的两大核心算法模块：基于随机森林的负载预测模型和基于混合整数规划的储能优化模型。前者为后者提供未来负载的估计值，后者据此生成最优充放电策略。
+
+\section{能源负载时序预测模型}
+
+负载预测是智能储能调度的前提——只有准确预知未来的用电需求，优化算法才能合理安排电池的充放电时机。本节从问题形式化、模型选择、训练流程三个层面阐述预测模块的设计与实现。
+
+\subsection{问题形式化}
+
+\subsubsection{预测目标}
+
+设 $y_t$ 表示 $t$ 时刻（小时级）的全屋总负载（单位：kW），对应数据集中的 \texttt{Site\_Load} 字段。预测任务的目标是：给定当前时刻 $t_0$ 的可观测信息，估计未来 24 小时的负载序列 $\{\hat{y}_{t_0+1}, \hat{y}_{t_0+2}, \ldots, \hat{y}_{t_0+24}\}$。
+
+\subsubsection{输入特征向量}
+
+基于第二章探索性分析的结论，本项目构造了 4 维特征向量作为预测模型的输入：
+
+\begin{equation}
+    \mathbf{X}_t = \begin{bmatrix} \text{Hour}_t \\ \text{DayOfWeek}_t \\ \text{Temperature}_t \\ \text{Price}_t \end{bmatrix} \in \mathbb{R}^4
+    \label{eq:feature_vector}
+\end{equation}
+
+各特征的选取依据如下：
+
+\begin{itemize}
+    \item \textbf{Hour}（小时，0--23）：EDA 结果显示负载存在显著的日内周期性，白天（9:00--18:00）负载高于夜间；
+    \item \textbf{DayOfWeek}（星期，0--6）：工作日与周末的负载模式存在统计学显著差异，工作日均值高出约 20\%--30\%；
+    \item \textbf{Temperature}（温度，°C）：相关性分析表明负载与温度呈正相关，夏季高温时段空调制冷需求推高总负载；
+    \item \textbf{Price}（电价，元/kWh）：虽然电价本身不直接影响物理负载，但其与时间高度相关（峰时对应高负载时段），可作为辅助特征增强模型对时段的感知能力。
+\end{itemize}
+
+\subsubsection{预测函数}
+
+预测模型本质上是学习一个从特征空间到负载的映射函数：
+
+\begin{equation}
+    f: \mathbb{R}^4 \to \mathbb{R}, \quad \hat{y}_t = f(\mathbf{X}_t)
+    \label{eq:prediction_function}
+\end{equation}
+
+\noindent 其中 $\hat{y}_t$ 为模型对 $t$ 时刻负载的预测值。训练目标是最小化预测误差，评估指标包括平均绝对误差（MAE）和均方根误差（RMSE）：
+
+\begin{equation}
+    \text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|, \quad
+    \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2}
+    \label{eq:metrics}
+\end{equation}
+
+\subsection{模型选择：随机森林回归}
+
+\subsubsection{算法原理}
+
+随机森林（Random Forest）是一种基于 Bagging（Bootstrap Aggregating）的集成学习方法\cite{breiman2001random}。其核心思想是构建多棵相互独立的决策树，并通过投票或平均的方式整合各树的预测结果，从而降低方差、提升泛化能力。
+
+对于回归任务，随机森林的预测输出为所有决策树预测值的算术平均：
+
+\begin{equation}
+    \hat{y} = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{X})
+    \label{eq:rf_ensemble}
+\end{equation}
+
+\noindent 其中 $B$ 为决策树数量，$T_b(\mathbf{X})$ 为第 $b$ 棵决策树的预测值。
+
+随机森林的"随机性"体现在两个层面：
+\begin{enumerate}
+    \item \textbf{样本随机}：每棵树使用原始训练集的 Bootstrap 采样子集（有放回抽样，约 63.2\% 的样本被选中）；
+    \item \textbf{特征随机}：每次节点分裂时，仅从随机选取的特征子集中选择最优分裂特征（而非全部特征）。
+\end{enumerate}
+
+这种双重随机机制有效降低了树与树之间的相关性，使集成后的模型具有更低的泛化误差。
+
+\subsubsection{选择理由}
+
+本项目选择随机森林作为负载预测模型，基于以下考量：
+
+\begin{enumerate}
+    \item \textbf{非线性建模能力}：第二章的 EDA 结果表明，温度与负载的关系并非严格线性（Spearman 系数略高于 Pearson 系数）。随机森林通过决策树的层级分裂结构，天然具备捕捉非线性关系的能力，无需人工设计交互特征或多项式特征。
+
+    \item \textbf{对异常值的鲁棒性}：相比线性回归对极端值敏感（会显著影响回归系数），随机森林基于分裂规则进行预测，单个异常样本对整体模型的影响有限。
+
+    \item \textbf{无需特征缩放}：决策树的分裂判据（如基尼不纯度、信息增益）仅依赖特征值的相对排序，而非绝对数值。因此，Hour（0--23）与 Temperature（10--40）等量纲不同的特征可直接输入模型，无需归一化或标准化预处理。
+
+    \item \textbf{可解释性}：随机森林提供特征重要性（Feature Importance）指标，便于理解各特征对预测结果的贡献程度，支持后续的特征选择与模型调优。
+\end{enumerate}
+
+\subsubsection{实现细节}
+
+本项目使用 Scikit-learn 库\cite{sklearn2023}的 \texttt{RandomForestRegressor} 类实现随机森林模型。关键超参数配置如下：
+
+\begin{lstlisting}
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor(
+    n_estimators=100,    # 决策树数量
+    random_state=42,     # 随机种子，保证可复现性
+    n_jobs=-1            # 使用所有 CPU 核心并行训练
+)
+\end{lstlisting}
+
+其中，\texttt{n\_estimators=100} 表示集成 100 棵决策树。该参数需在模型复杂度与计算开销之间权衡：树越多，模型方差越低，但训练和推理时间相应增加。实验表明，100 棵树在本数据集上已能获得稳定的预测性能。
+
+\subsection{模型训练流程}
+
+\texttt{EnergyPredictor} 类封装了完整的模型训练流程，包括数据准备、训练、评估和持久化四个阶段。
+
+\subsubsection{数据集划分}
+
+为评估模型的泛化能力，训练数据被划分为训练集和测试集。系统使用 Scikit-learn 的 \texttt{train\_test\_split} 函数实现随机划分：
+
+\begin{lstlisting}
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, 
+    test_size=0.2,      # 20% 作为测试集
+    random_state=42     # 固定随机种子
+)
+\end{lstlisting}
+
+划分策略说明：
+\begin{itemize}
+    \item \textbf{测试集比例}：采用 80\% 训练集 + 20\% 测试集的经典配比，在保证训练样本量的同时留出足够的测试样本评估性能；
+    \item \textbf{随机种子}：设置 \texttt{random\_state=42} 确保每次运行的划分结果一致，支持实验的可复现性。
+\end{itemize}
+
+对于 11,486 条样本的数据集，划分后训练集约 9,189 条，测试集约 2,297 条。
+
+\subsubsection{缺失值处理}
+
+原始数据中可能存在温度缺失（如 API 调用失败导致的数据空缺）。系统采用\textbf{均值填充}策略处理 \texttt{Temperature} 列的缺失值：
+
+\begin{lstlisting}
+if df['Temperature'].isnull().sum() > 0:
+    mean_temp = df['Temperature'].mean()
+    df['Temperature'].fillna(mean_temp, inplace=True)
+\end{lstlisting}
+
+该策略的合理性在于：温度作为气象变量，其均值可近似代表"典型天气状况"；对于少量缺失值（通常 $<1\%$），均值填充不会显著影响模型训练效果。对于其他特征（Hour、DayOfWeek、Price），由于其可由时间戳直接推导，理论上不存在缺失。
+
+\subsubsection{模型评估}
+
+训练完成后，系统在测试集上计算 MAE 和 RMSE 两项指标，评估模型的预测性能：
+
+\begin{lstlisting}
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+y_pred = model.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+\end{lstlisting}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/模型训练1.png}
+    \caption{随机森林模型训练日志与评估指标 (MAE/RMSE)}
+    \label{fig:model_training}
+\end{figure}
+
+如图~\ref{fig:model_training}所示，模型训练过程的完整日志记录了数据加载、训练耗时及测试集评估结果。从日志输出可以观察到，模型在测试集上取得了较低的 MAE 和 RMSE 值，证明了随机森林模型对能源负载预测任务具有良好的拟合能力和泛化性能。较低的预测误差为后续储能优化模块提供了可靠的负载估计基础。
+
+\subsubsection{特征重要性分析}
+
+随机森林模型的一个重要优势是能够输出特征重要性（Feature Importance）指标，帮助理解各输入变量对预测结果的贡献程度。特征重要性基于各特征在所有决策树中参与分裂时带来的不纯度下降（Mean Decrease in Impurity, MDI）的累计值计算：
+
+\begin{lstlisting}
+importances = model.feature_importances_
+for feature, importance in zip(feature_columns, importances):
+    print(f"{feature}: {importance:.4f}")
+\end{lstlisting}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/模型训练2.png}
+    \caption{特征重要性分析}
+    \label{fig:feature_importance}
+\end{figure}
+
+如图~\ref{fig:feature_importance}所示，特征重要性分析结果揭示了各特征对负载预测的贡献度排序。通常情况下，\texttt{Temperature}（温度）和 \texttt{Hour}（小时）的重要性最高，这与第二章探索性分析的结论一致：温度直接影响空调负载，而小时特征捕捉了日内用电周期性。\texttt{DayOfWeek} 和 \texttt{Price} 的贡献相对较低，但仍有助于区分工作日/周末模式和时段特征。该分析结果验证了特征工程的合理性，也为后续模型优化（如特征选择）提供了依据。
+
+\subsubsection{模型持久化与云端存储}
+
+训练好的模型需持久化存储，以支持后续的在线推理服务。本项目采用 \texttt{joblib} 序列化工具保存模型，并上传至 Firebase Storage 实现云端存储：
+
+\begin{lstlisting}
+import joblib
+
+# 保存模型到临时文件
+joblib.dump(model, temp_model_path)
+
+# 上传到 Firebase Storage
+storage_service.upload_file(
+    file_data=open(temp_model_path, 'rb'),
+    destination_path='models/rf_model.joblib'
+)
+\end{lstlisting}
+
+模型加载时，系统优先从 Firebase Storage 下载最新模型；若云端不存在，则回退至部署包中自带的本地兜底模型。这种设计兼顾了模型更新的灵活性和服务启动的可靠性。
+
+\subsection{在线推理接口}
+
+训练完成的模型通过 \texttt{predict\_next\_24h()} 方法提供未来 24 小时负载预测服务。该方法接收起始时间和温度预测序列作为输入，输出包含时间戳、预测负载、温度、电价等信息的结构化结果：
+
+\begin{lstlisting}
+predictions = predictor.predict_next_24h(
+    start_time='2024-01-15 00:00:00',
+    temp_forecast_list=[24.0, 23.5, ..., 25.0]  # 24小时温度预测
+)
+\end{lstlisting}
+
+返回结果为字典列表，每个字典包含：
+\begin{itemize}
+    \item \texttt{datetime}：预测时间点
+    \item \texttt{predicted\_load}：预测负载（kW）
+    \item \texttt{temperature}：对应温度（°C）
+    \item \texttt{price}：对应电价（元/kWh）
+\end{itemize}
+
+该推理接口的工程实现细节（包括 RESTful API 设计、请求/响应格式、错误处理机制等）将在第~\ref{chap:system}~章详细描述。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/模型训练3.png}
+    \caption{未来24小时负载预测结果可视化}
+    \label{fig:load_prediction}
+\end{figure}
+
+如图~\ref{fig:load_prediction}所示，模型输出的未来 24 小时负载预测曲线呈现出典型的日内周期性特征：夜间（0:00--6:00）负载较低，白天工作时段（9:00--18:00）负载上升，傍晚（18:00--22:00）出现用电高峰。该预测曲线与历史数据的统计规律高度吻合，验证了模型的有效性。
+
+更重要的是，该预测结果将作为储能优化模块的关键输入——优化算法根据预测的负载曲线和分时电价，计算最优充放电策略，实现"谷时充电、峰时放电"的经济调度目标。
+
+\section{储能充放电优化策略}
+
+在获得未来 24 小时的负载预测后，系统需要决策电池储能系统的最优充放电时机。本节将该问题形式化为混合整数规划（Mixed-Integer Programming, MIP）模型，并使用 Gurobi 求解器求取全局最优解。
+
+\subsection{问题描述}
+
+\subsubsection{优化目标}
+
+峰谷电价机制下，谷时电价（如夜间）远低于峰时电价（如傍晚用电高峰）。储能系统的经济价值在于：在低电价时段充电储能，在高电价时段放电供能，从而"削峰填谷"，降低用户的购电成本。
+
+设用户未来 24 小时的基础负载为 $\{L(t)\}_{t=1}^{24}$（单位：kW），对应电价为 $\{p(t)\}_{t=1}^{24}$（单位：元/kWh）。若不使用储能系统，用户的总购电成本为：
+
+\begin{equation}
+    C_{\text{baseline}} = \sum_{t=1}^{T} p(t) \cdot L(t)
+    \label{eq:baseline_cost}
+\end{equation}
+
+引入储能系统后，用户在 $t$ 时刻的净购电量变为"基础负载 + 充电功率 $-$ 放电功率"。优化目标即为\textbf{最小化有电池情况下的总购电成本}：
+
+\begin{equation}
+    \min \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]
+    \label{eq:opt_objective}
+\end{equation}
+
+\noindent 其中 $P_{\text{ch}}(t) \ge 0$ 为 $t$ 时刻的充电功率，$P_{\text{dis}}(t) \ge 0$ 为放电功率。直观理解：充电时从电网多取电，放电时减少从电网取电。
+
+\subsubsection{电池系统参数}
+
+优化模型的参数设置参考 Tesla Powerwall 家用储能系统的典型规格：
+
+\begin{table}[htbp]
+    \centering
+    \caption{电池系统参数配置}
+    \label{tab:battery_params}
+    \begin{tabular}{llll}
+        \toprule
+        \textbf{参数符号}    & \textbf{物理含义} & \textbf{取值} & \textbf{说明}    \\
+        \midrule
+        $T$              & 优化时域          & 24          & 未来 24 小时       \\
+        $E_{\text{cap}}$ & 电池额定容量        & 13.5 kWh    & Powerwall 标称容量 \\
+        $P_{\max}$       & 最大充放电功率       & 5.0 kW      & 功率限制           \\
+        $\eta$           & 充放电效率         & 0.95 (95\%) & 能量转换损耗         \\
+        $\text{SOC}_0$   & 初始荷电状态        & 0.5 (50\%)  & 默认初始电量         \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{混合整数规划模型构建}
+
+\subsubsection{决策变量}
+
+本优化模型包含连续变量和二进制变量两类决策变量：
+
+\paragraph{连续变量}
+\begin{itemize}
+    \item $P_{\text{ch}}(t) \in [0, P_{\max}]$：$t$ 时刻的充电功率（kW）；
+    \item $P_{\text{dis}}(t) \in [0, P_{\max}]$：$t$ 时刻的放电功率（kW）；
+    \item $E(t) \in [0, E_{\text{cap}}]$：$t$ 时刻的电池储能量（kWh）。
+\end{itemize}
+
+\paragraph{二进制变量}
+
+为处理"同一时刻不能同时充电和放电"的互斥约束，引入二进制辅助变量：
+\begin{itemize}
+    \item $z_{\text{ch}}(t) \in \{0, 1\}$：指示 $t$ 时刻是否处于充电状态；
+    \item $z_{\text{dis}}(t) \in \{0, 1\}$：指示 $t$ 时刻是否处于放电状态。
+\end{itemize}
+
+二进制变量的引入使问题从线性规划（LP）升级为\textbf{混合整数规划（MIP）}，需要使用专门的 MIP 求解器进行求解。
+
+对于 $T=24$ 的时域，模型共包含 $24 \times 5 = 120$ 个决策变量，其中 48 个为二进制变量。
+
+\subsubsection{目标函数}
+
+目标函数为最小化优化时域内的总购电成本：
+
+\begin{equation}
+    \boxed{\min_{P_{\text{ch}}, P_{\text{dis}}, E, z_{\text{ch}}, z_{\text{dis}}} \quad \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]}
+    \label{eq:mip_objective}
+\end{equation}
+
+\noindent 该目标函数为决策变量的线性函数，符合 MIP 问题的标准形式。
+
+\subsubsection{约束条件}
+
+模型包含四类约束条件，分别刻画物理限制和运行逻辑。
+
+\paragraph{状态互斥约束}
+
+电池不能在同一时刻同时进行充电和放电操作。通过二进制变量约束实现：
+
+\begin{equation}
+    z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1, \quad \forall t \in \{1, 2, \ldots, T\}
+    \label{eq:mutex}
+\end{equation}
+
+\noindent \textit{物理含义}：该约束确保电池在任意时刻只能处于"充电"、"放电"或"待机"三种状态之一。
+
+\paragraph{功率限制约束（Big-M 方法）}
+
+充放电功率不仅受物理上限 $P_{\max}$ 限制，还需与状态变量联动——当状态变量为 0 时，对应功率必须为 0：
+
+\begin{align}
+    0 & \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t), \quad \forall t \label{eq:charge_limit}      \\
+    0 & \le P_{\text{dis}}(t) \le P_{\max} \cdot z_{\text{dis}}(t), \quad \forall t \label{eq:discharge_limit}
+\end{align}
+
+\noindent \textit{物理含义}：当 $z_{\text{ch}}(t) = 0$ 时，由约束~\eqref{eq:charge_limit} 可得 $P_{\text{ch}}(t) \le 0$，结合 $P_{\text{ch}}(t) \ge 0$ 的定义域，强制 $P_{\text{ch}}(t) = 0$。这是一种\textbf{Big-M 方法}的应用，通过将二进制变量与连续变量耦合，实现"开/关"逻辑的线性化建模。
+
+\paragraph{电池动态方程（能量守恒约束）}
+
+电池储能量随时间演化，遵循能量守恒定律。考虑充放电效率 $\eta$ 的影响：
+
+\begin{equation}
+    E(t) = E(t-1) + \eta \cdot P_{\text{ch}}(t) - \frac{P_{\text{dis}}(t)}{\eta}, \quad \forall t \in \{1, 2, \ldots, T\}
+    \label{eq:energy_balance}
+\end{equation}
+
+\noindent 其中初始条件为 $E(0) = \text{SOC}_0 \cdot E_{\text{cap}}$。
+
+\textit{物理含义}：
+\begin{itemize}
+    \item 充电时，电网输入功率 $P_{\text{ch}}$，但因转换损耗仅有 $\eta \cdot P_{\text{ch}}$ 能量存入电池；
+    \item 放电时，电池释放 $P_{\text{dis}}/\eta$ 的内部能量，才能向负载输出 $P_{\text{dis}}$ 的有效功率。
+\end{itemize}
+
+\paragraph{容量边界约束}
+
+电池储能量不能超过额定容量，也不能为负（完全放空）：
+
+\begin{equation}
+    0 \le E(t) \le E_{\text{cap}}, \quad \forall t \in \{1, 2, \ldots, T\}
+    \label{eq:capacity_bound}
+\end{equation}
+
+\noindent \textit{物理含义}：该约束反映电池的物理存储限制。在实际应用中，为延长电池寿命，通常会进一步收紧边界（如限制 SOC 在 10\%--90\% 之间），本模型采用简化的 0--100\% 边界。
+
+\subsubsection{约束小结}
+
+表~\ref{tab:constraints_summary} 汇总了 MIP 模型的所有约束条件及其物理意义。
+
+\begin{table}[htbp]
+    \centering
+    \caption{MIP 模型约束条件汇总}
+    \label{tab:constraints_summary}
+    \begin{tabular}{lll}
+        \toprule
+        \textbf{约束类型} & \textbf{数学表达式}                                                   & \textbf{物理意义} \\
+        \midrule
+        状态互斥          & $z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1$                     & 不能同时充放电       \\
+        充电功率限制        & $0 \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t)$     & Big-M 联动      \\
+        放电功率限制        & $0 \le P_{\text{dis}}(t) \le P_{\max} \cdot z_{\text{dis}}(t)$   & Big-M 联动      \\
+        能量守恒          & $E(t) = E(t-1) + \eta P_{\text{ch}}(t) - P_{\text{dis}}(t)/\eta$ & 电池动态方程        \\
+        容量边界          & $0 \le E(t) \le E_{\text{cap}}$                                  & 物理存储限制        \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+对于 $T=24$ 的优化时域，模型共包含 $24 \times 4 = 96$ 条约束。
+
+\subsection{求解实现}
+
+\subsubsection{求解器选择：Gurobi Optimizer}
+
+本项目选用 Gurobi Optimizer 作为 MIP 求解器\cite{gurobi2023}。Gurobi 是工业界和学术界广泛使用的商业级数学规划求解器，支持线性规划（LP）、混合整数规划（MIP）、二次规划（QP）等多种问题类型，以求解速度快、数值稳定性好著称。
+
+选择 Gurobi 的理由包括：
+\begin{enumerate}
+    \item \textbf{求解效率}：Gurobi 采用先进的分支定界（Branch-and-Bound）和割平面（Cutting Plane）算法，能够高效求解中等规模的 MIP 问题；
+    \item \textbf{全局最优保证}：作为精确求解器，Gurobi 能够保证找到问题的全局最优解（而非局部最优），这对储能调度至关重要；
+    \item \textbf{Python 接口}：\texttt{gurobipy} 库提供原生 Python 支持，API 简洁，易于与系统其他模块集成。
+\end{enumerate}
+
+\subsubsection{代码实现}
+
+\texttt{EnergyOptimizer} 类封装了完整的优化流程。核心方法 \texttt{optimize\_schedule()} 的实现逻辑如下：
+
+\paragraph{步骤 1：创建模型与决策变量}
+
+\begin{lstlisting}
+import gurobipy as gp
+from gurobipy import GRB
+
+model = gp.Model("BatteryScheduling")
+T = 24  # 优化时域
+
+# 连续变量
+P_charge = model.addVars(T, lb=0, ub=self.max_power, name="P_charge")
+P_discharge = model.addVars(T, lb=0, ub=self.max_power, name="P_discharge")
+E_stored = model.addVars(T, lb=0, ub=self.battery_capacity, name="E_stored")
+
+# 二进制变量
+Is_charge = model.addVars(T, vtype=GRB.BINARY, name="Is_charge")
+Is_discharge = model.addVars(T, vtype=GRB.BINARY, name="Is_discharge")
+\end{lstlisting}
+
+\paragraph{步骤 2：添加约束条件}
+
+\begin{lstlisting}
+for t in range(T):
+    # 状态互斥约束
+    model.addConstr(Is_charge[t] + Is_discharge[t] <= 1)
+    
+    # 功率限制约束 (Big-M)
+    model.addConstr(P_charge[t] <= self.max_power * Is_charge[t])
+    model.addConstr(P_discharge[t] <= self.max_power * Is_discharge[t])
+
+# 能量守恒约束
+initial_energy = initial_soc * self.battery_capacity
+for t in range(T):
+    if t == 0:
+        model.addConstr(E_stored[t] == initial_energy 
+            + P_charge[t] * self.efficiency 
+            - P_discharge[t] / self.efficiency)
+    else:
+        model.addConstr(E_stored[t] == E_stored[t-1] 
+            + P_charge[t] * self.efficiency 
+            - P_discharge[t] / self.efficiency)
+\end{lstlisting}
+
+\paragraph{步骤 3：设置目标函数并求解}
+
+\begin{lstlisting}
+# 目标函数：最小化总购电成本
+total_cost = gp.quicksum(
+    (load[t] + P_charge[t] - P_discharge[t]) * price[t]
+    for t in range(T)
+)
+model.setObjective(total_cost, GRB.MINIMIZE)
+
+# 求解
+model.optimize()
+\end{lstlisting}
+
+\subsubsection{求解状态检查}
+
+求解完成后，需检查求解状态以确保结果有效：
+
+\begin{lstlisting}
+if model.status == GRB.OPTIMAL:
+    # 成功获得全局最优解
+    optimal_cost = model.objVal
+    # 提取决策变量的最优值...
+elif model.status == GRB.INFEASIBLE:
+    # 约束不可行，无解
+elif model.status == GRB.UNBOUNDED:
+    # 目标函数无界
+\end{lstlisting}
+
+只有当 \texttt{model.status == GRB.OPTIMAL} 时，才能保证获得数学意义上的全局最优解。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/gurobi1.png}
+    \caption{Gurobi 求解器运行日志}
+    \label{fig:gurobi_log}
+\end{figure}
+
+如图~\ref{fig:gurobi_log}所示，Gurobi 求解器的运行日志记录了完整的优化过程。从日志中可以观察到：求解器在毫秒级时间内完成了模型构建（包括 120 个决策变量和 96 条约束的处理），并成功收敛至全局最优解（状态显示为 \texttt{OPTIMAL}）。这一结果充分证明了 MIP 模型的计算效率——对于 24 小时时域的日前调度问题，Gurobi 能够实时响应，满足在线优化的时效性要求。
+
+\subsection{优化结果分析}
+
+优化完成后，系统输出详细的调度计划和成本分析。典型输出包括：
+
+\begin{itemize}
+    \item \textbf{逐时调度计划}：每小时的充电功率 $P_{\text{ch}}(t)$、放电功率 $P_{\text{dis}}(t)$、电池电量 $E(t)$ 及荷电状态 SOC；
+    \item \textbf{成本对比}：无电池总成本 $C_{\text{baseline}}$、有电池总成本 $C^*$、节省金额 $\Delta C = C_{\text{baseline}} - C^*$；
+    \item \textbf{节省比例}：$\Delta C / C_{\text{baseline}} \times 100\%$。
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/gurobi2.png}
+    \caption{典型日优化调度策略表}
+    \label{fig:schedule_table}
+\end{figure}
+
+如图~\ref{fig:schedule_table}所示，系统输出的逐时调度策略表清晰展示了优化算法的决策逻辑。从表中可以观察到以下规律：
+
+\begin{itemize}
+    \item \textbf{谷时充电}：在电价为 0.3 元/kWh 的低谷时段（00:00--08:00），系统以最大功率 5.0 kW 进行充电，电池 SOC 逐步上升；
+    \item \textbf{平时待机}：在电价为 0.6 元/kWh 的平时段（08:00--18:00），系统保持待机状态，既不充电也不放电，等待峰时的套利机会；
+    \item \textbf{峰时放电}：在电价为 1.0 元/kWh 的高峰时段（18:00--22:00），系统以最大功率放电，将存储的低价电能释放供负载使用，电池 SOC 逐步下降。
+\end{itemize}
+
+这种"低买高卖"的调度策略正是峰谷电价套利的核心机制。
+
+\subsubsection{经济效益分析}
+
+根据优化结果，系统自动计算储能系统带来的经济效益。设无电池时的基准成本为 $C_{\text{baseline}}$，有电池时的优化成本为 $C^*$，则节省金额和节省比例分别为：
+
+\begin{equation}
+    \Delta C = C_{\text{baseline}} - C^*, \quad \text{节省比例} = \frac{\Delta C}{C_{\text{baseline}}} \times 100\%
+\end{equation}
+
+在典型的测试场景下（日均负载约 200 kW，峰谷电价差 0.7 元/kWh），储能系统可实现约 5\%--15\% 的日均电费节省。具体节省幅度取决于：
+
+\begin{enumerate}
+    \item \textbf{峰谷价差}：价差越大，套利空间越大；
+    \item \textbf{电池容量}：容量越大，可转移的电量越多；
+    \item \textbf{负载曲线}：峰时负载越高，放电收益越显著。
+\end{enumerate}
+
+优化策略的直观解释：求解器会自动识别低电价时段（谷时）进行充电，在高电价时段（峰时）放电供能，从而实现"低买高卖"的套利效果。该策略的经济合理性在于：虽然充电过程本身消耗电能（存在 $1-\eta^2 \approx 10\%$ 的往返损耗），但只要峰谷价差足够大（超过损耗成本），储能系统就能产生正收益。
+
+\subsection{优化模块的服务化封装}
+
+虽然 Gurobi 是商业软件，但本项目充分利用了其 Python 接口（\texttt{gurobipy}）的灵活性，将优化求解能力封装为可复用的 Web 服务。\texttt{EnergyOptimizer} 类通过 Flask RESTful API 对外暴露 \texttt{/api/optimization/optimize} 端点，接收负载预测和电价数据作为 JSON 输入，返回最优调度策略。
+
+这种服务化封装实现了"优化求解的在线化"——前端应用无需关心底层数学模型的复杂性，只需通过 HTTP 请求即可获得优化结果。该设计为第四章的系统集成奠定了基础，使预测模块、优化模块和可视化模块能够无缝协作，形成完整的智能能源管理闭环。

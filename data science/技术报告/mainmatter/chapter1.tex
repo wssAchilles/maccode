@@ -1,0 +1,148 @@
+% !TEX root = ../main.tex
+\chapter{引言}
+
+\section{研究背景与意义}
+
+\subsection{全球能源转型与储能系统的发展}
+
+全球正处于能源转型的关键时期。根据国际能源署数据，2023 年全球可再生能源新增装机超过 500 GW\cite{iea2023renewables}；中国光伏装机已突破 700 GW\cite{nea2024statistics}。然而，风光等可再生能源的间歇性对电力系统稳定性提出了挑战。
+
+储能系统 (Energy Storage System, ESS) 成为解决这一问题的核心技术。锂离子电池储能凭借高效率（90\%-95\%）、快响应（毫秒级）等优势，在家庭储能、电网调峰等领域快速普及\cite{bloomberg2023battery}。BloombergNEF 预测，全球储能市场将从 2023 年的 191 GWh 增至 2030 年的 1,194 GWh。
+
+与此同时，分时电价 (Time-of-Use, TOU) 政策为储能经济性提供了基础。在加州等地区，峰谷电价差可达 2-4 倍\cite{caiso2023tariff}，为"低储高放"套利创造了空间。如何智能管理储能系统的充放电行为，成为亟待解决的课题。
+
+\subsection{电池管理系统面临的挑战}
+
+尽管储能硬件日趋成熟，但系统层面的智能化管理仍存在不足。传统电池管理系统 (BMS) 主要关注单体监测和安全保护，缺乏系统优化能力。当前主要痛点包括：
+
+\begin{enumerate}
+    \item \textbf{监控能力不足}：用户难以实时掌握 SOC、SOH 等关键指标，缺乏历史趋势分析；
+    \item \textbf{策略依赖固定规则}：传统"谷充峰放"策略无法根据负载、电价等因素动态调整；
+    \item \textbf{缺乏前瞻性决策}：用户无法获知最优充电时机和预期节省金额；
+    \item \textbf{数据价值未挖掘}：历史运行数据未能转化为预测模型和优化策略。
+\end{enumerate}
+
+\subsection{本项目的研究意义}
+
+针对上述问题，本项目构建了基于数据驱动的智能能源管理系统，通过"数据采集—机器学习预测—数学优化—移动端展示"的闭环实现智能化管理：
+
+\begin{itemize}
+    \item \textbf{预测能力}：采用随机森林模型预测未来 24 小时负载，捕捉非线性关系和周期性模式；
+    \item \textbf{优化调度}：基于混合整数规划 (MIP) 和 Gurobi 求解器，生成最小化购电成本的最优策略；
+    \item \textbf{端到端系统}：从数据采集、后端 API 到 Flutter 移动应用，形成完整技术闭环。
+\end{itemize}
+
+本项目为家庭储能用户提供低门槛的智能管理工具，同时为数据科学教学提供涵盖数据处理、机器学习、运筹优化的工程实践案例。
+
+
+\section{核心问题与业务场景}
+
+\subsection{业务场景：家庭储能系统}
+
+本项目以家庭储能系统为典型场景。考虑一户配置 Tesla Powerwall 储能电池（容量 13.5 kWh、最大功率 5 kW、效率 90\%）的家庭，接入分时电价计费方案。参考加州 PG\&E 费率\cite{pge2024tou}，本项目采用简化的三段式电价模型：
+
+\begin{equation}
+    p_t = \begin{cases}
+        0.3 \text{ 元/kWh} & \text{谷时段: } t \in [22, 8)  \\
+        0.6 \text{ 元/kWh} & \text{平时段: } t \in [8, 18)  \\
+        1.0 \text{ 元/kWh} & \text{峰时段: } t \in [18, 22)
+    \end{cases}
+    \label{eq:price}
+\end{equation}
+
+用户目标包括：(1) 谷电充电、峰电放电，最大化电费节省；(2) 基于负载预测提前制定充放电计划；(3) 通过移动端实时监控电池状态。
+
+\subsection{数据来源}
+
+本项目使用的数据来源包括：
+\begin{itemize}
+    \item \textbf{历史负载}：某商业建筑 2018.7—2019.10 共 16 个月的能耗数据，原始约 300 万条记录，清洗聚合后得到 11,486 条小时级样本；
+    \item \textbf{电网数据}：通过 CAISO API 获取加州电网实时负载；
+    \item \textbf{气象数据}：通过 OpenWeatherMap API 获取洛杉矶实时温度。
+\end{itemize}
+
+\subsection{核心数据科学问题}
+
+\subsubsection{预测问题：负载时序预测}
+
+\textbf{问题}：给定历史负载、温度和时间特征，预测未来 24 小时负载序列。
+
+\textbf{方案}：采用随机森林回归模型，构建 4 个特征：Hour（小时）、DayOfWeek（星期）、Temperature（温度）、Price（电价）。评估指标包括平均绝对误差 (MAE) 和均方根误差 (RMSE)：
+\begin{equation}
+    \text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |L_i - \hat{L}_i|, \quad
+    \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (L_i - \hat{L}_i)^2}
+\end{equation}
+
+\subsubsection{优化问题：充放电调度}
+
+\textbf{问题}：给定负载预测 $\{L_t\}$、电价 $\{p_t\}$ 和电池参数，求解最优充放电策略使购电成本最小。
+
+\textbf{数学模型}：混合整数规划 (MIP)，决策变量包括充电功率 $P_{\text{ch}}(t)$、放电功率 $P_{\text{dis}}(t)$、储能量 $E(t)$、购电功率 $P_{\text{grid}}(t)$ 和充放电状态 $z(t) \in \{0,1\}$。
+
+目标函数——最小化总购电成本：
+\begin{equation}
+    \min \sum_{t=1}^{24} p(t) \cdot P_{\text{grid}}(t)
+    \label{eq:objective}
+\end{equation}
+
+主要约束条件：
+\begin{align}
+     & E(t+1) = E(t) + \eta \cdot P_{\text{ch}}(t) - P_{\text{dis}}(t) / \eta & \text{(能量守恒)} \\
+     & 0 \leq E(t) \leq E_{\text{cap}}                                        & \text{(容量约束)} \\
+     & 0 \leq P_{\text{ch}}(t) \leq P_{\max} \cdot z(t)                       & \text{(充电约束)} \\
+     & 0 \leq P_{\text{dis}}(t) \leq P_{\max} \cdot (1 - z(t))                & \text{(放电约束)} \\
+     & P_{\text{grid}}(t) + P_{\text{dis}}(t) = L(t) + P_{\text{ch}}(t)       & \text{(功率平衡)}
+\end{align}
+
+\noindent 其中，功率平衡约束的物理含义为：\textbf{供电侧}（电网购电 $P_{\text{grid}}(t)$ + 电池放电 $P_{\text{dis}}(t)$）= \textbf{用电侧}（房屋负载 $L(t)$ + 电池充电 $P_{\text{ch}}(t)$）。该约束体现了家庭微网系统的能量守恒原则——任意时刻流入系统的功率必须等于流出系统的功率。
+
+本项目使用 Gurobi 求解器求解，对于 24 时段、约 120 变量的问题可在毫秒级完成。
+
+\subsection{研究假设}
+
+\textbf{假设一}：随机森林模型的 RMSE 相比历史均值法降低 20\% 以上。
+
+\textit{注：历史均值法（Baseline）指使用前一天同一时刻的负载值作为当天的预测值，该基准方法将在第六章实验部分计算并与随机森林模型对比。}
+
+\textbf{假设二}：MIP 优化策略相比固定规则策略的日均电费节省率不低于 10\%。
+
+上述假设将在第六章通过实验验证。
+
+
+\section{本文主要工作与组织结构}
+
+\subsection{主要工作内容}
+
+本项目作为《数据科学概论》课程的 Level 3 大作业，构建了完整的端到端应用系统，主要工作包括：
+
+\begin{enumerate}
+    \item \textbf{数据工程}：集成 CAISO 电网 API 和 OpenWeatherMap 天气 API，实现数据采集、清洗与存储（Cloud Storage / Firestore）；
+
+    \item \textbf{机器学习建模}：基于 Scikit-learn 实现随机森林负载预测模型，支持训练、评估、持久化的完整生命周期；
+
+    \item \textbf{优化算法}：基于 Gurobi 实现 MIP 优化模块，生成最优充放电策略；
+
+    \item \textbf{后端服务}：使用 Flask 构建 RESTful API，包含认证、分析、优化、历史记录等模块；
+
+    \item \textbf{前端应用}：使用 Flutter 开发跨平台移动应用，实现 SOC 监控、功率图表等可视化组件；
+
+    \item \textbf{部署运维}：完成 Docker 容器化封装，支持 Google App Engine 云端部署。
+\end{enumerate}
+
+\subsection{报告组织结构}
+
+本报告共分七章：
+
+\textbf{第一章}（本章）：研究背景、业务场景与核心问题。
+
+\textbf{第二章}：相关工作与技术基础，包括随机森林和混合整数规划原理。
+
+\textbf{第三章}：系统架构设计，描述数据层、服务层、接口层的模块划分。
+
+\textbf{第四章}：数据处理与特征工程。
+
+\textbf{第五章}：算法设计与实现。
+
+\textbf{第六章}：系统实现与实验评估。
+
+\textbf{第七章}：总结与展望。

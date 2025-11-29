@@ -1,0 +1,119 @@
+\begin{thebibliography}{19}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[{International Energy Agency}(2023)]{iea2023renewables}
+{International Energy Agency}.
+\newblock Renewables 2023: Analysis and forecasts to 2028\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://www.iea.org/reports/renewables-2023}.
+
+\bibitem[{国家能源局}(2024)]{nea2024statistics}
+{国家能源局}.
+\newblock 2024年全国电力工业统计数据\allowbreak[EB/OL].
+\newblock 2024.
+\newblock \url{http://www.nea.gov.cn/}.
+
+\bibitem[{BloombergNEF}(2023)]{bloomberg2023battery}
+{BloombergNEF}.
+\newblock Energy storage market outlook 2023\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://about.bnef.com/}.
+
+\bibitem[{California Independent System Operator}(2023)]{caiso2023tariff}
+{California Independent System Operator}.
+\newblock Caiso market data and grid operations\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://www.caiso.com/}.
+
+\bibitem[{Pacific Gas and Electric Company}(2024)]{pge2024tou}
+{Pacific Gas and Electric Company}.
+\newblock Time-of-use rate plans: E-tou-c\allowbreak[EB/OL].
+\newblock 2024.
+\newblock \url{https://www.pge.com/tariffs/}.
+
+\bibitem[Breiman(2001)]{breiman2001random}
+Breiman L.
+\newblock Random forests\allowbreak[J].
+\newblock Machine Learning, 2001, 45\allowbreak (1): 5-32.
+
+\bibitem[{Scikit-learn Developers}(2023)]{sklearn2023}
+{Scikit-learn Developers}.
+\newblock Scikit-learn: Machine learning in python\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://scikit-learn.org/}.
+
+\bibitem[{Gurobi Optimization, LLC}(2023)]{gurobi2023}
+{Gurobi Optimization, LLC}.
+\newblock Gurobi optimizer reference manual\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://www.gurobi.com/documentation/}.
+
+\bibitem[{Google}(2023)]{flutter2023}
+{Google}.
+\newblock Flutter: Build apps for any screen\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://flutter.dev/}.
+
+\bibitem[{Pallets Projects}(2023)]{flask2023}
+{Pallets Projects}.
+\newblock Flask: A python microframework\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://flask.palletsprojects.com/}.
+
+\bibitem[{Google}(2023)]{firebase2023}
+{Google}.
+\newblock Firebase documentation\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://firebase.google.com/docs}.
+
+\bibitem[Nielsen(1993)]{nielsen1993}
+Nielsen J.
+\newblock Response times: The three important limits\allowbreak[J].
+\newblock Usability Engineering, 1993: 125-146.
+
+\bibitem[Hong et~al.(2016)Hong and Fan]{hong2016probabilistic}
+Hong T, Fan S.
+\newblock Probabilistic electric load forecasting: A tutorial review\allowbreak[J].
+\newblock International Journal of Forecasting, 2016, 32\allowbreak (3): 914-938.
+
+\bibitem[Haben et~al.(2019)Haben, Arber, Giasemidis, and Sherlock]{have2019review}
+Haben S, Arber S, Giasemidis G, et~al.
+\newblock Review of low voltage load forecasting: Methods, applications, and recommendations\allowbreak[J].
+\newblock Applied Energy, 2019, 241: 1-24.
+
+\bibitem[Conejo et~al.(2010)Conejo, Carri{\'o}n, and Morales]{conejo2010decision}
+Conejo A~J, Carri{\'o}n M, Morales J~M.
+\newblock Decision making under uncertainty in electricity markets\allowbreak[M].
+\newblock New York: Springer, 2010.
+
+\bibitem[Lund et~al.(2015)Lund, Lindgren, Mikkola, and Salpakari]{lund2015review}
+Lund P~D, Lindgren J, Mikkola J, et~al.
+\newblock Review of energy system flexibility measures to enable high levels of variable renewable electricity\allowbreak[J].
+\newblock Renewable and Sustainable Energy Reviews, 2015, 45: 785-807.
+
+\bibitem[Weitzel et~al.(2018)Weitzel and Glock]{weitzel2018energy}
+Weitzel T, Glock C~H.
+\newblock Energy management for stationary electric energy storage systems: A systematic literature review\allowbreak[J].
+\newblock European Journal of Operational Research, 2018, 264\allowbreak (2): 582-606.
+
+\bibitem[Divya et~al.(2009)Divya and {\O}stergaard]{divya2009battery}
+Divya K, {\O}stergaard J.
+\newblock Battery energy storage technology for power systems—an overview\allowbreak[J].
+\newblock Electric Power Systems Research, 2009, 79\allowbreak (4): 511-520.
+
+\bibitem[Chen et~al.(2020)Chen, Jin, Lv, Yang, Liu, Chen, Xie, and Chen]{chen2020applications}
+Chen T, Jin Y, Lv H, et~al.
+\newblock Applications of lithium-ion batteries in grid-scale energy storage systems\allowbreak[J].
+\newblock Transactions of Tianjin University, 2020, 26: 208-217.
+
+\end{thebibliography}
