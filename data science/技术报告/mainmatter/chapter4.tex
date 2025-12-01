@@ -4,7 +4,7 @@
 
 \section{系统总体架构}
 
-本系统采用经典的 B/S (Browser/Server) 架构模式，通过分层设计实现关注点分离，确保系统的可扩展性、可维护性和高可用性。图~\ref{fig:system_arch}展示了家庭储能智能管理系统的总体架构。
+本系统采用经典的 B/S (Browser/Server) 架构模式，通过分层设计实现关注点分离，确保系统的可扩展性、可维护性和高可用性。图~\ref{fig:system_arch}展示了储能智能管理系统的总体架构。
 
 \begin{figure}[htbp]
     \centering
@@ -63,7 +63,7 @@
         \draw[arrow, orange!60] (4.2, 0.8) -- (4.2, -0.2);
 
     \end{tikzpicture}
-    \caption{家庭储能智能管理系统总体架构图}
+    \caption{储能智能管理系统总体架构图}
     \label{fig:system_arch}
 \end{figure}
 
@@ -320,7 +320,7 @@ GAE Cron 服务会自动在请求头中添加 \texttt{X-Appengine-Cron: true} �
     \label{fig:app_auth_home}
 \end{figure}
 
-图~\ref{fig:app_auth_home}展示了应用的入口界面。图~\ref{fig:app_auth_home}(a) 为基于 Firebase Authentication 实现的安全登录页面，支持邮箱/密码认证方式，登录成功后 Firebase 返回的 ID Token 将作为后续 API 请求的身份凭证。图~\ref{fig:app_auth_home}(b) 是用户登录后进入的系统主页 (Dashboard)，采用信息密度适中的卡片布局，用户可一目了然地查看当前电池荷电状态 (SOC)、实时电价以及今日能耗概览，实现对家庭储能系统的全局感知。
+图~\ref{fig:app_auth_home}展示了应用的入口界面。图~\ref{fig:app_auth_home}(a) 为基于 Firebase Authentication 实现的安全登录页面，支持邮箱/密码认证方式，登录成功后 Firebase 返回的 ID Token 将作为后续 API 请求的身份凭证。图~\ref{fig:app_auth_home}(b) 是用户登录后进入的系统主页 (Dashboard)，采用信息密度适中的卡片布局，用户可一目了然地查看当前电池荷电状态 (SOC)、实时电价以及今日能耗概览，实现对储能系统的全局感知。
 
 \subsubsection{智能决策与实时监控}
 
@@ -440,7 +440,7 @@ Firebase 在系统中承担以下核心角色：
 
 \section{本章小结}
 
-本章详细介绍了家庭储能智能管理系统的架构设计与工程实现。从系统总体架构出发，阐述了 B/S 分层架构的设计理念；在后端服务开发中，展示了 Flask RESTful API、Firebase 集成和自动化任务调度的实现细节；在移动端应用开发中，介绍了 Material Design 3 设计语言、核心功能模块和 Provider 状态管理架构；最后，通过 Docker 容器化和 Google App Engine 部署，证明了系统具备生产环境的运行能力。
+本章详细介绍了储能智能管理系统的架构设计与工程实现。从系统总体架构出发，阐述了 B/S 分层架构的设计理念；在后端服务开发中，展示了 Flask RESTful API、Firebase 集成和自动化任务调度的实现细节；在移动端应用开发中，介绍了 Material Design 3 设计语言、核心功能模块和 Provider 状态管理架构；最后，通过 Docker 容器化和 Google App Engine 部署，证明了系统具备生产环境的运行能力。
 
 至此，系统完成了从算法模型到移动端应用的\textbf{全链路打通}：第三章的随机森林预测模型和 Gurobi 优化求解器被封装为后端微服务，通过 RESTful API 对外提供能力；移动端应用以直观的可视化界面呈现预测结果和优化策略；云端部署确保了系统的高可用性和弹性扩展能力。这标志着本项目已形成一个\textbf{可用的、闭环的智能能源管理产品}，具备了从原型验证走向实际应用的技术基础。
 

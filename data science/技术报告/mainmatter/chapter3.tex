@@ -224,7 +224,7 @@ predictions = predictor.predict_next_24h(
 
 \subsubsection{电池系统参数}
 
-优化模型的参数设置参考 Tesla Powerwall 家用储能系统的典型规格：
+优化模型的参数设置参考 Tesla Powerwall 储能集群的典型配置（4--5 台并联）：
 
 \begin{table}[htbp]
     \centering
@@ -232,13 +232,13 @@ predictions = predictor.predict_next_24h(
     \label{tab:battery_params}
     \begin{tabular}{llll}
         \toprule
-        \textbf{参数符号}    & \textbf{物理含义} & \textbf{取值} & \textbf{说明}    \\
+        \textbf{参数符号}    & \textbf{物理含义} & \textbf{取值} & \textbf{说明} \\
         \midrule
-        $T$              & 优化时域          & 24          & 未来 24 小时       \\
-        $E_{\text{cap}}$ & 电池额定容量        & 13.5 kWh    & Powerwall 标称容量 \\
-        $P_{\max}$       & 最大充放电功率       & 5.0 kW      & 功率限制           \\
-        $\eta$           & 充放电效率         & 0.95 (95\%) & 能量转换损耗         \\
-        $\text{SOC}_0$   & 初始荷电状态        & 0.5 (50\%)  & 默认初始电量         \\
+        $T$              & 优化时域          & 24          & 未来 24 小时    \\
+        $E_{\text{cap}}$ & 电池额定容量        & 60 kWh      & 储能集群总容量     \\
+        $P_{\max}$       & 最大充放电功率       & 20 kW       & 功率限制        \\
+        $\eta$           & 充放电效率         & 0.95 (95\%) & 能量转换损耗      \\
+        $\text{SOC}_0$   & 初始荷电状态        & 0.5 (50\%)  & 默认初始电量      \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -305,7 +305,7 @@ predictions = predictor.predict_next_24h(
 如图~\ref{fig:schedule_table}所示，系统输出的逐时调度策略表清晰展示了优化算法的决策逻辑。从表中可以观察到以下规律：
 
 \begin{itemize}
-    \item \textbf{谷时充电}：在电价为 0.3 元/kWh 的低谷时段（00:00--08:00），系统以最大功率 5.0 kW 进行充电，电池 SOC 逐步上升；
+    \item \textbf{谷时充电}：在电价为 0.3 元/kWh 的低谷时段（00:00--08:00），系统以最大功率 20 kW 进行充电，电池 SOC 逐步上升；
     \item \textbf{平时待机}：在电价为 0.6 元/kWh 的平时段（08:00--18:00），系统保持待机状态，既不充电也不放电，等待峰时的套利机会；
     \item \textbf{峰时放电}：在电价为 1.0 元/kWh 的高峰时段（18:00--22:00），系统以最大功率放电，将存储的低价电能释放供负载使用，电池 SOC 逐步下降。
 \end{itemize}
