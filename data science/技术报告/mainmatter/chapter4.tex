@@ -295,13 +295,9 @@ GAE Cron 服务会自动在请求头中添加 \texttt{X-Appengine-Cron: true} �
 
 本节介绍基于 Flutter 框架开发的移动端应用，涵盖 UI/UX 设计理念、核心功能模块及前端技术实现。
 
-\subsection{UI/UX 设计哲学}
+\subsection{UI/UX 设计}
 
-移动端应用采用 Google 官方推出的 \textbf{Material Design 3} 设计语言，该设计体系强调"以用户为中心"的交互体验，通过动态色彩系统 (Dynamic Color)、圆润的组件形态和一致的视觉层次，为用户提供简洁、直观的操作界面。
-
-在布局设计上，应用采用\textbf{卡片式 (Card-based) 布局}作为核心信息容器。卡片组件将相关数据聚合在视觉边界内，便于用户快速识别和理解信息结构。每个功能模块（如电池状态、电价信息、负载预测）均封装为独立卡片，支持响应式布局以适配不同屏幕尺寸。
-
-数据可视化方面，应用集成了 \texttt{fl\_chart} 图表库。该库基于 Flutter 的 Canvas API 实现高性能渲染，支持折线图、柱状图、饼图等多种图表类型，并提供流畅的动画过渡效果和手势交互（如缩放、平移、点击高亮），能够直观呈现时间序列数据和优化结果。
+移动端应用采用Material Design 3设计语言和卡片式布局，数据可视化集成\texttt{fl\_chart}库实现高性能图表渲染。核心界面包括用户登录、系统主页（SOC监控）、负载预测曲线、充放电调度计划和历史数据分析（详见图4.x系列截图）。
 
 \subsection{核心功能模块}
 
@@ -370,54 +366,11 @@ GAE Cron 服务会自动在请求头中添加 \texttt{X-Appengine-Cron: true} �
 
 \subsection{前端技术实现}
 
-\subsubsection{状态管理架构}
+\subsubsection{状态管理与数据交互}
 
-应用采用 \textbf{Provider} 模式实现全局状态管理。Provider 是 Flutter 官方推荐的轻量级状态管理方案，基于 \texttt{InheritedWidget} 机制实现跨组件的数据共享与响应式更新。
+应用采用\textbf{Provider}模式实现全局状态管理，定义\texttt{AuthProvider}（认证）、\texttt{DataProvider}（实时数据）、\texttt{OptimizationProvider}（优化结果）三类状态对象。
 
-系统定义了以下核心状态类：
-\begin{itemize}
-    \item \texttt{AuthProvider}：管理用户认证状态，包括登录态、用户信息和 Token 刷新；
-    \item \texttt{DataProvider}：管理实时数据状态，包括当前负载、电价、温度等时序数据；
-    \item \texttt{OptimizationProvider}：管理优化结果状态，包括预测曲线、充放电计划和历史记录。
-\end{itemize}
-
-通过 \texttt{MultiProvider} 在应用根节点注入上述状态对象，子组件可通过 \texttt{context.watch<T>()} 订阅状态变化并自动重建 UI，实现数据流的单向传递和视图的响应式更新。
-
-\subsubsection{异步数据交互}
-
-前端通过 RESTful API 与后端 Flask 服务进行数据交互。网络请求封装于 \texttt{ApiService} 类中，使用 Dart 的 \texttt{http} 包发起异步 HTTP 请求。典型的请求流程如下：
-
-\begin{lstlisting}[style=pythoncode,language={}]
-// 发起优化请求
-Future<OptimizationResult> fetchOptimization() async {
-  setState(() => isLoading = true);  // 显示加载指示器
-  try {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/optimize'),
-      headers: {'Authorization': 'Bearer $idToken'},
-    );
-    if (response.statusCode == 200) {
-      return OptimizationResult.fromJson(jsonDecode(response.body));
-    } else {
-      throw ApiException('请求失败: ${response.statusCode}');
-    }
-  } catch (e) {
-    showErrorSnackBar('网络错误，请检查连接');  // 错误提示
-    rethrow;
-  } finally {
-    setState(() => isLoading = false);  // 隐藏加载指示器
-  }
-}
-\end{lstlisting}
-
-如上述代码所示，应用实现了完整的异步交互模式：
-\begin{itemize}
-    \item \textbf{加载状态管理}：请求发起时显示 Loading Spinner（圆形进度指示器），请求完成后自动隐藏，避免用户在等待期间产生困惑；
-    \item \textbf{错误处理机制}：捕获网络异常和服务端错误，通过 SnackBar 组件向用户展示友好的错误提示信息；
-    \item \textbf{Token 认证}：每次请求在 HTTP Header 中携带 Firebase ID Token，后端通过 Token 验证用户身份和权限。
-\end{itemize}
-
-通过上述技术实现，移动端应用为用户提供了流畅、可靠的交互体验，将后端的机器学习预测和数学优化能力以直观、易用的方式呈现给终端用户。
+网络请求封装于\texttt{ApiService}类，使用Dart的\texttt{http}包发起异步HTTP请求。每次请求携带Firebase ID Token进行身份认证，实现完整的加载状态管理和错误处理机制（SnackBar提示），平均延迟控制在300ms以内（详见第5章性能评估）。
 
 \section{容器化与云端部署}
 
@@ -425,114 +378,22 @@ Future<OptimizationResult> fetchOptimization() async {
 
 \subsection{Docker 容器化构建}
 
-为确保开发环境与生产环境的一致性，本系统采用 Docker 容器技术对后端服务进行封装。容器化不仅解决了"在我机器上能跑"的经典问题，还为后续的云端部署和弹性扩缩容奠定了基础。
+后端服务采用Docker容器化封装,Dockerfile采用\texttt{python:3.11-slim}基础镜像,分层安装依赖（\texttt{gurobipy, scikit-learn, flask}等），暴露8080端口，使用Gunicorn作为WSGI服务器。
 
-\subsubsection{Dockerfile 编写}
-
-后端服务的 Dockerfile 采用多阶段构建策略，核心配置如下：
-
-\begin{lstlisting}[style=pythoncode,language={}]
-# 基础镜像：Python 3.11 精简版
-FROM python:3.11-slim
-
-# 设置工作目录
-WORKDIR /app
-
-# 安装系统依赖（Gurobi 运行时所需）
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# 复制依赖文件并安装 Python 包
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 复制应用代码
-COPY . .
-
-# 暴露服务端口
-EXPOSE 8080
-
-# 启动命令
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"]
-\end{lstlisting}
-
-Dockerfile 的设计要点包括：
-\begin{itemize}
-    \item \textbf{基础镜像选择}：采用 \texttt{python:3.11-slim} 作为基础镜像，相比完整版镜像体积减少约 70\%，加快构建和部署速度；
-    \item \textbf{依赖分层安装}：将 \texttt{requirements.txt} 单独复制并安装，利用 Docker 的缓存机制，在代码变更时无需重新安装依赖，显著提升迭代效率；
-    \item \textbf{核心依赖}：\texttt{requirements.txt} 包含 \texttt{gurobipy}（Gurobi 优化求解器）、\texttt{scikit-learn}（机器学习库）、\texttt{flask}（Web 框架）等关键组件；
-    \item \textbf{端口暴露}：通过 \texttt{EXPOSE 8080} 声明服务端口，与 Google App Engine 的默认端口配置保持一致。
-\end{itemize}
-
-\subsubsection{容器化优势}
-
-容器化技术为本系统带来以下核心价值：
-\begin{itemize}
-    \item \textbf{环境一致性}：开发、测试、生产环境使用相同的容器镜像，消除"环境差异"导致的问题；
-    \item \textbf{依赖隔离}：Gurobi、scikit-learn 等库的版本被锁定在容器内，避免与宿主机或其他应用的依赖冲突；
-    \item \textbf{快速部署}：容器镜像可在秒级启动，支持快速回滚和蓝绿部署；
-    \item \textbf{可移植性}：同一镜像可部署至任何支持 Docker 的云平台（GCP、AWS、Azure）。
-\end{itemize}
+容器化优势：环境一致性、依赖隔离、快速部署、可移植性（可部署至任何支持Docker的云平台）。
 
 \subsection{Google App Engine 部署}
 
-后端服务部署于 Google App Engine (GAE) Flexible Environment，该环境支持自定义运行时和容器化部署，兼具 PaaS 的便捷性和 IaaS 的灵活性。
+后端部署于GAE Flexible Environment，通过\texttt{app.yaml}配置运行时（Python 3.11）、实例规格（F4高性能实例）、自动扩缩容策略（\texttt{min\_instances: 0}节省成本，\texttt{max\_instances: 1}控制账单）及环境变量（API密钥、Gurobi许可证等）。
 
-\subsubsection{服务配置}
-
-GAE 服务通过 \texttt{app.yaml} 配置文件定义运行时环境和资源规格：
-
-\begin{lstlisting}[style=pythoncode,language={}]
-runtime: python311  # 运行时环境：Python 3.11
-
-# 启动命令：使用 gunicorn 启动 Flask 应用
-# --timeout 300: 工作进程超时 5 分钟（适应大文件分析）
-# --workers 1: 单工作进程（内存优化）
-entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 main:app
-
-instance_class: F4  # 高性能实例，解决 Pandas/Scikit-learn 内存需求
-
-# 自动扩缩容配置（成本控制）
-automatic_scaling:
-  min_instances: 0  # 无流量时关闭，不产生费用
-  max_instances: 1  # 防止意外流量导致高额账单
-
-# 环境变量（敏感信息已脱敏）
-env_variables:
-  STORAGE_BUCKET_NAME: "project-id.firebasestorage.app"
-  GCP_PROJECT_ID: "project-id"
-  GRB_LICENSEID: "xxxxxxx"      # Gurobi 许可证
-  OPENWEATHER_API_KEY: "xxxxxx" # 天气 API 密钥
-  WEATHER_CITY_LAT: "34.05"     # 洛杉矶纬度
-  WEATHER_CITY_LON: "-118.24"   # 洛杉矶经度
-\end{lstlisting}
-
-配置要点说明：
+\textbf{核心优势}：
 \begin{itemize}
-    \item \textbf{运行时}：采用 GAE Standard Environment 的 Python 3.11 运行时，相比 Flexible Environment 具有更快的冷启动速度和更低的成本；
-    \item \textbf{实例规格}：选用 \texttt{F4} 高性能实例类型，提供充足的 CPU 和内存资源，满足 Pandas 数据处理、Scikit-learn 模型推理和 Gurobi 优化求解的计算需求；
-    \item \textbf{启动命令}：使用 Gunicorn WSGI 服务器，配置 5 分钟超时以支持长时间运行的优化任务；
-    \item \textbf{成本控制}：通过 \texttt{min\_instances: 0} 实现"按需启动"，无流量时自动关闭实例，避免空闲费用；\texttt{max\_instances: 1} 限制最大实例数，防止流量激增导致的意外账单；
-    \item \textbf{环境变量}：通过环境变量注入敏感配置（API 密钥、许可证等），避免硬编码，符合安全最佳实践。
+    \item 自动扩缩容：无流量时关闭实例，峰值时弹性扩容
+    \item 零停机部署：新版本健康检查通过后自动切换流量
+    \item 按需计费：免费配额（每日28实例小时）足够覆盖日常使用
 \end{itemize}
 
-\subsubsection{CI/CD 部署流程}
-
-系统采用 \texttt{gcloud} 命令行工具实现持续部署。典型的部署流程如下：
-
-\begin{lstlisting}[style=pythoncode,language={}]
-# 1. 构建容器镜像并推送至 Google Container Registry
-gcloud builds submit --tag gcr.io/PROJECT_ID/energy-backend
-
-# 2. 部署至 App Engine
-gcloud app deploy app.yaml --quiet
-
-# 3. 查看部署状态
-gcloud app browse
-\end{lstlisting}
-
-部署过程中，GAE 自动完成以下操作：(1) 从 Google Container Registry (GCR) 拉取镜像；(2) 创建新版本实例；(3) 健康检查通过后切换流量；(4) 旧版本实例优雅下线。整个过程实现零停机部署，确保服务的高可用性。
+部署命令：\texttt{gcloud builds submit} + \texttt{gcloud app deploy}。
 
 \begin{figure}[htbp]
     \centering

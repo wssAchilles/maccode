@@ -117,124 +117,38 @@ df = iso.get_load(date=date_str)
 
 \subsection{时序特征分析}
 
-建筑能耗数据具有显著的时间依赖性，其周期性特征直接影响预测模型的特征设计。
-
-\textbf{日周期特征}：负载数据呈现明显的日内波动模式——白天（9:00--18:00）因办公活动和空调运行，负载水平显著高于夜间（22:00--6:00）。这一规律反映了商业建筑的作息特点，为提取 \texttt{Hour} 特征提供了依据。
-
-\textbf{周周期特征}：工作日与周末的负载模式存在统计学显著差异。工作日负载均值较周末高约 20\%--30\%，且日内峰值更为明显。因此，\texttt{DayOfWeek} 被纳入特征向量以捕获这一周期性。
-
-\textbf{时间聚合}：原始分钟级数据的高频噪声不利于趋势观察。系统使用 Pandas 的 \texttt{resample('1H')} 方法将数据聚合至小时级：
-
-\begin{equation}
-    L_{\text{hourly}}(h) = \frac{1}{60} \sum_{t \in h} L(t)
-\end{equation}
-
-\noindent 该聚合操作在平滑短期波动的同时保留了日内和周内的周期性结构，为后续分析和建模提供了合适的时间粒度。
+建筑能耗数据具有显著的时间依赖性：
+\begin{itemize}
+    \item \textbf{日周期}：白天（9:00--18:00）负载显著高于夜间，反映办公作息特点，为提取\texttt{Hour}特征提供依据；
+    \item \textbf{周周期}：工作日负载均值较周末高约20\%--30\%，\texttt{DayOfWeek}特征捕获此规律；
+    \item \textbf{时间聚合}：使用Pandas的\texttt{resample('1H')}将分钟级数据聚合至小时级，在平滑噪声的同时保留周期性结构。
+\end{itemize}
 
 \subsection{相关性分析}
 
-相关性分析用于量化特征变量之间的线性或单调关系，为特征选择和多重共线性诊断提供依据。系统的 \texttt{calculate\_correlations()} 方法实现了完整的相关性分析流程。
+相关性分析用于量化特征变量之间的关系。系统的 \texttt{calculate\_correlations()} 方法计算Pearson和Spearman两类相关系数，并通过 $p$ 值判断显著性（$p < 0.05$ 时相关性显著）。
 
-\subsubsection{分析方法}
-
-系统同时计算两类相关系数：
-
-\begin{itemize}
-    \item \textbf{Pearson 相关系数}：衡量两变量间的线性相关强度，计算公式为：
-          \begin{equation}
-              r_{xy} = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2} \cdot \sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}}
-          \end{equation}
-          适用于满足正态分布假设的连续变量。
-
-    \item \textbf{Spearman 秩相关系数}：基于变量秩次计算，能够捕捉单调非线性关系，对异常值具有稳健性。当数据不满足正态性假设时，Spearman 系数是更可靠的选择。
-\end{itemize}
-
-\subsubsection{显著性检验}
-
-对于每对变量的相关系数，系统通过 \texttt{scipy.stats} 库计算对应的 $p$ 值，判断相关性是否具有统计学显著性。原假设 $H_0: \rho = 0$（变量间无相关性），当 $p < 0.05$ 时拒绝原假设，认为相关性显著。
-
-\subsubsection{重点分析：负载与温度的关系}
-
-全站负载（\texttt{Site\_Load}）与环境温度（\texttt{Temperature}）的相关性是能源管理领域的核心研究对象。分析结果表明两者呈正相关关系——温度升高导致空调制冷负荷增加，进而推高总负载。然而，该关系并非严格线性：在极端高温区间，负载增速可能放缓（空调满载运行）；低温区间则可能出现供暖需求。
-
-Spearman 系数通常略高于 Pearson 系数，提示两者存在一定的非线性关系。这一发现为后续采用非线性模型（如随机森林）而非简单线性回归提供了理论支撑。
-
-\subsubsection{高相关性变量检测}
-
-系统自动检测 $|r| > 0.7$ 的变量对，并将其标记为"高相关性"。高度相关的特征可能引发多重共线性问题，导致回归模型系数不稳定。检测逻辑如下：
-
-\begin{lstlisting}
-# 检测高相关性 (|correlation| > 0.7)
-if abs(pearson_corr) > 0.7:
-    high_correlations.append({
-        'variables': [var_x, var_y],
-        'correlation': round(pearson_corr, 4),
-        'type': 'positive' if pearson_corr > 0 else 'negative'
-    })
-\end{lstlisting}
-
-对于检测到的高相关变量对，系统建议通过方差膨胀因子（VIF）进一步诊断，或在特征工程阶段移除冗余变量。
+\textbf{重点发现}：负载与温度呈显著正相关——温度升高导致空调制冷需求增加。Spearman系数略高于Pearson系数，提示存在非线性关系，为后续采用随机森林等非线性模型提供依据。
 
 \subsection{数据质量评估}
 
-数据质量直接决定模型的上限——"Garbage in, garbage out"。系统的 \texttt{perform\_quality\_check()} 方法从缺失值、异常值和分布特性三个方面进行全面评估。
+系统的 \texttt{perform\_quality\_check()} 方法从缺失值、异常值和分布特性三方面评估数据质量。
 
-\subsubsection{缺失值检测}
+\textbf{缺失值检测}：统计各列缺失率，超过5\%标记为"高缺失风险"。
 
-系统遍历所有列，统计缺失值数量及缺失率：
+\textbf{异常值检测}：采用IQR（四分位距）方法，检测超出 $[Q_1 - 1.5 \times \text{IQR}, Q_3 + 1.5 \times \text{IQR}]$ 范围的观测值。
 
-\begin{equation}
-    \text{Missing Rate} = \frac{\text{缺失值数量}}{\text{总样本数}} \times 100\%
-\end{equation}
+\textbf{分布特性}：计算偏度和峰度，评估数据正态性。通过Shapiro-Wilk或D'Agostino-Pearson检验量化判断（$p < 0.05$拒绝正态假设）。
 
-当缺失率超过 5\% 时，该列被标记为"高缺失风险"（High Missing Risk）。对于时间序列数据，缺失值可能源于传感器故障或数据传输中断。系统在数据预处理阶段通过删除无效日期记录（如全天缺失的异常数据）来保证数据完整性。
-
-\subsubsection{异常值检测：IQR 方法}
-
-异常值检测采用四分位距（Interquartile Range, IQR）方法，这是一种基于分位数的稳健统计方法：
-
-\begin{equation}
-    \text{IQR} = Q_3 - Q_1
-\end{equation}
-
-\noindent 其中 $Q_1$ 和 $Q_3$ 分别为第一和第三四分位数。异常值定义为超出以下边界的观测值：
-
-\begin{equation}
-    \text{Lower Bound} = Q_1 - 1.5 \times \text{IQR}, \quad \text{Upper Bound} = Q_3 + 1.5 \times \text{IQR}
-\end{equation}
-
-该方法不依赖正态分布假设，对偏态数据同样适用。检测到的异常值可能代表设备故障（如传感器读数突变）或真实的极端事件（如临时大功率设备启动），需结合业务场景判断处理策略。
-
-\subsubsection{分布特性检验}
-
-为评估数据的正态性，系统计算偏度（Skewness）和峰度（Kurtosis）两个统计量：
-
-\begin{itemize}
-    \item \textbf{偏度}：衡量分布的对称性。$\gamma_1 = 0$ 表示对称分布；$\gamma_1 > 0$ 为右偏（正偏）；$\gamma_1 < 0$ 为左偏（负偏）。
-    \item \textbf{峰度}：衡量分布尾部的厚度。$\gamma_2 = 0$ 对应正态分布；$\gamma_2 > 0$ 表示厚尾（尖峰）；$\gamma_2 < 0$ 表示薄尾（平峰）。
-\end{itemize}
-
-此外，系统通过 Shapiro-Wilk 检验（适用于样本量 $n < 5000$）或 D'Agostino-Pearson 检验（适用于大样本）进行正态性假设检验。若 $p < 0.05$，则拒绝正态分布假设。对于非正态分布的特征，系统建议采用非参数统计方法或考虑数据变换（如对数变换、Box-Cox 变换）。
-
-\subsubsection{质量评分}
-
-系统综合缺失率、异常值比例和重复数据比例，计算 0--100 分的数据质量评分：
-
-\begin{equation}
-    \text{Quality Score} = 100 - \alpha \cdot \text{Missing\%} - \beta \cdot \text{Outlier\%} - \gamma \cdot \text{Duplicate\%}
-\end{equation}
-
-\noindent 其中 $\alpha$、$\beta$、$\gamma$ 为惩罚系数。该评分为数据预处理的优先级决策提供量化依据。
+系统综合上述指标计算0--100分的数据质量评分，为预处理优先级提供依据。
 
 \subsection{EDA 对特征工程的指导意义}
 
-上述探索性分析为特征工程提供了以下指导：
-
+探索性分析为特征工程提供了以下指导：
 \begin{enumerate}
-    \item \textbf{时间特征提取}：日周期和周周期的存在，证明了 \texttt{Hour} 和 \texttt{DayOfWeek} 作为特征的合理性；
-    \item \textbf{温度特征纳入}：负载与温度的显著相关性，支持将 \texttt{Temperature} 作为核心预测特征；
-    \item \textbf{模型选择}：非线性关系的存在，为选择随机森林等非线性模型提供了依据；
-    \item \textbf{数据清洗策略}：异常值和缺失值的分布特征，指导了预处理阶段的清洗规则制定。
+    \item 日周期和周周期的存在，证明了\texttt{Hour}和\texttt{DayOfWeek}作为特征的合理性；
+    \item 负载与温度的显著相关性，支持将\texttt{Temperature}作为核心预测特征；
+    \item 非线性关系的存在，为选择随机森林等非线性模型提供了依据。
 \end{enumerate}
 
 \section{数据预处理与管道构建}

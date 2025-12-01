@@ -50,56 +50,22 @@
 
 \subsection{模型选择：随机森林回归}
 
-\subsubsection{算法原理}
-
-随机森林（Random Forest）是一种基于 Bagging（Bootstrap Aggregating）的集成学习方法\cite{breiman2001random}。其核心思想是构建多棵相互独立的决策树，并通过投票或平均的方式整合各树的预测结果，从而降低方差、提升泛化能力。
-
-对于回归任务，随机森林的预测输出为所有决策树预测值的算术平均：
-
-\begin{equation}
-    \hat{y} = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{X})
-    \label{eq:rf_ensemble}
-\end{equation}
-
-\noindent 其中 $B$ 为决策树数量，$T_b(\mathbf{X})$ 为第 $b$ 棵决策树的预测值。
-
-随机森林的"随机性"体现在两个层面：
-\begin{enumerate}
-    \item \textbf{样本随机}：每棵树使用原始训练集的 Bootstrap 采样子集（有放回抽样，约 63.2\% 的样本被选中）；
-    \item \textbf{特征随机}：每次节点分裂时，仅从随机选取的特征子集中选择最优分裂特征（而非全部特征）。
-\end{enumerate}
-
-这种双重随机机制有效降低了树与树之间的相关性，使集成后的模型具有更低的泛化误差。
-
 \subsubsection{选择理由}
 
-本项目选择随机森林作为负载预测模型，基于以下考量：
+本项目选择随机森林（Random Forest）作为负载预测模型，基于以下考量：
 
 \begin{enumerate}
-    \item \textbf{非线性建模能力}：第二章的 EDA 结果表明，温度与负载的关系并非严格线性（Spearman 系数略高于 Pearson 系数）。随机森林通过决策树的层级分裂结构，天然具备捕捉非线性关系的能力，无需人工设计交互特征或多项式特征。
-
-    \item \textbf{对异常值的鲁棒性}：相比线性回归对极端值敏感（会显著影响回归系数），随机森林基于分裂规则进行预测，单个异常样本对整体模型的影响有限。
-
-    \item \textbf{无需特征缩放}：决策树的分裂判据（如基尼不纯度、信息增益）仅依赖特征值的相对排序，而非绝对数值。因此，Hour（0--23）与 Temperature（10--40）等量纲不同的特征可直接输入模型，无需归一化或标准化预处理。
-
-    \item \textbf{可解释性}：随机森林提供特征重要性（Feature Importance）指标，便于理解各特征对预测结果的贡献程度，支持后续的特征选择与模型调优。
+    \item \textbf{非线性建模}：第二章EDA表明温度与负载存在非线性关系，随机森林通过决策树的层级分裂天然捕捉此特性；
+    \item \textbf{对异常值鲁棒}：基于Bagging集成，单个异常样本影响有限；
+    \item \textbf{无需特征缩放}：Hour（0--23）与Temperature（10--40）等不同量纲特征可直接输入；
+    \item \textbf{可解释性}：提供特征重要性指标，便于理解各特征对预测的贡献。
 \end{enumerate}
 
-\subsubsection{实现细节}
+\subsubsection{模型配置}
 
-本项目使用 Scikit-learn 库\cite{sklearn2023}的 \texttt{RandomForestRegressor} 类实现随机森林模型。关键超参数配置如下：
+使用Scikit-learn的\texttt{RandomForestRegressor}，核心超参数：\texttt{n\_estimators=100}（100棵决策树，平衡精度与效率），\texttt{random\_state=42}（保证可复现性），\texttt{n\_jobs=-1}（并行训练加速）。
 
-\begin{lstlisting}
-from sklearn.ensemble import RandomForestRegressor
-
-model = RandomForestRegressor(
-    n_estimators=100,    # 决策树数量
-    random_state=42,     # 随机种子，保证可复现性
-    n_jobs=-1            # 使用所有 CPU 核心并行训练
-)
-\end{lstlisting}
-
-其中，\texttt{n\_estimators=100} 表示集成 100 棵决策树。该参数需在模型复杂度与计算开销之间权衡：树越多，模型方差越低，但训练和推理时间相应增加。实验表明，100 棵树在本数据集上已能获得稳定的预测性能。
+实验表明，100棵树在本数据集上已能获得稳定的预测性能。模型训练、评估和持久化流程由\texttt{EnergyPredictor}类封装（详见附录A）。
 
 \subsection{模型训练流程}
 
@@ -281,205 +247,34 @@ predictions = predictor.predict_next_24h(
 
 \subsubsection{决策变量}
 
-本优化模型包含连续变量和二进制变量两类决策变量：
+模型包含连续变量（充放电功率$P_{\text{ch}}(t), P_{\text{dis}}(t)$，储能量$E(t)$）和二进制变量（状态指示$z_{\text{ch}}(t), z_{\text{dis}}(t) \in \{0,1\}$）。对于$T=24$时域，共120个决策变量（其中48个二进制）。
 
-\paragraph{连续变量}
+\subsubsection{目标函数与约束}
+
+\textbf{目标}：最小化总购电成本
+\begin{equation}
+    \min \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]
+\end{equation}
+
+\textbf{核心约束}：
 \begin{itemize}
-    \item $P_{\text{ch}}(t) \in [0, P_{\max}]$：$t$ 时刻的充电功率（kW）；
-    \item $P_{\text{dis}}(t) \in [0, P_{\max}]$：$t$ 时刻的放电功率（kW）；
-    \item $E(t) \in [0, E_{\text{cap}}]$：$t$ 时刻的电池储能量（kWh）。
+    \item 状态互斥：$z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1$（不能同时充放电）
+    \item 功率限制：$0 \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t)$（Big-M方法）
+    \item 能量守恒：$E(t) = E(t-1) + \eta P_{\text{ch}}(t) - P_{\text{dis}}(t)/\eta$
+    \item 容量边界：$0 \le E(t) \le E_{\text{cap}}$
 \end{itemize}
 
-\paragraph{二进制变量}
-
-为处理"同一时刻不能同时充电和放电"的互斥约束，引入二进制辅助变量：
-\begin{itemize}
-    \item $z_{\text{ch}}(t) \in \{0, 1\}$：指示 $t$ 时刻是否处于充电状态；
-    \item $z_{\text{dis}}(t) \in \{0, 1\}$：指示 $t$ 时刻是否处于放电状态。
-\end{itemize}
-
-二进制变量的引入使问题从线性规划（LP）升级为\textbf{混合整数规划（MIP）}，需要使用专门的 MIP 求解器进行求解。
-
-对于 $T=24$ 的时域，模型共包含 $24 \times 5 = 120$ 个决策变量，其中 48 个为二进制变量。
-
-\subsubsection{目标函数}
-
-目标函数为最小化优化时域内的总购电成本：
-
-\begin{equation}
-    \boxed{\min_{P_{\text{ch}}, P_{\text{dis}}, E, z_{\text{ch}}, z_{\text{dis}}} \quad \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]}
-    \label{eq:mip_objective}
-\end{equation}
-
-\noindent 该目标函数为决策变量的线性函数，符合 MIP 问题的标准形式。
-
-\subsubsection{约束条件}
-
-模型包含四类约束条件，分别刻画物理限制和运行逻辑。
-
-\paragraph{状态互斥约束}
-
-电池不能在同一时刻同时进行充电和放电操作。通过二进制变量约束实现：
-
-\begin{equation}
-    z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1, \quad \forall t \in \{1, 2, \ldots, T\}
-    \label{eq:mutex}
-\end{equation}
-
-\noindent \textit{物理含义}：该约束确保电池在任意时刻只能处于"充电"、"放电"或"待机"三种状态之一。
-
-\paragraph{功率限制约束（Big-M 方法）}
-
-充放电功率不仅受物理上限 $P_{\max}$ 限制，还需与状态变量联动——当状态变量为 0 时，对应功率必须为 0：
-
-\begin{align}
-    0 & \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t), \quad \forall t \label{eq:charge_limit}      \\
-    0 & \le P_{\text{dis}}(t) \le P_{\max} \cdot z_{\text{dis}}(t), \quad \forall t \label{eq:discharge_limit}
-\end{align}
-
-\noindent \textit{物理含义}：当 $z_{\text{ch}}(t) = 0$ 时，由约束~\eqref{eq:charge_limit} 可得 $P_{\text{ch}}(t) \le 0$，结合 $P_{\text{ch}}(t) \ge 0$ 的定义域，强制 $P_{\text{ch}}(t) = 0$。这是一种\textbf{Big-M 方法}的应用，通过将二进制变量与连续变量耦合，实现"开/关"逻辑的线性化建模。
-
-\paragraph{电池动态方程（能量守恒约束）}
-
-电池储能量随时间演化，遵循能量守恒定律。考虑充放电效率 $\eta$ 的影响：
-
-\begin{equation}
-    E(t) = E(t-1) + \eta \cdot P_{\text{ch}}(t) - \frac{P_{\text{dis}}(t)}{\eta}, \quad \forall t \in \{1, 2, \ldots, T\}
-    \label{eq:energy_balance}
-\end{equation}
-
-\noindent 其中初始条件为 $E(0) = \text{SOC}_0 \cdot E_{\text{cap}}$。
-
-\textit{物理含义}：
-\begin{itemize}
-    \item 充电时，电网输入功率 $P_{\text{ch}}$，但因转换损耗仅有 $\eta \cdot P_{\text{ch}}$ 能量存入电池；
-    \item 放电时，电池释放 $P_{\text{dis}}/\eta$ 的内部能量，才能向负载输出 $P_{\text{dis}}$ 的有效功率。
-\end{itemize}
-
-\paragraph{容量边界约束}
-
-电池储能量不能超过额定容量，也不能为负（完全放空）：
-
-\begin{equation}
-    0 \le E(t) \le E_{\text{cap}}, \quad \forall t \in \{1, 2, \ldots, T\}
-    \label{eq:capacity_bound}
-\end{equation}
-
-\noindent \textit{物理含义}：该约束反映电池的物理存储限制。在实际应用中，为延长电池寿命，通常会进一步收紧边界（如限制 SOC 在 10\%--90\% 之间），本模型采用简化的 0--100\% 边界。
-
-\subsubsection{约束小结}
-
-表~\ref{tab:constraints_summary} 汇总了 MIP 模型的所有约束条件及其物理意义。
-
-\begin{table}[htbp]
-    \centering
-    \caption{MIP 模型约束条件汇总}
-    \label{tab:constraints_summary}
-    \begin{tabular}{lll}
-        \toprule
-        \textbf{约束类型} & \textbf{数学表达式}                                                   & \textbf{物理意义} \\
-        \midrule
-        状态互斥          & $z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1$                     & 不能同时充放电       \\
-        充电功率限制        & $0 \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t)$     & Big-M 联动      \\
-        放电功率限制        & $0 \le P_{\text{dis}}(t) \le P_{\max} \cdot z_{\text{dis}}(t)$   & Big-M 联动      \\
-        能量守恒          & $E(t) = E(t-1) + \eta P_{\text{ch}}(t) - P_{\text{dis}}(t)/\eta$ & 电池动态方程        \\
-        容量边界          & $0 \le E(t) \le E_{\text{cap}}$                                  & 物理存储限制        \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-对于 $T=24$ 的优化时域，模型共包含 $24 \times 4 = 96$ 条约束。
+完整模型包含96条约束，详细数学推导见附录B。
 
 \subsection{求解实现}
 
-\subsubsection{求解器选择：Gurobi Optimizer}
+\subsubsection{Gurobi Optimizer}
 
-本项目选用 Gurobi Optimizer 作为 MIP 求解器\cite{gurobi2023}。Gurobi 是工业界和学术界广泛使用的商业级数学规划求解器，支持线性规划（LP）、混合整数规划（MIP）、二次规划（QP）等多种问题类型，以求解速度快、数值稳定性好著称。
+本项目选用Gurobi作为MIP求解器，理由包括：（1）高效的分支定界和割平面算法，毫秒级求解；（2）保证全局最优解；（3）原生Python接口（\texttt{gurobipy}），易于集成。
 
-选择 Gurobi 的理由包括：
-\begin{enumerate}
-    \item \textbf{求解效率}：Gurobi 采用先进的分支定界（Branch-and-Bound）和割平面（Cutting Plane）算法，能够高效求解中等规模的 MIP 问题；
-    \item \textbf{全局最优保证}：作为精确求解器，Gurobi 能够保证找到问题的全局最优解（而非局部最优），这对储能调度至关重要；
-    \item \textbf{Python 接口}：\texttt{gurobipy} 库提供原生 Python 支持，API 简洁，易于与系统其他模块集成。
-\end{enumerate}
+\texttt{EnergyOptimizer}类封装完整优化流程，核心步骤包括创建决策变量、添加约束、设置目标函数并调用\texttt{model.optimize()}求解。实现代码见附录A。
 
-\subsubsection{代码实现}
-
-\texttt{EnergyOptimizer} 类封装了完整的优化流程。核心方法 \texttt{optimize\_schedule()} 的实现逻辑如下：
-
-\paragraph{步骤 1：创建模型与决策变量}
-
-\begin{lstlisting}
-import gurobipy as gp
-from gurobipy import GRB
-
-model = gp.Model("BatteryScheduling")
-T = 24  # 优化时域
-
-# 连续变量
-P_charge = model.addVars(T, lb=0, ub=self.max_power, name="P_charge")
-P_discharge = model.addVars(T, lb=0, ub=self.max_power, name="P_discharge")
-E_stored = model.addVars(T, lb=0, ub=self.battery_capacity, name="E_stored")
-
-# 二进制变量
-Is_charge = model.addVars(T, vtype=GRB.BINARY, name="Is_charge")
-Is_discharge = model.addVars(T, vtype=GRB.BINARY, name="Is_discharge")
-\end{lstlisting}
-
-\paragraph{步骤 2：添加约束条件}
-
-\begin{lstlisting}
-for t in range(T):
-    # 状态互斥约束
-    model.addConstr(Is_charge[t] + Is_discharge[t] <= 1)
-    
-    # 功率限制约束 (Big-M)
-    model.addConstr(P_charge[t] <= self.max_power * Is_charge[t])
-    model.addConstr(P_discharge[t] <= self.max_power * Is_discharge[t])
-
-# 能量守恒约束
-initial_energy = initial_soc * self.battery_capacity
-for t in range(T):
-    if t == 0:
-        model.addConstr(E_stored[t] == initial_energy 
-            + P_charge[t] * self.efficiency 
-            - P_discharge[t] / self.efficiency)
-    else:
-        model.addConstr(E_stored[t] == E_stored[t-1] 
-            + P_charge[t] * self.efficiency 
-            - P_discharge[t] / self.efficiency)
-\end{lstlisting}
-
-\paragraph{步骤 3：设置目标函数并求解}
-
-\begin{lstlisting}
-# 目标函数：最小化总购电成本
-total_cost = gp.quicksum(
-    (load[t] + P_charge[t] - P_discharge[t]) * price[t]
-    for t in range(T)
-)
-model.setObjective(total_cost, GRB.MINIMIZE)
-
-# 求解
-model.optimize()
-\end{lstlisting}
-
-\subsubsection{求解状态检查}
-
-求解完成后，需检查求解状态以确保结果有效：
-
-\begin{lstlisting}
-if model.status == GRB.OPTIMAL:
-    # 成功获得全局最优解
-    optimal_cost = model.objVal
-    # 提取决策变量的最优值...
-elif model.status == GRB.INFEASIBLE:
-    # 约束不可行，无解
-elif model.status == GRB.UNBOUNDED:
-    # 目标函数无界
-\end{lstlisting}
-
-只有当 \texttt{model.status == GRB.OPTIMAL} 时，才能保证获得数学意义上的全局最优解。
+求解完成后需检查\texttt{model.status == GRB.OPTIMAL}以确保获得有效解。
 
 \begin{figure}[htbp]
     \centering

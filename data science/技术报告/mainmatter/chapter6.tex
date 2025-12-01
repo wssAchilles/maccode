@@ -1,3 +1,96 @@
 % !TEX root = ../main.tex
 \chapter{总结与展望}
 
+\section{项目核心贡献}
+\label{sec:summary}
+
+本项目交付了一套面向家庭储能场景的智能调度系统，实现了从数据采集到移动端展示的完整闭环。核心贡献体现在以下三个维度：
+
+\subsection{数据与算法闭环}
+
+系统构建了"数据清洗 → 预测建模 → 优化决策"的端到端（End-to-End）处理链路：
+
+\begin{itemize}
+    \item \textbf{数据工程}：完成300万条原始记录的ETL流程，输出11,486条高质量小时级样本；
+    \item \textbf{负载预测}：随机森林模型RMSE相比历史均值法基准\textbf{降低37.9\%}，验证了机器学习在时序预测任务中的有效性；
+    \item \textbf{优化调度}：MIP模型在毫秒级内生成全局最优充放电策略，自动发现"谷充峰放"套利模式。
+\end{itemize}
+
+\subsection{工程落地能力}
+
+项目突破实验室原型的局限，构建了可部署的产品系统：
+
+\begin{itemize}
+    \item \textbf{前端}：Flutter跨平台应用，实现SOC监控、预测曲线、调度策略的可视化展示；
+    \item \textbf{后端}：Flask微服务部署于Google App Engine，核心API平均响应延迟控制在300ms以内；
+    \item \textbf{数据层}：Firebase Serverless架构实现用户认证、数据持久化和模型存储；
+    \item \textbf{容器化}：Docker封装确保环境一致性，支持一键部署。
+\end{itemize}
+
+\subsection{商业价值验证}
+
+实验结果证明系统具备真实的经济价值：
+
+\begin{itemize}
+    \item \textbf{日均电费节省率12.5\%}，超过预设的10\%阈值；
+    \item 按Tesla Powerwall（13.5kWh/5kW）配置估算，年节省约19,528元，\textbf{投资回收期约3.1年}；
+    \item 敏感性分析表明，当峰谷价差$\geq$0.6元/kWh时，系统具有显著商业化前景。
+\end{itemize}
+
+\section{项目局限性}
+\label{sec:limitations}
+
+\subsection{模型理想化假设}
+
+当前优化模型将电池视为理想设备，存在以下简化：
+
+\begin{itemize}
+    \item \textbf{忽略电池老化}：未考虑循环老化（Cycle Aging）对容量的影响，可能导致长期运行成本被低估。实际上，频繁的深度充放电会加速电池衰减，平摊到每次循环的老化成本约20元，若纳入优化目标可能改变最优策略的充放电频率；
+    \item \textbf{固定效率假设}：电池效率$\eta$设为常数0.95，未考虑极端温度（$<0^\circ$C或$>40^\circ$C）下效率下降的物理特性。
+\end{itemize}
+
+\subsection{部署依赖性}
+
+系统的生产环境部署存在以下约束：
+
+\begin{itemize}
+    \item \textbf{云端依赖}：当前架构需要稳定的互联网连接，离线状态下无法工作，且用户用电数据上传云端可能引发隐私顾虑；
+    \item \textbf{商业许可成本}：Gurobi求解器的商业许可费用较高，对于大规模部署场景是潜在障碍。
+\end{itemize}
+
+\section{未来改进方向}
+\label{sec:future_work}
+
+针对上述局限性，提出以下改进路径：
+
+\subsection{边缘计算部署（解决云端依赖）}
+
+将推理模型和优化求解迁移至家庭本地设备（如树莓派、Jetson Nano），实现离线自主决策：
+
+\begin{itemize}
+    \item 通过模型量化（Quantization）和剪枝（Pruning）压缩随机森林模型至可在边缘设备运行；
+    \item 研究开源求解器（COIN-OR、Google OR-Tools）替代Gurobi，消除商业许可依赖；
+    \item 形成"云边协同"架构：边缘设备负责实时决策，云端负责模型训练和长期数据分析。
+\end{itemize}
+
+\subsection{光储一体化（提升系统价值）}
+
+当前系统仅考虑"负载+储能+电网"的三元结构，未来可扩展为光伏储能一体化系统：
+
+\begin{itemize}
+    \item 集成光伏发电预测模块，构建"光伏自用优先、余电存储、不足购电"的多能源协同优化策略；
+    \item 优化目标从单纯的"最小化电费"扩展为"最大化光伏自用率+最小化购电成本"的多目标问题；
+    \item 预期经济效益可从当前的12.5\%提升至20\%--30\%。
+\end{itemize}
+
+\subsection{算法演进}
+
+\begin{itemize}
+    \item \textbf{深度学习}：引入LSTM或Transformer模型处理长时序依赖，提升多日预测精度；
+    \item \textbf{强化学习}：采用DQN/PPO算法，使系统在与环境交互中自适应学习最优策略，增强对预测误差的鲁棒性。
+\end{itemize}
+
+\section{本章小结}
+
+本项目交付了一套完整的家庭储能智能调度系统，验证了"机器学习预测+数学优化调度"闭环的技术可行性和商业价值。核心指标（RMSE降低37.9\%、电费节省12.5\%）均超过预设阈值。尽管当前系统在模型物理精度和云端依赖方面存在局限，但通过边缘计算部署、光储一体化扩展和算法升级，系统有望发展为具有商业竞争力的智能家居能源管理产品。
+
