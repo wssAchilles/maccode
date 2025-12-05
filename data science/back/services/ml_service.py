@@ -21,6 +21,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+from config import Config
+
 class EnergyPredictor:
     """
     能源负载预测器
@@ -65,7 +67,7 @@ class EnergyPredictor:
     
     def _get_price(self, hour: int) -> float:
         """
-        根据小时返回峰谷电价
+        根据小时返回峰谷电价 (从配置读取)
         
         Args:
             hour: 小时 (0-23)
@@ -73,12 +75,14 @@ class EnergyPredictor:
         Returns:
             电价 (元/kWh)
         """
-        if 8 <= hour < 18:
-            return 0.6  # 平时
-        elif 18 <= hour < 22:
-            return 1.0  # 峰时
+        schedule = Config.PRICE_SCHEDULE
+        
+        if hour in schedule['peak_hours_list']:
+            return schedule['peak']
+        elif hour in schedule['normal_hours_list']:
+            return schedule['normal']
         else:
-            return 0.3  # 谷时
+            return schedule['valley']
     
     def _save_model_metadata(self, metadata: dict) -> bool:
         """

@@ -208,12 +208,17 @@ def init_scheduler():
     注意: 在 GAE 多实例环境中，每个实例都会运行调度器
     """
     # 防止在 Flask 重载时重复启动
-    if os.getenv('WERKZEUG_RUN_MAIN') == 'true' or os.getenv('GAE_ENV'):
+    # 防止在 Flask 重载时重复启动
+    # WERKZEUG_RUN_MAIN 为 true 表示这是 Werkzeug 重载器生成的子进程（实际运行服务的进程）
+    # 在 GAE 环境中，没有 Werkzeug重载器，所以直接检查是否是主程序
+    if os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('WERKZEUG_RUN_MAIN') == 'true':
         scheduler = get_scheduler()
-        scheduler.start()
+        if not scheduler.scheduler.running:
+            scheduler.start()
         return scheduler
     else:
-        logger.info("⏸️  跳过调度器启动 (Flask 重载模式)")
+        # 本地开发的主进程（监控进程），不启动调度器，防止双重启动
+        logger.info("⏸️  跳过调度器启动 (不论是 Flask 监控进程还是非运行状态)")
         return None
 
 

@@ -6,6 +6,7 @@
 """
 
 from flask import Blueprint, jsonify, request
+from config import Config
 from services.firebase_service import require_auth
 from utils.exceptions import ValidationError
 from middleware.rate_limit import rate_limit
@@ -434,13 +435,13 @@ def get_config():
                 'unit_power': 'kW'
             },
             'price_schedule': {
-                'valley': 0.3,
-                'normal': 0.6,
-                'peak': 1.0,
-                'valley_hours': '00:00-08:00, 22:00-24:00',
-                'normal_hours': '08:00-18:00',
-                'peak_hours': '18:00-22:00',
-                'currency': '元/kWh'
+                'valley': Config.PRICE_SCHEDULE['valley'],
+                'normal': Config.PRICE_SCHEDULE['normal'],
+                'peak': Config.PRICE_SCHEDULE['peak'],
+                'valley_hours': Config.PRICE_SCHEDULE['valley_desc'],
+                'normal_hours': Config.PRICE_SCHEDULE['normal_desc'],
+                'peak_hours': Config.PRICE_SCHEDULE['peak_desc'],
+                'currency': Config.PRICE_SCHEDULE['currency']
             }
         }
         

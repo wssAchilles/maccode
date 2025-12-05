@@ -27,6 +27,20 @@ class Config:
     
     # Cloud Storage 配置
     STORAGE_BUCKET_NAME = os.getenv('STORAGE_BUCKET_NAME', 'data-science-44398.firebasestorage.app')
+
+    # 电价配置 (单一事实来源)
+    PRICE_SCHEDULE = {
+        'valley': 0.3,
+        'normal': 0.6,
+        'peak': 1.0,
+        'valley_hours_list': [0, 1, 2, 3, 4, 5, 6, 7, 22, 23],
+        'normal_hours_list': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        'peak_hours_list': [18, 19, 20, 21],
+        'valley_desc': '00:00-08:00, 22:00-24:00',
+        'normal_desc': '08:00-18:00',
+        'peak_desc': '18:00-22:00',
+        'currency': '元/kWh'
+    }
     
     # CORS 配置 (生产级别 - 严格限制)
     CORS_ORIGINS = [

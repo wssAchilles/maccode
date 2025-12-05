@@ -14,6 +14,13 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+# 确保能导入 config (如果直接运行脚本)
+import sys
+if str(Path(__file__).parent.parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import Config
+
 
 class EnergyDataProcessor:
     """
@@ -184,24 +191,25 @@ class EnergyDataProcessor:
         print("💰 正在添加电价特征...")
         
         def get_price(hour: int) -> float:
-            """根据小时返回电价"""
-            if 0 <= hour < 8:
-                return 0.3  # 谷时
-            elif 8 <= hour < 18:
-                return 0.6  # 平时
-            elif 18 <= hour < 22:
-                return 1.0  # 峰时
-            else:  # 22 <= hour < 24
-                return 0.3  # 谷时
+            """根据小时返回电价 (从配置读取)"""
+            schedule = Config.PRICE_SCHEDULE
+            
+            if hour in schedule['peak_hours_list']:
+                return schedule['peak']
+            elif hour in schedule['normal_hours_list']:
+                return schedule['normal']
+            else:
+                return schedule['valley']
         
         # 提取小时并映射电价
         df['Hour'] = df['Date'].dt.hour
         df['Price'] = df['Hour'].apply(get_price)
         
+        schedule = Config.PRICE_SCHEDULE
         print(f"   ✓ 已添加 Price 列")
-        print(f"   - 谷时 (00:00-08:00, 22:00-24:00): 0.3 元/kWh")
-        print(f"   - 平时 (08:00-18:00): 0.6 元/kWh")
-        print(f"   - 峰时 (18:00-22:00): 1.0 元/kWh")
+        print(f"   - 谷时 ({schedule['valley_desc']}): {schedule['valley']} {schedule['currency']}")
+        print(f"   - 平时 ({schedule['normal_desc']}): {schedule['normal']} {schedule['currency']}")
+        print(f"   - 峰时 ({schedule['peak_desc']}): {schedule['peak']} {schedule['currency']}")
         
         return df
     
