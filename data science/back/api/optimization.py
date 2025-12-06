@@ -47,6 +47,36 @@ def _load_service_class(module_name: str, class_name: str):
 EnergyPredictor = _load_service_class('ml_service', 'EnergyPredictor')
 EnergyOptimizer = _load_service_class('optimization_service', 'EnergyOptimizer')
 
+
+def _generate_importance_interpretation(importance: dict) -> str:
+    """
+    生成特征重要性的人类可读解释
+    
+    Args:
+        importance: 特征名到重要性分数的映射字典
+        
+    Returns:
+        解释文字
+    """
+    if not importance:
+        return "特征重要性数据不可用"
+    
+    # 特征中文名称映射
+    feature_names = {
+        'Hour': '小时',
+        'DayOfWeek': '星期',
+        'Temperature': '温度',
+        'Price': '电价'
+    }
+    
+    sorted_items = sorted(importance.items(), key=lambda x: x[1], reverse=True)
+    top_feature, top_score = sorted_items[0]
+    top_name = feature_names.get(top_feature, top_feature)
+    
+    return f"{top_name}是影响负载预测的最重要因素 ({top_score*100:.1f}%)，" \
+           f"表明每日用电量与{top_name}变化高度相关"
+
+
 optimization_bp = Blueprint('optimization', __name__, url_prefix='/api/optimization')
 
 
@@ -359,12 +389,32 @@ def run_optimization():
                 'max_power': battery_power,
                 'efficiency': battery_efficiency,
                 'initial_soc': initial_soc
-            },
-            'model_info': model_metadata if model_metadata else {
-                'model_type': 'Random Forest Regressor',
-                'status': 'unknown',
-                'data_source': 'CAISO Real-Time Stream'
             }
+        }
+        
+        # 安全获取模型可解释性数据（避免 SHAP 错误影响整个响应）
+        try:
+            feature_importance = predictor.get_feature_importance()
+            response['model_explainability'] = {
+                'feature_importance': feature_importance,
+                'feature_descriptions': {
+                    'Hour': '小时 (0-23)',
+                    'DayOfWeek': '星期几 (0=周一, 6=周日)',
+                    'Temperature': '温度 (°C)',
+                    'Price': '电价 (元/kWh)'
+                },
+                'interpretation': _generate_importance_interpretation(feature_importance)
+            }
+            logger.info(f"[{uid}] model_explainability 获取成功")
+        except Exception as e:
+            logger.warning(f"[{uid}] 获取 model_explainability 失败: {str(e)}")
+            # 不添加 model_explainability 字段，前端会处理 null
+        
+        # 添加模型信息
+        response['model_info'] = model_metadata if model_metadata else {
+            'model_type': 'Random Forest Regressor',
+            'status': 'unknown',
+            'data_source': 'CAISO Real-Time Stream'
         }
         
         logger.info(f"[{uid}] 优化请求完成: 节省 {summary['savings']:.2f} 元 "

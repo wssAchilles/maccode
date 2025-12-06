@@ -255,7 +255,12 @@ data-science/
 │   │
 │   ├── 📂 tests/                     # 测试文件
 │   │   ├── conftest.py               # pytest 配置
-│   │   └── test_auth.py              # 认证测试
+│   │   ├── test_auth.py              # 认证 API 测试
+│   │   ├── api/                      # API 层测试目录
+│   │   └── services/                 # 服务层测试目录
+│   │       ├── test_optimization_service.py  # 优化服务测试
+│   │       ├── test_ml_service.py    # ML 服务测试
+│   │       └── ...                   # 其他服务测试
 │   │
 │   ├── main.py                       # Flask 应用入口
 │   ├── config.py                     # 配置管理
@@ -319,7 +324,9 @@ data-science/
 │   ├── deploy_backend.sh             # 后端部署脚本
 │   ├── deploy_frontend.sh            # 前端部署脚本
 │   ├── setup_gcp.sh                  # GCP 初始化脚本
-│   └── sync_data.py                  # 数据同步脚本
+│   ├── sync_data.py                  # 数据同步脚本
+│   ├── test_api.py                   # API 端到端测试脚本
+│   └── test_optimization_direct.py   # 优化流程直接测试
 │
 ├── 📂 notebooks/                     # Jupyter 笔记本 (数据探索)
 ├── 📂 reports/                       # 分析报告
@@ -821,30 +828,67 @@ class AppConstants {
 
 ## 🧪 测试
 
+### 环境准备
+
+运行测试前需设置 GCP 凭证环境变量（用于需要 Firebase 连接的集成测试）:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/路径/到/service-account-key.json"
+```
+
 ### 后端测试
 
 ```bash
 cd back
 
 # 运行所有测试
-pytest
+pytest tests/ -v
 
-# 运行并显示覆盖率
-pytest --cov=. --cov-report=html
+# 只运行不需要 GCP 凭证的测试 (推荐快速验证)
+pytest tests/test_auth.py tests/services/test_optimization_service.py -v
 
-# 运行特定测试
-pytest tests/test_auth.py -v
+# 运行并显示覆盖率报告
+pytest tests/ --cov=services --cov-report=term-missing
+
+# 运行特定标记的测试
+pytest tests/ -m unit -v        # 只运行单元测试
+pytest tests/ -m "not slow" -v  # 跳过慢速测试
 ```
 
 ### 测试结构
 
 ```
 back/tests/
-├── conftest.py           # pytest 配置和 fixtures
-├── test_auth.py          # 认证测试
-├── test_analysis.py      # 分析服务测试
-├── test_optimization.py  # 优化服务测试
-└── test_api.py           # API 集成测试
+├── conftest.py                       # pytest 配置和公共 fixtures
+├── test_auth.py                      # 认证 API 测试 (5 用例)
+├── api/                              # API 层测试
+│   └── __init__.py
+└── services/                         # 服务层测试
+    ├── __init__.py
+    ├── test_optimization_service.py  # 优化服务测试 (10 用例)
+    ├── test_ml_service.py            # ML 服务测试 (11 用例)
+    ├── test_data_processor.py        # 数据处理器测试
+    └── test_analysis_enhanced.py     # 分析服务测试
+```
+
+### 测试标记
+
+| 标记 | 说明 |
+|------|------|
+| `@pytest.mark.unit` | 单元测试（无外部依赖） |
+| `@pytest.mark.integration` | 集成测试（需要 GCP 凭证） |
+| `@pytest.mark.slow` | 慢速测试（如模型训练） |
+
+### 手动测试脚本
+
+以下脚本位于 `scripts/` 目录，用于手动端到端测试:
+
+```bash
+# API 端到端测试 (需要服务器运行)
+python scripts/test_api.py
+
+# 优化流程直接测试 (需要 Gurobi)
+python scripts/test_optimization_direct.py
 ```
 
 ### 前端测试

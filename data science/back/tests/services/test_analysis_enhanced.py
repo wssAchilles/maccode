@@ -4,9 +4,15 @@ Phase 1: 数据质量评估
 Phase 2: 统计分析与相关性
 """
 
+import sys
+from pathlib import Path
+
+# 添加项目根目录到路径
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import pandas as pd
 import numpy as np
-from analysis_service import AnalysisService
+from services.analysis_service import AnalysisService
 
 
 def test_quality_check():

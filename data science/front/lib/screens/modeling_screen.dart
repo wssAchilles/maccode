@@ -9,6 +9,7 @@ import '../models/optimization_result.dart';
 import '../widgets/power_chart_widget.dart';
 import '../widgets/soc_chart_widget.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../widgets/analysis/feature_importance_chart.dart';
 import '../utils/responsive_helper.dart';
 import '../config/constants.dart';
 
@@ -205,6 +206,42 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 
                 // 7. 策略详情
                 _buildStrategyDetails(_result!.optimization!),
+                
+                // 8. 模型可解释性 - 特征重要性图表
+                if (_result?.modelExplainability != null) ...[
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    initiallyExpanded: false,
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    collapsedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    backgroundColor: Colors.white,
+                    collapsedBackgroundColor: Colors.white,
+                    leading: Icon(Icons.psychology, color: Colors.purple[600]),
+                    title: const Text(
+                      '🔍 AI 预测解释',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    subtitle: Text(
+                      '了解哪些因素影响了负载预测',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: FeatureImportanceChart(
+                          featureImportance: _result!.modelExplainability!.featureImportance,
+                          featureDescriptions: _result!.modelExplainability!.featureDescriptions,
+                          interpretation: _result!.modelExplainability!.interpretation,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
               
               // 空状态提示

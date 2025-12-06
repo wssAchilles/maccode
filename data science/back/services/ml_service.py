@@ -11,7 +11,7 @@ import joblib
 import os
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -580,6 +580,125 @@ class EnergyPredictor:
         
         prediction = self.model.predict(X)[0]
         return float(prediction)
+    
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        获取模型的全局特征重要性
+        
+        使用随机森林内置的 feature_importances_ 属性，
+        反映各特征在整体预测中的平均贡献
+        
+        Returns:
+            特征名到重要性分数的映射字典
+            
+        Raises:
+            ValueError: 模型未加载
+        """
+        if self.model is None:
+            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        
+        importance_dict = dict(zip(
+            self.feature_columns,
+            [float(v) for v in self.model.feature_importances_]
+        ))
+        
+        # 按重要性降序排序
+        sorted_importance = dict(sorted(
+            importance_dict.items(),
+            key=lambda x: x[1],
+            reverse=True
+        ))
+        
+        return sorted_importance
+    
+    def explain_prediction(
+        self,
+        hour: int,
+        day_of_week: int,
+        temperature: float,
+        price: float = None
+    ) -> Dict[str, Any]:
+        """
+        使用 SHAP 解释单次预测
+        
+        为给定输入提供详细的特征贡献分析，
+        展示每个特征如何影响最终预测值
+        
+        Args:
+            hour: 小时 (0-23)
+            day_of_week: 星期几 (0-6)
+            temperature: 温度 (°C)
+            price: 电价，如果为None则自动根据hour计算
+            
+        Returns:
+            包含以下字段的字典:
+            - base_value: 模型基准预测值（训练数据的平均值）
+            - predicted_value: 实际预测值
+            - feature_contributions: 各特征的贡献值字典
+            - interpretation: 人类可读的解释文字
+        """
+        try:
+            import shap
+        except ImportError:
+            # 如果 SHAP 未安装，返回简化结果
+            return {
+                'error': 'SHAP 库未安装，无法提供详细解释',
+                'feature_importance': self.get_feature_importance()
+            }
+        
+        if self.model is None:
+            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        
+        if price is None:
+            price = self._get_price(hour)
+        
+        # 构建输入数据
+        X = pd.DataFrame([{
+            'Hour': hour,
+            'DayOfWeek': day_of_week,
+            'Temperature': temperature,
+            'Price': price
+        }])
+        
+        # 创建 TreeExplainer (对随机森林等树模型优化)
+        explainer = shap.TreeExplainer(self.model)
+        shap_values = explainer.shap_values(X)
+        
+        # 获取预测值
+        predicted_value = float(self.model.predict(X)[0])
+        base_value = float(explainer.expected_value)
+        
+        # 构建特征贡献字典
+        feature_contributions = {}
+        for name, value in zip(self.feature_columns, shap_values[0]):
+            feature_contributions[name] = float(value)
+        
+        # 按贡献绝对值排序
+        sorted_contributions = dict(sorted(
+            feature_contributions.items(),
+            key=lambda x: abs(x[1]),
+            reverse=True
+        ))
+        
+        # 生成解释文字
+        top_feature = list(sorted_contributions.keys())[0]
+        top_contribution = sorted_contributions[top_feature]
+        direction = "增加" if top_contribution > 0 else "减少"
+        
+        interpretation = f"在此次预测中，{top_feature} 对结果的影响最大，使预测值{direction}了 {abs(top_contribution):.2f} kW"
+        
+        return {
+            'base_value': base_value,
+            'predicted_value': predicted_value,
+            'feature_contributions': sorted_contributions,
+            'interpretation': interpretation,
+            'input_features': {
+                'Hour': hour,
+                'DayOfWeek': day_of_week,
+                'Temperature': temperature,
+                'Price': price
+            }
+        }
 
 
 def main():

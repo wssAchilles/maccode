@@ -9,6 +9,7 @@ class OptimizationResponse {
   final PredictionInfo? prediction;
   final BatteryConfig? batteryConfig;
   final ModelInfo? modelInfo;
+  final ModelExplainability? modelExplainability;
   final String? error;
   final String? message;
 
@@ -18,6 +19,7 @@ class OptimizationResponse {
     this.prediction,
     this.batteryConfig,
     this.modelInfo,
+    this.modelExplainability,
     this.error,
     this.message,
   });
@@ -38,6 +40,9 @@ class OptimizationResponse {
         modelInfo: json['model_info'] != null
             ? ModelInfo.fromJson(json['model_info'] as Map<String, dynamic>)
             : null,
+        modelExplainability: json['model_explainability'] != null
+            ? ModelExplainability.fromJson(json['model_explainability'] as Map<String, dynamic>)
+            : null,
         error: json['error'] as String?,
         message: json['message'] as String?,
       );
@@ -53,6 +58,7 @@ class OptimizationResponse {
       if (prediction != null) 'prediction': prediction!.toJson(),
       if (batteryConfig != null) 'battery_config': batteryConfig!.toJson(),
       if (modelInfo != null) 'model_info': modelInfo!.toJson(),
+      if (modelExplainability != null) 'model_explainability': modelExplainability!.toJson(),
       if (error != null) 'error': error,
       if (message != null) 'message': message,
     };
@@ -505,3 +511,72 @@ class ModelInfo {
     return '${rmse.toStringAsFixed(2)} kW';
   }
 }
+
+/// 模型可解释性数据
+class ModelExplainability {
+  final Map<String, double> featureImportance;
+  final Map<String, String>? featureDescriptions;
+  final String? interpretation;
+
+  ModelExplainability({
+    required this.featureImportance,
+    this.featureDescriptions,
+    this.interpretation,
+  });
+
+  factory ModelExplainability.fromJson(Map<String, dynamic> json) {
+    try {
+      // 解析 feature_importance 为 Map<String, double>
+      final rawImportance = json['feature_importance'] as Map<String, dynamic>? ?? {};
+      final importance = <String, double>{};
+      rawImportance.forEach((key, value) {
+        if (value is num) {
+          importance[key] = value.toDouble();
+        }
+      });
+
+      // 解析 feature_descriptions
+      final rawDescriptions = json['feature_descriptions'] as Map<String, dynamic>?;
+      Map<String, String>? descriptions;
+      if (rawDescriptions != null) {
+        descriptions = rawDescriptions.map((k, v) => MapEntry(k, v.toString()));
+      }
+
+      return ModelExplainability(
+        featureImportance: importance,
+        featureDescriptions: descriptions,
+        interpretation: json['interpretation'] as String?,
+      );
+    } catch (e) {
+      throw FormatException('Failed to parse ModelExplainability: $e');
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'feature_importance': featureImportance,
+      if (featureDescriptions != null) 'feature_descriptions': featureDescriptions,
+      if (interpretation != null) 'interpretation': interpretation,
+    };
+  }
+
+  /// 获取按重要性排序的特征列表
+  List<MapEntry<String, double>> get sortedFeatures {
+    final entries = featureImportance.entries.toList();
+    entries.sort((a, b) => b.value.compareTo(a.value));
+    return entries;
+  }
+
+  /// 获取最重要的特征
+  String? get topFeature {
+    if (featureImportance.isEmpty) return null;
+    return sortedFeatures.first.key;
+  }
+
+  /// 获取最重要特征的重要性百分比
+  String get topFeaturePercent {
+    if (featureImportance.isEmpty) return 'N/A';
+    return '${(sortedFeatures.first.value * 100).toStringAsFixed(1)}%';
+  }
+}
+
