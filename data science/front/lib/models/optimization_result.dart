@@ -420,7 +420,7 @@ class ModelInfo {
   final String modelType;
   final String? modelVersion;
   final String? trainedAt;
-  final Map<String, dynamic>? metrics;
+  final ModelMetrics? metrics;
   final int? trainingSamples;
   final String? dataSource;
   final String? status;
@@ -428,13 +428,13 @@ class ModelInfo {
 
   ModelInfo({
     required this.modelType,
+    required this.status,
+    this.message,
     this.modelVersion,
     this.trainedAt,
+    this.dataSource,
     this.metrics,
     this.trainingSamples,
-    this.dataSource,
-    this.status,
-    this.message,
   });
 
   factory ModelInfo.fromJson(Map<String, dynamic> json) {
@@ -443,11 +443,11 @@ class ModelInfo {
         modelType: json['model_type'] as String? ?? 'Unknown',
         modelVersion: json['model_version'] as String?,
         trainedAt: json['trained_at'] as String?,
-        metrics: json['metrics'] as Map<String, dynamic>?,
-        trainingSamples: json['training_samples'] as int?,
         dataSource: json['data_source'] as String?,
-        status: json['status'] as String?,
+        status: json['status'] as String? ?? 'unknown',
         message: json['message'] as String?,
+        trainingSamples: json['training_samples'] as int?,
+        metrics: json['metrics'] != null ? ModelMetrics.fromJson(json['metrics']) : null,
       );
     } catch (e) {
       throw FormatException('Failed to parse ModelInfo: $e');
@@ -459,39 +459,20 @@ class ModelInfo {
       'model_type': modelType,
       if (modelVersion != null) 'model_version': modelVersion,
       if (trainedAt != null) 'trained_at': trainedAt,
-      if (metrics != null) 'metrics': metrics,
+      if (metrics != null) 'metrics': metrics?.toJson(),
       if (trainingSamples != null) 'training_samples': trainingSamples,
       if (dataSource != null) 'data_source': dataSource,
-      if (status != null) 'status': status,
+      'status': status,
       if (message != null) 'message': message,
     };
   }
 
-  /// 是否有效
-  bool get isValid => status == 'active';
-
-  /// 测试集MAE
-  double? get testMae {
-    if (metrics == null) return null;
-    final mae = metrics!['test_mae'];
-    if (mae is num) return mae.toDouble();
-    return null;
-  }
-
-  /// 测试集RMSE
-  double? get testRmse {
-    if (metrics == null) return null;
-    final rmse = metrics!['test_rmse'];
-    if (rmse is num) return rmse.toDouble();
-    return null;
-  }
-
   /// 格式化训练时间
   String get trainedAtFormatted {
-    if (trainedAt == null) return '未知';
+    if (trainedAt == null) return 'N/A';
     try {
-      final dt = DateTime.parse(trainedAt!);
-      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      final date = DateTime.parse(trainedAt!);
+      return '${date.month}月${date.day}日 ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return trainedAt!;
     }
@@ -499,18 +480,64 @@ class ModelInfo {
 
   /// 格式化MAE
   String get maeFormatted {
-    final mae = testMae;
-    if (mae == null) return 'N/A';
-    return '${mae.toStringAsFixed(2)} kW';
+    if (metrics == null || metrics?.mae == null) return 'N/A';
+    return '${metrics!.mae!.toStringAsFixed(2)} kW';
   }
 
-  /// 格式化RMSE
-  String get rmseFormatted {
-    final rmse = testRmse;
-    if (rmse == null) return 'N/A';
-    return '${rmse.toStringAsFixed(2)} kW';
-  }
+  bool get isValid => status == 'active';
 }
+
+/// 模型指标
+class ModelMetrics {
+  final double? trainMae;
+  final double? trainRmse;
+  final double? testMae;
+  final double? testRmse;
+  final double? mape;
+  final double? r2Score;
+  final int? sampleCount;
+  final String? lastDataPoint;
+
+  ModelMetrics({
+    this.trainMae,
+    this.trainRmse,
+    this.testMae,
+    this.testRmse,
+    this.mape,
+    this.r2Score,
+    this.sampleCount,
+    this.lastDataPoint,
+  });
+
+  factory ModelMetrics.fromJson(Map<String, dynamic> json) {
+    return ModelMetrics(
+      trainMae: (json['train_mae'] as num?)?.toDouble(),
+      trainRmse: (json['train_rmse'] as num?)?.toDouble(),
+      testMae: (json['test_mae'] as num?)?.toDouble(),
+      testRmse: (json['test_rmse'] as num?)?.toDouble(),
+      mape: (json['mape'] as num?)?.toDouble(),
+      r2Score: (json['r2_score'] as num?)?.toDouble(),
+      sampleCount: json['sample_count'] as int?,
+      lastDataPoint: json['last_data_point'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (trainMae != null) 'train_mae': trainMae,
+      if (trainRmse != null) 'train_rmse': trainRmse,
+      if (testMae != null) 'test_mae': testMae,
+      if (testRmse != null) 'test_rmse': testRmse,
+      if (mape != null) 'mape': mape,
+      if (r2Score != null) 'r2_score': r2Score,
+      if (sampleCount != null) 'sample_count': sampleCount,
+      if (lastDataPoint != null) 'last_data_point': lastDataPoint,
+    };
+  }
+
+  double? get mae => testMae;
+}
+
 
 /// 模型可解释性数据
 class ModelExplainability {

@@ -410,12 +410,23 @@ def run_optimization():
             logger.warning(f"[{uid}] 获取 model_explainability 失败: {str(e)}")
             # 不添加 model_explainability 字段，前端会处理 null
         
-        # 添加模型信息
-        response['model_info'] = model_metadata if model_metadata else {
+        
+        # 添加模型信息和实时监控指标
+        model_info = model_metadata if model_metadata else {
             'model_type': 'Random Forest Regressor',
             'status': 'unknown',
             'data_source': 'CAISO Real-Time Stream'
         }
+        
+        # 获取在线模型性能评估 (MLOps)
+        try:
+            metrics = predictor.evaluate_recent_performance(hours=24)
+            if metrics.get('status') == 'success':
+                model_info['metrics'] = metrics
+        except Exception as e:
+            logger.warning(f"获取模型性能指标失败: {e}")
+            
+        response['model_info'] = model_info
         
         logger.info(f"[{uid}] 优化请求完成: 节省 {summary['savings']:.2f} 元 "
                    f"({summary['savings_percent']:.1f}%)")

@@ -15,7 +15,7 @@ from typing import List, Dict, Optional, Union, Any
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -322,6 +322,15 @@ class EnergyPredictor:
                 # Step B: 保存模型到临时文件
                 joblib.dump(self.model, temp_model_path)
                 print(f"   ✓ 模型已保存到临时文件")
+                
+                # Step B-2: (新增) 保存模型到本地持久化路径 (用于开发环境调试)
+                try:
+                    # 确保存储目录存在
+                    self.local_model_path.parent.mkdir(parents=True, exist_ok=True)
+                    joblib.dump(self.model, self.local_model_path)
+                    print(f"   ✓ 模型已备份到本地路径: {self.local_model_path}")
+                except Exception as local_e:
+                    print(f"   ⚠️  无法保存本地模型副本: {str(local_e)}")
                 
                 # Step C: 上传到 Firebase Storage
                 with open(temp_model_path, 'rb') as f:
@@ -639,68 +648,149 @@ class EnergyPredictor:
         """
         try:
             import shap
-        except ImportError:
-            # 如果 SHAP 未安装，返回简化结果
+            
+            # 检查模型是否已加载
+            if self.model is None:
+                raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+
+            # 使用 TreeExplainer 解释随机森林模型
+            # 只有当 explainer 尚未初始化时才创建，避免重复计算
+            if not hasattr(self, '_shap_explainer') or self._shap_explainer is None:
+                self._shap_explainer = shap.TreeExplainer(self.model)
+                
+            # 计算 SHAP 值
+            shap_values = self._shap_explainer.shap_values(features)
+            
+            # 获取期望值 (base value)
+            # 对于回归模型，expected_value 应该是一个标量
+            base_value = self._shap_explainer.expected_value
+            if isinstance(base_value, np.ndarray):
+                base_value = base_value[0]
+                
+            # 获取当前预测的 SHAP 值
+            # shap_values 对于回归可能是 (n_samples, n_features)
+            # 我们只需要第一个样本
+            current_shap_values = shap_values[0]
+            
+            # 预测值 = base_value + sum(shap_values)
+            predicted_value = base_value + np.sum(current_shap_values)
+            
+            # 构建特征贡献列表
+            contributions = []
+            for i, col in enumerate(self.feature_columns):
+                contributions.append({
+                    'feature': col,
+                    'value': float(features.iloc[0][col]),
+                    'contribution': float(current_shap_values[i])
+                })
+            
+            # 按贡献绝对值排序
+            contributions.sort(key=lambda x: abs(x['contribution']), reverse=True)
+            
+            # 生成人类可读的解释文字
+            top_feature = contributions[0]
+            direction = "增加" if top_feature['contribution'] > 0 else "减少"
+            interpretation = (
+                f"{top_feature['feature']} 是影响最大的因素，"
+                f"它使得预测负载{direction}了 {abs(top_feature['contribution']):.1f} kW。"
+            )
+
             return {
-                'error': 'SHAP 库未安装，无法提供详细解释',
-                'feature_importance': self.get_feature_importance()
+                'base_value': float(base_value),
+                'predicted_value': float(predicted_value),
+                'feature_contributions': contributions,
+                'interpretation': interpretation
             }
+            
+        except Exception as e:
+            print(f"解释预测失败: {str(e)}")
+            return None
+
+    def evaluate_recent_performance(self, hours: int = 24) -> Dict[str, Union[float, str]]:
+        """
+        评估模型在最近一段时间的表现 (在线监控)
+        通过回测最近的真实数据来计算指标
         
-        if self.model is None:
-            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        Args:
+            hours: 回测的小时数 (默认 24)
+            
+        Returns:
+            包含评估指标的字典 (mape, r2, last_update_time)
+        """
+        print(f"\n🔍 开始在线模型评估 (最近 {hours} 小时)...")
         
-        if price is None:
-            price = self._get_price(hour)
-        
-        # 构建输入数据
-        X = pd.DataFrame([{
-            'Hour': hour,
-            'DayOfWeek': day_of_week,
-            'Temperature': temperature,
-            'Price': price
-        }])
-        
-        # 创建 TreeExplainer (对随机森林等树模型优化)
-        explainer = shap.TreeExplainer(self.model)
-        shap_values = explainer.shap_values(X)
-        
-        # 获取预测值
-        predicted_value = float(self.model.predict(X)[0])
-        base_value = float(explainer.expected_value)
-        
-        # 构建特征贡献字典
-        feature_contributions = {}
-        for name, value in zip(self.feature_columns, shap_values[0]):
-            feature_contributions[name] = float(value)
-        
-        # 按贡献绝对值排序
-        sorted_contributions = dict(sorted(
-            feature_contributions.items(),
-            key=lambda x: abs(x[1]),
-            reverse=True
-        ))
-        
-        # 生成解释文字
-        top_feature = list(sorted_contributions.keys())[0]
-        top_contribution = sorted_contributions[top_feature]
-        direction = "增加" if top_contribution > 0 else "减少"
-        
-        interpretation = f"在此次预测中，{top_feature} 对结果的影响最大，使预测值{direction}了 {abs(top_contribution):.2f} kW"
-        
-        return {
-            'base_value': base_value,
-            'predicted_value': predicted_value,
-            'feature_contributions': sorted_contributions,
-            'interpretation': interpretation,
-            'input_features': {
-                'Hour': hour,
-                'DayOfWeek': day_of_week,
-                'Temperature': temperature,
-                'Price': price
+        try:
+            # 1. 动态下载最新数据 (从 Firestore/Storage 持久化的 CSV)
+            from services.storage_service import StorageService
+            storage_service = StorageService()
+            
+            # 尝试下载最新的 cleaned_energy_data_all.csv
+            data_path = storage_service.download_to_temp('data/processed/cleaned_energy_data_all.csv')
+            
+            if not data_path:
+                print("   ⚠️ 无法下载数据文件，跳过评估")
+                return {'status': 'no_data'}
+                
+            # 2. 读取数据
+            df = pd.read_csv(data_path, parse_dates=['Date'])
+            
+            # 3. 基于时间截取最近 N 小时的数据 (避免数据中断导致 tail(N) 跨度过大)
+            last_time = df['Date'].max()
+            start_time = last_time - timedelta(hours=hours)
+            
+            # 筛选时间窗口内的数据
+            recent_df = df[df['Date'] > start_time].copy()
+            
+            # 检查样本量
+            # 理论上应该有 hours 个样本，允许有一点缺失 (e.g. > 50%)
+            min_samples = int(hours * 0.5) 
+            if len(recent_df) < min_samples:
+                print(f"   ⚠️ 最近 {hours} 小时内数据样本不足 ({len(recent_df)} < {min_samples})，跳过评估")
+                return {
+                    'status': 'insufficient_data',
+                    'message': f'Insufficient data in last {hours}h: found {len(recent_df)} samples'
+                }
+                
+            # 4. 准备特征和真实值
+            X_recent = recent_df[self.feature_columns]
+            y_true = recent_df[self.target_column].values
+            
+            # 5. 进行预测
+            y_pred = self.model.predict(X_recent)
+            
+            # 6. 计算指标
+            # MAPE: Mean Absolute Percentage Error
+            # 避免分母为 0
+            mask = y_true != 0
+            if np.sum(mask) == 0:
+                print("   ⚠️ 所有真实负载均为 0，无法计算 MAPE")
+                mape = 0.0
+            else:
+                mape = (np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
+            
+            # R2 Score
+            if len(y_true) < 2:
+                r2 = 0.0  # 样本太少
+            else:
+                r2 = r2_score(y_true, y_pred)
+            
+            # 7. 格式化结果
+            # 注意：mape 存储为小数形式 (0.05 = 5%)，以便与前端 percent indicator 直接兼容
+            metrics = {
+                'status': 'success',
+                'mape': round(mape / 100, 4),  # 转换为小数形式 (5.25% -> 0.0525)
+                'r2_score': round(r2, 3),  # 使用正确的 key 名称匹配前端
+                'sample_count': len(y_true),
+                'last_data_point': last_time.strftime('%Y-%m-%d %H:%M:%S')
             }
-        }
-
-
+            
+            print(f"   ✅ 评估完成: MAPE={mape:.2f}%, R2={metrics['r2_score']}")
+            return metrics
+            
+        except Exception as e:
+            print(f"   ❌ 在线评估失败: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+        
 def main():
     """
     主函数 - 测试代码
@@ -791,7 +881,7 @@ def main():
     print(f"\n模型性能:")
     print(f"   - 测试集 MAE:  {metrics['test_mae']:.2f} kW")
     print(f"   - 测试集 RMSE: {metrics['test_rmse']:.2f} kW")
-    print(f"\n模型已保存到: {predictor.model_path}")
+    print(f"\n模型已保存到: {predictor.local_model_path}")
     print(f"可以通过 load_model() 加载使用\n")
 
 

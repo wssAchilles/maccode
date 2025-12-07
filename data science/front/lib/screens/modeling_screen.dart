@@ -3,6 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/optimization_result.dart';
@@ -742,31 +744,112 @@ class _ModelingScreenState extends State<ModelingScreen> {
               
               const SizedBox(height: 20),
               
-              // 关键信息说明
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.purple[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.tips_and_updates, color: Colors.purple[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '以下策略基于随机森林模型生成，模型实时学习气候和负载规律',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.purple[900],
-                          fontWeight: FontWeight.w500,
+              // 核心指标展示
+              if (modelInfo.metrics != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      // R2 Score (圆形进度条)
+                      Expanded(
+                        child: Column(
+                          children: [
+                            CircularPercentIndicator(
+                              radius: 40.0,
+                              lineWidth: 8.0,
+                              percent: (modelInfo.metrics!.r2Score ?? 0).clamp(0.0, 1.0),
+                              center: Text(
+                                "${((modelInfo.metrics!.r2Score ?? 0) * 100).toStringAsFixed(0)}%",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple[700],
+                                ),
+                              ),
+                              progressColor: (modelInfo.metrics!.r2Score ?? 0) > 0.8 
+                                  ? Colors.green 
+                                  : Colors.orange,
+                              backgroundColor: Colors.purple[50]!,
+                              circularStrokeCap: CircularStrokeCap.round,
+                              animation: true,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "R² Score",
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      
+                      const SizedBox(width: 16),
+                      
+                      // MAPE (线性进度条)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "MAPE (误差)",
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  "${((modelInfo.metrics!.mape ?? 0) * 100).toStringAsFixed(1)}%",
+                                  style: TextStyle(
+                                    color: (modelInfo.metrics!.mape ?? 0) < 0.1 
+                                        ? Colors.green 
+                                        : Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearPercentIndicator(
+                              lineHeight: 8.0,
+                              percent: (1.0 - (modelInfo.metrics!.mape ?? 0)).clamp(0.0, 1.0),
+                              progressColor: (modelInfo.metrics!.mape ?? 0) < 0.1 
+                                  ? Colors.green 
+                                  : Colors.orange,
+                              backgroundColor: Colors.purple[50]!,
+                              barRadius: const Radius.circular(4),
+                              animation: true,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              (modelInfo.metrics!.mape ?? 0) < 0.1 ? "精度优良" : "精度一般",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("暂无详细性能指标"),
+                  ),
                 ),
-              ),
               
               const SizedBox(height: 16),
               
