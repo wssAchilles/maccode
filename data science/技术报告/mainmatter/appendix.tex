@@ -1,7 +1,67 @@
 % !TEX root = ../main.tex
 \chapter{补充内容}
 
-这是附录部分的示例文本。您可以在这里添加额外的信息、数据或代码，以补充正文内容。
+本附录补充项目实现细节、接口说明与示例代码，便于复现与审计。
 
-\chapter{代码}
-下面是一个简单的Python代码示例：
+\section{后端接口与定时任务}
+\subsection{核心 REST API}
+\begin{itemize}
+    \item \texttt{/api/optimization/run}：输入24小时负载、电价、初始SOC及电池参数（容量/功率/效率），返回优化策略、节省金额、模型特征重要性。
+    \item \texttt{/api/data/upload}：CSV 上传，触发数据质量分析（行列信息、缺失值、相关矩阵、预览）。
+    \item \texttt{/api/history/list}、\texttt{/api/history/delete}：历史记录查询与删除。
+    \item 所有接口需携带 Firebase ID Token 进行认证。
+\end{itemize}
+
+\subsection{GAE Cron 任务}
+后端提供 Cron 触发路由（需 Header \texttt{X-Appengine-Cron=true}）：
+\begin{itemize}
+    \item \texttt{/tasks/fetch-data}：定时抓取外部数据（气象、电网负载）并入库。
+    \item \texttt{/tasks/train-model}：定时触发模型训练与上传（模型与元数据存储于 Cloud Storage）。
+\end{itemize}
+
+\section{模型与存储}
+\begin{itemize}
+    \item 预测模型：随机森林回归，特征 \{Hour, DayOfWeek, Temperature, Price\}，目标 \texttt{Site\_Load}，模型文件 \texttt{models/rf\_model.joblib}。
+    \item 模型元数据：\texttt{models/model\_metadata.json}，包含训练时间、特征列表、评估指标（MAE/RMSE）。
+    \item 训练数据：默认从 Firebase Storage 下载 \\ \texttt{data/processed/cleaned\_energy\_data\_all.csv}。
+    \item 优化求解：Gurobi MIP，默认电池参数 60 kWh / 20 kW / 95\%（与报告经济场景一致）。
+\end{itemize}
+
+\section{前端关键实现}
+\begin{itemize}
+    \item 框架：Flutter（Material Design 3），三栏主导航：能源优化、数据分析、历史记录。
+    \item 认证：Firebase Authentication（邮箱/密码、Google 登录）。
+    \item 优化沙盒：可调容量/功率/初始 SOC/温度 What-if，调用 \\ \texttt{/api/optimization/run}，展示节省金额、曲线（功率/SOC）、特征重要性。
+    \item 数据分析：CSV 上传，展示行列信息、缺失值、描述统计、相关矩阵、质量得分；可选择是否保存。
+    \item 历史记录：调用 \texttt{/api/history/list}，支持删除、刷新。
+\end{itemize}
+
+\section{配置与部署}
+\begin{itemize}
+    \item 后端：Flask + Gunicorn，Docker 容器，部署于 Google App Engine Flexible；CORS 由环境变量控制。
+    \item 许可证：Gurobi 支持本地/Trial/WLS，需设置 \\ \texttt{GRB\_WLSACCESSID}、\texttt{GRB\_WLSSECRET}（如使用 WLS）。
+    \item 环境变量：包含 Firebase 项目 ID、Storage 桶名、CORS 域名、API 版本等；\texttt{.env} 仅用于本地。
+\end{itemize}
+
+\section{示例代码}
+\subsection{后端：优化调用片段}
+\begin{lstlisting}[language=Python]
+from services.optimization_service import EnergyOptimizer
+
+optimizer = EnergyOptimizer(battery_capacity=60, max_power=20, efficiency=0.95)
+result = optimizer.optimize_schedule(load_profile, price_profile, initial_soc=0.5)
+print(result['savings'])
+\end{lstlisting}
+
+\subsection{前端：调用优化 API}
+\begin{lstlisting}[language=Dart]
+final resp = await ApiService.runOptimization(
+  initialSoc: 0.5,
+  targetDate: DateTime.now().add(const Duration(days: 1)),
+  batteryCapacity: 5000, // 沙盒可调，报告场景 60 kWh
+  batteryPower: 2000,
+);
+if (resp.isSuccess) {
+  debugPrint('节省: ${resp.optimization?.summary.savingsFormatted}');
+}
+\end{lstlisting}

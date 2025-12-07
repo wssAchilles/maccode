@@ -34,8 +34,8 @@ class EnergyOptimizer:
     
     def __init__(
         self,
-        battery_capacity: float = 13.5,
-        max_power: float = 5.0,
+        battery_capacity: float = 60.0,
+        max_power: float = 20.0,
         efficiency: float = 0.95
     ):
         """

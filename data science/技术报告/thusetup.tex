@@ -37,6 +37,16 @@
 \definecolor{pyKeyword}{rgb}{0,0.5,0}
 \definecolor{pyString}{rgb}{0.6,0.1,0.1}
 
+% 定义 Dart 语言以用于前端代码示例
+\lstdefinelanguage{Dart}{
+    keywords={abstract,as,assert,async,await,break,case,catch,class,const,continue,covariant,default,deferred,do,else,enum,export,extends,extension,external,factory,false,final,finally,for,Function,get,hide,if,implements,import,in,interface,is,late,library,mixin,new,null,on,operator,part,required,rethrow,return,set,show,static,super,switch,sync,this,throw,true,try,typedef,var,void,while,with,yield},
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    morestring=[s]{r"}{"}
+}
+
 % 定义Python代码样式（附录用，带行号）
 \lstdefinestyle{appendixpy}{
     language=Python,

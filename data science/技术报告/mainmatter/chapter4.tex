@@ -89,7 +89,7 @@
     \item \textbf{RESTful API 服务}：对外暴露统一的 HTTP 接口，支持前端数据查询、预测请求和优化任务提交；
     \item \textbf{负载预测推理}：加载训练好的随机森林模型（\texttt{rf\_model.joblib}），根据实时特征进行负载预测；
     \item \textbf{优化决策求解}：调用 Gurobi 求解器执行混合整数规划，生成最优充放电策略；
-    \item \textbf{定时任务调度}：通过 APScheduler 实现外部数据（气象、电网负载）的定时采集与同步。
+    \item \textbf{定时任务调度}：提供 GAE Cron 触发的 \texttt{/tasks/fetch-data} 与 \texttt{/tasks/train-model} 路由，内部调用调度器抓取外部数据、启动模型训练（Cron Header 校验保障安全）；本地开发可跳过 Header 检查。
 \end{itemize}
 
 Google App Engine 提供了完全托管的 PaaS (Platform as a Service) 环境，支持自动扩缩容、负载均衡和版本管理，使开发者无需关注底层基础设施运维。
@@ -100,7 +100,7 @@ Google App Engine 提供了完全托管的 PaaS (Platform as a Service) 环境�
 
 \begin{itemize}
     \item \textbf{Cloud Firestore}：NoSQL 文档数据库，用于存储用户配置、优化历史记录等结构化数据，支持实时同步和离线缓存；
-    \item \textbf{Cloud Storage}：对象存储服务，用于托管训练数据集（CSV 文件）和机器学习模型文件；
+    \item \textbf{Cloud Storage}：对象存储服务，用于托管训练数据集（CSV 文件）和机器学习模型文件，并持久化模型元数据（\texttt{model\_metadata.json}）；
     \item \textbf{Firebase Authentication}：身份认证服务，支持邮箱/密码、Google 账号等多种登录方式，确保用户数据隔离与安全访问。
 \end{itemize}
 
@@ -297,7 +297,7 @@ GAE Cron 服务会自动在请求头中添加 \texttt{X-Appengine-Cron: true} �
 
 \subsection{UI/UX 设计}
 
-移动端应用采用Material Design 3设计语言和卡片式布局，数据可视化集成\texttt{fl\_chart}库实现高性能图表渲染。核心界面包括用户登录、系统主页（SOC监控）、负载预测曲线、充放电调度计划和历史数据分析（详见图4.x系列截图）。
+移动端应用采用Material Design 3设计语言和卡片式布局，数据可视化集成\texttt{fl\_chart}库实现高性能图表渲染。登录后进入\textbf{三栏主导航（底部 Tab）}:\texttt{能源优化}、\texttt{数据分析}、\texttt{历史记录}。其中，能源优化仪表盘提供工业级沙盒参数（默认 5,000 kWh / 2,000 kW，可调初始 SOC、温度 What-if），调接口 \texttt{/api/optimization/run} 返回策略、节省额、特征重要性；数据分析页支持 CSV 上传+质量仪表盘（描述统计、缺失值、相关矩阵）；历史页调用 \texttt{/api/history/list} / \texttt{/api/history/delete} 管理记录。核心界面包括用户登录、系统主页（SOC 监控）、负载预测曲线、充放电调度计划、质量仪表盘和历史数据分析（详见图4.x系列截图）。
 
 \subsection{核心功能模块}
 
