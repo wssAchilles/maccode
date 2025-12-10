@@ -1,447 +1,141 @@
 % !TEX root = ../main.tex
-\chapter{系统架构与工程实现}
-\label{chap:system}
+\chapter{建模方法与算法设计}
 
-\section{系统总体架构}
+\section{模型选择与理论简述}
 
-本系统采用经典的 B/S (Browser/Server) 架构模式，通过分层设计实现关注点分离，确保系统的可扩展性、可维护性和高可用性。图~\ref{fig:system_arch}展示了储能智能管理系统的总体架构。
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=0.6cm,
-            box/.style={rectangle, draw, rounded corners=3pt, minimum height=0.9cm, text centered, font=\small},
-            layer/.style={rectangle, draw, thick, rounded corners=5pt, minimum width=14.5cm, minimum height=2.5cm, fill=white},
-            layerlabel/.style={font=\small\bfseries, fill=white, inner sep=2pt},
-            arrow/.style={->, thick, >=stealth}
-        ]
-
-        % 用户层
-        \node[layer, fill=blue!5] (user) at (0, 8) {};
-        \node[layerlabel] at (-6.2, 8.9) {用户层 (User Layer)};
-
-        \node[box, fill=blue!20, minimum width=3cm] (login) at (-4.8, 8) {登录页面};
-        \node[box, fill=blue!20, minimum width=3cm] (analysis) at (-1.6, 8) {数据分析页面};
-        \node[box, fill=blue!20, minimum width=3cm] (optimize) at (1.6, 8) {优化调度页面};
-        \node[box, fill=blue!20, minimum width=3cm] (history) at (4.8, 8) {历史记录页面};
-
-        \node[font=\footnotesize] at (0, 7.0) {Flutter Web Application};
-
-        % API 网关层
-        \node[layer, fill=green!5] (api) at (0, 5) {};
-        \node[layerlabel] at (-6.2, 5.9) {API 网关层 (Gateway)};
-
-        \node[box, fill=green!20, minimum width=2.4cm] (auth) at (-4.8, 5) {/auth};
-        \node[box, fill=green!20, minimum width=2.4cm] (data) at (-2.4, 5) {/data};
-        \node[box, fill=green!20, minimum width=2.4cm] (anal) at (0, 5) {/analysis};
-        \node[box, fill=green!20, minimum width=2.4cm] (opt) at (2.4, 5) {/optimize};
-        \node[box, fill=green!20, minimum width=2.4cm] (hist) at (4.8, 5) {/history};
-
-        \node[font=\footnotesize] at (0, 4.0) {Flask REST API (Google App Engine)};
-
-        % 服务层
-        \node[layer, fill=orange!5] (service) at (0, 1.8) {};
-        \node[layerlabel] at (-6.2, 2.7) {服务层 (Service Layer)};
-
-        \node[box, fill=orange!20, minimum width=4cm, align=center] (mlsvc) at (-4.2, 2) {MLService\\\footnotesize (Scikit-learn)};
-        \node[box, fill=orange!20, minimum width=4cm, align=center] (optsvc) at (0, 2) {OptimizationService\\\footnotesize (Gurobi MIP)};
-        \node[box, fill=orange!20, minimum width=4cm, align=center] (extsvc) at (4.2, 2) {ExternalDataService\\\footnotesize (CAISO/Weather)};
-
-        % 数据层
-        \node[layer, fill=purple!5] (datalayer) at (0, -1.5) {};
-        \node[layerlabel] at (-6.2, -0.6) {数据层 (Data Layer)};
-
-        \node[box, fill=purple!20, minimum width=4cm, align=center] (storage) at (-4.2, -1.5) {Cloud Storage\\\footnotesize (文件/模型存储)};
-        \node[box, fill=purple!20, minimum width=4cm, align=center] (firestore) at (0, -1.5) {Firestore\\\footnotesize (用户数据/历史)};
-        \node[box, fill=purple!20, minimum width=4cm, align=center] (extapi) at (4.2, -1.5) {External APIs\\\footnotesize (CAISO/Weather)};
-
-        % 连接箭头
-        \draw[arrow, blue!60] (0, 6.9) -- node[right, font=\footnotesize] {Firebase Auth Token} (0, 6.3);
-        \draw[arrow, green!60] (0, 3.9) -- (0, 3.2);
-        \draw[arrow, orange!60] (-4.2, 0.8) -- (-4.2, -0.2);
-        \draw[arrow, orange!60] (0, 0.8) -- (0, -0.2);
-        \draw[arrow, orange!60] (4.2, 0.8) -- (4.2, -0.2);
-
-    \end{tikzpicture}
-    \caption{储能智能管理系统总体架构图}
-    \label{fig:system_arch}
-\end{figure}
-
-如图~\ref{fig:system_arch}所示，系统整体分为三个层次：前端层、后端层和数据层，各层职责明确、松耦合协作。
-
-\subsection{前端层 (Frontend)}
-
-前端层基于 \textbf{Flutter} 框架开发\cite{flutter2023}，采用 Dart 语言编写。Flutter 是 Google 推出的跨平台 UI 框架，具有"一套代码、多端运行"的特性，可同时编译为 iOS、Android 和 Web 应用，显著降低了多平台适配的开发成本。
-
-前端层的核心职责包括：
+\subsection{负载预测：随机森林回归}
+本项目选择随机森林（Random Forest）作为负载预测模型，基于以下考量：
 \begin{itemize}
-    \item \textbf{数据可视化}：通过 \texttt{fl\_chart} 图表库展示负载预测曲线、储能充放电策略、电价分布等关键指标，支持用户直观理解系统运行状态；
-    \item \textbf{用户交互}：提供参数配置界面，允许用户调整储能容量、功率限制、电价方案等优化参数；
-    \item \textbf{实时监控}：展示当前负载、温度、电价等实时数据，以及优化策略的执行效果。
+    \item \textbf{非线性建模}：EDA表明温度与负载存在非线性关系，随机森林通过决策树的层级分裂天然捕捉此特性；
+    \item \textbf{对异常值鲁棒}：基于Bagging集成，单个异常样本影响有限；
+    \item \textbf{无需特征缩放}：Hour（0--23）与Temperature（10--40）等不同量纲特征可直接输入。
 \end{itemize}
 
-\subsection{后端层 (Backend)}
+\subsection{储能优化：混合整数规划 (MIP)}
+储能调度涉及“充”与“放”的状态互斥逻辑（不能同时充电和放电），这引入了二进制变量$z(t) \in \{0, 1\}$。因此，该问题属于混合整数规划范畴。本项目选用 Gurobi 求解器，利用其高效的分支定界算法保证获得全局最优解。
 
-后端层基于 \textbf{Python Flask} 框架\cite{flask2023}构建轻量级微服务，托管于 \textbf{Google App Engine (GAE)} 平台。Flask 作为 Python 生态中成熟的 Web 框架，具有灵活、可扩展的特点，便于集成机器学习和优化求解器等计算集型组件。
+\section{特征工程与变量选择}
 
-后端层承担以下核心功能：
+特征工程将原始数据转化为模型可学习的结构化特征。
+
+\subsection{时间特征提取}
+\texttt{add\_time\_features()} 方法从时间戳中提取两类周期性特征：
 \begin{itemize}
-    \item \textbf{RESTful API 服务}：对外暴露统一的 HTTP 接口，支持前端数据查询、预测请求和优化任务提交；
-    \item \textbf{负载预测推理}：加载训练好的随机森林模型（\texttt{rf\_model.joblib}），根据实时特征进行负载预测；
-    \item \textbf{优化决策求解}：调用 Gurobi 求解器执行混合整数规划，生成最优充放电策略；
-    \item \textbf{定时任务调度}：提供 GAE Cron 触发的 \texttt{/tasks/fetch-data} 与 \texttt{/tasks/train-model} 路由，内部调用调度器抓取外部数据、启动模型训练（Cron Header 校验保障安全）；本地开发可跳过 Header 检查。
+    \item \textbf{Hour} (0--23)：捕捉日内周期性（如工作时段与休息时段的负载差异）；
+    \item \textbf{DayOfWeek} (0--6)：捕捉周内周期性（工作日 vs 周末）。
 \end{itemize}
 
-Google App Engine 提供了完全托管的 PaaS (Platform as a Service) 环境，支持自动扩缩容、负载均衡和版本管理，使开发者无需关注底层基础设施运维。
+\subsection{分时电价特征构建}
+电价是储能优化的核心输入。\texttt{add\_price\_feature()} 方法基于加州分时电价（TOU）规则构建特征：
+\begin{lstlisting}[language=Python]
+def get_price(hour: int) -> float:
+    if 0 <= hour < 8: return 0.3   # 谷时
+    elif 8 <= hour < 18: return 0.6 # 平时
+    elif 18 <= hour < 22: return 1.0 # 峰时
+    else: return 0.3
+\end{lstlisting}
+该特征直接引导优化算法实现“低买高卖”。
 
-\subsection{数据层 (Data \& Infrastructure)}
+\subsection{算法实现：随机森林回归}
 
-数据层采用 \textbf{Google Firebase} 生态系统\cite{firebase2023}，实现无服务器 (Serverless) 风格的数据管理。Firebase 提供了一套完整的后端即服务 (BaaS) 解决方案，包括：
+本项目基于 Python 的 \texttt{scikit-learn} 库中的 \texttt{RandomForestRegressor} 类实现负载预测模型。核心实现逻辑如下：
 
 \begin{itemize}
-    \item \textbf{Cloud Firestore}：NoSQL 文档数据库，用于存储用户配置、优化历史记录等结构化数据，支持实时同步和离线缓存；
-    \item \textbf{Cloud Storage}：对象存储服务，用于托管训练数据集（CSV 文件）和机器学习模型文件，并持久化模型元数据（\texttt{model\_metadata.json}）；
-    \item \textbf{Firebase Authentication}：身份认证服务，支持邮箱/密码、Google 账号等多种登录方式，确保用户数据隔离与安全访问。
+    \item \textbf{模型初始化}：实例化模型时，设置树的数量 \texttt{n\_estimators=100}，并固定随机种子 \texttt{random\_state=42} 以确保结果的可复现性。为了提高训练效率，利用 \texttt{n\_jobs=-1} 参数调用所有可用的 CPU 核心进行并行计算。
+    \item \textbf{数据输入}：输入特征矩阵 $X$ 包含 \texttt{Hour}, \texttt{DayOfWeek}, \texttt{Temperature}, \texttt{Price} 四个维度，目标变量 $y$ 为 \texttt{Site\_Load}。
+    \item \textbf{数据集划分}：使用 \texttt{train\_test\_split} 函数按 8:2 的比例随机划分训练集和测试集 (Train/Test Ratio = 0.8/0.2)。
 \end{itemize}
 
-Serverless 架构的优势在于按需付费、自动扩展，特别适合本项目这类请求量波动较大的应用场景。
+\subsubsection{模型可解释性 (SHAP)}
+为了解决随机森林作为“黑盒”模型缺乏解释性的问题，我们集成了 \texttt{SHAP} (SHapley Additive exPlanations) 框架。具体地，使用 \texttt{shap.TreeExplainer} 对模型进行解析，计算特征的 Shapley 值。这使得系统能够通过 \texttt{explain\_prediction} 接口，为每一次单点预测提供“特征贡献度”分析（例如：“当前小时为 14:00，这使得负载预测值增加了 15kW”），从而增强用户对 AI 决策的信任度。
 
-\subsection{技术栈选型}
-
-表~\ref{tab:tech_stack}汇总了本系统各层的核心技术选型及其选用理由。
-
-\begin{table}[htbp]
-    \centering
-    \caption{系统技术栈选型}
-    \label{tab:tech_stack}
-    \begin{tabular}{llp{7cm}}
-        \toprule
-        \textbf{层次} & \textbf{技术/框架}          & \textbf{选型理由}                                             \\
-        \midrule
-        前端          & Flutter (Dart)          & 跨平台开发，一套代码支持 iOS/Android/Web；\texttt{fl\_chart} 提供丰富的图表组件 \\
-        后端          & Flask (Python 3.11)     & 轻量灵活，与 Scikit-learn、Gurobi 无缝集成                           \\
-        云平台         & Google App Engine       & 全托管 PaaS，自动扩缩容，免运维                                        \\
-        数据库         & Firebase Firestore      & 实时同步，Serverless 架构，按需计费                                   \\
-        存储          & Google Cloud Storage    & 高可用对象存储，支持大文件托管                                           \\
-        认证          & Firebase Authentication & 开箱即用的身份认证，支持多种登录方式                                        \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-该技术栈的组合充分利用了 Google Cloud Platform (GCP) 生态的协同优势：App Engine 与 Firebase 服务之间通过服务账号实现安全的内部通信，无需额外配置网络策略；Python 生态为机器学习和优化求解提供了成熟的工具链支持；Flutter 则确保了用户界面的一致性和开发效率。
-
-\section{后端服务开发}
-
-后端服务是系统的核心枢纽，负责业务逻辑处理、算法推理和数据持久化。本节从 API 接口设计、Firebase 集成和自动化任务调度三个维度，详细阐述后端服务的工程实现。
-
-\subsection{RESTful API 接口设计}
-
-后端采用 RESTful 风格设计 API 接口，遵循"资源导向"原则，通过 HTTP 方法语义化地表达操作意图。表~\ref{tab:api_endpoints}列出了系统的核心接口。
-
-\begin{table}[htbp]
-    \centering
-    \caption{核心 RESTful API 接口}
-    \label{tab:api_endpoints}
-    \begin{tabular}{llp{6.5cm}}
-        \toprule
-        \textbf{方法} & \textbf{端点}              & \textbf{功能描述}                    \\
-        \midrule
-        POST        & \texttt{/api/predict}    & 负载预测：接收特征向量，返回未来 24 小时负载预测值      \\
-        POST        & \texttt{/api/optimize}   & 优化求解：接收负载预测和参数配置，返回最优充放电策略       \\
-        GET         & \texttt{/api/history}    & 历史查询：获取指定用户的优化历史记录               \\
-        GET         & \texttt{/api/data/live}  & 实时数据：返回当前负载、温度、电价等实时监测数据         \\
-        POST        & \texttt{/api/auth/login} & 用户认证：验证 Firebase ID Token，返回用户信息 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsubsection{接口鉴权机制}
-
-系统采用 \textbf{Firebase Authentication} 实现用户身份认证与接口鉴权。认证流程如下：
-
+\subsubsection{在线评估与模型监控}
+为了确保模型在生产环境中的持续有效性，系统实现了一个在线评估机制 \texttt{evaluate\_recent\_performance}。该机制逻辑如下：
 \begin{enumerate}
-    \item 用户在前端通过 Firebase SDK 完成登录（支持邮箱/密码、Google 账号等方式），获取 \textbf{ID Token}；
-    \item 前端在每次 API 请求时，将 ID Token 置于 HTTP 请求头的 \texttt{Authorization} 字段；
-    \item 后端中间件拦截请求，调用 Firebase Admin SDK 的 \texttt{auth.verify\_id\_token()} 方法验证令牌有效性；
-    \item 验证通过后，从令牌中解析用户 UID，注入请求上下文供后续业务逻辑使用。
+    \item \textbf{滚动回测}：每次触发时，自动从持久化存储中拉取最近 24 小时 ($T=24$) 的真实负载数据 $y_{true}$。
+    \item \textbf{实时指标计算}：利用当前模型对该时间段的历史特征进行预测得到 $y_{pred}$，并计算平均绝对百分比误差 (MAPE) 和判定系数 ($R^2$)。
+          \begin{equation}
+              \text{MAPE} = \frac{100\%}{n} \sum_{t=1}^{n} \left| \frac{y_{true}[t] - y_{pred}[t]}{y_{true}[t]} \right|
+          \end{equation}
+    \item \textbf{反馈回路}：评估结果实时反馈至前端仪表盘，若 MAPE 显著升高，系统将提示管理员考虑重新训练模型。
 \end{enumerate}
 
-该机制的核心实现位于 \texttt{middleware/} 目录，通过 Python 装饰器模式实现非侵入式鉴权：
-
-\begin{lstlisting}[style=pythoncode]
-@app.route('/api/history')
-@require_auth  # 鉴权装饰器
-def get_history():
-    user_id = g.user_id  # 从上下文获取已验证的用户ID
-    return history_service.get_user_history(user_id)
-\end{lstlisting}
-
-图~\ref{fig:firebase_auth}展示了 Firebase Authentication 控制台的用户管理界面，可直观查看已注册用户及其认证状态。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/firebase9.png}
-    \caption{Firebase 用户认证管理后台}
-    \label{fig:firebase_auth}
-\end{figure}
-
-\subsection{数据持久化：Firebase 集成}
-
-数据持久化采用 Firebase 生态的两大核心服务：Cloud Firestore（文档数据库）和 Cloud Storage（对象存储），分别承担结构化数据和大文件的存储需求。
-
-\subsubsection{NoSQL 数据库设计：Cloud Firestore}
-
-Cloud Firestore 是 Google 提供的 Serverless NoSQL 文档数据库，具有实时同步、自动扩展和强一致性等特点。本系统设计了以下集合（Collection）结构：
-
-\begin{itemize}
-    \item \textbf{users}：用户配置集合，存储每个用户的储能参数偏好（如电池容量、功率限制、电价方案）；
-    \item \textbf{history}：优化历史集合，记录每次优化任务的输入参数、求解结果和时间戳，支持按用户 UID 索引查询。
-\end{itemize}
-
-每条记录以 JSON 文档形式存储，结构灵活，无需预定义 Schema。图~\ref{fig:firestore_structure}展示了 Firestore 控制台中的文档结构示例。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/firebase5.png}
-    \caption{Firestore 数据库文档结构}
-    \label{fig:firestore_structure}
-\end{figure}
-
-后端通过 \texttt{FirebaseService} 类封装 Firestore 操作，核心方法包括：
-
-\begin{lstlisting}[style=pythoncode]
-class FirebaseService:
-    def save_optimization_result(self, user_id: str, result: dict):
-        """保存优化结果至用户历史记录"""
-        doc_ref = self.db.collection('history').document()
-        doc_ref.set({
-            'user_id': user_id,
-            'result': result,
-            'created_at': firestore.SERVER_TIMESTAMP
-        })
-    
-    def get_user_history(self, user_id: str, limit: int = 10):
-        """查询用户最近的优化历史"""
-        query = self.db.collection('history') \
-            .where('user_id', '==', user_id) \
-            .order_by('created_at', direction='DESCENDING') \
-            .limit(limit)
-        return [doc.to_dict() for doc in query.stream()]
-\end{lstlisting}
-
-\subsubsection{云端对象存储：Cloud Storage}
-
-对于机器学习模型文件（\texttt{.joblib}）和大容量训练数据（CSV），系统使用 \textbf{Cloud Storage} 进行托管。相较于 Firestore 的 1MB 文档大小限制，Cloud Storage 支持 TB 级文件存储，更适合此类场景。
-
-图~\ref{fig:firebase_storage}展示了 Cloud Storage 中的模型文件目录结构。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/firebase1.png}
-    \caption{Firebase Storage 云端模型存储}
-    \label{fig:firebase_storage}
-\end{figure}
-
-\texttt{StorageService} 类封装了文件的上传与下载逻辑，支持：
-\begin{itemize}
-    \item \textbf{模型热加载}：后端启动时从 Storage 下载最新模型文件至本地缓存，避免将大文件打包进部署镜像；
-    \item \textbf{增量数据同步}：通过 \texttt{append\_and\_trim\_csv()} 方法实现实时数据的增量追加，并自动清理过期记录。
-\end{itemize}
-
-\subsection{自动化任务调度}
-
-为实现系统的"自我更新"能力，后端集成了两种定时任务调度机制：Google App Engine Cron Jobs 和 APScheduler。
-
-\subsubsection{GAE Cron Jobs}
-
-Google App Engine 提供原生的 Cron 服务，通过 \texttt{cron.yaml} 配置文件定义定时任务。本系统配置了以下任务：
-
-\begin{lstlisting}[style=pythoncode,language={}]
-cron:
-# 任务 1: 每小时抓取 CAISO 和天气数据
-- description: "Hourly data fetching from CAISO and OpenWeather"
-  url: /tasks/fetch-data
-  schedule: every 1 hours
-  timezone: UTC
-  retry_parameters:
-    min_backoff_seconds: 60
-    max_doublings: 5
-
-# 任务 2: 每天凌晨 4:00 UTC 重训模型
-- description: "Daily model retraining at 4:00 AM UTC"
-  url: /tasks/train-model
-  schedule: every day 04:00
-  timezone: UTC
-  retry_parameters:
-    min_backoff_seconds: 120
-    max_doublings: 3
-\end{lstlisting}
-
-配置说明：
-\begin{itemize}
-    \item \textbf{数据抓取任务}（\texttt{/tasks/fetch-data}）：每小时触发一次，调用 \texttt{ExternalDataService} 从 CAISO 和 OpenWeatherMap 获取最新的电网负载与气象数据，并同步至 Cloud Storage。配置了失败重试机制（最小退避 60 秒，最大翻倍次数 5 次）；
-    \item \textbf{模型重训练任务}（\texttt{/tasks/train-model}）：每日 UTC 时间 04:00（对应北京时间 12:00）触发，使用累积的新数据增量更新随机森林模型，确保预测精度随数据积累持续优化。
-\end{itemize}
-
-GAE Cron 服务会自动在请求头中添加 \texttt{X-Appengine-Cron: true} 标识，该标识无法被外部伪造，后端通过检查此请求头确保任务仅由 Cron 服务触发，防止未授权访问。
-
-\subsubsection{APScheduler 进程内调度}
-
-对于需要更细粒度控制的任务（如心跳检测、缓存刷新），系统使用 Python 的 \texttt{APScheduler} 库实现进程内调度。该调度器在 Flask 应用启动时初始化，与 Web 服务共享进程空间，适合轻量级周期任务。
-
-通过 GAE Cron 与 APScheduler 的组合，系统实现了从分钟级到日级的多层次任务调度，确保数据时效性和模型准确性。
-
-\section{移动端应用开发}
-
-本节介绍基于 Flutter 框架开发的移动端应用，涵盖 UI/UX 设计理念、核心功能模块及前端技术实现。
-
-\subsection{UI/UX 设计}
-
-移动端应用采用Material Design 3设计语言和卡片式布局，数据可视化集成\texttt{fl\_chart}库实现高性能图表渲染。登录后进入\textbf{三栏主导航（底部 Tab）}:\texttt{能源优化}、\texttt{数据分析}、\texttt{历史记录}。其中，能源优化仪表盘提供工业级沙盒参数（默认 5,000 kWh / 2,000 kW，可调初始 SOC、温度 What-if），调接口 \texttt{/api/optimization/run} 返回策略、节省额、特征重要性；数据分析页支持 CSV 上传+质量仪表盘（描述统计、缺失值、相关矩阵）；历史页调用 \texttt{/api/history/list} / \texttt{/api/history/delete} 管理记录。核心界面包括用户登录、系统主页（SOC 监控）、负载预测曲线、充放电调度计划、质量仪表盘和历史数据分析（详见图4.x系列截图）。
-
-\subsection{核心功能模块}
-
-\subsubsection{用户认证与系统主页}
-
-\begin{figure}[htbp]
-    \centering
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app0.png}
-        \centerline{(a) 用户登录界面}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app1.png}
-        \centerline{(b) 系统主页}
-    \end{minipage}
-    \caption{用户认证与系统主页}
-    \label{fig:app_auth_home}
-\end{figure}
-
-图~\ref{fig:app_auth_home}展示了应用的入口界面。图~\ref{fig:app_auth_home}(a) 为基于 Firebase Authentication 实现的安全登录页面，支持邮箱/密码认证方式，登录成功后 Firebase 返回的 ID Token 将作为后续 API 请求的身份凭证。图~\ref{fig:app_auth_home}(b) 是用户登录后进入的系统主页 (Dashboard)，采用信息密度适中的卡片布局，用户可一目了然地查看当前电池荷电状态 (SOC)、实时电价以及今日能耗概览，实现对储能系统的全局感知。
-
-\subsubsection{智能决策与实时监控}
-
-\begin{figure}[htbp]
-    \centering
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app3.png}
-        \centerline{(a) 负载预测曲线}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app4.png}
-        \centerline{(b) 充放电调度计划}
-    \end{minipage}
-    \caption{实时负载预测与优化调度监控}
-    \label{fig:app_optimization}
-\end{figure}
-
-图~\ref{fig:app_optimization}展示了应用的核心业务功能——智能决策与实时监控模块。图~\ref{fig:app_optimization}(a) 通过折线图直观呈现未来 24 小时的负载预测曲线，该数据由后端随机森林模型实时推理生成；图~\ref{fig:app_optimization}(b) 展示了 Gurobi 混合整数规划求解器输出的电池充放电计划，蓝色柱状图表示充电功率，橙色柱状图表示放电功率。通过两图的联动展示，用户可以清晰理解系统的"低储高放"策略：在低电价时段（如夜间）充电储能，在高电价时段（如用电高峰）放电供能，从而实现电费成本的最小化。
-
-\subsubsection{数据分析与历史回溯}
-
-\begin{figure}[htbp]
-    \centering
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app5.png}
-        \centerline{(a) 历史能耗趋势}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/app6.png}
-        \centerline{(b) 详细数据报表}
-    \end{minipage}
-    \caption{历史数据分析与详细报表}
-    \label{fig:app_history}
-\end{figure}
-
-图~\ref{fig:app_history}展示了历史数据的统计分析功能，体现了系统的数据沉淀价值。图~\ref{fig:app_history}(a) 以面积图形式呈现过去一周或一个月的能耗趋势，支持时间范围切换和数据点详情查看；图~\ref{fig:app_history}(b) 提供详细的数据列表视图，包含每日的能耗量、费用支出、节省金额等关键指标，用户可滚动浏览历史记录并导出报表。该模块帮助用户量化评估智能调度策略的实际收益，增强对系统的信任度。
-
-\subsection{前端技术实现}
-
-\subsubsection{状态管理与数据交互}
-
-应用采用\textbf{Provider}模式实现全局状态管理，定义\texttt{AuthProvider}（认证）、\texttt{DataProvider}（实时数据）、\texttt{OptimizationProvider}（优化结果）三类状态对象。
-
-网络请求封装于\texttt{ApiService}类，使用Dart的\texttt{http}包发起异步HTTP请求。每次请求携带Firebase ID Token进行身份认证，实现完整的加载状态管理和错误处理机制（SnackBar提示），平均延迟控制在300ms以内（详见第5章性能评估）。
-
-\section{容器化与云端部署}
-
-本节介绍系统的容器化构建与云端部署方案，证明系统已具备生产环境的运行能力。
-
-\subsection{Docker 容器化构建}
-
-后端服务采用Docker容器化封装,Dockerfile采用\texttt{python:3.11-slim}基础镜像,分层安装依赖（\texttt{gurobipy, scikit-learn, flask}等），暴露8080端口，使用Gunicorn作为WSGI服务器。
-
-容器化优势：环境一致性、依赖隔离、快速部署、可移植性（可部署至任何支持Docker的云平台）。
-
-\subsection{Google App Engine 部署}
-
-后端部署于GAE Flexible Environment，通过\texttt{app.yaml}配置运行时（Python 3.11）、实例规格（F4高性能实例）、自动扩缩容策略（\texttt{min\_instances: 0}节省成本，\texttt{max\_instances: 1}控制账单）及环境变量（API密钥、Gurobi许可证等）。
-
-\textbf{核心优势}：
-\begin{itemize}
-    \item 自动扩缩容：无流量时关闭实例，峰值时弹性扩容
-    \item 零停机部署：新版本健康检查通过后自动切换流量
-    \item 按需计费：免费配额（每日28实例小时）足够覆盖日常使用
-\end{itemize}
-
-部署命令：\texttt{gcloud builds submit} + \texttt{gcloud app deploy}。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/firebase6.png}
-    \caption{Firebase 控制台：云端服务运行状态}
-    \label{fig:cloud_deployment}
-\end{figure}
-
-图~\ref{fig:cloud_deployment}展示了 Firebase 控制台中的服务运行状态，可以看到 Firestore 数据库、Cloud Storage 存储桶和 Authentication 服务均处于正常运行状态，体现了系统在云端的高可用性。
-
-\subsection{Firebase 集成架构}
-
-本系统采用 Firebase 生态系统作为后端即服务 (BaaS) 基础设施，与 Google App Engine 形成"Serverless + PaaS"的混合云架构。
-
-\subsubsection{Firebase 服务矩阵}
-
-Firebase 在系统中承担以下核心角色：
-
-\begin{table}[htbp]
-    \centering
-    \caption{Firebase 服务功能矩阵}
-    \label{tab:firebase_services}
-    \begin{tabular}{lll}
-        \toprule
-        \textbf{服务}             & \textbf{用途} & \textbf{特性}            \\
-        \midrule
-        Firebase Authentication & 用户身份认证      & 支持邮箱/OAuth，自动 Token 管理 \\
-        Cloud Firestore         & 实时数据存储      & NoSQL 文档数据库，毫秒级同步      \\
-        Cloud Storage           & 文件与模型存储     & 对象存储，支持大文件和流式读写        \\
-        Firebase Hosting        & 前端静态托管      & 全球 CDN，SSL 证书自动配置      \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsubsection{混合架构优势}
-
-"Serverless + PaaS"混合架构为系统带来显著的运维成本优势：
-\begin{itemize}
-    \item \textbf{零服务器管理}：Firebase 服务完全托管，无需关注底层服务器的配置、扩容和安全补丁；
-    \item \textbf{按需计费}：Firestore 按读写次数计费，Storage 按存储量计费，避免资源闲置浪费；
-    \item \textbf{全球加速}：Firebase Hosting 内置 CDN，Flutter Web 应用可在全球范围内实现低延迟访问；
-    \item \textbf{安全合规}：Firebase 提供企业级安全保障，数据传输全程 TLS 加密，符合 GDPR 等合规要求。
-\end{itemize}
-
-\section{本章小结}
-
-本章详细介绍了储能智能管理系统的架构设计与工程实现。从系统总体架构出发，阐述了 B/S 分层架构的设计理念；在后端服务开发中，展示了 Flask RESTful API、Firebase 集成和自动化任务调度的实现细节；在移动端应用开发中，介绍了 Material Design 3 设计语言、核心功能模块和 Provider 状态管理架构；最后，通过 Docker 容器化和 Google App Engine 部署，证明了系统具备生产环境的运行能力。
-
-至此，系统完成了从算法模型到移动端应用的\textbf{全链路打通}：第三章的随机森林预测模型和 Gurobi 优化求解器被封装为后端微服务，通过 RESTful API 对外提供能力；移动端应用以直观的可视化界面呈现预测结果和优化策略；云端部署确保了系统的高可用性和弹性扩展能力。这标志着本项目已形成一个\textbf{可用的、闭环的智能能源管理产品}，具备了从原型验证走向实际应用的技术基础。
-
-本章完成了系统的工程构建。下一章将基于真实数据集，对核心算法的预测精度和优化策略的经济效益进行定量评估，验证第一章提出的研究假设。
+\section{优化算法设计}
+
+\subsection{混合整数规划模型 (MIP)}
+
+基于 \texttt{gurobipy} 求解器，我们在 \texttt{optimization\_service.py} 中构建了如下数学模型。为了适配云原生架构（如 Google App Engine），我们特别集成了 \textbf{Gurobi WLS (Web License Service)}。系统启动时会自动检查环境变量 \texttt{GRB\_WLSACCESSID} 和 \texttt{GRB\_WLSSECRET}，动态获取许可证，从而摆脱了物理机器指纹绑定的限制，实现了容器化部署的弹性伸缩。
+
+\subsubsection{决策变量}
+对于未来 $T=24$ 个时段，定义如下决策变量：
+\begin{enumerate}
+    \item $P_{\text{charge}}[t] \in [0, P_{\max}]$：$t$ 时刻的充电功率 (Continuous)，代码变量名为 \texttt{P\_charge}。
+    \item $P_{\text{discharge}}[t] \in [0, P_{\max}]$：$t$ 时刻的放电功率 (Continuous)，代码变量名为 \texttt{P\_discharge}。
+    \item $E_{\text{stored}}[t] \in [0, E_{\text{cap}}]$：$t$ 时刻的电池储能量 (Continuous)，代码变量名为 \texttt{E\_stored}。
+    \item $Is_{\text{charge}}[t] \in \{0, 1\}$：充电状态指示变量 (Binary)，代码变量名为 \texttt{Is\_charge}。
+    \item $Is_{\text{discharge}}[t] \in \{0, 1\}$：放电状态指示变量 (Binary)，代码变量名为 \texttt{Is\_discharge}。
+\end{enumerate}
+
+\subsubsection{约束条件}
+\begin{enumerate}
+    \item \textbf{状态互斥约束}：确保电池不能同时处于充电和放电状态。
+          \begin{equation}
+              Is_{\text{charge}}[t] + Is_{\text{discharge}}[t] \le 1, \quad \forall t \in T
+          \end{equation}
+
+    \item \textbf{功率限制约束}：充放电功率受物理设备限制且受状态变量控制。
+          \begin{align}
+              P_{\text{charge}}[t]    & \le P_{\max} \cdot Is_{\text{charge}}[t]    \\
+              P_{\text{discharge}}[t] & \le P_{\max} \cdot Is_{\text{discharge}}[t]
+          \end{align}
+
+    \item \textbf{能量守恒约束}：电池电量的动态变化遵循物理守恒定律。值得注意的是，代码实现中充放电效率 $\eta=0.95$ 作用于能量转换过程：充电时从电网吸收能量乘以效率转化为化学能，放电时释放化学能除以效率转化为电能（为了提供同样的输出功率，电池内部需消耗更多能量）。
+          \begin{equation}
+              E_{\text{stored}}[t] = E_{\text{stored}}[t-1] + P_{\text{charge}}[t] \cdot \eta - \frac{P_{\text{discharge}}[t]}{\eta}
+          \end{equation}
+          特例：当 $t=0$ 时，$E_{\text{stored}}[0]$ 基于初始电量 $E_{\text{init}}$ 计算。
+\end{enumerate}
+
+\subsubsection{目标函数}
+优化目标是最小化全天的净购电成本：
+\begin{equation}
+    \min \sum_{t=0}^{23} \left( (\text{Load}[t] + P_{\text{charge}}[t] - P_{\text{discharge}}[t]) \cdot \text{Price}[t] \right)
+\end{equation}
+该目标函数在 Gurobi 中通过 \texttt{model.setObjective(total\_cost, GRB.MINIMIZE)} 设定，求解器在毫秒级内搜索最优的充放电策略序列。
+
+\subsection{算法整体执行流程}
+
+为了实现自动化的能源调度，系统将负载预测与储能优化串联，形成“预测-优化”闭环。整体算法流程如下所示：
+
+\begin{algorithm}[H]
+    \caption{“预测-优化”闭环调度算法}
+    \label{alg:optimization_loop}
+    \begin{algorithmic}[1]
+        \Require 当前时刻 $t_{\text{now}}$, 天气预报 $W_{24h}$, 历史负载数据 $D_{\text{hist}}$
+        \Ensure 未来 24 小时充放电调度计划 $S_{\text{opt}}$
+
+        \State \textbf{Step 1: 负载预测 (Predict)}
+        \State $M \leftarrow \text{LoadModel}(\text{RandomForest})$ \Comment{加载预训练模型}
+        \For{$h \leftarrow 0$ to $23$}
+        \State $T_{\text{temp}} \leftarrow W_{24h}[h].\text{temperature}$
+        \State $P_{\text{price}} \leftarrow \text{GetPrice}(t_{\text{now}} + h)$ \Comment{查询分时电价表}
+        \State $L_{\text{pred}}[h] \leftarrow M.\text{predict}(\text{Attributes}(h, T_{\text{temp}}, P_{\text{price}}))$
+        \EndFor
+
+        \State \textbf{Step 2: 储能优化 (Optimize)}
+        \State $E_{\text{init}} \leftarrow \text{GetCurrentSOC}()$ \Comment{读取当前电池电量}
+        \State $\text{Model}_{\text{MIP}} \leftarrow \text{GurobiEnv}.\text{createModel}()$
+        \State $\text{Model}_{\text{MIP}}.\text{addVariables}(P_{\text{charge}}, P_{\text{discharge}}, E_{\text{stored}}, \dots)$
+        \State $\text{Model}_{\text{MIP}}.\text{addConstraints}(\text{Mutex}, \text{PowerLimit}, \text{EnergyBalance})$
+        \State $\text{Model}_{\text{MIP}}.\text{setObjective}(\min \text{TotalCost})$
+        \State $\text{Model}_{\text{MIP}}.\text{optimize}()$
+
+        \State \textbf{Step 3: 结果解析与执行}
+        \If{$\text{Model}_{\text{MIP}}.\text{status} == \text{OPTIMAL}$}
+        \State $S_{\text{opt}} \leftarrow \text{ExtractSolution}(\text{Model}_{\text{MIP}})$
+        \State \Return $S_{\text{opt}}$
+        \Else
+        \State \textbf{Exception}: 优化失败，回退到默认策略
+        \EndIf
+    \end{algorithmic}
+\end{algorithm}

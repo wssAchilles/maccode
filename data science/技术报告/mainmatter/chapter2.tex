@@ -1,7 +1,55 @@
 % !TEX root = ../main.tex
-\chapter{相关工作与技术基础}
+\chapter{问题描述与数据说明}
 
-\section{数据来源说明}
+\section{问题形式化表述}
+
+本项目涉及两类核心数学问题：数据驱动的负载预测问题和约束条件下的储能优化问题。
+
+\subsection{负载预测问题}
+
+\subsubsection{预测目标}
+设 $L_t$ 表示 $t$ 时刻（小时级）的全屋总负载（单位：kW），对应数据表中的 \texttt{Site\_Load} 字段。预测任务的目标是：给定当前时刻 $t_0$ 的可观测信息（历史负载、天气、时间等），估计未来 24 小时的负载序列 $\{\hat{L}_{t_0+1}, \hat{L}_{t_0+2}, \ldots, \hat{L}_{t_0+24}\}$。
+
+\subsubsection{特征向量}
+输入特征向量 $\mathbf{X}_t$ 定义为 4 维向量：
+\begin{equation}
+    \mathbf{X}_t = \begin{bmatrix} \text{Hour}_t \\ \text{DayOfWeek}_t \\ \text{Temperature}_t \\ \text{Price}_t \end{bmatrix} \in \mathbb{R}^4
+    \label{eq:feature_vector}
+\end{equation}
+
+\noindent 预测模型本质上是学习映射 $f: \mathbb{R}^4 \to \mathbb{R}$，使得 $\hat{L}_t = f(\mathbf{X}_t)$。
+
+\subsection{储能调度优化问题}
+
+在获得负载预测 $\hat{L}_t$ 后，需制定储能系统的充放电策略。该问题被形式化为混合整数规划（MIP）。
+
+\textbf{决策变量}：
+对于未来 24 小时（$t=1, \dots, 24$）：
+\begin{itemize}
+    \item $P_{\text{ch}}(t)$：充电功率（kW），连续变量；
+    \item $P_{\text{dis}}(t)$：放电功率（kW），连续变量；
+    \item $E(t)$：电池储能量（kWh），连续变量；
+    \item $z(t)$：充放电状态指示，二进制变量（1表示充电，0表示放电/待机）。
+\end{itemize}
+
+\textbf{目标函数}：
+最小化未来 24 小时的总购电成本：
+\begin{equation}
+    \min \sum_{t=1}^{24} p(t) \cdot P_{\text{grid}}(t) = \min \sum_{t=1}^{24} p(t) \cdot \left[ \hat{L}(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]
+    \label{eq:optimization_objective}
+\end{equation}
+\noindent 其中 $p(t)$ 为该时刻的分时电价。
+
+\textbf{主要约束}：
+\begin{align}
+     & E(t) = E(t-1) + \eta P_{\text{ch}}(t) - P_{\text{dis}}(t)/\eta & \text{(能量守恒)} \\
+     & 0 \leq E(t) \leq E_{\text{cap}}                                & \text{(容量约束)} \\
+     & 0 \leq P_{\text{ch}}(t) \leq P_{\max} \cdot z(t)               & \text{(充电互斥)} \\
+     & 0 \leq P_{\text{dis}}(t) \leq P_{\max} \cdot (1 - z(t))        & \text{(放电互斥)}
+\end{align}
+\noindent 其中 $\eta$ 为充放电效率（0.95），$E_{\text{cap}}$ 为电池容量。
+
+\section{数据来源与采集方式}
 
 本项目涉及多源异构数据的融合处理，数据来源可分为静态历史数据和动态实时数据两类。表~\ref{tab:data_sources}概述了各数据源的基本信息。
 
@@ -20,40 +68,24 @@
     \end{tabular}
 \end{table}
 
-\subsection{历史负载数据（静态数据）}
+\subsection{历史负载数据}
 
-历史负载数据来源于某商业建筑的真实能耗监测系统，时间跨度为 2018 年 7 月至 2019 年 10 月，覆盖 7 层楼共 14 个 CSV 文件，原始记录约 300 万条。
+历史负载数据来源于某商业建筑的真实能耗监测系统，时间跨度为 2018 年 7 月至 2019 年 10 月，覆盖 7 层楼共 14 个 CSV 文件，原始记录约 300 万条。虽然原始数据来自商业建筑，但其负载曲线（峰值负载 10--15 kW）与大型多层别墅具有高度相似的波动特性，因此作为本项目的\textbf{代理数据集}。
 
-\textbf{数据代理性说明}：虽然原始数据来自商业建筑，但其负载曲线（日均用电 400--500 元，峰值负载 10--15 kW）与大型多层别墅或小型社区微网具有高度相似的波动特性和量级。因此，本项目将该数据集作为高能耗用户的\textbf{代理数据集（Proxy Dataset）}，用于模型训练和系统验证。
+\subsubsection{数据质量画像}
+经初步分析，原始数据存在以下质量问题，这也验证了第三章 ETL 流程的必要性：
+\begin{itemize}
+    \item \textbf{数据缺失率}：约 1.2\% 的时间戳存在记录缺失，主要由传感器掉线引起。
+    \item \textbf{时间对齐偏移}：约 5\% 的楼层数据文件在合并时存在时间戳偏移，需通过重采样对齐。
+    \item \textbf{无效日期}：存在少量非标准格式的日期字段（无法解析为 Datetime 对象），需剔除处理。
+\end{itemize}
 
-\textbf{原始数据格式}：每个文件包含分钟级采样的功率读数，列名以 \texttt{kW} 后缀标识功率测点（如 \texttt{HVAC\_kW}、\texttt{Lighting\_kW}），以 \texttt{degC} 后缀标识温度测点。数据处理模块（\texttt{EnergyDataProcessor}）自动识别并聚合所有功率列，计算楼层总负载：
+\subsection{实时环境与电网数据}
 
-\begin{equation}
-    L_{\text{floor}}(t) = \sum_{i=1}^{N} P_i(t)
-\end{equation}
+为实现预测模型的在线推理，系统集成了外部 API。
 
-\noindent 其中 $P_i(t)$ 为第 $i$ 个功率测点在时刻 $t$ 的读数，$N$ 为该楼层的功率测点数。
-
-\textbf{数据预处理}：原始分钟级数据经重采样聚合为小时级数据，压缩比约 60:1，最终得到 11,486 条有效样本。该数据集用于训练随机森林负载预测模型。
-
-\subsection{实时环境与电网数据（动态数据）}
-
-为实现预测模型的在线推理和实时监控，系统集成了两类外部 API 数据源，实现了从静态历史数据到动态实时数据的扩展。本节详细介绍各数据源的技术实现，并通过系统运行截图展示数据采集功能的实际效果。
-
-\subsubsection{气象数据：OpenWeatherMap API}
-
-气象数据通过 OpenWeatherMap 的 Current Weather API 获取，采集地点为洛杉矶（纬度 34.05°N，经度 118.24°W），与历史负载数据的地理位置保持一致。
-
-\textbf{技术实现}：系统使用 Python \texttt{requests} 库发起 HTTP GET 请求，通过经纬度参数定位目标城市，解析 JSON 响应中的 \texttt{main.temp} 字段获取实时温度（摄氏度）。核心调用逻辑如下：
-
-\begin{lstlisting}
-params = {'lat': 34.05, 'lon': -118.24, 
-          'appid': API_KEY, 'units': 'metric'}
-response = requests.get(weather_api_url, params=params)
-temperature = response.json()['main']['temp']
-\end{lstlisting}
-
-\noindent 其中 \texttt{units='metric'} 参数确保返回值为摄氏度单位，无需额外的单位转换。
+\subsubsection{气象数据}
+通过 OpenWeatherMap API 获取洛杉矶实时温度。系统使用 Python \texttt{requests} 库定时抓取，如图~\ref{fig:weather_log}所示。
 
 \begin{figure}[htbp]
     \centering
@@ -62,24 +94,8 @@ temperature = response.json()['main']['temp']
     \label{fig:weather_log}
 \end{figure}
 
-图~\ref{fig:weather_log}展示了系统后台实时采集的日志输出。从日志中可以观察到：系统成功调用 OpenWeatherMap API 获取了洛杉矶地区的实时温度数据（如 15.6°C），并将其与时间戳一同记录。该温度值作为影响空调负载的关键因素，被纳入预测模型的特征向量，用于捕捉气温变化对建筑能耗的影响。
-
-\subsubsection{电网负载数据：CAISO API}
-
-电网负载数据通过 California Independent System Operator (CAISO) 的公开接口获取，反映加州电网的实时供需状态。该数据可作为区域性负载趋势的参考指标，补充单体建筑负载数据的局限性。
-
-\textbf{技术实现}：系统使用 Python \texttt{gridstatus} 库封装 CAISO API 调用，通过 \texttt{iso.get\_load(date)} 方法获取指定日期的负载数据。该库提供了简洁的高层接口，屏蔽了底层 HTTP 请求和数据解析的复杂性。
-
-\textbf{时区对齐处理}：由于后端服务部署在 Google App Engine（默认 UTC 时区），而 CAISO 数据按太平洋时间 (PST/PDT) 发布，系统在数据获取前进行时区转换，确保请求日期的正确性：
-
-\begin{lstlisting}
-pacific_tz = pytz.timezone('America/Los_Angeles')
-now_pacific = datetime.now(pacific_tz)
-date_str = now_pacific.strftime('%Y-%m-%d')
-df = iso.get_load(date=date_str)
-\end{lstlisting}
-
-\noindent 获取的时间戳统一转换为 UTC naive datetime 后存储，避免后续处理中的时区混淆。
+\subsubsection{电网负载数据}
+通过 CAISO（加州独立系统运营商）接口获取实时电网负载，用于捕捉宏观用电趋势。系统处理了 API 返回数据的时区问题，将太平洋时间（PST/PDT）统一转换为 UTC 时间存储。
 
 \begin{figure}[htbp]
     \centering
@@ -88,21 +104,7 @@ df = iso.get_load(date=date_str)
     \label{fig:caiso_log}
 \end{figure}
 
-图~\ref{fig:caiso_log}展示了通过 CAISO 接口获取的实时电网负载数据。从测试输出可以看到：系统成功获取了加州电网的当日负载曲线，数据包含时间戳和对应的负载值（MW 级别）。系统已自动完成时区对齐，将太平洋时间转换为 UTC 时间存储，确保与其他数据源的时间戳一致性。
-
-\textbf{时区对齐的重要性}：时区处理是本项目数据工程中的关键环节。分时电价（Price）是基于\textbf{当地时间}定义的（如 18:00--22:00 为峰时），而外部 API 返回的天气和电网数据通常采用 \textbf{UTC 时间戳}。若时区错位，会导致特征与标签的时间对应关系紊乱——例如将 UTC 时间的 02:00（对应太平洋时间 18:00 峰时段）错误标记为谷时电价 0.3 元/kWh，使模型学习到"高负载时段对应低电价"的错误模式。这种数据污染将导致优化策略完全失效：本应在峰时放电的电池可能被错误调度为充电，不仅无法节省电费，反而增加成本。因此，严格的时区归一化是保证模型有效性和优化策略正确性的前提。
-
-\subsection{数据持久化机制}
-
-本项目通过 \texttt{StorageService} 类实现数据的云端持久化。该服务封装了 Google Cloud Storage API，支持以下功能：
-
-\begin{itemize}
-    \item \textbf{凭证管理}：支持通过环境变量 \texttt{GOOGLE\_APPLICATION\_CREDENTIALS}（文件路径）或 \texttt{GCP\_SERVICE\_ACCOUNT\_JSON}（JSON 字符串）加载服务账号凭证，兼容本地开发和云端部署环境；
-    \item \textbf{增量写入}：\texttt{append\_and\_trim\_csv()} 方法实现数据的增量追加，并通过滑动窗口机制限制文件大小（默认保留最近 5000 条记录）；
-    \item \textbf{数据同步}：实时采集的数据（负载、温度、电价）被格式化为统一的 CSV 行格式后追加至云端数据文件。
-\end{itemize}
-
-\texttt{ExternalDataService} 的 \texttt{fetch\_and\_publish()} 方法整合了上述数据采集与持久化流程，执行步骤如下：(1) 获取 CAISO 电网负载；(2) 获取 OpenWeatherMap 温度；(3) 数据验证与缺失值填充；(4) 时间对齐与特征构造；(5) 调用 \texttt{StorageService} 持久化。该方法由后端定时任务调度器（\texttt{APScheduler}）每小时自动触发。
+\section{数据结构与字段说明}
 
 \subsection{多源数据融合}
 
@@ -110,193 +112,12 @@ df = iso.get_load(date=date_str)
 \begin{itemize}
     \item \textbf{数据异构性}：静态 CSV 文件与动态 API 响应的格式差异，通过统一的 DataFrame 结构进行标准化；
     \item \textbf{时间对齐}：不同数据源的采样时间戳通过 UTC 归一化后对齐至小时级；
-    \item \textbf{特征统一}：最终构造的特征向量包含 \texttt{Hour}、\texttt{DayOfWeek}、\texttt{Temperature}、\texttt{Price}、\texttt{Site\_Load} 五个字段，供预测模型和优化模块使用。
+    \item \textbf{特征统一}：最终构造的特征向量包含 \texttt{Hour}、\texttt{DayOfWeek}、\texttt{Temperature}、\texttt{Price}、\texttt{Site\_Load} 五个字段。
 \end{itemize}
 
-\section{数据探索性分析}
+\subsection{最终数据表结构}
 
-在构建机器学习模型之前，探索性数据分析（Exploratory Data Analysis, EDA）是理解数据特性、发现潜在规律、指导特征工程的关键步骤。本项目通过 \texttt{AnalysisService} 类实现了系统化的 EDA 流程，涵盖时序特征分析、相关性分析和数据质量评估三个维度。
-
-\subsection{时序特征分析}
-
-建筑能耗数据具有显著的时间依赖性：
-\begin{itemize}
-    \item \textbf{日周期}：白天（9:00--18:00）负载显著高于夜间，反映办公作息特点，为提取\texttt{Hour}特征提供依据；
-    \item \textbf{周周期}：工作日负载均值较周末高约20\%--30\%，\texttt{DayOfWeek}特征捕获此规律；
-    \item \textbf{时间聚合}：使用Pandas的\texttt{resample('1H')}将分钟级数据聚合至小时级，在平滑噪声的同时保留周期性结构。
-\end{itemize}
-
-\subsection{相关性分析}
-
-相关性分析用于量化特征变量之间的关系。系统的 \texttt{calculate\_correlations()} 方法计算Pearson和Spearman两类相关系数，并通过 $p$ 值判断显著性（$p < 0.05$ 时相关性显著）。
-
-\textbf{重点发现}：负载与温度呈显著正相关——温度升高导致空调制冷需求增加。Spearman系数略高于Pearson系数，提示存在非线性关系，为后续采用随机森林等非线性模型提供依据。
-
-\subsection{数据质量评估}
-
-系统的 \texttt{perform\_quality\_check()} 方法从缺失值、异常值和分布特性三方面评估数据质量。
-
-\textbf{缺失值检测}：统计各列缺失率，超过5\%标记为"高缺失风险"。
-
-\textbf{异常值检测}：采用IQR（四分位距）方法，检测超出 $[Q_1 - 1.5 \times \text{IQR}, Q_3 + 1.5 \times \text{IQR}]$ 范围的观测值。
-
-\textbf{分布特性}：计算偏度和峰度，评估数据正态性。通过Shapiro-Wilk或D'Agostino-Pearson检验量化判断（$p < 0.05$拒绝正态假设）。
-
-系统综合上述指标计算0--100分的数据质量评分，为预处理优先级提供依据。
-
-\subsection{EDA 对特征工程的指导意义}
-
-探索性分析为特征工程提供了以下指导：
-\begin{enumerate}
-    \item 日周期和周周期的存在，证明了\texttt{Hour}和\texttt{DayOfWeek}作为特征的合理性；
-    \item 负载与温度的显著相关性，支持将\texttt{Temperature}作为核心预测特征；
-    \item 非线性关系的存在，为选择随机森林等非线性模型提供了依据。
-\end{enumerate}
-
-\section{数据预处理与管道构建}
-
-原始能耗数据需经过系统化的 ETL（Extract-Transform-Load）流程，才能转化为机器学习模型可用的训练数据。本项目通过 \texttt{EnergyDataProcessor} 类实现了完整的数据预处理管道，涵盖数据清洗、多源合并、时间重采样和特征工程四个阶段。图~\ref{fig:etl_pipeline}展示了整体流程。
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=1.2cm,
-            box/.style={rectangle, draw, rounded corners, minimum width=2.8cm, minimum height=0.8cm, align=center, font=\small},
-            arrow/.style={->, >=stealth, thick}
-        ]
-        \node[box] (raw) {原始 CSV 文件\\(14个文件, 300万条)};
-        \node[box, right=of raw] (agg) {功率列聚合\\(\texttt{aggregate})};
-        \node[box, right=of agg] (merge) {多楼层合并\\(\texttt{merge})};
-        \node[box, below=of merge] (resample) {小时重采样\\(\texttt{resample})};
-        \node[box, left=of resample] (feature) {特征工程\\(\texttt{add\_features})};
-        \node[box, left=of feature] (output) {输出数据\\(11,486条)};
-
-        \draw[arrow] (raw) -- (agg);
-        \draw[arrow] (agg) -- (merge);
-        \draw[arrow] (merge) -- (resample);
-        \draw[arrow] (resample) -- (feature);
-        \draw[arrow] (feature) -- (output);
-    \end{tikzpicture}
-    \caption{数据预处理 ETL 流程}
-    \label{fig:etl_pipeline}
-\end{figure}
-
-\subsection{数据清洗与聚合}
-
-原始数据存在多楼层分散存储、列名不统一、时间粒度过细等问题，需通过清洗和聚合操作进行标准化。
-
-\subsubsection{功率列自动识别与聚合}
-
-每个楼层的 CSV 文件包含数十个功率测点（如 \texttt{HVAC\_kW}、\texttt{Lighting\_kW}、\texttt{Plug\_kW} 等），需聚合为单一的楼层总负载。\texttt{aggregate\_power\_columns()} 方法实现了自动化的列识别与聚合：
-
-\begin{lstlisting}
-# 自动识别所有包含 'kW' 的功率列
-power_columns = [col for col in df.columns if 'kW' in col]
-# 按行求和生成楼层总负载
-df['Total_Load'] = df[power_columns].sum(axis=1)
-\end{lstlisting}
-
-该方法的优势在于：(1) 无需硬编码列名，适应不同楼层的测点配置差异；(2) 通过字符串匹配自动过滤非功率列，避免将温度等无关数据纳入求和。
-
-\subsubsection{多楼层数据合并}
-
-不同楼层的数据文件需按时间戳对齐合并。\texttt{merge\_floors()} 方法采用内连接（Inner Join）策略：
-
-\begin{equation}
-    D_{\text{merged}} = D_{\text{F1}} \bowtie_{\text{Date}} D_{\text{F2}} \bowtie_{\text{Date}} \cdots \bowtie_{\text{Date}} D_{\text{F}n}
-\end{equation}
-
-\noindent 内连接确保仅保留所有楼层均有记录的时间点，避免因部分楼层数据缺失导致的空值问题。合并后计算全站总负载：
-
-\begin{equation}
-    L_{\text{site}}(t) = \sum_{f=1}^{F} L_{\text{floor},f}(t)
-\end{equation}
-
-\noindent 其中 $F$ 为楼层总数。本项目中，7 层楼的数据合并后形成统一的 \texttt{Site\_Load} 字段。
-
-\subsubsection{无效数据过滤}
-
-原始数据中存在日期解析异常（如格式错误、空值）的记录。系统在读取阶段使用 \texttt{pd.to\_datetime(errors='coerce')} 将无法解析的日期转换为 \texttt{NaT}，随后通过 \texttt{dropna(subset=['Date'])} 删除这些无效行，确保时间索引的完整性。
-
-\subsection{时间重采样}
-
-分钟级数据的高频噪声不利于模型学习长期趋势。\texttt{resample\_to\_hourly()} 方法将数据降采样至小时级：
-
-\begin{lstlisting}
-# 设置时间索引并按小时重采样
-df = df.set_index('Date')
-hourly_df = df.resample('1H').mean()  # 取小时内均值
-hourly_df = hourly_df.ffill()          # 前向填充空隙
-\end{lstlisting}
-
-重采样策略说明：
-\begin{itemize}
-    \item \textbf{聚合函数}：采用均值（\texttt{mean}）而非求和，保持功率量纲（kW）的物理意义不变；
-    \item \textbf{空隙填充}：重采样可能因原始数据缺失产生 \texttt{NaN}，使用前向填充（\texttt{ffill}）以最近有效值补全，保证时间序列的连续性；
-    \item \textbf{压缩比}：从分钟级到小时级，数据量压缩约 60:1，在保留日内周期性的同时显著降低计算开销。
-\end{itemize}
-
-\subsection{特征工程}
-
-特征工程将原始数据转化为模型可学习的结构化特征，是连接数据与算法的关键环节。
-
-\subsubsection{时间特征提取}
-
-\texttt{add\_time\_features()} 方法从时间戳中提取两类周期性特征：
-
-\begin{itemize}
-    \item \textbf{小时特征} (\texttt{Hour})：取值范围 0--23，捕捉日内周期性（如工作时段与休息时段的负载差异）；
-    \item \textbf{星期特征} (\texttt{DayOfWeek})：取值范围 0--6（0 表示周一，6 表示周日），捕捉周内周期性。从业务逻辑角度，该特征的核心作用是区分\textbf{工作日模式}（周一至周五，负载较高且日内波动明显）与\textbf{周末模式}（周六周日，负载较低且曲线平缓）。虽然随机森林可直接处理整数编码，但在概念上应将其视为\textbf{有序分类变量}而非连续数值——"周三"与"周四"的差异并非简单的数值递增关系，而是两种不同的用电行为模式。
-\end{itemize}
-
-这两个特征使模型能够学习到"周一上午 9 点的负载通常较高"这类时间依赖规律。
-
-\subsubsection{分时电价特征构建}
-
-电价是储能优化的核心输入之一。\texttt{add\_price\_feature()} 方法基于加州分时电价（Time-of-Use, TOU）机制构建电价特征。表~\ref{tab:tou_price}列出了电价分时规则。
-
-\begin{table}[htbp]
-    \centering
-    \caption{分时电价 (TOU) 规则}
-    \label{tab:tou_price}
-    \begin{tabular}{llll}
-        \toprule
-        \textbf{时段类型} & \textbf{时间范围}              & \textbf{电价 (元/kWh)} & \textbf{策略含义} \\
-        \midrule
-        谷时 (Off-Peak) & 00:00--08:00, 22:00--24:00 & 0.3                 & 储能充电          \\
-        平时 (Standard) & 08:00--18:00               & 0.6                 & 正常用电          \\
-        峰时 (On-Peak)  & 18:00--22:00               & 1.0                 & 储能放电          \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-电价特征的构建逻辑如下：
-
-\begin{lstlisting}
-def get_price(hour: int) -> float:
-    if 0 <= hour < 8:
-        return 0.3   # 谷时
-    elif 8 <= hour < 18:
-        return 0.6   # 平时
-    elif 18 <= hour < 22:
-        return 1.0   # 峰时
-    else:
-        return 0.3   # 谷时 (22:00-24:00)
-
-df['Price'] = df['Hour'].apply(get_price)
-\end{lstlisting}
-
-该特征为后续储能优化模块提供了成本计算的关键输入：优化算法将倾向于在谷时（低电价）充电、峰时（高电价）放电，从而最大化套利收益。
-
-\subsection{自动化预处理流水线}
-
-为实现端到端的自动化处理，\texttt{preprocess\_all\_data()} 函数整合了上述所有步骤，形成完整的批处理流水线：(1) 自动扫描 \texttt{data/raw/} 目录发现所有 CSV 文件；(2) 根据文件名前缀提取年份，支持按年份筛选；(3) 对每个文件执行功率聚合、温度提取；(4) 按时间戳内连接所有楼层数据；(5) 重采样为小时级并添加时间和电价特征；(6) 输出至 \texttt{data/processed/} 目录。
-
-该流水线遵循"配置化"原则，数据路径、年份范围均可参数化指定，并在关键步骤输出处理日志，支持问题追溯。
-
-\subsection{最终特征向量}
-
-经过完整的 ETL 流程，最终输出的训练数据包含表~\ref{tab:final_features}所示的特征字段。该特征向量将作为随机森林负载预测模型的输入，其中 \texttt{Site\_Load} 为预测目标变量，其余字段为特征变量。
+经过清洗和特征工程（将在第三章详述）后，最终用于模型训练的数据表结构如表~\ref{tab:final_features}所示。
 
 \begin{table}[htbp]
     \centering
@@ -315,5 +136,3 @@ df['Price'] = df['Hour'].apply(get_price)
         \bottomrule
     \end{tabular}
 \end{table}
-
-至此，数据工程阶段的全部工作已完成。经过系统化的 ETL 流程，原始的分散、异构、高噪声数据被转化为结构统一、质量可靠的特征矩阵。这些清洗后的高质量数据为第三章的模型训练奠定了坚实基础——随机森林预测模型将基于上述特征学习负载变化规律，而优化模块则将利用电价特征实现峰谷套利策略。

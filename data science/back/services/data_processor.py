@@ -235,6 +235,61 @@ class EnergyDataProcessor:
         print(f"   ✓ 已添加 Hour (0-23) 和 DayOfWeek (0-6) 特征")
         
         return df
+
+    def add_advanced_features(self, df: pd.DataFrame, dropna: bool = True) -> pd.DataFrame:
+        """
+        添加高级特征 (Lag, Rolling, Interaction)
+        实现论文第3章描述的特征工程
+        
+        Args:
+            df: 输入 DataFrame
+            dropna: 是否删除因特征构建产生的 NaN 行 (默认 True)
+        """
+        print("🚀 正在添加高级特征 (Lag, Rolling, Interaction)...")
+        
+        # 确保数据按时间排序
+        df = df.sort_values('Date').reset_index(drop=True)
+        
+        # 1. 滞后特征 (Lag Features)
+        # Lag 1h: 上一小时负载
+        df['Lag_1h'] = df['Site_Load'].shift(1)
+        # Lag 24h: 昨日此时
+        df['Lag_24h'] = df['Site_Load'].shift(24)
+        # Lag 168h: 上周此时
+        df['Lag_168h'] = df['Site_Load'].shift(168)
+        
+        # 2. 滑动窗口特征 (Rolling Window Statistics)
+        # 必须先 shift(1) 避免未来信息泄露 (Data Leakage)
+        # 使用 shift(1) 后，rolling 取的是 t-1, t-2... 的数据
+        
+        # 过去6小时均值
+        df['Rolling_Mean_6h'] = df['Site_Load'].shift(1).rolling(window=6).mean()
+        # 过去6小时标准差
+        df['Rolling_Std_6h'] = df['Site_Load'].shift(1).rolling(window=6).std()
+        # 过去24小时均值
+        df['Rolling_Mean_24h'] = df['Site_Load'].shift(1).rolling(window=24).mean()
+        
+        # 3. 交互特征 (Interaction Features)
+        # Temperature x Hour: 捕捉不同时段温度的影响差异 (如中午高温vs深夜高温)
+        df['Temp_x_Hour'] = df['Temperature'] * df['Hour']
+        
+        # Lag_24h x DayOfWeek: 捕捉历史负载在不同星期的惯性差异
+        df['Lag24_x_DayOfWeek'] = df['Lag_24h'] * df['DayOfWeek']
+        
+        # 4. 清洗 NaN (由于 shift/rolling 产生的头部缺失)
+        original_len = len(df)
+        
+        if dropna:
+            df = df.dropna().reset_index(drop=True)
+            dropped_len = original_len - len(df)
+            print(f"   ✓ 已添加 Lag: 1h, 24h, 168h")
+            print(f"   ✓ 已添加 Rolling: Mean(6h, 24h), Std(6h)")
+            print(f"   ✓ 已添加 Interaction: Temp*Hour, Lag24*DoW")
+            print(f"   ⚠️  因特征构建剔除了前 {dropped_len} 行数据 (Warm-up Period)")
+        else:
+            print(f"   ✓ 已添加高级特征 (保留 NaN 行，共 {original_len} 行)")
+        
+        return df
     
     def save_processed_data(self, df: pd.DataFrame, filename: str = 'cleaned_energy_data.csv') -> Path:
         """
@@ -419,6 +474,7 @@ def preprocess_energy_data(
     print("-" * 80)
     hourly_df = processor.add_price_feature(hourly_df)
     hourly_df = processor.add_time_features(hourly_df)
+    hourly_df = processor.add_advanced_features(hourly_df)
     
     # Step 6: 保存数据
     print("\n【步骤 6/6】保存处理后的数据")
@@ -480,7 +536,12 @@ def preprocess_all_data(raw_data_dir: str = None, output_dir: str = None):
     print("正在合并 2018 和 2019 年数据...")
     
     # 确保两个DataFrame有相同的列
-    common_cols = ['Date', 'Site_Load', 'Temperature', 'Hour', 'Price', 'DayOfWeek']
+    common_cols = [
+        'Date', 'Site_Load', 'Temperature', 'Hour', 'Price', 'DayOfWeek',
+        'Lag_1h', 'Lag_24h', 'Lag_168h',
+        'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
+        'Temp_x_Hour', 'Lag24_x_DayOfWeek'
+    ]
     df_2018_subset = df_2018[common_cols].copy()
     df_2019_subset = df_2019[common_cols].copy()
     

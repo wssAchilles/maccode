@@ -17,6 +17,7 @@ from typing import Dict, Optional, Tuple
 import pytz
 import gridstatus
 from services.storage_service import StorageService
+from services.data_processor import EnergyDataProcessor
 
 
 class ExternalDataService:
@@ -220,44 +221,46 @@ class ExternalDataService:
         执行流程:
         1. 获取 CAISO 电力负载
         2. 获取 OpenWeather 天气数据
-        3. 数据对齐和时区统一
-        4. 构造数据行
-        5. 追加到 CSV 文件 (带滑动窗口)
+        3. 构造原始数据行
+        4. 从 Storage 下载已有 CSV
+        5. 追加新行
+        6. **实时计算高级特征** (Lag/Rolling)
+        7. 保存全量数据 (带修剪)
         
         Returns:
             bool: 操作是否成功
         """
         print("\n" + "="*80)
-        print("🚀 开始数据采集任务")
+        print("🚀 开始数据采集任务 (Feature-Ready Pipeline)")
         print("="*80)
         
+        temp_file_path = None
+        
         try:
-            # 1. 获取 CAISO 数据
+            # 1. 获取数据
             load_value, load_timestamp = self.fetch_caiso_load()
-            
-            # 2. 获取天气数据
             temperature, weather_timestamp = self.fetch_weather_data()
             
-            # 3. 数据验证
+            # 使用模拟数据 (如果获取失败)
             if load_value is None:
-                print("\n⚠️  CAISO 数据获取失败，使用模拟数据")
-                load_value = 25000.0  # 模拟值 (MW)
+                print("\n⚠️  CAISO 数据获取失败，使用模拟数据 (仅演示)")
+                # 简单模拟: 假设负载在 20000-40000 之间
+                import random
+                load_value = 25000.0 + random.random() * 5000
                 load_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
             
             if temperature is None:
                 print("\n⚠️  天气数据获取失败，使用默认温度")
-                temperature = 25.0  # 默认温度 (°C)
+                temperature = 25.0
                 weather_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
             
-            # 4. 时间对齐 (使用 CAISO 时间戳作为主时间)
+            # 2. 构造新数据行
             primary_timestamp = load_timestamp
-            
-            # 5. 构造数据行
             hour = primary_timestamp.hour
             day_of_week = primary_timestamp.weekday()
             price = self._get_price_by_hour(hour)
             
-            new_data = {
+            new_row = {
                 'Date': primary_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                 'Hour': hour,
                 'DayOfWeek': day_of_week,
@@ -266,37 +269,88 @@ class ExternalDataService:
                 'Site_Load': round(load_value, 2)
             }
             
-            print("\n📊 构造的数据行:")
-            for key, value in new_data.items():
-                print(f"   {key}: {value}")
+            print("\n📊 新数据行:")
+            print(f"   Date: {new_row['Date']}")
+            print(f"   Load: {new_row['Site_Load']} MW")
             
-            # 6. 追加到 CSV (带滑动窗口)
-            print(f"\n💾 持久化数据到: {self.csv_file_path}")
-            success = self.storage_service.append_and_trim_csv(
-                file_path=self.csv_file_path,
-                new_row_dict=new_data,
-                max_rows=5000
-            )
+            # 3. 下载现有数据
+            print(f"\n� 从 Storage 下载现有数据: {self.csv_file_path}")
+            temp_file_path = self.storage_service.download_to_temp(self.csv_file_path)
             
-            if success:
-                print("\n" + "="*80)
-                print("✅ 数据采集任务完成!")
-                print("="*80 + "\n")
-                return True
+            if temp_file_path:
+                df = pd.read_csv(temp_file_path)
+                print(f"   ✓ 现有数据: {len(df)} 行")
             else:
-                print("\n" + "="*80)
-                print("❌ 数据采集任务失败!")
-                print("="*80 + "\n")
-                return False
+                print("   ℹ️  文件不存在，创建新 DataFrame")
+                df = pd.DataFrame()
+
+            # 4. 追加新行 (仅包含原始列)
+            # 确保列名一致性，如果 df 为空，直接创建
+            new_df = pd.DataFrame([new_row])
+            df = pd.concat([df, new_df], ignore_index=True)
+            
+            # 5. 修剪数据 (保留最近 5000 行，减少计算量)
+            # 注意：必须保留足够的历史数据以计算 Lag_168h
+            MAX_ROWS = 5000
+            if len(df) > MAX_ROWS:
+                df = df.iloc[-MAX_ROWS:].reset_index(drop=True)
+                print(f"   ✂️  修剪数据至 {len(df)} 行")
+            
+            # 6. 计算高级特征
+            # 这是关键步骤：利用历史数据动态生成 Lag/Rolling 特征
+            print("\n⚙️  计算高级特征...")
+            processor = EnergyDataProcessor()
+            
+            # 这里的巧妙之处：
+            # 我们传入 dropna=False，这样前面 168 行会有 NaN (因为没有更早的历史)，
+            # 但最新的行 (我们刚追加的) 会有完整的 Lag/Rolling 特征 (因为有之前的 4800+ 行做支撑)。
+            # 这样我们就保证了最新数据的完整性。
+            df_processed = processor.add_advanced_features(df, dropna=False)
+            
+            # 检查最后一行是否有 NaN (理论上不应该，除非数据太少)
+            last_row = df_processed.iloc[-1]
+            if last_row.isnull().any():
+                print("   ⚠️  警告: 最新一行包含 NaN (可能是冷启动数据不足)")
+                print(last_row[last_row.isnull()])
+            else:
+                print("   ✓ 最新一行特征计算完整")
+            
+            # 7. 保存回 Storage
+            # 保存时使用临时文件
+            import tempfile
+            fd, save_path = tempfile.mkstemp(suffix='.csv')
+            os.close(fd)
+            
+            df_processed.to_csv(save_path, index=False)
+            
+            print(f"\n💾 上传更新后的数据: {len(df_processed)} 行")
+            with open(save_path, 'rb') as f:
+                self.storage_service.upload_file(
+                    f, 
+                    self.csv_file_path, 
+                    content_type='text/csv'
+                )
+            
+            # 清理
+            os.remove(save_path)
+            
+            print("\n" + "="*80)
+            print("✅ 数据采集与特征更新完成!")
+            print("="*80 + "\n")
+            return True
             
         except Exception as e:
-            print(f"\n❌ 数据采集任务异常: {str(e)}")
+            print(f"\n❌ 任务失败: {str(e)}")
             import traceback
             traceback.print_exc()
-            print("\n" + "="*80)
-            print("❌ 数据采集任务失败!")
-            print("="*80 + "\n")
             return False
+        
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                except:
+                    pass
 
 
 # 测试代码

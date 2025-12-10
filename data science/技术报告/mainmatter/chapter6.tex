@@ -1,96 +1,142 @@
 % !TEX root = ../main.tex
-\chapter{总结与展望}
+\chapter{工程实现与项目管理}
 
-\section{项目核心贡献}
-\label{sec:summary}
+\section{项目结构与代码组织}
 
-本项目交付了一套面向高能耗用户（大型别墅、社区微网）的智能调度系统，实现了从数据采集到移动端展示的完整闭环。核心贡献体现在以下三个维度：
+\subsection{系统总体架构}
 
-\subsection{数据与算法闭环}
+本系统采用经典的 B/S (Browser/Server) 架构模式，通过分层设计确保系统的可扩展性。
 
-系统构建了"数据清洗 → 预测建模 → 优化决策"的端到端（End-to-End）处理链路：
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=0.6cm,
+            box/.style={rectangle, draw, rounded corners=3pt, minimum height=0.9cm, text centered, font=\small},
+            arrow/.style={->, >=stealth}
+        ]
+        % 前端层
+        \node[box, fill=blue!10, minimum width=12cm] (frontend) {前端层 (Flutter App / Web Dashboard)};
 
+        % 后端层
+        \node[box, fill=green!10, minimum width=12cm, below=of frontend, yshift=-1cm] (backend) {后端层 (Flask REST API on Google App Engine)};
+
+        % 数据层
+        \node[box, fill=orange!10, minimum width=12cm, below=of backend, yshift=-1cm] (data) {数据层 (Google Firebase)};
+
+        % 连接
+        \draw[arrow] (frontend) -- node[right] {HTTPS / JSON} (backend);
+        \draw[arrow] (backend) -- node[right] {SDK} (data);
+    \end{tikzpicture}
+    \caption{储能智能管理系统总体架构图}
+    \label{fig:system_arch}
+\end{figure}
+
+如图~\ref{fig:system_arch}所示，系统分为三层：
 \begin{itemize}
-    \item \textbf{数据工程}：完成300万条原始记录的ETL流程，输出11,486条高质量小时级样本；
-    \item \textbf{负载预测}：随机森林模型RMSE相比历史均值法基准\textbf{降低37.9\%}，验证了机器学习在时序预测任务中的有效性；
-    \item \textbf{优化调度}：MIP模型在毫秒级内生成全局最优充放电策略，自动发现"谷充峰放"套利模式。
+    \item \textbf{前端层}：基于 Flutter 开发，支持多端运行，负责数据展示与用户交互；
+    \item \textbf{后端层}：基于 Flask 开发，托管于 Google App Engine，负责业务逻辑、算法调用和 API 响应；
+    \item \textbf{数据层}：基于 Firebase，提供无服务器（Serverless）的数据库（Firestore）和文件存储（Storage）能力。
 \end{itemize}
 
-\subsection{工程落地能力}
+\subsection{技术栈选型}
 
-项目突破实验室原型的局限，构建了可部署的产品系统：
+\begin{table}[htbp]
+    \centering
+    \caption{系统技术栈选型}
+    \label{tab:tech_stack}
+    \begin{tabular}{llp{7cm}}
+        \toprule
+        \textbf{层次} & \textbf{技术}            & \textbf{说明}                                                 \\
+        \midrule
+        前端          & Flutter (SDK 3.10.0)   & 跨平台移动应用开发，集成 \texttt{fl\_chart} 可视化库与 \texttt{http} 客户端     \\
+        后端          & Flask (Python 3.11)    & RESTful API 服务，使用 Gunicorn 作为 WSGI 服务器                      \\
+        算法          & Scikit-learn, Gurobipy & 用于随机森林预测与 MIP 优化求解（配置 WLS 许可证）                              \\
+        数据库         & Firebase               & 集成 Authentication (身份认证), Firestore (NoSQL), Storage (文件存储) \\
+        部署          & Google App Engine      & Serverless F4 实例，支持自动扩缩容                                    \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
+\section{自动化流水线与复现性}
+
+\subsection{RESTful API 接口设计}
+
+后端遵循 RESTful 风格设计 API，封装于 \texttt{api\_service.dart} 中，核心接口如下：
+
+\begin{table}[htbp]
+    \centering
+    \caption{核心 RESTful API 接口详解}
+    \label{tab:api_endpoints}
+    \begin{tabular}{lp{4cm}p{4cm}p{3cm}}
+        \toprule
+        \textbf{端点 (Endpoint)}         & \textbf{功能描述} & \textbf{关键请求参数}                                               & \textbf{超时设置} \\
+        \midrule
+        \texttt{/api/ml/predict}       & 负载预测          & \texttt{start\_time}, \texttt{temp\_forecast}                 & 60s           \\
+        \texttt{/api/ml/train}         & 模型重训练         & \texttt{n\_estimators}, \texttt{data\_path}                   & 300s          \\
+        \texttt{/api/optimization/run} & 储能调度优化        & \texttt{initial\_soc}, \texttt{battery\_cap}, \texttt{target} & 60s           \\
+        \texttt{/api/analysis/analyze} & CSV 大文件分析     & \texttt{storage\_path}, \texttt{filename}                     & 180s          \\
+        \texttt{/api/history}          & 历史记录查询        & \texttt{limit}, \texttt{start\_date}                          & 10s           \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{安全与异常处理机制}
+系统在 \texttt{api\_service.dart} 中实现了健壮的异常捕获与重试机制，针对不同 HTTP 状态码定义了标准处理流：
 \begin{itemize}
-    \item \textbf{前端}：Flutter跨平台应用，实现SOC监控、预测曲线、调度策略的可视化展示；
-    \item \textbf{后端}：Flask微服务部署于Google App Engine，核心API平均响应延迟控制在300ms以内；
-    \item \textbf{数据层}：Firebase Serverless架构实现用户认证、数据持久化和模型存储；
-    \item \textbf{容器化}：Docker封装确保环境一致性，支持一键部署。
+    \item \textbf{401 Unauthorized}：当 Firebase ID Token 过期或无效时触发。前端拦截器会捕获该错误，并自动引导用户跳转至登录页重新认证（\texttt{FirebaseAuth.instance.currentUser?.getIdToken(true)}）。
+    \item \textbf{500 Internal Server Error}：主要针对 Gurobi 求解器可能出现的许可证异常（如 License Server 连接超时）。系统会解析错误响应体中的 \texttt{message} 字段，若包含 "License" 关键字，则向用户展示具体的许可证排查指引，而非通用的“服务器错误”。
+    \item \textbf{请求超时 (Timeout)}：针对 \texttt{/api/analysis} 等长耗时接口，前端设置了 3 分钟的硬性超时阈值，若后端未在规定时间内返回分析结果，则自动中止请求并提示用户缩小文件体积。
 \end{itemize}
 
-\subsection{商业价值验证}
+\subsection{数据持久化机制}
 
-实验结果证明系统具备真实的经济价值：
-
+系统利用 Firebase 实现数据的云端持久化：
 \begin{itemize}
-    \item \textbf{日均电费节省率12.5\%}，超过预设的10\%阈值；
-    \item 按储能集群（60kWh/20kW）配置估算，年节省约19,528元；
-    \item 敏感性分析表明，当峰谷价差$\geq$0.8元/kWh时，系统具有显著商业化前景。
+    \item \textbf{Cloud Storage}：存储原始能耗 CSV 文件和序列化的 \texttt{.joblib} 模型文件；
+    \item \textbf{Cloud Firestore}：存储结构化的用户配置、优化结果日志和模型元数据（Model Metadata）；
+    \item \textbf{Authentication}：利用 Firebase Auth 实现安全的用户身份鉴权，前端每次请求均附带 Bearer Token。
 \end{itemize}
 
-\section{项目局限性}
-\label{sec:limitations}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/firebase1.png}
+    \caption{Firebase Storage 云端存储管理}
+    \label{fig:firebase_storage}
+\end{figure}
 
-\subsection{模型理想化假设}
+\section{容器化与部署}
 
-当前优化模型将电池视为理想设备，存在以下简化：
+\subsection{Docker 容器化}
 
-\begin{itemize}
-    \item \textbf{忽略电池老化}：未考虑循环老化（Cycle Aging）对容量的影响，可能导致长期运行成本被低估。实际上，频繁的深度充放电会加速电池衰减，平摊到每次循环的老化成本约20元，若纳入优化目标可能改变最优策略的充放电频率；
-    \item \textbf{固定效率假设}：电池效率$\eta$设为常数0.95，未考虑极端温度（$<0^\circ$C或$>40^\circ$C）下效率下降的物理特性。
-\end{itemize}
+为确保开发与生产环境的一致性，本项目采用 Docker 进行容器化封装。`Dockerfile` 基于 Python 3.11 构建：
 
-\subsection{部署依赖性}
+\begin{lstlisting}
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+# 安装 Gurobi 依赖库
+RUN pip install -r requirements.txt
+COPY . .
+# 使用 Gunicorn 启动 Flask 应用，设置 5 分钟超时
+CMD ["gunicorn", "-b", ":$PORT", "--timeout", "300", "--workers", "1", "main:app"]
+\end{lstlisting}
 
-系统的生产环境部署存在以下约束：
+\subsection{Google App Engine 部署}
 
-\begin{itemize}
-    \item \textbf{云端依赖}：当前架构需要稳定的互联网连接，离线状态下无法工作，且用户用电数据上传云端可能引发隐私顾虑；
-    \item \textbf{商业许可成本}：Gurobi求解器的商业许可费用较高，对于大规模部署场景是潜在障碍。
-\end{itemize}
+系统部署于 Google Cloud Platform 的 App Engine (Standard Environment)。我们精心调优了 \texttt{app.yaml} 配置以在性能与成本之间取得平衡：
 
-\section{未来改进方向}
-\label{sec:future_work}
-
-针对上述局限性，提出以下改进路径：
-
-\subsection{边缘计算部署（解决云端依赖）}
-
-将推理模型和优化求解迁移至家庭本地设备（如树莓派、Jetson Nano），实现离线自主决策：
-
-\begin{itemize}
-    \item 通过模型量化（Quantization）和剪枝（Pruning）压缩随机森林模型至可在边缘设备运行；
-    \item 研究开源求解器（COIN-OR、Google OR-Tools）替代Gurobi，消除商业许可依赖；
-    \item 形成"云边协同"架构：边缘设备负责实时决策，云端负责模型训练和长期数据分析。
-\end{itemize}
-
-\subsection{光储一体化（提升系统价值）}
-
-当前系统仅考虑"负载+储能+电网"的三元结构，未来可扩展为光伏储能一体化系统：
-
-\begin{itemize}
-    \item 集成光伏发电预测模块，构建"光伏自用优先、余电存储、不足购电"的多能源协同优化策略；
-    \item 优化目标从单纯的"最小化电费"扩展为"最大化光伏自用率+最小化购电成本"的多目标问题；
-    \item 预期经济效益可从当前的12.5\%提升至20\%--30\%。
-\end{itemize}
-
-\subsection{算法演进}
+\begin{lstlisting}
+runtime: python311
+instance_class: F4        # 内存优化型实例 (1024MB RAM, 2.4GHz CPU)
+automatic_scaling:
+  min_instances: 0        # 闲置时自动从容至 0，实现"按需付费"
+  max_instances: 1        # 限制并发实例数，防止恶意流量导致费用失控
+env_variables:
+  GRB_LICENSEID: '...'    # 配置 Gurobi WLS 许可证
+  GCP_PROJECT_ID: 'data-science-44398'
+\end{lstlisting}
 
 \begin{itemize}
-    \item \textbf{深度学习}：引入LSTM或Transformer模型处理长时序依赖，提升多日预测精度；
-    \item \textbf{强化学习}：采用DQN/PPO算法，使系统在与环境交互中自适应学习最优策略，增强对预测误差的鲁棒性。
+    \item \textbf{实例选型 (\texttt{F4})}：Scikit-learn 的随机森林模型加载和 Gurobi 的矩阵运算均属于内存密集型任务。F1/F2 实例常因内存溢出 (OOM) 导致服务重启，因此选用 F4 (1024MB 内存) 确保算法运行稳定性。
+    \item \textbf{自动扩缩容 (\texttt{Scaling})}：配置 \texttt{min\_instances: 0} 使得服务在夜间无人使用时完全休眠，将云资源成本降至最低。
 \end{itemize}
-
-\section{本章小结}
-
-本项目交付了一套完整的分布式储能智能调度系统，验证了"机器学习预测+数学优化调度"闭环的技术可行性和商业价值。核心指标（RMSE降低37.9\%、电费节省12.5\%）均超过预设阈值。尽管当前系统在模型物理精度和云端依赖方面存在局限，但通过边缘计算部署、光储一体化扩展和算法升级，系统有望发展为具有商业竞争力的智能能源管理产品。
-

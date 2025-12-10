@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# LaTeX intermediate / auxiliary files
+*.aux
+*.bbl
+*.blg
+*.brf
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+*.spl
+*.run.xml
+*.bcf
+
+# latexmk and build artifacts
+latexmk.log
+_minted-*/
+
+# Converted/temporary files
+*.eps-converted-to.pdf
+*.tex~
+*~
+*.bak
+
+# Build directories
+build/
+_build/
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo

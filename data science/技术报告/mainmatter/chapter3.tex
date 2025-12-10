@@ -1,339 +1,94 @@
 % !TEX root = ../main.tex
-\chapter{核心模型与算法}
+\chapter{数据预处理与探索性分析}
 
-本章详细介绍系统的两大核心算法模块：基于随机森林的负载预测模型和基于混合整数规划的储能优化模型。前者为后者提供未来负载的估计值，后者据此生成最优充放电策略。
+\section{数据清洗与质量分析}
 
-\section{能源负载时序预测模型}
+原始能耗数据需经过系统化的 ETL（Extract-Transform-Load）流程，才能转化为机器学习模型可用的训练数据。
 
-负载预测是智能储能调度的前提——只有准确预知未来的用电需求，优化算法才能合理安排电池的充放电时机。本节从问题形式化、模型选择、训练流程三个层面阐述预测模块的设计与实现。
+\subsection{数据清洗与聚合}
 
-\subsection{问题形式化}
+原始数据存在多楼层分散存储、列名不统一、时间粒度过细等问题，需通过清洗和聚合操作进行标准化。
 
-\subsubsection{预测目标}
-
-设 $y_t$ 表示 $t$ 时刻（小时级）的全屋总负载（单位：kW），对应数据集中的 \texttt{Site\_Load} 字段。预测任务的目标是：给定当前时刻 $t_0$ 的可观测信息，估计未来 24 小时的负载序列 $\{\hat{y}_{t_0+1}, \hat{y}_{t_0+2}, \ldots, \hat{y}_{t_0+24}\}$。
-
-\subsubsection{输入特征向量}
-
-基于第二章探索性分析的结论，本项目构造了 4 维特征向量作为预测模型的输入：
-
+\subsubsection{功率列自动识别与聚合}
+每个楼层的 CSV 文件包含数十个功率测点（如 \texttt{HVAC\_kW}、\texttt{Lighting\_kW} 等）。需聚合为单一的楼层总负载：
 \begin{equation}
-    \mathbf{X}_t = \begin{bmatrix} \text{Hour}_t \\ \text{DayOfWeek}_t \\ \text{Temperature}_t \\ \text{Price}_t \end{bmatrix} \in \mathbb{R}^4
-    \label{eq:feature_vector}
+    L_{\text{floor}}(t) = \sum_{i=1}^{N} P_i(t)
 \end{equation}
 
-各特征的选取依据如下：
+\subsubsection{多楼层合并}
+不同楼层的数据文件需按时间戳对齐合并。系统采用内连接（Inner Join）策略，确保仅保留所有楼层均有记录的时间点。合并后计算全站总负载 $L_{\text{site}}(t) = \sum_{f=1}^{F} L_{\text{floor},f}(t)$。
 
-\begin{itemize}
-    \item \textbf{Hour}（小时，0--23）：EDA 结果显示负载存在显著的日内周期性，白天（9:00--18:00）负载高于夜间；
-    \item \textbf{DayOfWeek}（星期，0--6）：工作日与周末的负载模式存在统计学显著差异，工作日均值高出约 20\%--30\%；
-    \item \textbf{Temperature}（温度，°C）：相关性分析表明负载与温度呈正相关，夏季高温时段空调制冷需求推高总负载；
-    \item \textbf{Price}（电价，元/kWh）：虽然电价本身不直接影响物理负载，但其与时间高度相关（峰时对应高负载时段），可作为辅助特征增强模型对时段的感知能力。
-\end{itemize}
+\subsubsection{无效数据过滤}
+原始数据中存在日期解析异常的记录。系统在读取阶段将无法解析的日期转换为 \texttt{NaT}，随后删除这些无效行，确保时间索引的完整性。
 
-\subsubsection{预测函数}
+\subsection{数据清洗与聚合}
 
-预测模型本质上是学习一个从特征空间到负载的映射函数：
-
-\begin{equation}
-    f: \mathbb{R}^4 \to \mathbb{R}, \quad \hat{y}_t = f(\mathbf{X}_t)
-    \label{eq:prediction_function}
-\end{equation}
-
-\noindent 其中 $\hat{y}_t$ 为模型对 $t$ 时刻负载的预测值。训练目标是最小化预测误差，评估指标包括平均绝对误差（MAE）和均方根误差（RMSE）：
-
-\begin{equation}
-    \text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |y_i - \hat{y}_i|, \quad
-    \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2}
-    \label{eq:metrics}
-\end{equation}
-
-\subsection{模型选择：随机森林回归}
-
-\subsubsection{选择理由}
-
-本项目选择随机森林（Random Forest）作为负载预测模型，基于以下考量：
+数据清洗过程由 \texttt{data\_processor.py} 模块中的 \texttt{EnergyDataProcessor} 类实现。针对原始分钟级数据，我们采用了以下清洗策略：
 
 \begin{enumerate}
-    \item \textbf{非线性建模}：第二章EDA表明温度与负载存在非线性关系，随机森林通过决策树的层级分裂天然捕捉此特性；
-    \item \textbf{对异常值鲁棒}：基于Bagging集成，单个异常样本影响有限；
-    \item \textbf{无需特征缩放}：Hour（0--23）与Temperature（10--40）等不同量纲特征可直接输入；
-    \item \textbf{可解释性}：提供特征重要性指标，便于理解各特征对预测的贡献。
+    \item \textbf{时间对齐与异常处理}：使用 Pandas 解析 \texttt{Date} 列。针对原始数据中可能存在的解析错误，系统在读取阶段通过 \texttt{errors='coerce'} 参数将无效日期强制转换为 \texttt{NaT}，并随后剔除这些行，确保时间索引的单调性与合法性。
+    \item \textbf{智能功率聚合}：由于原始 CSV 文件中包含数十个分项功率测点（如 HVAC, Lighting 等），且命名规则不统一。系统实现了基于关键字匹配的聚合策略：通过扫描列名中是否包含 \texttt{"kW"} 关键字，自动识别所有功率列并求和计算 \texttt{Total\_Load}，从而规避了硬编码列名的维护风险。
+    \item \textbf{多楼层数据融合}：针对多层建筑的数据分散问题，系统采用\textbf{内连接 (Inner Join)} 策略合并不同楼层的数据。这意味着仅保留所有楼层在同一时刻均有有效记录的时间点，从而保证了全屋负载计算 ($L_{\text{site}} = \sum L_{\text{floor}}$) 的时间一致性，避免了因单层数据缺失导致的整体负载低估。
+    \item \textbf{降采样与缺失值填充}：原始数据为分钟级采样，存在高频噪声且与电价计费周期（小时级）不匹配。我们使用 \texttt{resample('1H').mean()} 将数据按小时重采样，取该时段内的平均功率。对于重采样过程中产生的瞬时数据缺失（例如某小时内少于60个点），系统采用\textbf{前向填充 (Forward Fill)} 策略，假设缺失时段的系统状态与上一有效时刻保持一致，这在物理惯性较大的热力系统（HVAC）中是合理的假设。
 \end{enumerate}
 
-\subsubsection{模型配置}
+\section{探索性数据分析 (EDA)}
 
-使用Scikit-learn的\texttt{RandomForestRegressor}，核心超参数：\texttt{n\_estimators=100}（100棵决策树，平衡精度与效率），\texttt{random\_state=42}（保证可复现性），\texttt{n\_jobs=-1}（并行训练加速）。
-
-实验表明，100棵树在本数据集上已能获得稳定的预测性能。模型训练、评估和持久化流程由\texttt{EnergyPredictor}类封装（详见附录A）。
-
-\subsection{模型训练流程}
-
-\texttt{EnergyPredictor} 类封装了完整的模型训练流程，包括数据准备、训练、评估和持久化四个阶段。
-
-\subsubsection{数据集划分}
-
-为评估模型的泛化能力，训练数据被划分为训练集和测试集。系统使用 Scikit-learn 的 \texttt{train\_test\_split} 函数实现随机划分：
-
-\begin{lstlisting}
-from sklearn.model_selection import train_test_split
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, 
-    test_size=0.2,      # 20% 作为测试集
-    random_state=42     # 固定随机种子
-)
-\end{lstlisting}
-
-划分策略说明：
+\subsection{时序特征分析}
+建筑能耗数据具有显著的时间依赖性：
 \begin{itemize}
-    \item \textbf{测试集比例}：采用 80\% 训练集 + 20\% 测试集的经典配比，在保证训练样本量的同时留出足够的测试样本评估性能；
-    \item \textbf{随机种子}：设置 \texttt{random\_state=42} 确保每次运行的划分结果一致，支持实验的可复现性。
+    \item \textbf{日周期}：白天（9:00--18:00）负载显著高于夜间，反映办公作息特点；
+    \item \textbf{周周期}：工作日负载均值较周末高约20\%--30\%；
+    \item \textbf{时间聚合}：使用Pandas的\texttt{resample('1H')}将分钟级数据聚合至小时级，平滑噪声。
 \end{itemize}
 
-对于 11,486 条样本的数据集，划分后训练集约 9,189 条，测试集约 2,297 条。
+\subsection{相关性分析}
+相关性分析表明，负载与温度呈显著正相关（Spearman相关系数较高），说明高温时段空调制冷需求增加推高了总负载。这一发现支持将 \texttt{Temperature} 作为核心预测特征。
 
-\subsubsection{缺失值处理}
+\subsection{示例：Python 代码片段}
 
-原始数据中可能存在温度缺失（如 API 调用失败导致的数据空缺）。系统采用\textbf{均值填充}策略处理 \texttt{Temperature} 列的缺失值：
+为了实现上述清洗与聚合逻辑，系统采用了 Python Pandas 库进行高效处理。以下代码片段展示了自动识别功率列并进行重采样的核心逻辑：
 
-\begin{lstlisting}
-if df['Temperature'].isnull().sum() > 0:
-    mean_temp = df['Temperature'].mean()
-    df['Temperature'].fillna(mean_temp, inplace=True)
+\begin{lstlisting}[language=Python, caption=数据预处理核心代码]
+def preprocess_data(df):
+    # 1. 自动识别所有包含 'kW' 的功率列
+    power_columns = [col for col in df.columns if 'kW' in col]
+    
+    # 2. 按行求和生成楼层总负载
+    df['Total_Load'] = df[power_columns].sum(axis=1)
+    
+    # 3. 设置时间索引并按小时重采样 (求均值)
+    df = df.set_index('Date')
+    hourly_df = df.resample('1H').mean()
+    
+    # 4. 缺失值前向填充
+    hourly_df = hourly_df.ffill()
+    
+    return hourly_df
 \end{lstlisting}
 
-该策略的合理性在于：温度作为气象变量，其均值可近似代表"典型天气状况"；对于少量缺失值（通常 $<1\%$），均值填充不会显著影响模型训练效果。对于其他特征（Hour、DayOfWeek、Price），由于其可由时间戳直接推导，理论上不存在缺失。
-
-\subsubsection{模型评估}
-
-训练完成后，系统在测试集上计算 MAE 和 RMSE 两项指标，评估模型的预测性能：
-
-\begin{lstlisting}
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-
-y_pred = model.predict(X_test)
-mae = mean_absolute_error(y_test, y_pred)
-rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-\end{lstlisting}
+如图~\ref{fig:etl_pipeline}所示，完整的预处理流程确保了数据从原始 CSV 到结构化特征矩阵的高效流转。
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/模型训练1.png}
-    \caption{随机森林模型训练日志与评估指标 (MAE/RMSE)}
-    \label{fig:model_training}
+    \begin{tikzpicture}[
+            node distance=1.2cm,
+            box/.style={rectangle, draw, rounded corners, minimum width=2.5cm, minimum height=0.8cm, align=center, font=\small},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        \node[box] (raw) {原始 CSV};
+        \node[box, right=of raw] (agg) {功率聚合};
+        \node[box, right=of agg] (merge) {楼层合并};
+        \node[box, below=of merge] (resample) {小时重采样};
+        \node[box, left=of resample] (feature) {特征工程};
+        \node[box, left=of feature] (output) {输出数据};
+
+        \draw[arrow] (raw) -- (agg);
+        \draw[arrow] (agg) -- (merge);
+        \draw[arrow] (merge) -- (resample);
+        \draw[arrow] (resample) -- (feature);
+        \draw[arrow] (feature) -- (output);
+    \end{tikzpicture}
+    \caption{数据预处理 ETL 流程}
+    \label{fig:etl_pipeline}
 \end{figure}
-
-如图~\ref{fig:model_training}所示，模型训练过程的完整日志记录了数据加载、训练耗时及测试集评估结果。从日志输出可以观察到，模型在测试集上取得了较低的 MAE 和 RMSE 值，证明了随机森林模型对能源负载预测任务具有良好的拟合能力和泛化性能。较低的预测误差为后续储能优化模块提供了可靠的负载估计基础。
-
-\subsubsection{特征重要性分析}
-
-随机森林模型的一个重要优势是能够输出特征重要性（Feature Importance）指标，帮助理解各输入变量对预测结果的贡献程度。特征重要性基于各特征在所有决策树中参与分裂时带来的不纯度下降（Mean Decrease in Impurity, MDI）的累计值计算：
-
-\begin{lstlisting}
-importances = model.feature_importances_
-for feature, importance in zip(feature_columns, importances):
-    print(f"{feature}: {importance:.4f}")
-\end{lstlisting}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/模型训练2.png}
-    \caption{特征重要性分析}
-    \label{fig:feature_importance}
-\end{figure}
-
-如图~\ref{fig:feature_importance}所示，特征重要性分析结果揭示了各特征对负载预测的贡献度排序。通常情况下，\texttt{Temperature}（温度）和 \texttt{Hour}（小时）的重要性最高，这与第二章探索性分析的结论一致：温度直接影响空调负载，而小时特征捕捉了日内用电周期性。\texttt{DayOfWeek} 和 \texttt{Price} 的贡献相对较低，但仍有助于区分工作日/周末模式和时段特征。该分析结果验证了特征工程的合理性，也为后续模型优化（如特征选择）提供了依据。
-
-\subsubsection{模型持久化与云端存储}
-
-训练好的模型需持久化存储，以支持后续的在线推理服务。本项目采用 \texttt{joblib} 序列化工具保存模型，并上传至 Firebase Storage 实现云端存储：
-
-\begin{lstlisting}
-import joblib
-
-# 保存模型到临时文件
-joblib.dump(model, temp_model_path)
-
-# 上传到 Firebase Storage
-storage_service.upload_file(
-    file_data=open(temp_model_path, 'rb'),
-    destination_path='models/rf_model.joblib'
-)
-\end{lstlisting}
-
-模型加载时，系统优先从 Firebase Storage 下载最新模型；若云端不存在，则回退至部署包中自带的本地兜底模型。这种设计兼顾了模型更新的灵活性和服务启动的可靠性。
-
-\subsection{在线推理接口}
-
-训练完成的模型通过 \texttt{predict\_next\_24h()} 方法提供未来 24 小时负载预测服务。该方法接收起始时间和温度预测序列作为输入，输出包含时间戳、预测负载、温度、电价等信息的结构化结果：
-
-\begin{lstlisting}
-predictions = predictor.predict_next_24h(
-    start_time='2024-01-15 00:00:00',
-    temp_forecast_list=[24.0, 23.5, ..., 25.0]  # 24小时温度预测
-)
-\end{lstlisting}
-
-返回结果为字典列表，每个字典包含：
-\begin{itemize}
-    \item \texttt{datetime}：预测时间点
-    \item \texttt{predicted\_load}：预测负载（kW）
-    \item \texttt{temperature}：对应温度（°C）
-    \item \texttt{price}：对应电价（元/kWh）
-\end{itemize}
-
-该推理接口的工程实现细节（包括 RESTful API 设计、请求/响应格式、错误处理机制等）将在第~\ref{chap:system}~章详细描述。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/模型训练3.png}
-    \caption{未来24小时负载预测结果可视化}
-    \label{fig:load_prediction}
-\end{figure}
-
-如图~\ref{fig:load_prediction}所示，模型输出的未来 24 小时负载预测曲线呈现出典型的日内周期性特征：夜间（0:00--6:00）负载较低，白天工作时段（9:00--18:00）负载上升，傍晚（18:00--22:00）出现用电高峰。该预测曲线与历史数据的统计规律高度吻合，验证了模型的有效性。
-
-更重要的是，该预测结果将作为储能优化模块的关键输入——优化算法根据预测的负载曲线和分时电价，计算最优充放电策略，实现"谷时充电、峰时放电"的经济调度目标。
-
-\section{储能充放电优化策略}
-
-在获得未来 24 小时的负载预测后，系统需要决策电池储能系统的最优充放电时机。本节将该问题形式化为混合整数规划（Mixed-Integer Programming, MIP）模型，并使用 Gurobi 求解器求取全局最优解。
-
-\subsection{问题描述}
-
-\subsubsection{优化目标}
-
-峰谷电价机制下，谷时电价（如夜间）远低于峰时电价（如傍晚用电高峰）。储能系统的经济价值在于：在低电价时段充电储能，在高电价时段放电供能，从而"削峰填谷"，降低用户的购电成本。
-
-设用户未来 24 小时的基础负载为 $\{L(t)\}_{t=1}^{24}$（单位：kW），对应电价为 $\{p(t)\}_{t=1}^{24}$（单位：元/kWh）。若不使用储能系统，用户的总购电成本为：
-
-\begin{equation}
-    C_{\text{baseline}} = \sum_{t=1}^{T} p(t) \cdot L(t)
-    \label{eq:baseline_cost}
-\end{equation}
-
-引入储能系统后，用户在 $t$ 时刻的净购电量变为"基础负载 + 充电功率 $-$ 放电功率"。优化目标即为\textbf{最小化有电池情况下的总购电成本}：
-
-\begin{equation}
-    \min \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]
-    \label{eq:opt_objective}
-\end{equation}
-
-\noindent 其中 $P_{\text{ch}}(t) \ge 0$ 为 $t$ 时刻的充电功率，$P_{\text{dis}}(t) \ge 0$ 为放电功率。直观理解：充电时从电网多取电，放电时减少从电网取电。
-
-\subsubsection{电池系统参数}
-
-优化模型的参数设置参考 Tesla Powerwall 储能集群的典型配置（4--5 台并联）：
-
-\begin{table}[htbp]
-    \centering
-    \caption{电池系统参数配置}
-    \label{tab:battery_params}
-    \begin{tabular}{llll}
-        \toprule
-        \textbf{参数符号}    & \textbf{物理含义} & \textbf{取值} & \textbf{说明} \\
-        \midrule
-        $T$              & 优化时域          & 24          & 未来 24 小时    \\
-        $E_{\text{cap}}$ & 电池额定容量        & 60 kWh      & 储能集群总容量     \\
-        $P_{\max}$       & 最大充放电功率       & 20 kW       & 功率限制        \\
-        $\eta$           & 充放电效率         & 0.95 (95\%) & 能量转换损耗      \\
-        $\text{SOC}_0$   & 初始荷电状态        & 0.5 (50\%)  & 默认初始电量      \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-前端优化沙盒支持交互式调整容量/功率（默认 5,000 kWh / 2,000 kW，用于模拟商业/微网重负载），以便进行不同规模的 What-If 场景测试；本报告在经济性验证中选取了 60 kWh / 20 kW 的别墅/社区微网基准方案。
-
-\subsection{混合整数规划模型构建}
-
-\subsubsection{决策变量}
-
-模型包含连续变量（充放电功率$P_{\text{ch}}(t), P_{\text{dis}}(t)$，储能量$E(t)$）和二进制变量（状态指示$z_{\text{ch}}(t), z_{\text{dis}}(t) \in \{0,1\}$）。对于$T=24$时域，共120个决策变量（其中48个二进制）。
-
-\subsubsection{目标函数与约束}
-
-\textbf{目标}：最小化总购电成本
-\begin{equation}
-    \min \sum_{t=1}^{T} p(t) \cdot \left[ L(t) + P_{\text{ch}}(t) - P_{\text{dis}}(t) \right]
-\end{equation}
-
-\textbf{核心约束}：
-\begin{itemize}
-    \item 状态互斥：$z_{\text{ch}}(t) + z_{\text{dis}}(t) \le 1$（不能同时充放电）
-    \item 功率限制：$0 \le P_{\text{ch}}(t) \le P_{\max} \cdot z_{\text{ch}}(t)$（Big-M方法）
-    \item 能量守恒：$E(t) = E(t-1) + \eta P_{\text{ch}}(t) - P_{\text{dis}}(t)/\eta$
-    \item 容量边界：$0 \le E(t) \le E_{\text{cap}}$
-\end{itemize}
-
-完整模型包含96条约束，详细数学推导见附录B。
-
-\subsection{求解实现}
-
-\subsubsection{Gurobi Optimizer}
-
-本项目选用Gurobi作为MIP求解器，理由包括：（1）高效的分支定界和割平面算法，毫秒级求解；（2）保证全局最优解；（3）原生Python接口（\texttt{gurobipy}），易于集成。
-
-\texttt{EnergyOptimizer}类封装完整优化流程，核心步骤包括创建决策变量、添加约束、设置目标函数并调用\texttt{model.optimize()}求解。实现代码见附录A。
-
-求解完成后需检查\texttt{model.status == GRB.OPTIMAL}以确保获得有效解。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/gurobi1.png}
-    \caption{Gurobi 求解器运行日志}
-    \label{fig:gurobi_log}
-\end{figure}
-
-如图~\ref{fig:gurobi_log}所示，Gurobi 求解器的运行日志记录了完整的优化过程。从日志中可以观察到：求解器在毫秒级时间内完成了模型构建（包括 120 个决策变量和 96 条约束的处理），并成功收敛至全局最优解（状态显示为 \texttt{OPTIMAL}）。这一结果充分证明了 MIP 模型的计算效率——对于 24 小时时域的日前调度问题，Gurobi 能够实时响应，满足在线优化的时效性要求。
-
-\subsection{优化结果分析}
-
-优化完成后，系统输出详细的调度计划和成本分析。典型输出包括：
-
-\begin{itemize}
-    \item \textbf{逐时调度计划}：每小时的充电功率 $P_{\text{ch}}(t)$、放电功率 $P_{\text{dis}}(t)$、电池电量 $E(t)$ 及荷电状态 SOC；
-    \item \textbf{成本对比}：无电池总成本 $C_{\text{baseline}}$、有电池总成本 $C^*$、节省金额 $\Delta C = C_{\text{baseline}} - C^*$；
-    \item \textbf{节省比例}：$\Delta C / C_{\text{baseline}} \times 100\%$。
-\end{itemize}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/gurobi2.png}
-    \caption{典型日优化调度策略表}
-    \label{fig:schedule_table}
-\end{figure}
-
-如图~\ref{fig:schedule_table}所示，系统输出的逐时调度策略表清晰展示了优化算法的决策逻辑。从表中可以观察到以下规律：
-
-\begin{itemize}
-    \item \textbf{谷时充电}：在电价为 0.3 元/kWh 的低谷时段（00:00--08:00），系统以最大功率 20 kW 进行充电，电池 SOC 逐步上升；
-    \item \textbf{平时待机}：在电价为 0.6 元/kWh 的平时段（08:00--18:00），系统保持待机状态，既不充电也不放电，等待峰时的套利机会；
-    \item \textbf{峰时放电}：在电价为 1.0 元/kWh 的高峰时段（18:00--22:00），系统以最大功率放电，将存储的低价电能释放供负载使用，电池 SOC 逐步下降。
-\end{itemize}
-
-这种"低买高卖"的调度策略正是峰谷电价套利的核心机制。
-
-\subsubsection{经济效益分析}
-
-根据优化结果，系统自动计算储能系统带来的经济效益。设无电池时的基准成本为 $C_{\text{baseline}}$，有电池时的优化成本为 $C^*$，则节省金额和节省比例分别为：
-
-\begin{equation}
-    \Delta C = C_{\text{baseline}} - C^*, \quad \text{节省比例} = \frac{\Delta C}{C_{\text{baseline}}} \times 100\%
-\end{equation}
-
-在典型的测试场景下（日均负载约 200 kW，峰谷电价差 0.7 元/kWh），储能系统可实现约 5\%--15\% 的日均电费节省。具体节省幅度取决于：
-
-\begin{enumerate}
-    \item \textbf{峰谷价差}：价差越大，套利空间越大；
-    \item \textbf{电池容量}：容量越大，可转移的电量越多；
-    \item \textbf{负载曲线}：峰时负载越高，放电收益越显著。
-\end{enumerate}
-
-优化策略的直观解释：求解器会自动识别低电价时段（谷时）进行充电，在高电价时段（峰时）放电供能，从而实现"低买高卖"的套利效果。该策略的经济合理性在于：虽然充电过程本身消耗电能（存在 $1-\eta^2 \approx 10\%$ 的往返损耗），但只要峰谷价差足够大（超过损耗成本），储能系统就能产生正收益。
-
-\subsection{优化模块的服务化封装}
-
-虽然 Gurobi 是商业软件，但本项目充分利用了其 Python 接口（\texttt{gurobipy}）的灵活性，将优化求解能力封装为可复用的 Web 服务。\texttt{EnergyOptimizer} 类通过 Flask RESTful API 对外暴露 \texttt{/api/optimization/optimize} 端点，接收负载预测和电价数据作为 JSON 输入，返回最优调度策略。
-
-这种服务化封装实现了"优化求解的在线化"——前端应用无需关心底层数学模型的复杂性，只需通过 HTTP 请求即可获得优化结果。该设计为第四章的系统集成奠定了基础，使预测模块、优化模块和可视化模块能够无缝协作，形成完整的智能能源管理闭环。

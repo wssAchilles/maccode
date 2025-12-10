@@ -11,3 +11,20 @@
         keywords = {分布式储能系统, 负载预测, 随机森林, 混合整数规划, 充放电优化, Flutter, 数据驱动},
     }
 \end{abstract}
+
+
+\begin{abstract*}
+    With the global energy transition and the promotion of Time-of-Use (TOU) pricing policies, the intelligent management of distributed energy storage systems has become a critical issue. Traditional Battery Management Systems (BMS) rely on fixed-rule strategies, making them difficult to adapt to load fluctuations and electricity price changes, leading to the underutilization of the storage system's economic value. Addressing this problem, this project designs and implements a data-driven intelligent management system for distributed energy storage. Targeting high-energy consumption users (e.g., large villas, small community microgrids), the system constructs a complete technical closed-loop of ``Load Prediction -- Optimization Scheduling -- Visual Monitoring''.
+
+    In terms of \textbf{Core Algorithms}, this project solves two key data science problems: (1) \textbf{Load Time-Series Prediction}: Utilizing a Random Forest regression model that integrates temporal features (Hour, DayOfWeek), environmental features (Temperature), and pricing features (Price) to predict the load sequence for the next 24 hours. Experiments show that the RMSE is \textbf{reduced by 37.9\%} compared to the historical average baseline. (2) \textbf{Charging/Discharging Optimization Scheduling}: Constructing a Mixed-Integer Programming (MIP) mathematical model aiming to minimize electricity purchase costs. Under constraints such as power balance, capacity limits, and mutual exclusion of charging/discharging, the Gurobi solver is used to generate optimal strategies within milliseconds, achieving a daily average electricity bill \textbf{saving of 12.5\%}.
+
+    In terms of \textbf{System Engineering}, the project builds a complete end-to-end application: The backend provides RESTful APIs based on the Flask framework, integrating Firebase for user authentication and data persistence; the frontend is a cross-platform mobile application developed with Flutter, realizing real-time SOC monitoring, power curve visualization, and scheduling strategy display; the system adopts Docker containerization and is deployed on Google App Engine, with the average response latency of core APIs controlled within 300 ms.
+
+    The experimental results verify the two core hypotheses of the project: the Random Forest model is significantly superior to the baseline method (RMSE reduction 37.9\% $>$ 20\% threshold), and the MIP optimization strategy effectively reduces electricity costs (saving rate 12.5\% $>$ 10\% threshold). This project provides a low-threshold intelligent management tool for high-energy users and offers a comprehensive practical case covering data engineering, machine learning, operations research optimization, and full-stack development for data science education.
+
+    \thusetup{
+        keywords* = {Distributed Energy Storage System, Load Forecasting, Random Forest, Mixed-Integer Programming, Charging/Discharging Optimization, Flutter, Data-Driven},
+    }
+\end{abstract*}
+
+

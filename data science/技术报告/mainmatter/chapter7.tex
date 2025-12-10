@@ -1,2 +1,89 @@
 % !TEX root = ../main.tex
+\chapter{总结与展望}
 
+\section{项目核心贡献}
+\label{sec:summary}
+
+本项目交付了一套面向高能耗用户（大型别墅、社区微网）的智能调度系统，实现了从数据采集到移动端展示的完整闭环。核心贡献体现在以下三个维度：
+
+\subsection{数据与算法闭环}
+
+系统构建了"数据清洗 $\to$ 预测建模 $\to$ 优化决策"的端到端（End-to-End）处理链路：
+
+\begin{itemize}
+    \item \textbf{数据工程}：完成300万条原始记录的ETL流程，输出11,486条高质量小时级样本；
+    \item \textbf{负载预测}：随机森林模型RMSE相比历史均值法基准\textbf{降低37.9\%}，验证了机器学习在时序预测任务中的有效性；
+    \item \textbf{优化调度}：MIP模型在毫秒级内生成全局最优充放电策略，自动发现"谷充峰放"套利模式。
+\end{itemize}
+
+\subsection{工程落地能力}
+
+项目突破实验室原型的局限，构建了可部署的产品系统：
+
+\begin{itemize}
+    \item \textbf{前端}：Flutter跨平台应用，实现SOC监控、预测曲线、调度策略的可视化展示；
+    \item \textbf{后端}：Flask微服务部署于Google App Engine，核心API平均响应延迟控制在300ms以内；
+    \item \textbf{数据层}：Firebase Serverless架构实现用户认证、数据持久化和模型存储；
+    \item \textbf{容器化}：Docker封装确保环境一致性，支持一键部署。
+\end{itemize}
+
+\subsection{商业价值验证}
+
+实验结果证明系统具备真实的经济价值：
+
+\begin{itemize}
+    \item \textbf{日均电费节省率12.5\%}，超过预设的10\%阈值；
+    \item 按储能集群（60kWh/20kW）配置估算，年节省约19,528元；
+    \item 敏感性分析表明，当峰谷价差$\geq$0.8元/kWh时，系统具有显著商业化前景。
+\end{itemize}
+
+\subsection{工程经验与教训}
+
+在从原型到产品的工程化过程中，我们积累了以下关键经验：
+
+\begin{enumerate}
+    \item \textbf{云端状态同步难题}：在早期设计中，试图在前端实时计算优化策略，但因移动端算力限制导致严重卡顿。最终确立了“后端计算、前端渲染”的架构，并通过 Firebase Firestore 的 Snapshot Listener 实现了毫秒级的状态同步。
+    \item \textbf{模型冷启动问题}：新用户接入初期因缺乏历史数据导致预测精度骤降。我们引入了基于相似用户的“预训练模型迁移”策略，有效缓解了冷启动前 72 小时的性能瓶颈。
+    \item \textbf{许可证管理}：容器化部署初期常因 Gurobi 许可证绑定物理机器 ID 导致扩容失败。引入 WLS (Web License Service) 后，实现了与硬件解耦的弹性伸缩。
+\end{enumerate}
+
+\section{项目局限性}
+\label{sec:limitations}
+
+\subsection{模型理想化假设}
+
+当前优化模型将电池视为理想设备，存在以下简化：
+
+\begin{itemize}
+    \item \textbf{忽略电池老化}：未考虑循环老化（Cycle Aging）对容量的影响，可能导致长期运行成本被低估。
+    \item \textbf{固定效率假设}：电池效率$\eta$设为常数0.95，未考虑极端温度下效率下降的物理特性。
+\end{itemize}
+
+\subsection{部署依赖性}
+
+系统的生产环境部署存在以下约束：
+
+\begin{itemize}
+    \item \textbf{云端依赖}：当前架构需要稳定的互联网连接，离线状态下无法工作；
+    \item \textbf{商业许可成本}：Gurobi求解器的商业许可费用较高，对于大规模部署场景是潜在障碍。
+\end{itemize}
+
+\section{未来改进方向}
+\label{sec:future_work}
+
+针对上述局限性，提出以下改进路径：
+
+\subsection{边缘计算部署}
+
+将推理模型和优化求解迁移至家庭本地设备（如树莓派、Jetson Nano），实现离线自主决策。通过模型量化（Quantization）和使用开源求解器（COIN-OR、Google OR-Tools）消除云端和商业许可依赖。
+
+\subsection{光储一体化}
+
+集成光伏发电预测模块，构建"光伏自用优先、余电存储、不足购电"的多能源协同优化策略，预期将经济效益从当前的12.5\%提升至20\%--30\%。
+
+\subsection{算法演进}
+
+\begin{itemize}
+    \item \textbf{深度学习}：引入LSTM或Transformer模型处理长时序依赖，提升多日预测精度；
+    \item \textbf{强化学习}：采用DQN/PPO算法，使系统在与环境交互中自适应学习最优策略，增强对预测误差的鲁棒性。
+\end{itemize}

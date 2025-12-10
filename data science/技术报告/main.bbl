@@ -17,24 +17,6 @@
 \newblock 2024.
 \newblock \url{https://www.pge.com/tariffs/}.
 
-\bibitem[{Google}(2023)]{flutter2023}
-{Google}.
-\newblock Flutter: Build apps for any screen\allowbreak[EB/OL].
-\newblock 2023.
-\newblock \url{https://flutter.dev/}.
-
-\bibitem[{Pallets Projects}(2023)]{flask2023}
-{Pallets Projects}.
-\newblock Flask: A python microframework\allowbreak[EB/OL].
-\newblock 2023.
-\newblock \url{https://flask.palletsprojects.com/}.
-
-\bibitem[{Google}(2023)]{firebase2023}
-{Google}.
-\newblock Firebase documentation\allowbreak[EB/OL].
-\newblock 2023.
-\newblock \url{https://firebase.google.com/docs}.
-
 \bibitem[{International Energy Agency}(2023)]{iea2023renewables}
 {International Energy Agency}.
 \newblock Renewables 2023: Analysis and forecasts to 2028\allowbreak[EB/OL].
@@ -105,11 +87,29 @@ Chen T, Jin Y, Lv H, et~al.
 \newblock Applications of lithium-ion batteries in grid-scale energy storage systems\allowbreak[J].
 \newblock Transactions of Tianjin University, 2020, 26: 208-217.
 
+\bibitem[{Pallets Projects}(2023)]{flask2023}
+{Pallets Projects}.
+\newblock Flask: A python microframework\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://flask.palletsprojects.com/}.
+
+\bibitem[{Google}(2023)]{flutter2023}
+{Google}.
+\newblock Flutter: Build apps for any screen\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://flutter.dev/}.
+
 \bibitem[{Scikit-learn Developers}(2023)]{sklearn2023}
 {Scikit-learn Developers}.
 \newblock Scikit-learn: Machine learning in python\allowbreak[EB/OL].
 \newblock 2023.
 \newblock \url{https://scikit-learn.org/}.
+
+\bibitem[{Google}(2023)]{firebase2023}
+{Google}.
+\newblock Firebase documentation\allowbreak[EB/OL].
+\newblock 2023.
+\newblock \url{https://firebase.google.com/docs}.
 
 \bibitem[Nielsen(1993)]{nielsen1993}
 Nielsen J.

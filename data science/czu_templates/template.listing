@@ -1,0 +1,90 @@
+  /// 执行能源优化调度
+  ///
+  /// 参数:
+  ///   - [initialSoc]: 初始电池电量 (0.0-1.0)，默认 0.5
+  ///   - [targetDate]: 目标日期，默认为明天
+  ///   - [temperatureForecast]: 24小时温度预测列表，可选
+  ///   - [batteryCapacity]: 电池容量 (kWh)，可选
+  ///   - [batteryPower]: 最大功率 (kW)，可选
+  ///   - [batteryEfficiency]: 充放电效率，可选
+  ///
+  /// 返回: OptimizationResponse 对象
+  ///
+  /// 抛出异常:
+  ///   - Exception: 当认证失败、参数错误或服务器错误时
+  static Future<OptimizationResponse> runOptimization({
+      double initialSoc = AppConstants.defaultInitialSoc,
+      DateTime? targetDate,
+      List<double>? temperatureForecast,
+      double? batteryCapacity,
+      double? batteryPower,
+      double? batteryEfficiency,
+    }) async {
+  // 验证 initialSoc 范围
+  if (initialSoc < AppConstants.minSoc || initialSoc > AppConstants.maxSoc) {
+      throw ArgumentError(
+      'initialSoc must be between ${AppConstants.minSoc} and ${AppConstants.maxSoc}',
+      );
+    }
+
+  // 验证温度预测列表长度
+  if (temperatureForecast != null && temperatureForecast.length != 24) {
+      throw ArgumentError('temperatureForecast must contain exactly 24 values');
+    }
+
+  try {
+  // 获取认证头
+  final headers = await _getAuthHeaders();
+
+  // 构建请求体
+  final body = <String, dynamic>{
+      'initial_soc': initialSoc,
+    };
+
+  // 添加可选参数
+  if (targetDate != null) {
+      body['target_date'] = _formatDate(targetDate);
+    }
+
+  if (temperatureForecast != null) {
+      body['temperature_forecast'] = temperatureForecast;
+    }
+
+  if (batteryCapacity != null) {
+      body['battery_capacity'] = batteryCapacity;
+    }
+
+  if (batteryPower != null) {
+      body['battery_power'] = batteryPower;
+    }
+
+  if (batteryEfficiency != null) {
+      body['battery_efficiency'] = batteryEfficiency;
+    }
+
+  // 发送 POST 请求
+  final response = await http
+  .post(
+  Uri.parse('$_baseUrl/api/optimization/run'),
+  headers: headers,
+  body: jsonEncode(body),
+  )
+  .timeout(
+  AppConstants.optimizationTimeout,
+  onTimeout: () {
+      throw Exception('优化请求超时，请稍后重试');
+    },
+  );
+
+  // 解析响应
+  final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+  // 处理不同的状态码
+  if (response.statusCode == 200) {
+      // 成功响应
+      return OptimizationResponse.fromJson(data);
+    } else if (response.statusCode == 401) {
+  // 认证失败
+  throw Exception(
+  data['message'] ?? AppConstants.authError,
+  );

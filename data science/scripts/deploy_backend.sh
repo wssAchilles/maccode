@@ -38,8 +38,8 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # 执行部署
-echo "📦 正在部署..."
-gcloud app deploy --quiet
+echo "📦 正在部署 (App + Cron)..."
+gcloud app deploy app.yaml cron.yaml --quiet
 
 # 获取部署后的 URL
 echo "✅ 部署成功!"

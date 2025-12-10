@@ -59,7 +59,12 @@ class EnergyPredictor:
         self.model: Optional[RandomForestRegressor] = None
         
         # 特征列表
-        self.feature_columns = ['Hour', 'DayOfWeek', 'Temperature', 'Price']
+        self.feature_columns = [
+            'Hour', 'DayOfWeek', 'Temperature', 'Price',
+            'Lag_1h', 'Lag_24h', 'Lag_168h',
+            'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
+            'Temp_x_Hour', 'Lag24_x_DayOfWeek'
+        ]
         self.target_column = 'Site_Load'
         
         print(f"📁 Firebase Storage 模型路径: {self.firebase_model_path}")
@@ -247,7 +252,15 @@ class EnergyPredictor:
                     df['Temperature'].fillna(mean_temp, inplace=True)
                     print(f"   ✓ Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
             else:
-                print(f"   ✓ 无缺失值")
+                print(f"   ✓ 无核心列缺失值")
+                
+            # 清除因特征工程 (Lag/Rolling) 产生的 NaN 行
+            # 这些行通常位于数据集头部
+            before_drop = len(df)
+            df.dropna(inplace=True)
+            after_drop = len(df)
+            if before_drop != after_drop:
+                print(f"   ✂️  已删除 {before_drop - after_drop} 行包含 NaN 的样本 (Lag/Rolling start-up)")
             
             # 准备特征和目标变量
             print(f"\n📊 准备训练数据...")
@@ -458,137 +471,175 @@ class EnergyPredictor:
                 except Exception as e:
                     print(f"   ⚠️  清理临时模型文件失败: {str(e)}")
     
+    def _load_history_context(self, end_time: datetime, window_size: int = 200) -> pd.DataFrame:
+        """
+        加载用于特征构建的历史数据上下文
+        
+        Args:
+            end_time: 截止时间（不包含）
+            window_size: 需要加载的历史窗口大小（小时）
+            
+        Returns:
+            包含 Site_Load, Temperature 等列的历史 DataFrame
+        """
+        print(f"📖 加载历史上下文 (截止 {end_time})...")
+        
+        # 尝试加载全量数据文件
+        # 在生产环境中，这应该优化为只从数据库/Storage读取部分数据
+        # 但为了保持一致性，我们这里复用训练数据文件
+        data_path = None
+        
+        # 尝试从本地或临时目录查找
+        possible_paths = [
+            self.back_dir.parent / 'data' / 'processed' / 'cleaned_energy_data_all.csv', # 开发环境
+            Path('/tmp/cleaned_energy_data_all.csv'), # 临时目录
+            self.back_dir / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                data_path = path
+                break
+                
+        if data_path is None:
+            # 尝试从 Storage 下载
+            print("   📥 本地未找到数据，尝试从 Firebase Storage 下载...")
+            try:
+                data_path = self.storage_service.download_to_temp('data/processed/cleaned_energy_data_all.csv')
+            except Exception as e:
+                print(f"   ⚠️  无法下载历史数据: {e}")
+                
+        if data_path:
+            df = pd.read_csv(data_path, parse_dates=['Date'])
+            # 筛选截止时间之前的数据
+            history = df[df['Date'] < end_time].tail(window_size).copy()
+            if len(history) < 168:
+                print(f"   ⚠️  历史数据不足 168 小时 (实际: {len(history)}), 特征可能不准确")
+            return history
+        else:
+            print("   ⚠️  无法加载历史上下文，将使用全 0 填充 (仅用于测试/冷启动)")
+            # 创建虚拟历史数据
+            dates = [end_time - timedelta(hours=i) for i in range(window_size, 0, -1)]
+            return pd.DataFrame({
+                'Date': dates,
+                'Site_Load': [0.0] * window_size,
+                'Temperature': [25.0] * window_size,
+                'Hour': [d.hour for d in dates],
+                'DayOfWeek': [d.weekday() for d in dates]
+            })
+
     def predict_next_24h(
         self,
         start_time: Union[str, datetime],
         temp_forecast_list: Optional[List[float]] = None
     ) -> List[Dict[str, Union[datetime, float]]]:
         """
-        预测未来24小时的能源负载
+        预测未来24小时的能源负载 (递归预测模式)
         
         Args:
-            start_time: 开始时间（字符串格式 'YYYY-MM-DD HH:00:00' 或 datetime 对象）
-            temp_forecast_list: 未来24小时的温度预测列表，如果为None则使用默认值25.0°C
+            start_time: 开始时间
+            temp_forecast_list: 温度预测列表
             
         Returns:
-            包含预测结果的字典列表，每个字典包含:
-                - datetime: 时间戳
-                - predicted_load: 预测负载 (kW)
-                - temperature: 温度 (°C)
-                - price: 电价 (元/kWh)
-                - hour: 小时 (0-23)
-                - day_of_week: 星期几 (0-6)
-                
-        Raises:
-            ValueError: 模型未加载或参数错误
-        """
-        # 检查模型是否已加载
-        if self.model is None:
-            raise ValueError(
-                "模型未加载，请先调用 load_model() 或 train_model()"
-            )
-        
-        # 转换开始时间
-        if isinstance(start_time, str):
-            start_time = pd.to_datetime(start_time)
-        
-        print(f"\n🔮 预测未来24小时负载 (从 {start_time} 开始)...")
-        
-        # 处理温度预测
-        if temp_forecast_list is None:
-            print(f"   ⚠️  未提供温度预测，使用默认值 25.0°C")
-            temp_forecast_list = [25.0] * 24
-        elif len(temp_forecast_list) != 24:
-            raise ValueError(
-                f"温度预测列表长度必须为24，当前为 {len(temp_forecast_list)}"
-            )
-        
-        # 生成未来24小时的时间点
-        time_points = [start_time + timedelta(hours=i) for i in range(24)]
-        
-        # 构建预测数据
-        prediction_data = []
-        for i, dt in enumerate(time_points):
-            hour = dt.hour
-            day_of_week = dt.weekday()
-            temperature = temp_forecast_list[i]
-            price = self._get_price(hour)
-            
-            prediction_data.append({
-                'Hour': hour,
-                'DayOfWeek': day_of_week,
-                'Temperature': temperature,
-                'Price': price
-            })
-        
-        # 创建DataFrame
-        X_pred = pd.DataFrame(prediction_data)
-        
-        # 进行预测
-        try:
-            predictions = self.model.predict(X_pred)
-            print(f"   ✓ 预测完成!")
-        except Exception as e:
-            raise Exception(f"预测时出错: {str(e)}")
-        
-        # 构建结果
-        results = []
-        for i, (dt, pred_load) in enumerate(zip(time_points, predictions)):
-            results.append({
-                'datetime': dt,
-                'predicted_load': float(pred_load),
-                'temperature': temp_forecast_list[i],
-                'price': prediction_data[i]['Price'],
-                'hour': prediction_data[i]['Hour'],
-                'day_of_week': prediction_data[i]['DayOfWeek']
-            })
-        
-        # 打印统计信息
-        avg_load = np.mean(predictions)
-        max_load = np.max(predictions)
-        min_load = np.min(predictions)
-        
-        print(f"\n   📊 预测统计:")
-        print(f"      - 平均负载: {avg_load:.2f} kW")
-        print(f"      - 最大负载: {max_load:.2f} kW (时刻: {time_points[np.argmax(predictions)].strftime('%H:%M')})")
-        print(f"      - 最小负载: {min_load:.2f} kW (时刻: {time_points[np.argmin(predictions)].strftime('%H:%M')})")
-        
-        return results
-    
-    def predict_single(
-        self,
-        hour: int,
-        day_of_week: int,
-        temperature: float,
-        price: float = None
-    ) -> float:
-        """
-        单点预测
-        
-        Args:
-            hour: 小时 (0-23)
-            day_of_week: 星期几 (0-6)
-            temperature: 温度 (°C)
-            price: 电价，如果为None则自动根据hour计算
-            
-        Returns:
-            预测负载 (kW)
+            预测结果列表
         """
         if self.model is None:
             raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
         
-        if price is None:
+        if isinstance(start_time, str):
+            start_time = pd.to_datetime(start_time)
+            
+        print(f"\n🔮 递归预测未来24小时负载 (从 {start_time} 开始)...")
+        
+        if temp_forecast_list is None:
+            temp_forecast_list = [25.0] * 24
+        
+        # 1. 加载历史上下文 (用于构建 Lag/Rolling 特征)
+        # 我们至少需要过去 168 小时的数据
+        history_df = self._load_history_context(start_time, window_size=200)
+        
+        # 转换为 list 以便高效 append
+        # 我们主要需要 Site_Load 序列
+        history_loads = history_df['Site_Load'].tolist()
+        history_temps = history_df['Temperature'].tolist() # 如果有用到温度的历史特征
+        
+        predictions = []
+        prediction_results = []
+        
+        # 2. 递归预测循环
+        current_time = start_time
+        
+        for i in range(24):
+            # A. 特征构建
+            hour = current_time.hour
+            day_of_week = current_time.weekday()
+            temperature = temp_forecast_list[i]
             price = self._get_price(hour)
-        
-        X = pd.DataFrame([{
-            'Hour': hour,
-            'DayOfWeek': day_of_week,
-            'Temperature': temperature,
-            'Price': price
-        }])
-        
-        prediction = self.model.predict(X)[0]
-        return float(prediction)
+            
+            # 构建高级特征
+            # 注意：history_loads 的最后一个元素是 t-1 时刻的负载
+            
+            # Lag Features
+            lag_1h = history_loads[-1] if len(history_loads) >= 1 else 0
+            lag_24h = history_loads[-24] if len(history_loads) >= 24 else 0
+            lag_168h = history_loads[-168] if len(history_loads) >= 168 else 0
+            
+            # Rolling Features
+            # 取最近 N 个点计算均值/标准差
+            roll_6h_mean = np.mean(history_loads[-6:]) if len(history_loads) >= 6 else lag_1h
+            roll_6h_std = np.std(history_loads[-6:]) if len(history_loads) >= 6 else 0
+            roll_24h_mean = np.mean(history_loads[-24:]) if len(history_loads) >= 24 else lag_1h
+            
+            # Interaction Features
+            temp_x_hour = temperature * hour
+            lag24_x_dow = lag_24h * day_of_week
+            
+            # 组装特征向量 (必须与 self.feature_columns 顺序一致)
+            features = pd.DataFrame([{
+                'Hour': hour,
+                'DayOfWeek': day_of_week,
+                'Temperature': temperature,
+                'Price': price,
+                'Lag_1h': lag_1h,
+                'Lag_24h': lag_24h,
+                'Lag_168h': lag_168h,
+                'Rolling_Mean_6h': roll_6h_mean,
+                'Rolling_Std_6h': roll_6h_std,
+                'Rolling_Mean_24h': roll_24h_mean,
+                'Temp_x_Hour': temp_x_hour,
+                'Lag24_x_DayOfWeek': lag24_x_dow
+            }])
+            
+            # B. 单步推理
+            pred_load = float(self.model.predict(features)[0])
+            
+            # C. 更新历史序列 (递归关键)
+            # 将预测值作为"真实值"加入历史，用于下一步预测
+            history_loads.append(pred_load)
+            predictions.append(pred_load)
+            
+            # D. 记录结果
+            prediction_results.append({
+                'datetime': current_time,
+                'predicted_load': pred_load,
+                'temperature': temperature,
+                'price': price,
+                'hour': hour,
+                'day_of_week': day_of_week
+            })
+            
+            # 时间步进
+            current_time += timedelta(hours=1)
+            
+        print(f"   ✓ 递归预测完成")
+        return prediction_results
+
+    def predict_single(self, *args, **kwargs):
+        """
+        单点预测已被递归预测取代，且不仅依赖简单输入。
+        为保持接口兼容抛出异常或仅做简单处理。
+        """
+        raise NotImplementedError("单点预测 (predict_single) 已废弃，请使用 predict_next_24h 进行序列预测。")
     
     def get_feature_importance(self) -> Dict[str, float]:
         """

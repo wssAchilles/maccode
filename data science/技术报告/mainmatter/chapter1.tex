@@ -1,7 +1,7 @@
 % !TEX root = ../main.tex
 \chapter{引言}
 
-\section{研究背景与意义}
+\section{项目背景与动机}
 
 \subsection{分布式储能系统的智能管理需求}
 
@@ -14,17 +14,9 @@
     \item \textbf{数据价值未挖掘}：历史运行数据未能转化为预测模型和优化策略。
 \end{enumerate}
 
-\subsection{本项目的技术路线}
+\subsection{为何需要"预测+优化"组合}
 
-本项目构建基于数据驱动的智能储能管理系统，核心技术路线为"机器学习预测 + 数学优化调度"：
-
-\begin{itemize}
-    \item \textbf{负载预测}：采用随机森林模型预测未来24小时负载，RMSE相比基准降低37.9\%；
-    \item \textbf{优化调度}：基于混合整数规划（MIP）和Gurobi求解器，生成最小化购电成本的充放电策略，日均节省12.5\%；
-    \item \textbf{端到端系统}：从数据采集、后端API到Flutter移动应用，形成完整闭环。
-\end{itemize}
-
-\textbf{为何需要"预测+优化"组合？}两类技术互为前提、缺一不可：
+本项目构建基于数据驱动的智能储能管理系统，核心技术路线为"机器学习预测 + 数学优化调度"。两类技术互为前提、缺一不可：
 
 \begin{enumerate}
     \item \textbf{优化依赖预测}：MIP模型需要未来24小时负载序列作为输入，若预测不准，优化策略将基于错误假设；
@@ -32,117 +24,44 @@
     \item \textbf{技术互补}：机器学习擅长学习非线性模式但难处理硬约束；数学优化擅长约束下求最优解但依赖准确输入。
 \end{enumerate}
 
+\subsection{技术挑战}
+尽管“预测+优化”路径理论可行，但在实际工程落地中面临多重挑战：
+\begin{enumerate}
+    \item \textbf{实时性要求}：移动端用户交互要求系统在 500ms 内完成“数据拉取-预测-优化-响应”全链路，这对后端算法的计算效率提出了极高要求。
+    \item \textbf{求解器成本}：商用 MIP 求解器（如 Gurobi）许可证费用昂贵。如何在维持云端高性能运算的同时，通过 WLS（Web License Service）等机制控制部署成本，是规模化应用的关键。
+    \item \textbf{数据异构性}：系统需处理千瓦级（kW）的负载数据、摄氏度（°C）的气象数据以及元（RMB/USD）的电价数据，量纲差异大且时间粒度对齐困难。
+\end{enumerate}
+
 本项目为高能耗用户（别墅业主、社区物业）提供低门槛的智能管理工具，验证了数据科学方法在能源管理领域的应用价值。
 
+\section{研究目标与问题定义}
 
-\section{核心问题与业务场景}
+\subsection{业务场景}
 
-\subsection{业务场景：高能耗用户储能系统}
+本项目以高能耗用户储能系统为典型场景。考虑一栋配置储能集群的大型别墅或小型社区微网，采用 \textbf{Tesla Powerwall 储能集群}（总容量 60 kWh、最大功率 20 kW、效率 95\%，相当于 4--5 台 Powerwall 并联），接入分时电价计费方案。
 
-本项目以高能耗用户储能系统为典型场景。考虑一栋配置储能集群的大型别墅或小型社区微网，采用 \textbf{Tesla Powerwall 储能集群}（总容量 60 kWh、最大功率 20 kW、效率 95\%，相当于 4--5 台 Powerwall 并联），接入分时电价计费方案。参考加州 PG\&E 费率\cite{pge2024tou}，本项目采用简化的三段式电价模型：
+参考加州 PG\&E 费率\cite{pge2024tou}，采用简化的三段式电价模型（谷时段 0.3 元/kWh，平时段 0.6 元/kWh，峰时段 1.0 元/kWh）。
 
-\begin{equation}
-    p_t = \begin{cases}
-        0.3 \text{ 元/kWh} & \text{谷时段: } t \in [22, 8)  \\
-        0.6 \text{ 元/kWh} & \text{平时段: } t \in [8, 18)  \\
-        1.0 \text{ 元/kWh} & \text{峰时段: } t \in [18, 22)
-    \end{cases}
-    \label{eq:price}
-\end{equation}
+\subsection{核心问题定义}
 
-用户目标包括：(1) 谷电充电、峰电放电，最大化电费节省；(2) 基于负载预测提前制定充放电计划；(3) 通过移动端实时监控电池状态。
-
-\subsection{数据来源}
-
-本项目使用的数据来源包括：
-\begin{itemize}
-    \item \textbf{历史负载}：某商业建筑 2018.7—2019.10 共 16 个月的能耗数据（鉴于该商业建筑的负载曲线与大型多层别墅具有相似的波动特性和量级，本项目将其作为高能耗用户的代理数据集），原始约 300 万条记录，清洗聚合后得到 11,486 条小时级样本；
-    \item \textbf{电网数据}：通过 CAISO API 获取加州电网实时负载；
-    \item \textbf{气象数据}：通过 OpenWeatherMap API 获取洛杉矶实时温度。
-\end{itemize}
-
-\subsection{核心数据科学问题}
+本项目致力于解决两个核心数据科学问题：
 
 \subsubsection{预测问题：负载时序预测}
-
-\textbf{问题}：给定历史负载、温度和时间特征，预测未来 24 小时负载序列。
-
-\textbf{方案}：采用随机森林回归模型，构建 4 个特征：Hour（小时）、DayOfWeek（星期）、Temperature（温度）、Price（电价）。评估指标包括平均绝对误差 (MAE) 和均方根误差 (RMSE)：
-\begin{equation}
-    \text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |L_i - \hat{L}_i|, \quad
-    \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (L_i - \hat{L}_i)^2}
-\end{equation}
+给定历史负载、温度和时间特征，预测未来 24 小时负载序列。这是解决优化问题的前提输入。
 
 \subsubsection{优化问题：充放电调度}
+在给定负载预测、电价和电池参数的约束下，求解最优充放电策略（何时充、何时放、充放多少），以使未来 24 小时的总购电成本最小化。
 
-\textbf{问题}：给定负载预测 $\{L_t\}$、电价 $\{p_t\}$ 和电池参数，求解最优充放电策略使购电成本最小。
+\subsection{研究目标}
 
-\textbf{数学模型}：混合整数规划 (MIP)，决策变量包括充电功率 $P_{\text{ch}}(t)$、放电功率 $P_{\text{dis}}(t)$、储能量 $E(t)$、购电功率 $P_{\text{grid}}(t)$ 和充放电状态 $z(t) \in \{0,1\}$。
-
-目标函数——最小化总购电成本：
-\begin{equation}
-    \min \sum_{t=1}^{24} p(t) \cdot P_{\text{grid}}(t)
-    \label{eq:objective}
-\end{equation}
-
-主要约束条件：
-\begin{align}
-     & E(t+1) = E(t) + \eta \cdot P_{\text{ch}}(t) - P_{\text{dis}}(t) / \eta & \text{(能量守恒)} \\
-     & 0 \leq E(t) \leq E_{\text{cap}}                                        & \text{(容量约束)} \\
-     & 0 \leq P_{\text{ch}}(t) \leq P_{\max} \cdot z(t)                       & \text{(充电约束)} \\
-     & 0 \leq P_{\text{dis}}(t) \leq P_{\max} \cdot (1 - z(t))                & \text{(放电约束)} \\
-     & P_{\text{grid}}(t) + P_{\text{dis}}(t) = L(t) + P_{\text{ch}}(t)       & \text{(功率平衡)}
-\end{align}
-
-\noindent 其中，功率平衡约束的物理含义为：\textbf{供电侧}（电网购电 $P_{\text{grid}}(t)$ + 电池放电 $P_{\text{dis}}(t)$）= \textbf{用电侧}（房屋负载 $L(t)$ + 电池充电 $P_{\text{ch}}(t)$）。该约束体现了家庭微网系统的能量守恒原则——任意时刻流入系统的功率必须等于流出系统的功率。
-
-本项目使用 Gurobi 求解器求解，对于 24 时段、约 120 变量的问题可在毫秒级完成。
-
-\subsection{研究假设}
-
-\textbf{假设一}：随机森林模型的 RMSE 相比历史均值法降低 20\% 以上。
-
-\textit{注：历史均值法（Baseline）指使用前一天同一时刻的负载值作为当天的预测值，该基准方法将在第五章实验部分计算并与随机森林模型对比。}
-
-\textbf{假设二}：MIP 优化策略相比无储能基准的日均电费节省率不低于 10\%。
-
-上述假设将在第五章通过实验验证。
-
-
-\section{本文主要工作与组织结构}
-
-\subsection{主要工作内容}
-
-本项目作为《数据科学概论》课程的 Level 3 大作业，构建了完整的端到端应用系统，主要工作包括：
+本项目旨在构建一个完整的端到端系统，实现以下目标：
 
 \begin{enumerate}
-    \item \textbf{数据工程}：集成 CAISO 电网 API 和 OpenWeatherMap 天气 API，实现数据采集、清洗与存储（Cloud Storage / Firestore）；
-
-    \item \textbf{机器学习建模}：基于 Scikit-learn 实现随机森林负载预测模型，支持训练、评估、持久化的完整生命周期；
-
-    \item \textbf{优化算法}：基于 Gurobi 实现 MIP 优化模块，生成最优充放电策略；
-
-    \item \textbf{后端服务}：使用 Flask 构建 RESTful API，包含认证、分析、优化、历史记录等模块；
-
-    \item \textbf{前端应用}：使用 Flutter 开发跨平台移动应用，实现 SOC 监控、功率图表等可视化组件；
-
-    \item \textbf{部署运维}：完成 Docker 容器化封装，支持 Google App Engine 云端部署。
+    \item \textbf{经济目标}：通过优化策略，使日均电费节省率不低于 10\%（假设二）；
+    \item \textbf{预测目标}：构建高精度负载预测模型，RMSE 相比历史均值法降低 20\% 以上（假设一）；
+    \item \textbf{工程目标}：实现从数据采集、后端求解到移动端监控的闭环系统，验证“预测+优化”技术路线在实际工程中的可行性。
 \end{enumerate}
 
 \subsection{报告组织结构}
 
-本报告共分七章：
-
-\textbf{第一章}（本章）：研究背景、业务场景与核心问题，提出两个待验证的研究假设。
-
-\textbf{第二章}：数据来源与数据工程，涵盖数据探索性分析（EDA）和 ETL 预处理流程。
-
-\textbf{第三章}：核心模型与算法，详述随机森林预测模型和混合整数规划优化模型的原理与实现。
-
-\textbf{第四章}：系统架构与工程实现，描述前后端开发、Firebase 集成和云端部署方案。
-
-\textbf{第五章}：实验评估与结果分析，验证第一章提出的两个研究假设。
-
-\textbf{第六章}：总结与展望，归纳项目成果并讨论未来改进方向。
-
-\textbf{第七章}：附录，包含核心代码片段和系统截图。
+本报告其余部分组织如下：\textbf{第二章}对问题进行形式化描述并说明数据来源；\textbf{第三章}详述数据清洗与探索性分析；\textbf{第四章}介绍建模方法与算法设计；\textbf{第五章}展示实验结果与评估；\textbf{第六章}阐述系统工程实现；\textbf{第七章}总结全文与展望。
