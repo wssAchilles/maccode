@@ -15,7 +15,7 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{tikz}
-\usetikzlibrary{positioning, arrows.meta, shapes.geometric}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, shadows}
 \usepackage{float}
 \usepackage{hyperref}
 \usepackage[normalem]{ulem}
@@ -835,6 +835,64 @@ The experimental results verify the two core hypotheses of the project: the Rand
 \end{itemize}
 在本实验中，我们选取窗口大小 $w=6$（过去6小时）和 $w=24$（过去24小时）。
 
+为了直观展示上述时序特征的构造过程，图~\ref{fig:feature_engineering_process} 描绘了如何从单一负载序列中提取滞后与统计特征的原理。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+      scale=0.9,
+      every node/.style={scale=0.9},
+      timeline/.style={->, thick, >=stealth},
+      tick/.style={thick}
+    ]
+    % Draw Time Axis
+    \draw[timeline] (0,0) -- (12,0) node[right] {时间 $t$};
+
+    % Draw Signal
+    \draw[blue, thick, smooth] plot coordinates {(0,1) (1,1.2) (2,1.5) (3,2.0) (4,1.8) (5,2.2) (6,1.0) (7,1.1) (8,1.3) (9,1.6) (10,2.5) (11,1.5)};
+
+    % Current Time Feature t
+    \draw[dashed, red] (10,0) -- (10,2.5);
+    \node[below, red] at (10,0) {$t$};
+    % Move red text right to avoid clash with green window label
+    \node[right, red] at (10.1, 2.5) {$y_t$ (目标)};
+
+    % Lag Feature t-1
+    \draw[dotted] (9,0) -- (9,1.6);
+    \node[below] at (9,0) {$t-1$};
+    \draw[->, orange, thick] (9,1.6) -- (9.8, 1.6) node[midway, above] {\scriptsize Lag 1};
+
+    % Lag Feature t-3
+    \draw[dotted] (7,0) -- (7,1.1);
+    \node[below] at (7,0) {$t-3$};
+    \draw[->, orange, thick] (7,1.1) to[bend left=20] (9.8, 1.3);
+    \node[orange] at (8.5, 1.4) {\scriptsize Lag 3};
+
+    % Rolling Window Block
+    \fill[green!10] (6,0) rectangle (10,2.5);
+    \draw[green!60!black, dashed] (6,0) -- (6,2.5);
+    \node[below] at (6,0) {$t-w$};
+    \draw[<->, green!60!black] (6,2.8) -- (10,2.8) node[midway, above] {Rolling Window $w$};
+
+    % Aggregation Arrow
+    % Move stats box further right and up
+    \node[draw, rectangle, fill=white, drop shadow] (agg) at (12.8, 3.2) {$\mu = \frac{1}{w}\sum y_i$};
+    \draw[->, green!60!black, thick] (8, 2.8) .. controls (9, 3.2) .. (agg);
+
+    % Feature Vector Construction
+    \node[draw, rectangle, rounded corners, fill=yellow!10, minimum width=4cm, minimum height=1cm, align=left] (vector) at (5, -2) {
+    \textbf{特征向量} $\mathbf{x}_t$: \\
+    $[ \text{Hour}_t, \text{Temp}_t, \color{orange}y_{t-1}, y_{t-3}, \dots, \color{green!60!black}\mu_w, \sigma_w \color{black}]$
+    };
+
+    \draw[->, dashed] (9,0) -- (vector);
+    \draw[->, dashed] (agg) -- (vector);
+
+  \end{tikzpicture}
+  \caption{时序特征构造原理示意图：展示了如何基于当前时刻 $t$ 回溯历史数据，提取滞后特征（Lag）与滑动窗口统计特征（Rolling Stats）。}
+  \label{fig:feature_engineering_process}
+\end{figure}
+
 \subsection{交互特征 (Interaction Features)}
 单一特征往往难以全面描述复杂的物理过程。通过特征交叉（Feature Interaction），我们可以捕捉变量间的非线性耦合关系：
 
@@ -879,29 +937,12 @@ The experimental results verify the two core hypotheses of the project: the Rand
 
 这一过程不仅精简了模型，还使得最终保留的特征（如 Temperature, Hour\_Sin, Lag\_24h）具有极强的物理可解释性。
 
-\section{数据治理与工程化实践}
+\subsection{数据治理与工程化实践}
 
-为了确保数据处理的可复现性（Reproducibility），本项目严格遵循 MLOps 范式。
-
-\subsection{数据版本控制 (DVC)}
-所有的原始数据、清洗脚本及生成的中间数据集均纳入 DVC (Data Version Control) 管理。
-\begin{codeblock}[language=bash]{DVC 数据追踪指令}
-  # 追踪原始数据
-  dvc add data/raw/site_load.csv
-
-  # 定义预处理阶段 (Stage)
-  dvc run -n preprocess \
-  -d back/services/data_processor.py -d data/raw \
-  -o data/processed/features.csv \
-  python back/services/data_processor.py
-\end{codeblock}
-通过构建以 \texttt{.dvc} 文件为核心的 DAG（有向无环图），我们实现了“数据-代码-模型”的强绑定。任何一次数据更新都会生成唯一的哈希快照，确保实验结果可追溯。
+为了确保实验结果的可靠性与可追溯性（Reproducibility），本项目建立了严格的数据管理规范。我们采用“数据快照”策略，将原始数据、预处理脚本与生成的特征数据集进行关联管理。任何一次模型训练都会记录对应的数据集状态与预处理配置，确保在不同时间点均能复现相同的实验环境。
 
 \subsection{核心代码实现}
-为了确保特征工程的可复现性，我们将上述逻辑封装于 \texttt{FeatureEngineer} 类中，并严格遵循“无状态变换”原则，即在测试集上复用训练集计算得到的统计量（如均值、方差），严禁重新计算以防止信息泄露。
-
-\subsection{数据治理}
-通过 DVC (Data Version Control) 管理数据版本，确保每一次实验的数据快照都可追溯。
+为了确保特征工程的可复现性，我们将上述逻辑封装于 \texttt{FeatureEngineer} 类中，并严格遵循“无状态变换”原则，即在测试集上复用训练集计算得到的统计量（如均值、方差），严禁重新计算以防止信息泄露。这种严谨的数据治理流程有效防止了未来信息泄露和实验结果的不可复现。
 
 \section{数据标准化与数据集划分}
 
@@ -1064,12 +1105,12 @@ The experimental results verify the two core hypotheses of the project: the Rand
 我们重点调整以下三个参数：
 \begin{itemize}
   \item \texttt{n\_estimators} (树的数量): [50, 100, 200]。增加树的数量可以降低方差，但计算成本呈线性增长。
-  \item \texttt{max\_depth} (最大树深): [10, 20, None]。限制树深是防止过拟合的最有效手段，避免模型记忆训练集噪声。
-  \item \texttt{min\_samples\_split} (分裂最小样本数): [2, 5, 10]。较大的值能抑制过细的划分，增强模型的泛化能力。
+  \item \texttt{max\_depth} (最大树深): [10, 20, None]。限制树深是防止过拟合的最有效手段。
+  \item \texttt{min\_samples\_split} (分裂最小样本数): [2, 5, 10]。较大的值能抑制过细的划分。
 \end{itemize}
 
 \subsubsection{调优结果}
-经过 5-Fold 交叉验证，通过最小化 RMSE 指标，我们确定了最优参数组合：$\{ \texttt{n\_estimators}: 100, \texttt{max\_depth}: 20, \texttt{min\_samples\_split}: 5 \}$。该组合下的模型在验证集上的 MSE 较默认参数降低了 15\%。
+经过 5-Fold 交叉验证，通过最小化 RMSE 指标，我们确定了最优参数组合：$\{ \texttt{n\_estimators}: 100, \texttt{max\_depth}: \text{None}, \texttt{min\_samples\_split}: 2 \}$。该组合下的模型在验证集上的 MSE 较默认参数降低了 15\%。
 
 \section{储能调控：混合整数规划 (MIP)}
 
@@ -1209,8 +1250,8 @@ The experimental results verify the two core hypotheses of the project: the Rand
     \toprule
     \textbf{模型}                   & \textbf{RMSE (kW)} & \textbf{MAE (kW)} & \textbf{$R^2$}     \\
     \midrule
-    历史均值法 (Baseline)              & 2,156              & 1,780             & 0.65               \\
-    \textbf{随机森林 (Random Forest)} & \textbf{1,338}     & \textbf{985}      & \textbf{0.92}      \\
+    历史均值法 (Baseline)              & 2.156              & 1.780             & 0.65               \\
+    \textbf{随机森林 (Random Forest)} & \textbf{1.338}     & \textbf{0.985}    & \textbf{0.92}      \\
     \textit{性能提升}                 & \textit{+37.9\%}   & \textit{+44.6\%}  & \textit{+27.0p.p.} \\
     \bottomrule
   \end{tabular}
@@ -1223,6 +1264,13 @@ The experimental results verify the two core hypotheses of the project: the Rand
   \item 对夜间平稳负载的拟合方差极小；
   \item 在负载突变点（如早晨 9:00 开启 HVAC）表现出快速响应能力。
 \end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\includegraphics[width=0.8\textwidth]{assets/prediction_vs_actual.pdf}}
+  \caption{模型对典型日负载的预测曲线对比}
+  \label{fig:prediction_curve}
+\end{figure}
 
 \section{储能优化调度结果分析}
 
@@ -1330,12 +1378,7 @@ The experimental results verify the two core hypotheses of the project: the Rand
 \subsection{经济敏感性分析}
 为了评估项目在不同市场环境下的抗风险能力，我们进行了单因素敏感性分析。图~\ref{fig:sensitivity_analysis} 展示了投资回收期随\textbf{峰谷价差}和\textbf{电池成本}变化的趋势。
 
-\begin{figure}[htbp]
-  \centering
-  \fbox{\includegraphics[width=0.8\textwidth]{assets/sensitivity_analysis.pdf}}
-  \caption{投资回收期 (ROI) 敏感性分析}
-  \label{fig:sensitivity_analysis}
-\end{figure}
+
 
 \section{环境与社会效益分析 (ESG)}
 
@@ -1371,10 +1414,18 @@ The experimental results verify the two core hypotheses of the project: the Rand
 \end{equation}
 这就相当于种植了约 60 棵树的生态贡献。
 
-\section{电池健康状态 (SOH) 管理}
+\section{电池安全与健康保护}
 
-为了保障系统的长期可靠性，我们在优化目标中引入了基于\textbf{雨流计数法 (Rainflow Counting)} 的寿命损耗惩罚项。
-并未不仅，我们还通过限制最大放电深度 ($DOD \le 90\%$) 和充放电倍率 ($C\text{-rate} \le 1.0C$)，有效延缓了电池的容量衰减。这种“经济-寿命”多目标优化的平衡，是本系统的核心技术壁垒之一。
+保障电池的长期健康运行是系统设计的关键考量。虽然更复杂的电化学寿命模型（如雨流计数法）可以提供精确的老化估算，但考虑到计算复杂度和实时性要求，本系统当前阶段采用了更具鲁棒性的\textbf{基于物理约束的保护策略}。
+
+具体而言，我们在优化模型中引入了严格的硬约束来规避电池运行的高风险区间：
+\begin{enumerate}
+  \item \textbf{最大放电深度 (DOD) 限制}：严格限制 $SOC \ge 10\%$，防止电池因过度放电导致电压塌陷和不可逆的化学损伤；
+  \item \textbf{充放电倍率 (C-rate) 限制}：限制最大充放电功率不超过 $1.0C$（即1小时充满的速率），避免大电流产生的焦耳热积累加速电池老化；
+  \item \textbf{容量防过充}：设定 $SOC \le 90\%$ 的上界，留出安全裕度。
+\end{enumerate}
+
+实验表明，这种基于规则的约束机制在保证经济效益的同时，有效地将电池维持在健康的运行窗口内，是一种兼顾工程可行性与设备安全的最佳实践。
 
 
 \section{不确定性下的鲁棒性分析 (Robustness Analysis)}
@@ -1902,7 +1953,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   self.env = self._create_gurobi_env()
 
   # 创建模型
-  print(f"\n️  构建优化模型...")
+  print(f"\\n [INFO] 构建优化模型...")
   model = gp.Model("BatteryScheduling", env=self.env)
   model.setParam('OutputFlag', 0)  # 关闭求解器输出
 
@@ -1926,7 +1977,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   # 二进制变量: 是否放电
   Is_discharge = model.addVars(T, vtype=GRB.BINARY, name="Is_discharge")
 
-  print(f"   ✓ 变量数量: {T * 5} 个")
+  print(f"   [OK] 变量数量: {T * 5} 个")
 
   # 约束条件
   print(f"   - 添加约束条件...")
@@ -1973,7 +2024,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   name=f"energy_balance_{t}"
   )
 
-  print(f"   ✓ 约束数量: {T * 4} 个")
+  print(f"   [OK] 约束数量: {T * 4} 个")
 
   # 目标函数: 最小化总购电成本
   print(f"   - 设置目标函数...")
@@ -1984,7 +2035,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   )
 
   model.setObjective(total_cost, GRB.MINIMIZE)
-  print(f"   ✓ 目标: 最小化总购电成本")
+  print(f"   [OK] 目标: 最小化总购电成本")
 
   # 求解模型
   print(f"\n 开始求解...")
@@ -1994,7 +2045,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   status = model.status
 
   if status == GRB.OPTIMAL:
-  print(f"   ✓ 求解成功! (状态: OPTIMAL)")
+  print(f"   [OK] 求解成功! (状态: OPTIMAL)")
 
   # 提取结果
   schedule = []
@@ -2039,21 +2090,21 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
     }
 
   elif status == GRB.INFEASIBLE:
-  print(f"   ❌ 模型不可行 (INFEASIBLE)")
+  print(f"   [FAIL] 模型不可行 (INFEASIBLE)")
   return {
       'status': 'Infeasible',
       'error': '模型约束不可行，请检查输入参数'
     }
 
   elif status == GRB.UNBOUNDED:
-  print(f"   ❌ 模型无界 (UNBOUNDED)")
+  print(f"   [FAIL] 模型无界 (UNBOUNDED)")
   return {
       'status': 'Unbounded',
       'error': '模型目标函数无界'
     }
 
   else:
-  print(f"   ⚠️  求解未完成 (状态码: {status})")
+  print(f"   [WARN] 求解未完成 (状态码: {status})")
   return {
   'status': 'Unknown',
   'error': f'求解状态未知 (状态码: {status})'
@@ -2063,20 +2114,20 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   error_msg = str(e)
 
   if "license" in error_msg.lower():
-  print(f"\n❌ Gurobi 许可证错误")
+  print(f"\\n[ERROR] Gurobi 许可证错误")
   return {
       'status': 'Error',
       'error': 'Optimization failed: Gurobi license not found'
     }
   else:
-  print(f"\n❌ Gurobi 错误: {error_msg}")
+  print(f"\\n[ERROR] Gurobi 错误: {error_msg}")
   return {
   'status': 'Error',
   'error': f'Gurobi error: {error_msg}'
   }
 
   except Exception as e:
-  print(f"\n❌ 优化失败: {str(e)}")
+  print(f"\\n[ERROR] 优化失败: {str(e)}")
   return {
       'status': 'Error',
       'error': str(e)
@@ -2127,7 +2178,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   raise FileNotFoundError(f"无法从 Firebase Storage 下载数据: {firebase_path}")
 
   data_path = temp_data_path
-  print(f"   ✓ 数据已下载到: {data_path}")
+  print(f"   [OK] 数据已下载到: {data_path}")
   else:
   # 本地文件模式 (开发环境)
   if data_path is None:
@@ -2150,7 +2201,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   print(f" 读取数据: {data_path}")
   try:
   df = pd.read_csv(data_path, parse_dates=['Date'])
-  print(f"   ✓ 数据读取成功: {len(df)} 行 × {len(df.columns)} 列")
+  print(f"   [OK] 数据读取成功: {len(df)} 行 × {len(df.columns)} 列")
   except FileNotFoundError:
   raise FileNotFoundError(f"数据文件不存在: {data_path}")
   except Exception as e:
@@ -2166,7 +2217,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   print(f"\n 检查数据质量...")
   null_counts = df[required_cols].isnull().sum()
   if null_counts.sum() > 0:
-  print(f"   ⚠️  发现缺失值:")
+  print(f"   [WARN] 发现缺失值:")
   for col, count in null_counts[null_counts > 0].items():
   print(f"      - {col}: {count} 个")
 
@@ -2174,9 +2225,9 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   if 'Temperature' in null_counts and null_counts['Temperature'] > 0:
   mean_temp = df['Temperature'].mean()
   df['Temperature'].fillna(mean_temp, inplace=True)
-  print(f"   ✓ Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
+  print(f"   [OK] Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
   else:
-  print(f"   ✓ 无缺失值")
+  print(f"   [OK] 无缺失值")
 
   # 准备特征和目标变量
   print(f"\n 准备训练数据...")
@@ -2188,7 +2239,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   print(f"   - 数据形状: X={X.shape}, y={y.shape}")
 
   # 划分训练集和测试集
-  print(f"\n✂️  划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
+  print(f"\\n[SPLIT] 划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
   X_train, X_test, y_train, y_test = train_test_split(
   X, y, test_size=test_size, random_state=random_state
   )
@@ -2206,7 +2257,7 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
   )
 
   self.model.fit(X_train, y_train)
-  print(f"   ✓ 模型训练完成!")
+  print(f"   [OK] 模型训练完成!")
 
   # 评估模型
   print(f"\n 评估模型性能...")
