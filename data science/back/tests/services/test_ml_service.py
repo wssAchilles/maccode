@@ -90,15 +90,14 @@ class TestPrediction:
         assert len(predictions) == 24
     
     @pytest.mark.unit
-    def test_predict_single_returns_positive(self, loaded_predictor):
-        """测试单点预测返回正值"""
-        load = loaded_predictor.predict_single(
-            hour=12,
-            day_of_week=0,
-            temperature=25.0
-        )
-        
-        assert load > 0, "预测负载应为正数"
+    def test_predict_single_is_deprecated(self, loaded_predictor):
+        """测试单点预测方法已废弃，应抛出 NotImplementedError"""
+        with pytest.raises(NotImplementedError):
+            loaded_predictor.predict_single(
+                hour=12,
+                day_of_week=0,
+                temperature=25.0
+            )
 
 
 class TestPredictionEdgeCases:

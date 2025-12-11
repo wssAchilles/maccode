@@ -42,8 +42,8 @@ class EnergyOptimizer:
         初始化优化器
         
         Args:
-            battery_capacity: 电池容量 (kWh)，默认 13.5 (Tesla Powerwall)
-            max_power: 最大充放电功率 (kW)，默认 5.0
+            battery_capacity: 电池容量 (kWh)，默认 60.0 (工业级储能)
+            max_power: 最大充放电功率 (kW)，默认 20.0
             efficiency: 充放电效率，默认 0.95 (95%)
         """
         if not GUROBI_AVAILABLE:
@@ -418,13 +418,28 @@ class EnergyOptimizer:
         print(f"   - 节省金额: {result['savings']:.2f} 元 ({result['savings_percent']:.1f}%)")
         print("="*80 + "\n")
     
-    def __del__(self):
-        """析构函数: 关闭 Gurobi 环境"""
+    def close(self):
+        """显式关闭 Gurobi 环境（推荐在使用完毕后调用）"""
         if self.env is not None:
             try:
                 self.env.dispose()
-            except:
-                pass
+                self.env = None
+                print("🧹 Gurobi 环境已关闭")
+            except Exception as e:
+                print(f"⚠️ 关闭 Gurobi 环境时出错: {e}")
+    
+    def __enter__(self):
+        """上下文管理器入口"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """上下文管理器出口 - 自动关闭环境"""
+        self.close()
+        return False
+    
+    def __del__(self):
+        """析构函数: 关闭 Gurobi 环境（兜底）"""
+        self.close()
 
 
 def main():

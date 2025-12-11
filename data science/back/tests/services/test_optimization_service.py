@@ -27,8 +27,9 @@ class TestEnergyOptimizerInit:
         
         optimizer = EnergyOptimizer()
         
-        assert optimizer.battery_capacity == 13.5, "默认电池容量应为 13.5 kWh"
-        assert optimizer.max_power == 5.0, "默认最大功率应为 5.0 kW"
+        # 注意：默认参数已更新为工业级储能规模（适配 20000-30000 kW 负载）
+        assert optimizer.battery_capacity == 60.0, "默认电池容量应为 60.0 kWh"
+        assert optimizer.max_power == 20.0, "默认最大功率应为 20.0 kW"
         assert optimizer.efficiency == 0.95, "默认效率应为 0.95"
     
     @pytest.mark.unit

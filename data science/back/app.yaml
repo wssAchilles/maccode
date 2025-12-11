@@ -1,25 +1,69 @@
 runtime: python311  # 运行时环境：指定 Python 3.11
 
 # 启动命令：
-# GAE 将使用 gunicorn 来启动你
-# 在 'main.py' 文件中的 'app' 实例
-# --timeout 300: 增加工作进程超时时间到 5 分钟（用于大文件分析）
-# --workers 1: 使用 1 个工作进程（F1 实例内存有限）
-entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 main:app
+# GAE 将使用 gunicorn 来启动 Flask 应用
+# --timeout 300: 增加工作进程超时时间到 5 分钟（用于模型训练任务）
+# --workers 1: 使用 1 个工作进程（F4 实例内存有限，避免 OOM）
+# --threads 4: 每个 worker 4 个线程，提高并发处理能力
+entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 --threads 4 main:app
 
 instance_class: F4  # 实例类型：F4 高性能实例，解决 Pandas/Scikit-learn 内存溢出问题
 
 # 自动扩缩容配置（成本控制的关键！）
 automatic_scaling:
   min_instances: 0      # 最小实例数：0 (没有流量时关闭，不产生费用)
-  max_instances: 1      # 最大实例数：1 (防止意外流量导致高额账单)
+  max_instances: 2      # 最大实例数：2 (允许 Cron 任务和用户请求并行)
+  min_idle_instances: 0 # 最小空闲实例：0
+  max_idle_instances: 1 # 最大空闲实例：1
+  min_pending_latency: 3000ms   # 最小等待延迟
+  max_pending_latency: automatic
+  target_cpu_utilization: 0.8   # CPU 利用率目标 80%
+  target_throughput_utilization: 0.8
 
+# 请求超时配置
+inbound_services:
+- warmup  # 启用预热请求，减少冷启动延迟
+
+# 环境变量配置
+# ⚠️ 安全建议：敏感信息应使用 Secret Manager
 env_variables:
+  # GCP 配置
   STORAGE_BUCKET_NAME: "data-science-44398.firebasestorage.app"
   GCP_PROJECT_ID: "data-science-44398"
+  
+  # Gurobi WLS 许可证
+  # 注意：生产环境建议使用 Secret Manager
   GRB_LICENSEID: '2743684'
   GRB_WLSACCESSID: '11c64fa1-9c37-441e-9e99-e1a63e3c627c'
   GRB_WLSSECRET: 'e1e51738-6517-4b2f-9c7d-49bda41f2df3'
+  
+  # OpenWeather API
   OPENWEATHER_API_KEY: "e8f11d28ce6faf3a9aa93828fb8fbff1"
   WEATHER_CITY_LAT: "34.05"   # Los Angeles Latitude
   WEATHER_CITY_LON: "-118.24" # Los Angeles Longitude
+  
+  # Flask 配置
+  FLASK_ENV: "production"
+
+# 处理器配置
+handlers:
+# 健康检查端点（不需要认证）
+- url: /health
+  script: auto
+  secure: always
+
+# Cron 任务端点（GAE 内部调用）
+- url: /tasks/.*
+  script: auto
+  secure: always
+  login: admin  # 只允许管理员或 Cron 服务访问
+
+# API 端点
+- url: /api/.*
+  script: auto
+  secure: always
+
+# 默认处理器
+- url: /.*
+  script: auto
+  secure: always

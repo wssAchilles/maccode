@@ -449,13 +449,20 @@ def preprocess_energy_data(
     print("-" * 80)
     
     # 合并所有楼层数据
+    # 使用 outer join 以保留所有时间点，缺失值用 0 填充
     merged_df = all_floors_data[0]
     for df in all_floors_data[1:]:
-        merged_df = pd.merge(merged_df, df, on='Date', how='inner')
+        merged_df = pd.merge(merged_df, df, on='Date', how='outer')
+    
+    # 对负载列的缺失值填充为 0（该时间点该楼层无数据）
+    load_columns = [col for col in merged_df.columns if col.startswith('Total_Load_')]
+    merged_df[load_columns] = merged_df[load_columns].fillna(0)
     
     # 合并温度数据
     if temperature_data is not None:
-        merged_df = pd.merge(merged_df, temperature_data, on='Date', how='inner')
+        merged_df = pd.merge(merged_df, temperature_data, on='Date', how='left')
+        # 温度缺失值用前后值插值填充
+        merged_df['Temperature'] = merged_df['Temperature'].interpolate(method='linear').fillna(25.0)
     
     # 计算全站总负载
     load_columns = [col for col in merged_df.columns if col.startswith('Total_Load_')]

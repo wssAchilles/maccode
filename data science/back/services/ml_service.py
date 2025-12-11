@@ -548,6 +548,10 @@ class EnergyPredictor:
         
         if isinstance(start_time, str):
             start_time = pd.to_datetime(start_time)
+        
+        # 验证温度预测列表长度
+        if temp_forecast_list is not None and len(temp_forecast_list) != 24:
+            raise ValueError(f"temp_forecast_list 长度必须为 24，当前为 {len(temp_forecast_list)}")
             
         print(f"\n🔮 递归预测未来24小时负载 (从 {start_time} 开始)...")
         
@@ -704,6 +708,38 @@ class EnergyPredictor:
             if self.model is None:
                 raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
 
+            # 构建特征 DataFrame
+            # 如果 price 为 None，根据 hour 自动计算（峰谷电价）
+            if price is None:
+                # 峰时段: 8-22点，谷时段: 22-8点
+                if 8 <= hour < 22:
+                    price = 1.2  # 峰时电价
+                else:
+                    price = 0.6  # 谷时电价
+            
+            # 尝试从历史数据获取滞后特征，如果没有则使用合理的默认值
+            # 默认值基于典型的负载模式
+            default_load = 150.0  # 典型平均负载 (kW)
+            
+            # 构建与训练时相同的特征 DataFrame（包含所有12个特征）
+            features = pd.DataFrame({
+                'Hour': [hour],
+                'DayOfWeek': [day_of_week],
+                'Temperature': [temperature],
+                'Price': [price],
+                'Lag_1h': [default_load],  # 1小时前的负载
+                'Lag_24h': [default_load],  # 24小时前的负载
+                'Lag_168h': [default_load],  # 168小时(一周)前的负载
+                'Rolling_Mean_6h': [default_load],  # 6小时滚动平均
+                'Rolling_Std_6h': [default_load * 0.1],  # 6小时滚动标准差
+                'Rolling_Mean_24h': [default_load],  # 24小时滚动平均
+                'Temp_x_Hour': [temperature * hour],  # 温度与小时的交互特征
+                'Lag24_x_DayOfWeek': [default_load * day_of_week]  # 24小时滞后与星期的交互
+            })
+            
+            # 确保特征列顺序与训练时一致
+            features = features[self.feature_columns]
+            
             # 使用 TreeExplainer 解释随机森林模型
             # 只有当 explainer 尚未初始化时才创建，避免重复计算
             if not hasattr(self, '_shap_explainer') or self._shap_explainer is None:

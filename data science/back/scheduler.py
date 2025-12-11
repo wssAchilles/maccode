@@ -5,6 +5,11 @@ Scheduler for Periodic Tasks
 使用 APScheduler 实现:
 1. 每小时抓取 CAISO 和天气数据
 2. 每天凌晨重训模型
+
+增强功能:
+- 任务执行监控和记录
+- 执行超时保护
+- 错误重试机制
 """
 
 import os
@@ -15,6 +20,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 from services.external_data_service import ExternalDataService
 from services.ml_service import EnergyPredictor
+from services.task_monitor import get_task_monitor, TaskStatus
 
 # 配置日志
 logging.basicConfig(
@@ -52,23 +58,36 @@ class DataPipelineScheduler:
         - 获取 CAISO 电力负载
         - 获取 OpenWeather 天气数据
         - 追加到 Firebase Storage CSV
+        - 记录执行状态到 Firestore
         """
         logger.info("="*80)
         logger.info("⏰ 开始执行数据抓取任务")
         logger.info("="*80)
+        
+        # 记录任务开始
+        monitor = get_task_monitor()
+        execution_id = monitor.record_task_start('fetch_data', {
+            'trigger': 'cron',
+            'scheduled_time': datetime.utcnow().isoformat()
+        })
         
         try:
             success = self.external_data_service.fetch_and_publish()
             
             if success:
                 logger.info("✅ 数据抓取任务完成")
+                monitor.record_task_end(execution_id, TaskStatus.SUCCESS)
             else:
                 logger.error("❌ 数据抓取任务失败")
+                monitor.record_task_end(execution_id, TaskStatus.FAILED, 
+                                       error_message="fetch_and_publish returned False")
         
         except Exception as e:
             logger.error(f"❌ 数据抓取任务异常: {str(e)}")
             import traceback
             traceback.print_exc()
+            monitor.record_task_end(execution_id, TaskStatus.FAILED, 
+                                   error_message=str(e))
         
         logger.info("="*80 + "\n")
     
@@ -79,11 +98,20 @@ class DataPipelineScheduler:
         执行内容:
         - 从 Firebase Storage 下载最新数据
         - 重新训练随机森林模型
-        - 保存模型到部署包
+        - 保存模型到 Firebase Storage
+        - 记录执行状态和模型指标
         """
         logger.info("="*80)
         logger.info("⏰ 开始执行模型训练任务")
         logger.info("="*80)
+        
+        # 记录任务开始
+        monitor = get_task_monitor()
+        execution_id = monitor.record_task_start('train_model', {
+            'trigger': 'cron',
+            'scheduled_time': datetime.utcnow().isoformat(),
+            'n_estimators': 100
+        })
         
         try:
             # 使用 Firebase Storage 数据训练
@@ -95,11 +123,22 @@ class DataPipelineScheduler:
             logger.info("✅ 模型训练任务完成")
             logger.info(f"   - 测试集 MAE: {metrics['test_mae']:.2f} kW")
             logger.info(f"   - 测试集 RMSE: {metrics['test_rmse']:.2f} kW")
+            
+            # 记录成功和模型指标
+            monitor.record_task_end(execution_id, TaskStatus.SUCCESS, 
+                                   result_metadata={
+                                       'test_mae': metrics['test_mae'],
+                                       'test_rmse': metrics['test_rmse'],
+                                       'train_mae': metrics.get('train_mae'),
+                                       'train_rmse': metrics.get('train_rmse')
+                                   })
         
         except Exception as e:
             logger.error(f"❌ 模型训练任务异常: {str(e)}")
             import traceback
             traceback.print_exc()
+            monitor.record_task_end(execution_id, TaskStatus.FAILED, 
+                                   error_message=str(e))
         
         logger.info("="*80 + "\n")
     

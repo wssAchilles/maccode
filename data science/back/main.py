@@ -95,6 +95,38 @@ def create_app(config_name=None):
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    @app.route('/tasks/status', methods=['GET'])
+    def get_task_status():
+        """
+        获取定时任务执行状态（用于监控）
+        
+        Query Parameters:
+            - task: 任务名称 (fetch_data 或 train_model)，可选
+            - limit: 返回数量，默认 10
+        """
+        try:
+            from services.task_monitor import get_task_monitor
+            
+            monitor = get_task_monitor()
+            task_name = request.args.get('task')
+            limit = int(request.args.get('limit', 10))
+            
+            executions = monitor.get_recent_executions(task_name, limit)
+            
+            # 获取统计信息
+            stats = {}
+            for name in ['fetch_data', 'train_model']:
+                stats[name] = monitor.get_task_stats(name, days=7)
+            
+            return jsonify({
+                'success': True,
+                'recent_executions': executions,
+                'stats': stats
+            }), 200
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     # ---------------------------------------------------------
 
     @app.route('/')
