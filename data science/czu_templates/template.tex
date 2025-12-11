@@ -301,8 +301,8 @@
 %%%%%%%%% 填写报告信息 %%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newcommand{\ReportTitleA}{基于数据驱动的分布式储能智能管理系统}
-\newcommand{\ReportTitleB}{——面向高能耗用户的“预测-优化”闭环设计} % 如果不需要第二行可以留空
+\newcommand{\ReportTitleA}{家庭储能优化调度系统}
+\newcommand{\ReportTitleB}{——基于机器学习与数学规划的设计与实现} % 如果不需要第二行可以留空
 \newcommand{\StudentClass}{23软件一}
 \newcommand{\StudentNameA}{许子祺（23030327）}
 \newcommand{\StudentNameB}{莫文涛（23030315）}
@@ -1740,6 +1740,28 @@ NoSQL 数据库虽然灵活，但在进行多字段组合查询时需要显式�
 
 \cleardoublepage
 \chapter{附录}
+
+\section{团队成员分工}
+
+本项目为团队协作完成，两位成员在项目中承担了不同的核心职责，通过紧密配合实现了端到端的系统闭环。具体分工如下：
+
+\subsection{许子祺（23030327）—— 算法建模与后端核心}
+主要负责项目的\textbf{数据科学内核}与\textbf{后端服务逻辑}，具体工作包括：
+\begin{itemize}
+  \item \textbf{核心算法实现}：基于 Gurobi 实现混合整数规划 (MIP) 调度模型，构建目标函数与物理约束；实现随机森林 (Random Forest) 负载预测算法及 SHAP 模型解释模块。
+  \item \textbf{数据工程 (ETL)}：设计并实现 \texttt{EnergyDataProcessor} 类，完成多源异构数据的清洗、聚合、重采样及特征工程（Lag/Rolling 特征构建）。
+  \item \textbf{后端 API 开发}：基于 Flask 框架搭建 RESTful API 服务，实现数据流转、认证鉴权及与 Google Cloud 服务的对接。
+  \item \textbf{数学建模}：负责优化问题的形式化描述，将现实业务场景抽象为数学规划问题。
+\end{itemize}
+
+\subsection{莫文涛（23030315）—— 全栈应用与云端架构}
+主要负责项目的\textbf{用户交互体验}与\textbf{系统基础设施}，具体工作包括：
+\begin{itemize}
+  \item \textbf{前端应用开发}：基于 Flutter 框架开发跨平台客户端，实现响应式布局、状态管理及复杂图表（fl\_chart）的高性能渲染。
+  \item \textbf{UI/UX 设计}：设计包括实时监控仪表盘、数据分析大屏及优化策略展示在内的可视化界面，提升用户体验。
+  \item \textbf{云原生架构部署}：负责 Docker 容器化封装，搭建 Google App Engine (GAE) 无服务器架构，配置 Cloud Scheduler 定时任务及 Firestore 数据库。
+  \item \textbf{系统测试与集成}：编写测试用例，负责前后端联调及系统的全链路集成测试。
+\end{itemize}
 
 \section{核心依赖配置}
 
