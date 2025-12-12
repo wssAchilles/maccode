@@ -11,6 +11,18 @@ import numpy as np
 from pathlib import Path
 from typing import Tuple, List
 import warnings
+from datetime import datetime
+
+# 美国节假日库（支持加州）
+try:
+    import holidays
+    # 创建加州节假日实例（包含联邦节假日 + 加州州立节假日）
+    US_CA_HOLIDAYS = holidays.US(state='CA')
+    HOLIDAYS_AVAILABLE = True
+except ImportError:
+    HOLIDAYS_AVAILABLE = False
+    US_CA_HOLIDAYS = None
+    print("⚠️ holidays 未安装，将使用简化节假日判断")
 
 warnings.filterwarnings('ignore')
 
@@ -215,7 +227,7 @@ class EnergyDataProcessor:
     
     def add_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        添加时间特征
+        添加时间特征（基础版）
         
         Args:
             df: 输入 DataFrame
@@ -235,8 +247,78 @@ class EnergyDataProcessor:
         print(f"   ✓ 已添加 Hour (0-23) 和 DayOfWeek (0-6) 特征")
         
         return df
+    
+    def add_enhanced_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        添加增强时间特征（月份、季节、节假日等）
+        
+        新增特征:
+        - Month: 月份 (1-12)
+        - Season: 季节 (0=春, 1=夏, 2=秋, 3=冬)
+        - IsWeekend: 是否周末 (0/1)
+        - IsHoliday: 是否节假日 (0/1)
+        - DayOfMonth: 日期 (1-31)
+        - WeekOfYear: 年内周数 (1-52)
+        
+        Args:
+            df: 输入 DataFrame
+            
+        Returns:
+            添加了增强时间特征的 DataFrame
+        """
+        print("📅 正在添加增强时间特征...")
+        
+        # 1. 月份 (1-12)
+        df['Month'] = df['Date'].dt.month
+        
+        # 2. 季节 (基于北半球)
+        # 春季: 3-5月, 夏季: 6-8月, 秋季: 9-11月, 冬季: 12-2月
+        def get_season(month: int) -> int:
+            if month in [3, 4, 5]:
+                return 0  # 春
+            elif month in [6, 7, 8]:
+                return 1  # 夏
+            elif month in [9, 10, 11]:
+                return 2  # 秋
+            else:
+                return 3  # 冬
+        
+        df['Season'] = df['Month'].apply(get_season)
+        
+        # 3. 是否周末
+        df['IsWeekend'] = (df['DayOfWeek'] >= 5).astype(int)
+        
+        # 4. 是否节假日（美国加州）
+        if HOLIDAYS_AVAILABLE:
+            # 使用 holidays 库判断美国加州节假日
+            def is_us_holiday(date):
+                try:
+                    return int(date.date() in US_CA_HOLIDAYS)
+                except:
+                    return 0
+            df['IsHoliday'] = df['Date'].apply(is_us_holiday)
+            print("   ✓ 使用 holidays 库判断美国加州节假日 (CAISO 区域)")
+        else:
+            # 简化版：周末视为假日
+            df['IsHoliday'] = df['IsWeekend']
+            print("   ⚠️ 使用简化节假日判断（周末=假日）")
+        
+        # 5. 日期 (1-31)
+        df['DayOfMonth'] = df['Date'].dt.day
+        
+        # 6. 年内周数 (1-52)
+        df['WeekOfYear'] = df['Date'].dt.isocalendar().week.astype(int)
+        
+        print(f"   ✓ 已添加 Month (1-12)")
+        print(f"   ✓ 已添加 Season (0=春, 1=夏, 2=秋, 3=冬)")
+        print(f"   ✓ 已添加 IsWeekend (0/1)")
+        print(f"   ✓ 已添加 IsHoliday (0/1)")
+        print(f"   ✓ 已添加 DayOfMonth (1-31)")
+        print(f"   ✓ 已添加 WeekOfYear (1-52)")
+        
+        return df
 
-    def add_advanced_features(self, df: pd.DataFrame, dropna: bool = True) -> pd.DataFrame:
+    def add_advanced_features(self, df: pd.DataFrame, dropna: bool = True, use_enhanced: bool = True) -> pd.DataFrame:
         """
         添加高级特征 (Lag, Rolling, Interaction)
         实现论文第3章描述的特征工程
@@ -244,6 +326,7 @@ class EnergyDataProcessor:
         Args:
             df: 输入 DataFrame
             dropna: 是否删除因特征构建产生的 NaN 行 (默认 True)
+            use_enhanced: 是否使用增强特征（需要先调用 add_enhanced_time_features）
         """
         print("🚀 正在添加高级特征 (Lag, Rolling, Interaction)...")
         
@@ -269,14 +352,42 @@ class EnergyDataProcessor:
         # 过去24小时均值
         df['Rolling_Mean_24h'] = df['Site_Load'].shift(1).rolling(window=24).mean()
         
-        # 3. 交互特征 (Interaction Features)
+        # 3. 基础交互特征 (Interaction Features)
         # Temperature x Hour: 捕捉不同时段温度的影响差异 (如中午高温vs深夜高温)
         df['Temp_x_Hour'] = df['Temperature'] * df['Hour']
         
         # Lag_24h x DayOfWeek: 捕捉历史负载在不同星期的惯性差异
         df['Lag24_x_DayOfWeek'] = df['Lag_24h'] * df['DayOfWeek']
         
-        # 4. 清洗 NaN (由于 shift/rolling 产生的头部缺失)
+        # 4. 增强交互特征（如果有增强时间特征）
+        enhanced_features_added = []
+        if use_enhanced and 'Season' in df.columns:
+            # Temperature x Season: 捕捉不同季节的温度效应差异
+            df['Temp_x_Season'] = df['Temperature'] * df['Season']
+            enhanced_features_added.append('Temp*Season')
+            
+            # Load_Lag24 x IsWeekend: 周末与工作日的历史惯性差异
+            if 'IsWeekend' in df.columns:
+                df['Lag24_x_IsWeekend'] = df['Lag_24h'] * df['IsWeekend']
+                enhanced_features_added.append('Lag24*IsWeekend')
+            
+            # Hour x IsHoliday: 节假日不同时段的用电模式
+            if 'IsHoliday' in df.columns:
+                df['Hour_x_IsHoliday'] = df['Hour'] * df['IsHoliday']
+                enhanced_features_added.append('Hour*IsHoliday')
+            
+            # 季节性周期编码 (正弦/余弦变换捕捉周期性)
+            # 月份周期 (12个月)
+            df['Month_Sin'] = np.sin(2 * np.pi * df['Month'] / 12)
+            df['Month_Cos'] = np.cos(2 * np.pi * df['Month'] / 12)
+            enhanced_features_added.extend(['Month_Sin', 'Month_Cos'])
+            
+            # 小时周期 (24小时)
+            df['Hour_Sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
+            df['Hour_Cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
+            enhanced_features_added.extend(['Hour_Sin', 'Hour_Cos'])
+        
+        # 5. 清洗 NaN (由于 shift/rolling 产生的头部缺失)
         original_len = len(df)
         
         if dropna:
@@ -285,6 +396,8 @@ class EnergyDataProcessor:
             print(f"   ✓ 已添加 Lag: 1h, 24h, 168h")
             print(f"   ✓ 已添加 Rolling: Mean(6h, 24h), Std(6h)")
             print(f"   ✓ 已添加 Interaction: Temp*Hour, Lag24*DoW")
+            if enhanced_features_added:
+                print(f"   ✓ 已添加增强交互特征: {', '.join(enhanced_features_added)}")
             print(f"   ⚠️  因特征构建剔除了前 {dropped_len} 行数据 (Warm-up Period)")
         else:
             print(f"   ✓ 已添加高级特征 (保留 NaN 行，共 {original_len} 行)")

@@ -860,7 +860,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     child: _buildModelStatItem(
                       Icons.model_training,
                       '模型类型',
-                      'Random Forest',
+                      modelInfo.usedAutoSelection 
+                          ? modelInfo.winnerModel 
+                          : 'Random Forest',
                       Colors.blue[700]!,
                     ),
                   ),
@@ -901,6 +903,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   ),
                 ],
               ),
+              
+              // 自动模型选择信息卡片 (新增)
+              if (modelInfo.usedAutoSelection) ...[
+                const SizedBox(height: 16),
+                _buildAutoSelectionCard(modelInfo),
+              ],
               
               const SizedBox(height: 16),
               
@@ -944,6 +952,190 @@ class _ModelingScreenState extends State<ModelingScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 构建自动模型选择信息卡片
+  Widget _buildAutoSelectionCard(ModelInfo modelInfo) {
+    final autoSelection = modelInfo.autoSelection!;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题行
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.green[700], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '🤖 自动模型选择',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[900],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green[600],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '已启用',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // 详情网格
+          Row(
+            children: [
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  '🏆 胜出模型',
+                  autoSelection.winner,
+                  Colors.amber[700]!,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  '📈 性能提升',
+                  autoSelection.improvementOverBaseline,
+                  Colors.green[700]!,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  '🔬 验证方法',
+                  autoSelection.validationMethodFormatted,
+                  Colors.blue[700]!,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  '📊 候选模型',
+                  '${autoSelection.candidatesEvaluated.length} 个',
+                  Colors.purple[700]!,
+                ),
+              ),
+            ],
+          ),
+          
+          // 展开查看所有候选模型得分
+          if (autoSelection.allScores != null && autoSelection.allScores!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                '查看所有候选模型得分',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.green[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Column(
+                    children: autoSelection.allScores!.entries.map((entry) {
+                      final scores = entry.value as Map<String, dynamic>;
+                      final mae = scores['mae'] ?? 0.0;
+                      final isWinner = entry.key == autoSelection.winner;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            if (isWinner)
+                              const Text('🏆 ', style: TextStyle(fontSize: 12))
+                            else
+                              const SizedBox(width: 18),
+                            Expanded(
+                              child: Text(
+                                entry.key,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+                                  color: isWinner ? Colors.amber[800] : Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'MAE: ${mae.toStringAsFixed(2)} kW',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isWinner ? Colors.green[700] : Colors.grey[600],
+                                fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoSelectionItem(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

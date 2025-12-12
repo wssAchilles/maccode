@@ -425,6 +425,10 @@ class ModelInfo {
   final String? dataSource;
   final String? status;
   final String? message;
+  final AutoSelection? autoSelection;
+  final Map<String, dynamic>? hyperparameters;
+  final int? featureCount;  // 新增: 使用的特征数量
+  final List<String>? featureColumns;  // 新增: 特征列表
 
   ModelInfo({
     required this.modelType,
@@ -435,6 +439,10 @@ class ModelInfo {
     this.dataSource,
     this.metrics,
     this.trainingSamples,
+    this.autoSelection,
+    this.hyperparameters,
+    this.featureCount,
+    this.featureColumns,
   });
 
   factory ModelInfo.fromJson(Map<String, dynamic> json) {
@@ -448,6 +456,14 @@ class ModelInfo {
         message: json['message'] as String?,
         trainingSamples: json['training_samples'] as int?,
         metrics: json['metrics'] != null ? ModelMetrics.fromJson(json['metrics']) : null,
+        autoSelection: json['auto_selection'] != null 
+            ? AutoSelection.fromJson(json['auto_selection'] as Map<String, dynamic>)
+            : null,
+        hyperparameters: json['hyperparameters'] as Map<String, dynamic>?,
+        featureCount: json['feature_count'] as int?,
+        featureColumns: (json['feature_columns'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList(),
       );
     } catch (e) {
       throw FormatException('Failed to parse ModelInfo: $e');
@@ -464,6 +480,10 @@ class ModelInfo {
       if (dataSource != null) 'data_source': dataSource,
       'status': status,
       if (message != null) 'message': message,
+      if (autoSelection != null) 'auto_selection': autoSelection!.toJson(),
+      if (hyperparameters != null) 'hyperparameters': hyperparameters,
+      if (featureCount != null) 'feature_count': featureCount,
+      if (featureColumns != null) 'feature_columns': featureColumns,
     };
   }
 
@@ -484,7 +504,86 @@ class ModelInfo {
     return '${metrics!.mae!.toStringAsFixed(2)} kW';
   }
 
+  /// 是否使用了自动模型选择
+  bool get usedAutoSelection => autoSelection?.enabled ?? false;
+  
+  /// 获取自动选择的胜出模型
+  String get winnerModel => autoSelection?.winner ?? modelType;
+  
+  /// 获取相对基准的提升
+  String get improvementOverBaseline => autoSelection?.improvementOverBaseline ?? 'N/A';
+  
+  /// 获取验证方法名称
+  String get validationMethodFormatted => autoSelection?.validationMethodFormatted ?? 'N/A';
+  
+  /// 是否使用了时间序列交叉验证
+  bool get usedTimeSeriesCV => autoSelection?.usedTimeSeriesCV ?? false;
+
   bool get isValid => status == 'active';
+}
+
+/// 自动模型选择信息
+class AutoSelection {
+  final bool enabled;
+  final List<String> candidatesEvaluated;
+  final String winner;
+  final String improvementOverBaseline;
+  final Map<String, dynamic>? allScores;
+  final String? validationMethod;  // 新增: TimeSeriesSplit 或 HoldOut
+  final int? cvFolds;              // 新增: 交叉验证折数
+  final Map<String, dynamic>? cvDetails;  // 新增: 交叉验证详细信息
+
+  AutoSelection({
+    required this.enabled,
+    required this.candidatesEvaluated,
+    required this.winner,
+    required this.improvementOverBaseline,
+    this.allScores,
+    this.validationMethod,
+    this.cvFolds,
+    this.cvDetails,
+  });
+
+  factory AutoSelection.fromJson(Map<String, dynamic> json) {
+    return AutoSelection(
+      enabled: json['enabled'] as bool? ?? false,
+      candidatesEvaluated: (json['candidates_evaluated'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ?? [],
+      winner: json['winner'] as String? ?? 'unknown',
+      improvementOverBaseline: json['improvement_over_baseline'] as String? ?? 'N/A',
+      allScores: json['all_scores'] as Map<String, dynamic>?,
+      validationMethod: json['validation_method'] as String?,
+      cvFolds: json['cv_folds'] as int?,
+      cvDetails: json['cv_details'] as Map<String, dynamic>?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'enabled': enabled,
+      'candidates_evaluated': candidatesEvaluated,
+      'winner': winner,
+      'improvement_over_baseline': improvementOverBaseline,
+      if (allScores != null) 'all_scores': allScores,
+      if (validationMethod != null) 'validation_method': validationMethod,
+      if (cvFolds != null) 'cv_folds': cvFolds,
+      if (cvDetails != null) 'cv_details': cvDetails,
+    };
+  }
+
+  /// 是否使用了时间序列交叉验证
+  bool get usedTimeSeriesCV => validationMethod == 'TimeSeriesSplit';
+  
+  /// 格式化验证方法名称
+  String get validationMethodFormatted {
+    if (validationMethod == 'TimeSeriesSplit') {
+      return '时序交叉验证 (${cvFolds ?? 5}折)';
+    } else if (validationMethod == 'HoldOut') {
+      return '留出法';
+    }
+    return validationMethod ?? 'N/A';
+  }
 }
 
 /// 模型指标

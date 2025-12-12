@@ -418,13 +418,22 @@ def run_optimization():
             'data_source': 'CAISO Real-Time Stream'
         }
         
+        # 确保 metrics 字段存在（从训练元数据中获取）
+        if 'metrics' not in model_info:
+            model_info['metrics'] = {}
+        
         # 获取在线模型性能评估 (MLOps)
+        # 注意：在线评估的 metrics 会与训练时的 metrics 合并，而不是覆盖
         try:
-            metrics = predictor.evaluate_recent_performance(hours=24)
-            if metrics.get('status') == 'success':
-                model_info['metrics'] = metrics
+            online_metrics = predictor.evaluate_recent_performance(hours=24)
+            if online_metrics.get('status') == 'success':
+                # 合并：保留训练时的 r2_score 和 mape（如果在线评估没有更新它们）
+                for key, value in online_metrics.items():
+                    if key != 'status':  # 不覆盖 status 以外的字段（如果已存在）
+                        model_info['metrics'][key] = value
+                logger.info(f"[{uid}] 在线评估成功，指标已合并")
         except Exception as e:
-            logger.warning(f"获取模型性能指标失败: {e}")
+            logger.warning(f"获取在线模型性能指标失败: {e}，使用训练时保存的指标")
             
         response['model_info'] = model_info
         

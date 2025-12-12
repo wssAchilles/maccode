@@ -2,7 +2,8 @@
 机器学习服务模块 - 能源负载预测
 ML Service Module for Energy Load Prediction
 
-使用随机森林回归模型预测未来24小时的能源负载
+支持多种模型：RandomForest、LightGBM、XGBoost
+自动模型选择和超参数优化
 """
 
 import pandas as pd
@@ -14,11 +15,26 @@ from pathlib import Path
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import warnings
 
 warnings.filterwarnings('ignore')
+
+# 可选依赖：LightGBM 和 XGBoost
+try:
+    from lightgbm import LGBMRegressor
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+    print("⚠️ LightGBM 未安装，将使用 RandomForest")
+
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("⚠️ XGBoost 未安装，将使用 RandomForest")
 
 
 from config import Config
@@ -58,17 +74,287 @@ class EnergyPredictor:
         # 初始化模型
         self.model: Optional[RandomForestRegressor] = None
         
-        # 特征列表
-        self.feature_columns = [
+        # 基础特征列表（向后兼容）
+        self.base_feature_columns = [
             'Hour', 'DayOfWeek', 'Temperature', 'Price',
             'Lag_1h', 'Lag_24h', 'Lag_168h',
             'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
             'Temp_x_Hour', 'Lag24_x_DayOfWeek'
         ]
+        
+        # 增强特征列表（新增的时间特征）
+        self.enhanced_feature_columns = [
+            # 基础时间特征
+            'Month', 'Season', 'IsWeekend', 'IsHoliday', 'DayOfMonth', 'WeekOfYear',
+            # 增强交互特征
+            'Temp_x_Season', 'Lag24_x_IsWeekend', 'Hour_x_IsHoliday',
+            # 周期编码特征
+            'Month_Sin', 'Month_Cos', 'Hour_Sin', 'Hour_Cos'
+        ]
+        
+        # 实际使用的特征列表（初始化为基础特征）
+        self.feature_columns = self.base_feature_columns.copy()
         self.target_column = 'Site_Load'
         
         print(f"📁 Firebase Storage 模型路径: {self.firebase_model_path}")
         print(f"📁 本地兜底模型路径: {self.local_model_path}")
+    
+    def _load_feature_columns_from_metadata(self):
+        """
+        从模型元数据中加载特征列表
+        确保预测时使用与训练时相同的特征
+        """
+        try:
+            metadata = self.get_model_metadata()
+            if metadata and 'feature_engineering' in metadata:
+                fe_info = metadata['feature_engineering']
+                if fe_info.get('use_enhanced', False):
+                    # 模型使用了增强特征，更新特征列表
+                    enhanced_list = fe_info.get('enhanced_features_list', [])
+                    if enhanced_list:
+                        self.feature_columns = self.base_feature_columns.copy()
+                        self.feature_columns.extend(enhanced_list)
+                        print(f"   ✓ 已从元数据恢复特征列表: {len(self.feature_columns)} 个特征")
+                        print(f"     (基础: {len(self.base_feature_columns)}, 增强: {len(enhanced_list)})")
+                else:
+                    # 模型只使用基础特征
+                    self.feature_columns = self.base_feature_columns.copy()
+                    print(f"   ✓ 模型使用基础特征: {len(self.feature_columns)} 个")
+            else:
+                print(f"   ⚠️  未找到特征元数据，使用默认基础特征")
+        except Exception as e:
+            print(f"   ⚠️  加载特征元数据失败: {e}，使用默认基础特征")
+    
+    def _get_model_type_name(self) -> str:
+        """获取当前模型的类型名称"""
+        if self.model is None:
+            return 'Unknown'
+        
+        model_class = type(self.model).__name__
+        name_map = {
+            'RandomForestRegressor': 'Random Forest Regressor',
+            'LGBMRegressor': 'LightGBM Regressor',
+            'XGBRegressor': 'XGBoost Regressor'
+        }
+        return name_map.get(model_class, model_class)
+    
+    def _create_model(self, model_type: str, n_estimators: int = 100, random_state: int = 42):
+        """
+        创建指定类型的模型
+        
+        Args:
+            model_type: 模型类型 ('randomforest', 'lightgbm', 'xgboost')
+            n_estimators: 树的数量
+            random_state: 随机种子
+            
+        Returns:
+            (model, hyperparameters) 元组
+        """
+        model_type = model_type.lower()
+        
+        if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+            model = LGBMRegressor(
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                max_depth=15,
+                num_leaves=31,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=-1
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'learning_rate': 0.05,
+                'max_depth': 15,
+                'num_leaves': 31
+            }
+        elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+            model = XGBRegressor(
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                max_depth=10,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=random_state,
+                n_jobs=-1,
+                verbosity=0
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'learning_rate': 0.05,
+                'max_depth': 10
+            }
+        else:
+            # 默认使用 RandomForest
+            model = RandomForestRegressor(
+                n_estimators=n_estimators,
+                max_depth=20,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=0
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'max_depth': 20,
+                'min_samples_split': 5,
+                'min_samples_leaf': 2
+            }
+        
+        return model, params
+    
+    def _auto_select_best_model(
+        self, 
+        X_train, y_train, 
+        X_test, y_test, 
+        random_state: int = 42,
+        use_time_series_cv: bool = True,
+        n_splits: int = 5
+    ) -> tuple:
+        """
+        自动选择最佳模型（支持时间序列交叉验证）
+        
+        比较多种模型配置，选择测试集 MAE 最低的
+        
+        Args:
+            X_train, y_train: 训练数据
+            X_test, y_test: 测试数据
+            random_state: 随机种子
+            use_time_series_cv: 是否使用时间序列交叉验证（默认 True）
+            n_splits: 交叉验证折数（默认 5）
+            
+        Returns:
+            (best_model, best_params, selection_info) 元组
+        """
+        candidates = []
+        results = {}
+        cv_details = {}
+        
+        # 候选模型配置
+        model_configs = [
+            ('RandomForest', 'randomforest', 150),
+            ('RandomForest_200', 'randomforest', 200),
+        ]
+        
+        # 如果 LightGBM 可用，添加到候选
+        if LIGHTGBM_AVAILABLE:
+            model_configs.extend([
+                ('LightGBM', 'lightgbm', 200),
+                ('LightGBM_300', 'lightgbm', 300),
+            ])
+        
+        # 如果 XGBoost 可用，添加到候选
+        if XGBOOST_AVAILABLE:
+            model_configs.extend([
+                ('XGBoost', 'xgboost', 200),
+                ('XGBoost_300', 'xgboost', 300),
+            ])
+        
+        print(f"   评估 {len(model_configs)} 种模型配置...")
+        if use_time_series_cv:
+            print(f"   📊 使用 TimeSeriesSplit 交叉验证 ({n_splits} 折)")
+        
+        baseline_mae = None
+        best_mae = float('inf')
+        best_model = None
+        best_params = None
+        best_name = None
+        
+        # 合并训练和测试数据用于时间序列交叉验证
+        if use_time_series_cv:
+            X_full = pd.concat([X_train, X_test], ignore_index=True)
+            y_full = pd.concat([pd.Series(y_train), pd.Series(y_test)], ignore_index=True)
+            tscv = TimeSeriesSplit(n_splits=n_splits)
+        
+        for name, model_type, n_estimators in model_configs:
+            try:
+                print(f"   - 训练 {name}...", end=' ')
+                model, params = self._create_model(model_type, n_estimators, random_state)
+                
+                if use_time_series_cv:
+                    # 时间序列交叉验证
+                    cv_scores = []
+                    for train_idx, val_idx in tscv.split(X_full):
+                        X_cv_train, X_cv_val = X_full.iloc[train_idx], X_full.iloc[val_idx]
+                        y_cv_train, y_cv_val = y_full.iloc[train_idx], y_full.iloc[val_idx]
+                        
+                        model_cv, _ = self._create_model(model_type, n_estimators, random_state)
+                        model_cv.fit(X_cv_train, y_cv_train)
+                        y_cv_pred = model_cv.predict(X_cv_val)
+                        cv_scores.append(mean_absolute_error(y_cv_val, y_cv_pred))
+                    
+                    # 计算交叉验证平均分
+                    cv_mae = np.mean(cv_scores)
+                    cv_std = np.std(cv_scores)
+                    
+                    # 使用完整训练数据重新训练最终模型
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    test_mae = mean_absolute_error(y_test, y_pred)
+                    test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    
+                    # 使用交叉验证 MAE 作为选择依据（更可靠）
+                    mae = cv_mae
+                    rmse = test_rmse
+                    
+                    cv_details[name] = {
+                        'cv_mae_mean': round(cv_mae, 2),
+                        'cv_mae_std': round(cv_std, 2),
+                        'cv_scores': [round(s, 2) for s in cv_scores]
+                    }
+                    
+                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW")
+                else:
+                    # 原有的简单训练-测试拆分
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    mae = mean_absolute_error(y_test, y_pred)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    print(f"MAE={mae:.2f} kW")
+                
+                results[name] = {'mae': mae, 'rmse': rmse, 'model_type': model_type}
+                candidates.append(name)
+                
+                # 记录基准（第一个 RandomForest）
+                if baseline_mae is None:
+                    baseline_mae = mae
+                
+                # 更新最佳
+                if mae < best_mae:
+                    best_mae = mae
+                    best_model = model
+                    best_params = params
+                    best_name = name
+                    
+            except Exception as e:
+                print(f"失败: {str(e)}")
+                continue
+        
+        # 计算相对基准的提升
+        improvement = 'N/A'
+        if baseline_mae and baseline_mae > 0:
+            improvement_pct = (baseline_mae - best_mae) / baseline_mae * 100
+            improvement = f"{improvement_pct:.1f}%"
+        
+        print(f"\n   🏆 最佳模型: {best_name} (MAE={best_mae:.2f} kW)")
+        if improvement != 'N/A' and improvement != '0.0%':
+            print(f"   📈 相比基准提升: {improvement}")
+        
+        selection_info = {
+            'winner': best_name,
+            'candidates_evaluated': candidates,
+            'all_scores': {k: {'mae': round(v['mae'], 2), 'rmse': round(v['rmse'], 2)} 
+                          for k, v in results.items()},
+            'improvement': improvement,
+            'validation_method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+            'cv_folds': n_splits if use_time_series_cv else None,
+            'cv_details': cv_details if use_time_series_cv else None
+        }
+        
+        return best_model, best_params, selection_info
     
     def _get_price(self, hour: int) -> float:
         """
@@ -167,20 +453,30 @@ class EnergyPredictor:
         n_estimators: int = 100,
         test_size: float = 0.2,
         random_state: int = 42,
-        use_firebase_storage: bool = True
+        use_firebase_storage: bool = True,
+        auto_select_model: bool = True,
+        model_type: str = 'auto',
+        use_enhanced_features: bool = True,
+        use_time_series_cv: bool = True,
+        cv_folds: int = 5
     ) -> Dict[str, float]:
         """
-        训练随机森林模型
+        训练预测模型（支持自动模型选择、增强特征和时间序列交叉验证）
         
         Args:
             data_path: 数据文件路径，默认为 data/processed/cleaned_energy_data_all.csv
-            n_estimators: 随机森林树的数量
+            n_estimators: 树的数量（用于非自动模式）
             test_size: 测试集比例
             random_state: 随机种子
             use_firebase_storage: 是否从 Firebase Storage 下载数据 (GAE 环境必须为 True)
+            auto_select_model: 是否自动选择最佳模型（默认 True）
+            model_type: 指定模型类型 ('auto', 'randomforest', 'lightgbm', 'xgboost')
+            use_enhanced_features: 是否使用增强特征（月份、季节、节假日等，默认 True）
+            use_time_series_cv: 是否使用时间序列交叉验证（默认 True）
+            cv_folds: 交叉验证折数（默认 5）
             
         Returns:
-            包含评估指标的字典 (MAE, RMSE)
+            包含评估指标的字典 (MAE, RMSE, model_type, hyperparameters)
         """
         print("\n" + "="*80)
         print("🚀 开始训练能源负载预测模型")
@@ -253,6 +549,33 @@ class EnergyPredictor:
                     print(f"   ✓ Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
             else:
                 print(f"   ✓ 无核心列缺失值")
+            
+            # ================================================================
+            # 动态特征选择（检测数据中可用的增强特征）
+            # ================================================================
+            print(f"\n🔧 检测可用特征...")
+            
+            # 首先使用基础特征
+            available_features = [col for col in self.base_feature_columns if col in df.columns]
+            print(f"   ✓ 基础特征: {len(available_features)}/{len(self.base_feature_columns)}")
+            
+            # 如果启用增强特征，检测并添加
+            enhanced_features_used = []
+            if use_enhanced_features:
+                for col in self.enhanced_feature_columns:
+                    if col in df.columns:
+                        available_features.append(col)
+                        enhanced_features_used.append(col)
+                
+                if enhanced_features_used:
+                    print(f"   ✓ 增强特征: {len(enhanced_features_used)} 个")
+                    print(f"     {enhanced_features_used}")
+                else:
+                    print(f"   ⚠️  数据中未找到增强特征，使用基础特征")
+            
+            # 更新实际使用的特征列表
+            self.feature_columns = available_features
+            print(f"   📊 总计使用 {len(self.feature_columns)} 个特征")
                 
             # 清除因特征工程 (Lag/Rolling) 产生的 NaN 行
             # 这些行通常位于数据集头部
@@ -280,17 +603,30 @@ class EnergyPredictor:
             print(f"   - 训练集: {X_train.shape[0]} 样本")
             print(f"   - 测试集: {X_test.shape[0]} 样本")
             
-            # 训练模型
-            print(f"\n🌲 训练随机森林模型 (n_estimators={n_estimators})...")
-            self.model = RandomForestRegressor(
-                n_estimators=n_estimators,
-                random_state=random_state,
-                n_jobs=-1,  # 使用所有CPU核心
-                verbose=0
-            )
+            # ================================================================
+            # 自动模型选择与训练
+            # ================================================================
+            if auto_select_model and model_type == 'auto':
+                print(f"\n🤖 自动模型选择模式...")
+                best_model, best_params, selection_info = self._auto_select_best_model(
+                    X_train, y_train, X_test, y_test, random_state,
+                    use_time_series_cv=use_time_series_cv,
+                    n_splits=cv_folds
+                )
+                self.model = best_model
+                selected_model_type = selection_info['winner']
+                hyperparameters = best_params
+            else:
+                # 手动模式：使用指定的模型类型
+                print(f"\n🌲 训练 {model_type} 模型...")
+                self.model, hyperparameters = self._create_model(
+                    model_type, n_estimators, random_state
+                )
+                self.model.fit(X_train, y_train)
+                selected_model_type = model_type
+                selection_info = {'winner': model_type, 'candidates_evaluated': [model_type]}
             
-            self.model.fit(X_train, y_train)
-            print(f"   ✓ 模型训练完成!")
+            print(f"   ✓ 模型训练完成! (类型: {selected_model_type})")
             
             # 评估模型
             print(f"\n📈 评估模型性能...")
@@ -305,6 +641,17 @@ class EnergyPredictor:
             test_mae = mean_absolute_error(y_test, y_test_pred)
             test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
             
+            # 计算 R² Score (测试集)
+            test_r2 = r2_score(y_test, y_test_pred)
+            
+            # 计算 MAPE (测试集) - Mean Absolute Percentage Error
+            # 避免分母为 0
+            mask = y_test.values != 0
+            if np.sum(mask) > 0:
+                test_mape = np.mean(np.abs((y_test.values[mask] - y_test_pred[mask]) / y_test.values[mask])) * 100
+            else:
+                test_mape = 0.0
+            
             print(f"\n   训练集性能:")
             print(f"      - MAE:  {train_mae:.2f} kW")
             print(f"      - RMSE: {train_rmse:.2f} kW")
@@ -312,6 +659,8 @@ class EnergyPredictor:
             print(f"\n   测试集性能:")
             print(f"      - MAE:  {test_mae:.2f} kW")
             print(f"      - RMSE: {test_rmse:.2f} kW")
+            print(f"      - R²:   {test_r2:.4f}")
+            print(f"      - MAPE: {test_mape:.2f}%")
             
             # 特征重要性
             print(f"\n🔍 特征重要性:")
@@ -370,24 +719,54 @@ class EnergyPredictor:
             print("✅ 模型训练完成!")
             print("="*80 + "\n")
             
-            # 保存模型元数据到 Firestore (全局元数据)
+            # 保存模型元数据到 Firebase Storage (全局元数据)
+            # 获取模型类型名称
+            model_type_name = self._get_model_type_name()
+            
             try:
-                self._save_model_metadata({
-                    'model_type': 'Random Forest Regressor',
+                metadata = {
+                    'model_type': model_type_name,
                     'model_version': datetime.now().strftime('%Y%m%d_%H%M%S'),
                     'trained_at': datetime.now().isoformat(),
                     'metrics': {
                         'train_mae': float(train_mae),
                         'train_rmse': float(train_rmse),
                         'test_mae': float(test_mae),
-                        'test_rmse': float(test_rmse)
+                        'test_rmse': float(test_rmse),
+                        'r2_score': float(test_r2),  # 新增: R² Score
+                        'mape': float(test_mape / 100),  # 新增: MAPE (存储为小数形式, 5% -> 0.05)
                     },
                     'training_samples': len(df),
                     'data_source': 'CAISO Real-Time Stream',
                     'feature_importance': feature_importance.to_dict('records'),
                     'model_path': self.firebase_model_path,
-                    'status': 'active'
-                })
+                    'status': 'active',
+                    # 新增：特征工程信息
+                    'feature_engineering': {
+                        'total_features': len(self.feature_columns),
+                        'base_features': len(self.base_feature_columns),
+                        'enhanced_features': len(enhanced_features_used) if use_enhanced_features else 0,
+                        'enhanced_features_list': enhanced_features_used if use_enhanced_features else [],
+                        'use_enhanced': use_enhanced_features
+                    }
+                }
+                
+                # 添加自动模型选择信息
+                if auto_select_model and model_type == 'auto':
+                    metadata['auto_selection'] = {
+                        'enabled': True,
+                        'candidates_evaluated': selection_info.get('candidates_evaluated', []),
+                        'winner': selection_info.get('winner', 'unknown'),
+                        'improvement_over_baseline': selection_info.get('improvement', 'N/A'),
+                        'all_scores': selection_info.get('all_scores', {}),
+                        # 新增：交叉验证信息
+                        'validation_method': selection_info.get('validation_method', 'HoldOut'),
+                        'cv_folds': selection_info.get('cv_folds'),
+                        'cv_details': selection_info.get('cv_details')
+                    }
+                    metadata['hyperparameters'] = hyperparameters
+                
+                self._save_model_metadata(metadata)
             except Exception as e:
                 print(f"   ⚠️  保存模型元数据失败: {str(e)}")
             
@@ -397,7 +776,21 @@ class EnergyPredictor:
                 'train_rmse': train_rmse,
                 'test_mae': test_mae,
                 'test_rmse': test_rmse,
-                'feature_importance': feature_importance.to_dict('records')
+                'r2_score': test_r2,  # 新增
+                'mape': test_mape / 100,  # 新增 (小数形式)
+                'feature_importance': feature_importance.to_dict('records'),
+                'model_type': model_type_name,
+                'hyperparameters': hyperparameters if auto_select_model else {'n_estimators': n_estimators},
+                'auto_selection': selection_info if auto_select_model and model_type == 'auto' else None,
+                # 新增：特征工程和交叉验证信息
+                'feature_engineering': {
+                    'total_features': len(self.feature_columns),
+                    'enhanced_features_used': enhanced_features_used if use_enhanced_features else []
+                },
+                'validation': {
+                    'method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+                    'cv_folds': cv_folds if use_time_series_cv else None
+                }
             }
         
         finally:
@@ -412,6 +805,7 @@ class EnergyPredictor:
     def load_model(self) -> bool:
         """
         加载已保存的模型（优先从 Firebase Storage）
+        同时加载模型元数据以恢复正确的特征列表
         
         Returns:
             是否加载成功
@@ -441,10 +835,14 @@ class EnergyPredictor:
                 # Step C: 从临时文件加载模型
                 self.model = joblib.load(temp_model_path)
                 print(f"   ✓ 模型加载成功 (来源: Firebase Storage)")
+                
+                # Step D: 加载模型元数据以恢复特征列表
+                self._load_feature_columns_from_metadata()
+                
                 return True
             
             else:
-                # Step D: Firebase 中没有模型，尝试加载本地兜底模型
+                # Step E: Firebase 中没有模型，尝试加载本地兜底模型
                 print(f"   ⚠️  Firebase Storage 中无模型，尝试加载本地兜底模型")
                 
                 if not self.local_model_path.exists():
@@ -457,6 +855,10 @@ class EnergyPredictor:
                 
                 self.model = joblib.load(self.local_model_path)
                 print(f"   ✓ 模型加载成功 (来源: 本地兜底文件)")
+                
+                # 同样尝试加载元数据
+                self._load_feature_columns_from_metadata()
+                
                 return True
         
         except Exception as e:
@@ -594,12 +996,12 @@ class EnergyPredictor:
             roll_6h_std = np.std(history_loads[-6:]) if len(history_loads) >= 6 else 0
             roll_24h_mean = np.mean(history_loads[-24:]) if len(history_loads) >= 24 else lag_1h
             
-            # Interaction Features
+            # Interaction Features (基础)
             temp_x_hour = temperature * hour
             lag24_x_dow = lag_24h * day_of_week
             
-            # 组装特征向量 (必须与 self.feature_columns 顺序一致)
-            features = pd.DataFrame([{
+            # 组装基础特征向量
+            feature_dict = {
                 'Hour': hour,
                 'DayOfWeek': day_of_week,
                 'Temperature': temperature,
@@ -612,7 +1014,67 @@ class EnergyPredictor:
                 'Rolling_Mean_24h': roll_24h_mean,
                 'Temp_x_Hour': temp_x_hour,
                 'Lag24_x_DayOfWeek': lag24_x_dow
-            }])
+            }
+            
+            # 添加增强特征（如果模型需要）
+            # 检查模型是否使用增强特征
+            if len(self.feature_columns) > 12:
+                # 时间特征
+                month = current_time.month
+                day_of_month = current_time.day
+                week_of_year = current_time.isocalendar()[1]
+                
+                # 季节 (北半球)
+                if month in [3, 4, 5]:
+                    season = 0  # 春
+                elif month in [6, 7, 8]:
+                    season = 1  # 夏
+                elif month in [9, 10, 11]:
+                    season = 2  # 秋
+                else:
+                    season = 3  # 冬
+                
+                # 是否周末
+                is_weekend = 1 if day_of_week >= 5 else 0
+                
+                # 是否节假日（美国加州）
+                try:
+                    import holidays
+                    us_ca_holidays = holidays.US(state='CA')
+                    is_holiday = 1 if current_time.date() in us_ca_holidays else 0
+                except ImportError:
+                    is_holiday = is_weekend  # 简化：周末视为假日
+                
+                # 增强交互特征
+                temp_x_season = temperature * season
+                lag24_x_is_weekend = lag_24h * is_weekend
+                hour_x_is_holiday = hour * is_holiday
+                
+                # 周期编码
+                month_sin = np.sin(2 * np.pi * month / 12)
+                month_cos = np.cos(2 * np.pi * month / 12)
+                hour_sin = np.sin(2 * np.pi * hour / 24)
+                hour_cos = np.cos(2 * np.pi * hour / 24)
+                
+                # 添加增强特征
+                feature_dict.update({
+                    'Month': month,
+                    'Season': season,
+                    'IsWeekend': is_weekend,
+                    'IsHoliday': is_holiday,
+                    'DayOfMonth': day_of_month,
+                    'WeekOfYear': week_of_year,
+                    'Temp_x_Season': temp_x_season,
+                    'Lag24_x_IsWeekend': lag24_x_is_weekend,
+                    'Hour_x_IsHoliday': hour_x_is_holiday,
+                    'Month_Sin': month_sin,
+                    'Month_Cos': month_cos,
+                    'Hour_Sin': hour_sin,
+                    'Hour_Cos': hour_cos
+                })
+            
+            # 确保特征顺序与模型一致
+            features = pd.DataFrame([{col: feature_dict[col] for col in self.feature_columns}])
             
             # B. 单步推理
             pred_load = float(self.model.predict(features)[0])

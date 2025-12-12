@@ -23,6 +23,15 @@ scikit-learn==1.3.2
 shap==0.44.1
 joblib>=1.3.2
 
+# --- 高级机器学习模型 (可选但推荐) ---
+# LightGBM 和 XGBoost 用于自动模型选择，性能通常优于 RandomForest
+lightgbm>=4.0.0
+xgboost>=2.0.0
+
+# --- 增强特征工程 ---
+# holidays 库用于美国加州节假日判断（CAISO 电网区域）
+holidays>=0.40
+
 # --- 优化求解器 ---
 # 保持你验证过的版本
 gurobipy==10.0.3
