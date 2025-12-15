@@ -48,7 +48,7 @@ env_variables:
 # 处理器配置
 handlers:
 # 健康检查端点（不需要认证）
-- url: /health
+- url: /api/health
   script: auto
   secure: always
 

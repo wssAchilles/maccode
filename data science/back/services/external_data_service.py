@@ -301,11 +301,19 @@ class ExternalDataService:
             print("\n⚙️  计算高级特征...")
             processor = EnergyDataProcessor()
             
+            # [新增] 添加增强时间特征 (Month, Season, IsHoliday...)
+            # 这确保了 cleaned_energy_data_all.csv 包含所有数模所需的特征
+            # 确保 Date 列是 datetime 类型
+            if df['Date'].dtype == 'object':
+                df['Date'] = pd.to_datetime(df['Date'])
+            
+            df = processor.add_enhanced_time_features(df)
+            
             # 这里的巧妙之处：
             # 我们传入 dropna=False，这样前面 168 行会有 NaN (因为没有更早的历史)，
             # 但最新的行 (我们刚追加的) 会有完整的 Lag/Rolling 特征 (因为有之前的 4800+ 行做支撑)。
             # 这样我们就保证了最新数据的完整性。
-            df_processed = processor.add_advanced_features(df, dropna=False)
+            df_processed = processor.add_advanced_features(df, dropna=False, use_enhanced=True)
             
             # 检查最后一行是否有 NaN (理论上不应该，除非数据太少)
             last_row = df_processed.iloc[-1]

@@ -57,7 +57,7 @@ class EnergyDataProcessor:
         self.output_dir = Path(output_dir) if output_dir else self.project_root / 'data' / 'processed'
         
         # 确保输出目录存在
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        # self.output_dir.mkdir(parents=True, exist_ok=True)
         
         print(f"📁 原始数据目录: {self.raw_data_dir}")
         print(f"📁 输出数据目录: {self.output_dir}")
@@ -416,6 +416,9 @@ class EnergyDataProcessor:
             输出文件路径
         """
         output_path = self.output_dir / filename
+        
+        # 确保目录存在 (延迟创建，避免 GAE 初始化报错)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         print(f"💾 正在保存处理后的数据到: {output_path}")
         df.to_csv(output_path, index=False)

@@ -8,7 +8,7 @@ from flask import json
 
 def test_health_endpoint(client):
     """测试健康检查端点"""
-    response = client.get('/health')
+    response = client.get('/api/health')
     assert response.status_code == 200
     
     data = json.loads(response.data)

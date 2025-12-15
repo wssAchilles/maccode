@@ -25,7 +25,7 @@ COPY front/ .
 # 构建 Web 版本
 # --release: 生产模式，优化代码
 # --web-renderer html: 使用 HTML 渲染器（兼容性更好）
-RUN flutter build web --release --web-renderer html
+RUN flutter build web --release
 
 # =============================================================================
 # Stage 2: Nginx 运行阶段

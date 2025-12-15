@@ -182,7 +182,7 @@ def check_server():
     print("="*80)
     
     try:
-        response = requests.get(f"{BASE_URL}/health", timeout=5)
+        response = requests.get(f"{BASE_URL}/api/health", timeout=5)
         
         if response.status_code == 200:
             print(f"✅ 服务器运行正常")

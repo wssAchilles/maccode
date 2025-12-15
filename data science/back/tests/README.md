@@ -49,3 +49,43 @@ python3 tests/test_optimization_workflow.py
 ```
 
 > **预期输出**: 串联预测和优化两个步骤。先预测负载，再基于预测结果进行电池调度。
+
+#### D. 数据抓取与特征验证
+
+```bash
+python3 tests/test_data_fetching.py
+```
+
+> **预期输出**: 
+> 1. 验证 `ExternalDataService` 逻辑是否正确生成增强特征 (Season, IsHoliday 等)。
+> 2. 模拟从 CAISO 获取数据并上传到 GCS 的完整流程。
+
+## 3. 手动执行生产环境任务 (高危操作)
+
+如果需要立即更新生产环境的数据或模型（而不等待定时任务），可以手动运行以下命令。
+
+> [!WARNING]
+> 这些操作会**直接读写生产环境数据库** (Firebase & GCS)。请务必小心。
+> 操作前请确保已获得 GCP 认证凭证。
+
+### 设置凭证 (必须)
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/achilles/Documents/code/data science/service-account-key.json"
+```
+
+### A. 手动更新数据 (抓取 + 特征工程)
+
+此命令会从 CAISO 抓取最新数据，计算所有增强特征，并更新 `cleaned_energy_data_all.csv`。
+
+```bash
+python3 -m services.external_data_service
+```
+
+### B. 手动训练模型
+
+此命令会读取最新的数据，自动训练最佳模型，并将模型文件及元数据发布到 Firebase。
+
+```bash
+python3 scripts/train_and_save_metadata.py
+```

@@ -51,6 +51,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2 \
     libxslt1.1 \
+    libgomp1 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean

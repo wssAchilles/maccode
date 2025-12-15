@@ -176,7 +176,7 @@ class ApiService {
   static Future<bool> checkHealth() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/health'),
+        Uri.parse('$_baseUrl/api/health'),
       ).timeout(const Duration(seconds: 5));
 
       return response.statusCode == 200;

@@ -137,7 +137,7 @@ def create_app(config_name=None):
             'status': 'running'
         })
     
-    @app.route('/health')
+    @app.route('/api/health')
     def health():
         return jsonify({
             'status': 'ok',
