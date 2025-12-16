@@ -9,6 +9,7 @@ Werkzeug==3.0.1
 firebase-admin==6.5.0
 # 移除 protobuf, google-api-core, google-auth, grpcio 的硬锁定
 # 它们会自动被 firebase-admin 安装到正确的兼容版本
+google-cloud-secret-manager>=2.16.0
 
 # --- 环境变量 ---
 python-dotenv==1.0.0

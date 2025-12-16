@@ -447,6 +447,10 @@ class EnergyPredictor:
             print(f"获取模型元数据失败: {str(e)}")
             return None
     
+    def _is_gae_environment(self) -> bool:
+        """检测是否在 GAE 环境"""
+        return bool(os.getenv('GAE_ENV') or os.getenv('K_SERVICE'))
+
     def train_model(
         self, 
         data_path: str = None,
@@ -597,7 +601,7 @@ class EnergyPredictor:
             # 划分训练集和测试集
             print(f"\n✂️  划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=random_state
+            X, y, test_size=test_size, random_state=random_state
             )
             
             print(f"   - 训练集: {X_train.shape[0]} 样本")
@@ -685,14 +689,19 @@ class EnergyPredictor:
                 joblib.dump(self.model, temp_model_path)
                 print(f"   ✓ 模型已保存到临时文件")
                 
-                # Step B-2: (新增) 保存模型到本地持久化路径 (用于开发环境调试)
-                try:
-                    # 确保存储目录存在
-                    self.local_model_path.parent.mkdir(parents=True, exist_ok=True)
-                    joblib.dump(self.model, self.local_model_path)
-                    print(f"   ✓ 模型已备份到本地路径: {self.local_model_path}")
-                except Exception as local_e:
-                    print(f"   ⚠️  无法保存本地模型副本: {str(local_e)}")
+                # Step B-2: 保存模型到本地持久化路径 (用于开发环境调试)
+                # 仅在非 GAE 环境下执行，避免 Read-only file system 错误
+                if not self._is_gae_environment():
+                    try:
+                        # 确保存储目录存在
+                        self.local_model_path.parent.mkdir(parents=True, exist_ok=True)
+                        joblib.dump(self.model, self.local_model_path)
+                        print(f"   ✓ 模型已备份到本地路径: {self.local_model_path}")
+                    except Exception as local_e:
+                        print(f"   ⚠️  无法保存本地模型副本: {str(local_e)}")
+                else:
+                    print(f"   ℹ️  GAE 环境：跳过本地模型备份")
+
                 
                 # Step C: 上传到 Firebase Storage
                 with open(temp_model_path, 'rb') as f:
