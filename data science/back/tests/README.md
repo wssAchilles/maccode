@@ -15,12 +15,20 @@
 
 ### 1. 准备工作
 
-确保您在 `back` 目录下，并已激活虚拟环境：
+确保您在 `back` 目录下，并已加载环境变量：
 
 ```bash
 cd /Users/achilles/Documents/code/data\ science/back
-# 激活 python 环境 (根据实际情况)
+
+# 加载环境变量（包含 GCP 凭证和所有 API 密钥）
+source setup_env.sh
 ```
+
+> [!TIP]
+> 如需每次打开终端自动加载，可将以下内容添加到 `~/.zshrc`：
+> ```bash
+> source "/Users/achilles/Documents/code/data science/back/setup_env.sh"
+> ```
 
 ### 2. 核心功能本地验证 (无需启动 Web 服务)
 
@@ -70,9 +78,8 @@ python3 tests/test_data_fetching.py
 
 ### 设置凭证 (必须)
 
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS="/Users/achilles/Documents/code/data science/service-account-key.json"
-```
+> [!NOTE]
+> 如果已在步骤 1 中执行 `source setup_env.sh`，则凭证已自动设置，可跳过此步骤。
 
 ### A. 手动更新数据 (抓取 + 特征工程)
 

@@ -11,6 +11,8 @@ import pandas as pd
 from typing import List, Dict, Optional, Tuple
 import warnings
 
+from services.secrets import get_secret
+
 warnings.filterwarnings('ignore')
 
 try:
@@ -77,10 +79,10 @@ class EnergyOptimizer:
             Exception: 许可证错误
         """
         try:
-            # 检查 WLS 环境变量
-            wls_access_id = os.getenv('GRB_WLSACCESSID')
-            wls_secret = os.getenv('GRB_WLSSECRET')
-            wls_license_id = os.getenv('GRB_LICENSEID')
+            # 检查 WLS 环境变量（使用 secrets 模块统一管理）
+            wls_access_id = get_secret('GRB_WLSACCESSID')
+            wls_secret = get_secret('GRB_WLSSECRET')
+            wls_license_id = get_secret('GRB_LICENSEID')
             
             if wls_access_id and wls_secret:
                 print("🔐 使用 WLS (Web License Service) 许可证")

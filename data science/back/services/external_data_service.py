@@ -18,6 +18,7 @@ import pytz
 import gridstatus
 from services.storage_service import StorageService
 from services.data_processor import EnergyDataProcessor
+from services.secrets import get_secret
 
 
 class ExternalDataService:
@@ -33,8 +34,8 @@ class ExternalDataService:
                 f"原始错误: {e}"
             )
         
-        # OpenWeather API 配置
-        self.weather_api_key = os.getenv('OPENWEATHER_API_KEY')
+        # OpenWeather API 配置（使用 secrets 模块统一管理敏感密钥）
+        self.weather_api_key = get_secret('OPENWEATHER_API_KEY')
         self.weather_lat = float(os.getenv('WEATHER_CITY_LAT', '34.05'))  # Los Angeles
         self.weather_lon = float(os.getenv('WEATHER_CITY_LON', '-118.24'))
         self.weather_api_url = 'https://api.openweathermap.org/data/2.5/weather'

@@ -1,0 +1,86 @@
+# Python 相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv/
+
+# IDE 相关
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# 日志和临时文件
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 测试覆盖率
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 本地开发配置
+.env
+.env.local
+*.local
+
+# ============================================================
+# 🔐 敏感配置文件 - 包含 API 密钥和凭证
+# ============================================================
+# app.yaml 包含敏感的 API 密钥，不应提交到版本控制
+# 请使用 app.yaml.template 作为模板，并在本地创建 app.yaml
+app.yaml
+
+# 本地环境变量脚本（包含敏感密钥）
+setup_env.sh
+
+# GCP 服务账号密钥
+*.json
+!package.json
+!requirements.json
+service-account*.json
+*-credentials.json
+
+# 本地凭证
+credentials/
+secrets/
