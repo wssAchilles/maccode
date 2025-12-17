@@ -32,9 +32,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
   DateTime? _selectedDate;
   
   // 🔋 电池参数 (方案一：交互式优化沙盒)
-  // 注意：负载规模约 20000-30000 kW，需要工业级储能
-  double _batteryCapacity = 5000; // kWh (工业级储能)
-  double _maxPower = 2000; // kW
+  // 注意：负载规模约 150-300 kW (微网/商业楼宇级)
+  double _batteryCapacity = 500; // kWh (商业储能)
+  double _maxPower = 200; // kW
   bool _showAdvancedParams = false; // 是否展开高级参数
   
   // 🌡️ 场景模拟 (方案二)
@@ -62,19 +62,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
     });
 
     try {
-      // 构建温度预测（如果有 What-If 调整）
-      List<double>? tempForecast;
-      if (_temperatureAdjust != 0.0) {
-        // 基础温度 25°C，加上调整值
-        tempForecast = List.generate(24, (i) => 25.0 + _temperatureAdjust);
-      }
-      
       final result = await ApiService.runOptimization(
         initialSoc: _initialSoc,
         targetDate: _selectedDate,
         batteryCapacity: _batteryCapacity,
         batteryPower: _maxPower,
-        temperatureForecast: tempForecast,
+        temperatureAdjust: _temperatureAdjust,
       );
 
       if (mounted) {
@@ -326,31 +319,31 @@ class _ModelingScreenState extends State<ModelingScreen> {
             if (_showAdvancedParams) ...[
               const SizedBox(height: 16),
               
-              // 电池容量滑块 (工业级储能)
+              // 电池容量滑块 (商业级储能)
               _buildSliderRow(
                 icon: Icons.battery_full,
                 iconColor: Colors.blue,
-                label: '电池容量',
+                label: '电池容量 (商业微网)',
                 value: _batteryCapacity,
-                min: 1000,
-                max: 10000,
-                divisions: 9,
-                displayValue: '${(_batteryCapacity / 1000).toStringAsFixed(1)} MWh',
+                min: 100,
+                max: 2000,
+                divisions: 19,
+                displayValue: '${_batteryCapacity.toInt()} kWh',
                 onChanged: (v) => setState(() => _batteryCapacity = v),
               ),
               
               const SizedBox(height: 16),
               
-              // 最大功率滑块 (工业级)
+              // 最大功率滑块 (商业级)
               _buildSliderRow(
                 icon: Icons.flash_on,
                 iconColor: Colors.amber,
-                label: '最大功率',
+                label: '最大功率 (微网级)',
                 value: _maxPower,
-                min: 500,
-                max: 5000,
-                divisions: 9,
-                displayValue: '${(_maxPower / 1000).toStringAsFixed(1)} MW',
+                min: 50,
+                max: 1000,
+                divisions: 19,
+                displayValue: '${_maxPower.toInt()} kW',
                 onChanged: (v) => setState(() => _maxPower = v),
               ),
               
@@ -448,7 +441,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '🔋 ${(_batteryCapacity / 1000).toStringAsFixed(1)}MWh | ⚡ ${(_maxPower / 1000).toStringAsFixed(1)}MW | 🔌 ${(_initialSoc * 100).toInt()}%'
+                        '🔋 ${_batteryCapacity.toInt()}kWh | ⚡ ${_maxPower.toInt()}kW | 🔌 ${(_initialSoc * 100).toInt()}%'
                         '${_temperatureAdjust != 0 ? " | 🌡️ ${_temperatureAdjust >= 0 ? "+" : ""}${_temperatureAdjust.toInt()}°C" : ""}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                       ),
@@ -910,6 +903,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 _buildAutoSelectionCard(modelInfo),
               ],
               
+              // 训练配置信息 (新增)
+              if (modelInfo.trainingConfig != null) ...[
+                const SizedBox(height: 16),
+                _buildOptimizationConfigCard(modelInfo),
+              ],
+              
               const SizedBox(height: 16),
               
               // 数据源说明
@@ -1104,6 +1103,114 @@ class _ModelingScreenState extends State<ModelingScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// 构建优化配置信息卡片
+  Widget _buildOptimizationConfigCard(ModelInfo modelInfo) {
+    if (modelInfo.trainingConfig == null) return const SizedBox();
+    
+    final config = modelInfo.trainingConfig!;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.indigo[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.indigo[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune, color: Colors.indigo[700], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '⚙️ 训练配置',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo[900],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildConfigChip(
+                'Log1p 变换', 
+                config.useLogTransform ?? false,
+                Icons.functions,
+              ),
+              _buildConfigChip(
+                '异常值剔除', 
+                config.removeOutliers ?? false,
+                Icons.filter_alt,
+              ),
+              _buildConfigChip(
+                '超参数调优', 
+                config.tuneHyperparameters ?? false,
+                Icons.explore,
+              ),
+               _buildConfigChip(
+                '时序交叉验证', 
+                config.useTimeSeriesCV ?? false,
+                Icons.timeline,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfigChip(String label, bool enabled, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: enabled ? Colors.white : Colors.grey[200],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: enabled ? Colors.indigo[200]! : Colors.grey[300]!,
+        ),
+        boxShadow: enabled ? [
+          BoxShadow(
+            color: Colors.indigo.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ] : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon, 
+            size: 14, 
+            color: enabled ? Colors.indigo[600] : Colors.grey[500]
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: enabled ? FontWeight.bold : FontWeight.normal,
+              color: enabled ? Colors.indigo[800] : Colors.grey[600],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            enabled ? Icons.check_circle : Icons.cancel,
+            size: 14,
+            color: enabled ? Colors.green[600] : Colors.grey[400],
+          ),
         ],
       ),
     );

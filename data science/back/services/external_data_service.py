@@ -138,10 +138,25 @@ class ExternalDataService:
                 else:
                     timestamp = timestamp.to_pydatetime()
             
-            print(f"   ✓ CAISO 负载: {load_value:.2f} MW")
+            # ====================================================================
+            # 关键修复: 数据量级缩放 (Scaling)
+            # CAISO 数据单位为 MW (峰值约 40GW = 40,000MW)
+            # 家庭/微网数据单位为 kW (峰值约 200kW)
+            # 为了演示效果，我们将电网数据"微缩"到微网规模，保留其波动形状
+            # ====================================================================
+            
+            # 使用固定比例进行缩放，参考峰值: 40000 MW -> 200 kW
+            # 比例 = 200 / 40000 = 0.005
+            MW_TO_KW_SCALE_FACTOR = 200.0 / 40000.0 
+            
+            # 执行转换: MW -> 缩放后的 kW
+            load_kw = load_value * MW_TO_KW_SCALE_FACTOR
+            
+            print(f"   ✓ CAISO 原始负载: {load_value:.2f} MW")
+            print(f"   ✓ 缩放后微网负载: {load_kw:.2f} kW (Scaling Factor: {MW_TO_KW_SCALE_FACTOR:.6f})")
             print(f"   ✓ 时间戳: {timestamp} (UTC)")
             
-            return load_value, timestamp
+            return load_kw, timestamp
             
         except Exception as e:
             print(f"   ❌ 获取 CAISO 数据失败: {str(e)}")
@@ -272,7 +287,7 @@ class ExternalDataService:
             
             print("\n📊 新数据行:")
             print(f"   Date: {new_row['Date']}")
-            print(f"   Load: {new_row['Site_Load']} MW")
+            print(f"   Load: {new_row['Site_Load']} kW")
             
             # 3. 下载现有数据
             print(f"\n� 从 Storage 下载现有数据: {self.csv_file_path}")

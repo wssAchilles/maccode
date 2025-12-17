@@ -234,6 +234,28 @@ class EnergyOptimizer:
                 )
             
             # 3. 能量守恒约束 (电池动态方程)
+            # 单位检查 (防止 MW 数据被当作 kW 使用)
+            avg_load = float(np.mean(load_profile))
+            if avg_load > 10000:
+                # logger.error(f"异常巨大的负载数值 ({avg_load:.2f} kW). 疑似单位错误 (MW vs kW).") # Assuming logger is defined
+                # 严重警告，但不阻止运行 (可能会得到不合理的优化结果)
+                print(f"⚠️  警告: 检测到非常大的负载 ({avg_load:.2f})，请确认单位是否为 kW")
+                raise ValueError(
+                    f"检测到异常巨大的负载数值 ({avg_load:.2f} kW)。"
+                    "这可能表示单位错误 (例如，输入的是 MW 而非 kW)。"
+                    "请确保负载数据以 kW 为单位。"
+                )
+            
+            # 4. 防逆流约束 (No Grid Export)
+            # 确保: grid_power = load + charge - discharge >= 0
+            # 即: discharge <= load + charge
+            # 用户反馈负值是不合理的，因此我们默认开启"防逆流"模式，禁止向电网卖电
+            for t in range(T):
+                model.addConstr(
+                    load[t] + P_charge[t] - P_discharge[t] >= 0,
+                    name=f"no_export_{t}"
+                )
+            
             initial_energy = initial_soc * self.battery_capacity
             
             for t in range(T):
@@ -286,19 +308,28 @@ class EnergyOptimizer:
                     e_stored = E_stored[t].X
                     soc = e_stored / self.battery_capacity
                     
-                    # battery_action: 正值为充电，负值为放电
-                    battery_action = p_charge - p_discharge
+                    # 记录调度结果 (kW)
+                    # grid_power = load + charge - discharge
+                    # 正值 = 从电网买电, 负值 = 向电网卖电
+                    grid_power = load[t] + p_charge - p_discharge
                     
                     schedule.append({
                         'hour': t,
                         'load': float(load[t]),
                         'price': float(price[t]),
-                        'battery_action': float(battery_action),
                         'charge_power': float(p_charge),
                         'discharge_power': float(p_discharge),
+                        'battery_action': float(p_charge - p_discharge),
                         'soc': float(soc),
-                        'stored_energy': float(e_stored)
+                        'stored_energy': float(e_stored),
+                        'grid_power': float(grid_power)
                     })
+                    
+                # 检查是否存在大量反向送电 (Export)
+                total_export = sum(max(0, -item['grid_power']) for item in schedule)
+                if total_export > 1000: # 如果全天送电超过 1000 kWh (5MW 电池容易跑到这个值)
+                    print(f"⚠️ 注意: 检测到大量反向送电 ({total_export:.2f} kWh)。")
+                    print("   如果这不是预期的，请检查电池容量设置是否过大 (MW级别?)")
                 
                 # 计算总成本
                 cost_with_battery = model.objVal

@@ -73,6 +73,13 @@ def verify_file(file_path: Path, expected_rows: int = None) -> bool:
             print(f"⚠️  Date 列类型不正确: {df['Date'].dtype}")
         else:
             print(f"✓ Date 列类型正确: datetime64[ns]")
+            
+        # 检查时间单调性
+        if df['Date'].is_monotonic_increasing:
+            print(f"✓ Date 单调递增: 是")
+        else:
+            print(f"❌ Date 单调递增: 否 (存在时间回溯或乱序)")
+            return False
         
         # 显示前几行
         print(f"\n前 3 行数据:")

@@ -429,6 +429,8 @@ class ModelInfo {
   final Map<String, dynamic>? hyperparameters;
   final int? featureCount;  // 新增: 使用的特征数量
   final List<String>? featureColumns;  // 新增: 特征列表
+  final TrainingConfig? trainingConfig; // 新增: 训练配置
+
 
   ModelInfo({
     required this.modelType,
@@ -443,7 +445,9 @@ class ModelInfo {
     this.hyperparameters,
     this.featureCount,
     this.featureColumns,
+    this.trainingConfig,
   });
+
 
   factory ModelInfo.fromJson(Map<String, dynamic> json) {
     try {
@@ -464,7 +468,11 @@ class ModelInfo {
         featureColumns: (json['feature_columns'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList(),
+        trainingConfig: json['training_config'] != null
+            ? TrainingConfig.fromJson(json['training_config'] as Map<String, dynamic>)
+            : null,
       );
+
     } catch (e) {
       throw FormatException('Failed to parse ModelInfo: $e');
     }
@@ -484,7 +492,9 @@ class ModelInfo {
       if (hyperparameters != null) 'hyperparameters': hyperparameters,
       if (featureCount != null) 'feature_count': featureCount,
       if (featureColumns != null) 'feature_columns': featureColumns,
+      if (trainingConfig != null) 'training_config': trainingConfig!.toJson(),
     };
+
   }
 
   /// 格式化训练时间
@@ -703,6 +713,51 @@ class ModelExplainability {
   String get topFeaturePercent {
     if (featureImportance.isEmpty) return 'N/A';
     return '${(sortedFeatures.first.value * 100).toStringAsFixed(1)}%';
+  }
+}
+
+/// 训练配置信息
+class TrainingConfig {
+  final double? testSize;
+  final int? randomState;
+  final bool? useTimeSeriesCV;
+  final int? cvFolds;
+  final bool? useLogTransform;
+  final bool? removeOutliers;
+  final bool? tuneHyperparameters;
+
+  TrainingConfig({
+    this.testSize,
+    this.randomState,
+    this.useTimeSeriesCV,
+    this.cvFolds,
+    this.useLogTransform,
+    this.removeOutliers,
+    this.tuneHyperparameters,
+  });
+
+  factory TrainingConfig.fromJson(Map<String, dynamic> json) {
+    return TrainingConfig(
+      testSize: json['test_size'] as double?,
+      randomState: json['random_state'] as int?,
+      useTimeSeriesCV: json['use_time_series_cv'] as bool? ?? json['time_series_split'] as bool?,
+      cvFolds: json['cv_folds'] as int?,
+      useLogTransform: json['use_log_transform'] as bool?,
+      removeOutliers: json['remove_outliers'] as bool?,
+      tuneHyperparameters: json['hyperparameter_tuning'] as bool?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (testSize != null) 'test_size': testSize,
+      if (randomState != null) 'random_state': randomState,
+      if (useTimeSeriesCV != null) 'use_time_series_cv': useTimeSeriesCV,
+      if (cvFolds != null) 'cv_folds': cvFolds,
+      if (useLogTransform != null) 'use_log_transform': useLogTransform,
+      if (removeOutliers != null) 'remove_outliers': removeOutliers,
+      if (tuneHyperparameters != null) 'hyperparameter_tuning': tuneHyperparameters,
+    };
   }
 }
 

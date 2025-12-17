@@ -376,6 +376,7 @@ class ApiService {
     double initialSoc = AppConstants.defaultInitialSoc,
     DateTime? targetDate,
     List<double>? temperatureForecast,
+    double? temperatureAdjust,
     double? batteryCapacity,
     double? batteryPower,
     double? batteryEfficiency,
@@ -408,6 +409,10 @@ class ApiService {
 
       if (temperatureForecast != null) {
         body['temperature_forecast'] = temperatureForecast;
+      }
+      
+      if (temperatureAdjust != null) {
+        body['temperature_adjust'] = temperatureAdjust;
       }
 
       if (batteryCapacity != null) {

@@ -14,8 +14,8 @@ import tempfile
 from pathlib import Path
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime, timedelta
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, TimeSeriesSplit
+from sklearn.ensemble import RandomForestRegressor, VotingRegressor
+from sklearn.model_selection import train_test_split, TimeSeriesSplit, RandomizedSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import warnings
 
@@ -122,8 +122,19 @@ class EnergyPredictor:
                     print(f"   ✓ 模型使用基础特征: {len(self.feature_columns)} 个")
             else:
                 print(f"   ⚠️  未找到特征元数据，使用默认基础特征")
+                
+            # 加载训练配置 (Log Transform)
+            if metadata and 'training_config' in metadata:
+                config = metadata['training_config']
+                self.use_log_transform = config.get('use_log_transform', False)
+                if self.use_log_transform:
+                    print(f"   ✓ 模型使用 Log1p 变换，预测时将自动还原")
+            else:
+                self.use_log_transform = False
+                
         except Exception as e:
             print(f"   ⚠️  加载特征元数据失败: {e}，使用默认基础特征")
+            self.use_log_transform = False
     
     def _get_model_type_name(self) -> str:
         """获取当前模型的类型名称"""
@@ -206,13 +217,70 @@ class EnergyPredictor:
         
         return model, params
     
+    def _tune_model(self, model_type: str, X_train, y_train, cv_split, n_iter: int = 20, random_state: int = 42):
+        """
+        使用 RandomizedSearchCV 对指定模型进行超参数调优
+        """
+        model_type = model_type.lower()
+        estimator = None
+        param_dist = {}
+        
+        if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+            estimator = LGBMRegressor(random_state=random_state, n_jobs=-1, verbose=-1)
+            param_dist = {
+                'n_estimators': [100, 200, 300, 500],
+                'learning_rate': [0.01, 0.03, 0.05, 0.1],
+                'num_leaves': [31, 50, 70, 100],
+                'max_depth': [10, 15, 20, -1],
+                'subsample': [0.7, 0.8, 0.9],
+                'colsample_bytree': [0.7, 0.8, 0.9]
+            }
+        elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+            estimator = XGBRegressor(random_state=random_state, n_jobs=-1, verbosity=0)
+            param_dist = {
+                'n_estimators': [100, 200, 300, 500],
+                'learning_rate': [0.01, 0.03, 0.05, 0.1],
+                'max_depth': [3, 6, 10, 15],
+                'subsample': [0.7, 0.8, 0.9],
+                'colsample_bytree': [0.7, 0.8, 0.9],
+                'gamma': [0, 0.1, 0.2]
+            }
+        else:
+            # RandomForest
+            estimator = RandomForestRegressor(random_state=random_state, n_jobs=-1)
+            param_dist = {
+                'n_estimators': [100, 200, 300],
+                'max_depth': [10, 20, 30, None],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4],
+                'max_features': ['sqrt', 'log2', None]
+            }
+            
+        print(f"   🔍 正在为 {model_type} 搜索最佳参数 (iter={n_iter})...")
+        
+        search = RandomizedSearchCV(
+            estimator=estimator,
+            param_distributions=param_dist,
+            n_iter=n_iter,
+            cv=cv_split,
+            scoring='neg_mean_absolute_error',
+            random_state=random_state,
+            n_jobs=-1,
+            verbose=0
+        )
+        
+        search.fit(X_train, y_train)
+        print(f"      ✓ 最佳参数: {search.best_params_}")
+        return search.best_estimator_, search.best_params_
+
     def _auto_select_best_model(
         self, 
         X_train, y_train, 
         X_test, y_test, 
         random_state: int = 42,
         use_time_series_cv: bool = True,
-        n_splits: int = 5
+        n_splits: int = 5,
+        perform_tuning: bool = True  # 新增参数
     ) -> tuple:
         """
         自动选择最佳模型（支持时间序列交叉验证）
@@ -233,25 +301,37 @@ class EnergyPredictor:
         results = {}
         cv_details = {}
         
-        # 候选模型配置
-        model_configs = [
-            ('RandomForest', 'randomforest', 150),
-            ('RandomForest_200', 'randomforest', 200),
-        ]
-        
-        # 如果 LightGBM 可用，添加到候选
-        if LIGHTGBM_AVAILABLE:
-            model_configs.extend([
-                ('LightGBM', 'lightgbm', 200),
-                ('LightGBM_300', 'lightgbm', 300),
-            ])
-        
-        # 如果 XGBoost 可用，添加到候选
-        if XGBOOST_AVAILABLE:
-            model_configs.extend([
-                ('XGBoost', 'xgboost', 200),
-                ('XGBoost_300', 'xgboost', 300),
-            ])
+        if perform_tuning:
+            # 如果启用调优，此时我们不使用预设的配置，而是针对每个模型类型运行搜索
+            # 但为了保持代码结构，我们构建一个待调优类型列表
+            # 这里的 (DisplayName, type, init_n_estimators) 仅用于元组解包，n_estimators 会被忽略
+            tuning_targets = [('RandomForest', 'randomforest', 100)]
+            if LIGHTGBM_AVAILABLE:
+                tuning_targets.append(('LightGBM', 'lightgbm', 100))
+            if XGBOOST_AVAILABLE:
+                tuning_targets.append(('XGBoost', 'xgboost', 100))
+            
+            model_configs = tuning_targets # 替换为调优目标
+        else:
+            # 原有的固定配置模式
+            model_configs = [
+                ('RandomForest', 'randomforest', 150),
+                ('RandomForest_200', 'randomforest', 200),
+            ]
+            
+            # 如果 LightGBM 可用，添加到候选
+            if LIGHTGBM_AVAILABLE:
+                model_configs.extend([
+                    ('LightGBM', 'lightgbm', 200),
+                    ('LightGBM_300', 'lightgbm', 300),
+                ])
+            
+            # 如果 XGBoost 可用，添加到候选
+            if XGBOOST_AVAILABLE:
+                model_configs.extend([
+                    ('XGBoost', 'xgboost', 200),
+                    ('XGBoost_300', 'xgboost', 300),
+                ])
         
         print(f"   评估 {len(model_configs)} 种模型配置...")
         if use_time_series_cv:
@@ -263,27 +343,51 @@ class EnergyPredictor:
         best_params = None
         best_name = None
         
-        # 合并训练和测试数据用于时间序列交叉验证
+        # 【修复】时间序列交叉验证只在训练集上进行，测试集保持独立用于最终评估
+        # 这避免了测试集参与模型选择导致的数据泄漏
         if use_time_series_cv:
-            X_full = pd.concat([X_train, X_test], ignore_index=True)
-            y_full = pd.concat([pd.Series(y_train), pd.Series(y_test)], ignore_index=True)
+            # CV 只在训练集上做，不再把测试集拼进去
             tscv = TimeSeriesSplit(n_splits=n_splits)
+            print(f"   📊 TimeSeriesSplit CV 仅在训练集上进行 ({len(X_train)} 样本)")
+        
+        # 存储每种类型的最佳模型，用于集成
+        best_estimators = {}
         
         for name, model_type, n_estimators in model_configs:
             try:
-                print(f"   - 训练 {name}...", end=' ')
-                model, params = self._create_model(model_type, n_estimators, random_state)
+                model = None
+                params = None
+                
+                if perform_tuning:
+                    # 使用超参数搜索
+                    # 注意：复用 tscv 作为 cv_split
+                    # 如果未启用 TimeSeriesCV，则使用 KFold 或者默认的 5折
+                    cv_to_use = tscv if use_time_series_cv else 5
+                    
+                    # 调优后的名字加上 "Tuned" 后缀
+                    name = f"{name}_Tuned"
+                    model, params = self._tune_model(model_type, X_train, y_train, cv_to_use, n_iter=15, random_state=random_state)
+                else:
+                    # 使用固定配置
+                    print(f"   - 训练 {name}...", end=' ')
+                    model, params = self._create_model(model_type, n_estimators, random_state)
                 
                 if use_time_series_cv:
-                    # 时间序列交叉验证
+                    # 【修复】时间序列交叉验证只在训练集上进行
                     cv_scores = []
-                    for train_idx, val_idx in tscv.split(X_full):
-                        X_cv_train, X_cv_val = X_full.iloc[train_idx], X_full.iloc[val_idx]
-                        y_cv_train, y_cv_val = y_full.iloc[train_idx], y_full.iloc[val_idx]
+                    for train_idx, val_idx in tscv.split(X_train):
+                        X_cv_train, X_cv_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                        y_cv_train, y_cv_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
                         
                         model_cv, _ = self._create_model(model_type, n_estimators, random_state)
                         model_cv.fit(X_cv_train, y_cv_train)
                         y_cv_pred = model_cv.predict(X_cv_val)
+                        
+                        # 如果启用了对数变换，需要还原预测值
+                        if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                            y_cv_val = np.expm1(y_cv_val)
+                            y_cv_pred = np.expm1(y_cv_pred)
+                            
                         cv_scores.append(mean_absolute_error(y_cv_val, y_cv_pred))
                     
                     # 计算交叉验证平均分
@@ -292,7 +396,19 @@ class EnergyPredictor:
                     
                     # 使用完整训练数据重新训练最终模型
                     model.fit(X_train, y_train)
+                    
+                    # 在独立的未来测试集上评估（严格未见数据）
                     y_pred = model.predict(X_test)
+                    
+                    # 如果启用了对数变换，需要还原预测值
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                         # y_test 是原始值（如果不改动 y_test 的话），这里需要确认 split 时 y_test 是否被 log
+                         # 我们的策略是：只对训练集的 y 进行 log，测试集的 y 保持原样或者反变换
+                         # 为统一处理，假设 fit 时 y_train 是 log 后的，predict 输出 log 后的
+                         y_pred = np.expm1(y_pred)
+                         # y_test 在 split 前如果没变，那就是原始值。
+                         # 为了安全，我们稍后在 split 处做处理。
+                    
                     test_mae = mean_absolute_error(y_test, y_pred)
                     test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
                     
@@ -303,14 +419,19 @@ class EnergyPredictor:
                     cv_details[name] = {
                         'cv_mae_mean': round(cv_mae, 2),
                         'cv_mae_std': round(cv_std, 2),
-                        'cv_scores': [round(s, 2) for s in cv_scores]
+                        'cv_scores': [round(s, 2) for s in cv_scores],
+                        'test_mae': round(test_mae, 2)  # 记录独立测试集的 MAE
                     }
                     
-                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW")
+                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW (独立未来数据)")
                 else:
                     # 原有的简单训练-测试拆分
                     model.fit(X_train, y_train)
                     y_pred = model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                        y_pred = np.expm1(y_pred)
+                    
                     mae = mean_absolute_error(y_test, y_pred)
                     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
                     print(f"MAE={mae:.2f} kW")
@@ -332,7 +453,82 @@ class EnergyPredictor:
             except Exception as e:
                 print(f"失败: {str(e)}")
                 continue
+            
+            # 记录该类型的最佳模型用于集成
+            if model_type not in best_estimators or mae < best_estimators[model_type]['mae']:
+                best_estimators[model_type] = {
+                    'model': model,
+                    'mae': mae
+                }
         
+        # 尝试集成学习 (VotingRegressor)
+        if len(best_estimators) >= 2:
+            try:
+                print(f"   🤝 尝试集成学习 (VotingRegressor)...", end=' ')
+                # 创建 VotingRegressor
+                estimators_list = [(k, v['model']) for k, v in best_estimators.items()]
+                voting_model = VotingRegressor(estimators=estimators_list, n_jobs=-1)
+                voting_name = "Voting_Ensemble"
+                
+                # 评估 Voting 模型
+                if use_time_series_cv:
+                    cv_scores = []
+                    for train_idx, val_idx in tscv.split(X_train):
+                        X_cv_train, X_cv_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                        y_cv_train, y_cv_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+                        
+                        from sklearn.base import clone
+                        model_cv = clone(voting_model)
+                        model_cv.fit(X_cv_train, y_cv_train)
+                        y_cv_pred = model_cv.predict(X_cv_val)
+                        cv_scores.append(mean_absolute_error(y_cv_val, y_cv_pred))
+                    
+                    cv_mae = np.mean(cv_scores)
+                    cv_std = np.std(cv_scores)
+                    
+                    voting_model.fit(X_train, y_train)
+                    y_pred = voting_model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                         y_pred = np.expm1(y_pred)
+                         
+                    test_mae = mean_absolute_error(y_test, y_pred)
+                    test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    
+                    mae = cv_mae
+                    rmse = test_rmse
+                    
+                    cv_details[voting_name] = {
+                        'cv_mae_mean': round(cv_mae, 2),
+                        'cv_mae_std': round(cv_std, 2),
+                        'cv_scores': [round(s, 2) for s in cv_scores],
+                        'test_mae': round(test_mae, 2)
+                    }
+                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW")
+                else:
+                    voting_model.fit(X_train, y_train)
+                    y_pred = voting_model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                        y_pred = np.expm1(y_pred)
+                    
+                    mae = mean_absolute_error(y_test, y_pred)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    print(f"MAE={mae:.2f} kW")
+                
+                results[voting_name] = {'mae': mae, 'rmse': rmse, 'model_type': 'voting'}
+                candidates.append(voting_name)
+                
+                if mae < best_mae:
+                    best_mae = mae
+                    best_model = voting_model
+                    best_params = {'estimators': [k for k in best_estimators.keys()]}
+                    best_name = voting_name
+                    print(f"   ✨ 集成模型表现最佳!")
+                    
+            except Exception as e:
+                print(f"   ⚠️ 集成学习失败: {str(e)}")
+
         # 计算相对基准的提升
         improvement = 'N/A'
         if baseline_mae and baseline_mae > 0:
@@ -462,25 +658,31 @@ class EnergyPredictor:
         model_type: str = 'auto',
         use_enhanced_features: bool = True,
         use_time_series_cv: bool = True,
-        cv_folds: int = 5
+        cv_folds: int = 5,
+        use_log_transform: bool = True,
+        remove_outliers: bool = True,
+        tune_hyperparameters: bool = True  # 新增控制开关 (默认开启)
     ) -> Dict[str, float]:
         """
         训练预测模型（支持自动模型选择、增强特征和时间序列交叉验证）
         
         Args:
-            data_path: 数据文件路径，默认为 data/processed/cleaned_energy_data_all.csv
-            n_estimators: 树的数量（用于非自动模式）
+            data_path: 数据文件路径
+            n_estimators: 树的数量
             test_size: 测试集比例
             random_state: 随机种子
-            use_firebase_storage: 是否从 Firebase Storage 下载数据 (GAE 环境必须为 True)
-            auto_select_model: 是否自动选择最佳模型（默认 True）
-            model_type: 指定模型类型 ('auto', 'randomforest', 'lightgbm', 'xgboost')
-            use_enhanced_features: 是否使用增强特征（月份、季节、节假日等，默认 True）
-            use_time_series_cv: 是否使用时间序列交叉验证（默认 True）
-            cv_folds: 交叉验证折数（默认 5）
+            use_firebase_storage: 是否从 Firebase Storage 下载数据
+            auto_select_model: 是否自动选择最佳模型
+            model_type: 指定模型类型
+            use_enhanced_features: 是否使用增强特征
+            use_time_series_cv: 是否使用时间序列交叉验证
+            cv_folds: 交叉验证折数
+            use_log_transform: 是否对目标变量进行 Log1p 变换 (默认 True)
+            remove_outliers: 是否自动过滤异常值 (默认 True)
+            tune_hyperparameters: 是否启用超参数自动搜索 (默认 True) 
             
         Returns:
-            包含评估指标的字典 (MAE, RMSE, model_type, hyperparameters)
+            包含评估指标的字典
         """
         print("\n" + "="*80)
         print("🚀 开始训练能源负载预测模型")
@@ -532,15 +734,77 @@ class EnergyPredictor:
             except Exception as e:
                 raise Exception(f"读取数据时出错: {str(e)}")
             
-            # 检查必需列
-            required_cols = self.feature_columns + [self.target_column]
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            if missing_cols:
-                raise ValueError(f"数据缺少必需列: {missing_cols}")
+            # ================================================================
+            # 【修复】智能特征检查与自动补算
+            # 分层检查：硬必需列 vs 可补算的 engineered 特征
+            # ================================================================
+            
+            # 硬必需列：必须存在，无法自动生成
+            hard_required = ['Date', 'Site_Load', 'Temperature']
+            missing_hard = [col for col in hard_required if col not in df.columns]
+            if missing_hard:
+                raise ValueError(f"数据缺少核心必需列（无法自动生成）: {missing_hard}")
+            
+            # 可补算的基础时间特征
+            time_features = ['Hour', 'DayOfWeek', 'Price']
+            missing_time = [col for col in time_features if col not in df.columns]
+            
+            # 可补算的 Lag/Rolling 特征
+            engineered_features = ['Lag_1h', 'Lag_24h', 'Lag_168h', 
+                                   'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
+                                   'Temp_x_Hour', 'Lag24_x_DayOfWeek']
+            missing_engineered = [col for col in engineered_features if col not in df.columns]
+            
+            # 检查增强特征是否缺失
+            missing_enhanced_time = []
+            if use_enhanced_features:
+                 enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                 missing_enhanced_time = [c for c in enhanced_time_cols if c not in df.columns]
+
+            # 如果有缺失的可补算特征，自动调用 EnergyDataProcessor 补算
+            if missing_time or missing_engineered or missing_enhanced_time:
+                print(f"\n🔧 检测到缺失特征，自动补算中...")
+                if missing_time:
+                    print(f"   - 缺失时间特征: {missing_time}")
+                if missing_engineered:
+                    print(f"   - 缺失工程特征: {missing_engineered}")
+                
+                from services.data_processor import EnergyDataProcessor
+                processor = EnergyDataProcessor()
+                
+                # 确保 Date 是 datetime 类型
+                if df['Date'].dtype == 'object':
+                    df['Date'] = pd.to_datetime(df['Date'])
+                
+                # 补算时间特征
+                if missing_time:
+                    if 'Hour' not in df.columns:
+                        df['Hour'] = df['Date'].dt.hour
+                    if 'DayOfWeek' not in df.columns:
+                        df['DayOfWeek'] = df['Date'].dt.dayofweek
+                    if 'Price' not in df.columns:
+                        df = processor.add_price_feature(df)
+                
+                # 补算增强时间特征（如果启用）
+                if use_enhanced_features:
+                    enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                    missing_enhanced_time = [c for c in enhanced_time_cols if c not in df.columns]
+                    if missing_enhanced_time:
+                        df = processor.add_enhanced_time_features(df)
+                        print(f"   ✓ 已补算增强时间特征")
+                
+                # 补算 Lag/Rolling/Interaction 特征
+                if missing_engineered:
+                    df = processor.add_advanced_features(df, dropna=False, use_enhanced=use_enhanced_features)
+                    print(f"   ✓ 已补算 Lag/Rolling/Interaction 特征")
+                
+                print(f"   ✓ 特征补算完成，当前列数: {len(df.columns)}")
             
             # 处理缺失值
             print(f"\n🔍 检查数据质量...")
-            null_counts = df[required_cols].isnull().sum()
+            # 检查核心列的缺失值
+            core_cols = hard_required + time_features
+            null_counts = df[core_cols].isnull().sum()
             if null_counts.sum() > 0:
                 print(f"   ⚠️  发现缺失值:")
                 for col, count in null_counts[null_counts > 0].items():
@@ -548,9 +812,12 @@ class EnergyPredictor:
                 
                 # 对于 Temperature，使用均值填充
                 if 'Temperature' in null_counts and null_counts['Temperature'] > 0:
-                    mean_temp = df['Temperature'].mean()
-                    df['Temperature'].fillna(mean_temp, inplace=True)
-                    print(f"   ✓ Temperature 缺失值已用均值填充: {mean_temp:.2f}°C")
+                    # 使用线性插值填充温度缺失值（更适合时间序列）
+                    df['Temperature'] = df['Temperature'].interpolate(method='linear', limit_direction='both')
+                    # 如果仍有缺失（例如开头或结尾），使用均值兜底
+                    if df['Temperature'].isnull().sum() > 0:
+                         df['Temperature'].fillna(df['Temperature'].mean(), inplace=True)
+                    print(f"   ✓ Temperature 缺失值已使用线性插值填充")
             else:
                 print(f"   ✓ 无核心列缺失值")
             
@@ -599,14 +866,77 @@ class EnergyPredictor:
             print(f"   - 数据形状: X={X.shape}, y={y.shape}")
             
             # 划分训练集和测试集
+            # 【修复】时间序列数据必须按时间顺序拆分，避免数据泄漏
             print(f"\n✂️  划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
-            X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state
-            )
+            
+            if use_time_series_cv:
+                # 时间序列模式：按时间顺序拆分，测试集为严格未来数据
+                # 确保数据按 Date 排序（如果 Date 列存在）
+                if 'Date' in df.columns:
+                    sort_idx = df['Date'].argsort()
+                    X = X.iloc[sort_idx].reset_index(drop=True)
+                    y = y.iloc[sort_idx].reset_index(drop=True)
+                    print(f"   ✓ 已按时间顺序排序数据")
+                
+                # 按时间顺序拆分：最后 test_size 比例作为严格未来 holdout
+                split_idx = int(len(X) * (1 - test_size))
+                X_train = X.iloc[:split_idx].copy()
+                X_test = X.iloc[split_idx:].copy()
+                y_train = y.iloc[:split_idx].copy()
+                y_test = y.iloc[split_idx:].copy()
+                print(f"   ✓ 时间序列拆分：测试集为严格未来数据 (避免数据泄漏)")
+            else:
+                # 非时间序列模式：保持原有随机拆分行为（向后兼容）
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=test_size, random_state=random_state
+                )
+                print(f"   ⚠️  随机拆分模式 (仅用于非时间序列数据)")
             
             print(f"   - 训练集: {X_train.shape[0]} 样本")
             print(f"   - 测试集: {X_test.shape[0]} 样本")
             
+            # 记录配置状态
+            self.use_log_transform = use_log_transform
+            
+            # ================================================================
+            # 异常值过滤 (Anomaly Detection) - 仅针对训练集
+            # ================================================================
+            if remove_outliers:
+                print(f"\n🧹 执行异常值过滤 (IQR)...")
+                # 计算 IQR
+                Q1 = y_train.quantile(0.25)
+                Q3 = y_train.quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                
+                # 过滤索引
+                # 注意：这里我们同时需要过滤 X_train 和 y_train
+                mask = (y_train >= lower_bound) & (y_train <= upper_bound)
+                outliers_count = len(y_train) - mask.sum()
+                
+                if outliers_count > 0:
+                     X_train = X_train[mask]
+                     y_train = y_train[mask]
+                     print(f"   ✓ 已移除 {outliers_count} 个异常样本")
+                     print(f"     阈值区间: [{lower_bound:.2f}, {upper_bound:.2f}]")
+                else:
+                     print(f"   ✓ 未发现显著异常值")
+            
+            # ================================================================
+            # 目标变量对数变换 (Log Transform)
+            # ================================================================
+            if use_log_transform:
+                print(f"\n📉执行 Log1p 变换...")
+                # 检查负值
+                if (y_train < 0).any():
+                     print(f"   ⚠️  y_train 包含负值，无法进行 Log 变换，自动禁用")
+                     self.use_log_transform = False
+                else:
+                     y_train = np.log1p(y_train)
+                     # y_test 不变换，保持原始比例用于评估
+                     print(f"   ✓ y_train 已进行 np.log1p 变换")
+
             # ================================================================
             # 自动模型选择与训练
             # ================================================================
@@ -615,7 +945,8 @@ class EnergyPredictor:
                 best_model, best_params, selection_info = self._auto_select_best_model(
                     X_train, y_train, X_test, y_test, random_state,
                     use_time_series_cv=use_time_series_cv,
-                    n_splits=cv_folds
+                    n_splits=cv_folds,
+                    perform_tuning=tune_hyperparameters
                 )
                 self.model = best_model
                 selected_model_type = selection_info['winner']
@@ -637,11 +968,21 @@ class EnergyPredictor:
             
             # 训练集预测
             y_train_pred = self.model.predict(X_train)
+            
+            # 还原
+            if self.use_log_transform:
+                y_train = np.expm1(y_train)
+                y_train_pred = np.expm1(y_train_pred)
+                
             train_mae = mean_absolute_error(y_train, y_train_pred)
             train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
             
             # 测试集预测
             y_test_pred = self.model.predict(X_test)
+            
+            if self.use_log_transform:
+                y_test_pred = np.expm1(y_test_pred)
+                
             test_mae = mean_absolute_error(y_test, y_test_pred)
             test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
             
@@ -668,13 +1009,29 @@ class EnergyPredictor:
             
             # 特征重要性
             print(f"\n🔍 特征重要性:")
-            feature_importance = pd.DataFrame({
-                'Feature': self.feature_columns,
-                'Importance': self.model.feature_importances_
-            }).sort_values('Importance', ascending=False)
+            importances = None
             
-            for _, row in feature_importance.iterrows():
-                print(f"      - {row['Feature']}: {row['Importance']:.4f}")
+            if hasattr(self.model, 'feature_importances_'):
+                importances = self.model.feature_importances_
+            elif isinstance(self.model, VotingRegressor):
+                # 尝试计算平均特征重要性
+                try:
+                    all_importances = [est.feature_importances_ for est in self.model.estimators_]
+                    importances = np.mean(all_importances, axis=0)
+                except Exception:
+                     pass
+            
+            if importances is not None:
+                feature_importance = pd.DataFrame({
+                    'Feature': self.feature_columns,
+                    'Importance': importances
+                }).sort_values('Importance', ascending=False)
+                
+                for _, row in feature_importance.iterrows():
+                    print(f"      - {row['Feature']}: {row['Importance']:.4f}")
+            else:
+                print("      (当前模型不支持特征重要性输出)")
+                feature_importance = pd.DataFrame(columns=['Feature', 'Importance'])
             
             # 保存模型到 Firebase Storage
             print(f"\n💾 保存模型到 Firebase Storage: {self.firebase_model_path}")
@@ -742,21 +1099,42 @@ class EnergyPredictor:
                         'train_rmse': float(train_rmse),
                         'test_mae': float(test_mae),
                         'test_rmse': float(test_rmse),
-                        'r2_score': float(test_r2),  # 新增: R² Score
-                        'mape': float(test_mape / 100),  # 新增: MAPE (存储为小数形式, 5% -> 0.05)
+                        'r2_score': float(test_r2),
+                        'mape': float(test_mape / 100),  # 存储为小数形式, 5% -> 0.05
                     },
                     'training_samples': len(df),
                     'data_source': 'CAISO Real-Time Stream',
                     'feature_importance': feature_importance.to_dict('records'),
                     'model_path': self.firebase_model_path,
                     'status': 'active',
-                    # 新增：特征工程信息
+                    # 【新增】单位标注信息（向后兼容，不改变数值）
+                    'units': {
+                        'target_variable': self.target_column,
+                        'target_unit': 'kW',  # Site_Load 的单位
+                        'load_unit_multiplier': 1.0,  # 1.0 表示原始值，1000 表示 MW->kW
+                        'price_unit': 'CNY/kWh',  # 电价单位
+                        'temperature_unit': '°C',  # 温度单位
+                        'note': 'CAISO 原始数据为 MW，已转换为 kW 存储'
+                    },
+                    # 特征工程信息
                     'feature_engineering': {
                         'total_features': len(self.feature_columns),
                         'base_features': len(self.base_feature_columns),
                         'enhanced_features': len(enhanced_features_used) if use_enhanced_features else 0,
                         'enhanced_features_list': enhanced_features_used if use_enhanced_features else [],
                         'use_enhanced': use_enhanced_features
+                    },
+                    # 【新增】训练配置记录（便于复现）
+                    'training_config': {
+                        'test_size': test_size,
+                        'random_state': random_state,
+                        'use_time_series_cv': use_time_series_cv,
+                        'cv_folds': cv_folds if use_time_series_cv else None,
+                        'cv_folds': cv_folds if use_time_series_cv else None,
+                        'time_series_split': use_time_series_cv,  # 标记是否使用了时间序列拆分
+                        'use_log_transform': use_log_transform,   # 记录是否使用了 Log 变换
+                        'remove_outliers': remove_outliers,       # 记录是否使用了异常值过滤
+                        'hyperparameter_tuning': tune_hyperparameters # 记录是否启用了超参数搜索
                     }
                 }
                 
@@ -942,7 +1320,8 @@ class EnergyPredictor:
     def predict_next_24h(
         self,
         start_time: Union[str, datetime],
-        temp_forecast_list: Optional[List[float]] = None
+        temp_forecast_list: Optional[List[float]] = None,
+        temp_adjust_delta: float = 0.0
     ) -> List[Dict[str, Union[datetime, float]]]:
         """
         预测未来24小时的能源负载 (递归预测模式)
@@ -950,6 +1329,7 @@ class EnergyPredictor:
         Args:
             start_time: 开始时间
             temp_forecast_list: 温度预测列表
+            temp_adjust_delta: 温度调整值 (用于 What-If 分析)
             
         Returns:
             预测结果列表
@@ -966,17 +1346,29 @@ class EnergyPredictor:
             
         print(f"\n🔮 递归预测未来24小时负载 (从 {start_time} 开始)...")
         
-        if temp_forecast_list is None:
-            temp_forecast_list = [25.0] * 24
-        
         # 1. 加载历史上下文 (用于构建 Lag/Rolling 特征)
         # 我们至少需要过去 168 小时的数据
         history_df = self._load_history_context(start_time, window_size=200)
         
         # 转换为 list 以便高效 append
-        # 我们主要需要 Site_Load 序列
         history_loads = history_df['Site_Load'].tolist()
-        history_temps = history_df['Temperature'].tolist() # 如果有用到温度的历史特征
+        history_temps = history_df['Temperature'].tolist() # 历史温度
+        
+        # 如果未提供温度预测，使用持久性预测 (昨天的温度)
+        if temp_forecast_list is None:
+            if len(history_temps) >= 24:
+                # 使用过去 24 小时的数据作为基准 (Persistence Forecast)
+                print("   ℹ️  未提供温度预测，使用过去24小时温度作为基准 (Persistence Forecast)")
+                temp_forecast_list = history_temps[-24:]
+            else:
+                # 历史数据不足，回退到默认值
+                print("   ⚠️  历史温度不足，使用默认 25.0°C")
+                temp_forecast_list = [25.0] * 24
+        
+        # 应用温度调整 (What-If Analysis)
+        if temp_adjust_delta != 0.0:
+            print(f"   🌡️  应用温度调整: {temp_adjust_delta:+.1f}°C")
+            temp_forecast_list = [t + temp_adjust_delta for t in temp_forecast_list]
         
         predictions = []
         prediction_results = []
@@ -1001,8 +1393,9 @@ class EnergyPredictor:
             
             # Rolling Features
             # 取最近 N 个点计算均值/标准差
+            # 【修复】使用 ddof=1 与训练时 pandas.rolling().std() 保持一致
             roll_6h_mean = np.mean(history_loads[-6:]) if len(history_loads) >= 6 else lag_1h
-            roll_6h_std = np.std(history_loads[-6:]) if len(history_loads) >= 6 else 0
+            roll_6h_std = np.std(history_loads[-6:], ddof=1) if len(history_loads) >= 6 else 0
             roll_24h_mean = np.mean(history_loads[-24:]) if len(history_loads) >= 24 else lag_1h
             
             # Interaction Features (基础)
@@ -1047,11 +1440,25 @@ class EnergyPredictor:
                 is_weekend = 1 if day_of_week >= 5 else 0
                 
                 # 是否节假日（美国加州）
-                try:
-                    import holidays
-                    us_ca_holidays = holidays.US(state='CA')
-                    is_holiday = 1 if current_time.date() in us_ca_holidays else 0
-                except ImportError:
+                # 优化: 避免在循环中重复初始化
+                if not hasattr(self, '_holidays_cache'):
+                    try:
+                        import holidays
+                        # 使用 subdiv 替代 deprecated 的 state 参数
+                        self._holidays_cache = holidays.US(subdiv='CA')
+                    except ImportError:
+                        self._holidays_cache = None
+                    except Exception:
+                        # 兼容旧版本 holidays (如不支持 subdiv)
+                        try:
+                            import holidays
+                            self._holidays_cache = holidays.US(state='CA')
+                        except:
+                            self._holidays_cache = None
+
+                if self._holidays_cache:
+                    is_holiday = 1 if current_time.date() in self._holidays_cache else 0
+                else:
                     is_holiday = is_weekend  # 简化：周末视为假日
                 
                 # 增强交互特征
@@ -1086,7 +1493,16 @@ class EnergyPredictor:
             features = pd.DataFrame([{col: feature_dict[col] for col in self.feature_columns}])
             
             # B. 单步推理
-            pred_load = float(self.model.predict(features)[0])
+            pred_log = float(self.model.predict(features)[0])
+            
+            # 如果模型使用了 Log 变换，需要还原
+            if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                pred_load = float(np.expm1(pred_log))
+            else:
+                pred_load = pred_log
+            
+            # 【安全检查】强制约束预测值为非负 (物理常识)
+            pred_load = max(0.0, pred_load)
             
             # C. 更新历史序列 (递归关键)
             # 将预测值作为"真实值"加入历史，用于下一步预测
@@ -1132,9 +1548,29 @@ class EnergyPredictor:
         if self.model is None:
             raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
         
+        importances = None
+        if hasattr(self.model, 'feature_importances_'):
+             importances = self.model.feature_importances_
+        elif isinstance(self.model, VotingRegressor):
+             try:
+                 all_importances = [est.feature_importances_ for est in self.model.estimators_]
+                 importances = np.mean(all_importances, axis=0)
+             except:
+                 pass
+                 
+        if importances is None:
+             # 如果无法获取，返回空字典或默认均匀分布
+             return {col: 0.0 for col in self.feature_columns}
+             
+        # 【修复】归一化特征重要性，确保总和为 1.0
+        # XGBoost/LightGBM 在 VotingRegressor 中可能返回未归一化的值 (如 gain/cover)
+        total_importance = np.sum(importances)
+        if total_importance > 0:
+            importances = importances / total_importance
+             
         importance_dict = dict(zip(
             self.feature_columns,
-            [float(v) for v in self.model.feature_importances_]
+            [float(v) for v in importances]
         ))
         
         # 按重要性降序排序
@@ -1180,13 +1616,9 @@ class EnergyPredictor:
                 raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
 
             # 构建特征 DataFrame
-            # 如果 price 为 None，根据 hour 自动计算（峰谷电价）
+            # 【修复】如果 price 为 None，使用统一的 _get_price 方法计算（与推理一致）
             if price is None:
-                # 峰时段: 8-22点，谷时段: 22-8点
-                if 8 <= hour < 22:
-                    price = 1.2  # 峰时电价
-                else:
-                    price = 0.6  # 谷时电价
+                price = self._get_price(hour)
             
             # 尝试从历史数据获取滞后特征，如果没有则使用合理的默认值
             # 默认值基于典型的负载模式
@@ -1310,11 +1742,72 @@ class EnergyPredictor:
                 }
                 
             # 4. 准备特征和真实值
+            # 【修复】检查并自动补算缺失特征
+            missing_features = [col for col in self.feature_columns if col not in recent_df.columns]
+            if missing_features:
+                print(f"   ⚠️ 检测到缺失特征: {missing_features}")
+                print(f"   🔧 尝试自动补算...")
+                
+                try:
+                    from services.data_processor import EnergyDataProcessor
+                    processor = EnergyDataProcessor()
+                    
+                    # 确保 Date 是 datetime 类型
+                    if recent_df['Date'].dtype == 'object':
+                        recent_df['Date'] = pd.to_datetime(recent_df['Date'])
+                    
+                    # 补算基础时间特征
+                    if 'Hour' not in recent_df.columns:
+                        recent_df['Hour'] = recent_df['Date'].dt.hour
+                    if 'DayOfWeek' not in recent_df.columns:
+                        recent_df['DayOfWeek'] = recent_df['Date'].dt.dayofweek
+                    if 'Price' not in recent_df.columns:
+                        recent_df = processor.add_price_feature(recent_df)
+                    
+                    # 补算增强时间特征
+                    enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                    if any(c in missing_features for c in enhanced_time_cols):
+                        recent_df = processor.add_enhanced_time_features(recent_df)
+                    
+                    # 补算 Lag/Rolling 特征
+                    lag_cols = ['Lag_1h', 'Lag_24h', 'Lag_168h', 'Rolling_Mean_6h', 'Rolling_Std_6h']
+                    if any(c in missing_features for c in lag_cols):
+                        recent_df = processor.add_advanced_features(recent_df, dropna=False, use_enhanced=True)
+                    
+                    # 再次检查是否还有缺失
+                    still_missing = [col for col in self.feature_columns if col not in recent_df.columns]
+                    if still_missing:
+                        print(f"   ❌ 仍有无法补算的特征: {still_missing}")
+                        return {
+                            'status': 'feature_mismatch',
+                            'message': f'Cannot compute features: {still_missing}'
+                        }
+                    print(f"   ✓ 特征补算完成")
+                except Exception as fe:
+                    print(f"   ❌ 特征补算失败: {str(fe)}")
+                    return {
+                        'status': 'feature_error',
+                        'message': f'Feature computation failed: {str(fe)}'
+                    }
+            
+            # 删除因 Lag/Rolling 产生的 NaN 行
+            recent_df = recent_df.dropna(subset=self.feature_columns)
+            if len(recent_df) < min_samples:
+                print(f"   ⚠️ 删除 NaN 后样本不足 ({len(recent_df)} < {min_samples})")
+                return {
+                    'status': 'insufficient_data',
+                    'message': f'Insufficient valid samples after feature computation'
+                }
+            
             X_recent = recent_df[self.feature_columns]
             y_true = recent_df[self.target_column].values
             
             # 5. 进行预测
             y_pred = self.model.predict(X_recent)
+            
+            # 如果模型使用了 Log 变换，需要还原
+            if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                 y_pred = np.expm1(y_pred)
             
             # 6. 计算指标
             # MAPE: Mean Absolute Percentage Error

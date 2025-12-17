@@ -578,7 +578,7 @@ def preprocess_energy_data(
     if temperature_data is not None:
         merged_df = pd.merge(merged_df, temperature_data, on='Date', how='left')
         # 温度缺失值用前后值插值填充
-        merged_df['Temperature'] = merged_df['Temperature'].interpolate(method='linear').fillna(25.0)
+        merged_df['Temperature'] = merged_df['Temperature'].interpolate(method='linear', limit_direction='both').fillna(25.0)
     
     # 计算全站总负载
     load_columns = [col for col in merged_df.columns if col.startswith('Total_Load_')]
@@ -597,7 +597,8 @@ def preprocess_energy_data(
     print("-" * 80)
     hourly_df = processor.add_price_feature(hourly_df)
     hourly_df = processor.add_time_features(hourly_df)
-    hourly_df = processor.add_advanced_features(hourly_df)
+    hourly_df = processor.add_enhanced_time_features(hourly_df)  # Add enhanced time features
+    hourly_df = processor.add_advanced_features(hourly_df, use_enhanced=True)
     
     # Step 6: 保存数据
     print("\n【步骤 6/6】保存处理后的数据")
@@ -659,14 +660,18 @@ def preprocess_all_data(raw_data_dir: str = None, output_dir: str = None):
     print("正在合并 2018 和 2019 年数据...")
     
     # 确保两个DataFrame有相同的列
-    common_cols = [
-        'Date', 'Site_Load', 'Temperature', 'Hour', 'Price', 'DayOfWeek',
-        'Lag_1h', 'Lag_24h', 'Lag_168h',
-        'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
-        'Temp_x_Hour', 'Lag24_x_DayOfWeek'
-    ]
-    df_2018_subset = df_2018[common_cols].copy()
-    df_2019_subset = df_2019[common_cols].copy()
+    cols_2018 = set(df_2018.columns)
+    cols_2019 = set(df_2019.columns)
+    common_cols = list(cols_2018.intersection(cols_2019))
+    
+    # 确保列顺序一致
+    # 优先核心列
+    priority_cols = ['Date', 'Site_Load', 'Temperature', 'Hour', 'Price', 'DayOfWeek']
+    remaining_cols = [c for c in common_cols if c not in priority_cols]
+    sorted_cols = priority_cols + sorted(remaining_cols)
+    
+    df_2018_subset = df_2018[sorted_cols].copy()
+    df_2019_subset = df_2019[sorted_cols].copy()
     
     # 使用 concat 合并
     df_all = pd.concat([df_2018_subset, df_2019_subset], ignore_index=True)

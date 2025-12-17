@@ -83,9 +83,9 @@ optimization_bp = Blueprint('optimization', __name__, url_prefix='/api/optimizat
 # 电池配置（可以从配置文件或数据库读取）
 # 注意：负载规模约 20000-30000 kW，需要工业级储能
 BATTERY_CONFIG = {
-    'capacity': 5000,      # kWh (工业级储能，约负载的 20-25%)
-    'max_power': 2000,     # kW (C-rate 约 0.4)
-    'efficiency': 0.92     # 92% (工业级效率)
+    'capacity': 100.0,      # kWh (适配当前 100-400kW 负载规模)
+    'max_power': 40.0,      # kW (充放电功率)
+    'efficiency': 0.95      # 95% (高效能电池)
 }
 
 
@@ -185,6 +185,7 @@ def run_optimization():
         initial_soc = data.get('initial_soc', 0.5)
         target_date = data.get('target_date')
         temp_forecast = data.get('temperature_forecast')
+        temp_adjust = float(data.get('temperature_adjust', 0.0))
         
         # 验证 initial_soc
         if not isinstance(initial_soc, (int, float)) or not 0 <= initial_soc <= 1:
@@ -229,7 +230,8 @@ def run_optimization():
             
             predictions = predictor.predict_next_24h(
                 start_time=target_datetime,
-                temp_forecast_list=temp_forecast
+                temp_forecast_list=temp_forecast,
+                temp_adjust_delta=temp_adjust
             )
             
             logger.info(f"[{uid}] 负载预测完成: {len(predictions)} 小时")
@@ -428,10 +430,18 @@ def run_optimization():
             online_metrics = predictor.evaluate_recent_performance(hours=24)
             if online_metrics.get('status') == 'success':
                 # 合并：保留训练时的 r2_score 和 mape（如果在线评估没有更新它们）
+                # 【修改】不要覆盖 r2_score 和 mape，保持显示模型在测试集上的稳定性能
+                # 在线指标仅保留 last_data_point 和 sample_count 等辅助信息
+                protected_metrics = ['r2_score', 'mape', 'test_mae', 'test_rmse']
+                
                 for key, value in online_metrics.items():
-                    if key != 'status':  # 不覆盖 status 以外的字段（如果已存在）
+                    if key != 'status' and key not in protected_metrics:
                         model_info['metrics'][key] = value
-                logger.info(f"[{uid}] 在线评估成功，指标已合并")
+                        
+                # 也可以选择将在线指标另存为 online_metrics 字段供前端展示（如果有对应UI）
+                response['online_metrics'] = online_metrics
+                
+                logger.info(f"[{uid}] 在线评估成功，辅助指标已合并")
         except Exception as e:
             logger.warning(f"获取在线模型性能指标失败: {e}，使用训练时保存的指标")
             
@@ -652,9 +662,9 @@ def simulate_scenario():
         target_date = data.get('target_date')
         scenarios = data.get('scenarios', [
             {"name": "无电池", "capacity": 0, "power": 0},
-            {"name": "小型 (10kWh)", "capacity": 10, "power": 3},
-            {"name": "Tesla Powerwall (13.5kWh)", "capacity": 13.5, "power": 5},
-            {"name": "大型 (20kWh)", "capacity": 20, "power": 7}
+            {"name": "小型储能 (50kWh)", "capacity": 50, "power": 20},
+            {"name": "中型储能 (100kWh)", "capacity": 100, "power": 40},
+            {"name": "大型储能 (200kWh)", "capacity": 200, "power": 80}
         ])
         
         # 解析目标日期
