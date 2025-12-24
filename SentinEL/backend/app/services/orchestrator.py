@@ -7,6 +7,7 @@ import time
 from typing import Optional, Callable
 from app.services.bigquery_service import BigQueryService
 from app.services.llm_service import LLMService
+# Import initialized storage_service instance
 from app.services.storage_service import storage_service
 
 
@@ -38,6 +39,9 @@ class AnalysisOrchestrator:
         # 记录开始时间
         start_time = time.time()
         
+        # 0. 预生成分析 ID (用于前端反馈关联)
+        analysis_id = storage_service.generate_id()
+
         # 1. 从 BigQuery 获取用户风险画像
         profile = self.bq_service.get_user_churn_prediction(user_id)
         churn_prob = profile.get("churn_probability", 0.0)
@@ -53,14 +57,15 @@ class AnalysisOrchestrator:
             "user_features": feature_context,
             "retention_policies": [],
             "generated_email": None,
-            "recommended_action": "No intervention needed"
+            "recommended_action": "No intervention needed",
+            "analysis_id": analysis_id  # 返回给前端
         }
 
         # 2. 逻辑检查: 仅对高风险用户进行干预
         if risk_level == "Low":
             # 即使是低风险用户也记录日志
             self._schedule_save(
-                background_save, user_id, churn_prob, risk_level, None, start_time
+                background_save, user_id, churn_prob, risk_level, None, start_time, analysis_id
             )
             return result
             
@@ -85,7 +90,7 @@ class AnalysisOrchestrator:
         
         # 6. 调度后台保存任务 (非阻塞)
         self._schedule_save(
-            background_save, user_id, churn_prob, risk_level, email_content, start_time
+            background_save, user_id, churn_prob, risk_level, email_content, start_time, analysis_id
         )
         
         return result
@@ -97,13 +102,11 @@ class AnalysisOrchestrator:
         churn_prob: float,
         risk_level: str,
         email_content: Optional[str],
-        start_time: float
+        start_time: float,
+        analysis_id: str
     ):
         """
         调度后台保存任务
-        
-        如果提供了 background_save 回调，则使用 FastAPI BackgroundTasks 异步保存；
-        否则直接同步保存 (用于测试或非 HTTP 上下文)
         """
         # 计算处理耗时
         processing_time_ms = (time.time() - start_time) * 1000
@@ -116,9 +119,10 @@ class AnalysisOrchestrator:
                 churn_probability=churn_prob,
                 risk_level=risk_level,
                 generated_email=email_content,
-                processing_time_ms=processing_time_ms
+                processing_time_ms=processing_time_ms,
+                analysis_id=analysis_id
             )
-            print(f"[Orchestrator] 已调度后台保存任务: user_id={user_id}")
+            print(f"[Orchestrator] 已调度后台保存任务: user_id={user_id}, analysis_id={analysis_id}")
         else:
             # 同步保存 (fallback)
             try:
@@ -127,7 +131,8 @@ class AnalysisOrchestrator:
                     churn_probability=churn_prob,
                     risk_level=risk_level,
                     generated_email=email_content,
-                    processing_time_ms=processing_time_ms
+                    processing_time_ms=processing_time_ms,
+                    analysis_id=analysis_id
                 )
             except Exception as e:
                 # 存储失败不应影响主流程

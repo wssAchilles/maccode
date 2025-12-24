@@ -161,6 +161,7 @@ export default function DashboardPage() {
                                     <EmailPreview
                                         emailContent={state.data.generated_email}
                                         userId={state.data.user_id}
+                                        analysisId={state.data.analysis_id}
                                     />
                                 ) : (
                                     <EmptyState message="AI 生成邮件将在此显示" />

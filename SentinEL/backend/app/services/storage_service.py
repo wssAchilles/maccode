@@ -28,7 +28,8 @@ class StorageService:
         churn_probability: float,
         risk_level: str,
         generated_email: Optional[str],
-        processing_time_ms: float
+        processing_time_ms: float,
+        analysis_id: Optional[str] = None
     ) -> str:
         """
         保存分析结果到 Firestore
@@ -39,9 +40,10 @@ class StorageService:
             risk_level: 风险等级 ("High" / "Low")
             generated_email: AI 生成的邮件内容 (可为 None)
             processing_time_ms: 处理耗时 (毫秒)
+            analysis_id: 可选的预生成文档 ID
         
         Returns:
-            str: 新创建文档的 ID
+            str: 文档 ID
         """
         # 从生成的邮件中提取主题 (如果存在)
         email_subject = self._extract_email_subject(generated_email)
@@ -58,11 +60,19 @@ class StorageService:
         }
         
         # 写入 Firestore
-        doc_ref = self.db.collection(self.collection_name).document()
+        if analysis_id:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+        else:
+            doc_ref = self.db.collection(self.collection_name).document()
+            
         doc_ref.set(doc_data)
         
         print(f"[StorageService] 已保存分析日志: {doc_ref.id} for user {user_id}")
         return doc_ref.id
+
+    def generate_id(self) -> str:
+        """生成一个新的唯一文档 ID"""
+        return self.db.collection(self.collection_name).document().id
     
     def _extract_email_subject(self, email_content: Optional[str]) -> Optional[str]:
         """
@@ -116,6 +126,30 @@ class StorageService:
             logs.append(data)
         
         return logs
+
+
+    def update_feedback(self, analysis_id: str, feedback_type: str) -> bool:
+        """
+        更新分析记录的用户反馈
+        
+        Args:
+            analysis_id: 分析记录 ID (Firestore Document ID)
+            feedback_type: 反馈类型 ("thumbs_up" / "thumbs_down")
+        
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+            doc_ref.update({
+                "feedback": feedback_type,
+                "feedback_timestamp": SERVER_TIMESTAMP
+            })
+            print(f"[StorageService] Feedback updated for analysis {analysis_id}: {feedback_type}")
+            return True
+        except Exception as e:
+            print(f"[StorageService] Error updating feedback: {e}")
+            return False
 
 
 # 创建单例实例

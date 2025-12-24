@@ -39,6 +39,18 @@ export interface UserAnalysisResponse {
     generated_email: string | null; // AI 生成的挽留邮件
     retention_policies: string[] | null; // RAG 检索到的策略
     user_features: UserFeatures | null; // 用户特征画像
+    analysis_id: string; // 后端生成的分析记录 ID (用于反馈)
+}
+
+/**
+ * 用户反馈请求类型
+ */
+export type FeedbackType = "thumbs_up" | "thumbs_down";
+
+export interface FeedbackRequest {
+    analysis_id: string;
+    user_id: string;
+    feedback_type: FeedbackType;
 }
 
 // ============ UI 状态类型 ============

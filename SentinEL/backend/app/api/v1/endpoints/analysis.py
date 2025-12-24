@@ -4,7 +4,7 @@ SentinEL 分析 API 端点
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from app.models.schemas import AnalyzeUserRequest, UserAnalysisResponse
+from app.models.schemas import AnalyzeUserRequest, UserAnalysisResponse, FeedbackRequest
 from app.services.orchestrator import AnalysisOrchestrator
 
 router = APIRouter()
@@ -50,3 +50,23 @@ def analyze_user_endpoint(
             status_code=500,
             detail="分析过程中发生内部错误，请稍后重试"
         )
+
+
+@router.post("/feedback")
+def submit_feedback(request: FeedbackRequest):
+    """
+    **提交用户反馈**
+    
+    用于人工评估 AI 生成的邮件质量 (Thumbs Up/Down)
+    """
+    from app.services.storage_service import storage_service
+    
+    success = storage_service.update_feedback(
+        analysis_id=request.analysis_id,
+        feedback_type=request.feedback_type
+    )
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save feedback")
+    
+    return {"status": "success", "message": "Feedback received"}

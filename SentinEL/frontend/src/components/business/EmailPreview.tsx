@@ -1,24 +1,21 @@
-"use client";
-
-/**
- * EmailPreview 组件
- * 模拟邮件客户端 UI，展示 AI 生成的挽留邮件
- * 支持 Markdown 格式渲染
- */
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Copy, Send, Sparkles, CheckCircle } from "lucide-react";
+import { Mail, Copy, Send, Sparkles, CheckCircle, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useState } from "react";
+import { submitFeedback } from "@/services/analysisService";
+import { toast } from "sonner";
 
 interface EmailPreviewProps {
     emailContent: string | null;
     userId: string;
+    analysisId?: string; // Analysis ID needed for feedback
 }
 
-export function EmailPreview({ emailContent, userId }: EmailPreviewProps) {
+export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewProps) {
     const [copied, setCopied] = useState(false);
+    const [feedbackStatus, setFeedbackStatus] = useState<"none" | "thumbs_up" | "thumbs_down">("none");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // 复制到剪贴板
     const handleCopy = async () => {
@@ -27,6 +24,30 @@ export function EmailPreview({ emailContent, userId }: EmailPreviewProps) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    // 提交反馈
+    const handleFeedback = async (type: "thumbs_up" | "thumbs_down") => {
+        if (!analysisId || isSubmitting || feedbackStatus !== "none") return;
+
+        setIsSubmitting(true);
+        // Optimistic update
+        setFeedbackStatus(type);
+
+        const success = await submitFeedback(analysisId, userId, type);
+
+        if (success) {
+            if (type === "thumbs_up") {
+                toast.success("感谢反馈！");
+            } else {
+                toast("反馈已收到，我们将持续改进。");
+            }
+        } else {
+            // Revert on failure
+            setFeedbackStatus("none");
+            toast.error("提交反馈失败，请稍后重试");
+        }
+        setIsSubmitting(false);
     };
 
     // 空状态处理
@@ -88,33 +109,49 @@ export function EmailPreview({ emailContent, userId }: EmailPreviewProps) {
                     </div>
                 </div>
 
-                {/* 操作按钮 */}
-                <div className="flex gap-2 pt-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-slate-700 hover:bg-slate-800"
-                        onClick={handleCopy}
-                    >
-                        {copied ? (
-                            <>
-                                <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />
-                                已复制
-                            </>
-                        ) : (
-                            <>
-                                <Copy className="w-4 h-4 mr-2" />
-                                复制内容
-                            </>
-                        )}
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="flex-1 bg-violet-600 hover:bg-violet-700"
-                    >
-                        <Send className="w-4 h-4 mr-2" />
-                        发送邮件
-                    </Button>
+                {/* 此处开始 Feedback & Actions */}
+                <div className="flex items-center justify-between pt-2 gap-2">
+                    <div className="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_up' ? 'text-green-500 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-green-500/10'}`}
+                            onClick={() => handleFeedback("thumbs_up")}
+                            disabled={feedbackStatus !== "none"}
+                        >
+                            <ThumbsUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_down' ? 'text-red-500 bg-red-500/10' : 'text-slate-500 hover:text-red-500 hover:bg-red-500/10'}`}
+                            onClick={() => handleFeedback("thumbs_down")}
+                            disabled={feedbackStatus !== "none"}
+                        >
+                            <ThumbsDown className="w-4 h-4" />
+                        </Button>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-700 hover:bg-slate-800"
+                            onClick={handleCopy}
+                        >
+                            {copied ? (
+                                <>
+                                    <CheckCircle className="w-3 h-3 mr-2 text-emerald-500" />
+                                    已复制
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="w-3 h-3 mr-2" />
+                                    复制内容
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
         </Card>
