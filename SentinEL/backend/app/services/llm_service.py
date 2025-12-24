@@ -14,7 +14,7 @@ class LLMService:
         
         # Model Configuration
         # Using the requested top-tier model
-        self.llm_model_name = "gemini-1.5-pro-002"
+        self.llm_model_name = "gemini-2.5-pro"
         self.embedding_model_name = "text-embedding-004"
         
         self.generative_model = GenerativeModel(self.llm_model_name)

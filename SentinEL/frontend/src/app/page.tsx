@@ -1,11 +1,57 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Activity, Users } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function Home() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleAnalyze = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8080/api/v1/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: "63826" }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: "Analysis Complete",
+        description: `Risk Level: ${data.risk_level} (${(data.churn_probability * 100).toFixed(1)}%)`,
+        variant: data.risk_level === "High" ? "destructive" : "default",
+      });
+
+      console.log("Analysis Result:", data);
+
+    } catch (error) {
+      console.error("Analysis Failed:", error);
+      toast({
+        title: "Connection Failed",
+        description: "Could not connect to SentinEL Backend.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+      <Toaster />
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
         <CardHeader className="text-center">
           <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-4">
@@ -35,8 +81,13 @@ export default function Home() {
           </div>
 
           <div className="space-y-2">
-            <Button className="w-full" size="lg">
-              Launch Dashboard
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleAnalyze}
+              disabled={loading}
+            >
+              {loading ? "Analyzing..." : "Launch Dashboard"}
             </Button>
             <Button variant="ghost" className="w-full text-slate-500">
               View Documentation
