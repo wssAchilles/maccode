@@ -1,26 +1,52 @@
-from fastapi import APIRouter, HTTPException
+"""
+SentinEL 分析 API 端点
+提供用户流失风险分析和挽留策略生成接口
+"""
+
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from app.models.schemas import AnalyzeUserRequest, UserAnalysisResponse
 from app.services.orchestrator import AnalysisOrchestrator
 
 router = APIRouter()
 orchestrator = AnalysisOrchestrator()
 
-@router.post("/analyze", response_model=UserAnalysisResponse)
-def analyze_user_endpoint(request: AnalyzeUserRequest):
-    """
-    **Analyzes user retention risk and generates intervention strategies.**
 
-    - **Low Risk**: Returns risk profile only.
-    - **High Risk**: Performs RAG (Retrieval-Augmented Generation) to find policies and generates a personalized email.
+@router.post("/analyze", response_model=UserAnalysisResponse)
+def analyze_user_endpoint(
+    request: AnalyzeUserRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    **分析用户流失风险并生成干预策略**
+    
+    工作流程:
+    1. 从 BigQuery ML 获取用户流失预测
+    2. 若为高风险用户，执行 RAG 检索相关挽留策略
+    3. 使用 Gemini 2.5 Pro 生成个性化挽留邮件
+    4. **后台异步**将分析结果持久化到 Firestore
+    
+    响应说明:
+    - **Low Risk**: 仅返回风险画像
+    - **High Risk**: 返回完整的 RAG 策略和生成的邮件
+    
+    注意: Firestore 存储在后台执行，不影响 API 响应速度
     """
     try:
-        result = orchestrator.analyze_user_workflow(request.user_id)
+        # 调用编排器，传入 BackgroundTasks.add_task 作为回调
+        result = orchestrator.analyze_user_workflow(
+            user_id=request.user_id,
+            background_save=background_tasks.add_task
+        )
         return UserAnalysisResponse(**result)
+    
     except Exception as e:
-        # Check if it is a 404 (e.g. from BQ service)
+        # 检查是否为 404 错误 (如用户不存在)
         if hasattr(e, "status_code") and e.status_code == 404:
-             raise HTTPException(status_code=404, detail=e.detail)
-             
-        # Log error in production logging system
-        print(f"Endpoint Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error during analysis.")
+            raise HTTPException(status_code=404, detail=str(e))
+        
+        # 记录错误日志 (生产环境应使用结构化日志)
+        print(f"[AnalysisEndpoint] Error: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="分析过程中发生内部错误，请稍后重试"
+        )

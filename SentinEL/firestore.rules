@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 分析日志集合 - 允许前端读取，仅后端可写
+    match /analysis_logs/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -3,10 +3,9 @@
 /**
  * SentinEL Command Center - 核心仪表盘页面
  * 
- * 布局: Bento Grid (便当盒网格)
- * - 左侧 (30%): 风险仪表盘 + 用户画像
- * - 中间 (35%): RAG 策略检索结果
- * - 右侧 (35%): AI 生成邮件预览
+ * 布局: Bento Grid + 实时活动流侧边栏
+ * - 左侧 (70%): 分析结果 (Risk Gauge, Strategy Cards, Email Preview)
+ * - 右侧 (30%): 实时活动流 (LiveActivityFeed)
  */
 
 import { useState } from "react";
@@ -28,6 +27,7 @@ import {
 import { RiskGauge } from "@/components/business/RiskGauge";
 import { StrategyCards } from "@/components/business/StrategyCards";
 import { EmailPreview } from "@/components/business/EmailPreview";
+import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
 import { analyzeUser } from "@/services/analysisService";
 import { UserAnalysisResponse, DashboardState } from "@/types";
 
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            {/* Main Content - Bento Grid */}
+            {/* Main Content - 70/30 布局 */}
             <main className="container mx-auto px-4 py-6">
                 {/* 错误提示 */}
                 {state.error && (
@@ -120,54 +120,65 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {/* Bento Grid 布局 */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    {/* 左侧区域 - 风险评估 & 用户画像 */}
-                    <div className="lg:col-span-4 space-y-4">
-                        {state.isLoading ? (
-                            <LoadingSkeleton type="gauge" />
-                        ) : state.data ? (
-                            <>
-                                <RiskGauge
-                                    churnProbability={state.data.churn_probability}
-                                    riskLevel={state.data.risk_level as "High" | "Low"}
-                                />
-                                <UserProfileCard data={state.data} />
-                            </>
-                        ) : (
-                            <EmptyState message="输入用户 ID 开始分析" />
-                        )}
+                {/* 主布局: 左侧分析结果 (70%) + 右侧活动流 (30%) */}
+                <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
+                    {/* 左侧区域 - 分析结果 (70%) */}
+                    <div className="xl:col-span-7">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            {/* 风险评估 & 用户画像 */}
+                            <div className="space-y-4">
+                                {state.isLoading ? (
+                                    <LoadingSkeleton type="gauge" />
+                                ) : state.data ? (
+                                    <>
+                                        <RiskGauge
+                                            churnProbability={state.data.churn_probability}
+                                            riskLevel={state.data.risk_level as "High" | "Low"}
+                                        />
+                                        <UserProfileCard data={state.data} />
+                                    </>
+                                ) : (
+                                    <EmptyState message="输入用户 ID 开始分析" />
+                                )}
+                            </div>
+
+                            {/* RAG 策略 */}
+                            <div>
+                                {state.isLoading ? (
+                                    <LoadingSkeleton type="cards" />
+                                ) : state.data ? (
+                                    <StrategyCards strategies={state.data.retention_policies} />
+                                ) : (
+                                    <EmptyState message="策略将在分析后展示" />
+                                )}
+                            </div>
+
+                            {/* 邮件预览 */}
+                            <div>
+                                {state.isLoading ? (
+                                    <LoadingSkeleton type="email" />
+                                ) : state.data ? (
+                                    <EmailPreview
+                                        emailContent={state.data.generated_email}
+                                        userId={state.data.user_id}
+                                    />
+                                ) : (
+                                    <EmptyState message="AI 生成邮件将在此显示" />
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* 中间区域 - RAG 策略 */}
-                    <div className="lg:col-span-4">
-                        {state.isLoading ? (
-                            <LoadingSkeleton type="cards" />
-                        ) : state.data ? (
-                            <StrategyCards strategies={state.data.retention_policies} />
-                        ) : (
-                            <EmptyState message="策略将在分析后展示" />
-                        )}
-                    </div>
-
-                    {/* 右侧区域 - 邮件预览 */}
-                    <div className="lg:col-span-4">
-                        {state.isLoading ? (
-                            <LoadingSkeleton type="email" />
-                        ) : state.data ? (
-                            <EmailPreview
-                                emailContent={state.data.generated_email}
-                                userId={state.data.user_id}
-                            />
-                        ) : (
-                            <EmptyState message="AI 生成邮件将在此显示" />
-                        )}
+                    {/* 右侧区域 - 实时活动流 (30%) */}
+                    <div className="xl:col-span-3">
+                        <LiveActivityFeed />
                     </div>
                 </div>
             </main>
         </div>
     );
 }
+
 
 // ============ 子组件 ============
 
