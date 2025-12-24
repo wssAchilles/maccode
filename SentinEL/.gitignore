@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/
 lib64/
 parts/
 sdist/
@@ -47,7 +47,9 @@ ENV/
 # Google Cloud
 .gcloudignore
 key.json
-*.json
+key.json
+secrets.json
+service-account.json
 
 # Logs
 *.log
