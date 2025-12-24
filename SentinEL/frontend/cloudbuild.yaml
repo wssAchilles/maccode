@@ -1,0 +1,23 @@
+# ============================================
+# SentinEL Frontend Cloud Build 配置
+# 用于在 Cloud Build 中传递 Docker 构建参数
+# ============================================
+
+steps:
+  # 构建 Docker 镜像，传入 NEXT_PUBLIC_API_URL 构建参数
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sentinel-frontend:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=${_API_URL}'
+      - '.'
+
+# 推送镜像到 Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/sentinel-frontend:latest'
+
+# 定义替换变量 (通过 --substitutions 传入)
+substitutions:
+  _API_URL: 'http://localhost:8080'  # 默认值，会被脚本覆盖

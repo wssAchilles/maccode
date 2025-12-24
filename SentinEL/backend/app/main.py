@@ -13,10 +13,13 @@ app = FastAPI(
 )
 
 # --- CORS Configuration ---
-# Critical for communicating with the Frontend (localhost:3000)
+# Critical for communicating with the Frontend (local + Cloud Run)
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # Cloud Run 生产环境
+    "https://sentinel-frontend-kijag7ukkq-uc.a.run.app",
+    "https://sentinel-frontend-672705370432.us-central1.run.app",
 ]
 
 app.add_middleware(
