@@ -24,10 +24,38 @@ class LLMService:
         vertexai.init(project=self.project_id, location=self.location)
         
         # Model Configuration
-        self.llm_model_name = "gemini-2.5-pro"
+        self.llm_model_name = "gemini-2.5-pro"  # 通用模型 (用于邮件生成等复杂任务)
         self.embedding_model_name = "text-embedding-004"
         
-        self.generative_model = GenerativeModel(self.llm_model_name)
+        # ====== 微调模型配置 (Sentinel 专属) ======
+        # 训练于: 2025-12-25, 基于 gemini-2.0-flash-001
+        # 用途: 简单问答、快速分析 (不支持 system prompt)
+        self.tuned_model_id = "projects/672705370432/locations/us-central1/models/5869006152091156608@1"
+        self.use_tuned_model = os.getenv("USE_TUNED_MODEL", "true").lower() == "true"
+        # ==========================================
+        
+        # 始终初始化通用模型 (用于复杂的邮件生成任务)
+        self.general_model = GenerativeModel(self.llm_model_name)
+        print(f"ℹ️ 通用模型已加载: {self.llm_model_name}")
+        
+        # 初始化微调模型 (用于简单任务)
+        if self.use_tuned_model:
+            try:
+                self.tuned_model = GenerativeModel(self.tuned_model_id)
+                self.active_model_name = "sentinel-tuned-gemini"
+                print(f"✅ 已加载 Sentinel 微调模型: {self.tuned_model_id}")
+            except Exception as e:
+                print(f"⚠️ 微调模型加载失败: {e}")
+                self.tuned_model = None
+                self.active_model_name = self.llm_model_name
+        else:
+            self.tuned_model = None
+            self.active_model_name = self.llm_model_name
+            print(f"ℹ️ 微调模型已禁用")
+        
+        # 保持向后兼容 - generative_model 指向通用模型
+        self.generative_model = self.general_model
+        
         self.embedding_model = TextEmbeddingModel.from_pretrained(self.embedding_model_name)
 
     def get_text_embedding(self, text: str) -> list[float]:

@@ -14,11 +14,13 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     setLoading(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
     try {
-      const response = await fetch("http://localhost:8080/api/v1/analyze", {
+      const response = await fetch(`${apiUrl}/api/v1/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-Key": "sentinel_top_secret_2025",
         },
         body: JSON.stringify({ user_id: "63826" }),
       });

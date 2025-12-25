@@ -6,8 +6,9 @@
 import { UserAnalysisRequest, UserAnalysisResponse } from "@/types";
 
 // 后端 API 基础地址
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const API_KEY = "sentinel_top_secret_2025"; // Hardcoded for demo parity
+// 后端 API 基础地址
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+export const API_KEY = "sentinel_top_secret_2025"; // Hardcoded for demo parity
 
 export const analysisService = {
     /**
@@ -111,8 +112,8 @@ export const analysisService = {
      * 触发数据工厂管道 (MLOps)
      * @returns object - 包含 job_id 和 status
      */
-    runDataPipeline: async (): Promise<{ status: string; job_id: string; message: string }> => {
-        const endpoint = `${API_URL}/api/v1/run_data_pipeline`;
+    runDataPipeline: async (): Promise<{ status: string; job_id: string; console_url: string; message: string }> => {
+        const endpoint = `${API_URL}/api/v1/train`;
 
         try {
             const response = await fetch(endpoint, {

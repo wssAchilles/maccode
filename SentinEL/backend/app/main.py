@@ -16,7 +16,7 @@ except Exception as e:
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import analysis, pipeline
+from app.api.v1.endpoints import analysis, pipeline, mlops
 
 app = FastAPI(
     title="SentinEL Backend",
@@ -40,6 +40,7 @@ setup_telemetry(app)
 # --- Register Routers ---
 app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["Data Pipeline"])
+app.include_router(mlops.router, prefix="/api/v1", tags=["MLOps"])
 
 @app.get("/health")
 def health_check():

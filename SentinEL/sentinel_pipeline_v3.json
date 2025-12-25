@@ -1,0 +1,218 @@
+{
+  "components": {
+    "comp-export-data-v2-op": {
+      "executorLabel": "exec-export-data-v2-op",
+      "inputDefinitions": {
+        "parameters": {
+          "bq_table_id": {
+            "parameterType": "STRING"
+          },
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "project_id": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-trigger-tuning-job-op": {
+      "executorLabel": "exec-trigger-tuning-job-op",
+      "inputDefinitions": {
+        "parameters": {
+          "epochs": {
+            "defaultValue": 5.0,
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "location": {
+            "parameterType": "STRING"
+          },
+          "model_display_name": {
+            "parameterType": "STRING"
+          },
+          "project": {
+            "parameterType": "STRING"
+          },
+          "training_data_uri": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "defaultPipelineRoot": "gs://sentinel-mlops-artifacts-sentinel-ai-project-482208/pipeline_root_v3",
+  "deploymentSpec": {
+    "executors": {
+      "exec-export-data-v2-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "export_data_v2_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery>=3.0.0' 'google-cloud-storage>=2.0.0'  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef export_data_v2_op(\n    bq_table_id: str,\n    bucket_name: str,\n    project_id: str,\n) -> str:\n    \"\"\"\n    Exports data from BigQuery (v2), converts to JSONL, and uploads to GCS.\n    \"\"\"\n    import json\n    from google.cloud import bigquery\n    from google.cloud import storage\n    import logging\n    import traceback\n\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    try:\n        logger.info(\"Starting Export Data Op V2 (Pandas-Free)\")\n\n        # ... (rest of the pandas-free logic from before, ensuring it's kept)\n        # Initialize clients\n        bq_client = bigquery.Client(project=project_id)\n        storage_client = storage.Client(project=project_id)\n\n        # ...\n        query = f\"SELECT * FROM `{bq_table_id}`\"\n        query_job = bq_client.query(query)\n        rows = query_job.result()\n\n        # Debug schema\n        schema_fields = {field.name.lower(): field.name for field in rows.schema}\n        logger.info(f\"Schema columns: {list(schema_fields.keys())}\")\n\n        jsonl_data = []\n        count = 0\n\n        for row in rows:\n             # Safe Dict Mapping\n             row_data = {}\n             for k_lower, k_original in schema_fields.items():\n                 row_data[k_lower] = row[k_original]\n\n             user_t = row_data.get('prompt') or row_data.get('input') or row_data.get('question')\n             model_t = row_data.get('response') or row_data.get('output') or row_data.get('answer')\n\n             if user_t and model_t:\n                 jsonl_data.append({\n                     \"messages\": [\n                         {\"role\": \"user\", \"content\": str(user_t)},\n                         {\"role\": \"model\", \"content\": str(model_t)}\n                     ]\n                 })\n                 count += 1\n\n        if not jsonl_data:\n            logger.error(\"No valid pairs found.\")\n            raise ValueError(\"No valid training pairs extracted from BigQuery.\")\n\n        logger.info(f\"Extracted {count} pairs.\")\n\n        # Upload\n        blob = storage_client.bucket(bucket_name).blob(\"training_data_v2.jsonl\")\n        blob.upload_from_string(\n            \"\\n\".join([json.dumps(r) for r in jsonl_data]),\n            content_type=\"application/jsonl\"\n        )\n\n        return f\"gs://{bucket_name}/training_data_v2.jsonl\"\n\n    except Exception as e:\n        logger.error(f\"FAIL: {e}\")\n        traceback.print_exc()\n        raise e\n\n"
+          ],
+          "image": "python:3.9",
+          "resources": {
+            "cpuLimit": 1.0,
+            "memoryLimit": 4.0,
+            "resourceCpuLimit": "1",
+            "resourceMemoryLimit": "4G"
+          }
+        }
+      },
+      "exec-trigger-tuning-job-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "trigger_tuning_job_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'google-cloud-aiplatform'  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef trigger_tuning_job_op(\n    training_data_uri: str,\n    project: str,\n    location: str,\n    model_display_name: str,\n    epochs: int = 5,\n) -> str:\n    \"\"\"\n    Triggers a Supervised Fine-Tuning job for Gemini using Vertex AI SDK.\n    \"\"\"\n    import vertexai\n    from vertexai.preview.tuning import sft\n    import logging\n    import time\n\n    logging.basicConfig(level=logging.INFO)\n    logger = logging.getLogger(__name__)\n\n    logger.info(f\"Initializing Vertex AI for project {project} in {location}\")\n    vertexai.init(project=project, location=location)\n\n    source_model = \"gemini-1.5-pro-002\"\n\n    logger.info(f\"Submitting tuning job for {source_model} with data {training_data_uri}\")\n\n    # sft.train returns a TuningJob object\n    sft_tuning_job = sft.train(\n        source_model=source_model,\n        train_dataset=training_data_uri,\n        # The prompt implies we return a resource name. sft.train is synchronous-like or returns job?\n        # Typically SDK methods start the job.\n        epochs=epochs,\n        tuned_model_display_name=model_display_name,\n    )\n\n    # Wait for job submission to be confirmed (status check usually happens internally or we can just return ID)\n    # The requirement is 'Return Job Resource Name'.\n\n    # Check if sft_tuning_job has 'resource_name' attribute immediately \n    # or if we need to access underlying job details.\n    # Note: sft.train method in preview might block or return a job object. \n    # Usually in Pipelines we don't want to block for hours. \n    # However, standard component execution has a timeout. \n    # If sft.train blocks, this component will run for the duration of training.\n    # If current SDK implementation allows blocking=False, that's preferred.\n    # Assuming default behavior or non-blocking return if possible, or we accept blocking component.\n\n    logger.info(f\"Job state: {sft_tuning_job.state}\")\n    resource_name = sft_tuning_job.resource_name\n    logger.info(f\"Tuning Job Resource Name: {resource_name}\")\n\n    return resource_name\n\n"
+          ],
+          "image": "python:3.9",
+          "resources": {
+            "cpuLimit": 1.0,
+            "memoryLimit": 4.0,
+            "resourceCpuLimit": "1",
+            "resourceMemoryLimit": "4G"
+          }
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "Pipeline to export data and fine-tune Gemini model (Low Spec)",
+    "name": "sentinel-continuous-training-pipeline-v3"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "export-data-v2-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-export-data-v2-op"
+          },
+          "inputs": {
+            "parameters": {
+              "bq_table_id": {
+                "componentInputParameter": "bq_table_id"
+              },
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "project_id": {
+                "componentInputParameter": "project_id"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "export-data-v2-op"
+          }
+        },
+        "trigger-tuning-job-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-trigger-tuning-job-op"
+          },
+          "dependentTasks": [
+            "export-data-v2-op"
+          ],
+          "inputs": {
+            "parameters": {
+              "epochs": {
+                "runtimeValue": {
+                  "constant": 5.0
+                }
+              },
+              "location": {
+                "componentInputParameter": "location"
+              },
+              "model_display_name": {
+                "componentInputParameter": "model_display_name"
+              },
+              "project": {
+                "componentInputParameter": "project_id"
+              },
+              "training_data_uri": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "export-data-v2-op"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "trigger-tuning-job-op"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bq_table_id": {
+          "defaultValue": "sentinel-ai-project-482208.retail_ai.gemini_tuning_dataset",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "bucket_name": {
+          "defaultValue": "sentinel-mlops-artifacts-sentinel-ai-project-482208",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "location": {
+          "defaultValue": "us-central1",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "model_display_name": {
+          "defaultValue": "sentinel-gemini-tuned-v3",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "project_id": {
+          "defaultValue": "sentinel-ai-project-482208",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.15.2"
+}

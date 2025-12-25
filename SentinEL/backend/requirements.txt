@@ -6,6 +6,9 @@ google-cloud-firestore
 pydantic-settings
 python-dotenv
 firebase-admin
+google-cloud-pipeline-components
+kfp
+google-cloud-storage
 
 # OpenTelemetry for Google Cloud Trace
 # opentelemetry-api==1.39.1

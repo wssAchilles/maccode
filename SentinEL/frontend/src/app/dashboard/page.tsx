@@ -30,7 +30,8 @@ import { RiskGauge } from "@/components/business/RiskGauge";
 import { StrategyCards } from "@/components/business/StrategyCards";
 import { EmailPreview } from "@/components/business/EmailPreview";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
-import { analyzeUser, runDataPipeline } from "@/services/analysisService";
+import { ModelTrainingCard } from "@/components/business/ModelTrainingCard";
+import { analyzeUser } from "@/services/analysisService";
 import { UserAnalysisResponse, DashboardState } from "@/types";
 
 export default function DashboardPage() {
@@ -41,9 +42,6 @@ export default function DashboardPage() {
         data: null,
         error: null,
     });
-    const [isPipelineRunning, setIsPipelineRunning] = useState(false);
-    const [pipelineMessage, setPipelineMessage] = useState<string | null>(null);
-
     // ============ 事件处理 ============
     const handleAnalyze = async () => {
         if (!userId.trim()) return;
@@ -56,22 +54,6 @@ export default function DashboardPage() {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "未知错误";
             setState({ isLoading: false, data: null, error: errorMessage });
-        }
-    };
-
-    const handleRunPipeline = async () => {
-        setIsPipelineRunning(true);
-        setPipelineMessage(null);
-        try {
-            const result = await runDataPipeline();
-            setPipelineMessage("Pipeline Started: " + result.job_id);
-            // Auto hide message after 5 seconds
-            setTimeout(() => setPipelineMessage(null), 5000);
-        } catch (error) {
-            console.error(error);
-            setPipelineMessage("Pipeline Failed to Start");
-        } finally {
-            setIsPipelineRunning(false);
         }
     };
 
@@ -195,56 +177,13 @@ export default function DashboardPage() {
                         <LiveActivityFeed />
 
                         {/* MLOps Status Card */}
-                        <Card className="mt-6 bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                                    <Database className="w-4 h-4 text-emerald-400" />
-                                    MLOps Status
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700/30">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs text-slate-500">Training Samples Ready</span>
-                                        <span className="text-xs font-mono text-emerald-400">128</span>
-                                    </div>
-                                    <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 w-[35%]" />
-                                    </div>
-                                </div>
-
-                                <Button
-                                    onClick={handleRunPipeline}
-                                    disabled={isPipelineRunning}
-                                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
-                                >
-                                    {isPipelineRunning ? (
-                                        <>
-                                            <Clock className="w-4 h-4 mr-2 animate-spin" />
-                                            Pipeline Running...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-4 h-4 mr-2 text-fuchsia-400" />
-                                            Trigger Data Refinery
-                                        </>
-                                    )}
-                                </Button>
-
-                                {pipelineMessage && (
-                                    <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 text-center">
-                                        {pipelineMessage}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <ModelTrainingCard />
                     </div>
                 </div>
             </main>
         </div>
     );
 }
-
 
 // ============ 子组件 ============
 

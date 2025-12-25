@@ -24,6 +24,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Copy ML Pipeline definition (for production triggering)
+COPY sentinel_pipeline.json .
+
 # 复制应用代码
 COPY app/ ./app/
 
