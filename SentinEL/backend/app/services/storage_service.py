@@ -151,6 +151,24 @@ class StorageService:
             print(f"[StorageService] Error updating feedback: {e}")
             return False
 
+    def update_audit_result(self, analysis_id: str, audit_data: dict) -> bool:
+        """
+        Updates the analysis record with AI Judge audit results.
+        """
+        try:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+            doc_ref.update({
+                "audit_score": audit_data.get("score"),
+                "audit_reason": audit_data.get("reasoning"),
+                "audit_flags": audit_data.get("flags", []),
+                "audit_timestamp": firestore.SERVER_TIMESTAMP
+            })
+            print(f"[StorageService] Audit result updated for {analysis_id}")
+            return True
+        except Exception as e:
+            print(f"[StorageService] Error updating audit result for {analysis_id}: {e}")
+            return False
+
 
 # 创建单例实例
 storage_service = StorageService()

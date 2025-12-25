@@ -17,12 +17,14 @@ class BigQueryService:
     def __init__(self):
         # Configuration
         self.project_id = "sentinel-ai-project-482208"  # Should ideally load from env
-        self.dataset_id = "retail_ai"
+        self.dataset_id = os.getenv("BQ_DATASET", "retail_ai")
+        self.table_id = os.getenv("BQ_TABLE", "user_features_training")
+        self.model_id = os.getenv("BQ_MODEL", "churn_dnn_premium")
         self.client = bigquery.Client(project=self.project_id)
         
         # Table References
-        self.prediction_model = f"{self.project_id}.{self.dataset_id}.churn_dnn_premium"
-        self.feature_table = f"{self.project_id}.{self.dataset_id}.user_features_training"
+        self.prediction_model = f"{self.project_id}.{self.dataset_id}.{self.model_id}"
+        self.feature_table = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
         self.policy_table = f"{self.project_id}.{self.dataset_id}.retention_policies_embedded"
 
     def get_user_churn_prediction(self, user_id: str) -> dict:
@@ -47,7 +49,7 @@ class BigQueryService:
                     (
                         SELECT * EXCEPT(churn_label)
                         FROM `{self.feature_table}`
-                        WHERE user_id = {user_id}
+                        WHERE user_id = CAST('{user_id}' AS INT64)
                     ))
             """
             

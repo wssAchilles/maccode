@@ -3,17 +3,19 @@ SentinEL 分析 API 端点
 提供用户流失风险分析和挽留策略生成接口
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from app.models.schemas import AnalyzeUserRequest, UserAnalysisResponse, FeedbackRequest
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from app.models.schemas import UserAnalysisRequest, UserAnalysisResponse, FeedbackRequest
 from app.services.orchestrator import AnalysisOrchestrator
+from app.services.storage_service import StorageService
+from app.core.security import verify_api_key
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 orchestrator = AnalysisOrchestrator()
 
 
 @router.post("/analyze", response_model=UserAnalysisResponse)
 def analyze_user_endpoint(
-    request: AnalyzeUserRequest,
+    request: UserAnalysisRequest,
     background_tasks: BackgroundTasks
 ):
     """

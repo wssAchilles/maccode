@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
-class AnalyzeUserRequest(BaseModel):
+class UserAnalysisRequest(BaseModel):
     user_id: str
 
 class UserAnalysisResponse(BaseModel):

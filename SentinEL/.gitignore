@@ -45,7 +45,7 @@ ENV/
 .streamlit/config.toml
 
 # Google Cloud
-.gcloudignore
+# .gcloudignore
 key.json
 key.json
 secrets.json

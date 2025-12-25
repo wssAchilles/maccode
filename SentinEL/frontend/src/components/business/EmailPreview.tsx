@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Copy, Send, Sparkles, CheckCircle, ThumbsUp, ThumbsDown } from "lucide-react";
-import { useState } from "react";
+import { Mail, Copy, Send, Sparkles, CheckCircle, ThumbsUp, ThumbsDown, Check, ShieldCheck, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { submitFeedback } from "@/services/analysisService";
 import { toast } from "sonner";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface EmailPreviewProps {
     emailContent: string | null;
@@ -14,8 +16,29 @@ interface EmailPreviewProps {
 
 export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewProps) {
     const [copied, setCopied] = useState(false);
+    const [completed, setCompleted] = useState(false);
     const [feedbackStatus, setFeedbackStatus] = useState<"none" | "thumbs_up" | "thumbs_down">("none");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Audit State
+    const [auditScore, setAuditScore] = useState<number | null>(null);
+    const [auditReason, setAuditReason] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!analysisId) return;
+
+        const unsubscribe = onSnapshot(doc(db, "analysis_logs", analysisId), (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                if (data.audit_score !== undefined) {
+                    setAuditScore(data.audit_score);
+                    setAuditReason(data.audit_reason);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [analysisId]);
 
     // 复制到剪贴板
     const handleCopy = async () => {
@@ -115,7 +138,7 @@ export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewP
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_up' ? 'text-green-500 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-green-500/10'}`}
+                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_up' ? 'text-green-500 bg-green-500/10' : 'text-slate-500 hover:text-green-500 hover:bg-green-500/10'} `}
                             onClick={() => handleFeedback("thumbs_up")}
                             disabled={feedbackStatus !== "none"}
                         >
@@ -124,7 +147,7 @@ export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewP
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_down' ? 'text-red-500 bg-red-500/10' : 'text-slate-500 hover:text-red-500 hover:bg-red-500/10'}`}
+                            className={`h-8 w-8 ${feedbackStatus === 'thumbs_down' ? 'text-red-500 bg-red-500/10' : 'text-slate-500 hover:text-red-500 hover:bg-red-500/10'} `}
                             onClick={() => handleFeedback("thumbs_down")}
                             disabled={feedbackStatus !== "none"}
                         >
@@ -154,6 +177,63 @@ export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewP
                     </div>
                 </div>
             </CardContent>
+            {/* AI Audit Report Section */}
+            {auditScore !== null && (
+                <div className="mt-6 border-t pt-4 px-6"> {/* Added px-6 for padding */}
+                    <div className="flex items-center gap-2 mb-3">
+                        <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                        <h3 className="font-semibold text-slate-200">AI 合规审计报告 (AI Judge)</h3> {/* Changed text color */}
+                    </div>
+
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50"> {/* Changed bg and border */}
+                        <div className="flex items-start gap-4">
+                            {/* Score Ring */}
+                            <div className="relative w-16 h-16 flex-shrink-0">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke="#334155" /* Changed stroke color */
+                                        strokeWidth="6"
+                                    />
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r="28"
+                                        fill="none"
+                                        stroke={auditScore >= 80 ? "#16a34a" : auditScore >= 60 ? "#ca8a04" : "#dc2626"}
+                                        strokeWidth="6"
+                                        strokeDasharray={`${2 * Math.PI * 28} `}
+                                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - auditScore / 100)} `}
+                                        className="transition-all duration-1000 ease-out"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className={`text - sm font - bold ${auditScore >= 80 ? "text-green-500" : auditScore >= 60 ? "text-yellow-500" : "text-red-500" /* Changed text colors */
+                                        } `}>
+                                        {auditScore}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Reasoning */}
+                            <div className="flex-1">
+                                <p className="text-sm text-slate-400 leading-relaxed"> {/* Changed text color */}
+                                    {auditReason}
+                                </p>
+                                {auditScore < 60 && (
+                                    <div className="mt-2 flex items-center gap-1 text-xs text-red-400 bg-red-900/20 px-2 py-1 rounded w-fit border border-red-700/50"> {/* Changed bg, text, and added border */}
+                                        <AlertCircle className="w-3 h-3" />
+                                        <span>存在合规风险，请人工复核</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }
