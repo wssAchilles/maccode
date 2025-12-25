@@ -37,23 +37,28 @@ class AnalysisOrchestrator:
     def analyze_user_workflow(
         self,
         user_id: str,
-        image_data: Optional[str] = None, # Base64 image
-        background_save: Optional[Callable] = None
+        analysis_id: Optional[str] = None,
+        image_data: Optional[str] = None,  # Base64 image
+        background_save: Optional[Callable] = None,
+        is_async_worker: bool = False
     ) -> dict:
         """
         编排完整的用户分析和挽留工作流 (Multimodal)
         
         Args:
             user_id: 目标用户 ID
+            analysis_id: 可选的预生成分析 ID (异步模式必须提供)
             image_data: Base64 编码的图片数据 (竞争对手优惠/截图)
             background_save: 可选的后台保存回调函数
+            is_async_worker: 是否为异步 Worker 模式 (跳过 ID 生成和后台保存)
         """
         # 记录开始时间
         logger.info(f"SentinEL-Orchestrator: STARTING ANALYSIS for user {user_id}")
         start_time = time.time()
         
-        # 0. 预生成分析 ID
-        analysis_id = self.storage_service.generate_id()
+        # 0. 获取或生成分析 ID
+        if not analysis_id:
+            analysis_id = self.storage_service.generate_id()
 
         # 1. BigQuery: 获取画像
         profile = self.bq_service.get_user_churn_prediction(user_id)
@@ -121,12 +126,18 @@ class AnalysisOrchestrator:
             audio_base64 = self.tts_service.generate_voicemail_audio(call_script)
             result["generated_audio"] = audio_base64
 
-        # 6. 后台保存
-        self._schedule_save(
-            background_save, user_id, churn_prob, risk_level, email_content, start_time, analysis_id
-        )
+        # 6. 计算处理时间
+        end_time = time.time()
+        processing_time_ms = int((end_time - start_time) * 1000)
+        result["processing_time_ms"] = processing_time_ms
 
-        if email_content and background_save:
+        # 7. 后台保存 (仅同步模式)
+        if not is_async_worker:
+            self._schedule_save(
+                background_save, user_id, churn_prob, risk_level, email_content, start_time, analysis_id
+            )
+
+        if email_content and background_save and not is_async_worker:
              background_save(
                 self._run_audit_task,
                 user_profile=profile,

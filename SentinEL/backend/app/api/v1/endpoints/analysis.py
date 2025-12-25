@@ -1,60 +1,95 @@
 """
 SentinEL 分析 API 端点
 提供用户流失风险分析和挽留策略生成接口
+支持异步 Pub/Sub 消息队列处理模式
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+import json
+import base64
+import logging
+from typing import Optional
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
+from pydantic import BaseModel
 from app.models.schemas import UserAnalysisRequest, UserAnalysisResponse, FeedbackRequest
 from app.services.orchestrator import AnalysisOrchestrator
 from app.services.storage_service import StorageService
+from app.services.queue_service import queue_service
 from app.core.security import verify_api_key
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 orchestrator = AnalysisOrchestrator()
+storage_service = StorageService()
 
 
-@router.post("/analyze", response_model=UserAnalysisResponse)
-def analyze_user_endpoint(
-    request: UserAnalysisRequest,
-    background_tasks: BackgroundTasks
-):
+# ==============================================================================
+# 异步分析响应模型
+# ==============================================================================
+class AsyncAnalysisResponse(BaseModel):
+    """异步分析请求响应"""
+    analysis_id: str
+    status: str = "QUEUED"
+    message: str = "分析任务已加入队列"
+
+
+# ==============================================================================
+# 面向前端的端点
+# ==============================================================================
+@router.post("/analyze", response_model=AsyncAnalysisResponse, status_code=202)
+def analyze_user_endpoint(request: UserAnalysisRequest):
     """
-    **分析用户流失风险并生成干预策略**
+    **异步分析用户流失风险并生成干预策略**
     
-    工作流程:
-    1. 从 BigQuery ML 获取用户流失预测
-    2. 若为高风险用户，执行 RAG 检索相关挽留策略
-    3. 使用 Gemini 2.5 Pro 生成个性化挽留邮件
-    4. **后台异步**将分析结果持久化到 Firestore
+    工作流程 (Event-Driven):
+    1. 在 Firestore 创建初始记录 (status: QUEUED)
+    2. 发布消息到 Pub/Sub Topic
+    3. **立即返回 HTTP 202 Accepted** (无需等待 AI 处理)
+    4. 前端通过 Firestore 实时监听获取结果
     
-    响应说明:
-    - **Low Risk**: 仅返回风险画像
-    - **High Risk**: 返回完整的 RAG 策略和生成的邮件
-    
-    注意: Firestore 存储在后台执行，不影响 API 响应速度
+    Returns:
+        AsyncAnalysisResponse: 包含 analysis_id 用于追踪任务状态
     """
     try:
-        # 调用编排器，传入 BackgroundTasks.add_task 作为回调
-        result = orchestrator.analyze_user_workflow(
+        # 1. 生成分析 ID
+        analysis_id = storage_service.generate_id()
+        
+        # 2. 创建初始 Firestore 记录 (QUEUED)
+        storage_service.create_queued_analysis(
             user_id=request.user_id,
-            image_data=request.image_data,
-            background_save=background_tasks.add_task
+            analysis_id=analysis_id
         )
-        return UserAnalysisResponse(**result)
+        
+        # 3. 发布消息到 Pub/Sub
+        queue_service.publish_analysis_event(
+            user_id=request.user_id,
+            analysis_id=analysis_id,
+            image_data=request.image_data
+        )
+        
+        # 4. 立即返回 202 (任务已排队)
+        return AsyncAnalysisResponse(
+            analysis_id=analysis_id,
+            status="QUEUED",
+            message=f"分析任务 {analysis_id} 已加入队列"
+        )
     
     except Exception as e:
-        # 检查是否为 404 错误 (如用户不存在)
-        if hasattr(e, "status_code") and e.status_code == 404:
-            raise HTTPException(status_code=404, detail=str(e))
-        
-        # 记录错误日志 (生产环境应使用结构化日志)
-        print(f"[AnalysisEndpoint] Error: {type(e).__name__}: {e}")
+        logger.error(f"[AnalysisEndpoint] Error queuing analysis: {e}")
         raise HTTPException(
             status_code=500,
-            detail="分析过程中发生内部错误，请稍后重试"
+            detail="任务入队失败，请稍后重试"
         )
 
 
+# ==============================================================================
+# /events/process 已移至 events.py (无 API Key 验证)
+# ==============================================================================
+
+
+# ==============================================================================
+# 反馈端点 (保持不变)
+# ==============================================================================
 @router.post("/feedback")
 def submit_feedback(request: FeedbackRequest):
     """
@@ -62,9 +97,9 @@ def submit_feedback(request: FeedbackRequest):
     
     用于人工评估 AI 生成的邮件质量 (Thumbs Up/Down)
     """
-    from app.services.storage_service import storage_service
+    from app.services.storage_service import storage_service as ss
     
-    success = storage_service.update_feedback(
+    success = ss.update_feedback(
         analysis_id=request.analysis_id,
         feedback_type=request.feedback_type
     )

@@ -14,17 +14,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Activity, User, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { Activity, User, AlertTriangle, CheckCircle, Loader2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // 分析日志记录类型
 interface AnalysisLog {
     doc_id: string;
     user_id: string;
-    churn_probability: number;
-    risk_level: "High" | "Low";
+    churn_probability?: number;
+    risk_level?: "High" | "Low";
+    status?: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
     email_subject?: string;
-    processing_time_ms: number;
+    processing_time_ms?: number;
     timestamp?: { seconds: number; nanoseconds: number };
 }
 
@@ -135,67 +136,89 @@ export function LiveActivityFeed() {
                                 }}
                                 className="mb-3"
                             >
-                                <div className={`
-                  p-3 rounded-lg border transition-colors duration-200
-                  ${log.risk_level === "High"
-                                        ? "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/40"
-                                        : "bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40"
+                                {/* 根据 status 和 risk_level 确定样式 */}
+                                {(() => {
+                                    // 确定卡片样式
+                                    let cardClass = "bg-slate-500/5 border-slate-500/20";
+                                    let avatarClass = "bg-slate-500/20";
+                                    let textClass = "text-slate-400";
+                                    let statusIcon = <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />;
+                                    let statusText = "排队中";
+                                    let probabilityText = "";
+
+                                    if (log.status === "QUEUED") {
+                                        cardClass = "bg-amber-500/5 border-amber-500/20 hover:border-amber-500/40";
+                                        avatarClass = "bg-amber-500/20";
+                                        textClass = "text-amber-400";
+                                        statusIcon = <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />;
+                                        statusText = "排队中";
+                                    } else if (log.status === "PROCESSING") {
+                                        cardClass = "bg-sky-500/5 border-sky-500/20 hover:border-sky-500/40";
+                                        avatarClass = "bg-sky-500/20";
+                                        textClass = "text-sky-400";
+                                        statusIcon = <Loader2 className="w-3.5 h-3.5 text-sky-400 animate-spin flex-shrink-0" />;
+                                        statusText = "处理中";
+                                    } else if (log.status === "FAILED") {
+                                        cardClass = "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/40";
+                                        avatarClass = "bg-rose-500/20";
+                                        textClass = "text-rose-400";
+                                        statusIcon = <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />;
+                                        statusText = "失败";
+                                    } else if (log.risk_level === "High") {
+                                        cardClass = "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/40";
+                                        avatarClass = "bg-rose-500/20";
+                                        textClass = "text-rose-400";
+                                        statusIcon = <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />;
+                                        statusText = "高风险";
+                                        probabilityText = `(${Math.round((log.churn_probability ?? 0) * 100)}%)`;
+                                    } else if (log.risk_level === "Low" || log.status === "COMPLETED") {
+                                        cardClass = "bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40";
+                                        avatarClass = "bg-emerald-500/20";
+                                        textClass = "text-emerald-400";
+                                        statusIcon = <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />;
+                                        statusText = "低风险";
+                                        probabilityText = `(${Math.round((log.churn_probability ?? 0) * 100)}%)`;
                                     }
-                `}>
-                                    <div className="flex items-start gap-3">
-                                        {/* 头像 */}
-                                        <Avatar className={`
-                      w-8 h-8 
-                      ${log.risk_level === "High"
-                                                ? "bg-rose-500/20"
-                                                : "bg-emerald-500/20"
-                                            }
-                    `}>
-                                            <AvatarFallback className={`text-xs font-medium
-                        ${log.risk_level === "High"
-                                                    ? "text-rose-400"
-                                                    : "text-emerald-400"
-                                                }
-                      `}>
-                                                <User className="w-4 h-4" />
-                                            </AvatarFallback>
-                                        </Avatar>
 
-                                        {/* 内容 */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-medium text-slate-200 truncate">
-                                                    User #{log.user_id}
-                                                </span>
-                                                {log.risk_level === "High" ? (
-                                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
-                                                ) : (
-                                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                                                )}
+                                    return (
+                                        <div className={`p-3 rounded-lg border transition-colors duration-200 ${cardClass}`}>
+                                            <div className="flex items-start gap-3">
+                                                {/* 头像 */}
+                                                <Avatar className={`w-8 h-8 ${avatarClass}`}>
+                                                    <AvatarFallback className={`text-xs font-medium ${textClass}`}>
+                                                        <User className="w-4 h-4" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+
+                                                {/* 内容 */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-medium text-slate-200 truncate">
+                                                            User #{log.user_id}
+                                                        </span>
+                                                        {statusIcon}
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-xs font-medium ${textClass}`}>
+                                                            {statusText} {probabilityText}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">
+                                                            {formatTime(log.timestamp)}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* 处理耗时 (仅完成状态显示) */}
+                                                    {log.processing_time_ms && (
+                                                        <span className="text-xs text-slate-600 mt-1 block">
+                                                            耗时 {log.processing_time_ms.toFixed(0)}ms
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-
-                                            <div className="flex items-center justify-between">
-                                                <span className={`text-xs font-medium
-                          ${log.risk_level === "High"
-                                                        ? "text-rose-400"
-                                                        : "text-emerald-400"
-                                                    }
-                        `}>
-                                                    {log.risk_level === "High" ? "高风险" : "低风险"}
-                                                    ({Math.round(log.churn_probability * 100)}%)
-                                                </span>
-                                                <span className="text-xs text-slate-500">
-                                                    {formatTime(log.timestamp)}
-                                                </span>
-                                            </div>
-
-                                            {/* 处理耗时 */}
-                                            <span className="text-xs text-slate-600 mt-1 block">
-                                                耗时 {log.processing_time_ms?.toFixed(0) || "N/A"}ms
-                                            </span>
                                         </div>
-                                    </div>
-                                </div>
+                                    );
+                                })()}
                             </motion.div>
                         ))}
                     </AnimatePresence>

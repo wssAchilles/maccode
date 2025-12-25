@@ -169,6 +169,54 @@ class StorageService:
             print(f"[StorageService] Error updating audit result for {analysis_id}: {e}")
             return False
 
+    def create_queued_analysis(self, user_id: str, analysis_id: str) -> None:
+        """
+        创建初始状态为 QUEUED 的分析记录 (异步模式)
+        
+        Args:
+            user_id: 用户 ID
+            analysis_id: 预生成的分析 ID
+        """
+        doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+        doc_ref.set({
+            "user_id": user_id,
+            "status": "QUEUED",
+            "timestamp": SERVER_TIMESTAMP,
+            "created_at_local": datetime.utcnow().isoformat(),
+        })
+        print(f"[StorageService] Created QUEUED analysis: {analysis_id} for user {user_id}")
+
+    def update_status(
+        self,
+        analysis_id: str,
+        status: str,
+        **kwargs
+    ) -> bool:
+        """
+        更新分析记录状态
+        
+        Args:
+            analysis_id: 分析记录 ID
+            status: 新状态 (QUEUED / PROCESSING / COMPLETED / FAILED)
+            **kwargs: 额外要更新的字段 (如 result, error_message 等)
+        
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+            update_data = {
+                "status": status,
+                "updated_at": SERVER_TIMESTAMP,
+                **kwargs
+            }
+            doc_ref.update(update_data)
+            print(f"[StorageService] Status updated for {analysis_id}: {status}")
+            return True
+        except Exception as e:
+            print(f"[StorageService] Error updating status for {analysis_id}: {e}")
+            return False
+
 
 # 创建单例实例
 storage_service = StorageService()
