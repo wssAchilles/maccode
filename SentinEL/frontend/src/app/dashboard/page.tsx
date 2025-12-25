@@ -29,6 +29,7 @@ import {
 import { RiskGauge } from "@/components/business/RiskGauge";
 import { StrategyCards } from "@/components/business/StrategyCards";
 import { EmailPreview } from "@/components/business/EmailPreview";
+import { CompetitorUpload } from "@/components/business/CompetitorUpload";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
 import { ModelTrainingCard } from "@/components/business/ModelTrainingCard";
 import { analyzeUser } from "@/services/analysisService";
@@ -37,6 +38,7 @@ import { UserAnalysisResponse, DashboardState } from "@/types";
 export default function DashboardPage() {
     // ============ 状态管理 ============
     const [userId, setUserId] = useState("63826"); // 默认测试用户
+    const [imageData, setImageData] = useState<string | null>(null);
     const [state, setState] = useState<DashboardState>({
         isLoading: false,
         data: null,
@@ -49,7 +51,7 @@ export default function DashboardPage() {
         setState({ isLoading: true, data: null, error: null });
 
         try {
-            const result = await analyzeUser(userId);
+            const result = await analyzeUser(userId, imageData);
             setState({ isLoading: false, data: result, error: null });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "未知错误";
@@ -144,8 +146,9 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
-                            {/* RAG 策略 */}
-                            <div>
+                            {/* Competitor Upload Section (New) */}
+                            <div className="space-y-4">
+                                <CompetitorUpload onImageSelect={setImageData} />
                                 {state.isLoading ? (
                                     <LoadingSkeleton type="cards" />
                                 ) : state.data ? (
@@ -164,6 +167,8 @@ export default function DashboardPage() {
                                         emailContent={state.data.generated_email}
                                         userId={state.data.user_id}
                                         analysisId={state.data.analysis_id}
+                                        callScript={state.data.call_script}
+                                        audioBase64={state.data.generated_audio}
                                     />
                                 ) : (
                                     <EmptyState message="AI 生成邮件将在此显示" />

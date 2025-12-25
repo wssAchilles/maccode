@@ -5,7 +5,7 @@ LLM Service - 企业级 Gemini 大模型服务
 """
 
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Image, Part
 from vertexai.language_models import TextEmbeddingModel
 from app.core.telemetry import get_tracer
 import os
@@ -84,9 +84,10 @@ class LLMService:
                 print(f"Error generating embedding: {e}")
                 raise e
 
-    def generate_retention_email(self, user_profile: dict, policies: list[str]) -> str:
+    def generate_retention_email(self, user_profile: dict, policies: list[str], image_bytes: bytes = None) -> str:
         """
         使用 Gemini 生成个性化挽留邮件。
+        支持多模态输入 (Competitor Image Analysis)。
         
         Trace Span: "Gemini: Generate Email"
         """
@@ -95,6 +96,7 @@ class LLMService:
             span.set_attribute("ai.model", self.llm_model_name)
             span.set_attribute("ai.provider", "vertex_ai")
             span.set_attribute("input.policies_count", len(policies))
+            span.set_attribute("input.has_image", image_bytes is not None)
             
             feature_context = user_profile.get("features", {})
             user_id = user_profile.get("user_id", "Unknown")
@@ -107,6 +109,11 @@ class LLMService:
             你是一个高级客户关系专家 (SentinEL)。你的目标是根据数据和公司政策挽留高价值客户。
             严禁编造优惠政策，必须基于工具检索到的信息。
             语气要诚恳、专业且具有个性化。
+            
+            【多模态指令】
+            如果提供了图片，那通常是用户上传的"竞争对手优惠/广告"或"客户投诉截图"。
+            请先敏锐地分析图片中的关键信息（如通过图片看出对手提供了50%折扣，或客户在投诉物流）。
+            并在生成的邮件中，针对性地回应这些视觉信息（例如："我们可以匹配该折扣"或"针对您提到的物流问题..."），但不要直接说"我看你传的图片..."，要自然融入。
             """
             
             policies_text = "\n".join([f"- {p}" for p in policies])
@@ -131,12 +138,21 @@ class LLMService:
             
             generation_config = {
                 "temperature": 0.7,
-                "max_output_tokens": 500,
+                "max_output_tokens": 600, # Increased for detailed analysis
             }
             
             try:
+                inputs = [system_prompt, user_prompt]
+                
+                # 如果有图片，加入到输入中
+                if image_bytes:
+                    print("Processing image for Vision API...")
+                    image_part = Part.from_data(data=image_bytes, mime_type="image/jpeg") # Default to jpeg, robust enough
+                    inputs.append(image_part)
+                    inputs.append("请参考上述图片中的竞争对手信息或问题进行针对性回复。")
+
                 response = self.generative_model.generate_content(
-                    [system_prompt, user_prompt],
+                    inputs,
                     generation_config=generation_config
                 )
                 result = response.text
@@ -149,5 +165,27 @@ class LLMService:
                 span.set_attribute("error", True)
                 span.set_attribute("error.message", str(e))
                 print(f"Error generating email: {e}")
-                return "Unable to generate email at this time."
+                return "Unable to generate email at this time due to system error."
+
+    def generate_call_script(self, email_content: str) -> str:
+        """
+        基于生成的邮件内容，提炼一段简短的电话留言脚本 (Voicemail Script)。
+        风格：亲切、口语化。
+        """
+        with tracer.start_as_current_span("Gemini: Generate Script") as span:
+             prompt = f"""
+             Based on the following retention email, verify create a SHORT, CASUAL voicemail script (max 50 words).
+             It should sound like a friendly account manager leaving a message.
+             Do not include "Subject:" or placeholders. Just the spoken script.
+             
+             Email Context:
+             {email_content}
+             """
+             
+             try:
+                response = self.generative_model.generate_content(prompt)
+                return response.text.strip()
+             except Exception as e:
+                 print(f"Error generating script: {e}")
+                 return "Hi, this is your account manager from SentinEL. We noticed you haven't been active lately and have a special offer for you. Please check your email!"
 

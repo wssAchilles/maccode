@@ -1,14 +1,15 @@
 import os
 from google.cloud import aiplatform
 from app.core.telemetry import get_tracer
+from app.core.config import settings
 
 tracer = get_tracer()
 
 class PipelineService:
     def __init__(self):
-        self.project_id = "sentinel-ai-project-482208"
-        self.location = "asia-east1"
-        self.pipeline_root = "gs://sentinel-ai-project-482208_cloudbuild/pipeline_root"
+        self.project_id = settings.PROJECT_ID
+        self.location = settings.LOCATION
+        self.pipeline_root = f"gs://{settings.PIPELINE_ROOT_BUCKET}"
         
         # Initialize Vertex AI SDK
         aiplatform.init(

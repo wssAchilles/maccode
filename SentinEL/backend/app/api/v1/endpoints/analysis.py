@@ -37,6 +37,7 @@ def analyze_user_endpoint(
         # 调用编排器，传入 BackgroundTasks.add_task 作为回调
         result = orchestrator.analyze_user_workflow(
             user_id=request.user_id,
+            image_data=request.image_data,
             background_save=background_tasks.add_task
         )
         return UserAnalysisResponse(**result)

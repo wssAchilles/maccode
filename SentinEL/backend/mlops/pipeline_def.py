@@ -6,6 +6,15 @@ Project: sentinel-ai-project-482208
 from typing import NamedTuple
 from kfp import dsl
 from kfp import compiler
+import os
+
+# Configuration from Environment
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "sentinel-ai-project-482208")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "asia-east1")
+BUCKET_NAME = os.getenv("MLOPS_ARTIFACT_BUCKET", "sentinel-mlops-artifacts-sentinel-ai-project-482208")
+PIPELINE_ROOT = f"gs://{BUCKET_NAME}/pipeline_root_v5"
+BQ_TABLE_ID = os.getenv("BQ_TUNING_DATASET_ID", "sentinel-ai-project-482208.retail_ai.gemini_tuning_dataset")
+MODEL_DISPLAY_NAME = "sentinel-gemini-tuned-v5"
 
 @dsl.component(
     base_image="python:3.9",
@@ -145,15 +154,15 @@ def trigger_tuning_job_op(
 
 @dsl.pipeline(
     name="sentinel-continuous-training-pipeline-v5",
-    description="Pipeline to export data and fine-tune Gemini model (asia-east1)",
-    pipeline_root="gs://sentinel-mlops-artifacts-sentinel-ai-project-482208/pipeline_root_v5"
+    description=f"Pipeline to export data and fine-tune Gemini model ({LOCATION})",
+    pipeline_root=PIPELINE_ROOT
 )
 def sentinel_pipeline(
-    bq_table_id: str = "sentinel-ai-project-482208.retail_ai.gemini_tuning_dataset",
-    bucket_name: str = "sentinel-mlops-artifacts-sentinel-ai-project-482208",
-    project_id: str = "sentinel-ai-project-482208",
-    location: str = "asia-east1",
-    model_display_name: str = "sentinel-gemini-tuned-v5",
+    bq_table_id: str = BQ_TABLE_ID,
+    bucket_name: str = BUCKET_NAME,
+    project_id: str = PROJECT_ID,
+    location: str = LOCATION,
+    model_display_name: str = MODEL_DISPLAY_NAME,
 ):
     # Step 1: Export Data
     # FORCE n1-standard-1 (1 vCPU, 3.75GB RAM) to fit strict quota
@@ -175,7 +184,7 @@ def sentinel_pipeline(
 if __name__ == "__main__":
     # Output directly to backend directory for Docker build
     output_file = "../sentinel_pipeline.json"
-    print(f"Compiling V5 pipeline (asia-east1) to {output_file}...")
+    print(f"Compiling V5 pipeline ({LOCATION}) to {output_file}...")
     compiler.Compiler().compile(
         pipeline_func=sentinel_pipeline,
         package_path=output_file

@@ -35,11 +35,12 @@ export const analysisService = {
      * @returns UserAnalysisResponse - 包含风险评估和 AI 生成内容
      * @throws Error - 网络错误或后端返回错误时抛出
      */
-    analyzeUser: async (userId: string): Promise<UserAnalysisResponse> => {
+    analyzeUser: async (userId: string, imageData?: string | null): Promise<UserAnalysisResponse> => {
         const endpoint = `${API_URL}/api/v1/analyze`;
 
         const requestBody: UserAnalysisRequest = {
             user_id: userId,
+            image_data: imageData || undefined, // Send if present
         };
 
         try {

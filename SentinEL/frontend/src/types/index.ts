@@ -10,6 +10,7 @@
  */
 export interface UserAnalysisRequest {
     user_id: string;
+    image_data?: string; // Base64 encoded image
 }
 
 // ============ API 响应类型 ============
@@ -40,6 +41,9 @@ export interface UserAnalysisResponse {
     retention_policies: string[] | null; // RAG 检索到的策略
     user_features: UserFeatures | null; // 用户特征画像
     analysis_id: string; // 后端生成的分析记录 ID (用于反馈)
+    // Multimodal Output
+    call_script?: string | null;
+    generated_audio?: string | null; // Base64 encoded MP3
 }
 
 /**

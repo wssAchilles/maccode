@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Copy, Send, Sparkles, CheckCircle, ThumbsUp, ThumbsDown, Check, ShieldCheck, AlertCircle } from "lucide-react";
+import { Mail, Copy, Send, Sparkles, CheckCircle, ThumbsUp, ThumbsDown, Check, ShieldCheck, AlertCircle, Phone, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { submitFeedback } from "@/services/analysisService";
 import { toast } from "sonner";
@@ -12,9 +12,11 @@ interface EmailPreviewProps {
     emailContent: string | null;
     userId: string;
     analysisId?: string; // Analysis ID needed for feedback
+    callScript?: string | null;
+    audioBase64?: string | null;
 }
 
-export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewProps) {
+export function EmailPreview({ emailContent, userId, analysisId, callScript, audioBase64 }: EmailPreviewProps) {
     const [copied, setCopied] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [feedbackStatus, setFeedbackStatus] = useState<"none" | "thumbs_up" | "thumbs_down">("none");
@@ -231,6 +233,36 @@ export function EmailPreview({ emailContent, userId, analysisId }: EmailPreviewP
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* Voicemail Section */}
+            {callScript && (
+                <div className="border-t border-slate-800 p-4 bg-slate-900/30">
+                    <div className="flex items-center gap-2 mb-3 text-slate-300">
+                        <div className="p-1.5 rounded-md bg-indigo-500/20 text-indigo-400">
+                            <Phone className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-medium">Generated Voicemail</span>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="p-3 rounded bg-slate-950 border border-slate-800/60">
+                            <p className="text-xs text-slate-400 italic font-serif leading-relaxed">
+                                "{callScript}"
+                            </p>
+                        </div>
+
+                        {audioBase64 && (
+                            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 flex items-center gap-3">
+                                <audio controls className="w-full h-8 opacity-80 hover:opacity-100 transition-opacity" style={{ filter: "invert(0.9) hue-rotate(180deg)" }}>
+                                    <source src={`data:audio/mp3;base64,${audioBase64}`} type="audio/mp3" />
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
