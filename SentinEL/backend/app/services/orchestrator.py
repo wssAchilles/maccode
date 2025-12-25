@@ -10,13 +10,13 @@ from app.services.llm_service import LLMService
 from app.services.storage_service import StorageService
 from app.services.judge_service import AIJudge
 from app.core import telemetry
-from opentelemetry import trace
+# from opentelemetry import trace
 import logging
 import asyncio
 from fastapi import BackgroundTasks
 
 logger = logging.getLogger(__name__)
-tracer = trace.get_tracer(__name__)
+tracer = telemetry.get_tracer()
 
 
 class AnalysisOrchestrator:

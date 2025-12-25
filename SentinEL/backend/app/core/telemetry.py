@@ -18,14 +18,20 @@ SentinEL Telemetry Module - Google Cloud Trace 集成
 """
 
 import os
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
+# Try to import OpenTelemetry, provide dummy implementations if missing
+try:
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    _HAS_OPENTELEMETRY = True
+except ImportError:
+    _HAS_OPENTELEMETRY = False
+    trace = None
 
 # ============================================
 # 配置常量
@@ -37,21 +43,32 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "sentinel-ai-project-482208")
 _tracer = None
 
 
+class DummyTracer:
+    def start_as_current_span(self, name):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def set_attribute(self, key, value):
+        pass
+
+
 def setup_telemetry(app) -> None:
     """
     初始化 OpenTelemetry 并配置 Google Cloud Trace 导出器。
-    
-    Args:
-        app: FastAPI 应用实例
-        
-    功能:
-    1. 配置 TracerProvider 和 Resource
-    2. 配置 CloudTraceSpanExporter
-    3. 自动注入 FastAPI 仪表盘
-    4. 自动注入 requests 库仪表盘 (用于外部 HTTP 调用)
+    如果依赖缺失，则跳过初始化。
     """
     global _tracer
     
+    if not _HAS_OPENTELEMETRY:
+        print("[Telemetry] OpenTelemetry packages not found. Telemetry disabled.")
+        _tracer = DummyTracer()
+        return
+
     # 创建资源标识 (用于在 Cloud Console 中识别服务)
     resource = Resource.create({
         "service.name": SERVICE_NAME,
@@ -96,21 +113,15 @@ def setup_telemetry(app) -> None:
     print(f"[Telemetry] OpenTelemetry initialized for service: {SERVICE_NAME}")
 
 
-def get_tracer() -> trace.Tracer:
+def get_tracer():
     """
     获取全局 Tracer 实例用于手动埋点。
-    
-    Returns:
-        OpenTelemetry Tracer 实例
-        
-    用法:
-        tracer = get_tracer()
-        with tracer.start_as_current_span("my_operation") as span:
-            span.set_attribute("key", "value")
-            # 业务逻辑
     """
     global _tracer
     if _tracer is None:
-        # 如果未初始化，返回默认 tracer (不会发送到 Cloud Trace)
-        _tracer = trace.get_tracer(__name__)
+        if _HAS_OPENTELEMETRY:
+             _tracer = trace.get_tracer(__name__)
+        else:
+             _tracer = DummyTracer()
+             
     return _tracer

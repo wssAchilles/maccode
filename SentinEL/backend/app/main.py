@@ -5,44 +5,41 @@ SentinEL Enterprise Microservice
 集成 Google Cloud Trace 全链路追踪
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import analysis
-from app.core.telemetry import setup_telemetry
-import uvicorn
+import sys
+import os
+print("DEBUG: sys.path:", sys.path)
+try:
+    print("DEBUG: site-packages contents:", os.listdir("/usr/local/lib/python3.11/site-packages"))
+except Exception as e:
+    print("DEBUG: Could not list site-packages:", e)
 
-# Initialize FastAPI app
+from fastapi import FastAPI
+
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.endpoints import analysis, pipeline
+
 app = FastAPI(
-    title="SentinEL Enterprise Microservice",
-    description="High-Performance Customer Retention AI Agent Backend",
-    version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    title="SentinEL Backend",
+    description="High-performance AI Agent Backend",
+    version="2.0.0"
 )
 
-# --- 初始化 OpenTelemetry (Google Cloud Trace) ---
-setup_telemetry(app)
-
-# --- CORS Configuration ---
-# Critical for communicating with the Frontend (local + Cloud Run)
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    # Cloud Run 生产环境
-    "https://sentinel-frontend-kijag7ukkq-uc.a.run.app",
-    "https://sentinel-frontend-672705370432.us-central1.run.app",
-]
-
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Setup Telemetry (Optional)
+from app.core.telemetry import setup_telemetry
+setup_telemetry(app)
+
 # --- Register Routers ---
 app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
+app.include_router(pipeline.router, prefix="/api/v1", tags=["Data Pipeline"])
 
 @app.get("/health")
 def health_check():

@@ -5,10 +5,12 @@ google-cloud-aiplatform
 google-cloud-firestore
 pydantic-settings
 python-dotenv
+firebase-admin
 
 # OpenTelemetry for Google Cloud Trace
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-gcp-trace
-opentelemetry-instrumentation-requests
+# opentelemetry-api==1.39.1
+# opentelemetry-sdk==1.39.1
+# opentelemetry-instrumentation-fastapi==0.60b1
+# opentelemetry-instrumentation-logging==0.60b1
+# opentelemetry-exporter-google-cloud==0.18b1
+# opentelemetry-instrumentation-requests==0.60b1

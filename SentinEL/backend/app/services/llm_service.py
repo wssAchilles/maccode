@@ -7,11 +7,11 @@ LLM Service - 企业级 Gemini 大模型服务
 import vertexai
 from vertexai.generative_models import GenerativeModel
 from vertexai.language_models import TextEmbeddingModel
-from opentelemetry import trace
+from app.core.telemetry import get_tracer
 import os
 
 # 获取 Tracer 实例
-tracer = trace.get_tracer(__name__)
+tracer = get_tracer()
 
 
 class LLMService:

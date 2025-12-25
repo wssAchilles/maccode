@@ -6,11 +6,11 @@ BigQuery Service - 企业级用户流失预测和向量检索服务
 
 from google.cloud import bigquery
 from fastapi import HTTPException
-from opentelemetry import trace
+from app.core.telemetry import get_tracer
 import os
 
 # 获取 Tracer 实例
-tracer = trace.get_tracer(__name__)
+tracer = get_tracer()
 
 
 class BigQueryService:

@@ -105,6 +105,33 @@ export const analysisService = {
             console.error("Failed to submit feedback:", error);
             return false;
         }
+    },
+
+    /**
+     * 触发数据工厂管道 (MLOps)
+     * @returns object - 包含 job_id 和 status
+     */
+    runDataPipeline: async (): Promise<{ status: string; job_id: string; message: string }> => {
+        const endpoint = `${API_URL}/api/v1/run_data_pipeline`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-API-KEY": API_KEY
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to trigger data pipeline");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Pipeline trigger failed:", error);
+            throw error;
+        }
     }
 };
 
@@ -113,4 +140,4 @@ export const analysisService = {
 // But since we are changing the default, let's stick to the object or standalone.
 // The previous errors suggested "analyzeUser" was missing from export.
 // Let's also export them as destuctured from the object to be safe/mix-friendly.
-export const { analyzeUser, submitFeedback, checkHealth } = analysisService;
+export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline } = analysisService;
