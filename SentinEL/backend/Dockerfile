@@ -27,8 +27,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy ML Pipeline definition (for production triggering)
 COPY sentinel_pipeline.json .
 
+# Debug environment
+COPY debug_imports.py .
+RUN python debug_imports.py
+
 # 复制应用代码
 COPY app/ ./app/
+
+# Check for old import patterns to prevent stale builds (now that files exist)
+RUN ! grep -r "langchain_core.pydantic_v1" app/agents/tools.py
+RUN grep -r "services.feature_online_store_serving_service" app/services/feature_store_service.py
+
 
 # Cloud Run 强制要求: 监听 $PORT 环境变量
 # 默认端口 8080，Cloud Run 会自动注入 PORT 环境变量
@@ -39,3 +48,4 @@ EXPOSE 8080
 
 # 启动命令 - 使用 shell 形式以支持环境变量展开
 CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# cache break Fri Dec 26 23:41:52 CST 2025

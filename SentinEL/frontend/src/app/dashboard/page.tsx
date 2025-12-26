@@ -23,7 +23,8 @@ import {
     Clock,
     Zap,
     Database,
-    Sparkles
+    Sparkles,
+    Bot
 } from "lucide-react";
 
 import { RiskGauge } from "@/components/business/RiskGauge";
@@ -33,13 +34,15 @@ import { CompetitorUpload } from "@/components/business/CompetitorUpload";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
 import { ModelTrainingCard } from "@/components/business/ModelTrainingCard";
 import { ExperimentDashboard } from "@/components/business/ExperimentDashboard";
-import { analyzeUser } from "@/services/analysisService";
+import AgentReasoningLog, { TraceStep } from "@/components/business/AgentReasoningLog";
+import { analyzeUser, analyzeFlow } from "@/services/analysisService";
 import { UserAnalysisResponse, DashboardState } from "@/types";
 
 export default function DashboardPage() {
     // ============ 状态管理 ============
     const [userId, setUserId] = useState("63826"); // 默认测试用户
     const [imageData, setImageData] = useState<string | null>(null);
+    const [agentLogs, setAgentLogs] = useState<TraceStep[]>([]);
     const [state, setState] = useState<DashboardState>({
         isLoading: false,
         data: null,
@@ -50,9 +53,20 @@ export default function DashboardPage() {
         if (!userId.trim()) return;
 
         setState({ isLoading: true, data: null, error: null });
+        setAgentLogs([]); // Clear previous logs
 
         try {
+            // 1. Trigger Agent Flow
+            // In a real streaming setup, we would subscribe to the stream.
+            // Here, we await the full result but the backend returns the full trace.
+            const flowResult = await analyzeFlow(userId);
+            setAgentLogs(flowResult.trace_log);
+
+            // 2. Fetch standard analysis data (or use result from agent if unified)
+            // For backward compatibility, we still fetch standard analysis but could
+            // optionaly derive it from agent result.
             const result = await analyzeUser(userId, imageData);
+
             setState({ isLoading: false, data: result, error: null });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "未知错误";
@@ -64,6 +78,9 @@ export default function DashboardPage() {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleAnalyze();
     };
+
+    // Auto-scroll simulation for logs if needed, but ScrollArea handles it.
+
 
     // ============ 渲染 ============
     return (
@@ -145,6 +162,15 @@ export default function DashboardPage() {
                                 ) : (
                                     <EmptyState message="输入用户 ID 开始分析" />
                                 )}
+                            </div>
+
+                            {/* Agent Reasoning Log (New) - Full Width in Grid */}
+                            <div className="lg:col-span-3">
+                                <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
+                                    <Bot className="w-4 h-4 text-emerald-400" />
+                                    AI Decision Process
+                                </h3>
+                                <AgentReasoningLog logs={agentLogs} isLoading={state.isLoading} />
                             </div>
 
                             {/* Competitor Upload Section (New) */}

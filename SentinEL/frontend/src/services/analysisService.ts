@@ -203,6 +203,33 @@ export const analysisService = {
             console.error("Failed to get recommendations:", e);
             return [];
         }
+    },
+
+    /**
+     * Agent 流程编排分析
+     * @param userId - 用户 ID
+     * @returns Promise<any> - 包含 trace_log 和 final_result
+     */
+    analyzeFlow: async (userId: string): Promise<any> => {
+        const endpoint = `${API_URL}/api/v1/analyze_flow`;
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-API-KEY": API_KEY
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            if (!response.ok) {
+                throw new Error("Agent Flow execution failed");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Agent Flow error:", error);
+            throw error;
+        }
     }
 };
 
@@ -211,4 +238,4 @@ export const analysisService = {
 // But since we are changing the default, let's stick to the object or standalone.
 // The previous errors suggested "analyzeUser" was missing from export.
 // Let's also export them as destuctured from the object to be safe/mix-friendly.
-export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations } = analysisService;
+export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations, analyzeFlow } = analysisService;

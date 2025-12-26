@@ -12,11 +12,28 @@ Feature Store Service (Online Serving)
 import logging
 from typing import Dict, List, Optional, Any
 from google.cloud import aiplatform
-from google.cloud.aiplatform_v1 import FeatureOnlineStoreServiceClient
-from google.cloud.aiplatform_v1.types import (
-    FeatureViewDataKey, 
-    FetchFeatureValuesRequest
-)
+
+# Attempt to import Feature Service Client gracefully to prevent startup crashes
+FeatureOnlineStoreServingServiceClient = None
+FeatureViewDataKey = None
+FetchFeatureValuesRequest = None
+
+try:
+    from google.cloud.aiplatform_v1 import FeatureOnlineStoreServingServiceClient
+    from google.cloud.aiplatform_v1.types import (
+        FeatureViewDataKey, 
+        FetchFeatureValuesRequest
+    )
+except ImportError:
+    # Try alternative path or log error
+    try:
+        from google.cloud.aiplatform_v1.services.feature_online_store_serving_service import FeatureOnlineStoreServingServiceClient
+        from google.cloud.aiplatform_v1.types import FeatureViewDataKey, FetchFeatureValuesRequest
+    except ImportError as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"CRITICAL: Could not import FeatureOnlineStoreServingServiceClient. Feature Store features will be disabled. Error: {e}")
+        # We generally won't crash here, but service methods will fail if called.
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,7 +47,7 @@ class FeatureStoreService:
         
         # 初始化客户端
         client_options = {"api_endpoint": f"{location}-aiplatform.googleapis.com"}
-        self.client = FeatureOnlineStoreServiceClient(client_options=client_options)
+        self.client = FeatureOnlineStoreServingServiceClient(client_options=client_options)
         
         logger.info(f"FeatureStoreService initialized for store: {self.feature_online_store}")
 
