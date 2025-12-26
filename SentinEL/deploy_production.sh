@@ -82,6 +82,20 @@ log_info "构建后端 Docker 镜像..."
 cd backend
 gcloud builds submit --tag ${BACKEND_IMAGE} --quiet
 
+# 获取 Redis IP (如果存在)
+log_info "检查 Redis 实例..."
+REDIS_HOST=$(gcloud redis instances describe sentinel-cache --region=${REGION} --format='value(host)' 2>/dev/null || echo "")
+VPC_CONNECTOR_FLAG=""
+REDIS_ENV_FLAG=""
+
+if [ -n "$REDIS_HOST" ]; then
+    log_success "检测到 Redis 实例: $REDIS_HOST"
+    VPC_CONNECTOR_FLAG="--vpc-connector=sentinel-connector"
+    REDIS_ENV_FLAG="--set-env-vars=REDIS_HOST=${REDIS_HOST},REDIS_PORT=6379"
+else
+    log_warn "未检测到 Redis 实例，将以无缓存模式部署"
+fi
+
 log_info "部署后端到 Cloud Run..."
 gcloud run deploy ${BACKEND_SERVICE_NAME} \
     --image ${BACKEND_IMAGE} \
@@ -92,6 +106,8 @@ gcloud run deploy ${BACKEND_SERVICE_NAME} \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 10 \
+    ${VPC_CONNECTOR_FLAG} \
+    ${REDIS_ENV_FLAG} \
     --quiet
 
 log_success "后端部署完成!"

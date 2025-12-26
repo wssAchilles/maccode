@@ -16,6 +16,7 @@ import asyncio
 from fastapi import BackgroundTasks
 import base64
 from app.services.tts_service import TTSService
+from app.core.cache import cached_analysis
 
 logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
@@ -34,6 +35,7 @@ class AnalysisOrchestrator:
         self.judge_service = AIJudge() # Initialize AIJudge
         self.tts_service = TTSService() # Initialize TTSService
 
+    @cached_analysis(ttl_seconds=3600)  # 缓存 1 小时
     def analyze_user_workflow(
         self,
         user_id: str,

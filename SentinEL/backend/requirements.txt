@@ -19,3 +19,4 @@ google-cloud-storage
 # opentelemetry-instrumentation-requests==0.60b1
 google-cloud-texttospeech
 google-cloud-pubsub
+redis
