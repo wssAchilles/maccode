@@ -29,7 +29,32 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const initialData = await response.json();
+      const analysisId = initialData.analysis_id;
+
+      // Polling for results
+      let attempts = 0;
+      const maxAttempts = 20; // 20 seconds timeout
+      let resultData = null;
+
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+        const statusRes = await fetch(`${apiUrl}/api/v1/analyze/${analysisId}`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.status === 'COMPLETED') {
+            resultData = statusData;
+            break;
+          }
+        }
+        attempts++;
+      }
+
+      if (!resultData) {
+        throw new Error("Analysis timed out");
+      }
+
+      const data = resultData;
 
       toast({
         title: "Analysis Complete",

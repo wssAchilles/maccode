@@ -1,0 +1,8 @@
+{
+  "model_type": "lstm",
+  "vocab_size": 30,
+  "embed_dim": 64,
+  "hidden_dim": 128,
+  "seq_length": 20,
+  "best_auc": 0.0
+}

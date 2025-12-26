@@ -19,6 +19,7 @@ from app.services.tts_service import TTSService
 from app.core.cache import cached_analysis
 from app.services.experiment_service import experiment_service
 from app.services.feature_store_service import get_feature_store_service
+from app.services.prediction_service import get_prediction_service
 
 logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
@@ -36,6 +37,7 @@ class AnalysisOrchestrator:
         self.storage_service = get_storage_service()  # Initialize StorageService safely
         self.judge_service = AIJudge() # Initialize AIJudge
         self.tts_service = TTSService() # Initialize TTSService
+        self.prediction_service = get_prediction_service()  # 深度模型预测服务
 
     @cached_analysis(ttl_seconds=3600)  # 缓存 1 小时
     def analyze_user_workflow(
@@ -72,26 +74,56 @@ class AnalysisOrchestrator:
         # A/B 测试: 获取实验分组和模型
         experiment_group, model_name = experiment_service.get_model_for_user(user_id)
 
-        # 1. BigQuery: 获取画像
+        # 1. BigQuery: 获取用户画像和特征上下文
         profile = self.bq_service.get_user_churn_prediction(user_id)
-        churn_prob = profile.get("churn_probability", 0.0)
-        risk_level = "High" if profile.get("predicted_label") == 1 else "Low"
-        
         feature_context = profile.get("features", {})
         
         # 1.5 Feature Store: 获取实时特征 (Real-time Context)
+        realtime_features = {}
+        recent_events = []  # 用于深度模型的事件序列
         try:
             fs_service = get_feature_store_service()
             if fs_service:
                 realtime_features = fs_service.get_online_features(user_id)
                 if realtime_features:
                     logger.info(f"Retrieved realtime features for {user_id}: {realtime_features}")
-                    # 合并到特征上下文，覆盖同名离线特征
                     feature_context.update(realtime_features)
-                    # 也可以单独存一个字段
-                    result["realtime_features"] = realtime_features
+                    # 提取事件序列用于深度模型 (如果 Feature Store 提供)
+                    recent_events = realtime_features.get("recent_events", [])
         except Exception as e:
             logger.warning(f"Feature Store retrieval failed: {e}")
+        
+        # 2. 深度模型预测: 使用 LSTM/Transformer 预测流失概率
+        # 优先使用深度模型，如果不可用则回退到 BigQuery ML
+        churn_prob = profile.get("churn_probability", 0.0)  # 默认回退值
+        prediction_source = "bigquery_ml"  # 记录预测来源
+        
+        if self.prediction_service and recent_events:
+            try:
+                # 调用 Vertex AI Endpoint 进行深度模型预测
+                deep_churn_prob = self.prediction_service.predict_churn(
+                    user_id=user_id,
+                    events=recent_events,
+                    use_cache=True
+                )
+                churn_prob = deep_churn_prob
+                prediction_source = "deep_lstm"
+                logger.info(f"Deep model prediction for {user_id}: {churn_prob:.4f}")
+                
+                # 获取风险因素分析
+                risk_factors = self.prediction_service.analyze_sequence_risk_factors(recent_events)
+                feature_context["risk_factors"] = risk_factors
+            except Exception as e:
+                logger.warning(f"Deep model prediction failed, using BQ fallback: {e}")
+        elif self.prediction_service and not recent_events:
+            # 如果没有事件序列，尝试从 BigQuery 获取
+            logger.info(f"No recent events for {user_id}, using BQ fallback")
+        
+        # 确定风险等级
+        if self.prediction_service:
+            risk_level = self.prediction_service.get_risk_level(churn_prob)
+        else:
+            risk_level = "High" if profile.get("predicted_label") == 1 else "Low"
         
         # 默认结果
         result = {
