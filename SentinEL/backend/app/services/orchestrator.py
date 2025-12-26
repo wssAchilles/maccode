@@ -7,7 +7,7 @@ import time
 from typing import Optional, Callable
 from app.services.bigquery_service import BigQueryService
 from app.services.llm_service import LLMService
-from app.services.storage_service import StorageService
+from app.services.storage_service import get_storage_service
 from app.services.judge_service import AIJudge
 from app.core import telemetry
 # from opentelemetry import trace
@@ -18,6 +18,7 @@ import base64
 from app.services.tts_service import TTSService
 from app.core.cache import cached_analysis
 from app.services.experiment_service import experiment_service
+from app.services.feature_store_service import get_feature_store_service
 
 logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
@@ -32,7 +33,7 @@ class AnalysisOrchestrator:
     def __init__(self):
         self.bq_service = BigQueryService()
         self.llm_service = LLMService()
-        self.storage_service = StorageService()  # Initialize StorageService
+        self.storage_service = get_storage_service()  # Initialize StorageService safely
         self.judge_service = AIJudge() # Initialize AIJudge
         self.tts_service = TTSService() # Initialize TTSService
 
@@ -60,8 +61,13 @@ class AnalysisOrchestrator:
         start_time = time.time()
         
         # 0. 获取或生成分析 ID
-        if not analysis_id:
+        # 0. 获取或生成分析 ID
+        if not analysis_id and self.storage_service:
             analysis_id = self.storage_service.generate_id()
+        elif not analysis_id:
+            # Fallback if storage service failed
+            import uuid
+            analysis_id = str(uuid.uuid4())
         
         # A/B 测试: 获取实验分组和模型
         experiment_group, model_name = experiment_service.get_model_for_user(user_id)
@@ -72,6 +78,20 @@ class AnalysisOrchestrator:
         risk_level = "High" if profile.get("predicted_label") == 1 else "Low"
         
         feature_context = profile.get("features", {})
+        
+        # 1.5 Feature Store: 获取实时特征 (Real-time Context)
+        try:
+            fs_service = get_feature_store_service()
+            if fs_service:
+                realtime_features = fs_service.get_online_features(user_id)
+                if realtime_features:
+                    logger.info(f"Retrieved realtime features for {user_id}: {realtime_features}")
+                    # 合并到特征上下文，覆盖同名离线特征
+                    feature_context.update(realtime_features)
+                    # 也可以单独存一个字段
+                    result["realtime_features"] = realtime_features
+        except Exception as e:
+            logger.warning(f"Feature Store retrieval failed: {e}")
         
         # 默认结果
         result = {
@@ -161,7 +181,7 @@ class AnalysisOrchestrator:
         end_time = time.time()
         latency_ms = int((end_time - start_time) * 1000)
         
-        if background_save:
+        if background_save and self.storage_service:
              background_save(
                  self.storage_service.save_analysis_result,
                  user_id=user_id,
@@ -171,7 +191,7 @@ class AnalysisOrchestrator:
                  processing_time_ms=latency_ms,
                  analysis_id=analysis_id
              )
-        else:
+        elif self.storage_service:
              # Fallback if no background_save provided (e.g. testing)
              self.storage_service.save_analysis_result(
                  user_id=user_id,
@@ -196,7 +216,18 @@ class AnalysisOrchestrator:
                 )
                 
                 # 2. Update Firestore
-                self.storage_service.update_audit_result(analysis_id, audit_result)
+                if self.storage_service:
+                    self.storage_service.update_audit_result(analysis_id, audit_result)
                 
             except Exception as e:
                 logger.error(f"Background audit failed for {analysis_id}: {e}")
+
+
+# 单例实例
+_orchestrator_instance = None
+
+def get_orchestrator() -> "AnalysisOrchestrator":
+    global _orchestrator_instance
+    if _orchestrator_instance is None:
+        _orchestrator_instance = AnalysisOrchestrator()
+    return _orchestrator_instance

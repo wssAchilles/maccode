@@ -11,16 +11,16 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from pydantic import BaseModel
 from app.models.schemas import UserAnalysisRequest, UserAnalysisResponse, FeedbackRequest
-from app.services.orchestrator import AnalysisOrchestrator
-from app.services.storage_service import StorageService
-from app.services.queue_service import queue_service
+from app.services.orchestrator import get_orchestrator
+from app.services.storage_service import get_storage_service
+from app.services.queue_service import get_queue_service
 from app.core.security import verify_api_key
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
-orchestrator = AnalysisOrchestrator()
-storage_service = StorageService()
+# orchestrator initialized lazily
+# storage_service initialized lazily
 
 
 # ==============================================================================
@@ -52,6 +52,10 @@ def analyze_user_endpoint(request: UserAnalysisRequest):
     """
     try:
         # 1. 生成分析 ID
+        storage_service = get_storage_service()
+        if not storage_service:
+            raise HTTPException(status_code=500, detail="Database service unavailable")
+            
         analysis_id = storage_service.generate_id()
         
         # 2. 创建初始 Firestore 记录 (QUEUED)
@@ -61,6 +65,12 @@ def analyze_user_endpoint(request: UserAnalysisRequest):
         )
         
         # 3. 发布消息到 Pub/Sub
+        queue_service = get_queue_service()
+        if not queue_service:
+             logger.error("Queue service unavailable")
+             # Consider raising error or fallback
+             raise HTTPException(status_code=500, detail="Messaging service unavailable")
+
         queue_service.publish_analysis_event(
             user_id=request.user_id,
             analysis_id=analysis_id,
@@ -127,8 +137,12 @@ def submit_feedback(request: FeedbackRequest):
     
     用于人工评估 AI 生成的邮件质量 (Thumbs Up/Down)
     """
-    from app.services.storage_service import storage_service as ss
+    from app.services.storage_service import get_storage_service
     
+    ss = get_storage_service()
+    if not ss:
+        raise HTTPException(status_code=500, detail="Database service unavailable")
+
     success = ss.update_feedback(
         analysis_id=request.analysis_id,
         feedback_type=request.feedback_type

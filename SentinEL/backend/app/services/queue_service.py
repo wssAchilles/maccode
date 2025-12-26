@@ -76,4 +76,15 @@ class QueueService:
 
 
 # 单例实例
-queue_service = QueueService()
+# 单例实例
+_queue_service_instance = None
+
+def get_queue_service() -> Optional["QueueService"]:
+    global _queue_service_instance
+    if _queue_service_instance is None:
+        try:
+            _queue_service_instance = QueueService()
+        except Exception as e:
+            logger.error(f"Failed to initialize QueueService: {e}")
+            return None
+    return _queue_service_instance

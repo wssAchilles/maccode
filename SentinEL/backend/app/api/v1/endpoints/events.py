@@ -7,8 +7,8 @@ import json
 import base64
 import logging
 from fastapi import APIRouter, HTTPException, Request
-from app.services.orchestrator import AnalysisOrchestrator
-from app.services.storage_service import StorageService
+from app.services.orchestrator import get_orchestrator
+from app.services.storage_service import get_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # 1. Cloud Run IAM: 仅授予 Pub/Sub 服务账号 run.invoker 权限
 # 2. Pub/Sub OIDC Token: 配置时启用了 push-auth-service-account
 router = APIRouter()
-orchestrator = AnalysisOrchestrator()
-storage_service = StorageService()
+# orchestrator initialized lazily
+# storage_service initialized lazily
 
 
 @router.post("/process")
@@ -70,10 +70,13 @@ async def process_pubsub_event(request: Request):
         logger.info(f"[EventsProcess] Processing analysis {analysis_id} for user {user_id}")
         
         # 3. 更新状态为 PROCESSING
-        storage_service.update_status(analysis_id, "PROCESSING")
+        storage_service = get_storage_service()
+        if storage_service:
+            storage_service.update_status(analysis_id, "PROCESSING")
         
         # 4. 执行 AI 分析工作流
         try:
+            orchestrator = get_orchestrator()
             result = orchestrator.analyze_user_workflow(
                 user_id=user_id,
                 analysis_id=analysis_id,
@@ -82,18 +85,20 @@ async def process_pubsub_event(request: Request):
             )
             
             # 5. 更新状态为 COMPLETED，并保存结果 (包含 A/B 实验字段和策略)
-            storage_service.update_status(
-                analysis_id,
-                "COMPLETED",
-                risk_level=result.get("risk_level"),
-                churn_probability=result.get("churn_probability"),
-                retention_policies=result.get("retention_policies", []),
-                generated_email=result.get("generated_email"),
-                call_script=result.get("call_script"),
-                processing_time_ms=result.get("processing_time_ms"),
-                experiment_group=result.get("experiment_group"),
-                model_used=result.get("model_used")
-            )
+            # 5. 更新状态为 COMPLETED，并保存结果 (包含 A/B 实验字段和策略)
+            if storage_service:
+                storage_service.update_status(
+                    analysis_id,
+                    "COMPLETED",
+                    risk_level=result.get("risk_level"),
+                    churn_probability=result.get("churn_probability"),
+                    retention_policies=result.get("retention_policies", []),
+                    generated_email=result.get("generated_email"),
+                    call_script=result.get("call_script"),
+                    processing_time_ms=result.get("processing_time_ms"),
+                    experiment_group=result.get("experiment_group"),
+                    model_used=result.get("model_used")
+                )
             
             logger.info(f"[EventsProcess] Analysis {analysis_id} completed successfully")
             return {"status": "success", "analysis_id": analysis_id}
@@ -101,11 +106,14 @@ async def process_pubsub_event(request: Request):
         except Exception as workflow_error:
             # 6. 工作流失败，标记为 FAILED
             logger.error(f"[EventsProcess] Workflow failed for {analysis_id}: {workflow_error}")
-            storage_service.update_status(
-                analysis_id,
-                "FAILED",
-                error_message=str(workflow_error)
-            )
+            # 6. 工作流失败，标记为 FAILED
+            logger.error(f"[EventsProcess] Workflow failed for {analysis_id}: {workflow_error}")
+            if storage_service:
+                storage_service.update_status(
+                    analysis_id,
+                    "FAILED",
+                    error_message=str(workflow_error)
+                )
             # 返回 200 以确认消息（避免无限重试），但记录错误
             return {"status": "failed", "analysis_id": analysis_id, "error": str(workflow_error)}
     

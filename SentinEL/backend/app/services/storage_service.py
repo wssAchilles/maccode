@@ -219,4 +219,14 @@ class StorageService:
 
 
 # 创建单例实例
-storage_service = StorageService()
+_storage_service_instance = None
+
+def get_storage_service() -> Optional["StorageService"]:
+    global _storage_service_instance
+    if _storage_service_instance is None:
+        try:
+            _storage_service_instance = StorageService()
+        except Exception as e:
+            print(f"Failed to initialize StorageService: {e}")
+            return None
+    return _storage_service_instance
