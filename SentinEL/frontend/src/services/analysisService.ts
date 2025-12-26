@@ -30,7 +30,7 @@ export const analysisService = {
     },
 
     /**
-     * 分析用户流失风险
+     * 分析用户流失风险 (带异步轮询)
      * @param userId - 目标用户 ID
      * @returns UserAnalysisResponse - 包含风险评估和 AI 生成内容
      * @throws Error - 网络错误或后端返回错误时抛出
@@ -44,6 +44,7 @@ export const analysisService = {
         };
 
         try {
+            // 1. 提交分析请求 (获取 analysis_id)
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -60,9 +61,57 @@ export const analysisService = {
                 throw new Error(errorMessage);
             }
 
-            // 解析并返回响应
-            const data: UserAnalysisResponse = await response.json();
-            return data;
+            const asyncResponse = await response.json();
+            const analysisId = asyncResponse.analysis_id;
+
+            if (!analysisId) {
+                throw new Error("未获取到分析 ID");
+            }
+
+            // 2. 轮询等待分析完成
+            const maxAttempts = 60; // 最多轮询 60 次
+            const pollInterval = 1000; // 每秒轮询一次
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+                const statusResponse = await fetch(`${API_URL}/api/v1/analyze/${analysisId}`, {
+                    headers: { "X-API-KEY": API_KEY }
+                });
+
+                if (!statusResponse.ok) {
+                    continue; // 重试
+                }
+
+                const statusData = await statusResponse.json();
+
+                if (statusData.status === "COMPLETED") {
+                    // 返回完整的分析结果
+                    return {
+                        user_id: statusData.user_id || userId,
+                        risk_level: statusData.risk_level || "Low",
+                        churn_probability: statusData.churn_probability ?? 0,
+                        user_features: statusData.user_features || {},
+                        retention_policies: statusData.retention_policies || [],
+                        generated_email: statusData.generated_email || null,
+                        call_script: statusData.call_script || null,
+                        generated_audio: statusData.generated_audio || null,
+                        recommended_action: statusData.recommended_action || "",
+                        analysis_id: analysisId,
+                        experiment_group: statusData.experiment_group,
+                        model_used: statusData.model_used,
+                        processing_time_ms: statusData.processing_time_ms
+                    } as UserAnalysisResponse;
+                }
+
+                if (statusData.status === "FAILED") {
+                    throw new Error(statusData.error_message || "分析失败");
+                }
+
+                // QUEUED 或 PROCESSING 状态继续轮询
+            }
+
+            throw new Error("分析超时，请稍后重试");
 
         } catch (error) {
             // 区分网络错误和业务错误

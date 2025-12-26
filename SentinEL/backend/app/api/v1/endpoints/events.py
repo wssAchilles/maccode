@@ -81,15 +81,18 @@ async def process_pubsub_event(request: Request):
                 is_async_worker=True  # 标记为异步 Worker 模式
             )
             
-            # 5. 更新状态为 COMPLETED，并保存结果
+            # 5. 更新状态为 COMPLETED，并保存结果 (包含 A/B 实验字段和策略)
             storage_service.update_status(
                 analysis_id,
                 "COMPLETED",
                 risk_level=result.get("risk_level"),
                 churn_probability=result.get("churn_probability"),
+                retention_policies=result.get("retention_policies", []),
                 generated_email=result.get("generated_email"),
                 call_script=result.get("call_script"),
-                processing_time_ms=result.get("processing_time_ms")
+                processing_time_ms=result.get("processing_time_ms"),
+                experiment_group=result.get("experiment_group"),
+                model_used=result.get("model_used")
             )
             
             logger.info(f"[EventsProcess] Analysis {analysis_id} completed successfully")

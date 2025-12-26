@@ -17,6 +17,7 @@ from fastapi import BackgroundTasks
 import base64
 from app.services.tts_service import TTSService
 from app.core.cache import cached_analysis
+from app.services.experiment_service import experiment_service
 
 logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
@@ -61,6 +62,9 @@ class AnalysisOrchestrator:
         # 0. 获取或生成分析 ID
         if not analysis_id:
             analysis_id = self.storage_service.generate_id()
+        
+        # A/B 测试: 获取实验分组和模型
+        experiment_group, model_name = experiment_service.get_model_for_user(user_id)
 
         # 1. BigQuery: 获取画像
         profile = self.bq_service.get_user_churn_prediction(user_id)
@@ -80,7 +84,9 @@ class AnalysisOrchestrator:
             "call_script": None,
             "generated_audio": None,
             "recommended_action": "No intervention needed",
-            "analysis_id": analysis_id 
+            "analysis_id": analysis_id,
+            "experiment_group": experiment_group,
+            "model_used": model_name
         }
 
         # 2. 低风险跳过 (除非强制，暂简单处理)
@@ -115,7 +121,7 @@ class AnalysisOrchestrator:
             except Exception as e:
                 logger.error(f"Failed to decode image: {e}")
 
-        email_content = self.llm_service.generate_retention_email(profile, policies, image_bytes)
+        email_content = self.llm_service.generate_retention_email(profile, policies, image_bytes, model_name)
         result["generated_email"] = email_content
         
         # 5. 生成通话脚本 & TTS 语音 (串行执行，确保内容一致性)

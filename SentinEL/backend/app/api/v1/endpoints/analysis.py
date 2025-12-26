@@ -82,6 +82,36 @@ def analyze_user_endpoint(request: UserAnalysisRequest):
         )
 
 
+@router.get("/analyze/{analysis_id}")
+def get_analysis_status(analysis_id: str):
+    """
+    **获取分析任务状态和结果**
+    
+    前端通过此端点轮询获取异步分析结果。
+    
+    Returns:
+        dict: 包含 status 和完整分析结果 (当 status=COMPLETED 时)
+    """
+    try:
+        from google.cloud import firestore
+        db = firestore.Client()
+        
+        doc_ref = db.collection("analysis_logs").document(analysis_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found")
+        
+        data = doc.to_dict()
+        return data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[AnalysisEndpoint] Error fetching analysis {analysis_id}: {e}")
+        raise HTTPException(status_code=500, detail="获取分析状态失败")
+
+
 # ==============================================================================
 # /events/process 已移至 events.py (无 API Key 验证)
 # ==============================================================================

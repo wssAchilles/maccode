@@ -32,6 +32,7 @@ import { EmailPreview } from "@/components/business/EmailPreview";
 import { CompetitorUpload } from "@/components/business/CompetitorUpload";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
 import { ModelTrainingCard } from "@/components/business/ModelTrainingCard";
+import { ExperimentDashboard } from "@/components/business/ExperimentDashboard";
 import { analyzeUser } from "@/services/analysisService";
 import { UserAnalysisResponse, DashboardState } from "@/types";
 
@@ -184,6 +185,11 @@ export default function DashboardPage() {
                         {/* MLOps Status Card */}
                         <ModelTrainingCard />
                     </div>
+                </div>
+
+                {/* A/B 测试实验看板 */}
+                <div className="mt-6">
+                    <ExperimentDashboard />
                 </div>
             </main>
         </div>

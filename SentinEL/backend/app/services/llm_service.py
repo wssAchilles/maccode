@@ -84,16 +84,36 @@ class LLMService:
                 print(f"Error generating embedding: {e}")
                 raise e
 
-    def generate_retention_email(self, user_profile: dict, policies: list[str], image_bytes: bytes = None) -> str:
+    def generate_retention_email(
+        self, 
+        user_profile: dict, 
+        policies: list[str], 
+        image_bytes: bytes = None,
+        model_name: str = None
+    ) -> str:
         """
         使用 Gemini 生成个性化挽留邮件。
-        支持多模态输入 (Competitor Image Analysis)。
+        支持多模态输入 (Competitor Image Analysis) 和 A/B 测试动态模型。
+        
+        Args:
+            user_profile: 用户画像
+            policies: 挽留政策列表
+            image_bytes: 可选的图片数据
+            model_name: 可选的模型名称 (A/B 测试用)
         
         Trace Span: "Gemini: Generate Email"
         """
         # 创建追踪 Span
         with tracer.start_as_current_span("Gemini: Generate Email") as span:
-            span.set_attribute("ai.model", self.llm_model_name)
+            # 动态选择模型 (A/B 测试支持)
+            if model_name:
+                active_model = GenerativeModel(model_name)
+                actual_model_name = model_name
+            else:
+                active_model = self.generative_model
+                actual_model_name = self.llm_model_name
+            
+            span.set_attribute("ai.model", actual_model_name)
             span.set_attribute("ai.provider", "vertex_ai")
             span.set_attribute("input.policies_count", len(policies))
             span.set_attribute("input.has_image", image_bytes is not None)
@@ -151,7 +171,7 @@ class LLMService:
                     inputs.append(image_part)
                     inputs.append("请参考上述图片中的竞争对手信息或问题进行针对性回复。")
 
-                response = self.generative_model.generate_content(
+                response = active_model.generate_content(
                     inputs,
                     generation_config=generation_config
                 )

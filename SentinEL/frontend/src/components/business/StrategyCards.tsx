@@ -27,7 +27,7 @@ export function StrategyCards({ strategies }: StrategyCardsProps) {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center py-8 text-slate-500">
                     <FileText className="w-12 h-12 mb-3 opacity-50" />
-                    <p className="text-sm">低风险用户无需策略干预</p>
+                    <p className="text-sm">暂无策略建议</p>
                 </CardContent>
             </Card>
         );
