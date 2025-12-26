@@ -1,0 +1,38 @@
+# SentinEL 双塔模型云端训练配置
+# 使用 Cloud Build 在 GCP 云端运行训练脚本
+# 避免本地 macOS ARM 环境的 TensorFlow 兼容性问题
+
+steps:
+  # Step 1: 安装依赖并训练模型
+  - name: 'gcr.io/deeplearning-platform-release/tf2-cpu.2-15:latest'  # 官方 TF 2.15 镜像 (Keras 2)
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=== Installing dependencies ==="
+        pip install tensorflow-recommenders==0.7.3 pandas
+
+        echo "=== Generating training data ==="
+        python -m ml_engine.data.generate_recsys_data
+
+        echo "=== Training Two-Tower model ==="
+        python -m ml_engine.recsys.train_two_tower
+
+        echo "=== Uploading artifacts to GCS ==="
+        gsutil -m cp -r ml_engine/recsys/output/saved_user_model gs://${_BUCKET}/recsys/models/
+        gsutil cp ml_engine/recsys/output/strategy_embeddings.json gs://${_BUCKET}/recsys/indexes/
+
+        echo "=== Training complete ==="
+    dir: '/workspace'
+    env:
+      - 'TF_USE_LEGACY_KERAS=1'
+
+substitutions:
+  _BUCKET: 'sentinel-mlops-artifacts-sentinel-ai-project-482208'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '3600s'  # 1 hour max

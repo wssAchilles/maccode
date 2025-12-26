@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Google Cloud Config
     PROJECT_ID: str = os.getenv("GOOGLE_CLOUD_PROJECT", "sentinel-ai-project-482208")
-    LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "asia-east1")
+    LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")  # Vertex AI Endpoints 区域
     
     # Storage Config
     # Defaulting to values found in existing code to ensure backward compatibility if env vars are missing

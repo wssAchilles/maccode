@@ -19,7 +19,9 @@ from app.services.tts_service import TTSService
 from app.core.cache import cached_analysis
 from app.services.experiment_service import experiment_service
 from app.services.feature_store_service import get_feature_store_service
+from app.services.feature_store_service import get_feature_store_service
 from app.services.prediction_service import get_prediction_service
+from app.services.recommendation_service import get_recommendation_service
 
 logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
@@ -37,7 +39,9 @@ class AnalysisOrchestrator:
         self.storage_service = get_storage_service()  # Initialize StorageService safely
         self.judge_service = AIJudge() # Initialize AIJudge
         self.tts_service = TTSService() # Initialize TTSService
+        self.tts_service = TTSService() # Initialize TTSService
         self.prediction_service = get_prediction_service()  # 深度模型预测服务
+        self.recommendation_service = get_recommendation_service() # 推荐服务
 
     @cached_analysis(ttl_seconds=3600)  # 缓存 1 小时
     def analyze_user_workflow(
@@ -138,7 +142,9 @@ class AnalysisOrchestrator:
             "recommended_action": "No intervention needed",
             "analysis_id": analysis_id,
             "experiment_group": experiment_group,
-            "model_used": model_name
+
+            "model_used": model_name,
+            "recommended_strategies": [] # 新增字段
         }
 
         # 2. 低风险跳过 (除非强制，暂简单处理)
@@ -147,6 +153,22 @@ class AnalysisOrchestrator:
                  background_save, user_id, churn_prob, risk_level, None, start_time, analysis_id
             )
             return result
+        
+        # 2.5 智能策略推荐 (双塔模型 + Vector Search)
+        if self.recommendation_service:
+            try:
+                # 异步调用推荐服务 (在同步方法中使用 event loop)
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                strategies = loop.run_until_complete(
+                    self.recommendation_service.get_recommendations(user_id, churn_prob)
+                )
+                loop.close()
+                result["recommended_strategies"] = strategies
+                logger.info(f"Generated {len(strategies)} recommendations for {user_id}")
+            except Exception as e:
+                logger.error(f"Recommendation failed: {e}")
             
         result["recommended_action"] = "Send Retention Email"
         

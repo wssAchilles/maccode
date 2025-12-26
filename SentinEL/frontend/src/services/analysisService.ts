@@ -183,6 +183,26 @@ export const analysisService = {
             console.error("Pipeline trigger failed:", error);
             throw error;
         }
+    },
+
+    /**
+     * 获取用户推荐策略 (双塔召回)
+     * @param userId -  用户 ID
+     * @returns List of strategies
+     */
+    getRecommendations: async (userId: string): Promise<any[]> => {
+        // 这是一个新的 API 端点
+        const endpoint = `${API_URL}/api/v1/recommendations/${userId}`;
+        try {
+            const response = await fetch(endpoint, {
+                headers: { "X-API-KEY": API_KEY }
+            });
+            if (!response.ok) return [];
+            return await response.json();
+        } catch (e) {
+            console.error("Failed to get recommendations:", e);
+            return [];
+        }
     }
 };
 
@@ -191,4 +211,4 @@ export const analysisService = {
 // But since we are changing the default, let's stick to the object or standalone.
 // The previous errors suggested "analyzeUser" was missing from export.
 // Let's also export them as destuctured from the object to be safe/mix-friendly.
-export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline } = analysisService;
+export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations } = analysisService;

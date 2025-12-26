@@ -44,6 +44,14 @@ export interface UserAnalysisResponse {
     // Multimodal Output
     call_script?: string | null;
     generated_audio?: string | null; // Base64 encoded MP3
+
+    // New: Recommendation System Output
+    recommended_strategies?: Array<{
+        id: string;
+        type: string;
+        description: string;
+        score: number;
+    }> | null;
 }
 
 /**

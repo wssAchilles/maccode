@@ -10,8 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, BrainCircuit, FileText } from "lucide-react";
 
+interface Recommendation {
+    id: string;
+    type: string;
+    description: string;
+    score: number;
+}
+
 interface StrategyCardsProps {
-    strategies: string[] | null;
+    strategies: Recommendation[] | string[] | null;
 }
 
 export function StrategyCards({ strategies }: StrategyCardsProps) {
@@ -48,25 +55,42 @@ export function StrategyCards({ strategies }: StrategyCardsProps) {
                 </div>
             </CardHeader>
             <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
-                {strategies.map((strategy, index) => (
-                    <div
-                        key={index}
-                        className="p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 
+                {strategies.map((strategy, index) => {
+                    const isObj = typeof strategy === 'object' && strategy !== null;
+                    const text = isObj ? (strategy as Recommendation).description : (strategy as string);
+                    const type = isObj ? (strategy as Recommendation).type : null;
+
+                    return (
+                        <div
+                            key={index}
+                            className="p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 
                        hover:border-violet-500/30 transition-colors duration-200"
-                    >
-                        <div className="flex items-start gap-3">
-                            {/* 序号标记 */}
-                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-500/20 
-                             text-violet-400 text-xs font-medium flex items-center justify-center">
-                                {index + 1}
-                            </span>
-                            {/* 策略内容 */}
-                            <p className="text-sm text-slate-300 leading-relaxed">
-                                {strategy}
-                            </p>
+                        >
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-start gap-3">
+                                    {/* 序号标记 */}
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-500/20 
+                                 text-violet-400 text-xs font-medium flex items-center justify-center mt-0.5">
+                                        {index + 1}
+                                    </span>
+                                    {/* 策略内容 */}
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <p className="text-sm text-slate-300 leading-relaxed">
+                                            {text}
+                                        </p>
+                                        {type && (
+                                            <div className="flex gap-2">
+                                                <Badge variant="secondary" className="text-[10px] px-1.5 h-5 bg-slate-700/50 text-slate-400 hover:bg-slate-700">
+                                                    {type}
+                                                </Badge>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
 
                 {/* 底部说明 */}
                 <p className="text-xs text-slate-500 text-center pt-2 border-t border-slate-800">

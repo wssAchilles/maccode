@@ -153,7 +153,13 @@ export default function DashboardPage() {
                                 {state.isLoading ? (
                                     <LoadingSkeleton type="cards" />
                                 ) : state.data ? (
-                                    <StrategyCards strategies={state.data.retention_policies} />
+                                    <StrategyCards
+                                        strategies={
+                                            (state.data.recommended_strategies && state.data.recommended_strategies.length > 0)
+                                                ? state.data.recommended_strategies
+                                                : state.data.retention_policies
+                                        }
+                                    />
                                 ) : (
                                     <EmptyState message="策略将在分析后展示" />
                                 )}

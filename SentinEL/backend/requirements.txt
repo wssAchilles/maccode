@@ -9,6 +9,8 @@ firebase-admin
 google-cloud-pipeline-components
 kfp
 google-cloud-storage
+tensorflow>=2.14.0
+tensorflow-recommenders>=0.7.3
 
 # OpenTelemetry for Google Cloud Trace
 # opentelemetry-api==1.39.1
