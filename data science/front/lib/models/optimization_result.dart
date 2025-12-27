@@ -74,12 +74,16 @@ class OptimizationData {
   final List<ChartDataPoint> chartData;
   final OptimizationSummary summary;
   final OptimizationStrategy strategy;
+  final SolverDiagnostics? diagnostics;
+  final ConstraintHits? constraintHits;
 
   OptimizationData({
     required this.status,
     required this.chartData,
     required this.summary,
     required this.strategy,
+    this.diagnostics,
+    this.constraintHits,
   });
 
   factory OptimizationData.fromJson(Map<String, dynamic> json) {
@@ -92,6 +96,12 @@ class OptimizationData {
             [],
         summary: OptimizationSummary.fromJson(json['summary'] as Map<String, dynamic>? ?? {}),
         strategy: OptimizationStrategy.fromJson(json['strategy'] as Map<String, dynamic>? ?? {}),
+        diagnostics: json['diagnostics'] != null
+            ? SolverDiagnostics.fromJson(json['diagnostics'] as Map<String, dynamic>)
+            : null,
+        constraintHits: json['constraint_hits'] != null
+            ? ConstraintHits.fromJson(json['constraint_hits'] as Map<String, dynamic>)
+            : null,
       );
     } catch (e) {
       throw FormatException('Failed to parse OptimizationData: $e');
@@ -104,6 +114,8 @@ class OptimizationData {
       'chart_data': chartData.map((e) => e.toJson()).toList(),
       'summary': summary.toJson(),
       'strategy': strategy.toJson(),
+      if (diagnostics != null) 'diagnostics': diagnostics!.toJson(),
+      if (constraintHits != null) 'constraint_hits': constraintHits!.toJson(),
     };
   }
 
@@ -421,6 +433,8 @@ class ModelInfo {
   final String? modelVersion;
   final String? trainedAt;
   final ModelMetrics? metrics;
+  final ValidationSummary? validationSummary;
+  final DataCoverage? dataCoverage;
   final int? trainingSamples;
   final String? dataSource;
   final String? status;
@@ -438,6 +452,8 @@ class ModelInfo {
     this.message,
     this.modelVersion,
     this.trainedAt,
+    this.validationSummary,
+    this.dataCoverage,
     this.dataSource,
     this.metrics,
     this.trainingSamples,
@@ -455,6 +471,12 @@ class ModelInfo {
         modelType: json['model_type'] as String? ?? 'Unknown',
         modelVersion: json['model_version'] as String?,
         trainedAt: json['trained_at'] as String?,
+        validationSummary: json['validation_summary'] != null
+            ? ValidationSummary.fromJson(json['validation_summary'] as Map<String, dynamic>)
+            : null,
+        dataCoverage: json['data_coverage'] != null
+            ? DataCoverage.fromJson(json['data_coverage'] as Map<String, dynamic>)
+            : null,
         dataSource: json['data_source'] as String?,
         status: json['status'] as String? ?? 'unknown',
         message: json['message'] as String?,
@@ -483,6 +505,8 @@ class ModelInfo {
       'model_type': modelType,
       if (modelVersion != null) 'model_version': modelVersion,
       if (trainedAt != null) 'trained_at': trainedAt,
+      if (validationSummary != null) 'validation_summary': validationSummary!.toJson(),
+      if (dataCoverage != null) 'data_coverage': dataCoverage!.toJson(),
       if (metrics != null) 'metrics': metrics?.toJson(),
       if (trainingSamples != null) 'training_samples': trainingSamples,
       if (dataSource != null) 'data_source': dataSource,
@@ -530,6 +554,94 @@ class ModelInfo {
   bool get usedTimeSeriesCV => autoSelection?.usedTimeSeriesCV ?? false;
 
   bool get isValid => status == 'active';
+}
+
+/// 数据覆盖信息
+class DataCoverage {
+  final String? start;
+  final String? end;
+  final int? spanDays;
+  final int? rows;
+
+  DataCoverage({
+    this.start,
+    this.end,
+    this.spanDays,
+    this.rows,
+  });
+
+  factory DataCoverage.fromJson(Map<String, dynamic> json) {
+    return DataCoverage(
+      start: json['start'] as String?,
+      end: json['end'] as String?,
+      spanDays: json['span_days'] as int?,
+      rows: json['rows'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (start != null) 'start': start,
+      if (end != null) 'end': end,
+      if (spanDays != null) 'span_days': spanDays,
+      if (rows != null) 'rows': rows,
+    };
+  }
+}
+
+/// 验证摘要信息
+class ValidationSummary {
+  final String? method;
+  final int? cvFolds;
+  final double? cvMaeMean;
+  final double? cvMaeStd;
+  final List<double>? cvScores;
+  final double? holdoutMae;
+  final double? holdoutRmse;
+  final double? holdoutR2;
+  final double? holdoutMape;
+
+  ValidationSummary({
+    this.method,
+    this.cvFolds,
+    this.cvMaeMean,
+    this.cvMaeStd,
+    this.cvScores,
+    this.holdoutMae,
+    this.holdoutRmse,
+    this.holdoutR2,
+    this.holdoutMape,
+  });
+
+  factory ValidationSummary.fromJson(Map<String, dynamic> json) {
+    return ValidationSummary(
+      method: json['method'] as String?,
+      cvFolds: json['cv_folds'] as int?,
+      cvMaeMean: (json['cv_mae_mean'] as num?)?.toDouble(),
+      cvMaeStd: (json['cv_mae_std'] as num?)?.toDouble(),
+      cvScores: (json['cv_scores'] as List<dynamic>?)
+          ?.map((e) => (e as num).toDouble())
+          .toList(),
+      holdoutMae: (json['holdout_mae'] as num?)?.toDouble(),
+      holdoutRmse: (json['holdout_rmse'] as num?)?.toDouble(),
+      holdoutR2: (json['holdout_r2'] as num?)?.toDouble(),
+      holdoutMape: (json['holdout_mape'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (method != null) 'method': method,
+      if (cvFolds != null) 'cv_folds': cvFolds,
+      if (cvMaeMean != null) 'cv_mae_mean': cvMaeMean,
+      if (cvMaeStd != null) 'cv_mae_std': cvMaeStd,
+      if (cvScores != null) 'cv_scores': cvScores,
+      if (holdoutMae != null) 'holdout_mae': holdoutMae,
+      if (holdoutRmse != null) 'holdout_rmse': holdoutRmse,
+      if (holdoutR2 != null) 'holdout_r2': holdoutR2,
+      if (holdoutMape != null) 'holdout_mape': holdoutMape,
+    };
+  }
 }
 
 /// 自动模型选择信息
@@ -761,3 +873,77 @@ class TrainingConfig {
   }
 }
 
+/// 求解器诊断信息
+class SolverDiagnostics {
+  final double runtimeSec;
+  final double? mipGap;
+  final int? nodeCount;
+  final int? iterCount;
+
+  SolverDiagnostics({
+    required this.runtimeSec,
+    this.mipGap,
+    this.nodeCount,
+    this.iterCount,
+  });
+
+  factory SolverDiagnostics.fromJson(Map<String, dynamic> json) {
+    return SolverDiagnostics(
+      runtimeSec: (json['runtime_sec'] as num?)?.toDouble() ?? 0.0,
+      mipGap: (json['mip_gap'] as num?)?.toDouble(),
+      nodeCount: json['node_count'] as int?,
+      iterCount: json['iter_count'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'runtime_sec': runtimeSec,
+      if (mipGap != null) 'mip_gap': mipGap,
+      if (nodeCount != null) 'node_count': nodeCount,
+      if (iterCount != null) 'iter_count': iterCount,
+    };
+  }
+
+  String get runtimeLabel => "${runtimeSec.toStringAsFixed(2)}s";
+}
+
+/// 约束命中统计
+class ConstraintHits {
+  final int socMinHits;
+  final int socMaxHits;
+  final int maxChargeHits;
+  final int maxDischargeHits;
+
+  ConstraintHits({
+    required this.socMinHits,
+    required this.socMaxHits,
+    required this.maxChargeHits,
+    required this.maxDischargeHits,
+  });
+
+  factory ConstraintHits.fromJson(Map<String, dynamic> json) {
+    int _toInt(dynamic v) {
+      if (v is int) return v;
+      if (v is double) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    return ConstraintHits(
+      socMinHits: _toInt(json['soc_min_hits']),
+      socMaxHits: _toInt(json['soc_max_hits']),
+      maxChargeHits: _toInt(json['max_charge_hits']),
+      maxDischargeHits: _toInt(json['max_discharge_hits']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'soc_min_hits': socMinHits,
+      'soc_max_hits': socMaxHits,
+      'max_charge_hits': maxChargeHits,
+      'max_discharge_hits': maxDischargeHits,
+    };
+  }
+}

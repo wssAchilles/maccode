@@ -255,12 +255,24 @@ export function EmailPreview({ emailContent, userId, analysisId, callScript, aud
                             </p>
                         </div>
 
-                        {audioBase64 && (
+                        {audioBase64 ? (
                             <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50 flex items-center gap-3">
                                 <audio controls className="w-full h-8 opacity-80 hover:opacity-100 transition-opacity" style={{ filter: "invert(0.9) hue-rotate(180deg)" }}>
                                     <source src={`data:audio/mp3;base64,${audioBase64}`} type="audio/mp3" />
                                     Your browser does not support the audio element.
                                 </audio>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 flex items-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30"
+                                    disabled
+                                >
+                                    <Play className="w-4 h-4" />
+                                </Button>
+                                <span className="text-xs text-slate-500">语音尚未生成</span>
                             </div>
                         )}
                     </div>

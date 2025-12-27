@@ -378,7 +378,9 @@ def run_optimization():
                 'status': result['status'],
                 'chart_data': chart_data,
                 'summary': summary,
-                'strategy': strategy
+                'strategy': strategy,
+                'diagnostics': result.get('diagnostics'),
+                'constraint_hits': result.get('constraint_hits')
             },
             'prediction': {
                 'target_date': target_date,

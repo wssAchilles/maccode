@@ -1006,6 +1006,47 @@ class EnergyPredictor:
             print(f"      - RMSE: {test_rmse:.2f} kW")
             print(f"      - R²:   {test_r2:.4f}")
             print(f"      - MAPE: {test_mape:.2f}%")
+
+            # ------------------------------------------------------------
+            # 验证信息汇总 (用于元数据和前端展示)
+            # ------------------------------------------------------------
+            validation_summary = {
+                'method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+                'cv_folds': cv_folds if use_time_series_cv else None,
+                'holdout_mae': float(test_mae),
+                'holdout_rmse': float(test_rmse),
+                'holdout_r2': float(test_r2),
+                'holdout_mape': float(test_mape / 100),  # 统一为小数
+            }
+
+            # 如果有交叉验证详情，记录当前胜出模型的均值和波动
+            if auto_select_model and model_type == 'auto' and selection_info:
+                winner_name = selection_info.get('winner')
+                cv_detail = (selection_info.get('cv_details') or {}).get(winner_name, {})
+                if cv_detail:
+                    validation_summary.update({
+                        'cv_mae_mean': cv_detail.get('cv_mae_mean'),
+                        'cv_mae_std': cv_detail.get('cv_mae_std'),
+                        'cv_scores': cv_detail.get('cv_scores')
+                    })
+
+            # 数据覆盖范围
+            data_coverage = None
+            if 'Date' in df.columns:
+                date_min = df['Date'].min()
+                date_max = df['Date'].max()
+                span_days = None
+                try:
+                    span_days = int((date_max - date_min).days)
+                except Exception:
+                    span_days = None
+
+                data_coverage = {
+                    'start': date_min.isoformat() if hasattr(date_min, 'isoformat') else str(date_min),
+                    'end': date_max.isoformat() if hasattr(date_max, 'isoformat') else str(date_max),
+                    'span_days': span_days,
+                    'rows': int(len(df))
+                }
             
             # 特征重要性
             print(f"\n🔍 特征重要性:")
@@ -1107,6 +1148,8 @@ class EnergyPredictor:
                     'feature_importance': feature_importance.to_dict('records'),
                     'model_path': self.firebase_model_path,
                     'status': 'active',
+                    # 数据覆盖信息
+                    'data_coverage': data_coverage,
                     # 【新增】单位标注信息（向后兼容，不改变数值）
                     'units': {
                         'target_variable': self.target_column,
@@ -1124,6 +1167,8 @@ class EnergyPredictor:
                         'enhanced_features_list': enhanced_features_used if use_enhanced_features else [],
                         'use_enhanced': use_enhanced_features
                     },
+                    # 验证摘要 (交叉验证 / 留出验证)
+                    'validation_summary': validation_summary,
                     # 【新增】训练配置记录（便于复现）
                     'training_config': {
                         'test_size': test_size,
@@ -1176,8 +1221,10 @@ class EnergyPredictor:
                 },
                 'validation': {
                     'method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
-                    'cv_folds': cv_folds if use_time_series_cv else None
-                }
+                    'cv_folds': cv_folds if use_time_series_cv else None,
+                    'summary': validation_summary
+                },
+                'data_coverage': data_coverage
             }
         
         finally:
@@ -1842,4 +1889,3 @@ class EnergyPredictor:
             print(f"   ❌ 在线评估失败: {str(e)}")
             return {'status': 'error', 'message': str(e)}
         
-

@@ -96,8 +96,8 @@ export function LiveActivityFeed() {
                 </CardTitle>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0">
-                <ScrollArea className="h-[500px] px-4">
+            <CardContent className="flex-1 p-0 overflow-hidden">
+                <ScrollArea className="h-[350px] px-4">
                     {/* 加载状态 */}
                     {isLoading && (
                         <div className="flex items-center justify-center py-12">

@@ -32,7 +32,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # 接收构建时环境变量 (NEXT_PUBLIC_* 需要在构建时注入)
-ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_URL=https://sentinel-backend-kijag7ukkq-uc.a.run.app
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # 禁用 Next.js 遥测

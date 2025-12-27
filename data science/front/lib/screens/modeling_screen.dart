@@ -182,6 +182,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
               if (_result?.optimization != null) ...[
                 const SizedBox(height: 16),
                 _buildKeyMetrics(_result!.optimization!),
+
+                if (_result!.optimization!.diagnostics != null ||
+                    _result!.optimization!.constraintHits != null) ...[
+                  const SizedBox(height: 12),
+                  _buildSolverDiagnosticsCard(_result!.optimization!),
+                ],
                 
                 const SizedBox(height: 24),
                 
@@ -909,6 +915,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 _buildOptimizationConfigCard(modelInfo),
               ],
               
+              // 验证与数据覆盖
+              if (modelInfo.validationSummary != null || modelInfo.dataCoverage != null) ...[
+                const SizedBox(height: 16),
+                _buildValidationSummaryCard(modelInfo),
+              ],
+              
               const SizedBox(height: 16),
               
               // 数据源说明
@@ -1243,6 +1255,248 @@ class _ModelingScreenState extends State<ModelingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildValidationSummaryCard(ModelInfo modelInfo) {
+    final validation = modelInfo.validationSummary;
+    final coverage = modelInfo.dataCoverage;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.indigo[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.indigo[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified, color: Colors.indigo[700], size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                '验证与数据覆盖',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (validation != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.rule,
+                    '验证方式',
+                    validation.method ?? 'N/A',
+                    Colors.indigo[800]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.repeat,
+                    '折数',
+                    validation.cvFolds?.toString() ?? '—',
+                    Colors.deepPurple[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.assessment,
+                    'CV MAE',
+                    validation.cvMaeMean != null
+                        ? '${validation.cvMaeMean!.toStringAsFixed(2)} kW ± ${validation.cvMaeStd?.toStringAsFixed(2) ?? "0"}'
+                        : 'N/A',
+                    Colors.teal[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.check_circle,
+                    'Holdout MAE',
+                    validation.holdoutMae != null
+                        ? '${validation.holdoutMae!.toStringAsFixed(2)} kW'
+                        : 'N/A',
+                    Colors.blueGrey[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (coverage != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.indigo[100]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.date_range, size: 16, color: Colors.indigo[700]),
+                      const SizedBox(width: 6),
+                      Text(
+                        '数据覆盖区间',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo[800],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${coverage.start ?? "N/A"}  至  ${coverage.end ?? "N/A"}',
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '跨度: ${coverage.spanDays != null ? "${coverage.spanDays} 天" : "未知"} · 样本: ${coverage.rows ?? 0}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSolverDiagnosticsCard(OptimizationData optimization) {
+    final diag = optimization.diagnostics;
+    final hits = optimization.constraintHits;
+    if (diag == null && hits == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.speed, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+                const Text(
+                  '求解器健康度',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.timer,
+                    '求解耗时',
+                    diag?.runtimeLabel ?? 'N/A',
+                    Colors.blue[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.data_usage,
+                    'MIP Gap',
+                    diag?.mipGap != null ? '${(diag!.mipGap! * 100).toStringAsFixed(2)}%' : 'N/A',
+                    Colors.deepOrange[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.account_tree,
+                    'Node',
+                    diag?.nodeCount?.toString() ?? '—',
+                    Colors.teal[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.loop,
+                    '迭代',
+                    diag?.iterCount?.toString() ?? '—',
+                    Colors.indigo[700]!,
+                  ),
+                ),
+              ],
+            ),
+            if (hits != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.battery_alert,
+                      'SOC 下限命中',
+                      '${hits.socMinHits} 次',
+                      Colors.red[600]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.battery_full,
+                      'SOC 上限命中',
+                      '${hits.socMaxHits} 次',
+                      Colors.green[700]!,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.flash_on,
+                      '充电功率封顶',
+                      '${hits.maxChargeHits} 小时',
+                      Colors.orange[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.bolt,
+                      '放电功率封顶',
+                      '${hits.maxDischargeHits} 小时',
+                      Colors.blueGrey[700]!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

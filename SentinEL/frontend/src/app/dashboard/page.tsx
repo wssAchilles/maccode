@@ -146,7 +146,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
                     {/* 左侧区域 - 分析结果 (70%) */}
                     <div className="xl:col-span-7">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* 风险评估 & 用户画像 */}
                             <div className="space-y-4">
                                 {state.isLoading ? (
@@ -164,16 +164,7 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
-                            {/* Agent Reasoning Log (New) - Full Width in Grid */}
-                            <div className="lg:col-span-3">
-                                <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                                    <Bot className="w-4 h-4 text-emerald-400" />
-                                    AI Decision Process
-                                </h3>
-                                <AgentReasoningLog logs={agentLogs} isLoading={state.isLoading} />
-                            </div>
-
-                            {/* Competitor Upload Section (New) */}
+                            {/* Competitor Upload + Strategy Cards */}
                             <div className="space-y-4">
                                 <CompetitorUpload onImageSelect={setImageData} />
                                 {state.isLoading ? (
@@ -190,28 +181,37 @@ export default function DashboardPage() {
                                     <EmptyState message="策略将在分析后展示" />
                                 )}
                             </div>
+                        </div>
 
-                            {/* 邮件预览 */}
-                            <div>
-                                {state.isLoading ? (
-                                    <LoadingSkeleton type="email" />
-                                ) : state.data ? (
-                                    <EmailPreview
-                                        emailContent={state.data.generated_email}
-                                        userId={state.data.user_id}
-                                        analysisId={state.data.analysis_id}
-                                        callScript={state.data.call_script}
-                                        audioBase64={state.data.generated_audio}
-                                    />
-                                ) : (
-                                    <EmptyState message="AI 生成邮件将在此显示" />
-                                )}
-                            </div>
+                        {/* 邮件预览 - 全宽 */}
+                        <div className="mt-4">
+                            {state.isLoading ? (
+                                <LoadingSkeleton type="email" />
+                            ) : state.data ? (
+                                <EmailPreview
+                                    emailContent={state.data.generated_email}
+                                    userId={state.data.user_id}
+                                    analysisId={state.data.analysis_id}
+                                    callScript={state.data.call_script}
+                                    audioBase64={state.data.generated_audio}
+                                />
+                            ) : (
+                                <EmptyState message="AI 生成邮件将在此显示" />
+                            )}
+                        </div>
+
+                        {/* Agent Reasoning Log - 全宽 */}
+                        <div className="mt-4">
+                            <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
+                                <Bot className="w-4 h-4 text-emerald-400" />
+                                AI Decision Process
+                            </h3>
+                            <AgentReasoningLog logs={agentLogs} isLoading={state.isLoading} />
                         </div>
                     </div>
 
                     {/* 右侧区域 - 实时活动流 (30%) */}
-                    <div className="xl:col-span-3">
+                    <div className="xl:col-span-3 space-y-4">
                         <LiveActivityFeed />
 
                         {/* MLOps Status Card */}

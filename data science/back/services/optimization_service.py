@@ -301,12 +301,25 @@ class EnergyOptimizer:
                 
                 # 提取结果
                 schedule = []
+                soc_hits_min = 0
+                soc_hits_max = 0
+                charge_hits = 0
+                discharge_hits = 0
                 
                 for t in range(T):
                     p_charge = P_charge[t].X
                     p_discharge = P_discharge[t].X
                     e_stored = E_stored[t].X
                     soc = e_stored / self.battery_capacity
+
+                    if soc <= 0.10 + 1e-6:
+                        soc_hits_min += 1
+                    if soc >= 0.90 - 1e-6:
+                        soc_hits_max += 1
+                    if abs(p_charge - self.max_power) < 1e-5 and p_charge > 0:
+                        charge_hits += 1
+                    if abs(p_discharge - self.max_power) < 1e-5 and p_discharge > 0:
+                        discharge_hits += 1
                     
                     # 记录调度结果 (kW)
                     # grid_power = load + charge - discharge
@@ -340,6 +353,20 @@ class EnergyOptimizer:
                 print(f"   - 无电池总成本: {cost_without_battery:.2f} 元")
                 print(f"   - 有电池总成本: {cost_with_battery:.2f} 元")
                 print(f"   - 节省金额: {savings:.2f} 元 ({savings_percent:.1f}%)")
+
+                diagnostics = {
+                    'runtime_sec': float(getattr(model, "Runtime", 0.0)),
+                    'mip_gap': float(getattr(model, "MIPGap", 0.0)) if hasattr(model, "MIPGap") else None,
+                    'node_count': int(getattr(model, "NodeCount", 0)) if hasattr(model, "NodeCount") else None,
+                    'iter_count': int(getattr(model, "IterCount", 0)) if hasattr(model, "IterCount") else None,
+                }
+
+                constraint_hits = {
+                    'soc_min_hits': soc_hits_min,
+                    'soc_max_hits': soc_hits_max,
+                    'max_charge_hits': charge_hits,
+                    'max_discharge_hits': discharge_hits
+                }
                 
                 return {
                     'status': 'Optimal',
@@ -347,7 +374,9 @@ class EnergyOptimizer:
                     'total_cost_without_battery': float(cost_without_battery),
                     'total_cost_with_battery': float(cost_with_battery),
                     'savings': float(savings),
-                    'savings_percent': float(savings_percent)
+                    'savings_percent': float(savings_percent),
+                    'diagnostics': diagnostics,
+                    'constraint_hits': constraint_hits
                 }
                 
             elif status == GRB.INFEASIBLE:
@@ -473,6 +502,5 @@ class EnergyOptimizer:
     def __del__(self):
         """析构函数: 关闭 Gurobi 环境（兜底）"""
         self.close()
-
 
 
