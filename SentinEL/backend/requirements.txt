@@ -1,4 +1,5 @@
-google-cloud-aiplatform>=1.70.0
+protobuf<5.0.0dev
+google-cloud-aiplatform>=1.38.0
 fastapi
 uvicorn[standard]
 google-cloud-bigquery

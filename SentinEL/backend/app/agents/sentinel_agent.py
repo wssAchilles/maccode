@@ -46,7 +46,7 @@ def create_agent_graph():
     llm = ChatVertexAI(
         project=settings.PROJECT_ID,
         location=settings.LOCATION,
-        model_name="gemini-pro", # Or gemini-1.5-pro-preview-0409
+        model_name="gemini-2.5-pro", # Validated via script and console
         temperature=0.0,
         max_output_tokens=2048,
     )
@@ -87,8 +87,14 @@ def create_agent_graph():
         if not isinstance(messages[0], SystemMessage):
              messages = [SystemMessage(content=system_prompt)] + messages
              
-        response = llm_with_tools.invoke(messages)
-        return {"messages": [response]}
+        try:
+            response = llm_with_tools.invoke(messages)
+            return {"messages": [response]}
+        except Exception as e:
+            logger.error(f"LLM invoke failed: {e}", exc_info=True)
+            # Create a fallback message to prevent crash loop, or re-raise
+            # Returning a text message saying error occurred
+            return {"messages": [AIMessage(content="I encountered an internal error while thinking. Please try again.")]}
 
     def action_node(state: AgentState):
         """
