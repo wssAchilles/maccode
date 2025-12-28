@@ -1,107 +1,103 @@
-from kfp import dsl
-from typing import NamedTuple
+from kfp.dsl import component, Input, Output, Artifact, Model, Metrics
 
-@dsl.component(base_image="python:3.9", packages_to_install=["google-cloud-bigquery", "pandas"])
-def extract_data_op(
+@component(base_image="python:3.9", packages_to_install=["google-cloud-bigquery", "pandas"])
+def data_extraction_op(
     project_id: str,
     dataset_id: str,
     table_id: str,
-    lookback_days: int = 30
-) -> str:
+    dataset: Output[Artifact]
+):
     """
-    Extracts the latest training data from BigQuery and exports to GCS or passes metadata.
-    For this 'mock' enterprise pipeline, we return a GCS URI string.
+    Simulates extracting data from BigQuery for training.
+    In a real scenario, this would export BQ table to GCS CSV/Avro.
     """
+    import time
     import logging
     
-    logging.getLogger().setLevel(logging.INFO)
-    logging.info(f"Extracting data from {project_id}.{dataset_id}.{table_id} (Last {lookback_days} days)")
+    logging.info(f"Extracting data from {project_id}.{dataset_id}.{table_id}...")
     
-    # In a real scenario, we would run a BQ Extract Job here.
-    # For now, we simulate finding a dataset.
-    data_uri = f"gs://sentinel-mlops-artifacts-{project_id}/training_data/churn_data_latest.csv"
+    # Simulate data extraction time
+    time.sleep(2)
     
-    logging.info(f"Data exported to: {data_uri}")
-    return data_uri
+    # Write a dummy path/manifest to the artifact output
+    dataset.path = f"gs://{project_id}-data-bucket/churn_data/v1/train.csv"
+    logging.info(f"Data extracted to {dataset.path}")
 
-@dsl.component(base_image="python:3.9", packages_to_install=["scikit-learn", "pandas"])
-def train_model_op(
-    training_data_uri: str,
-    epochs: int = 10,
-    learning_rate: float = 0.01
-) -> NamedTuple("ModelOutput", [("model_uri", str), ("metrics", dict)]):
+@component(base_image="python:3.9", packages_to_install=["scikit-learn", "pandas"])
+def model_training_op(
+    dataset: Input[Artifact],
+    model: Output[Model],
+    metrics: Output[Metrics]
+):
     """
-    Simulates training a PyTorch/TensorFlow model.
-    Returns the model artifact URI and training metrics.
+    Simulates model training and returns metrics.
     """
     import time
     import random
     import logging
-    from collections import namedtuple
     
-    logging.getLogger().setLevel(logging.INFO)
-    logging.info(f"Starting training with data: {training_data_uri}")
-    logging.info(f"Hyperparams: epochs={epochs}, lr={learning_rate}")
+    logging.info(f"Training model using data from {dataset.path}...")
     
-    # Simulate Training Delay
+    # Simulate training time
     time.sleep(5)
     
-    # Simulate finding a 'better' model occasionally
-    accuracy = 0.85 + (random.random() * 0.1) # 0.85 - 0.95
-    loss = 1.0 - accuracy
+    # Generate dummy metrics
+    accuracy = 0.70 + (random.random() * 0.20)  # Random accuracy between 0.70 and 0.90
+    loss = 0.5 - (accuracy * 0.4)
     
-    model_uri = f"gs://sentinel-models/churn_model/v_{int(time.time())}"
-    metrics = {"accuracy": accuracy, "loss": loss}
+    logging.info(f"Training complete. Accuracy: {accuracy:.4f}, Loss: {loss:.4f}")
     
-    logging.info(f"Training complete. Metrics: {metrics}")
-    logging.info(f"Model saved to: {model_uri}")
+    # Log metrics
+    metrics.log_metric("accuracy", accuracy)
+    metrics.log_metric("loss", loss)
     
-    model_output = namedtuple("ModelOutput", ["model_uri", "metrics"])
-    return model_output(model_uri, metrics)
+    # Save a dummy model file
+    model.path = f"{model.path}/model.joblib"
+    with open(model.path, "w") as f:
+        f.write("dummy model content")
 
-@dsl.component(base_image="python:3.9")
-def evaluate_model_op(
-    new_model_metrics: dict,
-    baseline_accuracy: float = 0.80
+@component(base_image="python:3.9")
+def model_evaluation_op(
+    metrics: Input[Metrics],
+    threshold: float = 0.75
 ) -> str:
     """
-    Compares the new model against a baseline or currently deployed model.
-    Returns 'pass' or 'fail'.
+    Evaluates model metrics against a threshold.
+    Returns "true" if model should be deployed, "false" otherwise.
     """
     import logging
     
-    logging.getLogger().setLevel(logging.INFO)
-    new_acc = new_model_metrics.get("accuracy", 0.0)
+    accuracy = metrics.metadata.get("accuracy", 0.0)
+    logging.info(f"Evaluating model. Accuracy: {accuracy}, Threshold: {threshold}")
     
-    logging.info(f"Evaluating new model (acc={new_acc:.4f}) vs baseline ({baseline_accuracy})")
-    
-    if new_acc > baseline_accuracy:
-        logging.info("Evaluation PASSED. New model is better.")
-        return "pass"
+    if accuracy >= threshold:
+        logging.info("Model passed evaluation.")
+        return "true"
     else:
-        logging.info("Evaluation FAILED. New model is not better.")
-        return "fail"
+        logging.info("Model failed evaluation.")
+        return "false"
 
-@dsl.component(base_image="python:3.9", packages_to_install=["google-cloud-aiplatform"])
-def deploy_model_op(
-    model_uri: str,
+@component(base_image="python:3.9", packages_to_install=["google-cloud-aiplatform"])
+def model_deployment_op(
+    model: Input[Model],
     project_id: str,
     region: str,
-    endpoint_name: str
-) -> str:
+    serving_container_image_uri: str
+):
     """
-    Deploys the validated model to Vertex AI Endpoint.
+    Simulates deploying the model to Vertex AI Endpoint.
     """
-    import logging
     import time
+    import logging
+    # import google.cloud.aiplatform as aiplatform # Uncomment for real usage
     
-    logging.getLogger().setLevel(logging.INFO)
-    logging.info(f"Deploying model {model_uri} to Endpoint {endpoint_name} in {region}...")
+    logging.info(f"Deploying model from {model.path} to Vertex AI...")
+    logging.info(f"Project: {project_id}, Region: {region}")
     
-    # Simulate Deployment Delay
+    # Simulate deployment
+    # aiplatform.init(project=project_id, location=region)
+    # Model registry upload and endpoint deployment logic would go here
+    
     time.sleep(3)
     
-    deploy_status = "deployed" 
-    logging.info(f"Deployment successful. Status: {deploy_status}")
-    
-    return deploy_status
+    logging.info("Model successfully deployed to Endpoint: sentinel-churn-prediction-v2")

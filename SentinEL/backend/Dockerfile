@@ -33,6 +33,7 @@ RUN python debug_imports.py
 
 # 复制应用代码
 COPY app/ ./app/
+COPY mlops/ ./mlops/
 
 # Check for old import patterns to prevent stale builds (now that files exist)
 RUN ! grep -r "langchain_core.pydantic_v1" app/agents/tools.py

@@ -47,9 +47,12 @@ class FeatureStoreService:
         
         # 初始化客户端
         client_options = {"api_endpoint": f"{location}-aiplatform.googleapis.com"}
-        self.client = FeatureOnlineStoreServingServiceClient(client_options=client_options)
-        
-        logger.info(f"FeatureStoreService initialized for store: {self.feature_online_store}")
+        if FeatureOnlineStoreServingServiceClient:
+            self.client = FeatureOnlineStoreServingServiceClient(client_options=client_options)
+            logger.info(f"FeatureStoreService initialized for store: {self.feature_online_store}")
+        else:
+            self.client = None
+            logger.warning("FeatureOnlineStoreServingServiceClient not available. Online features disabled.")
 
     def get_online_features(self, user_id: str) -> Dict[str, Any]:
         """
@@ -81,6 +84,10 @@ class FeatureStoreService:
             
             # 同步调用 (FastAPI 可以用 run_in_executor 包装，或者使用异步 gRPC stub)
             # 这里为简单起见使用同步调用，因为 Vertex SDK 主要是同步的
+            if self.client is None:
+                logger.warning("Feature Store client is not initialized. Returning empty features.")
+                return {}
+            
             response = self.client.fetch_feature_values(request=request)
             
             # 解析结果

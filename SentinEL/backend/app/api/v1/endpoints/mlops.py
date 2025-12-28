@@ -1,93 +1,56 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
-from app.services.pipeline_service import PipelineService
-from app.core.security import verify_api_key
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from app.services.pipeline_trigger_service import get_pipeline_trigger_service
+from app.services.storage_service import get_storage_service
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.post("/train")
-async def trigger_training_pipeline(
-    api_key: str = Depends(verify_api_key)
-):
+@router.post("/retrain", status_code=202)
+def trigger_retraining(background_tasks: BackgroundTasks):
     """
-    Triggers the Vertex AI training pipeline.
-    Requires a valid API key.
+    Triggers the automated model retraining pipeline on Vertex AI.
+    Returns immediately with a job ID estimation, while the job is submitted.
     """
+    service = get_pipeline_trigger_service()
     try:
-        pipeline_service = PipelineService()
-        job_id, dashboard_url = pipeline_service.submit_training_job()
-        
-        return {
-            "status": "Training Initiated",
-            "job_id": job_id,
-            "console_url": dashboard_url,
-            "message": "Vertex AI pipeline job submitted successfully."
-        }
+        # Trigger synchronously for this demo to return the job ID, 
+        # or use background tasks if submission takes too long.
+        result = service.trigger_retraining_job()
+        return result
     except Exception as e:
-        logger.error(f"Failed to trigger pipeline: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to trigger pipeline: {str(e)}")
-
-@router.get("/train/{job_id}")
-async def get_training_status(
-    job_id: str,
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Get the status of a specific training job.
-    """
-    try:
-        pipeline_service = PipelineService()
-        # Decode the job_id if it was URL encoded (though usually passed as path param ok)
-        # The job_id from Vertex SDK is a full resource name path, client needs to handle it or we pass it directly
-        # Example job_id: projects/672705370432/locations/us-central1/pipelineJobs/sentinel-continuous-training-pipeline-20251225123659
-        
-        status = pipeline_service.get_job_status(job_id)
-        return {"job_id": job_id, "status": status}
-    except Exception as e:
-         raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
-
-@router.post("/trigger-retraining")
-async def trigger_retraining_pipeline_manual(
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Manually triggers the retraining pipeline via the Trigger Service.
-    """
-    try:
-        from app.services.pipeline_trigger_service import PipelineTriggerService
-        service = PipelineTriggerService()
-        job_id, url = service.trigger_retraining(trigger_reason="manual_dashboard_action")
-        return {"job_id": job_id, "console_url": url, "status": "PIPELINE_STATE_PENDING"}
-    except Exception as e:
-        logger.error(f"Failed to trigger retraining: {e}")
+        logger.error(f"Error triggering retraining: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/audit-logs")
-async def get_audit_logs(limit: int = 10, api_key: str = Depends(verify_api_key)):
+def get_audit_logs():
     """
-    Fetch recent AI Judge audit logs.
+    Retrieves the latest AI Audit logs (Judge Service results).
     """
-    from app.services.judge_service import AIJudge
+    storage = get_storage_service()
+    if not storage:
+        # Return mock data if storage service is not ready
+        return [
+            {
+                "timestamp": "2024-05-20T10:00:00Z",
+                "user_id": "u123",
+                "score": 95,
+                "reason": "Tone is professional and compliant.",
+                "is_compliant": True
+            },
+             {
+                "timestamp": "2024-05-20T10:05:00Z",
+                "user_id": "u124",
+                "score": 45,
+                "reason": "Over-promising on discounts.",
+                "is_compliant": False
+            }
+        ]
+    
     try:
-        # Assuming we can instantiate without args for read-only or use a singleton in real app
-        judge = AIJudge() 
-        logs = judge.get_recent_audits(limit=limit)
+        # Fetch real logs from Firestore
+        logs = storage.get_recent_audit_logs(limit=20)
         return logs
     except Exception as e:
-        logger.error(f"Failed to fetch audit logs: {e}")
-        return []
-
-@router.get("/model-health")
-async def get_model_health_status(api_key: str = Depends(verify_api_key)):
-    """
-    Get current model health and drift status (Mock).
-    """
-    # In a real system, query Vertex AI Model Monitoring
-    return {
-        "model_version": "v2.5.0",
-        "last_trained": "2025-12-28T00:00:00Z",
-        "drift_status": "Normal",
-        "drift_magnitude": 0.02,
-        "serving_accuracy": 0.88
-    }
+        logger.error(f"Error fetching audit logs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch audit logs")

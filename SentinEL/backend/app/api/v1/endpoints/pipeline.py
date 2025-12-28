@@ -7,18 +7,25 @@ import uuid
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Single instance of DataFactory
-try:
-    data_factory = DataFactory()
-except Exception as e:
-    logger.error(f"Failed to initialize DataFactory at module level: {e}")
-    data_factory = None
+# Lazy initialization
+_data_factory_instance = None
+
+def get_data_factory():
+    global _data_factory_instance
+    if not _data_factory_instance:
+        try:
+            _data_factory_instance = DataFactory()
+        except Exception as e:
+            logger.error(f"Failed to initialize DataFactory: {e}")
+            return None
+    return _data_factory_instance
 
 async def run_pipeline_task(job_id: str):
     logger.info(f"Job {job_id}: Starting Data Factory Pipeline Task...")
-    if data_factory:
+    factory = get_data_factory()
+    if factory:
         try:
-            result = await data_factory.run_pipeline()
+            result = await factory.run_pipeline()
             logger.info(f"Job {job_id}: Pipeline finished. Result: {result}")
         except Exception as e:
             logger.error(f"Job {job_id}: Pipeline failed: {e}")
@@ -31,6 +38,7 @@ async def trigger_data_pipeline(background_tasks: BackgroundTasks):
     Triggers the Data Factory pipeline to fetch low-quality logs,
     synthesize better data using Gemini, and export to BigQuery.
     """
+    data_factory = get_data_factory()
     if not data_factory:
         raise HTTPException(status_code=503, detail="Data Factory Service unavailable")
 

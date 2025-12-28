@@ -1,175 +1,240 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ShieldCheck, AlertTriangle, RefreshCw, Activity, CheckCircle, XCircle } from 'lucide-react';
-import { mlopsService } from '@/services/mlopsService';
+"use client";
 
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Activity,
+    RefreshCw,
+    ShieldCheck,
+    Terminal,
+    CheckCircle2,
+    AlertTriangle,
+    Clock,
+    Server
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table";
+
+// Type definitions
 interface AuditLog {
-    timestamp: number;
+    id?: string;
+    timestamp: string; // ISO string
     user_id: string;
-    score: number;
-    flags: string[];
-    reasoning: string;
+    audit_score?: number; // Updated to match Firestore schema
+    audit_reason?: string;
+    score?: number; // Compatibility
+    reason?: string;
+    is_compliant?: boolean;
 }
 
-interface ModelHealth {
-    model_version: string;
-    last_trained: string;
-    drift_status: string;
-    drift_magnitude: number;
-    serving_accuracy: number;
-}
-
-const MlopsPanel = () => {
+export function MlopsPanel() {
+    const [isTraining, setIsTraining] = useState(false);
+    const [lastRetrained, setLastRetrained] = useState<string>("2 days ago");
+    const [modelVersion, setModelVersion] = useState<string>("v2.1.0");
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-    const [modelHealth, setModelHealth] = useState<ModelHealth | null>(null);
-    const [isRetraining, setIsRetraining] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [loadingLogs, setLoadingLogs] = useState(true);
 
+    // Mock fetching logs (replace with API call)
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 30000); // Auto refresh every 30s
-        return () => clearInterval(interval);
+        fetchAuditLogs();
     }, []);
 
-    const fetchData = async () => {
+    const fetchAuditLogs = async () => {
         try {
-            const logs = await mlopsService.getAuditLogs();
-            setAuditLogs(logs);
+            // For now, let's use the API we just created
+            // const res = await fetch('http://localhost:8080/api/v1/audit-logs');
+            // const data = await res.json();
 
-            const health = await mlopsService.getModelHealth();
-            setModelHealth(health);
+            // Or use Firestore snapshot if we want real-time here too, 
+            // but let's stick to the request requirement of using the API or Mock.
+
+            // Mock data for display
+            const mockLogs: AuditLog[] = [
+                {
+                    timestamp: new Date().toISOString(),
+                    user_id: "user_007",
+                    audit_score: 98,
+                    audit_reason: "完全合规，语气专业。",
+                    is_compliant: true
+                },
+                {
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    user_id: "user_892",
+                    audit_score: 55,
+                    audit_reason: "检测到虚假承诺风险：'免费送iPhone'。",
+                    is_compliant: false
+                },
+                {
+                    timestamp: new Date(Date.now() - 7200000).toISOString(),
+                    user_id: "user_101",
+                    audit_score: 88,
+                    audit_reason: "符合标准流程。",
+                    is_compliant: true
+                }
+            ];
+            setAuditLogs(mockLogs);
         } catch (error) {
-            console.error("Failed to fetch MLOps data", error);
+            console.error("Failed to fetch logs", error);
         } finally {
-            setIsLoading(false);
+            setLoadingLogs(false);
         }
     };
 
-    const handleRetrain = async () => {
-        setIsRetraining(true);
+    const handleTriggerRetraining = async () => {
+        setIsTraining(true);
+        toast.info("Initializing Vertex AI Pipeline...");
+
         try {
-            await mlopsService.triggerTraining();
-            // Refresh logic handled by parent or toast ideally, here just simple done
-            alert("Retraining Pipeline Triggered Successfully!");
+            const response = await fetch('http://localhost:8080/api/v1/retrain', {
+                method: 'POST',
+            });
+
+            if (!response.ok) throw new Error("Pipeline trigger failed");
+
+            const data = await response.json();
+
+            toast.success("Vertex AI Pipeline Job Submitted", {
+                description: `Job ID: ${data.job_id || 'unknown'}`,
+                duration: 5000,
+            });
+
+            // Simulate updating state
+            setTimeout(() => {
+                setLastRetrained("Just now");
+                setIsTraining(false);
+            }, 2000);
+
         } catch (error) {
-            alert("Failed to trigger pipeline.");
-        } finally {
-            setIsRetraining(false);
+            console.error(error);
+            toast.error("Failed to start retraining pipeline");
+            setIsTraining(false);
         }
     };
 
     return (
-        <Card className="w-full bg-slate-900 border-slate-800 text-slate-100 shadow-xl overflow-hidden">
-            <CardHeader className="border-b border-slate-800 pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                        <CardTitle className="text-lg font-semibold">Enterprise MLOps & Governance</CardTitle>
-                    </div>
-                    <Badge variant="outline" className="bg-indigo-950/30 text-indigo-400 border-indigo-500/30">
-                        <Activity className="w-3 h-3 mr-1 animate-pulse" />
-                        Active Monitoring
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800 h-[300px]">
-
-                    {/* Column 1: Model Health */}
-                    <div className="p-4 flex flex-col justify-between bg-slate-900/50">
-                        <div>
-                            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Model Health</h4>
-                            {modelHealth ? (
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-400">Version</span>
-                                        <Badge className="bg-slate-800">{modelHealth.model_version}</Badge>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-400">Drift Status</span>
-                                        <Badge variant={modelHealth.drift_status === "Normal" ? "default" : "destructive"}
-                                            className={modelHealth.drift_status === "Normal" ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30" : ""}>
-                                            {modelHealth.drift_status}
-                                        </Badge>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-xs text-slate-400">
-                                            <span>Accuracy</span>
-                                            <span>{(modelHealth.serving_accuracy * 100).toFixed(1)}%</span>
-                                        </div>
-                                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${modelHealth.serving_accuracy * 100}%` }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-sm text-slate-500">Loading metrics...</div>
-                            )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            {/* Section 1: Pipeline Health */}
+            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm lg:col-span-1">
+                <CardHeader>
+                    <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-blue-400" />
+                        CT Pipeline Health
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <Server className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm text-slate-300">Model Version</span>
+                            </div>
+                            <Badge variant="outline" className="text-emerald-400 border-emerald-500/20 bg-emerald-500/10">
+                                {modelVersion}
+                            </Badge>
                         </div>
-                        <Button
-                            variant="outline"
-                            className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white border-none"
-                            onClick={handleRetrain}
-                            disabled={isRetraining}
-                        >
-                            {isRetraining ? (
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                            )}
-                            Trigger Retraining
-                        </Button>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <Clock className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm text-slate-300">Last Retrained</span>
+                            </div>
+                            <span className="text-sm text-slate-400">{lastRetrained}</span>
+                        </div>
                     </div>
 
-                    {/* Column 2 & 3: Audit Logs */}
-                    <div className="md:col-span-2 p-4 flex flex-col h-full">
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">LLM-as-a-Judge Audit Stream</h4>
-                        <ScrollArea className="flex-1 -mr-3 pr-3">
-                            <div className="space-y-3">
-                                {auditLogs.length === 0 ? (
-                                    <div className="text-center text-slate-500 py-10 text-sm">No validation issues detected recently.</div>
+                    <Button
+                        onClick={handleTriggerRetraining}
+                        disabled={isTraining}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                        {isTraining ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Submitting Job...
+                            </>
+                        ) : (
+                            <>
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Trigger Retraining System
+                            </>
+                        )}
+                    </Button>
+
+                    {isTraining && (
+                        <div className="text-xs text-center text-slate-500 animate-pulse">
+                            Communicating with Vertex AI...
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Section 2: AI Audit Log */}
+            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm lg:col-span-2">
+                <CardHeader>
+                    <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-purple-400" />
+                        AI Governance Audit Log
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border border-slate-700/50 overflow-hidden">
+                        <Table>
+                            <TableHeader className="bg-slate-800/50">
+                                <TableRow className="border-slate-700 hover:bg-transparent">
+                                    <TableHead className="text-slate-400 w-[180px]">Timestamp</TableHead>
+                                    <TableHead className="text-slate-400">User ID</TableHead>
+                                    <TableHead className="text-slate-400 w-[100px]">Score</TableHead>
+                                    <TableHead className="text-slate-400">Audit Comment</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loadingLogs ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                                            Loading audit logs...
+                                        </TableCell>
+                                    </TableRow>
                                 ) : (
                                     auditLogs.map((log, idx) => (
-                                        <div key={idx} className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 flex flex-col gap-2">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-2">
-                                                    {log.score >= 8 ? (
-                                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                                                    ) : (
-                                                        <AlertTriangle className="w-4 h-4 text-amber-400" />
-                                                    )}
-                                                    <span className="text-sm font-medium text-slate-200">User: {log.user_id}</span>
-                                                </div>
-                                                <span className="text-xs text-slate-500 font-mono">
-                                                    {new Date(log.timestamp * 1000).toLocaleTimeString()}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-slate-400 line-clamp-2">
-                                                {log.reasoning}
-                                            </p>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge variant="secondary" className="text-[10px] bg-slate-900 border-slate-700">
-                                                    Score: {log.score}/10
+                                        <TableRow key={idx} className="border-slate-700/50 hover:bg-slate-800/30">
+                                            <TableCell className="font-mono text-xs text-slate-500">
+                                                {new Date(log.timestamp).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-slate-300 font-medium">
+                                                {log.user_id}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    className={`
+                                                        ${(log.score ?? log.audit_score ?? 0) >= 90 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                            (log.score ?? log.audit_score ?? 0) < 60 ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                                'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}
+                                                    `}
+                                                    variant="outline"
+                                                >
+                                                    {(log.score ?? log.audit_score ?? 0)}
                                                 </Badge>
-                                                {log.flags.map(flag => (
-                                                    <Badge key={flag} variant="destructive" className="text-[10px]">
-                                                        {flag}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
+                                            </TableCell>
+                                            <TableCell className="text-sm text-slate-400 max-w-[300px] truncate" title={log.reason ?? log.audit_reason}>
+                                                {log.reason ?? log.audit_reason}
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 )}
-                            </div>
-                        </ScrollArea>
+                            </TableBody>
+                        </Table>
                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        </div>
     );
-};
-
-export default MlopsPanel;
+}

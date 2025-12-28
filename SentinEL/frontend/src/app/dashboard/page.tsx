@@ -32,7 +32,7 @@ import { StrategyCards } from "@/components/business/StrategyCards";
 import { EmailPreview } from "@/components/business/EmailPreview";
 import { CompetitorUpload } from "@/components/business/CompetitorUpload";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
-import MlopsPanel from "@/components/business/MlopsPanel";
+import { MlopsPanel } from "@/components/business/MlopsPanel";
 import { ExperimentDashboard } from "@/components/business/ExperimentDashboard";
 import AgentReasoningLog, { TraceStep } from "@/components/business/AgentReasoningLog";
 import { analyzeUser, analyzeFlow } from "@/services/analysisService";
@@ -217,9 +217,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Enterprise MLOps & Governance Panel - 全宽 */}
-                <div className="mt-6">
-                    <MlopsPanel />
-                </div>
+                <MlopsPanel />
 
                 {/* A/B 测试实验看板 */}
                 <div className="mt-6">

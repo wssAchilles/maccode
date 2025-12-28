@@ -16,7 +16,7 @@ REGION="us-central1"
 BACKEND_SERVICE_NAME="sentinel-backend"
 FRONTEND_SERVICE_NAME="sentinel-frontend"
 BACKEND_IMAGE="gcr.io/${PROJECT_ID}/${BACKEND_SERVICE_NAME}"
-FRONTEND_IMAGE="gcr.io/${PROJECT_ID}/${FRONTEND_SERVICE_NAME}"
+FRONTEND_IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${FRONTEND_SERVICE_NAME}:latest"
 
 # 颜色定义
 RED='\033[0;31m'

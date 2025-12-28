@@ -149,7 +149,13 @@ def create_agent_graph():
 # ==============================================================================
 
 # Singleton Graph
-_agent_graph = create_agent_graph()
+_agent_graph = None
+
+def get_agent_graph():
+    global _agent_graph
+    if not _agent_graph:
+        _agent_graph = create_agent_graph()
+    return _agent_graph
 
 async def invoke_agent(user_id: str) -> Dict[str, Any]:
     """
@@ -163,7 +169,8 @@ async def invoke_agent(user_id: str) -> Dict[str, Any]:
     }
     
     # Run the graph
-    final_state = await _agent_graph.ainvoke(inputs)
+    graph = get_agent_graph()
+    final_state = await graph.ainvoke(inputs)
     
     # Parse Trace Logs from Messages
     messages = final_state["messages"]
