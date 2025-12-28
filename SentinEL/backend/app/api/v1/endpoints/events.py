@@ -95,6 +95,7 @@ async def process_pubsub_event(request: Request):
                     retention_policies=result.get("retention_policies", []),
                     generated_email=result.get("generated_email"),
                     call_script=result.get("call_script"),
+                    generated_audio=result.get("generated_audio"),  # TTS 生成的音频
                     processing_time_ms=result.get("processing_time_ms"),
                     experiment_group=result.get("experiment_group"),
                     model_used=result.get("model_used")

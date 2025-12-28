@@ -13,7 +13,8 @@ export const mlopsService = {
      * Endpoint: POST /api/v1/train
      */
     triggerTraining: async (): Promise<TrainingResponse> => {
-        const endpoint = `${API_URL}/api/v1/train`;
+        // Keeping legacy endpoint for compatibility if needed, but new panel uses /trigger-retraining primarily
+        const endpoint = `${API_URL}/api/v1/trigger-retraining`;
 
         try {
             const response = await fetch(endpoint, {
@@ -41,7 +42,6 @@ export const mlopsService = {
      * Endpoint: GET /api/v1/train/{job_id}
      */
     getJobStatus: async (jobId: string): Promise<{ job_id: string; status: string }> => {
-        // The job_id might contain slashes (resource name), so we should encode it
         const encodedJobId = encodeURIComponent(jobId);
         const endpoint = `${API_URL}/api/v1/train/${encodedJobId}`;
 
@@ -64,5 +64,42 @@ export const mlopsService = {
             console.error("Failed to get job status:", error);
             throw error;
         }
+    },
+
+    /**
+     * Fetch recent AI Judge audit logs.
+     * Endpoint: GET /api/v1/audit-logs
+     */
+    getAuditLogs: async (limit: number = 10): Promise<any[]> => {
+        const endpoint = `${API_URL}/api/v1/audit-logs?limit=${limit}`;
+        try {
+            const response = await fetch(endpoint, {
+                headers: { "X-API-KEY": API_KEY }
+            });
+            if (!response.ok) throw new Error("Failed to fetch logs");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching audit logs:", error);
+            return [];
+        }
+    },
+
+    /**
+     * Get model health metrics.
+     * Endpoint: GET /api/v1/model-health
+     */
+    getModelHealth: async (): Promise<any> => {
+        const endpoint = `${API_URL}/api/v1/model-health`;
+        try {
+            const response = await fetch(endpoint, {
+                headers: { "X-API-KEY": API_KEY }
+            });
+            if (!response.ok) throw new Error("Failed to fetch health");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching model health:", error);
+            return null;
+        }
     }
 };
+

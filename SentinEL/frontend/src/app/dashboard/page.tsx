@@ -32,7 +32,7 @@ import { StrategyCards } from "@/components/business/StrategyCards";
 import { EmailPreview } from "@/components/business/EmailPreview";
 import { CompetitorUpload } from "@/components/business/CompetitorUpload";
 import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
-import { ModelTrainingCard } from "@/components/business/ModelTrainingCard";
+import MlopsPanel from "@/components/business/MlopsPanel";
 import { ExperimentDashboard } from "@/components/business/ExperimentDashboard";
 import AgentReasoningLog, { TraceStep } from "@/components/business/AgentReasoningLog";
 import { analyzeUser, analyzeFlow } from "@/services/analysisService";
@@ -213,10 +213,12 @@ export default function DashboardPage() {
                     {/* 右侧区域 - 实时活动流 (30%) */}
                     <div className="xl:col-span-3 space-y-4">
                         <LiveActivityFeed />
-
-                        {/* MLOps Status Card */}
-                        <ModelTrainingCard />
                     </div>
+                </div>
+
+                {/* Enterprise MLOps & Governance Panel - 全宽 */}
+                <div className="mt-6">
+                    <MlopsPanel />
                 </div>
 
                 {/* A/B 测试实验看板 */}

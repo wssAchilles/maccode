@@ -164,7 +164,7 @@ class LLMService:
             
             generation_config = {
                 "temperature": 0.7,
-                "max_output_tokens": 600, # Increased for detailed analysis
+                "max_output_tokens": 4096, # Increased for detailed analysis and full email generation
             }
             
             try:
@@ -200,9 +200,14 @@ class LLMService:
         """
         with tracer.start_as_current_span("Gemini: Generate Script") as span:
              prompt = f"""
-             Based on the following retention email, verify create a SHORT, CASUAL voicemail script (max 50 words).
+             Based on the following retention email, create a SHORT, CASUAL voicemail script (max 50 words).
              It should sound like a friendly account manager leaving a message.
-             Do not include "Subject:" or placeholders. Just the spoken script.
+             
+             CRITICAL INSTRUCTIONS:
+             1. The script MUST be in the SAME LANGUAGE as the email content (which is likely Simplified Chinese).
+             2. If the email content is incomplete or truncated, infer the missing parts based on the context of a retention offer.
+             3. Do not include "Subject:" or placeholders. 
+             4. Just the spoken script.
              
              Email Context:
              {email_content}

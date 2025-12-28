@@ -99,7 +99,7 @@ export function EmailPreview({ emailContent, userId, analysisId, callScript, aud
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
                         <Mail className="w-4 h-4" />
-                        AI 生成邮件
+                        AI 生成邮件 (v2.5)
                     </CardTitle>
                     <Badge variant="outline" className="border-emerald-500/50 text-emerald-400">
                         <Sparkles className="w-3 h-3 mr-1" />

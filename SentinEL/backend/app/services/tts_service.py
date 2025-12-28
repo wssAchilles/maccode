@@ -11,8 +11,10 @@ except ImportError:
     texttospeech = None
 
 import base64
+import logging
 from app.core import telemetry
 
+logger = logging.getLogger(__name__)
 tracer = telemetry.get_tracer()
 
 class TTSService:
@@ -21,10 +23,11 @@ class TTSService:
             try:
                 self.client = texttospeech.TextToSpeechClient()
                 
-                # Configuration - High Quality "Neural2" Voice
+                # Configuration - Chinese Voice for this User Context
+                # Using Wavenet-D (Female) which is more stable and available
                 self.voice = texttospeech.VoiceSelectionParams(
-                    language_code="en-US",
-                    name="en-US-Neural2-F"
+                    language_code="cmn-CN",
+                    name="cmn-CN-Wavenet-D" 
                 )
                 
                 self.audio_config = texttospeech.AudioConfig(
@@ -32,11 +35,14 @@ class TTSService:
                     speaking_rate=1.0, 
                     pitch=0.0
                 )
+                # 确认初始化成功
+                print("✅ TTS Service initialized successfully with voice: cmn-CN-Wavenet-D")
+                logger.info("TTS Service initialized successfully with voice: cmn-CN-Wavenet-D")
             except Exception as e:
-                print(f"Failed to initialize TTS Client: {e}")
+                logger.error(f"Failed to initialize TTS Client: {e}")
                 self.client = None
         else:
-            print("TTS Service disabled (dependency missing)")
+            logger.warning("TTS Service disabled (dependency missing)")
             self.client = None
 
     def generate_voicemail_audio(self, text: str) -> str:
@@ -45,6 +51,12 @@ class TTSService:
         
         Trace Span: "TTS: Generate Audio"
         """
+        logger.info(f"TTS generate_voicemail_audio called with text length: {len(text) if text else 0}")
+        print(f"🎤 TTS generate_voicemail_audio called, text length: {len(text) if text else 0}")
+        if not self.client:
+             logger.warning("TTS Client is not available - audio will not be generated.")
+             return None
+
         with tracer.start_as_current_span("TTS: Generate Audio") as span:
             span.set_attribute("input.text_length", len(text))
             
@@ -65,6 +77,6 @@ class TTSService:
                 
             except Exception as e:
                 span.set_attribute("error", True)
-                print(f"Error generating TTS: {e}")
+                logger.error(f"Error generating TTS: {e}")
                 # Return None or raise to let orchestrator handle graceful degradation
                 return None
