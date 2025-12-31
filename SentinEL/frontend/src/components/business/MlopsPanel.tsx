@@ -51,7 +51,8 @@ export function MlopsPanel() {
     const fetchAuditLogs = async () => {
         try {
             // For now, let's use the API we just created
-            // const res = await fetch('http://localhost:8080/api/v1/audit-logs');
+            // const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+            // const res = await fetch(`${apiUrl}/api/v1/audit-logs`);
             // const data = await res.json();
 
             // Or use Firestore snapshot if we want real-time here too, 
@@ -94,7 +95,8 @@ export function MlopsPanel() {
         toast.info("Initializing Vertex AI Pipeline...");
 
         try {
-            const response = await fetch('http://localhost:8080/api/v1/retrain', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+            const response = await fetch(`${apiUrl}/api/v1/retrain`, {
                 method: 'POST',
             });
 

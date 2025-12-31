@@ -1,0 +1,23 @@
+\begin{abstract}
+    随着全球能源结构转型和``双碳''目标的推进，分布式储能系统在电力系统中的应用日益广泛。本项目开发计划书详细阐述了``智能能源管理与数据科学平台''的开发规划，该平台旨在通过集成机器学习预测与数学优化求解技术，实现储能系统的智能化、精细化管理。
+
+    本文档遵循IEEE 1058软件项目管理计划标准，从项目组织、技术实施、需求分析、算法设计、质量保障和培训支持六个维度进行了系统性规划。在技术层面，平台采用``预测+优化''的两阶段技术路线：利用随机森林、LightGBM等机器学习算法实现未来24小时负载预测，利用Gurobi混合整数规划求解器实现电池充放电最优调度。在工程层面，平台基于Flask后端与Flutter Web前端构建，部署于Google Cloud Platform，实现了云原生架构的弹性伸缩与高可用保障。
+
+    通过本计划书的实施，预期可实现电费节省15\%--25\%的经济目标，同时为储能系统运营商提供一套可靠、透明、易用的智能决策支持工具。
+
+    \thusetup{
+        keywords = {储能优化, 负载预测, 混合整数规划, 机器学习, 云原生架构},
+    }
+\end{abstract}
+
+\begin{abstract*}
+    With the global energy transition and the advancement of ``carbon peaking and carbon neutrality'' goals, distributed energy storage systems are increasingly applied in power systems. This Project Development Plan elaborates on the development of the ``Smart Energy Management \& Data Science Platform'', which aims to achieve intelligent and refined management of energy storage systems through the integration of machine learning prediction and mathematical optimization techniques.
+
+    This document follows the IEEE 1058 Software Project Management Plan standard, providing systematic planning from six dimensions: project organization, technical implementation, requirement analysis, algorithm design, quality assurance, and training support. Technically, the platform adopts a ``Predict + Optimize'' two-stage approach: utilizing machine learning algorithms such as Random Forest and LightGBM for 24-hour load forecasting, and leveraging the Gurobi mixed-integer programming solver for optimal battery charge/discharge scheduling. From an engineering perspective, the platform is built on a Flask backend and Flutter Web frontend, deployed on Google Cloud Platform, achieving elastic scaling and high availability through cloud-native architecture.
+
+    Through the implementation of this plan, the expected economic goal of 15\%--25\% electricity cost savings can be achieved, while providing energy storage operators with a reliable, transparent, and user-friendly intelligent decision support tool.
+
+    \thusetup{
+        keywords* = {Energy Storage Optimization, Load Forecasting, Mixed-Integer Programming, Machine Learning, Cloud-Native Architecture},
+    }
+\end{abstract*}

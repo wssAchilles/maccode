@@ -1,0 +1,365 @@
+\chapter{具体需求：非功能性需求}
+
+本章描述电力数据分析系统的非功能性需求，包括性能、安全性、可靠性和外部接口等方面的要求。这些需求确保系统不仅功能完备，而且具有良好的用户体验和工程质量。
+
+\section{性能需求}
+
+\subsection{响应时间要求}
+
+表~\ref{tab:response-time} 定义了系统各类操作的响应时间要求。
+
+\begin{table}[htbp]
+    \centering
+    \caption{响应时间要求}
+    \label{tab:response-time}
+    \begin{tabularx}{\textwidth}{@{}X l l@{}}
+        \toprule
+        \textbf{操作类型} & \textbf{目标值} & \textbf{最大值} \\
+        \midrule
+        页面首次加载（FCP）   & $< 1.5$ 秒    & $< 3$ 秒      \\
+        API 健康检查      & $< 100$ ms   & $< 500$ ms   \\
+        用户登录验证        & $< 1$ 秒      & $< 3$ 秒      \\
+        能源负载预测（24h）   & $< 2$ 秒      & $< 5$ 秒      \\
+        电池调度优化        & $< 3$ 秒      & $< 10$ 秒     \\
+        文件上传（10MB）    & $< 5$ 秒      & $< 15$ 秒     \\
+        数据分析（10万行）    & $< 30$ 秒     & $< 60$ 秒     \\
+        历史记录查询        & $< 500$ ms   & $< 2$ 秒      \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\paragraph{需求编号} NFR-PERF-001
+
+\paragraph{需求描述} 核心 API 接口的平均响应时间应满足表~\ref{tab:response-time} 中定义的目标值，在 95\% 的请求中不超过最大值。
+
+\subsection{吞吐量要求}
+
+\paragraph{需求编号} NFR-PERF-002
+
+\paragraph{需求描述} 系统应支持以下并发访问能力：
+
+\begin{itemize}
+    \item 同时在线用户数：$\geq 50$ 人
+    \item API 请求处理能力：$\geq 100$ 请求/分钟
+    \item 定时任务并发：最多 2 个后台任务同时执行
+\end{itemize}
+
+\subsection{资源消耗限制}
+
+\paragraph{需求编号} NFR-PERF-003
+
+\paragraph{需求描述} 系统资源消耗应控制在 Google Cloud Platform 免费层额度内：
+
+\begin{itemize}
+    \item App Engine 实例：F1 实例（256 MB 内存，600 MHz CPU）
+    \item 每日实例小时：$\leq 28$ 小时
+    \item Cloud Storage：$\leq 5$ GB 存储空间
+    \item Firestore：$\leq 50,000$ 读取/日，$\leq 20,000$ 写入/日
+\end{itemize}
+
+\section{安全性需求}
+
+\subsection{数据传输安全}
+
+\paragraph{需求编号} NFR-SEC-001
+
+\paragraph{需求描述} 所有客户端与服务器之间的通信必须使用 HTTPS 加密。
+
+\paragraph{实现方式}
+\begin{itemize}
+    \item Firebase Hosting 和 App Engine 自动启用 SSL/TLS 证书
+    \item 强制 HTTPS 重定向（HTTP $\rightarrow$ HTTPS）
+    \item TLS 版本：$\geq$ TLS 1.2
+\end{itemize}
+
+\subsection{身份认证安全}
+
+\paragraph{需求编号} NFR-SEC-002
+
+\paragraph{需求描述} 系统应实施安全的用户身份认证机制。
+
+\paragraph{安全措施}
+\begin{enumerate}
+    \item 使用 Firebase Authentication 进行身份验证
+    \item ID Token 采用 JWT 格式，有效期 1 小时
+    \item 密码存储使用安全哈希算法（由 Firebase 管理）
+    \item 支持多因素认证（MFA）扩展
+    \item 登录失败限流：5 次失败后锁定 15 分钟
+\end{enumerate}
+
+\subsection{API 访问控制}
+
+\paragraph{需求编号} NFR-SEC-003
+
+\paragraph{需求描述} 后端 API 应实施访问控制和速率限制。
+
+\paragraph{安全措施}
+\begin{enumerate}
+    \item 所有受保护 API 需携带有效的 Firebase ID Token
+    \item Token 验证通过 Firebase Admin SDK 执行
+    \item 速率限制：每用户每分钟 $\leq 60$ 次请求
+    \item 返回标准化错误响应（401 Unauthorized, 403 Forbidden, 429 Too Many Requests）
+\end{enumerate}
+
+图~\ref{fig:api-security-flow} 展示了 API 请求的安全验证流程。
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{
+        \begin{tikzpicture}[
+                node distance=1cm and 2cm,
+                actor/.style={rectangle, draw=green!60, fill=green!10,
+                        text width=2cm, minimum height=1cm,
+                        align=center, font=\footnotesize},
+                process/.style={rectangle, draw=blue!60, fill=blue!10,
+                        text width=3cm, minimum height=1cm,
+                        align=center, rounded corners=3pt,
+                        font=\footnotesize},
+                decision/.style={diamond, draw=orange!70, fill=orange!10,
+                        aspect=2.5, inner sep=1pt,
+                        align=center, font=\tiny},
+                arrow/.style={->, >=stealth, thick}
+            ]
+            % 节点
+            \node[actor] (client) {客户端};
+            \node[process, right=of client] (request) {发送请求\\+ ID Token};
+            \node[process, right=of request] (validate) {Token 验证\\(Firebase Admin)};
+            \node[decision, right=of validate] (valid) {Token\\有效?};
+            \node[process, above right=0.5cm and 1.5cm of valid] (reject) {返回 401\\Unauthorized};
+            \node[process, below right=0.5cm and 1.5cm of valid] (check) {速率限制\\检查};
+            \node[decision, right=of check] (rate) {超限?};
+            \node[process, above right=0.5cm and 1cm of rate] (limit) {返回 429\\Too Many Requests};
+            \node[process, below right=0.5cm and 1cm of rate] (execute) {执行业务\\逻辑};
+            \node[actor, right=of execute] (response) {返回响应};
+
+            % 箭头
+            \draw[arrow] (client) -- (request);
+            \draw[arrow] (request) -- (validate);
+            \draw[arrow] (validate) -- (valid);
+            \draw[arrow] (valid) -- node[above, font=\tiny] {否} (reject);
+            \draw[arrow] (valid) -- node[right, font=\tiny] {是} (check);
+            \draw[arrow] (check) -- (rate);
+            \draw[arrow] (rate) -- node[above, font=\tiny] {是} (limit);
+            \draw[arrow] (rate) -- node[right, font=\tiny] {否} (execute);
+            \draw[arrow] (execute) -- (response);
+        \end{tikzpicture}
+    }
+    \caption{API 安全验证流程图}
+    \label{fig:api-security-flow}
+\end{figure}
+
+\subsection{数据存储安全}
+
+\paragraph{需求编号} NFR-SEC-004
+
+\paragraph{需求描述} 存储在云端的用户数据应受到适当的访问控制保护。
+
+\paragraph{安全措施}
+\begin{enumerate}
+    \item Cloud Storage 使用 IAM 策略限制访问
+    \item 用户文件存储在隔离的用户目录下（/users/\{uid\}/...）
+    \item Firestore 安全规则限制用户只能访问自己的数据
+    \item 敏感配置（API Key）存储在环境变量中，不提交版本控制
+\end{enumerate}
+
+图~\ref{fig:firebase-rules} 展示了 Firebase 安全规则的配置。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{firebase2.png}
+    \caption{Firebase 安全规则配置}
+    \label{fig:firebase-rules}
+\end{figure}
+
+\section{可靠性与可用性}
+
+\subsection{系统可用性}
+
+\paragraph{需求编号} NFR-REL-001
+
+\paragraph{需求描述} 系统应达到高可用性标准。
+
+\paragraph{可用性指标}
+\begin{itemize}
+    \item 目标可用性：$\geq 99.5\%$（每月最多 3.6 小时停机）
+    \item 依赖 Google Cloud 的 SLA：
+          \begin{itemize}
+              \item App Engine：99.95\% 月度可用性
+              \item Cloud Storage：99.9\% 月度可用性
+              \item Firebase Authentication：99.95\% 月度可用性
+          \end{itemize}
+\end{itemize}
+
+\subsection{错误处理与恢复}
+
+\paragraph{需求编号} NFR-REL-002
+
+\paragraph{需求描述} 系统应具备完善的错误处理和恢复机制。
+
+\paragraph{设计要求}
+\begin{enumerate}
+    \item 所有 API 返回标准化 JSON 错误响应格式：
+          \begin{itemize}
+              \item \texttt{\{"success": false, "error": "ERROR\_CODE", "message": "描述"\}}
+          \end{itemize}
+    \item 定时任务失败时自动重试（最多 3 次）
+    \item 外部 API 调用超时后使用降级策略（如使用历史数据）
+    \item 关键错误记录到日志系统
+\end{enumerate}
+
+\subsection{数据备份}
+
+\paragraph{需求编号} NFR-REL-003
+
+\paragraph{需求描述} 系统应具备数据备份和恢复能力。
+
+\paragraph{备份策略}
+\begin{itemize}
+    \item Cloud Storage 默认启用对象版本控制
+    \item Firestore 自动备份（由 Google Cloud 管理）
+    \item 机器学习模型文件保留历史版本
+\end{itemize}
+
+\section{外部接口需求}
+
+\subsection{用户接口 (UI)}
+
+\paragraph{需求编号} NFR-UI-001
+
+\paragraph{需求描述} 用户界面应遵循现代 Web UI 设计规范。
+
+\paragraph{设计规范}
+\begin{enumerate}
+    \item 遵循 Material Design 3 设计语言
+    \item 主色调：蓝色系（\#1976D2, \#42A5F5）
+    \item 字体：系统默认字体（中文优先使用微软雅黑/苹方）
+    \item 最小点击区域：$48 \times 48$ 像素
+    \item 支持深色/浅色主题切换（可选）
+\end{enumerate}
+
+\paragraph{可访问性要求}
+\begin{itemize}
+    \item 所有交互元素具有焦点状态
+    \item 颜色对比度满足 WCAG 2.0 AA 标准
+    \item 表单元素具有明确的标签
+\end{itemize}
+
+\subsection{软件接口 (API)}
+
+\paragraph{需求编号} NFR-API-001
+
+\paragraph{需求描述} 系统 API 应遵循 RESTful 设计规范。
+
+\paragraph{API 设计规范}
+\begin{enumerate}
+    \item 使用 HTTP 标准方法（GET, POST, PUT, DELETE）
+    \item URL 采用小写字母和连字符（如 /api/optimization/run）
+    \item 请求/响应格式：JSON（Content-Type: application/json）
+    \item 状态码规范：
+          \begin{itemize}
+              \item 200：成功
+              \item 400：请求参数错误
+              \item 401：未认证
+              \item 403：无权限
+              \item 404：资源不存在
+              \item 429：请求过于频繁
+              \item 500：服务器内部错误
+          \end{itemize}
+\end{enumerate}
+
+表~\ref{tab:api-endpoints} 列出了系统的主要 API 端点。
+
+\begin{table}[htbp]
+    \centering
+    \caption{主要 API 端点列表}
+    \label{tab:api-endpoints}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{端点}                & \textbf{方法} & \textbf{功能描述}        \\
+        \midrule
+        /api/health                & GET         & 健康检查，返回服务状态          \\
+        /api/auth/verify           & POST        & 验证 Firebase ID Token \\
+        /api/optimization/run      & POST        & 执行能源负载预测和电池调度优化      \\
+        /api/optimization/config   & GET         & 获取默认电池配置和电价表         \\
+        /api/optimization/simulate & POST        & 场景模拟对比               \\
+        /api/data/upload-url       & POST        & 获取签名上传 URL           \\
+        /api/analysis/analyze-csv  & POST        & 分析 CSV 文件            \\
+        /api/history               & GET         & 获取用户历史记录             \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+图~\ref{fig:api-interface} 展示了 API 接口的设计架构。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{API.png}
+    \caption{API 接口架构图}
+    \label{fig:api-interface}
+\end{figure}
+
+\subsection{外部数据接口}
+
+\paragraph{需求编号} NFR-API-002
+
+\paragraph{需求描述} 系统应与以下外部数据源进行集成。
+
+\paragraph{CAISO 数据接口}
+\begin{itemize}
+    \item 数据源：California Independent System Operator
+    \item 接口方式：通过 gridstatus Python 库访问
+    \item 数据频率：每小时更新
+    \item 数据类型：电网负载（MW）
+\end{itemize}
+
+\paragraph{OpenWeatherMap 接口}
+\begin{itemize}
+    \item 数据源：OpenWeatherMap API
+    \item 接口方式：HTTP GET 请求
+    \item 认证方式：API Key
+    \item 数据类型：温度（°C）、天气状况
+    \item 调用限制：60 次/分钟（免费版）
+\end{itemize}
+
+\subsection{硬件接口}
+
+\paragraph{需求编号} NFR-HW-001
+
+\paragraph{需求描述} 本系统版本不直接与硬件设备交互。
+
+本系统为纯软件解决方案，不包含与智能电表、电池管理系统（BMS）或其他物联网设备的直接通信功能。未来版本可扩展支持以下硬件接口：
+
+\begin{itemize}
+    \item Modbus/RS-485：电表数据读取
+    \item CAN Bus：电池 BMS 通信
+    \item MQTT：物联网设备消息传递
+\end{itemize}
+
+\section{非功能需求追溯矩阵}
+
+表~\ref{tab:nfr-traceability} 提供非功能需求与验证方法的追溯关系。
+
+\begin{table}[htbp]
+    \centering
+    \caption{非功能需求追溯矩阵}
+    \label{tab:nfr-traceability}
+    \begin{tabularx}{\textwidth}{@{}l l X l@{}}
+        \toprule
+        \textbf{需求编号} & \textbf{类别} & \textbf{验证方法} & \textbf{优先级} \\
+        \midrule
+        NFR-PERF-001  & 性能          & 压力测试、响应时间监控   & 高            \\
+        NFR-PERF-002  & 性能          & 并发测试          & 中            \\
+        NFR-PERF-003  & 性能          & 资源消耗监控        & 高            \\
+        NFR-SEC-001   & 安全          & SSL/TLS 检测工具  & 高            \\
+        NFR-SEC-002   & 安全          & 安全代码审查        & 高            \\
+        NFR-SEC-003   & 安全          & API 安全测试      & 高            \\
+        NFR-SEC-004   & 安全          & 访问控制测试        & 中            \\
+        NFR-REL-001   & 可靠性         & 可用性监控         & 高            \\
+        NFR-REL-002   & 可靠性         & 异常场景测试        & 中            \\
+        NFR-REL-003   & 可靠性         & 备份恢复测试        & 低            \\
+        NFR-UI-001    & 用户接口        & UI 走查、可用性测试   & 中            \\
+        NFR-API-001   & API         & 接口测试、API 文档审查 & 高            \\
+        NFR-API-002   & 外部接口        & 集成测试          & 高            \\
+        \bottomrule
+    \end{tabularx}
+\end{table}

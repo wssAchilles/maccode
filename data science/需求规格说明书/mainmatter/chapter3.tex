@@ -1,0 +1,501 @@
+\chapter{具体需求：功能性需求}
+
+本章详细描述电力数据分析系统的功能性需求，按照功能模块进行组织。每个需求项包含唯一标识符、优先级、输入/输出和处理逻辑。
+
+\section{用户认证与权限管理}
+
+用户认证模块基于 Firebase Authentication 实现，提供安全可靠的身份验证服务。图~\ref{fig:auth-flow} 展示了用户认证的整体流程。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.2cm,
+            startstop/.style={ellipse, draw=green!60, fill=green!10,
+                    minimum width=2cm, minimum height=0.8cm,
+                    align=center, font=\footnotesize},
+            process/.style={rectangle, draw=blue!60, fill=blue!10,
+                    text width=3cm, minimum height=0.8cm,
+                    align=center, rounded corners=2pt,
+                    font=\footnotesize},
+            decision/.style={diamond, draw=orange!70, fill=orange!10,
+                    aspect=2, inner sep=1pt,
+                    align=center, font=\footnotesize},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        % 节点
+        \node[startstop] (start) {开始};
+        \node[process, below=of start] (input) {输入凭据\\(Email/密码或Google)};
+        \node[process, below=of input] (firebase) {Firebase Auth\\验证请求};
+        \node[decision, below=of firebase] (check) {验证\\成功?};
+        \node[process, below left=1cm and 1.5cm of check] (token) {获取ID Token\\创建会话};
+        \node[process, below right=1cm and 1.5cm of check] (error) {显示错误\\提示重试};
+        \node[process, below=1.5cm of token] (home) {跳转主页\\加载用户数据};
+        \node[startstop, below=of home] (end) {结束};
+
+        % 箭头
+        \draw[arrow] (start) -- (input);
+        \draw[arrow] (input) -- (firebase);
+        \draw[arrow] (firebase) -- (check);
+        \draw[arrow] (check) -- node[above, font=\tiny] {是} (token);
+        \draw[arrow] (check) -- node[above, font=\tiny] {否} (error);
+        \draw[arrow] (token) -- (home);
+        \draw[arrow] (home) -- (end);
+        \draw[arrow] (error.south) |- ++(0,-0.5) -| (input.east);
+    \end{tikzpicture}
+    \caption{用户认证流程图}
+    \label{fig:auth-flow}
+\end{figure}
+
+\subsection{用户注册}
+
+\paragraph{需求编号} FR-AUTH-001
+
+\paragraph{需求描述} 系统应支持用户使用 Email 和密码进行新账户注册。
+
+\paragraph{优先级} 高
+
+\paragraph{输入}
+\begin{itemize}
+    \item 用户邮箱地址（符合 RFC 5322 标准）
+    \item 密码（至少 6 位，包含字母和数字）
+    \item 密码确认
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 前端验证邮箱格式和密码强度
+    \item 检查两次输入的密码是否一致
+    \item 调用 Firebase Auth 创建用户账户
+    \item 发送邮箱验证链接（可选）
+    \item 注册成功后自动登录
+\end{enumerate}
+
+\paragraph{输出}
+\begin{itemize}
+    \item 成功：创建用户账户，返回用户 UID，跳转至主页
+    \item 失败：显示错误信息（如邮箱已注册、密码过弱）
+\end{itemize}
+
+\subsection{用户登录}
+
+\paragraph{需求编号} FR-AUTH-002
+
+\paragraph{需求描述} 系统应支持已注册用户通过 Email/密码或 Google 账户登录。
+
+\paragraph{优先级} 高
+
+\paragraph{输入}
+\begin{itemize}
+    \item 方式一：Email 和密码
+    \item 方式二：Google OAuth 授权
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 用户选择登录方式
+    \item Email 登录：验证邮箱和密码
+    \item Google 登录：重定向到 Google OAuth 页面，获取授权
+    \item 验证成功后获取 Firebase ID Token
+    \item 将 Token 存储到本地，建立用户会话
+\end{enumerate}
+
+\paragraph{输出}
+\begin{itemize}
+    \item 成功：获取 ID Token，跳转至主页
+    \item 失败：显示错误信息（如密码错误、账户不存在、网络错误）
+\end{itemize}
+
+图~\ref{fig:firebase-auth} 展示了 Firebase Authentication 的配置界面。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{firebase1.png}
+    \caption{Firebase Authentication 配置界面}
+    \label{fig:firebase-auth}
+\end{figure}
+
+\subsection{会话管理与登出}
+
+\paragraph{需求编号} FR-AUTH-003
+
+\paragraph{需求描述} 系统应自动维护用户会话状态，并提供安全登出功能。
+
+\paragraph{优先级} 高
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 用户登录后，ID Token 存储在浏览器本地存储中
+    \item Token 有效期为 1 小时，系统自动刷新
+    \item 用户点击"登出"时，清除本地 Token 并调用 Firebase signOut
+    \item 登出后跳转至登录页面
+\end{enumerate}
+
+\section{核心业务逻辑}
+
+核心业务逻辑模块是系统的核心，包括能源负载预测、电池调度优化和实时数据采集三大功能。图~\ref{fig:core-flow} 展示了核心业务的处理流程。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=0.8cm and 1.5cm,
+            block/.style={rectangle, draw=blue!60, fill=blue!10,
+                    text width=3.2cm, minimum height=1cm,
+                    align=center, rounded corners=3pt,
+                    font=\small},
+            data/.style={trapezium, draw=green!60, fill=green!10,
+                    trapezium left angle=70, trapezium right angle=110,
+                    minimum width=2.5cm, minimum height=0.8cm,
+                    align=center, font=\footnotesize},
+            result/.style={rectangle, draw=purple!60, fill=purple!10,
+                    text width=3cm, minimum height=1cm,
+                    align=center, rounded corners=3pt,
+                    font=\small},
+            arrow/.style={->, >=stealth, thick, blue!60}
+        ]
+        % 数据输入
+        \node[data] (hist) {历史能源数据};
+        \node[data, right=of hist] (weather) {天气预报};
+        \node[data, right=of weather] (price) {分时电价};
+
+        % 处理模块
+        \node[block, below=1.2cm of hist] (feature) {特征工程\\(Lag, Rolling, Interaction)};
+        \node[block, below=1.2cm of weather] (predict) {负载预测\\(Random Forest)};
+        \node[block, below=1.2cm of price] (optimize) {调度优化\\(Gurobi LP)};
+
+        % 结果输出
+        \node[result, below=1.2cm of feature] (load) {24小时\\负载预测};
+        \node[result, below=1.2cm of predict] (schedule) {充放电\\时刻表};
+        \node[result, below=1.2cm of optimize] (savings) {成本节省\\分析报告};
+
+        % 箭头
+        \draw[arrow] (hist) -- (feature);
+        \draw[arrow] (weather) -- (predict);
+        \draw[arrow] (price) -- (optimize);
+        \draw[arrow] (feature) -- (predict);
+        \draw[arrow] (predict) -- (load);
+        \draw[arrow] (predict) -- (optimize);
+        \draw[arrow] (optimize) -- (schedule);
+        \draw[arrow] (optimize) -- (savings);
+        \draw[arrow, dashed] (load.south) |- ++(0,-0.3) -| (schedule.south);
+    \end{tikzpicture}
+    \caption{核心业务处理流程图}
+    \label{fig:core-flow}
+\end{figure}
+
+\subsection{能源负载预测}
+
+\paragraph{需求编号} FR-CORE-001
+
+\paragraph{需求描述} 系统应能够基于历史数据和天气预报，预测未来 24 小时的能源负载。
+
+\paragraph{优先级} 高
+
+\paragraph{输入}
+\begin{itemize}
+    \item 历史能源消耗数据（至少 168 小时，即 7 天）
+    \item 温度预报数据（未来 24 小时）
+    \item 可选：温度调整参数（What-If 分析）
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 加载预训练的机器学习模型（Random Forest 或 VotingRegressor）
+    \item 构建预测特征：
+          \begin{itemize}
+              \item 时间特征：Hour, DayOfWeek, Month, Season, IsWeekend, IsHoliday
+              \item 滞后特征：Lag\_1h, Lag\_24h, Lag\_168h
+              \item 滚动统计：Rolling\_Mean\_6h, Rolling\_Std\_6h, Rolling\_Mean\_24h
+              \item 交互特征：Temperature×Hour, Lag\_24h×DayOfWeek
+          \end{itemize}
+    \item 执行递归预测（每小时迭代）
+    \item 应用温度调整（如有）
+    \item 确保预测值非负
+\end{enumerate}
+
+\paragraph{输出}
+\begin{itemize}
+    \item 24 个小时的负载预测值（kW）
+    \item 预测统计：平均负载、峰值负载、最低负载
+    \item 模型可解释性信息（特征重要性）
+\end{itemize}
+
+图~\ref{fig:model-training} 展示了模型训练过程的日志输出。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{模型训练1.png}
+    \caption{机器学习模型训练日志}
+    \label{fig:model-training}
+\end{figure}
+
+\paragraph{性能指标}
+\begin{itemize}
+    \item 预测精度：MAPE $< 10\%$
+    \item 响应时间：$< 2$ 秒
+\end{itemize}
+
+\subsection{电池调度优化}
+
+\paragraph{需求编号} FR-CORE-002
+
+\paragraph{需求描述} 系统应基于负载预测和电价信息，生成最优的电池充放电调度策略。
+
+\paragraph{优先级} 高
+
+\paragraph{输入}
+\begin{itemize}
+    \item 24 小时负载预测（来自 FR-CORE-001）
+    \item 分时电价表（TOU）
+    \item 电池参数：容量（kWh）、最大功率（kW）、效率、初始 SOC
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 构建线性规划模型：
+          \begin{itemize}
+              \item 目标函数：最小化总电费成本
+              \item 决策变量：每小时充电量、放电量
+              \item 约束条件：SOC 范围 [0.1, 0.9]、功率限制、能量守恒
+          \end{itemize}
+    \item 调用 Gurobi 求解器求解
+    \item 提取最优解：充放电时刻表、SOC 变化曲线
+    \item 计算成本节省
+\end{enumerate}
+
+\paragraph{输出}
+\begin{itemize}
+    \item 每小时充电/放电功率（kW）
+    \item 每小时 SOC 状态（\%）
+    \item 总成本对比（有/无电池）
+    \item 节省金额和百分比
+    \item 求解器诊断信息（运行时间、约束命中）
+\end{itemize}
+
+图~\ref{fig:gurobi-solver} 展示了 Gurobi 优化求解器的求解过程。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{gurobi1.png}
+    \caption{Gurobi 优化求解器界面}
+    \label{fig:gurobi-solver}
+\end{figure}
+
+\subsection{实时数据采集}
+
+\paragraph{需求编号} FR-CORE-003
+
+\paragraph{需求描述} 系统应自动定时采集外部数据源的电网负载和天气信息。
+
+\paragraph{优先级} 中
+
+\paragraph{数据源}
+\begin{itemize}
+    \item CAISO API：加州电网实时负载数据
+    \item OpenWeatherMap API：城市温度和天气预报
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 定时任务触发（每小时整点）
+    \item 调用 gridstatus 库获取 CAISO Load 数据
+    \item 调用 OpenWeatherMap API 获取温度
+    \item 数据缩放：将电网 MW 级数据缩放至微电网 kW 级
+    \item 追加到历史数据 CSV 文件
+    \item 重新计算滞后和滚动特征
+    \item 上传更新后的数据到 Cloud Storage
+\end{enumerate}
+
+图~\ref{fig:data-fetch} 展示了数据采集任务的执行日志。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{数据抓取1.png}
+    \caption{实时数据采集日志}
+    \label{fig:data-fetch}
+\end{figure}
+
+\subsection{What-If 场景分析}
+
+\paragraph{需求编号} FR-CORE-004
+
+\paragraph{需求描述} 系统应支持用户调整参数进行假设场景分析。
+
+\paragraph{优先级} 中
+
+\paragraph{输入}
+\begin{itemize}
+    \item 温度调整值（$-5°C$ 至 $+5°C$）
+    \item 电池容量调整
+    \item 场景预设（夏季高温、冬季低温、夜间加班）
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 用户选择场景或手动调整参数
+    \item 系统基于调整后的参数重新执行预测和优化
+    \item 展示调整前后的对比结果
+\end{enumerate}
+
+\section{数据存储与管理}
+
+\subsection{文件上传与存储}
+
+\paragraph{需求编号} FR-DATA-001
+
+\paragraph{需求描述} 系统应支持用户上传 CSV/Excel 数据文件并存储到云端。
+
+\paragraph{优先级} 高
+
+\paragraph{输入}
+\begin{itemize}
+    \item 文件类型：CSV (.csv)、Excel (.xlsx, .xls)
+    \item 文件大小：最大 50 MB
+\end{itemize}
+
+\paragraph{处理逻辑}
+\begin{enumerate}
+    \item 前端选择文件并验证类型和大小
+    \item 获取签名上传 URL（Signed URL）
+    \item 直接上传文件到 Google Cloud Storage
+    \item 后端记录文件元数据到 Firestore
+\end{enumerate}
+
+\subsection{数据分析功能}
+
+\paragraph{需求编号} FR-DATA-002
+
+\paragraph{需求描述} 系统应对上传的数据文件进行自动化分析，生成分析报告。
+
+\paragraph{优先级} 中
+
+\paragraph{分析内容}
+\begin{itemize}
+    \item 基本信息：行数、列数、数据类型分布
+    \item 描述性统计：均值、中位数、标准差、最大/最小值
+    \item 缺失值分析：各列缺失比例和风险等级
+    \item 异常值检测：基于 IQR 方法
+    \item 相关性分析：Pearson 和 Spearman 相关系数矩阵
+    \item 正态性检验：Shapiro-Wilk 或 D'Agostino-Pearson 检验
+\end{itemize}
+
+\subsection{历史记录管理}
+
+\paragraph{需求编号} FR-DATA-003
+
+\paragraph{需求描述} 系统应保存用户的分析历史记录，支持查询和删除。
+
+\paragraph{优先级} 中
+
+\paragraph{存储内容}
+\begin{itemize}
+    \item 记录 ID、用户 ID
+    \item 文件名、存储路径
+    \item 分析时间戳
+    \item 分析摘要（基本信息、质量评分）
+\end{itemize}
+
+\section{前端交互功能}
+
+\subsection{能源优化仪表盘}
+
+\paragraph{需求编号} FR-UI-001
+
+\paragraph{需求描述} 系统应提供交互式能源优化仪表盘，展示预测和优化结果。
+
+\paragraph{优先级} 高
+
+\paragraph{界面元素}
+\begin{itemize}
+    \item 参数控制面板：SOC 滑块、日期选择、场景快捷按钮
+    \item 模型健康度卡片：R² 评分、MAPE、模型状态
+    \item 关键指标卡片：节省金额、节省比例、充放电统计
+    \item 电网交互图表：负载曲线、价格曲线、电池动作
+    \item SOC 变化图表：24 小时电池电量变化
+    \item 策略详情：充电/放电时段列表
+    \item 特征重要性图表：AI 预测解释
+\end{itemize}
+
+图~\ref{fig:dashboard-ui} 和 \ref{fig:dashboard-result}展示了能源优化仪表盘的界面截图。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{app1.png}
+    \caption{能源优化仪表盘界面}
+    \label{fig:dashboard-ui}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{app2.png}
+    \caption{优化结果详情展示}
+    \label{fig:dashboard-result}
+\end{figure}
+
+\subsection{数据分析界面}
+
+\paragraph{需求编号} FR-UI-002
+
+\paragraph{需求描述} 系统应提供数据上传和分析结果展示界面。
+
+\paragraph{优先级} 中
+
+\paragraph{界面元素}
+\begin{itemize}
+    \item 用户信息区域：登录状态、用户头像
+    \item 文件选择区域：拖拽上传或点击选择
+    \item 分析进度指示器
+    \item 结果展示区域：基本信息、统计摘要、质量评分、相关性热力图
+\end{itemize}
+
+图~\ref{fig:analysis-ui} 展示了数据分析界面。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{app3.png}
+    \caption{数据分析界面}
+    \label{fig:analysis-ui}
+\end{figure}
+
+\subsection{响应式布局}
+
+\paragraph{需求编号} FR-UI-003
+
+\paragraph{需求描述} 系统界面应支持响应式布局，适配不同屏幕尺寸。
+
+\paragraph{优先级} 低
+
+\paragraph{适配要求}
+\begin{itemize}
+    \item 桌面端（$\geq 1200$px）：多列布局
+    \item 平板端（768-1199px）：两列布局
+    \item 移动端（$< 768$px）：单列堆叠布局
+\end{itemize}
+
+\section{功能需求追溯矩阵}
+
+表~\ref{tab:requirements-traceability} 提供功能需求与系统模块的追溯关系。
+
+\begin{table}[htbp]
+    \centering
+    \caption{功能需求追溯矩阵}
+    \label{tab:requirements-traceability}
+    \begin{tabularx}{\textwidth}{@{}l l l l@{}}
+        \toprule
+        \textbf{需求编号} & \textbf{需求名称} & \textbf{实现模块}               & \textbf{优先级} \\
+        \midrule
+        FR-AUTH-001   & 用户注册          & firebase\_service.py        & 高            \\
+        FR-AUTH-002   & 用户登录          & firebase\_service.py        & 高            \\
+        FR-AUTH-003   & 会话管理          & firebase\_service.py        & 高            \\
+        FR-CORE-001   & 能源负载预测        & ml\_service.py              & 高            \\
+        FR-CORE-002   & 电池调度优化        & optimization\_service.py    & 高            \\
+        FR-CORE-003   & 实时数据采集        & external\_data\_service.py  & 中            \\
+        FR-CORE-004   & What-If 分析    & ml\_service.py              & 中            \\
+        FR-DATA-001   & 文件上传存储        & storage\_service.py         & 高            \\
+        FR-DATA-002   & 数据分析          & analysis\_service.py        & 中            \\
+        FR-DATA-003   & 历史记录管理        & history\_service.py         & 中            \\
+        FR-UI-001     & 能源优化仪表盘       & modeling\_screen.dart       & 高            \\
+        FR-UI-002     & 数据分析界面        & data\_analysis\_screen.dart & 中            \\
+        FR-UI-003     & 响应式布局         & responsive\_wrapper.dart    & 低            \\
+        \bottomrule
+    \end{tabularx}
+\end{table}

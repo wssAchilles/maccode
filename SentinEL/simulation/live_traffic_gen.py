@@ -4,9 +4,11 @@ SentinEL 实时流量模拟器 (Live Traffic Generator)
 功能:
     模拟高并发的用户点击流数据，并发送到 Google Cloud Pub/Sub Topic。
     用于测试实时数据管道 (Dataflow) 和 Feature Store 的性能。
+    支持 Data Rejuvenation (Backfill Mode) 以填充历史空缺。
 
 使用方法:
-    python simulation/live_traffic_gen.py --project_id YOUR_PROJECT_ID --topic_id sentinel-clickstream-topic --users 1000 --rate 50
+    常规模式: python simulation/live_traffic_gen.py --project_id YOUR_PROJECT_ID --topic_id sentinel-clickstream-topic --users 1000 --rate 50
+    回填模式: python simulation/live_traffic_gen.py --project_id YOUR_PROJECT_ID --topic_id sentinel-clickstream-topic --backfill --backfill_hours 24
 
 依赖:
     pip install google-cloud-pubsub faker
@@ -19,7 +21,7 @@ import random
 import logging
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 from concurrent import futures
 
@@ -48,7 +50,7 @@ EVENT_TYPES = [
 EVENT_WEIGHTS = [0.4, 0.2, 0.15, 0.05, 0.15, 0.05]
 
 class TrafficGenerator:
-    def __init__(self, project_id: str, topic_id: str, num_users: int, events_per_sec: float):
+    def __init__(self, project_id: str, topic_id: str, num_users: int, events_per_sec: float, backfill: bool = False, backfill_hours: int = 24):
         """
         初始化流量生成器
         
@@ -56,12 +58,17 @@ class TrafficGenerator:
             project_id: GCP 项目 ID
             topic_id: Pub/Sub Topic 名称
             num_users: 模拟活跃用户数
-            events_per_sec: 目标发送速率 (事件/秒)
+            events_per_sec: 目标发送速率 (事件/秒) (直播模式有效)
+            backfill: 是否开启回填模式
+            backfill_hours: 回填过去多少小时的数据
         """
         self.project_id = project_id
         self.topic_id = topic_id
         self.num_users = num_users
         self.events_per_sec = events_per_sec
+        self.backfill = backfill
+        self.backfill_hours = backfill_hours
+        
         self.publisher = pubsub_v1.PublisherClient()
         self.topic_path = self.publisher.topic_path(project_id, topic_id)
         self.fake = Faker()
@@ -79,18 +86,22 @@ class TrafficGenerator:
             "country": self.fake.country_code()
         }
 
-    def _create_event(self) -> Dict[str, Any]:
+    def _create_event(self, timestamp: datetime = None) -> Dict[str, Any]:
         """创建一个随机用户行为事件"""
         user = random.choice(self.user_pool)
         event_type = random.choices(EVENT_TYPES, weights=EVENT_WEIGHTS, k=1)[0]
         
+        # 默认使用 UTC Now
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+            
         # 构造事件 Payload
         event = {
             "event_id": str(uuid.uuid4()),
             "user_id": user["user_id"],
             "session_id": str(uuid.uuid4()), # 简化：每次随机 session
             "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat() + "Z", # ISO 8601 UTC
+            "timestamp": timestamp.isoformat(), # ISO 8601 UTC with offset
             "url": self.fake.uri_path(),
             "metadata": {
                 "device_id": user["device_id"],
@@ -119,10 +130,48 @@ class TrafficGenerator:
         except Exception as e:
             logger.error(f"发布失败: {e} | Data: {data}")
 
+    def run_backfill(self):
+        """执行数据回填: 快速生成过去 N 小时的数据"""
+        logger.info(f"🚀 开始回填模式: 生成过去 {self.backfill_hours} 小时的数据...")
+        
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(hours=self.backfill_hours)
+        
+        # 假设每用户每小时产生 5 个事件来估算总量，或者直接生成固定数量
+        total_events_to_generate = self.num_users * self.backfill_hours * 5 
+        logger.info(f"预计回填事件总数: {total_events_to_generate}")
+
+        batch_size = 100
+        current_batch = []
+        
+        for i in range(total_events_to_generate):
+            # 随机分布在时间窗口内
+            random_seconds = random.randint(0, int((end_time - start_time).total_seconds()))
+            event_time = start_time + timedelta(seconds=random_seconds)
+            
+            event = self._create_event(timestamp=event_time)
+            
+            # PubSub 发送 (这里为了速度可以并行，但为了简单直接复用 publisher)
+            data_str = json.dumps(event)
+            data_bytes = data_str.encode("utf-8")
+            
+            self.publisher.publish(self.topic_path, data_bytes)
+            
+            self.total_sent += 1
+            if self.total_sent % 500 == 0:
+                 logger.info(f"回填进度: {self.total_sent}/{total_events_to_generate}")
+                 
+        logger.info(f"✅ 回填完成! 共发送 {self.total_sent} 个历史事件。")
+
     def start(self):
-        """启动生成器 (阻塞模式)"""
+        """启动生成器"""
+        if self.backfill:
+            self.run_backfill()
+            return
+
+        # 实时模式
         self.running = True
-        logger.info(f"开始模拟流量... 目标速率: {self.events_per_sec} eps | 用户池: {self.num_users}")
+        logger.info(f"🔥 开始实时流量模拟... 目标速率: {self.events_per_sec} eps | 用户池: {self.num_users}")
         
         delay = 1.0 / self.events_per_sec
         
@@ -157,7 +206,9 @@ if __name__ == "__main__":
     parser.add_argument("--project_id", required=True, help="GCP Project ID")
     parser.add_argument("--topic_id", default="sentinel-clickstream-topic", help="Pub/Sub Topic ID")
     parser.add_argument("--users", type=int, default=100, help="Number of simulated users")
-    parser.add_argument("--rate", type=float, default=10.0, help="Events per second")
+    parser.add_argument("--rate", type=float, default=10.0, help="Events per second (Live mode only)")
+    parser.add_argument("--backfill", action="store_true", help="Enable historical data backfill mode")
+    parser.add_argument("--backfill_hours", type=int, default=24, help="Number of hours to backfill")
     
     args = parser.parse_args()
     
@@ -165,7 +216,9 @@ if __name__ == "__main__":
         project_id=args.project_id,
         topic_id=args.topic_id,
         num_users=args.users,
-        events_per_sec=args.rate
+        events_per_sec=args.rate,
+        backfill=args.backfill,
+        backfill_hours=args.backfill_hours
     )
     
     generator.start()

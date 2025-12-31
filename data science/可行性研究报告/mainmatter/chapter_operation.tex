@@ -1,0 +1,311 @@
+\chapter{运行与社会可行性分析}
+
+\section{运营与供应链规划}
+
+\subsection{用户交互界面设计 (App Wireframes)}
+图~\ref{fig:app_ui} 展示了移动端 App 的低保真原型设计，包含首页监控、发电设备详情及个人中心三大板块。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        % Phone 1: Dashboard
+        \draw[rounded corners=10pt, fill=white] (0,0) rectangle (4,7);
+        \draw (0.5, 6.5) node[right] {Home};
+        \draw (0.5, 5.5) node[right] {SoC: 85\%};
+        \fill[green!50] (0.5, 5) rectangle (3.5, 5.3); % Battery bar
+        \draw (0.5, 4) node[right] {PV: 3.5 kW};
+        \draw (0.5, 3) node[right] {Grid: -1.2 kW};
+        \draw[pattern=north east lines] (0.5, 0.5) rectangle (3.5, 2.5); % Chart placeholder
+        \node at (2, -0.5) {Dashboard};
+
+        % Phone 2: Details
+        \draw[rounded corners=10pt, fill=white] (5,0) rectangle (9,7);
+        \draw (5.5, 6.5) node[right] {Details};
+        \draw (5.5, 5.5) node[right] {Temp: 35$^\circ$C};
+        \draw (5.5, 4.5) node[right] {Alerts: 0};
+        \draw (5.5, 3.5) node[right] {Savings: \$12.5};
+        \foreach \i in {1,...,4}
+        \draw (5.5, 3-\i*0.5) -- (8.5, 3-\i*0.5); % List items
+        \node at (7, -0.5) {Status Logs};
+
+        % Phone 3: Profile
+        \draw[rounded corners=10pt, fill=white] (10,0) rectangle (14,7);
+        \draw (10.5, 6.5) node[right] {Profile};
+        \draw (12, 5) circle (1); % Avatar
+        \draw (10.5, 3) node[right] {Settings};
+        \draw (10.5, 2) node[right] {Help};
+        \draw (10.5, 1) node[right] {About};
+        \node at (12, -0.5) {Settings};
+    \end{tikzpicture}
+    \caption{移动端 App 交互界面原型 (Wireframes)}
+    \label{fig:app_ui}
+\end{figure}
+
+\subsection{供应链管理与制造流程}
+为确保量产可行性，图~\ref{fig:supply_chain} 梳理了从原材料采购到最终交付的供应链物流网络。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[node distance=2.5cm, auto,
+            factory/.style={trapezium, draw, fill=gray!20, minimum width=2cm},
+            logistics/.style={circle, draw, fill=blue!10},
+            market/.style={rectangle, draw, fill=green!10, rounded corners}
+        ]
+        \node[factory] (cell) {电芯厂(CATL)};
+        \node[factory, below of=cell] (semi) {芯片厂(TI/ST)};
+
+        \node[logistics, right of=cell, yshift=-1.25cm] (hub) {区域Hub};
+
+        \node[factory, right of=hub] (assembly) {总装工厂};
+
+        \node[market, right of=assembly] (usa) {美国市场};
+        \node[market, below of=usa] (eu) {欧洲市场};
+
+        \draw[->, thick] (cell) -- node[above, font=\scriptsize]{Li-ion Cells} (hub);
+        \draw[->, thick] (semi) -- node[below, font=\scriptsize]{MCU/MOSFET} (hub);
+        \draw[->, thick] (hub) -- (assembly);
+        \draw[->, thick] (assembly) -- (usa);
+        \draw[->, thick] (assembly) -- (eu);
+
+        \node[below=0.2cm of assembly, font=\scriptsize, align=center] {QC/Testing\\Packaging};
+    \end{tikzpicture}
+    \caption{全球供应链物流网络示意图}
+    \label{fig:supply_chain}
+\end{figure}
+
+\section{系统运行与运维可行性}
+
+\subsection{用户操作流程分析}
+为了验证系统的易用性，我们绘制了用户从注册到查看节能收益的标准业务流程泳道图 (Swimlane Diagram)，如图~\ref{fig:swimlane} 所示。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm,
+            startstop/.style={rectangle, rounded corners, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=red!10},
+            process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30},
+            decision/.style={diamond, minimum width=2.5cm, minimum height=1cm, text centered, draw=black, fill=green!30},
+            arrow/.style={thick,->,>=stealth},
+            lane/.style={draw=gray, dashed}
+        ]
+
+        % Lanes
+        \draw[lane] (-4, 2) -- (-4, -8);
+        \draw[lane] (3, 2) -- (3, -8);
+        \node at (-0.5, 1.5) {\textbf{用户 (User)}};
+        \node at (6.5, 1.5) {\textbf{系统 (System)}};
+
+        % Nodes
+        \node (start) [startstop] at (-0.5, 0) {开始};
+        \node (login) [process, below of=start] {登录 App};
+        \node (view) [process, below of=login] {查看仪表盘};
+        \node (opt) [decision, below of=view, yshift=-1cm] {开启优化?};
+        \node (schedule) [process, right of=opt, xshift=6cm] {生成调度策略};
+        \node (exec) [process, below of=schedule] {下发指令至PCS};
+        \node (feedback) [process, below of=exec] {反馈执行结果};
+        \node (display) [process, left of=feedback, xshift=-6cm] {展示收益};
+        \node (end) [startstop, below of=display] {结束};
+
+        % Arrows
+        \draw[arrow] (start) -- (login);
+        \draw[arrow] (login) -- (view);
+        \draw[arrow] (view) -- (opt);
+        \draw[arrow] (opt) -- node[anchor=south] {是} (schedule);
+        \draw[arrow] (opt) -- node[anchor=east] {否} (display);
+        \draw[arrow] (schedule) -- (exec);
+        \draw[arrow] (exec) -- (feedback);
+        \draw[arrow] (feedback) -- (display);
+        \draw[arrow] (display) -- (end);
+
+    \end{tikzpicture}
+    \caption{用户与系统交互流程泳道图}
+    \label{fig:swimlane}
+\end{figure}
+
+流程设计遵循“三步原则”，即用户在三次点击内即可触达 80\% 的核心功能，极大地降低了使用门槛。
+
+\subsection{自动化运维 (DevOps) 体系}
+为保障系统的长期稳定运行，我们设计了基于 GitHub Actions 和 GCP Cloud Build 的 CI/CD 流水线，如图~\ref{fig:cicd} 所示。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm,
+            block/.style={rectangle, draw, fill=blue!20, text width=2.5cm, text centered, rounded corners, minimum height=1.2cm},
+            line/.style={draw, -latex', thick},
+            cloud/.style={draw, ellipse, fill=red!20, node distance=2.5cm, minimum height=1.5cm}
+        ]
+
+        \node [block] (code) {代码提交 (GitHub)};
+        \node [block, right=of code] (build) {构建镜像 (Cloud Build)};
+        \node [block, right=of build] (test) {自动化测试 (Unit Test)};
+        \node [block, below=of test] (deploy) {灰度发布 (Cloud Run)};
+        \node [block, left=of deploy] (monitor) {监控报警 (Cloud Monitor)};
+
+        \path [line] (code) -- (build);
+        \path [line] (build) -- (test);
+        \path [line] (test) -- (deploy);
+        \path [line] (deploy) -- (monitor);
+        \path [line, dashed] (monitor) -- (code);
+
+    \end{tikzpicture}
+    \caption{自动化运维 CI/CD 流水线}
+    \label{fig:cicd}
+\end{figure}
+
+任何代码变更在合并至主分支前，都会自动触发单元测试和集成测试，确保发布的可靠性。
+
+\section{社会与法律可行性}
+
+\subsection{碳减排效益模型}
+本系统的社会价值主要体现在对电网清洁能源消纳的促进上。年碳减排量 ($C_{red}$) 估算模型如下：
+\begin{equation}
+    C_{red} = \sum_{t=1}^{8760} (P_{pv\_direct}(t) \cdot EF_{grid}(t))
+\end{equation}
+其中 $P_{pv\_direct}(t)$ 为直接自用的光伏电量，$EF_{grid}(t)$ 为电网通过火电供电的碳排放因子。测算表明，户均年减排量约为 1.8 吨 CO$_2$。
+
+\subsection{数据隐私合规 (GDPR)}
+针对最为敏感的用户隐私问题，系统严格遵循欧盟 GDPR 法规\cite{gdpr2016} 执行合规措施：
+\begin{itemize}
+    \item \textbf{数据最小化原则}: 仅采集优化必须的功率数据，不采集任何音频或视频信息。
+    \item \textbf{端到端加密}: 数据在传输层使用 TLS 1.3 加密，存储层使用 AES-256 静态加密。
+    \item \textbf{被遗忘权}: 用户在注销账户时，系统设计了物理删除机制，彻底清除云端所有历史数据。
+\end{itemize}
+
+\section{用户全旅程服务体系}
+
+\subsection{用户引导与安装流程 (Onboarding)}
+良好的开箱体验是用户留存的关键。我们设计了极简的“3分钟”引导流程。图~\ref{fig:onboarding} 展示了从拆箱到连网的全链路交互。
+
+\begin{figure}[htbp]
+    \centering
+    \resizebox{0.8\textwidth}{!}{
+        \begin{tikzpicture}[
+                node distance=2cm,
+                process/.style={rectangle, draw, fill=orange!10, rounded corners, minimum width=3cm, minimum height=1cm, align=center},
+                arrow/.style={-latex, thick}
+            ]
+            \node[process] (scan) {1. 扫描机身二维码\\(Download App)};
+            \node[process, right=of scan] (register) {2. 手机号/Google 注册\\(Create Account)};
+            \node[process, below=of register] (bluetooth) {3. 蓝牙自动发现设备\\(BLE Pairing)};
+            \node[process, left=of bluetooth] (wifi) {4. 输入家庭 WiFi 密码\\(Provisioning)};
+            \node[process, below=of wifi] (bind) {5. 设备绑定成功\\(Cloud Sync)};
+            \node[process, right=of bind, fill=green!10] (done) {6. 开始使用\\(Ready)};
+
+            \draw[arrow] (scan) -- (register);
+            \draw[arrow] (register) -- (bluetooth);
+            \draw[arrow] (bluetooth) -- (wifi);
+            \draw[arrow] (wifi) -- (bind);
+            \draw[arrow] (bind) -- (done);
+
+        \end{tikzpicture}
+    }
+    \caption{新用户设备激活与入网流程图}
+    \label{fig:onboarding}
+\end{figure}
+
+\subsection{设备全生命周期管理 (PLM)}
+考虑到锂电池的退役处理，系统建立了闭环的生命周期管理机制，涵盖四个阶段：\textbf{原材料采购与制造} $\rightarrow$ \textbf{用户使用与运维} $\rightarrow$ \textbf{梯次利用（储能电站）} $\rightarrow$ \textbf{拆解回收（稀有金属）}，最终回收物料再次进入制造环节，形成完整闭环。
+
+本机制确保每块电池都有唯一的数字身份 (Digital ID)，通过区块链技术溯源，符合欧盟新电池法案的要求。
+
+
+\subsection{风险评估矩阵}
+项目运行潜在风险评估如表~\ref{tab:risk_matrix_desc} 及图~\ref{fig:risk_matrix} 所示。
+
+\begin{table}[htbp]
+    \centering
+    \caption{系统主要风险及应对策略}
+    \label{tab:risk_matrix_desc}
+    \begin{tabularx}{\textwidth}{lXXl}
+        \toprule
+        \textbf{风险类别} & \textbf{风险描述}    & \textbf{应对/缓解措施}         & \textbf{风险等级} \\
+        \midrule
+        电网停电          & 突发性大面积停电导致系统无法充电 & 配置备用电源，通过 BMS 保留最低电量     & 高             \\
+        网络中断          & 云端指令无法下发         & 本地 BMS 具备离线运行策略，按预设模式充放电 & 中             \\
+        电池老化          & 电池容量衰减超过预期       & 实施精细化充放电管理，引入 SOH 预测算法   & 中             \\
+        黑客攻击          & 恶意控制导致电池热失控      & 采用 TLS 加密，双向认证，物理隔离 BMS  & 高             \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=0.8, transform shape]
+        % Axis
+        \draw[<->, thick] (0,5.5) node[left]{影响程度 (Impact)} -- (0,0) -- (5.5,0) node[below]{发生概率 (Probability)};
+
+        % Zones
+        \fill[red!30] (2.5,2.5) rectangle (5,5);
+        \fill[orange!30] (0,2.5) rectangle (2.5,5);
+        \fill[orange!30] (2.5,0) rectangle (5,2.5);
+        \fill[green!30] (0,0) rectangle (2.5,2.5);
+
+        % Grid
+        \draw[dashed, gray] (2.5,0) -- (2.5,5);
+        \draw[dashed, gray] (0,2.5) -- (5,2.5);
+
+        % Risks
+        \node[font=\bfseries] at (1.25, 1.25) {低风险区};
+        \node[font=\bfseries] at (3.75, 3.75) {高风险区};
+
+        \node[circle, fill=black, inner sep=1.5pt, label=right:电网停电] at (1.0, 4.0) {};
+        \node[circle, fill=black, inner sep=1.5pt, label=right:网络中断] at (3.5, 1.5) {};
+        \node[circle, fill=black, inner sep=1.5pt, label=right:电池老化] at (4.0, 2.0) {};
+        \node[circle, fill=black, inner sep=1.5pt, label=right:黑客攻击] at (1.5, 4.5) {};
+
+    \end{tikzpicture}
+    \caption{系统运行风险评估矩阵}
+    \label{fig:risk_matrix}
+\end{figure}
+
+\subsection{极端工况应急响应}
+考虑到电网故障或网络中断等极端情况，系统设计了完备的应急预案：
+\begin{enumerate}
+    \item \textbf{通信中断}: 当网络延迟超过 60s 时，本地网关自动切换至“离线安全模式”，依据本地存储的最后一条有效策略运行，并限制最大充放电功率为 50\%。
+    \item \textbf{电网停电}: 系统自动检测孤岛效应，并在 20ms 内切换至离网运行模式 (Off-grid Mode)，优先保障冰箱、照明等关键负载供电。
+\end{enumerate}
+
+
+\section{用户操作与故障排除手册}
+
+为了降低用户使用门槛并确保设备长期稳定运行，配套提供了详尽的用户手册与维护指南。本节摘录其中的核心故障排除代码表及维护计划。
+
+\subsection{常见故障代码与排查 (Troubleshooting)}
+
+用户可通过 APP 查看设备报警代码，并依据表~\ref{tab:error_codes} 进行初步处置。
+
+\begin{table}[htbp]
+    \centering
+    \caption{常见故障代码对照表}
+    \label{tab:error_codes}
+    \begin{tabularx}{\textwidth}{|c|l|X|l|}
+        \hline
+        \textbf{代码} & \textbf{故障名称} & \textbf{可能原因及排查步骤}                        & \textbf{建议操作} \\ \hline
+        E001        & 通讯超时          & 1. WiFi 信号弱。\newline 2. 路由器断电。            & 检查路由器连接，重启设备。 \\ \hline
+        E002        & 温度过高          & 1. 环境温度 > 45$^\circ$C。\newline 2. 散热风扇堵塞。 & 清理进风口，改善通风环境。 \\ \hline
+        E003        & 绝缘阻抗低         & 1. 潮湿导致漏电流增大。\newline 2. 接地线松动。           & 保持干燥，检查接地。    \\ \hline
+        E004        & 电池欠压          & 1. 长期未充电。\newline 2. 单体一致性差。              & 尝试小电流充电激活。    \\ \hline
+    \end{tabularx}
+\end{table}
+
+\subsection{全生命周期维护计划}
+
+建议用户或运维商按照表~\ref{tab:maintenance} 执行预防性维护。
+
+\begin{table}[htbp]
+    \centering
+    \caption{设备预防性维护时间表}
+    \label{tab:maintenance}
+    \begin{tabularx}{\textwidth}{|l|l|X|}
+        \hline
+        \textbf{周期} & \textbf{维护项目} & \textbf{检查要点}                         \\ \hline
+        每月          & 外观检查          & 检查外壳是否有变形、异味、焦痕；清理防尘网。                \\ \hline
+        每季度         & 电气连接          & 检查线缆接头是否松动、发热；紧固接线端子。                 \\ \hline
+        每年          & 容量校准          & 执行一次完整的充放电循环 (0\%-100\%)，校准 SOC 估算精度。 \\ \hline
+        每3年         & 冷却液           & 检查冷却液液位，必要时补充或更换乙二醇防冻液。               \\ \hline
+    \end{tabularx}
+\end{table}
+
+\section{本章小结}
+本章从运维便捷性、系统稳定性以及社会法律合规性三个方面证明了系统不仅“好用”，而且“安全”、“合规”。完善的 DevOps 体系和隐私保护机制为大规模商业化推广扫清了障碍。

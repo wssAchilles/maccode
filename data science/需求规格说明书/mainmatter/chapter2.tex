@@ -1,0 +1,300 @@
+\chapter{总体描述}
+
+本章从宏观角度描述电力数据分析系统的产品定位、功能概述、目标用户、约束条件和外部依赖，为后续详细需求描述提供整体框架。
+
+\section{产品前景}
+
+\subsection{项目背景}
+
+随着可再生能源的普及和智能电网技术的发展，家庭和商业用户越来越需要智能化的能源管理解决方案。分时电价（Time-of-Use, TOU）政策的推广使得用户可以通过优化用电时段来降低电费支出。储能电池技术的成熟为实现"低价充电、高价放电"的能源套利策略提供了硬件基础。
+
+本系统正是在这一背景下设计开发的，旨在利用机器学习技术预测能源负载，结合数学优化算法生成最优电池调度策略，帮助用户实现能源成本最小化。
+
+\subsection{系统定位}
+
+电力数据分析系统是一个独立运行的云端应用，但需要与多个外部系统进行数据交互，如图~\ref{fig:system-context} 所示。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=2.5cm,
+            system/.style={rectangle, draw=blue!70, fill=blue!15,
+                    text width=4cm, minimum height=2cm,
+                    align=center, rounded corners=5pt,
+                    font=\small\bfseries, line width=1.5pt},
+            external/.style={rectangle, draw=gray!60, fill=gray!10,
+                    text width=3cm, minimum height=1.5cm,
+                    align=center, rounded corners=3pt,
+                    font=\footnotesize},
+            user/.style={ellipse, draw=green!60, fill=green!10,
+                    minimum width=2.5cm, minimum height=1.5cm,
+                    align=center, font=\footnotesize},
+            arrow/.style={->, >=stealth, thick},
+            darrow/.style={<->, >=stealth, thick}
+        ]
+        % 核心系统
+        \node[system] (core) {电力数据分析系统\\{\footnotesize (Power Data Analysis System)}};
+
+        % 外部系统
+        \node[external, above left=2cm and 3cm of core] (caiso) {CAISO\\电网负载数据};
+        \node[external, above=2.5cm of core] (weather) {OpenWeatherMap\\天气数据API};
+        \node[external, above right=2cm and 3cm of core] (firebase) {Firebase\\认证服务};
+
+        \node[external, below left=2cm and 3cm of core] (gcs) {Google Cloud\\Storage};
+        \node[external, below=2.5cm of core] (firestore) {Cloud\\Firestore};
+        \node[external, below right=2cm and 3cm of core] (gae) {Google App\\Engine};
+
+        % 用户
+        \node[user, left=4cm of core] (user) {终端用户\\(Web浏览器)};
+
+        % 连接线
+        \draw[arrow] (caiso) -- node[above, sloped, font=\tiny] {负载数据} (core);
+        \draw[arrow] (weather) -- node[right, font=\tiny] {温度预报} (core);
+        \draw[darrow] (firebase) -- node[above, sloped, font=\tiny] {认证令牌} (core);
+
+        \draw[darrow] (core) -- node[above, sloped, font=\tiny] {文件存储} (gcs);
+        \draw[darrow] (core) -- node[left, font=\tiny] {历史记录} (firestore);
+        \draw[arrow] (gae) -- node[above, sloped, font=\tiny] {托管运行} (core);
+
+        \draw[darrow] (user) -- node[above, font=\tiny] {HTTP/HTTPS} (core);
+    \end{tikzpicture}
+    \caption{系统上下文图}
+    \label{fig:system-context}
+\end{figure}
+
+\subsection{与其他系统的关系}
+
+表~\ref{tab:external-systems} 描述了本系统与外部系统的交互关系。
+
+\begin{table}[htbp]
+    \centering
+    \caption{外部系统交互关系}
+    \label{tab:external-systems}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{外部系统}           & \textbf{交互方式} & \textbf{交互内容}         \\
+        \midrule
+        CAISO API               & HTTP GET      & 获取加州电网实时负载数据，用于预测模型训练 \\
+        OpenWeatherMap API      & HTTP GET      & 获取城市温度预报，作为预测特征       \\
+        Firebase Authentication & OAuth 2.0     & 用户身份认证和会话管理           \\
+        Google Cloud Storage    & REST API      & 存储用户数据文件和机器学习模型       \\
+        Cloud Firestore         & SDK/REST      & 存储用户历史记录和系统配置         \\
+        Google App Engine       & PaaS 托管       & 运行后端 Flask 应用和定时任务    \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{产品功能概述}
+
+系统的主要功能模块如图~\ref{fig:function-overview} 所示，可分为四大类：
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            node distance=0.5cm,
+            category/.style={rectangle, draw=blue!60, fill=blue!20,
+                    text width=4cm, minimum height=1cm,
+                    align=center, rounded corners=3pt,
+                    font=\small\bfseries},
+            feature/.style={rectangle, draw=gray!50, fill=white,
+                    text width=3.8cm, minimum height=0.7cm,
+                    align=left, font=\footnotesize,
+                    left color=white, right color=gray!10}
+        ]
+        % 用户认证模块
+        \node[category] (auth) {用户认证模块};
+        \node[feature, below=0.3cm of auth] (auth1) {• Email/密码登录};
+        \node[feature, below=0.1cm of auth1] (auth2) {• Google OAuth登录};
+        \node[feature, below=0.1cm of auth2] (auth3) {• 会话管理与登出};
+
+        % 核心业务模块
+        \node[category, right=2cm of auth] (core) {核心业务模块};
+        \node[feature, below=0.3cm of core] (core1) {• 能源负载预测 (ML)};
+        \node[feature, below=0.1cm of core1] (core2) {• 电池调度优化 (Gurobi)};
+        \node[feature, below=0.1cm of core2] (core3) {• 实时数据采集};
+        \node[feature, below=0.1cm of core3] (core4) {• What-If 场景分析};
+
+        % 数据管理模块
+        \node[category, below=3cm of auth] (data) {数据管理模块};
+        \node[feature, below=0.3cm of data] (data1) {• 文件上传/下载};
+        \node[feature, below=0.1cm of data1] (data2) {• 历史记录查询};
+        \node[feature, below=0.1cm of data2] (data3) {• 数据质量分析};
+
+        % 可视化模块
+        \node[category, right=2cm of data] (viz) {数据可视化模块};
+        \node[feature, below=0.3cm of viz] (viz1) {• 负载/价格曲线图};
+        \node[feature, below=0.1cm of viz1] (viz2) {• 电池SOC变化图};
+        \node[feature, below=0.1cm of viz2] (viz3) {• 特征重要性图表};
+        \node[feature, below=0.1cm of viz3] (viz4) {• 成本节省统计};
+    \end{tikzpicture}
+    \caption{产品功能概述图}
+    \label{fig:function-overview}
+\end{figure}
+
+\subsection{功能列表}
+
+\begin{enumerate}
+    \item \textbf{用户认证与权限管理}
+          \begin{itemize}
+              \item 支持 Email/密码注册和登录
+              \item 支持 Google 账户第三方登录
+              \item 自动会话保持和安全登出
+          \end{itemize}
+
+    \item \textbf{能源负载预测}
+          \begin{itemize}
+              \item 基于随机森林/集成学习的 24 小时负载预测
+              \item 支持温度调整的 What-If 分析
+              \item 模型可解释性展示（SHAP 特征贡献）
+          \end{itemize}
+
+    \item \textbf{电池调度优化}
+          \begin{itemize}
+              \item 基于 Gurobi 求解器的线性规划优化
+              \item 生成最优充放电时刻表
+              \item 计算成本节省金额和百分比
+          \end{itemize}
+
+    \item \textbf{数据管理}
+          \begin{itemize}
+              \item CSV 文件上传和分析
+              \item 历史分析记录查询
+              \item 实时数据自动采集和存储
+          \end{itemize}
+
+    \item \textbf{数据可视化}
+          \begin{itemize}
+              \item 交互式图表展示（基于 fl\_chart）
+              \item 响应式仪表盘布局
+              \item 关键指标卡片展示
+          \end{itemize}
+\end{enumerate}
+
+\section{用户特征}
+
+\subsection{目标用户群体}
+
+本系统的目标用户主要包括以下群体：
+
+\begin{table}[htbp]
+    \centering
+    \caption{用户特征描述}
+    \label{tab:user-characteristics}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{用户类型} & \textbf{技术背景} & \textbf{使用场景}      \\
+        \midrule
+        家庭用户          & 初级            & 查看能源优化建议，了解潜在电费节省  \\
+        能源管理专员        & 中级            & 配置电池参数，分析多种优化场景    \\
+        数据科学学生        & 中高级           & 学习 ML 预测和优化算法的实际应用 \\
+        系统管理员         & 高级            & 监控系统运行状态，管理数据和模型   \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{用户能力假设}
+
+\begin{itemize}
+    \item 用户具备基本的计算机操作能力，能够使用 Web 浏览器
+    \item 用户了解基本的能源概念（如电价、用电量、储能电池）
+    \item 高级用户可能需要理解机器学习和优化算法的基本原理
+\end{itemize}
+
+\section{一般约束}
+
+\subsection{技术约束}
+
+\begin{enumerate}
+    \item \textbf{云平台依赖}：系统部署于 Google Cloud Platform，受限于 GCP 服务的可用性和地理覆盖。
+
+    \item \textbf{免费层额度限制}：
+          \begin{itemize}
+              \item Google App Engine：每日 28 实例小时（F1 实例）
+              \item Cloud Storage：5 GB 存储，1 GB 出站流量/月
+              \item Firestore：1 GiB 存储，50,000 次读取/日
+          \end{itemize}
+
+    \item \textbf{Gurobi 许可证}：优化求解器需要有效的 Gurobi 许可证（学术版免费）。
+
+    \item \textbf{第三方 API 限制}：OpenWeatherMap 免费版限制 60 次调用/分钟。
+\end{enumerate}
+
+\subsection{开发约束}
+
+\begin{enumerate}
+    \item \textbf{开发语言}：后端使用 Python $\geq$ 3.9，前端使用 Dart (Flutter Web)
+    \item \textbf{开发周期}：项目需在规定的学期内完成开发和测试
+    \item \textbf{团队规模}：开发团队由 3 名成员组成
+\end{enumerate}
+
+\subsection{运营约束}
+
+\begin{enumerate}
+    \item 系统运行需要稳定的互联网连接
+    \item 用户浏览器需支持现代 Web 标准（Chrome、Firefox、Safari、Edge）
+\end{enumerate}
+
+\section{假设与依赖}
+
+\subsection{假设条件}
+
+\begin{enumerate}
+    \item 假设用户拥有稳定的互联网连接
+    \item 假设 Google Cloud Platform 服务保持正常可用
+    \item 假设 CAISO 和 OpenWeatherMap API 持续提供数据服务
+    \item 假设用户输入的电池参数在合理范围内
+    \item 假设分时电价政策在预测周期内保持稳定
+\end{enumerate}
+
+\subsection{外部依赖}
+
+表~\ref{tab:dependencies} 列出了系统的主要外部依赖项。
+
+\begin{table}[htbp]
+    \centering
+    \caption{外部依赖项}
+    \label{tab:dependencies}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{依赖项} & \textbf{版本/来源} & \textbf{用途} \\
+        \midrule
+        Python       & $\geq$ 3.9     & 后端运行时环境     \\
+        Flask        & $\geq$ 2.0     & Web 框架      \\
+        Pandas       & $\geq$ 1.5     & 数据处理        \\
+        Scikit-learn & $\geq$ 1.0     & 机器学习模型      \\
+        Gurobi       & $\geq$ 10.0    & 优化求解器       \\
+        Flutter      & $\geq$ 3.0     & 前端框架        \\
+        Firebase SDK & 最新稳定版          & 认证和托管服务     \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{系统架构概览}
+
+图~\ref{fig:system-architecture} 展示了电力数据分析系统的三层架构设计。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{GAE.png}
+    \caption{系统部署架构图（Google App Engine）}
+    \label{fig:system-architecture}
+\end{figure}
+
+系统采用前后端分离的三层架构：
+
+\begin{enumerate}
+    \item \textbf{表示层（Presentation Layer）}：基于 Flutter Web 开发，部署于 Firebase Hosting，负责用户界面展示和交互。
+
+    \item \textbf{业务逻辑层（Business Logic Layer）}：基于 Python Flask 开发，部署于 Google App Engine，负责 ML 预测、优化计算和 API 服务。
+
+    \item \textbf{数据层（Data Layer）}：整合 Google Cloud Storage（文件存储）和 Cloud Firestore（结构化数据），负责数据持久化。
+\end{enumerate}
+
+图~\ref{fig:data-flow} 展示了系统的数据流转过程。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{作业图.png}
+    \caption{系统数据流程图}
+    \label{fig:data-flow}
+\end{figure}

@@ -1,0 +1,23 @@
+\begin{abstract}
+  本需求规格说明书详细描述了"电力数据分析系统"的软件需求规格。该系统是一个基于云计算架构的智能能源管理平台，旨在为家庭及商业微电网用户提供负载预测、电池调度优化和能源成本分析服务。
+
+  系统采用前后端分离的三层架构设计：前端基于 Flutter Web 框架开发，部署于 Firebase Hosting；后端基于 Python Flask 框架开发，部署于 Google App Engine (GAE)；数据层则整合了 Google Cloud Storage 和 Cloud Firestore 等云存储服务。核心功能包括：基于随机森林和集成学习的能源负载预测、基于 Gurobi 优化求解器的电池调度策略生成、实时电网数据（CAISO）和天气数据（OpenWeatherMap）的自动采集与融合，以及丰富的交互式数据可视化功能。
+
+  本文档遵循 IEEE 830-1998 和 ISO/IEC/IEEE 29148:2018 国际标准编写，涵盖系统功能性需求、非功能性需求、数据模型及系统属性等方面，为项目的设计开发、测试验收和维护迭代提供明确的技术依据。
+
+  \thusetup{
+    keywords = {能源优化, 机器学习, 微电网, 电池调度, 云计算},
+  }
+\end{abstract}
+
+\begin{abstract*}
+  This Software Requirements Specification (SRS) document provides a comprehensive description of the requirements for the "Power Data Analysis System." The system is an intelligent energy management platform built on cloud computing architecture, designed to provide load forecasting, battery dispatch optimization, and energy cost analysis services for residential and commercial microgrid users.
+
+  The system adopts a three-tier front-end/back-end separation architecture: the front-end is developed using the Flutter Web framework and deployed on Firebase Hosting; the back-end is developed using the Python Flask framework and deployed on Google App Engine (GAE); the data layer integrates cloud storage services including Google Cloud Storage and Cloud Firestore. Core functionalities include: energy load prediction based on Random Forest and ensemble learning methods, battery dispatch strategy generation based on the Gurobi optimization solver, automatic collection and fusion of real-time grid data (CAISO) and weather data (OpenWeatherMap), as well as rich interactive data visualization capabilities.
+
+  This document is prepared in accordance with IEEE 830-1998 and ISO/IEC/IEEE 29148:2018 international standards, covering functional requirements, non-functional requirements, data models, and system attributes, providing clear technical references for project design, development, testing, acceptance, and maintenance iterations.
+
+  \thusetup{
+    keywords* = {Software Requirements Specification, Energy Optimization, Machine Learning, Microgrid, Battery Dispatch, Cloud Computing},
+  }
+\end{abstract*}

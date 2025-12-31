@@ -60,13 +60,15 @@ def create_agent_graph():
         """
         The reasoning node (LLM) that decides what to do next.
         """
-        messages = state["messages"]
+        messages = state.get("messages", [])
+        
+        # 确保消息列表非空
+        if not messages:
+            logger.warning("reason_node received empty messages list, creating initial prompt")
+            user_id = state.get("user_id", "unknown")
+            messages = [HumanMessage(content=f"请分析用户 {user_id} 的状态并制定挽留计划。")]
         
         # System Prompt Injection
-        # We perform a check to ensure System Prompt is at the start or context is appropriately set
-        # For a simple ReAct loop, we can prepend instructions if not present, 
-        # but here we assume the initial message setup handles it or we do it here.
-        
         system_prompt = (
             "你是一个决策型 AI (SentinEL Agent)。"
             "你的目标是为用户制定最佳挽留策略。"
@@ -74,27 +76,46 @@ def create_agent_graph():
             "1. 首先调用 lookup_user_profile 获取用户画像和最近行为。"
             "2. 然后调用 predict_churn_risk 获取流失概率。"
             "3. 评估风险：如果风险高（Risk Level = High 或 Score > 0.7），必须寻找挽留策略。"
-            "4. 调用 find_retention_strategies 获取候选策略。"
-            "5. 对成本最高的策略，务必调用 check_budget_availability 确认预算。"
-            "6. 如果预算不足或风险较低，仅建议发送关怀邮件或低成本策略。"
-            "7. 每一步都要解释原因 (Thought)。"
-            "8. 最终给出一个总结性的建议。"
+            "4. [关键] 在分析高价值（VIP）流失用户时，必须调用 consult_market_intelligence 工具，查询当前的市场竞争环境（如竞品价格、热门新功能 "
+            "   例如 'Competitor pricing 2025'）。如果发现竞品有降价活动，请在挽留邮件中提供更有竞争力的折扣。"
+            "5. 调用 find_retention_strategies 获取候选策略。"
+            "6. 对成本最高的策略，务必调用 check_budget_availability 确认预算。"
+            "7. 如果预算不足或风险较低，仅建议发送关怀邮件或低成本策略。"
+            "8. 每一步都要解释原因 (Thought)。"
+            "9. 最终给出一个总结性的建议。"
         )
         
-        # Ensure system prompt is considered. 
-        # In strictly chat models, specific logic applies, but prepending a SystemMessage is standard.
-        from langchain_core.messages import SystemMessage
-        if not isinstance(messages[0], SystemMessage):
-             messages = [SystemMessage(content=system_prompt)] + messages
+        
+        # Merge System Prompt into HumanMessage to avoid LangChain/VertexAI history parsing bugs
+        # (References IndexError: list index out of range in _parse_chat_history_gemini)
+        if messages and isinstance(messages[0], HumanMessage):
+             original_content = messages[0].content
+             messages[0] = HumanMessage(content=f"{system_prompt}\n\nUSER REQUEST: {original_content}")
+        elif not messages:
+             # Should not happen due to check above, but for safety
+             messages = [HumanMessage(content=f"{system_prompt}\n\nUSER REQUEST: 分析用户 {user_id}")]
              
         try:
-            response = llm_with_tools.invoke(messages)
+            logger.info(f"Invoking LLM with {len(messages)} messages.")
+            for i, m in enumerate(messages):
+                logger.info(f"Msg [{i}] Type: {type(m).__name__}, Content: {str(m.content)[:100]}...")
+                if hasattr(m, 'tool_calls') and m.tool_calls:
+                     logger.info(f"  Tool Calls: {m.tool_calls}")
+
+            # Sanitize messages for Gemini
+            sanitized_messages = []
+            for m in messages:
+                if isinstance(m, AIMessage) and m.tool_calls and not m.content:
+                    # Gemini adapter requires content to be at least empty string, not None
+                    m.content = ""
+                sanitized_messages.append(m)
+                
+            response = llm_with_tools.invoke(sanitized_messages)
             return {"messages": [response]}
         except Exception as e:
             logger.error(f"LLM invoke failed: {e}", exc_info=True)
-            # Create a fallback message to prevent crash loop, or re-raise
-            # Returning a text message saying error occurred
-            return {"messages": [AIMessage(content="I encountered an internal error while thinking. Please try again.")]}
+            # Create a fallback message to prevent crash loop
+            return {"messages": [AIMessage(content=f"分析过程中遇到错误: {str(e)[:200]}")]}
 
     def action_node(state: AgentState):
         """

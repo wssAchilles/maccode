@@ -1,0 +1,138 @@
+\chapter{引言}
+
+本章介绍了编写本需求规格说明书的目的、适用范围、术语定义以及文档的整体结构，为读者理解后续章节奠定基础。
+
+\section{编写目的}
+
+本需求规格说明书（Software Requirements Specification, SRS）的编写目的如下：
+
+\begin{enumerate}
+    \item \textbf{明确系统需求}：系统性地描述"电力数据分析系统"的功能性需求和非功能性需求，确保开发团队、测试团队和项目管理人员对系统需求有一致的理解。
+
+    \item \textbf{作为开发依据}：为系统设计、编码实现和模块集成提供明确的技术规格参考，减少因需求模糊导致的返工和变更。
+
+    \item \textbf{作为验收标准}：为项目验收测试提供可量化、可验证的功能和性能指标，确保交付产品符合预期要求。
+
+    \item \textbf{支持项目管理}：帮助项目管理人员评估工作量、制定开发计划、分配资源和控制项目进度。
+
+    \item \textbf{促进沟通协作}：作为开发团队与利益相关方之间的沟通桥梁，减少信息传递过程中的歧义和遗漏。
+\end{enumerate}
+
+\textbf{预期读者}：本文档的预期读者包括软件开发工程师、测试工程师、项目经理、系统架构师以及需要了解系统功能的其他利益相关方。
+
+\section{适用范围}
+
+\subsection{产品名称}
+
+本需求规格说明书适用于\textbf{"电力数据分析系统"}（Power Data Analysis System）的开发。
+
+\subsection{应用领域}
+
+本系统主要应用于以下领域：
+
+\begin{itemize}
+    \item \textbf{家庭微电网能源管理}：帮助家庭用户优化储能电池的充放电策略，降低用电成本。
+    \item \textbf{商业楼宇能源优化}：为商业建筑提供负载预测和峰谷电价套利策略，提高能源使用效率。
+    \item \textbf{数据科学教学演示}：作为机器学习、优化算法和云计算技术的综合应用案例。
+\end{itemize}
+
+\subsection{主要目标}
+
+系统的主要目标包括：
+
+\begin{enumerate}
+    \item 实现基于历史数据的能源负载精准预测（MAPE $< 10\%$）
+    \item 生成最优电池充放电调度策略，最大化电费节省
+\end{enumerate}
+
+\subsection{作用范围}
+
+本系统不包括以下功能：
+
+\begin{itemize}
+    \item 电力硬件设备的直接控制（如 BMS 电池管理系统）
+    \item 电力交易或结算功能
+    \item 多用户并发的企业级权限管理
+\end{itemize}
+
+\section{定义、缩写和缩略语}
+
+表~\ref{tab:terminology} 列出了本文档中使用的专业术语、缩写和缩略语的定义。
+
+\begin{table}[H]
+    \centering
+    \caption{术语表}
+    \label{tab:terminology}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{术语/缩写} & \textbf{英文全称}                          & \textbf{定义}        \\
+        \midrule
+        SRS            & Software Requirements Specification    & 软件需求规格说明书          \\
+        GAE            & Google App Engine                      & Google 云平台的应用托管服务  \\
+        GCS            & Google Cloud Storage                   & Google 云存储服务       \\
+        CAISO          & California Independent System Operator & 加州独立系统运营商，提供电网负载数据 \\
+        SOC            & State of Charge                        & 电池荷电状态，表示电池剩余电量百分比 \\
+        MAPE           & Mean Absolute Percentage Error         & 平均绝对百分比误差，预测精度指标   \\
+        ML             & Machine Learning                       & 机器学习               \\
+        API            & Application Programming Interface      & 应用程序编程接口           \\
+        SHAP           & SHapley Additive exPlanations          & 一种模型可解释性方法         \\
+        TOU            & Time-of-Use                            & 分时电价，按时段差异定价的电费模式  \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{参考文献}
+
+本需求规格说明书的编写参考了以下标准和文献：
+
+\begin{enumerate}
+    \item IEEE Std 830-1998, \textit{IEEE Recommended Practice for Software Requirements Specifications}
+    \item ISO/IEC/IEEE 29148:2018, \textit{Systems and software engineering — Life cycle processes — Requirements engineering}
+    \item Google Cloud 官方文档：\url{https://cloud.google.com/docs}
+    \item Firebase 官方文档：\url{https://firebase.google.com/docs}
+    \item Gurobi Optimization 官方文档：\url{https://www.gurobi.com/documentation/}
+    \item Flutter Web 开发文档：\url{https://docs.flutter.dev/}
+\end{enumerate}
+
+\section{文档概述}
+
+本需求规格说明书的结构如图~\ref{fig:doc-structure} 所示，共分为五个主要章节：
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            node distance=0.8cm,
+            chapter/.style={rectangle, draw=blue!60, fill=blue!10,
+                    text width=10cm, minimum height=1.2cm,
+                    align=center, rounded corners=3pt,
+                    font=\small},
+            arrow/.style={->, >=stealth, thick, blue!60}
+        ]
+        % 节点
+        \node[chapter] (ch1) {第1章 引言\\{\footnotesize 编写目的、适用范围、术语定义、文档概述}};
+        \node[chapter, below=of ch1] (ch2) {第2章 总体描述\\{\footnotesize 产品前景、功能概述、用户特征、约束与依赖}};
+        \node[chapter, below=of ch2] (ch3) {第3章 功能性需求\\{\footnotesize 用户认证、核心业务逻辑、数据管理、前端交互}};
+        \node[chapter, below=of ch3] (ch4) {第4章 非功能性需求\\{\footnotesize 性能、安全性、可靠性、外部接口}};
+        \node[chapter, below=of ch4] (ch5) {第5章 数据模型与系统属性\\{\footnotesize 数据字典、ER模型、可维护性、可扩展性}};
+
+        % 箭头
+        \draw[arrow] (ch1) -- (ch2);
+        \draw[arrow] (ch2) -- (ch3);
+        \draw[arrow] (ch3) -- (ch4);
+        \draw[arrow] (ch4) -- (ch5);
+    \end{tikzpicture}
+    \caption{文档结构导航图}
+    \label{fig:doc-structure}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{第1章 引言}：介绍文档的编写目的、适用范围、术语定义和整体结构。
+
+    \item \textbf{第2章 总体描述}：从宏观角度描述系统的产品前景、功能概述、用户特征、一般约束和假设依赖。
+
+    \item \textbf{第3章 功能性需求}：详细描述系统的各项功能需求，包括用户认证、核心业务逻辑、数据存储管理和前端交互功能。
+
+    \item \textbf{第4章 非功能性需求}：规定系统的性能、安全性、可靠性、可用性以及外部接口等非功能性需求。
+
+    \item \textbf{第5章 数据模型与系统属性}：定义系统的数据模型、数据字典，并描述软件系统的可维护性、可移植性和可扩展性。
+\end{itemize}

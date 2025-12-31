@@ -1,0 +1,290 @@
+% !TEX root = ../main.tex
+\chapter{项目组织与管理计划}
+
+\section{项目组织结构}
+
+\subsection{组织架构概述}
+
+本项目采用\textbf{矩阵式组织结构}，结合敏捷开发理念，建立高效的小型团队。项目组织架构如图~\ref{fig:org_structure}所示。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.2cm and 2cm,
+            box/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=1cm, align=center, font=\small},
+            leader/.style={box, fill=blue!30},
+            member/.style={box, fill=green!20},
+            advisor/.style={box, fill=orange!20},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        % 指导老师
+        \node[advisor] (advisor) {指导老师\\殷凯};
+
+        % 项目负责人
+        \node[leader, below=of advisor] (pm) {项目负责人\\许子祺};
+
+        % 团队成员
+        \node[member, below left=1.5cm and 1cm of pm] (dev1) {后端开发\\许子祺};
+        \node[member, below right=1.5cm and 1cm of pm] (dev2) {前端开发\\莫文涛};
+
+        % 职责标注
+        \node[below=0.3cm of dev1, font=\footnotesize, text=gray, align=center] {Flask API\\ML服务\\Gurobi优化};
+        \node[below=0.3cm of dev2, font=\footnotesize, text=gray, align=center] {Flutter Web\\数据可视化\\用户交互};
+
+        % 箭头
+        \draw[arrow] (advisor) -- node[right, font=\footnotesize] {指导} (pm);
+        \draw[arrow] (pm) -- (dev1);
+        \draw[arrow] (pm) -- (dev2);
+
+        % 协作关系
+        \draw[<->, dashed, thick, gray] (dev1) -- node[below, font=\footnotesize] {API协作} (dev2);
+    \end{tikzpicture}
+    \caption{项目组织结构图}
+    \label{fig:org_structure}
+\end{figure}
+
+\subsection{角色定义}
+
+表~\ref{tab:roles}定义了各角色的职责范围。
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{项目角色定义}
+    \label{tab:roles}
+    \begin{tabular}{p{2cm}p{2cm}p{9cm}}
+        \toprule
+        \textbf{角色} & \textbf{人员} & \textbf{职责描述}              \\
+        \midrule
+        指导老师        & 殷凯          & 技术指导、文档审核、协调Gurobi学术许可     \\
+        项目负责人       & 许子祺         & 项目规划、架构设计、后端开发、文档统筹        \\
+        前端开发        & 莫文涛         & Flutter Web开发、数据可视化、UI交互设计 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{人员分工职责}
+
+\subsection{工作分解结构 (WBS)}
+
+项目的工作分解结构如图~\ref{fig:wbs}所示，将整体工作划分为5个主要工作包。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            level 1/.style={sibling distance=2.8cm, level distance=1.6cm},
+            level 2/.style={sibling distance=1.4cm, level distance=1.3cm},
+            every node/.style={rectangle, draw, rounded corners, minimum width=1.2cm, minimum height=0.6cm, align=center, font=\tiny}
+        ]
+        \node[fill=blue!20, font=\footnotesize] {智能能源\\管理平台}
+        child {node[fill=green!20] {需求分析\\WP1}
+                child {node {调研}}
+                child {node {文档}}
+            }
+        child {node[fill=green!20] {系统设计\\WP2}
+                child {node {架构}}
+                child {node {接口}}
+            }
+        child {node[fill=orange!20] {开发实现\\WP3}
+                child {node {后端}}
+                child {node {前端}}
+            }
+        child {node[fill=yellow!30] {测试部署\\WP4}
+                child {node {测试}}
+                child {node {部署}}
+            }
+        child {node[fill=purple!20] {文档编写\\WP5}
+                child {node {技术}}
+                child {node {手册}}
+            };
+    \end{tikzpicture}
+    \caption{工作分解结构 (WBS)}
+    \label{fig:wbs}
+\end{figure}
+
+
+\subsection{详细任务分配}
+
+表~\ref{tab:task_assignment}展示了各工作包下的具体任务分配情况。
+
+\begin{table}[H]
+    \centering
+    \caption{详细任务分配表}
+    \label{tab:task_assignment}
+    \begin{tabular}{clcc}
+        \toprule
+        \textbf{工作包}                    & \textbf{任务}   & \textbf{负责人} & \textbf{工时(人天)} \\
+        \midrule
+        \multirow{3}{*}{WP1: 需求分析}
+
+                                        & 功能需求文档        & 许子祺          & 2               \\
+                                        & 非功能需求定义       & 许子祺          & 1               \\
+        \midrule
+        \multirow{4}{*}{WP2: 系统设计}
+                                        & 系统架构设计        & 许子祺          & 3               \\
+                                        & 数据库/存储设计      & 许子祺          & 2               \\
+                                        & API接口设计       & 许子祺          & 2               \\
+                                        & UI/UX设计       & 莫文涛          & 3               \\
+        \midrule
+        \multirow{6}{*}{WP3: 开发实现}
+                                        & Flask后端框架搭建   & 许子祺          & 3               \\
+                                        & ML预测服务开发      & 许子祺          & 5               \\
+                                        & Gurobi优化服务开发  & 许子祺          & 4               \\
+                                        & Flutter前端框架搭建 & 莫文涛          & 3               \\
+                                        & 数据可视化组件开发     & 莫文涛          & 5               \\
+                                        & 用户交互功能实现      & 莫文涛          & 4               \\
+        \midrule
+        \multirow{3}{*}{WP4: 测试部署}
+                                        & 单元测试编写        & 许子祺、         & 3               \\
+                                        & 集成测试          & 许子祺          & 2               \\
+                                        & GAE云端部署       & 许子祺          & 2               \\
+        \midrule
+        \multirow{3}{*}{WP5: 文档编写}
+                                        & 可行性研究报告       & 许子祺          & 4               \\
+                                        & 项目开发计划书       & 许子祺          & 3               \\
+                                        & 技术报告          & 莫文涛          & 4               \\
+        \midrule
+        \multicolumn{2}{r}{\textbf{总计}} &               & \textbf{57}                    \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{进度安排与里程碑}
+
+\subsection{项目时间轴}
+
+本项目计划于\textbf{2024年10月}启动，\textbf{2025年1月}完成，总工期约4个月。项目进度甘特图如图~\ref{fig:gantt}所示。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[x=0.8cm, y=0.6cm]
+        % 时间轴
+        \draw[thick, ->] (0, 0) -- (18, 0) node[right] {时间};
+        \foreach \x/\month in {0/10月, 4/11月, 8/12月, 12/1月, 16/2月} {
+                \draw (\x, -0.2) -- (\x, 0.2);
+                \node[below] at (\x, -0.3) {\footnotesize \month};
+            }
+
+        % 任务条
+        \def\task#1#2#3#4#5{
+            \fill[#5] (#2, #1) rectangle (#3, #1+0.5);
+            \node[right, font=\footnotesize] at (-0.1, #1+0.25) {#4};
+        }
+
+        \task{6}{0}{3}{需求分析}{blue!40}
+        \task{5}{2}{6}{系统设计}{green!40}
+        \task{4}{5}{12}{后端开发}{orange!40}
+        \task{3}{6}{13}{前端开发}{yellow!60}
+        \task{2}{11}{14}{测试验证}{purple!40}
+        \task{1}{13}{16}{部署上线}{red!40}
+
+        % 里程碑
+        \foreach \x/\label in {3/M1, 6/M2, 12/M3, 14/M4, 16/M5} {
+                \fill[red] (\x, 7) -- (\x-0.3, 7.5) -- (\x+0.3, 7.5) -- cycle;
+                \node[above, font=\footnotesize\bfseries] at (\x, 7.5) {\label};
+            }
+
+        % 图例
+        \node[font=\tiny, right, align=left] at (0, -1.5) {M1:需求冻结 M2:设计评审 M3:开发完成 M4:测试通过 M5:发布};
+    \end{tikzpicture}
+    \caption{项目进度甘特图}
+    \label{fig:gantt}
+\end{figure}
+
+\subsection{里程碑定义}
+
+表~\ref{tab:milestones}定义了项目的关键里程碑及其验收标准。
+
+\begin{table}[htbp]
+    \centering
+    \caption{项目里程碑定义}
+    \label{tab:milestones}
+    \begin{tabular}{clp{5cm}l}
+        \toprule
+        \textbf{里程碑} & \textbf{名称} & \textbf{验收标准}            & \textbf{计划日期} \\
+        \midrule
+        M1           & 需求冻结        & 需求文档通过评审，无重大变更           & 2024-10-31    \\
+        M2           & 设计评审        & 架构设计文档通过评审，API接口定义完成     & 2024-11-15    \\
+        M3           & 开发完成        & 核心功能开发完成，通过冒烟测试          & 2024-12-31    \\
+        M4           & 测试通过        & 所有测试用例通过，缺陷关闭率$\geq$95\% & 2025-01-15    \\
+        M5           & 正式发布        & 系统部署上线，用户验收通过            & 2025-01-25    \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{风险评估与管理}
+
+\subsection{风险识别}
+
+根据项目特点，识别出以下主要风险，如表~\ref{tab:risks}所示。
+
+\begin{table}[htbp]
+    \centering
+    \caption{项目风险评估矩阵}
+    \label{tab:risks}
+    \begin{tabular}{p{0.8cm}p{3.5cm}cccp{4cm}}
+        \toprule
+        \textbf{ID} & \textbf{风险描述} & \textbf{概率} & \textbf{影响} & \textbf{等级}            & \textbf{应对措施} \\
+        \midrule
+        R1          & Gurobi许可证配置失败 & 中           & 高           & \cellcolor{orange!30}高 &
+        提前申请学术许可；准备开源替代方案(CBC/GLPK)                                                                      \\
+        R2          & GAE部署超时/配额限制  & 中           & 中           & \cellcolor{yellow!30}中 &
+        优化代码启动时间；使用懒加载；申请配额提升                                                                            \\
+        R3          & ML模型预测精度不达标   & 低           & 高           & \cellcolor{yellow!30}中 &
+        增加特征工程；尝试多模型集成；扩充训练数据                                                                            \\
+        R4          & 团队成员时间冲突      & 中           & 中           & \cellcolor{yellow!30}中 &
+        建立缓冲时间；灵活任务调配；每日站会同步                                                                             \\
+        R5          & API接口变更频繁     & 低           & 低           & \cellcolor{green!30}低  &
+        冻结接口设计；版本控制；充分设计评审                                                                               \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{风险应对策略}
+
+针对高风险项，制定详细的应对计划：
+
+\paragraph{R1: Gurobi许可证配置}
+\begin{enumerate}
+    \item \textbf{预防措施}：项目启动第一周完成Gurobi学术许可申请；
+    \item \textbf{缓解措施}：配置WLS（Web License Service）支持云端部署；
+    \item \textbf{应急措施}：若许可证失效，切换至开源求解器CBC，牺牲部分求解效率。
+\end{enumerate}
+
+\paragraph{R2: GAE部署问题}
+\begin{enumerate}
+    \item \textbf{预防措施}：采用懒加载策略，延迟初始化重型依赖（如Gurobi、ML模型）；
+    \item \textbf{缓解措施}：使用F4实例类型，增加启动超时时间至10分钟；
+    \item \textbf{应急措施}：切换至Cloud Run或GKE部署方案。
+\end{enumerate}
+
+\section{沟通管理计划}
+
+\subsection{沟通渠道}
+
+表~\ref{tab:communication}定义了项目的沟通渠道和频率。
+
+\begin{table}[htbp]
+    \centering
+    \caption{沟通管理矩阵}
+    \label{tab:communication}
+    \begin{tabular}{llll}
+        \toprule
+        \textbf{沟通类型} & \textbf{频率} & \textbf{参与人} & \textbf{工具} \\
+        \midrule
+        每日站会          & 每日10:00     & 全体成员         & 微信群         \\
+        周进度汇报         & 每周五         & 全体成员 + 指导老师  & 腾讯会议        \\
+        代码评审          & 按需          & 开发人员         & GitHub PR   \\
+        里程碑评审         & 里程碑节点       & 全体成员 + 指导老师  & 线下会议        \\
+        问题上报          & 实时          & 相关人员         & 微信/Issues   \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{会议制度}
+
+\begin{itemize}
+    \item \textbf{每日站会}：时长10分钟，每人回答三个问题：昨天做了什么？今天计划做什么？有什么阻碍？
+    \item \textbf{周进度汇报}：时长30分钟，展示本周成果，讨论下周计划，同步风险和问题。
+    \item \textbf{里程碑评审}：时长1小时，演示阶段成果，收集反馈，确认下阶段目标。
+\end{itemize}

@@ -1,0 +1,171 @@
+% !TEX root = ../main.tex
+\chapter{引言}
+
+\section{项目概况}
+
+\subsection{项目背景}
+
+随着全球能源结构转型加速，分布式储能系统（Distributed Energy Storage System, DESS）在电力系统中的应用日益广泛\cite{divya2009battery}。根据国际能源署（IEA）的统计，2023年全球储能装机容量已突破200GW，其中户用及商业储能占比超过35\%。在中国，``双碳''目标的推进使得储能市场呈现爆发式增长，预计到2030年储能市场规模将达到万亿级别。
+
+然而，储能系统的实际运行效率往往受限于调度策略的智能化程度。传统的基于规则的调度方法（如简单的峰谷套利）难以适应复杂多变的负载模式和电价信号，导致储能资产的经济价值未能充分释放。因此，开发一套集成\textbf{智能预测}与\textbf{最优调度}的能源管理系统，成为提升储能经济效益的关键路径\cite{luo2015overview}。
+
+\subsection{问题陈述}
+
+本项目聚焦于解决以下核心问题：
+
+\begin{enumerate}
+    \item \textbf{负载预测不准确}：传统方法依赖经验公式，难以捕捉负载的非线性波动特征；
+    \item \textbf{调度策略非最优}：基于规则的调度无法保证全局最优，可能错失最佳充放电时机；
+    \item \textbf{系统缺乏可解释性}：用户难以理解AI决策背后的逻辑，影响信任度和采纳率；
+    \item \textbf{运维成本高昂}：缺乏云原生架构支持，系统部署和维护困难。
+\end{enumerate}
+
+\subsection{解决方案概述}
+
+为解决上述问题，本项目设计并实现了\textbf{智能能源管理与数据科学平台}（Smart Energy Management \& Data Science Platform），如图~\ref{fig:system_overview}所示。该平台采用``预测+优化''的技术路线：
+
+\begin{itemize}
+    \item \textbf{预测层}：基于机器学习（随机森林、LightGBM、XGBoost）实现未来24小时负载预测；
+    \item \textbf{优化层}：基于混合整数规划（MIP）和Gurobi求解器实现储能充放电最优调度；
+    \item \textbf{应用层}：基于Flutter Web构建可视化交互终端，支持实时监控和决策解释；
+    \item \textbf{基础设施层}：基于Google Cloud Platform（GAE、Firebase）实现云原生部署。
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm,
+            layer/.style={rectangle, draw, rounded corners, minimum width=12cm, minimum height=1.2cm, align=center, font=\small},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        % 四层架构
+        \node[layer, fill=blue!20] (app) {应用层：Flutter Web 可视化终端};
+        \node[layer, fill=green!20, below=of app] (opt) {优化层：Gurobi MIP 储能调度引擎};
+        \node[layer, fill=orange!20, below=of opt] (pred) {预测层：ML 负载预测微服务 (RF/LightGBM/XGBoost)};
+        \node[layer, fill=gray!20, below=of pred] (infra) {基础设施层：Google App Engine + Firebase + Cloud Storage};
+
+        % 箭头
+        \draw[arrow] (infra) -- (pred);
+        \draw[arrow] (pred) -- (opt);
+        \draw[arrow] (opt) -- (app);
+
+        % 标注
+        \node[right=0.5cm of pred, font=\footnotesize, text=gray] {SHAP 可解释性};
+    \end{tikzpicture}
+    \caption{智能能源管理平台系统架构概览}
+    \label{fig:system_overview}
+\end{figure}
+
+\section{项目目标与范围}
+
+\subsection{项目目标}
+
+本项目的核心目标可分解为以下三个层次：
+
+\paragraph{经济目标}
+\begin{itemize}
+    \item 通过优化储能充放电策略，实现\textbf{电费节省15\%--25\%}（相对于无储能基准）；
+    \item 投资回收期控制在\textbf{5年以内}。
+\end{itemize}
+
+\paragraph{技术目标}
+\begin{itemize}
+    \item 负载预测精度：测试集 $R^2 \geq 0.85$，MAPE $\leq 10\%$；
+    \item 优化求解时间：单次24小时调度 $\leq 5$ 秒；
+    \item 系统可用性：$\geq 99.5\%$（基于GAE SLA）。
+\end{itemize}
+
+\paragraph{工程目标}
+\begin{itemize}
+    \item 构建端到端的云原生系统，支持自动扩缩容；
+    \item 实现MLOps流程，包括模型版本化、在线评估和漂移检测；
+    \item 提供用户友好的可视化界面，包含SHAP特征解释功能。
+\end{itemize}
+
+\subsection{项目范围}
+
+表~\ref{tab:project_scope}明确了本项目的范围边界。
+
+\begin{table}[htbp]
+    \centering
+    \caption{项目范围定义}
+    \label{tab:project_scope}
+    \begin{tabular}{p{6cm}p{6cm}}
+        \toprule
+        \textbf{包含（In Scope）} & \textbf{不包含（Out of Scope）} \\
+        \midrule
+        用户负载预测（24小时滚动）        & 长期负载预测（月/年度）               \\
+        电池储能充放电优化             & 电网调度与多能源联动                 \\
+        Web端可视化仪表盘            & 移动端原生APP                   \\
+        Firebase身份认证          & 第三方SSO集成                   \\
+        单用户/单站点场景             & 多用户/多站点聚合                  \\
+        云端部署（GAE）             & 边缘计算/本地部署                  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{项目交付物}
+
+本项目的交付物如表~\ref{tab:deliverables}所示。
+
+\begin{table}[htbp]
+    \centering
+    \caption{项目交付物清单}
+    \label{tab:deliverables}
+    \begin{tabular}{clll}
+        \toprule
+        \textbf{序号} & \textbf{交付物名称} & \textbf{格式/形式}         & \textbf{负责人} \\
+        \midrule
+        1           & 可行性研究报告        & PDF (LaTeX)            & 许子祺          \\
+        2           & 项目开发计划书        & PDF (LaTeX)            & 许子祺          \\
+        3           & 技术报告           & PDF (LaTeX)            & 莫文涛          \\
+        4           & 后端服务源代码        & Python/Flask           & 许子祺          \\
+        5           & 前端应用源代码        & Dart/Flutter           & 莫文涛          \\
+        6           & 可运行系统          & GAE + Firebase Hosting & 全体           \\
+        7           & 用户操作手册         & PDF                    & 莫文涛          \\
+        8           & 部署运维文档         & Markdown               & 许子祺          \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{参考资料与规范标准}
+
+本项目遵循以下标准和技术规范：
+\begin{itemize}[nosep]
+    \item \textbf{项目管理}：IEEE 1058\cite{ieee1058}、PMBOK第7版\cite{pmbok2021}
+    \item \textbf{软件工程}：ISO/IEC 25010质量模型、Git Flow分支策略
+    \item \textbf{机器学习}：Scikit-learn\cite{pedregosa2011scikit}、LightGBM\cite{ke2017lightgbm}、XGBoost\cite{chen2016xgboost}
+    \item \textbf{优化求解}：Gurobi\cite{gurobi2023}、整数规划\cite{wolsey1998integer}
+    \item \textbf{可解释AI}：SHAP\cite{lundberg2017shap}
+    \item \textbf{云服务}：GAE\cite{google2023gae}、Firebase\cite{firebase2023}
+\end{itemize}
+
+
+\section{术语与缩略语表}
+
+表~\ref{tab:glossary}列出了本文档中使用的主要术语和缩略语。
+
+\begin{table}[htbp]
+    \centering
+    \caption{术语与缩略语表}
+    \label{tab:glossary}
+    \begin{tabular}{lp{10cm}}
+        \toprule
+        \textbf{缩略语} & \textbf{全称及说明}                                   \\
+        \midrule
+        BESS         & Battery Energy Storage System，电池储能系统             \\
+        CAISO        & California Independent System Operator，加州独立系统运营商 \\
+        ETL          & Extract-Transform-Load，数据抽取-转换-加载                \\
+        GAE          & Google App Engine，谷歌应用引擎                         \\
+        GCS          & Google Cloud Storage，谷歌云存储                       \\
+        MAPE         & Mean Absolute Percentage Error，平均绝对百分比误差         \\
+        MIP          & Mixed Integer Programming，混合整数规划                 \\
+        ML           & Machine Learning，机器学习                            \\
+        MLOps        & Machine Learning Operations，机器学习运维               \\
+        SHAP         & SHapley Additive exPlanations，Shapley加性解释        \\
+        SOC          & State of Charge，电池荷电状态                           \\
+        TOU          & Time-of-Use，分时电价                                 \\
+        WLS          & Web License Service，Gurobi网络许可服务                 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

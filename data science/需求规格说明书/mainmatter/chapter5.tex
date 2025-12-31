@@ -1,0 +1,462 @@
+\chapter{数据模型与系统属性}
+
+本章定义电力数据分析系统的数据模型和数据字典，并描述系统的可维护性、可移植性和可扩展性等软件属性。
+
+\section{数据模型与数据字典}
+
+\subsection{实体关系图}
+
+图~\ref{fig:er-diagram} 展示了系统核心数据实体及其关系。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=2cm and 3cm,
+            entity/.style={rectangle, draw=blue!60, fill=blue!15,
+                    text width=3.5cm, minimum height=2cm,
+                    align=left, font=\footnotesize,
+                    inner sep=5pt},
+            relation/.style={diamond, draw=orange!70, fill=orange!10,
+                    aspect=2, inner sep=2pt,
+                    align=center, font=\tiny},
+            attribute/.style={ellipse, draw=gray!50, fill=gray!10,
+                    minimum width=1.5cm, minimum height=0.6cm,
+                    align=center, font=\tiny},
+            arrow/.style={->, >=stealth}
+        ]
+        % 实体
+        \node[entity] (user) {
+            \textbf{User}\\
+            \rule{3cm}{0.5pt}\\
+            \underline{uid}: string\\
+            email: string\\
+            display\_name: string\\
+            created\_at: timestamp\\
+            last\_login: timestamp
+        };
+
+        \node[entity, right=of user] (analysis) {
+            \textbf{AnalysisRecord}\\
+            \rule{3cm}{0.5pt}\\
+            \underline{record\_id}: string\\
+            user\_id: string (FK)\\
+            filename: string\\
+            storage\_url: string\\
+            quality\_score: float\\
+            created\_at: timestamp
+        };
+
+        \node[entity, below=of user] (energy) {
+            \textbf{EnergyData}\\
+            \rule{3cm}{0.5pt}\\
+            \underline{timestamp}: datetime\\
+            load\_kw: float\\
+            temperature: float\\
+            price: float\\
+            source: string
+        };
+
+        \node[entity, below=of analysis] (optimization) {
+            \textbf{OptimizationResult}\\
+            \rule{3cm}{0.5pt}\\
+            \underline{result\_id}: string\\
+            user\_id: string (FK)\\
+            target\_date: date\\
+            cost\_without: float\\
+            cost\_with: float\\
+            savings: float\\
+            created\_at: timestamp
+        };
+
+        \node[entity, right=3.5cm of analysis] (model) {
+            \textbf{MLModel}\\
+            \rule{3cm}{0.5pt}\\
+            \underline{model\_id}: string\\
+            model\_type: string\\
+            version: string\\
+            trained\_at: timestamp\\
+            mape: float\\
+            r2\_score: float\\
+            feature\_count: int
+        };
+
+        % 关系
+        \node[relation, below right=0.8cm and 0.5cm of user] (rel1) {拥有};
+        \node[relation, below left=0.8cm and 0.5cm of analysis] (rel2) {创建};
+        \node[relation, right=1cm of optimization] (rel3) {使用};
+
+        % 连接线
+        \draw[arrow] (user) -- (rel1) -- (analysis);
+        \draw[arrow] (user) -- (rel2) -- (optimization);
+        \draw[arrow] (optimization) -- (rel3) -- (model);
+        \draw[arrow, dashed] (energy) -- node[right, font=\tiny] {输入} (optimization);
+    \end{tikzpicture}
+    \caption{系统实体关系图 (ER Diagram)}
+    \label{fig:er-diagram}
+\end{figure}
+
+\subsection{数据字典}
+
+\subsubsection{User（用户）}
+
+表~\ref{tab:dd-user} 定义了用户实体的数据结构。
+
+\begin{table}[H]
+    \centering
+    \caption{User 数据字典}
+    \label{tab:dd-user}
+    \begin{tabularx}{\textwidth}{@{}l l l l X@{}}
+        \toprule
+        \textbf{字段名}  & \textbf{类型} & \textbf{约束}      & \textbf{默认值} & \textbf{描述}          \\
+        \midrule
+        uid           & string      & PK, NOT NULL     & -            & Firebase 用户唯一标识符     \\
+        email         & string      & UNIQUE, NOT NULL & -            & 用户邮箱地址               \\
+        display\_name & string      & NULL             & NULL         & 用户显示名称               \\
+        photo\_url    & string      & NULL             & NULL         & 用户头像 URL             \\
+        provider      & string      & NOT NULL         & 'email'      & 认证提供商 (email/google) \\
+        created\_at   & timestamp   & NOT NULL         & NOW()        & 账户创建时间               \\
+        last\_login   & timestamp   & NULL             & NULL         & 最后登录时间               \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{EnergyData（能源数据）}
+
+表~\ref{tab:dd-energy} 定义了能源数据实体的结构，这是系统核心数据。
+
+\begin{table}[htbp]
+    \centering
+    \caption{EnergyData 数据字典}
+    \label{tab:dd-energy}
+    \begin{tabularx}{\textwidth}{@{}l l l l X@{}}
+        \toprule
+        \textbf{字段名}      & \textbf{类型} & \textbf{约束} & \textbf{单位} & \textbf{描述}         \\
+        \midrule
+        timestamp         & datetime    & PK          & -           & 数据时间戳（UTC）          \\
+        load\_kw          & float       & NOT NULL    & kW          & 电力负载值               \\
+        temperature       & float       & NULL        & °C          & 环境温度                \\
+        price             & float       & NULL        & \$/kWh      & 电价（分时）              \\
+        hour              & int         & COMPUTED    & -           & 小时 (0-23)           \\
+        day\_of\_week     & int         & COMPUTED    & -           & 星期几 (0-6)           \\
+        month             & int         & COMPUTED    & -           & 月份 (1-12)           \\
+        is\_weekend       & bool        & COMPUTED    & -           & 是否周末                \\
+        is\_holiday       & bool        & COMPUTED    & -           & 是否节假日               \\
+        lag\_1h           & float       & COMPUTED    & kW          & 1小时前负载              \\
+        lag\_24h          & float       & COMPUTED    & kW          & 24小时前负载             \\
+        rolling\_mean\_6h & float       & COMPUTED    & kW          & 6小时滚动平均             \\
+        rolling\_std\_6h  & float       & COMPUTED    & kW          & 6小时滚动标准差            \\
+        source            & string      & NOT NULL    & -           & 数据来源 (caiso/manual) \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{OptimizationResult（优化结果）}
+
+表~\ref{tab:dd-optimization} 定义了优化结果实体的结构。
+
+\begin{table}[htbp]
+    \centering
+    \caption{OptimizationResult 数据字典}
+    \label{tab:dd-optimization}
+    \begin{tabularx}{\textwidth}{@{}l l l X@{}}
+        \toprule
+        \textbf{字段名}           & \textbf{类型} & \textbf{约束} & \textbf{描述}  \\
+        \midrule
+        result\_id             & string      & PK          & 优化结果唯一标识符    \\
+        user\_id               & string      & FK          & 关联用户 ID      \\
+        target\_date           & date        & NOT NULL    & 优化目标日期       \\
+        battery\_capacity      & float       & NOT NULL    & 电池容量 (kWh)   \\
+        battery\_power         & float       & NOT NULL    & 电池最大功率 (kW)  \\
+        initial\_soc           & float       & NOT NULL    & 初始 SOC (\%)  \\
+        cost\_without\_battery & float       & NOT NULL    & 无电池时总成本 (\$) \\
+        cost\_with\_battery    & float       & NOT NULL    & 有电池时总成本 (\$) \\
+        total\_savings         & float       & COMPUTED    & 节省金额 (\$)    \\
+        savings\_percent       & float       & COMPUTED    & 节省百分比 (\%)   \\
+        total\_charged         & float       & NOT NULL    & 总充电量 (kWh)   \\
+        total\_discharged      & float       & NOT NULL    & 总放电量 (kWh)   \\
+        solver\_runtime        & float       & NOT NULL    & 求解器运行时间 (s)  \\
+        created\_at            & timestamp   & NOT NULL    & 记录创建时间       \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{AnalysisRecord（分析记录）}
+
+表~\ref{tab:dd-analysis} 定义了分析记录实体的结构。
+
+\begin{table}[H]
+    \centering
+    \caption{AnalysisRecord 数据字典}
+    \label{tab:dd-analysis}
+    \begin{tabularx}{\textwidth}{@{}l l l X@{}}
+        \toprule
+        \textbf{字段名}      & \textbf{类型} & \textbf{约束}  & \textbf{描述}        \\
+        \midrule
+        record\_id        & string      & PK           & 记录唯一标识符（自动生成）      \\
+        user\_id          & string      & FK, NOT NULL & 关联用户 ID            \\
+        filename          & string      & NOT NULL     & 原始文件名              \\
+        storage\_url      & string      & NOT NULL     & Cloud Storage 存储路径 \\
+        file\_size        & int         & NOT NULL     & 文件大小 (bytes)       \\
+        row\_count        & int         & NULL         & 数据行数               \\
+        column\_count     & int         & NULL         & 数据列数               \\
+        quality\_score    & float       & NULL         & 数据质量评分 (0-100)     \\
+        analysis\_summary & json        & NULL         & 分析摘要（JSON 格式）      \\
+        created\_at       & timestamp   & NOT NULL     & 记录创建时间             \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{MLModel（机器学习模型）}
+
+表~\ref{tab:dd-model} 定义了机器学习模型元数据的结构。
+
+\begin{table}[htbp]
+    \centering
+    \caption{MLModel 数据字典}
+    \label{tab:dd-model}
+    \begin{tabularx}{\textwidth}{@{}l l l X@{}}
+        \toprule
+        \textbf{字段名}        & \textbf{类型} & \textbf{约束} & \textbf{描述}          \\
+        \midrule
+        model\_id           & string      & PK          & 模型唯一标识符              \\
+        model\_type         & string      & NOT NULL    & 模型类型 (rf/voting/gbr) \\
+        model\_version      & string      & NOT NULL    & 模型版本号                \\
+        trained\_at         & timestamp   & NOT NULL    & 训练完成时间               \\
+        training\_samples   & int         & NOT NULL    & 训练样本数量               \\
+        feature\_count      & int         & NOT NULL    & 特征数量                 \\
+        mape                & float       & NOT NULL    & 测试集 MAPE (\%)        \\
+        rmse                & float       & NOT NULL    & 测试集 RMSE             \\
+        r2\_score           & float       & NOT NULL    & 测试集 R²               \\
+        cv\_folds           & int         & NULL        & 交叉验证折数               \\
+        use\_log\_transform & bool        & NOT NULL    & 是否使用对数变换             \\
+        hyperparameters     & json        & NULL        & 超参数配置                \\
+        storage\_path       & string      & NOT NULL    & 模型文件存储路径             \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{存储架构}
+
+图~\ref{fig:storage-architecture} 展示了系统的数据存储架构。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm and 2cm,
+            storage/.style={rectangle, draw=green!60, fill=green!10,
+                    text width=4cm, minimum height=1.5cm,
+                    align=center, rounded corners=5pt,
+                    font=\small},
+            content/.style={rectangle, draw=gray!40, fill=white,
+                    text width=3.5cm, minimum height=2cm,
+                    align=left, font=\tiny},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        % 存储层
+        \node[storage] (gcs) {Google Cloud Storage\\{\footnotesize (文件存储)}};
+        \node[storage, right=of gcs] (firestore) {Cloud Firestore\\{\footnotesize (结构化数据)}};
+        \node[storage, right=of firestore] (local) {/tmp (GAE)\\{\footnotesize (临时缓存)}};
+
+        % 内容
+        \node[content, below=of gcs] (gcs-content) {
+            • users/\{uid\}/uploads/\\
+            • data/cleaned\_energy\_data.csv\\
+            • models/energy\_predictor.pkl\\
+            • models/model\_metadata.json
+        };
+
+        \node[content, below=of firestore] (fs-content) {
+            • users/\{uid\}/history/\\
+            • tasks/monitoring/\\
+            • config/settings/
+        };
+
+        \node[content, below=of local] (local-content) {
+            • 下载的数据文件缓存\\
+            • 模型加载临时副本\\
+            • 分析结果临时文件
+        };
+
+        % 连接
+        \draw[arrow] (gcs) -- (gcs-content);
+        \draw[arrow] (firestore) -- (fs-content);
+        \draw[arrow] (local) -- (local-content);
+    \end{tikzpicture}
+    \caption{数据存储架构图}
+    \label{fig:storage-architecture}
+\end{figure}
+
+\section{软件系统属性}
+
+\subsection{可维护性}
+
+\paragraph{需求编号} SA-MAINT-001
+
+\paragraph{需求描述} 系统应具备良好的可维护性，便于后续功能扩展和缺陷修复。
+
+\paragraph{设计措施}
+
+\begin{enumerate}
+    \item \textbf{模块化架构}：
+          \begin{itemize}
+              \item 后端按功能划分为独立服务模块（ml\_service, optimization\_service, storage\_service 等）
+              \item 前端采用组件化设计，UI 组件与业务逻辑分离
+          \end{itemize}
+
+    \item \textbf{代码规范}：
+          \begin{itemize}
+              \item Python 代码遵循 PEP 8 规范
+              \item Dart 代码遵循 effective\_dart 规范
+              \item 所有代码注释使用中文（根据用户规则）
+          \end{itemize}
+
+    \item \textbf{文档化}：
+          \begin{itemize}
+              \item API 接口使用 docstring 文档
+              \item README 文件描述项目结构和部署步骤
+              \item 本 SRS 文档作为需求参考
+          \end{itemize}
+
+    \item \textbf{版本控制}：
+          \begin{itemize}
+              \item 使用 Git 进行版本控制
+              \item 遵循语义化版本号（Semantic Versioning）
+          \end{itemize}
+\end{enumerate}
+
+\subsection{可移植性}
+
+\paragraph{需求编号} SA-PORT-001
+
+\paragraph{需求描述} 系统应具备一定的跨平台可移植性。
+
+\paragraph{当前支持}
+\begin{itemize}
+    \item 后端：可部署于任何支持 Python 3.9+ 的环境
+    \item 前端：可运行于现代 Web 浏览器（Chrome、Firefox、Safari、Edge）
+    \item 云平台：当前绑定 Google Cloud Platform
+\end{itemize}
+
+\paragraph{移植考量}
+\begin{enumerate}
+    \item \textbf{后端移植}：
+          \begin{itemize}
+              \item Firebase Authentication 可替换为其他 OAuth 服务
+              \item Cloud Storage 可替换为 AWS S3 或阿里云 OSS（需修改 storage\_service.py）
+              \item Firestore 可替换为 MongoDB 或 PostgreSQL
+          \end{itemize}
+
+    \item \textbf{移植难度评估}：
+          \begin{itemize}
+              \item 低难度：更换云存储服务（1-2周）
+              \item 中难度：更换身份认证服务（2-4周）
+              \item 高难度：更换整体云平台（4-8周）
+          \end{itemize}
+\end{enumerate}
+
+\subsection{可扩展性}
+
+\paragraph{需求编号} SA-SCALE-001
+
+\paragraph{需求描述} 系统应具备良好的可扩展性，以应对用户增长和功能扩展。
+
+\paragraph{水平扩展能力}
+
+Google App Engine 提供以下自动扩缩容特性：
+
+\begin{enumerate}
+    \item \textbf{实例自动扩展}：
+          \begin{itemize}
+              \item 最小实例数：0（按需启动）
+              \item 最大实例数：可配置（默认无限制）
+              \item 扩展触发条件：CPU 使用率 $> 60\%$ 或并发请求 $> 10$
+          \end{itemize}
+
+    \item \textbf{定时任务扩展}：
+          \begin{itemize}
+              \item 当前：单实例执行定时任务
+              \item 扩展方案：使用 Cloud Tasks 或 Pub/Sub 实现分布式任务队列
+          \end{itemize}
+\end{enumerate}
+
+\paragraph{功能扩展规划}
+
+表~\ref{tab:future-features} 列出了潜在的功能扩展方向。
+
+\begin{table}[htbp]
+    \centering
+    \caption{潜在功能扩展}
+    \label{tab:future-features}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        \textbf{扩展功能} & \textbf{扩展难度} & \textbf{描述}         \\
+        \midrule
+        多用户权限管理       & 中             & 支持团队协作和角色权限控制       \\
+        实时硬件集成        & 高             & 对接智能电表和 BMS 设备      \\
+        多电池优化         & 中             & 支持多个储能单元协同调度        \\
+        电力交易模拟        & 高             & 模拟虚拟电厂和 P2P 电力交易    \\
+        移动端 App       & 中             & 开发原生 iOS/Android 应用 \\
+        多语言支持         & 低             & 支持英文界面              \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{系统架构视图}
+
+图~\ref{fig:deployment-view} 展示了系统的部署架构视图。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1cm and 1.5cm,
+            layer/.style={rectangle, draw=blue!50, fill=blue!5,
+                    minimum width=14cm, minimum height=2.5cm,
+                    align=center},
+            component/.style={rectangle, draw=blue!60, fill=blue!15,
+                    text width=3cm, minimum height=1.2cm,
+                    align=center, rounded corners=3pt,
+                    font=\footnotesize},
+            arrow/.style={->, >=stealth, thick}
+        ]
+        % 表示层
+        \node[layer, label={[font=\small\bfseries]left:表示层}] (presentation) {};
+        \node[component] at (-4, 0) (flutter) {Flutter Web\\(Firebase Hosting)};
+        \node[component] at (0, 0) (browser) {Web 浏览器\\(Chrome/Firefox)};
+        \node[component] at (4, 0) (mobile) {移动端\\(PWA 支持)};
+
+        % 业务逻辑层
+        \node[layer, below=1.5cm of presentation, label={[font=\small\bfseries]left:业务层}] (business) {};
+        \node[component] at (-4, -4) (api) {Flask API\\(GAE 托管)};
+        \node[component] at (0, -4) (ml) {ML 服务\\(Scikit-learn)};
+        \node[component] at (4, -4) (opt) {优化服务\\(Gurobi)};
+
+        % 数据层
+        \node[layer, below=1.5cm of business, label={[font=\small\bfseries]left:数据层}] (data) {};
+        \node[component] at (-4, -8) (storage) {Cloud Storage\\(文件存储)};
+        \node[component] at (0, -8) (firestore) {Firestore\\(文档数据库)};
+        \node[component] at (4, -8) (external) {外部 API\\(CAISO/Weather)};
+
+        % 连接线
+        \draw[arrow] (flutter) -- (api);
+        \draw[arrow] (api) -- (ml);
+        \draw[arrow] (api) -- (opt);
+        \draw[arrow] (ml) -- (storage);
+        \draw[arrow] (api) -- (firestore);
+        \draw[arrow] (api) -- (external);
+    \end{tikzpicture}
+    \caption{系统部署架构视图}
+    \label{fig:deployment-view}
+\end{figure}
+
+图~\ref{fig:gurobi-interface} 展示了 Gurobi 优化求解器的使用场景。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{gurobi2.png}
+    \caption{Gurobi 优化求解器许可证配置}
+    \label{fig:gurobi-interface}
+\end{figure}
+
+\section{本章小结}
+
+本章定义了电力数据分析系统的核心数据模型，包括 User、EnergyData、OptimizationResult、AnalysisRecord 和 MLModel 五个主要实体，并提供了详细的数据字典。同时，本章还描述了系统的可维护性、可移植性和可扩展性等软件属性，为系统的设计实现和未来演进提供了指导。

@@ -1,0 +1,110 @@
+\chapter{实施进度与计划}
+
+\section{项目工作分解结构 (WBS)}
+为确保项目按期交付，我们将项目分解为 5 个层级，共 32 个具体的 Work Packages。
+\begin{enumerate}
+    \item \textbf{WP1 项目启动}: 组建团队，确立章程。
+    \item \textbf{WP2 系统设计}: UI/UX 设计，数据库 Schema 定义。
+    \item \textbf{WP3 核心开发}:
+          \begin{itemize}
+              \item WP3.1 前端开发 (Flutter)
+              \item WP3.2 后端服务 (Flask)
+              \item WP3.3 算法模型 (Gurobi/ML)
+          \end{itemize}
+    \item \textbf{WP4 测试验收}: UAT 测试，性能压测。
+    \item \textbf{WP5 部署运维}: 生产环境配置，文档移交。
+\end{enumerate}
+
+\section{关键路径分析 (PERT)}
+图~\ref{fig:pert} 展示了项目任务之间的依赖关系图 (PERT Chart)。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=1.5cm,
+            scale=0.85, transform shape,
+            task/.style={circle, draw, very thick, minimum size=0.9cm, fill=white, font=\small},
+            crit/.style={->, red, very thick},
+            norm/.style={->, black, thick}
+        ]
+
+        % Nodes
+        \node[task] (1) {Start};
+        \node[task, right=of 1] (2) {Design};
+        \node[task, above right=of 2] (3) {FE Dev};
+        \node[task, right=of 2] (4) {BE Dev};
+        \node[task, below right=of 2] (5) {Algo Dev};
+        \node[task, right=of 4] (6) {Integrate};
+        \node[task, right=of 6] (7) {Test};
+        \node[task, right=of 7] (8) {End};
+
+        % Edges
+        \draw[crit] (1) -- (2);
+        \draw[norm] (2) -- (3);
+        \draw[crit] (2) -- (4);
+        \draw[norm] (2) -- (5);
+        \draw[norm] (3) -- (6);
+        \draw[crit] (4) -- (6);
+        \draw[norm] (5) -- (6);
+        \draw[crit] (6) -- (7);
+        \draw[crit] (7) -- (8);
+
+        \node[red, above] at (4) {关键路径 (Critical Path)};
+
+    \end{tikzpicture}
+    \caption{项目关键路径 (PERT) 分析图}
+    \label{fig:pert}
+\end{figure}
+
+分析表明，\textbf{后端开发 (BE Dev)} 处于关键路径上，直接决定了项目能否按期完成。因此，资源将优先向后端团队倾斜。
+
+\section{详细进度甘特图}
+图~\ref{fig:gantt_detailed} 展示了精确到周的详细项目实施计划。
+
+\begin{figure}[htbp]
+    \centering
+    \resizebox{\textwidth}{!}{
+        \begin{tikzpicture}[x=0.32cm, y=0.55cm]
+            % Grid
+            \draw[gray!20] (0,0) grid[step=1] (30, -10);
+
+            % Axis
+            \foreach \x in {0,5,10,15,20,25,30}
+            \node[above, font=\scriptsize] at (\x, 0) {W\x};
+
+            % Tasks
+            \node[right, font=\scriptsize] at (-9, -1) {1. 需求分析};
+            \fill[blue!50] (0, -1.4) rectangle (2, -0.6);
+
+            \node[right, font=\scriptsize] at (-9, -2) {2. 架构设计};
+            \fill[blue!50] (2, -2.4) rectangle (4, -1.6);
+
+            \node[right, font=\scriptsize] at (-9, -3) {3. 后端开发 (API)};
+            \fill[orange!50] (4, -3.4) rectangle (10, -2.6);
+
+            \node[right, font=\scriptsize] at (-9, -4) {4. 算法开发 (ML/Opt)};
+            \fill[orange!50] (6, -4.4) rectangle (14, -3.6);
+
+            \node[right, font=\scriptsize] at (-9, -5) {5. 前端开发 (App)};
+            \fill[orange!50] (4, -5.4) rectangle (12, -4.6);
+
+            \node[right, font=\scriptsize] at (-9, -6) {6. 联调集成};
+            \fill[green!50] (14, -6.4) rectangle (18, -5.6);
+
+            \node[right, font=\scriptsize] at (-9, -7) {7. 系统测试};
+            \fill[green!50] (18, -7.4) rectangle (22, -6.6);
+
+            \node[right, font=\scriptsize] at (-9, -8) {8. 试运行 (Pilot)};
+            \fill[purple!50] (22, -8.4) rectangle (28, -7.6);
+
+            \node[right, font=\scriptsize] at (-9, -9) {9. 验收交付};
+            \fill[red!50] (28, -9.4) rectangle (30, -8.6);
+
+        \end{tikzpicture}
+    }
+    \caption{项目详细实施甘特图}
+    \label{fig:gantt_detailed}
+\end{figure}
+
+\section{本章小结}
+科学的项目管理是成功的关键。通过 WBS 分解和关键路径分析，我们识别出了项目的风险点（后端开发），并制定了详细的应对预案。12 周的开发周期安排紧凑但合理，具有较高的可执行性。

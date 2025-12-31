@@ -1,0 +1,101 @@
+\documentclass[fontset=mac]{thuthesis}
+\input{thusetup}
+
+\usepackage{array}
+
+% 定义新列类型
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% 定义辅助命令
+\newcommand{\OneEm}{\symbol{12288}}
+\newcommand{\HeadingFont}{\heiti\sffamily}
+\newcommand{\CenteredField}[2][8cm]{%
+  \begin{minipage}[t]{#1}
+    \setlength{\parindent}{0pt}
+    \centering
+    \underline{\hbox to #1{\hfil#2\hfil}}
+  \end{minipage}%
+}
+
+
+
+\begin{document}
+
+\begin{titlepage}
+    \thispagestyle{empty}
+
+    % 上部：Logo
+    \vspace*{1cm}
+    \begin{center}
+        \includegraphics[width=0.7\textwidth]{figures/cit_logo.pdf}
+    \end{center}
+
+    % 中部：课程名与报告名
+    \vfill
+
+    \begin{center}
+        {\HeadingFont\fontsize{36pt}{40pt}\selectfont 项目开发计划书}\\[1em]
+
+    \end{center}
+
+    % 下部：键值对信息表（无网格线）
+    \vfill
+
+    \begin{center}
+        {\large
+            \renewcommand{\arraystretch}{1.6} % 行距
+
+            \begin{tabular}{@{}R{3cm}C{10cm}@{}} % 列宽
+                班{\OneEm}{\OneEm}级： &
+                \CenteredField[10cm]{23软一}        \\
+                组{\OneEm}{\OneEm}号： &
+                \CenteredField[10cm]{1}           \\
+                成{\OneEm}{\OneEm}员： &
+                \CenteredField[10cm]{许子祺、莫文涛、钱季清} \\
+                课题名称：               &
+                \CenteredField[10cm]{电力数据分析系统}    \\
+                编{\OneEm}{\OneEm}者： &
+                \CenteredField[10cm]{许子祺}         \\
+                指导老师：               &
+                \CenteredField[10cm]{殷凯}          \\
+            \end{tabular}
+
+            \vspace{2cm}
+
+            2026 年 1 月
+
+        } % 这一行结束 {\Large} 的作用范围
+    \end{center}
+
+
+    \vfill
+
+    \begin{center}
+        {\HeadingFont\fontsize{20pt}{22pt}\selectfont 计算机信息工程学院}
+    \end{center}
+
+\end{titlepage}
+
+\frontmatter
+\input{frontmatter/abstract}
+
+\tableofcontents
+
+\listoffigures           % 插图清单
+\listoftables            % 表格清单
+
+\mainmatter
+\input{mainmatter/chapter1}
+\input{mainmatter/chapter2}
+\input{mainmatter/chapter3}
+\input{mainmatter/chapter4}
+\input{mainmatter/chapter5}
+\input{mainmatter/chapter6}
+\input{mainmatter/chapter7}
+
+
+% 参考文献
+\bibliography{ref/refs}  % 参考文献使用BibTeX 编译
+
+\end{document}

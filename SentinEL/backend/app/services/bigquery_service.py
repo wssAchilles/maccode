@@ -49,7 +49,7 @@ class BigQueryService:
                     (
                         SELECT * EXCEPT(churn_label)
                         FROM `{self.feature_table}`
-                        WHERE user_id = CAST('{user_id}' AS INT64)
+                        WHERE CAST(user_id AS STRING) = '{user_id}'
                     ))
             """
             
@@ -86,7 +86,11 @@ class BigQueryService:
                         "country": row.country,
                         "traffic_source": row.traffic_source,
                         "device_type": row.device_type,
-                        "monetary_90d": row.monetary_90d
+                        "monetary_90d": row.monetary_90d,
+                        "recency_days": row.recency_days,
+                        "frequency_90d": row.frequency_90d,
+                        "cart_adds_30d": row.cart_adds_30d,
+                        "product_views_30d": row.product_views_30d
                     }
                 }
                 
