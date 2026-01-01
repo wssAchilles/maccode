@@ -46,7 +46,7 @@ SERVING_CONTAINER_IMAGE = "us-docker.pkg.dev/vertex-ai/prediction/pytorch-cpu.2-
 # Endpoint 配置
 DEFAULT_MACHINE_TYPE = "n1-standard-4"
 DEFAULT_MIN_REPLICAS = 1
-DEFAULT_MAX_REPLICAS = 2
+DEFAULT_MAX_REPLICAS = 1
 
 
 def register_model(
@@ -219,6 +219,8 @@ def deploy_pipeline(
     model_display_name: str = "sentinel-churn-lstm",
     endpoint_display_name: str = "sentinel-churn-endpoint",
     machine_type: str = DEFAULT_MACHINE_TYPE,
+    min_replica_count: int = DEFAULT_MIN_REPLICAS,
+    max_replica_count: int = DEFAULT_MAX_REPLICAS,
     run_test: bool = True
 ) -> Dict[str, str]:
     """
@@ -259,7 +261,9 @@ def deploy_pipeline(
     deploy_model_to_endpoint(
         model=model,
         endpoint=endpoint,
-        machine_type=machine_type
+        machine_type=machine_type,
+        min_replica_count=min_replica_count,
+        max_replica_count=max_replica_count,
     )
     
     # 4. 测试 (可选)
@@ -332,6 +336,10 @@ def main():
     # 部署配置
     parser.add_argument("--machine_type", type=str, default=DEFAULT_MACHINE_TYPE,
                         help="机器类型")
+    parser.add_argument("--min_replicas", type=int, default=DEFAULT_MIN_REPLICAS,
+                        help="最小副本数")
+    parser.add_argument("--max_replicas", type=int, default=DEFAULT_MAX_REPLICAS,
+                        help="最大副本数")
     parser.add_argument("--skip_test", action="store_true",
                         help="跳过部署后测试")
     
@@ -345,6 +353,8 @@ def main():
         model_display_name=args.model_name,
         endpoint_display_name=args.endpoint_name,
         machine_type=args.machine_type,
+        min_replica_count=args.min_replicas,
+        max_replica_count=args.max_replicas,
         run_test=not args.skip_test
     )
     

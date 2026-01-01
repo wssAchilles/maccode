@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'config/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'widgets/main_navigation.dart';
 
@@ -20,21 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '数据科学即服务',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-        // 统一的 AppBar 主题
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 2,
-          iconTheme: IconThemeData(color: Colors.white),
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       // 使用 AuthWrapper 作为 home
       home: const AuthWrapper(),

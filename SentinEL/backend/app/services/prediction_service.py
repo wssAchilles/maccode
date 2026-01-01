@@ -76,7 +76,9 @@ EVENT_VOCAB: Dict[str, int] = {
 # 配置
 # ==============================================================================
 DEFAULT_SEQ_LENGTH = 20
-DEFAULT_ENDPOINT_NAME = "sentinel-churn-endpoint"
+DEFAULT_ENDPOINT_NAME = "sentinel-churn-endpoint"          # 旧 LSTM Endpoint (Blue)
+DEFAULT_ENDPOINT_SHADOW = "sentinel-churn-transformer"     # 新 Transformer Endpoint (Green)
+DEFAULT_SHADOW_WEIGHT = 0.0  # 0-1 之间，控制灰度/金丝雀流量
 CACHE_TTL_SECONDS = 300  # 缓存 5 分钟
 
 
@@ -98,7 +100,9 @@ class PredictionService:
         project_id: str = settings.PROJECT_ID,
         region: str = settings.LOCATION,
         endpoint_name: str = DEFAULT_ENDPOINT_NAME,
-        seq_length: int = DEFAULT_SEQ_LENGTH
+        seq_length: int = DEFAULT_SEQ_LENGTH,
+        shadow_endpoint_name: Optional[str] = None,
+        shadow_weight: float = DEFAULT_SHADOW_WEIGHT,
     ):
         """
         初始化预测服务
@@ -113,7 +117,11 @@ class PredictionService:
         self.region = region
         self.endpoint_name = endpoint_name
         self.seq_length = seq_length
+        self.shadow_endpoint_name = shadow_endpoint_name or DEFAULT_ENDPOINT_SHADOW
+        self.shadow_weight = max(0.0, min(1.0, shadow_weight))
+
         self._endpoint: Optional[Endpoint] = None
+        self._shadow_endpoint: Optional[Endpoint] = None
         self._cache: Dict[str, tuple] = {}  # {cache_key: (timestamp, probability)}
         self._executor = ThreadPoolExecutor(max_workers=4)
         
@@ -122,24 +130,42 @@ class PredictionService:
         
         logger.info(f"PredictionService 初始化 | Endpoint: {endpoint_name}")
     
+    def _get_endpoint(self, display_name: str) -> Optional[Endpoint]:
+        """Lazy load by display_name."""
+        try:
+            endpoints = Endpoint.list(filter=f'display_name="{display_name}"')
+            if endpoints:
+                logger.info(f"Endpoint 已连接: {endpoints[0].resource_name}")
+                return endpoints[0]
+            logger.warning(f"Endpoint 未找到: {display_name}")
+        except Exception as e:
+            logger.error(f"获取 Endpoint 失败 ({display_name}): {e}")
+        return None
+
     @property
     def endpoint(self) -> Optional[Endpoint]:
-        """
-        懒加载 Endpoint 引用
-        """
+        """Primary endpoint (Blue)."""
         if self._endpoint is None:
-            try:
-                endpoints = Endpoint.list(
-                    filter=f'display_name="{self.endpoint_name}"'
-                )
-                if endpoints:
-                    self._endpoint = endpoints[0]
-                    logger.info(f"Endpoint 已连接: {self._endpoint.resource_name}")
-                else:
-                    logger.warning(f"Endpoint 未找到: {self.endpoint_name}")
-            except Exception as e:
-                logger.error(f"获取 Endpoint 失败: {e}")
+            self._endpoint = self._get_endpoint(self.endpoint_name)
         return self._endpoint
+
+    @property
+    def shadow_endpoint(self) -> Optional[Endpoint]:
+        """Shadow/Green endpoint for金丝雀/灰度."""
+        if self.shadow_weight <= 0:
+            return None
+        if self._shadow_endpoint is None and self.shadow_endpoint_name:
+            self._shadow_endpoint = self._get_endpoint(self.shadow_endpoint_name)
+        return self._shadow_endpoint
+
+    def _choose_endpoint(self) -> Optional[Endpoint]:
+        """
+        简单金丝雀路由：按权重选择 shadow，否则 primary。
+        """
+        import random
+        if self.shadow_endpoint and random.random() < self.shadow_weight:
+            return self.shadow_endpoint
+        return self.endpoint
     
     def tokenize_events(self, events: List[str]) -> List[int]:
         """
@@ -225,11 +251,12 @@ class PredictionService:
             
             span.set_attribute("cache.hit", False)
             
-            # 检查 Endpoint 可用性
-            if self.endpoint is None:
-                logger.warning("Endpoint 不可用，返回默认概率")
-                span.set_attribute("fallback", True)
-                return 0.5
+        # 检查 Endpoint 可用性
+        ep = self._choose_endpoint()
+        if ep is None:
+            logger.warning("Endpoint 不可用，返回默认概率")
+            span.set_attribute("fallback", True)
+            return 0.5
             
             try:
                 # Tokenize
@@ -239,7 +266,7 @@ class PredictionService:
                 instances = [{"sequence": token_ids}]
                 
                 # 调用 Endpoint
-                prediction = self.endpoint.predict(instances)
+                prediction = ep.predict(instances)
                 
                 # 解析结果
                 # 假设模型返回格式: [[probability]]
@@ -361,7 +388,12 @@ def get_prediction_service() -> Optional[PredictionService]:
     
     if _prediction_service_instance is None:
         try:
-            _prediction_service_instance = PredictionService()
+            _prediction_service_instance = PredictionService(
+                endpoint_name=settings.CHURN_ENDPOINT_PRIMARY,
+                shadow_endpoint_name=settings.CHURN_ENDPOINT_SHADOW,
+                shadow_weight=settings.CHURN_ENDPOINT_SHADOW_WEIGHT,
+                seq_length=settings.CHURN_SEQ_LENGTH,
+            )
         except Exception as e:
             logger.error(f"PredictionService 初始化失败: {e}")
             return None

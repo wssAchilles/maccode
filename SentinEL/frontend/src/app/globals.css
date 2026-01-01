@@ -1,76 +1,258 @@
+/* ============================================================================
+   SentinEL Design System - Glassmorphism + Dark Mode
+   基于 UI/UX Pro Max 工作流设计令牌
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* ============================================================================
+   CSS Variables - Fintech/AI Dark Mode Palette
+   ============================================================================ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* 基础色板 - 亮色模式 (备用) */
+    --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
- 
+
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
- 
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 222.2 47.4% 11.2%;
+
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
- 
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
- 
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
+
+    --accent: 24.6 95% 53.1%;
+    --accent-foreground: 210 40% 98%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
- 
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.75rem;
+    
+    /* Glassmorphism 专用变量 */
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   }
- 
+
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Fintech/AI Dark Mode 色板 */
+    --background: 222 47% 5%;
     --foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
+
+    --card: 222 47% 7%;
     --card-foreground: 210 40% 98%;
- 
-    --popover: 222.2 84% 4.9%;
+
+    --popover: 222 47% 7%;
     --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
- 
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
+
+    --accent: 24.6 95% 53.1%;
     --accent-foreground: 210 40% 98%;
- 
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 221.2 83.2% 53.3%;
+
+    /* Glassmorphism 专用变量 - Dark Mode */
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-border: rgba(148, 163, 184, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 }
- 
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
 @layer base {
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* 标题使用 Space Grotesk */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+
+  /* 尊重用户动效偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ============================================================================
+   Glassmorphism Components
+   ============================================================================ */
+@layer components {
+  /* 玻璃态卡片 */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* 玻璃态卡片 - 增强版 (更强模糊) */
+  .glass-card-strong {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: var(--radius);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* 玻璃态导航栏 */
+  .glass-nav {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    box-shadow: 
+      0 4px 24px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* 渐变发光边框 */
+  .glow-border {
+    position: relative;
+  }
+  .glow-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, #2563eb, #8b5cf6, #f97316);
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+  }
+  .glow-border:hover::before {
+    opacity: 1;
+  }
+
+  /* 脉冲发光效果 */
+  .glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(37, 99, 235, 0.6);
+    }
+  }
+
+  /* 渐变文字 */
+  .gradient-text {
+    background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 50%, #f97316 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 浮动卡片悬停效果 */
+  .hover-lift {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(148, 163, 184, 0.15);
+  }
+
+  /* 交互元素基础样式 */
+  .interactive {
+    @apply cursor-pointer transition-all duration-200 ease-out;
+  }
+  .interactive:hover {
+    @apply scale-[1.02];
+  }
+  .interactive:active {
+    @apply scale-[0.98];
+  }
+}
+
+/* ============================================================================
+   Scrollbar Styling (Dark Mode)
+   ============================================================================ */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
   }
 }

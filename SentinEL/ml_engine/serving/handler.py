@@ -10,8 +10,10 @@ TorchServe 要求定义以下方法:
 """
 
 import json
-import torch
 import logging
+import os
+
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,8 @@ class ChurnLSTMHandler:
     def __init__(self):
         self.model = None
         self.device = None
+        self.seq_length = 20
+        self.model_type = "unknown"
     
     def initialize(self, context):
         """
@@ -34,6 +38,16 @@ class ChurnLSTMHandler:
         """
         properties = context.system_properties
         model_dir = properties.get("model_dir")
+        config_path = os.path.join(model_dir, "config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    cfg = json.load(f)
+                self.seq_length = int(cfg.get("seq_length", self.seq_length))
+                self.model_type = cfg.get("model_type", self.model_type)
+                logger.info(f"Loaded model config: type={self.model_type}, seq_length={self.seq_length}")
+            except Exception as e:
+                logger.warning(f"Failed to load config.json: {e}")
         
         # 设置设备
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,7 +80,13 @@ class ChurnLSTMHandler:
                 body = json.loads(body)
             
             sequence = body.get("sequence", [])
-            sequences.append(sequence)
+            # Pad/Truncate to expected seq_length
+            seq = [int(x) for x in sequence]
+            if len(seq) >= self.seq_length:
+                seq = seq[-self.seq_length:]
+            else:
+                seq = [0] * (self.seq_length - len(seq)) + seq
+            sequences.append(seq)
         
         # 转换为张量
         tensor = torch.tensor(sequences, dtype=torch.long, device=self.device)

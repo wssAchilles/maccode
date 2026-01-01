@@ -1,11 +1,13 @@
-/// 能源优化仪表盘
+/// 能源优化仪表盘 - Glassmorphism 设计
 /// 交互式能源调度优化界面
 library;
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:intl/intl.dart';
+import '../config/app_theme.dart';
 import '../services/api_service.dart';
 import '../models/optimization_result.dart';
 import '../widgets/power_chart_widget.dart';
@@ -105,8 +107,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        ),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -116,13 +122,17 @@ class _ModelingScreenState extends State<ModelingScreen> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error, color: Colors.white),
+            const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        ),
+        margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 5),
       ),
     );
@@ -131,22 +141,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text(
-          '⚡ 能源优化仪表盘',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.blue[700],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => _showInfoDialog(),
-            tooltip: '关于',
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async {
           if (!_isLoading && _initialSoc > 0) {
@@ -258,55 +253,72 @@ class _ModelingScreenState extends State<ModelingScreen> {
     );
   }
 
-  /// 1. 顶部控制卡片 - 交互式优化沙盒
+  /// 1. 顶部控制卡片 - 交互式优化沙盒 (Glassmorphism)
   Widget _buildControlPanel() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 标题
-            Row(
-              children: [
-                Icon(Icons.tune, color: Colors.blue[700], size: 24),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    '🧪 优化沙盒',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            boxShadow: AppDecorations.shadowMd,
+          ),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    ),
+                    child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
                   ),
-                ),
-                // 高级参数展开按钮
-                TextButton.icon(
-                  onPressed: () => setState(() => _showAdvancedParams = !_showAdvancedParams),
-                  icon: Icon(
-                    _showAdvancedParams ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '优化沙盒',
+                      style: AppTextStyles.h3,
+                    ),
                   ),
-                  label: Text(_showAdvancedParams ? '收起' : '高级'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                  // 高级参数展开按钮
+                  TextButton.icon(
+                    onPressed: () => setState(() => _showAdvancedParams = !_showAdvancedParams),
+                    icon: Icon(
+                      _showAdvancedParams ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                    label: Text(
+                      _showAdvancedParams ? '收起' : '高级',
+                      style: AppTextStyles.labelMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
             
-            // ========== 场景选择 (方案二) ==========
-            const Text('📊 快速场景', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildScenarioChip('summer', '☀️ 夏季高温', Colors.orange),
-                _buildScenarioChip('winter', '❄️ 冬季寒潮', Colors.blue),
-                _buildScenarioChip('overtime', '🏭 夜间加班', Colors.purple),
-              ],
-            ),
-            
-            const Divider(height: 32),
+              // ========== 场景选择 ==========
+              Text('快速场景', style: AppTextStyles.labelMedium.copyWith(color: AppColors.textMuted)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildScenarioChip('summer', '夏季高温', AppColors.warning, Icons.wb_sunny_rounded),
+                  _buildScenarioChip('winter', '冬季寒潮', AppColors.info, Icons.ac_unit_rounded),
+                  _buildScenarioChip('overtime', '夜间加班', const Color(0xFF8B5CF6), Icons.nightlight_round),
+                ],
+              ),
+              
+              Divider(height: 32, color: AppColors.border),
             
             // ========== 初始电量滑块 ==========
             _buildSliderRow(
@@ -404,72 +416,80 @@ class _ModelingScreenState extends State<ModelingScreen> {
               ],
             ),
             
-            const SizedBox(height: 20),
+              const SizedBox(height: 24),
             
-            // 开始优化按钮
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _runOptimization,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.bolt, size: 22),
-                label: Text(
-                  _isLoading ? '优化中...' : '🚀 开始智能调度',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[700],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                ),
-              ),
-            ),
-            
-            // 参数摘要
-            if (_showAdvancedParams || _selectedScenario != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.grey[600], size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '🔋 ${_batteryCapacity.toInt()}kWh | ⚡ ${_maxPower.toInt()}kW | 🔌 ${(_initialSoc * 100).toInt()}%'
-                        '${_temperatureAdjust != 0 ? " | 🌡️ ${_temperatureAdjust >= 0 ? "+" : ""}${_temperatureAdjust.toInt()}°C" : ""}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                      ),
+              // 开始优化按钮 (CTA 橙色)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _runOptimization,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Icon(Icons.bolt_rounded, size: 22),
+                  label: Text(
+                    _isLoading ? '优化中...' : '开始智能调度',
+                    style: AppTextStyles.button,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cta,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
                     ),
-                  ],
+                    elevation: 0,
+                  ),
                 ),
               ),
+            
+              // 参数摘要
+              if (_showAdvancedParams || _selectedScenario != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_batteryCapacity.toInt()}kWh | ${_maxPower.toInt()}kW | ${(_initialSoc * 100).toInt()}%'
+                          '${_temperatureAdjust != 0 ? " | ${_temperatureAdjust >= 0 ? "+" : ""}${_temperatureAdjust.toInt()}°C" : ""}',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
   
-  /// 场景选择芯片
-  Widget _buildScenarioChip(String id, String label, Color color) {
+  /// 场景选择芯片 (无 emoji)
+  Widget _buildScenarioChip(String id, String label, Color color, IconData icon) {
     final isSelected = _selectedScenario == id;
     return FilterChip(
+      avatar: Icon(
+        icon,
+        size: 16,
+        color: isSelected ? Colors.white : color,
+      ),
       label: Text(label, style: TextStyle(
         fontSize: 12,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected ? Colors.white : Colors.grey[800],
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        color: isSelected ? Colors.white : AppColors.textPrimary,
       )),
       selected: isSelected,
       onSelected: _isLoading ? null : (selected) {
@@ -486,16 +506,19 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 break;
               case 'overtime':
                 _temperatureAdjust = 0.0;
-                // 可以在后端处理夜间负载增加
                 break;
             }
             _showAdvancedParams = true; // 展开显示参数变化
           }
         });
       },
-      backgroundColor: Colors.grey[200],
+      backgroundColor: color.withOpacity(0.1),
       selectedColor: color,
       checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+        side: BorderSide(color: isSelected ? color : color.withOpacity(0.3)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }

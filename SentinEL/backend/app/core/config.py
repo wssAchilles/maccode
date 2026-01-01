@@ -6,6 +6,12 @@ class Settings(BaseSettings):
     PROJECT_ID: str = os.getenv("GOOGLE_CLOUD_PROJECT", "sentinel-ai-project-482208")
     LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")  # Vertex AI Endpoints 区域
     VERSION: str = "2.0.0"
+
+    # Prediction Endpoints (Blue/Green)
+    CHURN_ENDPOINT_PRIMARY: str = os.getenv("CHURN_ENDPOINT_PRIMARY", "sentinel-churn-endpoint")
+    CHURN_ENDPOINT_SHADOW: str = os.getenv("CHURN_ENDPOINT_SHADOW", "sentinel-churn-transformer")
+    CHURN_ENDPOINT_SHADOW_WEIGHT: float = float(os.getenv("CHURN_ENDPOINT_SHADOW_WEIGHT", "0.0"))
+    CHURN_SEQ_LENGTH: int = int(os.getenv("CHURN_SEQ_LENGTH", "20"))
     
     # Storage Config
     # Defaulting to values found in existing code to ensure backward compatibility if env vars are missing

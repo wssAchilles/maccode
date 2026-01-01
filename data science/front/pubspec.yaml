@@ -55,6 +55,9 @@ dependencies:
   
   # 国际化和日期格式化
   intl: ^0.20.2
+  
+  # 自定义字体
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

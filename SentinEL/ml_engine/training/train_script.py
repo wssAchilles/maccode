@@ -1,13 +1,12 @@
 """
-SentinEL LSTM 训练脚本
+SentinEL 序列流失模型训练脚本（LSTM/Transformer）
 在 Vertex AI Custom Job 容器内执行的训练逻辑
 
 功能:
     1. 从 GCS 加载序列数据
     2. 创建 PyTorch DataLoader
-    3. 训练 ChurnLSTM 模型
-    4. 保存模型为 TorchScript 格式
-    5. 上传 Artifacts 到 GCS
+    3. 训练 ChurnLSTM 或 Transformer 模型
+    4. 保存 TorchScript + 配置 + 指标
 
 使用方法 (本地测试):
     python train_script.py \
@@ -27,8 +26,9 @@ import json
 import logging
 import os
 import sys
+import time
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 import pandas as pd
 import torch
@@ -38,7 +38,12 @@ from torch.utils.data import Dataset, DataLoader, random_split
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models.churn_lstm import ChurnLSTM, create_model
+from models import ChurnLSTM, ChurnTransformer, create_model
+try:
+    from google.cloud import bigquery
+    _HAS_BQ = True
+except Exception:
+    _HAS_BQ = False
 
 logging.basicConfig(
     level=logging.INFO,
@@ -171,18 +176,12 @@ def evaluate(
     dataloader: DataLoader,
     criterion: nn.Module,
     device: torch.device
-) -> Tuple[float, float, float]:
+) -> Tuple[float, float, float, float, float]:
     """
     评估模型
     
-    Args:
-        model: 模型
-        dataloader: 验证数据加载器
-        criterion: 损失函数
-        device: 设备
-        
     Returns:
-        Tuple[float, float, float]: (平均损失, 准确率, AUC)
+        Tuple: (avg_loss, accuracy, auc, pr_auc, logloss)
     """
     model.eval()
     total_loss = 0.0
@@ -212,14 +211,16 @@ def evaluate(
     avg_loss = total_loss / len(dataloader)
     accuracy = correct / total if total > 0 else 0.0
     
-    # 计算 AUC
+    # 计算 AUC/PR-AUC/Logloss（带安全兜底）
     try:
-        from sklearn.metrics import roc_auc_score
+        from sklearn.metrics import roc_auc_score, average_precision_score, log_loss
         auc = roc_auc_score(all_labels, all_probs)
+        pr_auc = average_precision_score(all_labels, all_probs)
+        logloss = log_loss(all_labels, all_probs, labels=[0, 1])
     except Exception:
-        auc = 0.0
+        auc, pr_auc, logloss = 0.0, 0.0, 0.0
     
-    return avg_loss, accuracy, auc
+    return avg_loss, accuracy, auc, pr_auc, logloss
 
 
 def train(
@@ -232,7 +233,13 @@ def train(
     embed_dim: int = 64,
     hidden_dim: int = 128,
     seq_length: int = 20,
-    model_type: str = "lstm"
+    model_type: str = "lstm",
+    num_layers: int = 2,
+    dropout: float = 0.3,
+    num_heads: int = 4,
+    ff_dim: int = 256,
+    early_stop_patience: int = 5,
+    weight_decay: float = 0.01,
 ) -> str:
     """
     完整训练流程
@@ -248,6 +255,12 @@ def train(
         hidden_dim: LSTM 隐藏层维度
         seq_length: 序列长度
         model_type: 模型类型 ("lstm" 或 "transformer")
+        num_layers: LSTM/Transformer 层数
+        dropout: Dropout 概率
+        num_heads: Transformer 头数
+        ff_dim: Transformer FFN 维度
+        early_stop_patience: 早停耐心轮数
+        weight_decay: 权重衰减系数
         
     Returns:
         str: 保存的模型路径
@@ -270,11 +283,27 @@ def train(
     logger.info(f"训练集: {train_size}, 验证集: {val_size}")
     
     # 创建模型
+    if model_type.lower() == "lstm":
+        model_kwargs: Dict = {
+            "embed_dim": embed_dim,
+            "hidden_dim": hidden_dim,
+            "num_layers": num_layers,
+            "dropout": dropout,
+        }
+    else:
+        model_kwargs = {
+            "embed_dim": embed_dim,
+            "num_heads": num_heads,
+            "num_layers": num_layers,
+            "ff_dim": ff_dim,
+            "dropout": dropout,
+            "max_seq_len": seq_length,
+        }
+
     model = create_model(
         model_type=model_type,
         vocab_size=vocab_size,
-        embed_dim=embed_dim,
-        hidden_dim=hidden_dim
+        **model_kwargs,
     ).to(device)
     
     logger.info(f"模型类型: {type(model).__name__}")
@@ -282,7 +311,7 @@ def train(
     
     # 损失函数和优化器
     criterion = nn.BCELoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     
     # 学习率调度器
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -290,15 +319,23 @@ def train(
     )
     
     # 训练循环
-    best_auc = 0.0
+    best_metrics = {
+        "epoch": 0,
+        "val_auc": -1.0,
+        "val_pr_auc": 0.0,
+        "val_logloss": 0.0,
+        "val_accuracy": 0.0,
+        "train_loss": 0.0,
+    }
     best_model_state = None
+    no_improve_epochs = 0
     
     for epoch in range(1, epochs + 1):
         # 训练
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
         
         # 验证
-        val_loss, val_acc, val_auc = evaluate(model, val_loader, criterion, device)
+        val_loss, val_acc, val_auc, val_pr_auc, val_logloss = evaluate(model, val_loader, criterion, device)
         
         # 更新学习率
         scheduler.step(val_loss)
@@ -308,20 +345,37 @@ def train(
             f"Train Loss: {train_loss:.4f} | "
             f"Val Loss: {val_loss:.4f} | "
             f"Val Acc: {val_acc:.4f} | "
-            f"Val AUC: {val_auc:.4f}"
+            f"Val AUC: {val_auc:.4f} | "
+            f"Val PR-AUC: {val_pr_auc:.4f} | "
+            f"Val LogLoss: {val_logloss:.4f}"
         )
         
         # 保存最佳模型
-        if val_auc > best_auc:
-            best_auc = val_auc
+        if val_auc > best_metrics["val_auc"]:
             best_model_state = model.state_dict().copy()
-            logger.info(f"  ↳ 新最佳模型! AUC: {best_auc:.4f}")
+            best_metrics.update(
+                {
+                    "epoch": epoch,
+                    "val_auc": val_auc,
+                    "val_pr_auc": val_pr_auc,
+                    "val_logloss": val_logloss,
+                    "val_accuracy": val_acc,
+                    "train_loss": train_loss,
+                }
+            )
+            no_improve_epochs = 0
+            logger.info(f"  ↳ 新最佳模型! AUC: {val_auc:.4f}")
+        else:
+            no_improve_epochs += 1
+            if no_improve_epochs >= early_stop_patience:
+                logger.info(f"早停触发（{early_stop_patience} epochs 无提升），提前结束训练。")
+                break
     
     # 恢复最佳模型
     if best_model_state:
         model.load_state_dict(best_model_state)
     
-    # 保存模型
+    # 保存模型与指标
     os.makedirs(model_dir, exist_ok=True)
     
     # 保存 PyTorch 权重
@@ -332,31 +386,104 @@ def train(
     # 保存 TorchScript 格式（用于推理优化）
     model.eval()
     example_input = torch.randint(0, vocab_size, (1, seq_length)).to(device)
-    traced_model = torch.jit.trace(model, example_input)
-    
     torchscript_path = os.path.join(model_dir, "model.pt")
-    traced_model.save(torchscript_path)
-    logger.info(f"TorchScript 模型已保存: {torchscript_path}")
+    try:
+        traced_model = torch.jit.trace(model, example_input, strict=False)
+        traced_model.save(torchscript_path)
+        logger.info(f"TorchScript 模型已保存: {torchscript_path}")
+    except Exception as e:
+        logger.warning(f"TorchScript trace failed, fallback to script: {e}")
+        scripted = torch.jit.script(model)
+        scripted.save(torchscript_path)
+        logger.info(f"TorchScript (script) 已保存: {torchscript_path}")
     
-    # 保存模型配置
+    # 推理延迟评估（单批）
+    with torch.no_grad():
+        start = time.time()
+        _ = model(example_input)
+        latency_ms = (time.time() - start) * 1000
+    
+    # 保存模型配置与指标
     config = {
         "model_type": model_type,
         "vocab_size": vocab_size,
         "embed_dim": embed_dim,
         "hidden_dim": hidden_dim,
         "seq_length": seq_length,
-        "best_auc": best_auc
+        "num_layers": num_layers,
+        "num_heads": num_heads,
+        "ff_dim": ff_dim,
+        "dropout": dropout,
+        "weight_decay": weight_decay,
+        "early_stop_patience": early_stop_patience,
     }
     config_path = os.path.join(model_dir, "config.json")
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
     logger.info(f"模型配置已保存: {config_path}")
+
+    metrics = {
+        "best_epoch": best_metrics["epoch"],
+        "val_auc": best_metrics["val_auc"],
+        "val_pr_auc": best_metrics["val_pr_auc"],
+        "val_logloss": best_metrics["val_logloss"],
+        "val_accuracy": best_metrics["val_accuracy"],
+        "train_loss": best_metrics["train_loss"],
+        "inference_latency_ms": latency_ms,
+    }
+    metrics_path = os.path.join(model_dir, "metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    logger.info(f"训练指标已保存: {metrics_path}")
     
     # 打印最终结果
     logger.info(f"\n{'='*50}")
-    logger.info(f"训练完成 | 最佳 AUC: {best_auc:.4f}")
+    logger.info(
+        f"训练完成 | 最佳 AUC: {best_metrics['val_auc']:.4f} | "
+        f"最佳 PR-AUC: {best_metrics['val_pr_auc']:.4f} | "
+        f"LogLoss: {best_metrics['val_logloss']:.4f} | "
+        f"Latency(ms): {latency_ms:.2f}"
+    )
     logger.info(f"模型目录: {model_dir}")
     logger.info(f"{'='*50}")
+
+    # Vertex HPT 友好指标输出（AIP_METRIC_* 会被 Vertex 捕获）
+    print(f"AIP_METRIC_val_auc={best_metrics['val_auc']}")
+    print(f"AIP_METRIC_val_pr_auc={best_metrics['val_pr_auc']}")
+    print(f"AIP_METRIC_val_logloss={best_metrics['val_logloss']}")
+    print(f"AIP_METRIC_latency_ms={latency_ms}")
+
+    # 可选：写入 BigQuery 训练指标表（通过 env BQ_TRAINING_METRICS_TABLE 启用）
+    bq_table = os.environ.get("BQ_TRAINING_METRICS_TABLE")
+    if bq_table and _HAS_BQ:
+        try:
+            client = bigquery.Client()
+            row = {
+                "job_time": time.time(),
+                "model_type": model_type,
+                "trial_id": os.environ.get("AIP_TRIAL_ID"),
+                "hpt_job": os.environ.get("AIP_HP_TUNING_JOB_ID"),
+                "val_auc": best_metrics["val_auc"],
+                "val_pr_auc": best_metrics["val_pr_auc"],
+                "val_logloss": best_metrics["val_logloss"],
+                "val_accuracy": best_metrics["val_accuracy"],
+                "train_loss": best_metrics["train_loss"],
+                "latency_ms": latency_ms,
+                "seq_length": seq_length,
+                "num_layers": num_layers,
+                "num_heads": num_heads,
+                "ff_dim": ff_dim,
+                "dropout": dropout,
+                "learning_rate": learning_rate,
+                "hidden_dim": hidden_dim,
+            }
+            errors = client.insert_rows_json(bq_table, [row])
+            if errors:
+                logger.warning(f"写入 BigQuery 训练指标失败: {errors}")
+            else:
+                logger.info(f"训练指标已写入 BigQuery: {bq_table}")
+        except Exception as e:
+            logger.warning(f"BigQuery 指标写入失败: {e}")
     
     return torchscript_path
 
@@ -388,8 +515,20 @@ def main():
                         help="Embedding 维度")
     parser.add_argument("--hidden_dim", type=int, default=128,
                         help="LSTM 隐藏层维度")
+    parser.add_argument("--num_layers", type=int, default=2,
+                        help="LSTM/Transformer 层数")
+    parser.add_argument("--dropout", type=float, default=0.3,
+                        help="Dropout 概率")
+    parser.add_argument("--num_heads", type=int, default=4,
+                        help="Transformer 头数")
+    parser.add_argument("--ff_dim", type=int, default=256,
+                        help="Transformer FFN 维度")
     parser.add_argument("--seq_length", type=int, default=20,
                         help="序列长度")
+    parser.add_argument("--early_stop_patience", type=int, default=5,
+                        help="早停耐心轮数")
+    parser.add_argument("--weight_decay", type=float, default=0.01,
+                        help="权重衰减")
     
     args = parser.parse_args()
     
@@ -407,7 +546,13 @@ def main():
         embed_dim=args.embed_dim,
         hidden_dim=args.hidden_dim,
         seq_length=args.seq_length,
-        model_type=args.model_type
+        model_type=args.model_type,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
+        num_heads=args.num_heads,
+        ff_dim=args.ff_dim,
+        early_stop_patience=args.early_stop_patience,
+        weight_decay=args.weight_decay,
     )
 
 
