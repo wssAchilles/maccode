@@ -1,12 +1,12 @@
 """
 SentinEL 预测服务
-封装 Vertex AI Endpoint 调用，提供流失概率预测
+封装 Vertex AI Endpoint 调用 + Feature Store 实时特征，提供混合推理
 
 功能:
-    1. 从用户 ID 和事件序列获取流失概率
-    2. 支持缓存以减少重复请求
-    3. 异步调用以避免阻塞
-    4. 降级策略：Endpoint 不可用时返回默认值
+    1. 从 LSTM/Transformer 模型获取基础流失概率
+    2. 从 Feature Store 读取实时用户特征 (rage_clicks_5m, active_session_duration 等)
+    3. 混合推理: 使用实时特征动态调整预测结果
+    4. 支持缓存、异步调用、降级策略
 
 使用方法:
     from app.services.prediction_service import get_prediction_service
@@ -15,7 +15,7 @@ SentinEL 预测服务
     prob = service.predict_churn(user_id="123", events=["page_view", "view_item", ...])
 
 依赖:
-    pip install google-cloud-aiplatform
+    pip install google-cloud-aiplatform>=1.38.0
 """
 
 import logging
@@ -34,6 +34,30 @@ from app.core.telemetry import get_tracer
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer()
+
+
+# =============================================================================
+# Feature Store 客户端导入 (兼容处理)
+# =============================================================================
+FeatureOnlineStoreServingServiceClient = None
+FeatureViewDataKey = None
+FetchFeatureValuesRequest = None
+
+try:
+    from google.cloud.aiplatform_v1 import FeatureOnlineStoreServingServiceClient
+    from google.cloud.aiplatform_v1.types import (
+        FeatureViewDataKey, 
+        FetchFeatureValuesRequest
+    )
+    FEATURE_STORE_AVAILABLE = True
+except ImportError:
+    try:
+        from google.cloud.aiplatform_v1.services.feature_online_store_serving_service import FeatureOnlineStoreServingServiceClient
+        from google.cloud.aiplatform_v1.types import FeatureViewDataKey, FetchFeatureValuesRequest
+        FEATURE_STORE_AVAILABLE = True
+    except ImportError as e:
+        logger.warning(f"Feature Store SDK 不可用，实时特征将被禁用: {e}")
+        FEATURE_STORE_AVAILABLE = False
 
 
 # ==============================================================================
@@ -81,18 +105,26 @@ DEFAULT_ENDPOINT_SHADOW = "sentinel-churn-transformer"     # 新 Transformer End
 DEFAULT_SHADOW_WEIGHT = 0.0  # 0-1 之间，控制灰度/金丝雀流量
 CACHE_TTL_SECONDS = 300  # 缓存 5 分钟
 
+# Feature Store 配置
+DEFAULT_FEATURE_ONLINE_STORE = "sentinel_online_store"
+DEFAULT_FEATURE_VIEW = "user_realtime_view"
+FEATURE_STORE_TIMEOUT_MS = 100  # Feature Store 超时阈值 (毫秒)
+
 
 class PredictionService:
     """
-    流失预测服务
+    流失预测服务 (混合推理)
     
-    封装 Vertex AI Endpoint 调用，提供统一的预测接口。
+    封装 Vertex AI Endpoint 调用 + Feature Store 实时特征读取，
+    提供基于深度学习模型和实时信号的联合预测。
     
     Attributes:
         project_id: GCP 项目 ID
         region: Vertex AI 区域
         endpoint_name: Endpoint 显示名称
         seq_length: 序列长度
+        feature_online_store: Feature Online Store 名称
+        feature_view: Feature View 名称
     """
     
     def __init__(
@@ -103,6 +135,8 @@ class PredictionService:
         seq_length: int = DEFAULT_SEQ_LENGTH,
         shadow_endpoint_name: Optional[str] = None,
         shadow_weight: float = DEFAULT_SHADOW_WEIGHT,
+        feature_online_store: str = DEFAULT_FEATURE_ONLINE_STORE,
+        feature_view: str = DEFAULT_FEATURE_VIEW,
     ):
         """
         初始化预测服务
@@ -112,6 +146,10 @@ class PredictionService:
             region: 区域（如 us-central1）
             endpoint_name: Vertex AI Endpoint 显示名称
             seq_length: 输入序列长度
+            shadow_endpoint_name: 金丝雀 Endpoint 名称
+            shadow_weight: 金丝雀流量权重
+            feature_online_store: Feature Online Store 名称
+            feature_view: Feature View 名称
         """
         self.project_id = project_id
         self.region = region
@@ -119,16 +157,196 @@ class PredictionService:
         self.seq_length = seq_length
         self.shadow_endpoint_name = shadow_endpoint_name or DEFAULT_ENDPOINT_SHADOW
         self.shadow_weight = max(0.0, min(1.0, shadow_weight))
+        self.feature_online_store = feature_online_store
+        self.feature_view = feature_view
 
         self._endpoint: Optional[Endpoint] = None
         self._shadow_endpoint: Optional[Endpoint] = None
+        self._feature_store_client = None
         self._cache: Dict[str, tuple] = {}  # {cache_key: (timestamp, probability)}
         self._executor = ThreadPoolExecutor(max_workers=4)
         
         # 初始化 Vertex AI
         aiplatform.init(project=project_id, location=region)
         
-        logger.info(f"PredictionService 初始化 | Endpoint: {endpoint_name}")
+        # 初始化 Feature Store 客户端
+        self._init_feature_store_client()
+        
+        logger.info(
+            f"PredictionService 初始化 | Endpoint: {endpoint_name} | "
+            f"FeatureStore: {feature_online_store}/{feature_view}"
+        )
+    
+    def _init_feature_store_client(self):
+        """初始化 Feature Store 客户端"""
+        if FEATURE_STORE_AVAILABLE and FeatureOnlineStoreServingServiceClient:
+            try:
+                client_options = {"api_endpoint": f"{self.region}-aiplatform.googleapis.com"}
+                self._feature_store_client = FeatureOnlineStoreServingServiceClient(
+                    client_options=client_options
+                )
+                logger.info(f"Feature Store 客户端初始化成功: {self.feature_online_store}")
+            except Exception as e:
+                logger.error(f"Feature Store 客户端初始化失败: {e}")
+                self._feature_store_client = None
+        else:
+            logger.warning("Feature Store SDK 不可用，实时特征将被禁用")
+            self._feature_store_client = None
+    
+    def _build_feature_view_path(self) -> str:
+        """构造 Feature View 资源路径"""
+        return (
+            f"projects/{self.project_id}/locations/{self.region}/"
+            f"featureOnlineStores/{self.feature_online_store}/"
+            f"featureViews/{self.feature_view}"
+        )
+    
+    def _get_realtime_features_sync(self, user_id: str) -> Dict[str, Any]:
+        """
+        同步读取用户实时特征 (内部方法)
+        
+        Args:
+            user_id: 用户 ID
+            
+        Returns:
+            Dict: 特征键值对，如 {"rage_clicks_5m": 2, "active_session_duration": 120.5}
+                  失败时返回空字典
+        """
+        if self._feature_store_client is None:
+            return {}
+        
+        start_time = time.time()
+        
+        try:
+            feature_view_path = self._build_feature_view_path()
+            data_key = FeatureViewDataKey(key=user_id)
+            
+            request = FetchFeatureValuesRequest(
+                feature_view=feature_view_path,
+                data_key=data_key,
+                data_format=FetchFeatureValuesRequest.FeatureViewDataFormat.KEY_VALUE
+            )
+            
+            response = self._feature_store_client.fetch_feature_values(request=request)
+            
+            # 解析特征值
+            features = {}
+            if response.key_values:
+                for feature in response.key_values.features:
+                    val = None
+                    if feature.value.HasField("int64_value"):
+                        val = feature.value.int64_value
+                    elif feature.value.HasField("double_value"):
+                        val = feature.value.double_value
+                    elif feature.value.HasField("string_value"):
+                        val = feature.value.string_value
+                    elif feature.value.HasField("bool_value"):
+                        val = feature.value.bool_value
+                    features[feature.name] = val
+            
+            latency_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f"Feature Store 读取成功 | user={user_id} | latency={latency_ms:.1f}ms | "
+                f"features={features}"
+            )
+            
+            return features
+            
+        except Exception as e:
+            latency_ms = (time.time() - start_time) * 1000
+            logger.warning(
+                f"Feature Store 读取失败 | user={user_id} | latency={latency_ms:.1f}ms | "
+                f"error={e} | 降级为空特征"
+            )
+            return {}
+    
+    async def _get_realtime_features(self, user_id: str) -> Dict[str, Any]:
+        """
+        异步读取用户实时特征 (非阻塞)
+        
+        使用线程池避免阻塞事件循环，并设置超时保护。
+        
+        Args:
+            user_id: 用户 ID
+            
+        Returns:
+            Dict: 特征键值对，失败或超时返回空字典
+        """
+        loop = asyncio.get_event_loop()
+        
+        try:
+            # 使用 wait_for 设置超时
+            features = await asyncio.wait_for(
+                loop.run_in_executor(
+                    self._executor,
+                    lambda: self._get_realtime_features_sync(user_id)
+                ),
+                timeout=FEATURE_STORE_TIMEOUT_MS / 1000.0  # 转换为秒
+            )
+            return features
+            
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"Feature Store 读取超时 | user={user_id} | "
+                f"timeout={FEATURE_STORE_TIMEOUT_MS}ms | 降级为空特征"
+            )
+            return {}
+        except Exception as e:
+            logger.warning(f"Feature Store 异步读取异常: {e}")
+            return {}
+    
+    def _apply_realtime_adjustment(
+        self, 
+        base_probability: float, 
+        realtime_features: Dict[str, Any]
+    ) -> float:
+        """
+        应用实时特征调整基础概率 (混合推理核心逻辑)
+        
+        策略:
+        - 愤怒点击 > 0: 大幅增加流失风险 (+0.20)
+        - 活跃会话时长 > 300秒: 轻微降低风险 (-0.05)
+        - 查看政策次数 > 2: 中度增加风险 (+0.10)
+        - 购物车添加 > 0: 轻微降低风险 (-0.03)
+        
+        Args:
+            base_probability: LSTM/Transformer 模型基础概率
+            realtime_features: Feature Store 实时特征
+            
+        Returns:
+            float: 调整后的最终概率 [0.0, 1.0]
+        """
+        final_probability = base_probability
+        
+        # 1. 愤怒点击检测 (高风险信号)
+        rage_clicks = realtime_features.get("rage_clicks_5m", 0) or 0
+        if rage_clicks > 0:
+            adjustment = min(0.2, rage_clicks * 0.1)  # 每次愤怒点击 +10%, 最多 +20%
+            final_probability = min(1.0, final_probability + adjustment)
+            logger.debug(f"愤怒点击调整: +{adjustment:.2f} (count={rage_clicks})")
+        
+        # 2. 活跃会话时长 (正向信号)
+        session_duration = realtime_features.get("active_session_duration", 0) or 0
+        if session_duration > 300:  # 超过 5 分钟
+            adjustment = min(0.05, (session_duration - 300) / 1000)  # 最多 -5%
+            final_probability = max(0.0, final_probability - adjustment)
+            logger.debug(f"活跃会话调整: -{adjustment:.2f} (duration={session_duration}s)")
+        
+        # 3. 查看政策次数 (风险信号)
+        policy_views = realtime_features.get("policy_views_5m", 0) or 0
+        if policy_views > 2:
+            adjustment = min(0.1, (policy_views - 2) * 0.05)  # 每超出一次 +5%, 最多 +10%
+            final_probability = min(1.0, final_probability + adjustment)
+            logger.debug(f"政策查看调整: +{adjustment:.2f} (count={policy_views})")
+        
+        # 4. 购物车添加 (正向信号)
+        cart_adds = realtime_features.get("cart_additions_5m", 0) or 0
+        if cart_adds > 0:
+            adjustment = min(0.03, cart_adds * 0.01)  # 每次 +1%, 最多 -3%
+            final_probability = max(0.0, final_probability - adjustment)
+            logger.debug(f"购物车添加调整: -{adjustment:.2f} (count={cart_adds})")
+        
+        return final_probability
     
     def _get_endpoint(self, display_name: str) -> Optional[Endpoint]:
         """Lazy load by display_name."""
@@ -224,7 +442,13 @@ class PredictionService:
         use_cache: bool = True
     ) -> float:
         """
-        预测用户流失概率
+        预测用户流失概率 (混合推理)
+        
+        流程:
+        1. 调用 LSTM/Transformer 模型获取基础概率
+        2. 从 Feature Store 读取实时特征
+        3. 应用实时特征调整公式
+        4. 返回最终概率
         
         Args:
             user_id: 用户 ID
@@ -241,7 +465,8 @@ class PredictionService:
             span.set_attribute("user.id", user_id)
             span.set_attribute("events.count", len(events))
             
-            # 检查缓存
+            # 检查缓存 (注意: 混合推理时缓存可能导致实时性下降，按需禁用)
+            cache_key = None
             if use_cache:
                 cache_key = self._get_cache_key(user_id, events)
                 cached = self._check_cache(cache_key)
@@ -251,50 +476,76 @@ class PredictionService:
             
             span.set_attribute("cache.hit", False)
             
-        # 检查 Endpoint 可用性
-        ep = self._choose_endpoint()
-        if ep is None:
-            logger.warning("Endpoint 不可用，返回默认概率")
-            span.set_attribute("fallback", True)
-            return 0.5
+            # ================ Step 1: 获取基础概率 ================
+            base_probability = 0.5  # 默认中性值
+            
+            ep = self._choose_endpoint()
+            if ep is None:
+                logger.warning("Endpoint 不可用，使用默认基础概率 0.5")
+                span.set_attribute("fallback.endpoint", True)
+            else:
+                try:
+                    # Tokenize
+                    token_ids = self.tokenize_events(events)
+                    
+                    # 构造请求
+                    instances = [{"sequence": token_ids}]
+                    
+                    # 调用 Endpoint
+                    prediction = ep.predict(instances)
+                    
+                    # 解析结果
+                    if prediction.predictions:
+                        base_probability = float(prediction.predictions[0])
+                        if isinstance(base_probability, list):
+                            base_probability = base_probability[0]
+                    
+                    # 裁剪到 [0, 1] 范围
+                    base_probability = max(0.0, min(1.0, base_probability))
+                    
+                except Exception as e:
+                    logger.error(f"Endpoint 预测失败: {e}")
+                    span.set_attribute("error.endpoint", True)
+                    span.set_attribute("error.message", str(e))
+            
+            span.set_attribute("prediction.base_probability", base_probability)
+            
+            # ================ Step 2: 获取实时特征 ================
+            realtime_features = {}
+            feature_store_latency_ms = 0
             
             try:
-                # Tokenize
-                token_ids = self.tokenize_events(events)
-                
-                # 构造请求
-                instances = [{"sequence": token_ids}]
-                
-                # 调用 Endpoint
-                prediction = ep.predict(instances)
-                
-                # 解析结果
-                # 假设模型返回格式: [[probability]]
-                if prediction.predictions:
-                    probability = float(prediction.predictions[0])
-                    if isinstance(probability, list):
-                        probability = probability[0]
-                else:
-                    probability = 0.5
-                
-                # 裁剪到 [0, 1] 范围
-                probability = max(0.0, min(1.0, probability))
-                
-                # 更新缓存
-                if use_cache:
-                    self._update_cache(cache_key, probability)
-                
-                span.set_attribute("prediction.probability", probability)
-                logger.info(f"预测完成 | user={user_id}, probability={probability:.4f}")
-                
-                return probability
-                
+                start_time = time.time()
+                realtime_features = self._get_realtime_features_sync(user_id)
+                feature_store_latency_ms = (time.time() - start_time) * 1000
             except Exception as e:
-                logger.error(f"预测失败: {e}")
-                span.set_attribute("error", True)
-                span.set_attribute("error.message", str(e))
-                # 降级：返回中性值
-                return 0.5
+                logger.warning(f"Feature Store 读取异常: {e}")
+            
+            span.set_attribute("feature_store.latency_ms", feature_store_latency_ms)
+            span.set_attribute("realtime.rage_clicks", realtime_features.get("rage_clicks_5m", 0))
+            span.set_attribute("realtime.session_duration", realtime_features.get("active_session_duration", 0))
+            span.set_attribute("realtime.policy_views", realtime_features.get("policy_views_5m", 0))
+            
+            # ================ Step 3: 混合推理调整 ================
+            final_probability = self._apply_realtime_adjustment(
+                base_probability, 
+                realtime_features
+            )
+            
+            span.set_attribute("prediction.final_probability", final_probability)
+            span.set_attribute("prediction.adjustment", final_probability - base_probability)
+            
+            # 更新缓存
+            if use_cache and cache_key:
+                self._update_cache(cache_key, final_probability)
+            
+            logger.info(
+                f"混合推理完成 | user={user_id} | base={base_probability:.4f} | "
+                f"final={final_probability:.4f} | adjustment={final_probability - base_probability:+.4f} | "
+                f"realtime_features={realtime_features}"
+            )
+            
+            return final_probability
     
     async def predict_churn_async(
         self,
@@ -303,7 +554,7 @@ class PredictionService:
         use_cache: bool = True
     ) -> float:
         """
-        异步预测用户流失概率
+        异步预测用户流失概率 (混合推理)
         
         使用线程池执行同步 API 调用，避免阻塞事件循环。
         

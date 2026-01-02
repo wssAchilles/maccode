@@ -1,0 +1,24 @@
+# Cloud Build 配置 - 训练镜像构建
+# 用于构建 MultimodalChurnTransformer 训练容器
+
+steps:
+  # 构建训练镜像
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sentinel-train:latest'
+      - '-f'
+      - 'Dockerfile.train'
+      - '.'
+
+# 推送镜像到 GCR
+images:
+  - 'gcr.io/$PROJECT_ID/sentinel-train:latest'
+
+# 构建超时: 30 分钟
+timeout: '1800s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

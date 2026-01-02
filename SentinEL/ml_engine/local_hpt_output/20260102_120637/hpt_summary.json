@@ -1,0 +1,72 @@
+{
+  "best_auc": 0.0,
+  "best_params": null,
+  "best_model_path": null,
+  "trials": [
+    {
+      "trial": 1,
+      "params": {
+        "lr": 0.002,
+        "batch_size": 32,
+        "d_model": 128,
+        "num_layers": 1,
+        "dropout": 0.5,
+        "nhead": 4
+      },
+      "auc": 0.0,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120637/trial_1"
+    },
+    {
+      "trial": 2,
+      "params": {
+        "lr": 0.0001,
+        "batch_size": 64,
+        "d_model": 32,
+        "num_layers": 1,
+        "dropout": 0.1,
+        "nhead": 4
+      },
+      "auc": 0.0,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120637/trial_2"
+    },
+    {
+      "trial": 3,
+      "params": {
+        "lr": 0.002,
+        "batch_size": 64,
+        "d_model": 32,
+        "num_layers": 2,
+        "dropout": 0.5,
+        "nhead": 4
+      },
+      "auc": 0.0,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120637/trial_3"
+    },
+    {
+      "trial": 4,
+      "params": {
+        "lr": 0.0005,
+        "batch_size": 32,
+        "d_model": 32,
+        "num_layers": 2,
+        "dropout": 0.3,
+        "nhead": 4
+      },
+      "auc": 0.0,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120637/trial_4"
+    },
+    {
+      "trial": 5,
+      "params": {
+        "lr": 0.002,
+        "batch_size": 32,
+        "d_model": 32,
+        "num_layers": 2,
+        "dropout": 0.1,
+        "nhead": 4
+      },
+      "auc": 0.0,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120637/trial_5"
+    }
+  ]
+}

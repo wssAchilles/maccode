@@ -1,0 +1,21 @@
+{
+  "vocab_size": 30,
+  "seq_embed_dim": 64,
+  "num_heads": 4,
+  "num_transformer_layers": 4,
+  "ff_dim": 256,
+  "max_seq_len": 20,
+  "cat_feature_dims": [
+    9,
+    4,
+    4
+  ],
+  "cat_embed_dim": 8,
+  "num_numerical_features": 5,
+  "feature_hidden_dim": 64,
+  "feature_output_dim": 64,
+  "dropout": 0.1,
+  "fusion_hidden_dim": 128,
+  "best_auc": 0.495708603726188,
+  "saved_at": "2026-01-02T12:07:42.595361"
+}

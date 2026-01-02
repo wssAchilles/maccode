@@ -1,0 +1,79 @@
+{
+  "best_auc": 0.5602141212356828,
+  "best_params": {
+    "lr": 0.001,
+    "batch_size": 32,
+    "d_model": 64,
+    "num_layers": 2,
+    "dropout": 0.5,
+    "nhead": 4
+  },
+  "best_model_path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_4",
+  "trials": [
+    {
+      "trial": 1,
+      "params": {
+        "lr": 0.0005,
+        "batch_size": 32,
+        "d_model": 32,
+        "num_layers": 1,
+        "dropout": 0.5,
+        "nhead": 4
+      },
+      "auc": 0.5282155566853076,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_1"
+    },
+    {
+      "trial": 2,
+      "params": {
+        "lr": 0.0005,
+        "batch_size": 32,
+        "d_model": 32,
+        "num_layers": 4,
+        "dropout": 0.1,
+        "nhead": 4
+      },
+      "auc": 0.5194832381351118,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_2"
+    },
+    {
+      "trial": 3,
+      "params": {
+        "lr": 0.0005,
+        "batch_size": 64,
+        "d_model": 128,
+        "num_layers": 2,
+        "dropout": 0.3,
+        "nhead": 4
+      },
+      "auc": 0.525090463231556,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_3"
+    },
+    {
+      "trial": 4,
+      "params": {
+        "lr": 0.001,
+        "batch_size": 32,
+        "d_model": 64,
+        "num_layers": 2,
+        "dropout": 0.5,
+        "nhead": 4
+      },
+      "auc": 0.5602141212356828,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_4"
+    },
+    {
+      "trial": 5,
+      "params": {
+        "lr": 0.001,
+        "batch_size": 64,
+        "d_model": 64,
+        "num_layers": 4,
+        "dropout": 0.1,
+        "nhead": 4
+      },
+      "auc": 0.495708603726188,
+      "path": "/Users/achilles/Documents/code/SentinEL/ml_engine/local_hpt_output/20260102_120719/trial_5"
+    }
+  ]
+}
