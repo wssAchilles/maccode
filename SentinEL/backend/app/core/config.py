@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     CHURN_ENDPOINT_SHADOW_WEIGHT: float = float(os.getenv("CHURN_ENDPOINT_SHADOW_WEIGHT", "0.0"))
     CHURN_SEQ_LENGTH: int = int(os.getenv("CHURN_SEQ_LENGTH", "20"))
     
+    # Vertex AI Transformer Endpoint (新模型)
+    VERTEX_ENDPOINT_ID: str = os.getenv("VERTEX_ENDPOINT_ID", "8203956532627374080")
+    
     # Storage Config
     # Defaulting to values found in existing code to ensure backward compatibility if env vars are missing
     PIPELINE_ROOT_BUCKET: str = "sentinel-ai-project-482208_cloudbuild/pipeline_root" 

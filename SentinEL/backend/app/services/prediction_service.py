@@ -110,6 +110,11 @@ DEFAULT_FEATURE_ONLINE_STORE = "sentinel_online_store"
 DEFAULT_FEATURE_VIEW = "user_realtime_view"
 FEATURE_STORE_TIMEOUT_MS = 100  # Feature Store 超时阈值 (毫秒)
 
+# Transformer 模型输入配置
+TRANSFORMER_EVENT_SEQ_LEN = 20       # 事件序列长度
+TRANSFORMER_STATIC_CAT_LEN = 3       # 分类特征长度
+TRANSFORMER_STATIC_NUM_LEN = 5       # 数值特征长度
+
 
 class PredictionService:
     """
@@ -359,6 +364,25 @@ class PredictionService:
         except Exception as e:
             logger.error(f"获取 Endpoint 失败 ({display_name}): {e}")
         return None
+    
+    def _get_endpoint_by_id(self, endpoint_id: str) -> Optional[Endpoint]:
+        """
+        通过 Endpoint ID 获取 Endpoint 对象
+        
+        Args:
+            endpoint_id: Vertex AI Endpoint ID
+            
+        Returns:
+            Optional[Endpoint]: Endpoint 对象或 None
+        """
+        try:
+            resource_name = f"projects/{self.project_id}/locations/{self.region}/endpoints/{endpoint_id}"
+            endpoint = Endpoint(endpoint_name=resource_name)
+            logger.info(f"Endpoint (by ID) 已连接: {resource_name}")
+            return endpoint
+        except Exception as e:
+            logger.error(f"通过 ID 获取 Endpoint 失败 ({endpoint_id}): {e}")
+            return None
 
     @property
     def endpoint(self) -> Optional[Endpoint]:
@@ -435,6 +459,40 @@ class PredictionService:
             for key in sorted_keys[:500]:
                 del self._cache[key]
     
+    def _assemble_transformer_input(
+        self,
+        user_id: str,
+        events: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        组装模型输入数据
+        
+        注意: 当前 serve.py 服务器期望 'sequence' 字段，
+        并在内部自动构建 static_categorical 和 static_numerical 的 Dummy 数据。
+        
+        Args:
+            user_id: 用户 ID
+            events: 事件序列 (可选)
+            
+        Returns:
+            Dict: 符合服务器要求的输入格式 {"sequence": List[int]}
+        """
+        import random
+        import hashlib
+        
+        # 如果有事件则 tokenize，否则生成基于 user_id 的伪随机序列
+        if events:
+            event_seq = self.tokenize_events(events)
+        else:
+            # 基于 user_id 生成确定性的伪随机序列 (便于复现)
+            seed = int(hashlib.md5(user_id.encode()).hexdigest()[:8], 16)
+            random.seed(seed)
+            event_seq = [random.randint(1, len(EVENT_VOCAB) - 1) for _ in range(TRANSFORMER_EVENT_SEQ_LEN)]
+        
+        # 服务器 (serve.py) 期望 'sequence' 字段
+        # 它会在内部自动填充 static_categorical 和 static_numerical
+        return {"sequence": event_seq}
+    
     def predict_churn(
         self,
         user_id: str,
@@ -485,24 +543,39 @@ class PredictionService:
                 span.set_attribute("fallback.endpoint", True)
             else:
                 try:
-                    # Tokenize
-                    token_ids = self.tokenize_events(events)
+                    # 使用新的 Transformer 输入格式
+                    # 优先使用 Endpoint ID 直接获取 Endpoint
+                    transformer_endpoint = None
+                    if hasattr(settings, 'VERTEX_ENDPOINT_ID') and settings.VERTEX_ENDPOINT_ID:
+                        transformer_endpoint = self._get_endpoint_by_id(settings.VERTEX_ENDPOINT_ID)
                     
-                    # 构造请求
-                    instances = [{"sequence": token_ids}]
+                    if transformer_endpoint is None:
+                        transformer_endpoint = ep
                     
-                    # 调用 Endpoint
-                    prediction = ep.predict(instances)
-                    
-                    # 解析结果
-                    if prediction.predictions:
-                        base_probability = float(prediction.predictions[0])
-                        if isinstance(base_probability, list):
-                            base_probability = base_probability[0]
-                    
-                    # 裁剪到 [0, 1] 范围
-                    base_probability = max(0.0, min(1.0, base_probability))
-                    
+                    if transformer_endpoint is None:
+                        logger.warning("无可用 Endpoint，使用默认基础概率 0.5")
+                        span.set_attribute("fallback.no_endpoint", True)
+                    else:
+                        # 组装 Transformer 输入
+                        transformer_input = self._assemble_transformer_input(user_id, events)
+                        instances = [transformer_input]
+                        
+                        logger.info(f"Transformer 输入 | sequence_len={len(transformer_input['sequence'])}")
+                        
+                        # 调用 Endpoint
+                        prediction = transformer_endpoint.predict(instances)
+                        
+                        # 解析结果: predictions 格式为 [0.255] 或 [[0.255]]
+                        if prediction.predictions:
+                            result = prediction.predictions[0]
+                            if isinstance(result, list):
+                                base_probability = float(result[0])
+                            else:
+                                base_probability = float(result)
+                        
+                        # 裁剪到 [0, 1] 范围
+                        base_probability = max(0.0, min(1.0, base_probability))
+                        
                 except Exception as e:
                     logger.error(f"Endpoint 预测失败: {e}")
                     span.set_attribute("error.endpoint", True)
