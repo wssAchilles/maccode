@@ -1,6 +1,8 @@
 import logging
 import json
-from typing import TypedDict, Annotated, List, Any, Dict, Union
+import operator
+import traceback
+from typing import TypedDict, Annotated, List, Any, Dict, Union, Optional
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -19,7 +21,7 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], "The conversation history"]
+    messages: Annotated[List[BaseMessage], operator.add]
     user_id: str
 
 # ==============================================================================
@@ -46,7 +48,7 @@ def create_agent_graph():
     llm = ChatVertexAI(
         project=settings.PROJECT_ID,
         location=settings.LOCATION,
-        model_name="gemini-2.5-pro", # Validated via script and console
+        model_name="gemini-2.0-flash",  # 使用最新可用模型
         temperature=0.0,
         max_output_tokens=2048,
     )
@@ -83,6 +85,9 @@ def create_agent_graph():
             "7. 如果预算不足或风险较低，仅建议发送关怀邮件或低成本策略。"
             "8. 每一步都要解释原因 (Thought)。"
             "9. 最终给出一个总结性的建议。"
+            "\n"
+            "**重要规则**: 如果你收到了来自 Judge (评审员) 的反馈/批评，你必须根据反馈修改你之前的输出，"
+            "认真解决反馈中提到的具体问题。不要重复之前的错误。"
         )
         
         
@@ -93,6 +98,7 @@ def create_agent_graph():
              messages[0] = HumanMessage(content=f"{system_prompt}\n\nUSER REQUEST: {original_content}")
         elif not messages:
              # Should not happen due to check above, but for safety
+             user_id = state.get("user_id", "unknown") # Ensure user_id is defined for this branch
              messages = [HumanMessage(content=f"{system_prompt}\n\nUSER REQUEST: 分析用户 {user_id}")]
              
         try:
@@ -115,7 +121,8 @@ def create_agent_graph():
         except Exception as e:
             logger.error(f"LLM invoke failed: {e}", exc_info=True)
             # Create a fallback message to prevent crash loop
-            return {"messages": [AIMessage(content=f"分析过程中遇到错误: {str(e)[:200]}")]}
+            error_trace = traceback.format_exc()
+            return {"messages": [AIMessage(content=f"分析过程中遇到错误: {str(e)}\n\nTraceback:\n{error_trace[:500]}")]}
 
     def action_node(state: AgentState):
         """
@@ -178,14 +185,33 @@ def get_agent_graph():
         _agent_graph = create_agent_graph()
     return _agent_graph
 
-async def invoke_agent(user_id: str) -> Dict[str, Any]:
+async def invoke_agent(user_id: str, feedback: Optional[str] = None) -> Dict[str, Any]:
     """
-    Invokes the agent and returns the final result + trace log.
+    调用 Agent 并返回最终结果 + trace log。
+    
+    Args:
+        user_id: 用户 ID
+        feedback: 来自 Judge 的反馈 (可选)，用于重试时改进策略
+        
+    Returns:
+        Dict: 包含 final_result 和 trace_log
     """
-    logger.info(f"Agent invoked for user_id={user_id}")
+    logger.info(f"Agent invoked for user_id={user_id} | has_feedback={feedback is not None}")
+    
+    # 构建初始消息
+    initial_message = f"请分析用户 {user_id} 的状态并制定挽留计划。"
+    
+    # 如果有反馈，将其添加到消息中
+    if feedback:
+        initial_message = (
+            f"{initial_message}\n\n"
+            f"**重要反馈**: \n{feedback}\n\n"
+            f"请根据以上反馈重新制定更高质量的挽留策略。"
+        )
+        logger.info(f"[Agent] 注入 Judge 反馈: {feedback[:100]}...")
     
     inputs = {
-        "messages": [HumanMessage(content=f"请分析用户 {user_id} 的状态并制定挽留计划。")],
+        "messages": [HumanMessage(content=initial_message)],
         "user_id": user_id
     }
     

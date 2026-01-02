@@ -124,6 +124,46 @@ export const analysisService = {
     },
 
     /**
+     * 启动异步分析流 - 立即返回 analysis_id 供前端实时监听
+     * @param userId - 目标用户 ID
+     * @param imageData - 可选的图片数据
+     * @returns { analysis_id: string } - 用于 Firebase 监听
+     */
+    startAnalysisStream: async (userId: string, imageData?: string | null): Promise<{ analysis_id: string }> => {
+        const endpoint = `${API_URL}/api/v1/analyze`;
+
+        const requestBody: UserAnalysisRequest = {
+            user_id: userId,
+            image_data: imageData || undefined,
+        };
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-API-KEY": API_KEY
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `服务器错误: ${response.status}`);
+            }
+
+            const asyncResponse = await response.json();
+            return { analysis_id: asyncResponse.analysis_id };
+
+        } catch (error) {
+            if (error instanceof TypeError && error.message.includes("fetch")) {
+                throw new Error("无法连接到后端服务");
+            }
+            throw error;
+        }
+    },
+
+    /**
      * 提交用户对 AI 生成邮件的反馈
      * @param analysisId -分析记录 ID
      * @param userId - 用户 ID
@@ -238,4 +278,4 @@ export const analysisService = {
 // But since we are changing the default, let's stick to the object or standalone.
 // The previous errors suggested "analyzeUser" was missing from export.
 // Let's also export them as destuctured from the object to be safe/mix-friendly.
-export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations, analyzeFlow } = analysisService;
+export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations, analyzeFlow, startAnalysisStream } = analysisService;

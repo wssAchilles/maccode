@@ -34,7 +34,7 @@ import { LiveActivityFeed } from "@/components/business/LiveActivityFeed";
 import { MlopsPanel } from "@/components/business/MlopsPanel";
 import { ExperimentDashboard } from "@/components/business/ExperimentDashboard";
 import AgentReasoningLog, { TraceStep } from "@/components/business/AgentReasoningLog";
-import { analyzeUser, analyzeFlow } from "@/services/analysisService";
+import { analyzeUser, analyzeFlow, startAnalysisStream } from "@/services/analysisService";
 import { UserAnalysisResponse, DashboardState } from "@/types";
 
 export default function DashboardPage() {
@@ -42,6 +42,7 @@ export default function DashboardPage() {
     const [userId, setUserId] = useState("63826");
     const [imageData, setImageData] = useState<string | null>(null);
     const [agentLogs, setAgentLogs] = useState<TraceStep[]>([]);
+    const [analysisId, setAnalysisId] = useState<string | null>(null);  // 新增: 用于实时监听
     const [state, setState] = useState<DashboardState>({
         isLoading: false,
         data: null,
@@ -54,11 +55,18 @@ export default function DashboardPage() {
 
         setState({ isLoading: true, data: null, error: null });
         setAgentLogs([]);
+        setAnalysisId(null);  // 重置
 
         try {
+            // 1. 启动异步分析流 - 立即获取 analysis_id
+            const { analysis_id } = await startAnalysisStream(userId, imageData);
+            setAnalysisId(analysis_id);  // 触发 AgentReasoningLog 开始监听
+
+            // 2. 异步获取 Agent Trace Log
             const flowResult = await analyzeFlow(userId);
             setAgentLogs(flowResult.trace_log);
 
+            // 3. 轮询等待最终结果
             const result = await analyzeUser(userId, imageData);
             setState({ isLoading: false, data: result, error: null });
         } catch (error) {
@@ -159,11 +167,11 @@ export default function DashboardPage() {
                 )}
 
                 {/* 主布局: 左侧分析结果 (70%) + 右侧活动流 (30%) */}
-                <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-10 gap-6 relative z-0">
                     {/* 左侧区域 - 分析结果 */}
                     <div className="xl:col-span-7 space-y-6">
                         {/* 上半部分: 双列布局 */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0">
                             {/* 风险评估 & 用户画像 */}
                             <div className="space-y-6">
                                 {state.isLoading ? (
@@ -182,26 +190,28 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Competitor Upload + Strategy Cards */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 flex flex-col">
                                 <CompetitorUpload onImageSelect={setImageData} />
-                                {state.isLoading ? (
-                                    <LoadingSkeleton type="cards" />
-                                ) : state.data ? (
-                                    <StrategyCards
-                                        strategies={
-                                            (state.data.recommended_strategies && state.data.recommended_strategies.length > 0)
-                                                ? state.data.recommended_strategies
-                                                : state.data.retention_policies
-                                        }
-                                    />
-                                ) : (
-                                    <EmptyState message="策略将在分析后展示" icon={<Zap className="w-8 h-8" />} />
-                                )}
+                                <div className="flex-1 min-h-[200px]">
+                                    {state.isLoading ? (
+                                        <LoadingSkeleton type="cards" />
+                                    ) : state.data ? (
+                                        <StrategyCards
+                                            strategies={
+                                                (state.data.recommended_strategies && state.data.recommended_strategies.length > 0)
+                                                    ? state.data.recommended_strategies
+                                                    : state.data.retention_policies
+                                            }
+                                        />
+                                    ) : (
+                                        <EmptyState message="策略将在分析后展示" icon={<Zap className="w-8 h-8" />} />
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* 邮件预览 - 全宽 */}
-                        <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                        {/* 邮件预览 - 全宽 - 提升 Z-index 防止被上方覆盖 */}
+                        <div className="animate-fade-in-up relative z-10" style={{ animationDelay: '0.1s' }}>
                             {state.isLoading ? (
                                 <LoadingSkeleton type="email" />
                             ) : state.data ? (
@@ -217,20 +227,24 @@ export default function DashboardPage() {
                             )}
                         </div>
 
-                        {/* Agent Reasoning Log */}
-                        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        {/* Agent Reasoning Log - 传递 analysisId 实时监听 */}
+                        <div className="animate-fade-in-up relative z-10" style={{ animationDelay: '0.2s' }}>
                             <div className="flex items-center gap-2 mb-3">
                                 <Bot className="w-5 h-5 text-emerald-400" />
                                 <h3 className="text-sm font-heading font-medium text-slate-300">
                                     AI Decision Process
                                 </h3>
                             </div>
-                            <AgentReasoningLog logs={agentLogs} isLoading={state.isLoading} />
+                            <AgentReasoningLog
+                                analysisId={analysisId || undefined}  // 实时监听
+                                logs={agentLogs}
+                                isLoading={state.isLoading}
+                            />
                         </div>
                     </div>
 
                     {/* 右侧区域 - 实时活动流 */}
-                    <div className="xl:col-span-3">
+                    <div className="xl:col-span-3 custom-scrollbar">
                         <div className="sticky top-24">
                             <LiveActivityFeed />
                         </div>

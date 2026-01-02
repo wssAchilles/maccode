@@ -130,7 +130,7 @@ redis_client = RedisClient()
 
 def cached_analysis(ttl_seconds: int = 3600):
     """
-    分析结果缓存装饰器
+    分析结果缓存装饰器 (支持异步函数)
     
     在执行 analyze_user_workflow 之前检查缓存:
     - Cache Hit: 直接返回缓存数据，注入 data_source="CACHE"
@@ -141,12 +141,12 @@ def cached_analysis(ttl_seconds: int = 3600):
     
     Usage:
         @cached_analysis(ttl_seconds=3600)
-        def analyze_user_workflow(self, user_id: str, ...):
+        async def analyze_user_workflow(self, user_id: str, ...):
             ...
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(self, user_id: str, *args, **kwargs) -> dict:
+        async def wrapper(self, user_id: str, *args, **kwargs) -> dict:
             # 构建缓存键
             cache_key = f"{CACHE_KEY_PREFIX}:{user_id}"
             
@@ -166,8 +166,8 @@ def cached_analysis(ttl_seconds: int = 3600):
                     logger.info(f"[Cache] HIT for user {user_id} ({cache_time_ms}ms)")
                     return cached_result
             
-            # Cache Miss - 执行原逻辑
-            result = func(self, user_id, *args, **kwargs)
+            # Cache Miss - 执行原逻辑 (await for async function)
+            result = await func(self, user_id, *args, **kwargs)
             
             # 标记数据来源
             result["data_source"] = "REALTIME"

@@ -217,6 +217,102 @@ class StorageService:
             print(f"[StorageService] Error updating status for {analysis_id}: {e}")
             return False
 
+    def update_step(
+        self,
+        analysis_id: str,
+        step_name: str,
+        step_status: str,
+        **kwargs
+    ) -> bool:
+        """
+        实时更新分析步骤状态 (用于前端 onSnapshot 监听)
+        
+        Args:
+            analysis_id: 分析记录 ID
+            step_name: 步骤名称 (e.g., "Churn Prediction", "AI Judge Review")
+            step_status: 步骤状态 (running/completed/warning/error)
+            **kwargs: 额外字段 (score, feedback, details 等)
+        
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+            
+            # 构建步骤数据
+            step_data = {
+                "name": step_name,
+                "status": step_status,
+                "timestamp": datetime.utcnow().isoformat(),
+                **kwargs
+            }
+            
+            # 使用 ArrayUnion 追加新步骤，或更新现有步骤
+            # 为简化，我们先获取现有步骤，然后更新或追加
+            doc = doc_ref.get()
+            if doc.exists:
+                current_data = doc.to_dict()
+                steps = current_data.get("steps", [])
+                
+                # 查找是否已存在同名步骤
+                existing_step_idx = None
+                for i, s in enumerate(steps):
+                    if s.get("name") == step_name:
+                        existing_step_idx = i
+                        break
+                
+                if existing_step_idx is not None:
+                    # 更新现有步骤
+                    steps[existing_step_idx] = step_data
+                else:
+                    # 追加新步骤
+                    steps.append(step_data)
+                
+                doc_ref.update({
+                    "steps": steps,
+                    "updated_at": SERVER_TIMESTAMP
+                })
+            else:
+                # 文档不存在，创建
+                doc_ref.set({
+                    "steps": [step_data],
+                    "status": "analyzing",
+                    "timestamp": SERVER_TIMESTAMP
+                })
+            
+            print(f"[StorageService] Step updated for {analysis_id}: {step_name} -> {step_status}")
+            return True
+        except Exception as e:
+            print(f"[StorageService] Error updating step for {analysis_id}: {e}")
+            return False
+
+    def update_risk_score(
+        self,
+        analysis_id: str,
+        risk_score: float,
+        risk_level: str
+    ) -> bool:
+        """
+        更新风险分数 (触发前端 RiskGauge 实时更新)
+        
+        Args:
+            analysis_id: 分析记录 ID
+            risk_score: 风险分数 (0-1)
+            risk_level: 风险等级 (High/Medium/Low)
+        """
+        try:
+            doc_ref = self.db.collection(self.collection_name).document(analysis_id)
+            doc_ref.update({
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "updated_at": SERVER_TIMESTAMP
+            })
+            print(f"[StorageService] Risk score updated for {analysis_id}: {risk_score:.4f} ({risk_level})")
+            return True
+        except Exception as e:
+            print(f"[StorageService] Error updating risk score: {e}")
+            return False
+
 
 # 创建单例实例
 _storage_service_instance = None

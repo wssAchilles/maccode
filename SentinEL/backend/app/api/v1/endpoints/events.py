@@ -77,7 +77,7 @@ async def process_pubsub_event(request: Request):
         # 4. 执行 AI 分析工作流
         try:
             orchestrator = get_orchestrator()
-            result = orchestrator.analyze_user_workflow(
+            result = await orchestrator.analyze_user_workflow(
                 user_id=user_id,
                 analysis_id=analysis_id,
                 image_data=image_data,
