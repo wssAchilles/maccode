@@ -171,9 +171,9 @@ export default function DashboardPage() {
                     {/* 左侧区域 - 分析结果 */}
                     <div className="xl:col-span-7 space-y-6">
                         {/* 上半部分: 双列布局 */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0 items-stretch">
                             {/* 风险评估 & 用户画像 */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 flex flex-col h-full">
                                 {state.isLoading ? (
                                     <LoadingSkeleton type="gauge" />
                                 ) : state.data ? (
@@ -185,14 +185,18 @@ export default function DashboardPage() {
                                         <UserProfileCard data={state.data} />
                                     </>
                                 ) : (
-                                    <EmptyState message="输入用户 ID 开始分析" icon={<User className="w-8 h-8" />} />
+                                    <EmptyState
+                                        message="输入用户 ID 开始分析"
+                                        icon={<User className="w-8 h-8" />}
+                                        className="flex-1"
+                                    />
                                 )}
                             </div>
 
                             {/* Competitor Upload + Strategy Cards */}
-                            <div className="space-y-6 flex flex-col">
+                            <div className="space-y-6 flex flex-col h-full">
                                 <CompetitorUpload onImageSelect={setImageData} />
-                                <div className="flex-1 min-h-[200px]">
+                                <div className="flex-1 min-h-[200px] flex flex-col">
                                     {state.isLoading ? (
                                         <LoadingSkeleton type="cards" />
                                     ) : state.data ? (
@@ -204,7 +208,11 @@ export default function DashboardPage() {
                                             }
                                         />
                                     ) : (
-                                        <EmptyState message="策略将在分析后展示" icon={<Zap className="w-8 h-8" />} />
+                                        <EmptyState
+                                            message="策略将在分析后展示"
+                                            icon={<Zap className="w-8 h-8" />}
+                                            className="h-full"
+                                        />
                                     )}
                                 </div>
                             </div>
@@ -301,7 +309,7 @@ function UserProfileCard({ data }: { data: UserAnalysisResponse }) {
                     <ProfileItem
                         icon={<Clock className="w-4 h-4 text-violet-400" />}
                         label="最近活跃"
-                        value={`${features?.recency_days || 0} 天前`}
+                        value={features?.recency_days === 999 ? "未知" : `${features?.recency_days || 0} 天前`}
                     />
                 </div>
                 <div className="pt-3 border-t border-slate-700/50">
@@ -365,9 +373,9 @@ function LoadingSkeleton({ type }: { type: "gauge" | "cards" | "email" }) {
 /**
  * 空状态占位 - Glassmorphism 风格
  */
-function EmptyState({ message, icon }: { message: string; icon?: React.ReactNode }) {
+function EmptyState({ message, icon, className = "" }: { message: string; icon?: React.ReactNode; className?: string }) {
     return (
-        <Card className="glass-card h-full min-h-[200px] flex flex-col items-center justify-center cursor-default">
+        <Card className={`glass-card min-h-[200px] flex flex-col items-center justify-center cursor-default ${className}`}>
             {icon && (
                 <div className="text-slate-600 mb-3">
                     {icon}

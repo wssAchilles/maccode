@@ -48,7 +48,7 @@ def create_agent_graph():
     llm = ChatVertexAI(
         project=settings.PROJECT_ID,
         location=settings.LOCATION,
-        model_name="gemini-2.0-flash",  # 使用最新可用模型
+        model_name="gemini-2.5-pro",  # 使用用户指定的稳定模型 (解决实验模型配额问题)
         temperature=0.0,
         max_output_tokens=2048,
     )
@@ -86,8 +86,12 @@ def create_agent_graph():
             "8. 每一步都要解释原因 (Thought)。"
             "9. 最终给出一个总结性的建议。"
             "\n"
-            "**重要规则**: 如果你收到了来自 Judge (评审员) 的反馈/批评，你必须根据反馈修改你之前的输出，"
-            "认真解决反馈中提到的具体问题。不要重复之前的错误。"
+            "**重要规则**: \n"
+            "   a) 如果你收到了来自 Judge (评审员) 的反馈/批评，你必须根据反馈修改你之前的输出，认真解决反馈中提到的具体问题。不要重复之前的错误。\n"
+            "   b) **输出语言限制**: 所有的思考 (Thought)、动作原因 (Action Input explanations)、以及**最终生成的邮件草稿 (Email Draft)**，"
+            "都必须使用 **简体中文 (Simplified Chinese)**。即使用户的地区是海外 (如 Spain, USA)，你的分析报告和建议也是给中国运营团队看的，"
+            "所以必须用中文。邮件草稿如果为了本地化需要外语，请提供中英(或中西)双语对照，或者优先提供中文版并在括号内说明'需翻译'。"
+            "但为了本次演示，**请强制生成中文邮件**，以便运营人员直接审核。"
         )
         
         
@@ -185,23 +189,44 @@ def get_agent_graph():
         _agent_graph = create_agent_graph()
     return _agent_graph
 
-async def invoke_agent(user_id: str, feedback: Optional[str] = None) -> Dict[str, Any]:
+async def invoke_agent(user_id: str, feedback: Optional[str] = None, competitor_intelligence: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     调用 Agent 并返回最终结果 + trace log。
     
     Args:
         user_id: 用户 ID
         feedback: 来自 Judge 的反馈 (可选)，用于重试时改进策略
+        competitor_intelligence: 竞品情报数据 (可选)，包含 competitor_name, offer_price, offer_details, weakness
         
     Returns:
         Dict: 包含 final_result 和 trace_log
     """
-    logger.info(f"Agent invoked for user_id={user_id} | has_feedback={feedback is not None}")
+    logger.info(f"Agent invoked for user_id={user_id} | has_feedback={feedback is not None} | has_competitor_intel={competitor_intelligence is not None}")
     
     # 构建初始消息
     initial_message = f"请分析用户 {user_id} 的状态并制定挽留计划。"
     
-    # 如果有反馈，将其添加到消息中
+    # 如果有竞品情报，优先注入到消息中 (最高优先级上下文)
+    if competitor_intelligence:
+        competitor_context = f"""
+**🔴 关键市场情报警报 (CRITICAL: Market Intelligence Detected)**
+
+我们检测到用户正在考虑竞品的优惠：
+- **竞品名称**: {competitor_intelligence.get('competitor_name', 'Unknown')}
+- **竞品价格**: {competitor_intelligence.get('offer_price', 'N/A')}
+- **优惠详情**: {competitor_intelligence.get('offer_details', '无详情')}
+- **竞品弱点**: {competitor_intelligence.get('weakness', '未知')}
+
+**你的挽留策略必须：**
+1. **明确回应**这个竞品优惠，不能忽视。
+2. 如果竞品价格更低，评估是否可以匹配或提供更高价值的替代方案。
+3. **攻击竞品弱点**，突出我们的差异化优势。
+4. 在生成的邮件中自然融入对竞品的反击，但不要直接贬低对手。
+"""
+        initial_message = f"{initial_message}\n\n{competitor_context}"
+        logger.info(f"[Agent] 注入竞品情报: {competitor_intelligence.get('competitor_name')}, 价格: {competitor_intelligence.get('offer_price')}")
+    
+    # 如果有 Judge 反馈，追加到消息中
     if feedback:
         initial_message = (
             f"{initial_message}\n\n"

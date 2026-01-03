@@ -412,3 +412,28 @@ docker-compose.override.yml
 # GCP 服务账号凭证目录
 /credentials/
 /back/credentials/
+
+# ===================================
+# LaTeX
+# ===================================
+*.aux
+*.bbl
+*.blg
+*.idx
+*.ind
+*.lof
+*.lot
+*.out
+*.toc
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+indent.log
+

@@ -8,7 +8,7 @@ import json
 import base64
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request, UploadFile
 from pydantic import BaseModel
 from app.models.schemas import UserAnalysisRequest, UserAnalysisResponse, FeedbackRequest
 from app.services.orchestrator import get_orchestrator
@@ -152,3 +152,91 @@ def submit_feedback(request: FeedbackRequest):
         raise HTTPException(status_code=500, detail="Failed to save feedback")
     
     return {"status": "success", "message": "Feedback received"}
+
+
+# ==============================================================================
+# 竞品分析端点 (多模态视觉分析)
+# ==============================================================================
+class CompetitorIntelligenceResponse(BaseModel):
+    """竞品分析响应"""
+    competitor_name: str
+    offer_price: str
+    offer_details: str
+    weakness: str
+    analysis_id: Optional[str] = None
+
+
+@router.post("/analyze-competitor", response_model=CompetitorIntelligenceResponse)
+async def analyze_competitor_image(
+    file: UploadFile,
+    analysis_id: Optional[str] = None
+):
+    """
+    **竞品优惠截图分析 (多模态 AI)**
+    
+    用户上传竞品优惠截图，使用 Gemini 2.0 Flash 进行视觉分析，
+    提取关键情报供后续 Agent 挽留策略使用。
+    
+    Args:
+        file: 图片文件 (支持 JPEG/PNG)
+        analysis_id: 可选，关联到特定分析会话
+    
+    Returns:
+        CompetitorIntelligenceResponse: 结构化竞品情报
+    """
+    # 验证文件类型
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="仅支持图片文件 (JPEG/PNG)"
+        )
+    
+    try:
+        # 读取图片数据
+        image_bytes = await file.read()
+        
+        if len(image_bytes) > 10 * 1024 * 1024:  # 10MB 限制
+            raise HTTPException(
+                status_code=400,
+                detail="图片文件过大，请上传 10MB 以内的图片"
+            )
+        
+        logger.info(f"[AnalyzeCompetitor] Received image: {file.filename}, size: {len(image_bytes)} bytes")
+        
+        # 调用 LLM 视觉分析
+        from app.services.llm_service import LLMService
+        llm_service = LLMService()
+        
+        intelligence = llm_service.analyze_image(image_bytes)
+        
+        logger.info(f"[AnalyzeCompetitor] Analysis result: {intelligence}")
+        
+        # 如果提供了 analysis_id，将情报存入 Firestore
+        if analysis_id:
+            storage_service = get_storage_service()
+            if storage_service:
+                try:
+                    storage_service.db.collection("analysis_logs").document(analysis_id).update({
+                        "competitor_intelligence": intelligence
+                    })
+                    logger.info(f"[AnalyzeCompetitor] Saved intelligence to analysis {analysis_id}")
+                except Exception as e:
+                    logger.warning(f"[AnalyzeCompetitor] Failed to save to Firestore: {e}")
+        
+        return CompetitorIntelligenceResponse(
+            competitor_name=intelligence.get("competitor_name", "Unknown"),
+            offer_price=intelligence.get("offer_price", "N/A"),
+            offer_details=intelligence.get("offer_details", ""),
+            weakness=intelligence.get("weakness", ""),
+            analysis_id=analysis_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[AnalyzeCompetitor] Error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"图片分析失败: {str(e)}"
+        )
+

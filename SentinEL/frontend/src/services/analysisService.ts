@@ -69,7 +69,7 @@ export const analysisService = {
             }
 
             // 2. 轮询等待分析完成
-            const maxAttempts = 60; // 最多轮询 60 次
+            const maxAttempts = 120; // 最多轮询 120 次 (2分钟), 适配 Cold Start
             const pollInterval = 1000; // 每秒轮询一次
 
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -270,6 +270,52 @@ export const analysisService = {
             console.error("Agent Flow error:", error);
             throw error;
         }
+    },
+
+    /**
+     * 竞品优惠截图分析 (多模态 AI)
+     * @param file - 图片文件
+     * @param analysisId - 可选，关联到特定分析会话
+     * @returns CompetitorIntelligence - 结构化竞品情报
+     */
+    analyzeCompetitorImage: async (
+        file: File,
+        analysisId?: string
+    ): Promise<{
+        competitor_name: string;
+        offer_price: string;
+        offer_details: string;
+        weakness: string;
+        analysis_id?: string;
+    }> => {
+        const endpoint = `${API_URL}/api/v1/analyze-competitor`;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        if (analysisId) {
+            formData.append("analysis_id", analysisId);
+        }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "X-API-KEY": API_KEY
+                    // 注意：不要设置 Content-Type，浏览器会自动处理 FormData 的 boundary
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `服务器错误: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Competitor analysis error:", error);
+            throw error;
+        }
     }
 };
 
@@ -278,4 +324,5 @@ export const analysisService = {
 // But since we are changing the default, let's stick to the object or standalone.
 // The previous errors suggested "analyzeUser" was missing from export.
 // Let's also export them as destuctured from the object to be safe/mix-friendly.
-export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations, analyzeFlow, startAnalysisStream } = analysisService;
+export const { analyzeUser, submitFeedback, checkHealth, runDataPipeline, getRecommendations, analyzeFlow, startAnalysisStream, analyzeCompetitorImage } = analysisService;
+

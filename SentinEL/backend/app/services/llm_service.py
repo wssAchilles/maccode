@@ -220,3 +220,99 @@ class LLMService:
                  print(f"Error generating script: {e}")
                  return "Hi, this is your account manager from SentinEL. We noticed you haven't been active lately and have a special offer for you. Please check your email!"
 
+    def analyze_image(self, image_bytes: bytes, prompt: str = None) -> dict:
+        """
+        使用 Gemini 2.0 Flash 进行视觉分析，提取竞品优惠截图中的关键情报。
+        
+        Args:
+            image_bytes: 图片二进制数据
+            prompt: 可选的自定义 Prompt (默认使用竞品分析 Prompt)
+        
+        Returns:
+            dict: 包含 competitor_name, offer_price, offer_details, weakness 的结构化数据
+        
+        Trace Span: "Gemini: Analyze Image"
+        """
+        with tracer.start_as_current_span("Gemini: Analyze Image") as span:
+            span.set_attribute("ai.model", "gemini-2.0-flash-exp")
+            span.set_attribute("ai.provider", "vertex_ai")
+            span.set_attribute("input.image_size_bytes", len(image_bytes))
+            
+            # 使用视觉模型 (gemini-2.0-flash-exp 支持 Vision)
+            vision_model = GenerativeModel("gemini-2.0-flash-exp")
+            
+            # 将图片字节转换为 Part
+            image_part = Part.from_data(data=image_bytes, mime_type="image/jpeg")
+            
+            # 默认竞品分析 Prompt
+            if not prompt:
+                prompt = """你是一个精准的市场情报分析师。请仔细分析这张竞争对手的优惠活动截图，并提取以下关键信息。
+
+**你必须严格按照以下 JSON 格式输出，不要添加任何额外的文字说明或 markdown 代码块标记：**
+
+{
+    "competitor_name": "竞品公司/产品名称 (如无法识别则填 'Unknown')",
+    "offer_price": "优惠价格 (保留货币符号，如 '$19.99' 或 '¥99'，无法识别则填 'N/A')",
+    "offer_details": "优惠的关键条款/限制 (如 '限时3天'、'新用户专享'、'不含XX服务')",
+    "weakness": "基于此优惠推测的竞品弱点或我方可利用的反击点 (如 '价格低但服务缺失'、'短期促销难持续')"
+}
+
+注意：
+1. 如果图片模糊或信息不完整，尽可能推断，并在相应字段注明不确定性。
+2. offer_details 应尽可能详细列出所有限制条件。
+3. weakness 需要有商业洞察力，帮助销售团队制定反击策略。
+4. **所有字段的值必须使用简体中文输出。**"""
+            
+            generation_config = {
+                "temperature": 0.1,  # 低温度确保结构化输出稳定
+                "max_output_tokens": 1024,
+            }
+            
+            try:
+                response = vision_model.generate_content(
+                    [prompt, image_part],
+                    generation_config=generation_config
+                )
+                
+                result_text = response.text.strip()
+                span.set_attribute("output.raw_length", len(result_text))
+                
+                # 尝试解析 JSON
+                import json
+                import re
+                
+                # 清理可能的 markdown 代码块标记
+                cleaned_text = result_text
+                if cleaned_text.startswith("```"):
+                    # 移除 ```json 和 ``` 标记
+                    cleaned_text = re.sub(r'^```(?:json)?\s*', '', cleaned_text)
+                    cleaned_text = re.sub(r'\s*```$', '', cleaned_text)
+                
+                try:
+                    parsed_result = json.loads(cleaned_text)
+                    span.set_attribute("output.parsed", True)
+                    return parsed_result
+                except json.JSONDecodeError as je:
+                    # 如果 JSON 解析失败，返回原始文本包装
+                    span.set_attribute("output.parsed", False)
+                    span.set_attribute("error.json_parse", str(je))
+                    return {
+                        "competitor_name": "解析失败",
+                        "offer_price": "N/A",
+                        "offer_details": result_text[:200],
+                        "weakness": "无法解析图片内容，建议人工审核",
+                        "raw_response": result_text
+                    }
+                    
+            except Exception as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                print(f"[LLMService] Image analysis failed: {e}")
+                return {
+                    "competitor_name": "分析失败",
+                    "offer_price": "N/A",
+                    "offer_details": f"错误: {str(e)}",
+                    "weakness": "系统错误，请稍后重试",
+                    "error": str(e)
+                }
+

@@ -199,12 +199,24 @@ class AnalysisOrchestrator:
         judge_history = []  # 记录 Judge 评估历史
         feedback = None  # 初始无反馈
         
+        # 3.0 从 Firestore 读取竞品情报 (如果存在)
+        competitor_intelligence = None
+        if analysis_id and self.storage_service:
+            try:
+                doc = self.storage_service.db.collection("analysis_logs").document(analysis_id).get()
+                if doc.exists:
+                    competitor_intelligence = doc.to_dict().get("competitor_intelligence")
+                    if competitor_intelligence:
+                        logger.info(f"[Orchestrator] 检测到竞品情报: {competitor_intelligence.get('competitor_name')}")
+            except Exception as e:
+                logger.warning(f"[Orchestrator] 读取竞品情报失败: {e}")
+        
         current_loop = asyncio.get_running_loop()
 
         for attempt in range(MAX_JUDGE_RETRIES + 1):
             try:
                 # 3.1 调用 Agent 生成策略 (ASYNC)
-                logger.info(f"[Agent] Attempt {attempt + 1}/{MAX_JUDGE_RETRIES + 1} | user={user_id} | feedback={feedback is not None}")
+                logger.info(f"[Agent] Attempt {attempt + 1}/{MAX_JUDGE_RETRIES + 1} | user={user_id} | feedback={feedback is not None} | competitor_intel={competitor_intelligence is not None}")
                 
                 # [STEP] Agent 生成策略 - 更新状态
                 step_name = "Drafting Strategy" if attempt == 0 else "Refining Strategy"
@@ -216,7 +228,12 @@ class AnalysisOrchestrator:
                     )
                 
                 # Direct AWAIT call, no manual event loop
-                agent_result = await invoke_agent(user_id=user_id, feedback=feedback)
+                # 传递竞品情报给 Agent (仅在首次调用时传递，避免重复)
+                agent_result = await invoke_agent(
+                    user_id=user_id, 
+                    feedback=feedback,
+                    competitor_intelligence=competitor_intelligence if attempt == 0 else None
+                )
                 
                 strategy_text = agent_result.get("final_result", "")
                 agent_trace_log = agent_result.get("trace_log", [])
