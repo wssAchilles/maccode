@@ -7,20 +7,21 @@ firebase-admin==6.5.0
 redis==5.0.4
 
 # Google Cloud
-google-cloud-aiplatform==1.49.0
-google-cloud-bigquery==3.20.1
-google-cloud-firestore==2.15.0
-google-cloud-storage==2.16.0
-google-cloud-pubsub==2.21.1
-google-cloud-texttospeech==2.16.3
+# Google Cloud
+google-cloud-aiplatform>=1.49.0
+google-cloud-bigquery>=3.20.1
+google-cloud-firestore>=2.15.0
+google-cloud-storage>=2.16.0
+google-cloud-pubsub>=2.21.1
+google-cloud-texttospeech>=2.16.3
 
 # ML & Pipelines
 # Pinning protobuf is critical for TF/KFP/Vertex compatibility
-protobuf==4.25.3
+protobuf>=4.25.3
 tensorflow==2.16.1
 tensorflow-recommenders==0.7.3
-kfp==2.7.0
-google-cloud-pipeline-components==2.13.0
+kfp>=2.7.0
+google-cloud-pipeline-components>=2.13.0
 
 # LangChain (Stable 0.1.x era)
 langchain==0.1.20
@@ -30,5 +31,15 @@ langchain-google-vertexai>=1.0.3
 langgraph==0.0.50
 
 # Build Tools
-PyYAML==6.0.1
-Cython==0.29.37
+PyYAML>=6.0.1
+Cython>=0.29.37
+
+# Additional Deps
+requests>=2.31.0
+google-auth>=2.29.0
+opentelemetry-api>=1.24.0
+opentelemetry-sdk>=1.24.0
+opentelemetry-exporter-gcp-trace>=1.6.0
+torch>=2.3.0
+vertexai>=1.70.0
+apache-beam[gcp]>=2.61.0

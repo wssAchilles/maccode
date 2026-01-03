@@ -8,7 +8,7 @@ import { UserAnalysisRequest, UserAnalysisResponse } from "@/types";
 // 后端 API 基础地址
 // 后端 API 基础地址
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-export const API_KEY = "sentinel_top_secret_2025"; // Hardcoded for demo parity
+export const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "sentinel_top_secret_2025"; // Hardcoded backup for dev/demo
 
 export const analysisService = {
     /**

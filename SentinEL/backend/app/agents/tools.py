@@ -100,7 +100,7 @@ def predict_churn_risk(user_id: str) -> str:
             heuristic_score = 0.2
             
         # Try real Endpoint
-        endpoint_name = "projects/{}/locations/{}/endpoints/192123164279439360".format(settings.PROJECT_ID, settings.LOCATION)
+        endpoint_name = f"projects/{settings.PROJECT_ID}/locations/{settings.LOCATION}/endpoints/{settings.VERTEX_ENDPOINT_ID}"
         
         try:
             aiplatform.init(project=settings.PROJECT_ID, location=settings.LOCATION)

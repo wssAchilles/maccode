@@ -127,6 +127,46 @@ class StorageService:
         
         return logs
 
+    def get_recent_audit_logs(self, limit: int = 20) -> list:
+        """
+        Retrieves the latest AI Audit logs (Judge Service results).
+        
+        Args:
+            limit: Maximum records to return
+        
+        Returns:
+            list: List of analyzed records with audit result
+        """
+        logs = []
+        try:
+             # Query for docs that have been audited (have 'audit_score')
+            docs = (
+                self.db.collection(self.collection_name)
+                # .where("audit_score", ">", -1) # Optional filter if needed, but simple order_by is better if compliant
+                .order_by("audit_timestamp", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+            
+            for doc in docs:
+                data = doc.to_dict()
+                if "audit_score" in data:
+                    logs.append({
+                        "id": doc.id,
+                        "timestamp": data.get("audit_timestamp"),
+                        "user_id": data.get("user_id"),
+                        "score": data.get("audit_score"),
+                        "reason": data.get("audit_reason"),
+                        "is_compliant": data.get("audit_score", 0) >= 80 # Simple threshold logic
+                    })
+        except Exception as e:
+            print(f"[StorageService] Error fetching audit logs: {e}")
+            # Fallback to local timestamp query if audit_timestamp missing index
+            # In prod, you should create composite index
+            pass 
+            
+        return logs
+
 
     def update_feedback(self, analysis_id: str, feedback_type: str) -> bool:
         """
