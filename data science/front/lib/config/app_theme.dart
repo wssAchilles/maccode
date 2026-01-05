@@ -68,6 +68,20 @@ class AppColors {
     end: Alignment.bottomCenter,
     colors: [Color(0xFFDBEAFE), Color(0xFFF8FAFC)], // Blue 100 → Slate 50
   );
+  
+  // 图表配色
+  static const List<Color> chartColors = [
+    Color(0xFF3B82F6), // Blue
+    Color(0xFF22C55E), // Green
+    Color(0xFFF97316), // Orange
+    Color(0xFF8B5CF6), // Purple
+    Color(0xFFEC4899), // Pink
+    Color(0xFF14B8A6), // Teal
+  ];
+  
+  // 图表渐变填充
+  static const Color chartFillStart = Color(0x803B82F6); // 50% Blue
+  static const Color chartFillEnd = Color(0x003B82F6);   // 0% Blue
 }
 
 /// 应用文字样式
@@ -167,10 +181,18 @@ class AppDecorations {
   static const double radius2xl = 20.0;
   static const double radiusFull = 9999.0;
   
-  // 阴影
+  // 阴影 - 4 级
+  static List<BoxShadow> get shadowXs => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.03),
+      blurRadius: 2,
+      offset: const Offset(0, 1),
+    ),
+  ];
+  
   static List<BoxShadow> get shadowSm => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.05),
+      color: Colors.black.withValues(alpha: 0.05),
       blurRadius: 4,
       offset: const Offset(0, 2),
     ),
@@ -178,7 +200,7 @@ class AppDecorations {
   
   static List<BoxShadow> get shadowMd => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       blurRadius: 6,
       offset: const Offset(0, 4),
     ),
@@ -186,18 +208,39 @@ class AppDecorations {
   
   static List<BoxShadow> get shadowLg => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       blurRadius: 15,
       offset: const Offset(0, 8),
     ),
     BoxShadow(
-      color: Colors.black.withOpacity(0.04),
+      color: Colors.black.withValues(alpha: 0.04),
       blurRadius: 6,
       offset: const Offset(0, 4),
     ),
   ];
   
-  // 玻璃卡片装饰
+  static List<BoxShadow> get shadowXl => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.15),
+      blurRadius: 25,
+      offset: const Offset(0, 12),
+    ),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.08),
+      blurRadius: 10,
+      offset: const Offset(0, 6),
+    ),
+  ];
+  
+  // 动画时长
+  static const Duration animationFast = Duration(milliseconds: 150);
+  static const Duration animationNormal = Duration(milliseconds: 300);
+  static const Duration animationSlow = Duration(milliseconds: 500);
+  
+  // 动画曲线
+  static const Curve animationCurve = Curves.easeOutCubic;
+  
+  // 玄璃卡片装饰
   static BoxDecoration get glassCard => BoxDecoration(
     color: AppColors.glassWhite,
     borderRadius: BorderRadius.circular(radiusLg),
@@ -218,6 +261,24 @@ class AppDecorations {
     color: AppColors.surface,
     borderRadius: BorderRadius.circular(radiusLg),
     boxShadow: shadowLg,
+  );
+  
+  // 渐变卡片装饰 (新增)
+  static BoxDecoration gradientCard(LinearGradient gradient) => BoxDecoration(
+    gradient: gradient,
+    borderRadius: BorderRadius.circular(radiusLg),
+    boxShadow: shadowMd,
+  );
+  
+  // 虚线边框装饰 (新增 - 用于拖放区域)
+  static BoxDecoration get dashedBorder => BoxDecoration(
+    color: AppColors.surfaceVariant,
+    borderRadius: BorderRadius.circular(radiusLg),
+    border: Border.all(
+      color: AppColors.border,
+      width: 2,
+      // 注意: Flutter 原生不支持虚线，需要用 CustomPainter 实现
+    ),
   );
 }
 

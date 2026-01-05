@@ -1,10 +1,13 @@
-/// 历史记录页面
+/// 历史记录页面 - Glassmorphism 设计
 /// 展示用户的分析历史列表
 library;
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../config/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/common/glass_card.dart';
 import 'analysis_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -101,92 +104,170 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('分析历史'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadHistory,
-            tooltip: '刷新',
+      backgroundColor: AppColors.background,
+      body: CustomScrollView(
+        slivers: [
+          // 现代化 SliverAppBar
+          SliverAppBar(
+            expandedHeight: 100,
+            floating: false,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text('分析历史', style: AppTextStyles.h4.copyWith(color: Colors.white)),
+              background: Container(
+                decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: _loadHistory,
+                tooltip: '刷新',
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          // 内容
+          SliverToBoxAdapter(
+            child: _buildBody(),
           ),
         ],
       ),
-      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('加载中...'),
-          ],
+      return SizedBox(
+        height: MediaQuery.of(context).size.height - 200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusXl),
+                ),
+                child: const CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 3,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('加载中...', style: AppTextStyles.bodyMedium),
+            ],
+          ),
         ),
       );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _loadHistory,
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
+      return SizedBox(
+        height: MediaQuery.of(context).size.height - 200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.errorLight,
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusXl),
+                ),
+                child: const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _errorMessage!,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _loadHistory,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('重试'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (_historyList.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              '暂无历史记录',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey.shade600,
+      return SizedBox(
+        height: MediaQuery.of(context).size.height - 200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(AppDecorations.radius2xl),
+                ),
+                child: Icon(Icons.history_rounded, size: 64, color: AppColors.textMuted),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '开始分析数据后，历史记录会显示在这里',
-              style: TextStyle(color: Colors.grey.shade500),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 24),
+              Text(
+                '暂无历史记录',
+                style: AppTextStyles.h3.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '开始分析数据后，历史记录会显示在这里',
+                style: AppTextStyles.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadHistory,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _historyList.length,
-        itemBuilder: (context, index) {
-          final record = _historyList[index];
-          return _buildHistoryCard(record, index);
-        },
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 统计信息
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+                ),
+                child: Text(
+                  '共 ${_historyList.length} 条记录',
+                  style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // 历史列表
+          ...List.generate(_historyList.length, (index) {
+            final record = _historyList[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildHistoryCard(record, index),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -208,110 +289,107 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     // 质量分数颜色
-    Color? scoreColor;
-    IconData? scoreIcon;
+    Color scoreColor;
+    IconData scoreIcon;
     if (qualityScore != null) {
       final score = qualityScore is num ? qualityScore.toDouble() : 0.0;
       if (score >= 80) {
-        scoreColor = Colors.green;
-        scoreIcon = Icons.check_circle;
+        scoreColor = AppColors.success;
+        scoreIcon = Icons.check_circle_rounded;
       } else if (score >= 60) {
-        scoreColor = Colors.orange;
-        scoreIcon = Icons.warning;
+        scoreColor = AppColors.warning;
+        scoreIcon = Icons.warning_rounded;
       } else {
-        scoreColor = Colors.red;
-        scoreIcon = Icons.error;
+        scoreColor = AppColors.error;
+        scoreIcon = Icons.error_rounded;
       }
+    } else {
+      scoreColor = AppColors.textMuted;
+      scoreIcon = Icons.help_outline_rounded;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _showRecordDetail(record),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () => _showRecordDetail(record),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题行
+          Row(
             children: [
-              // 标题行
-              Row(
-                children: [
-                  const Icon(Icons.insert_drive_file, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      filename,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (qualityScore != null) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scoreColor?.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: scoreColor!, width: 1.5),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(scoreIcon, size: 16, color: scoreColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            qualityScore.toStringAsFixed(1),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: scoreColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                ),
+                child: const Icon(Icons.description_rounded, size: 20, color: AppColors.primary),
               ),
-              
-              const SizedBox(height: 12),
-              
-              // 时间行
-              Row(
-                children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 6),
-                  Text(
-                    dateTime != null
-                        ? DateFormat('yyyy-MM-dd HH:mm').format(dateTime)
-                        : '未知时间',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  filename,
+                  style: AppTextStyles.labelLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (qualityScore != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+                    border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
                   ),
-                  const Spacer(),
-                  
-                  // 删除按钮
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: Colors.red.shade400,
-                    onPressed: () => _deleteRecord(recordId, index),
-                    tooltip: '删除',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(scoreIcon, size: 14, color: scoreColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        qualityScore.toStringAsFixed(1),
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: scoreColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // 时间行
+          Row(
+            children: [
+              Icon(Icons.access_time_rounded, size: 14, color: AppColors.textMuted),
+              const SizedBox(width: 6),
+              Text(
+                dateTime != null
+                    ? DateFormat('yyyy-MM-dd HH:mm').format(dateTime)
+                    : '未知时间',
+                style: AppTextStyles.bodySmall,
+              ),
+              const Spacer(),
+              
+              // 删除按钮
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                onPressed: () => _deleteRecord(recordId, index),
+                tooltip: '删除',
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  backgroundColor: AppColors.errorLight,
+                  padding: const EdgeInsets.all(8),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

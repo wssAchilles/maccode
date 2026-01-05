@@ -1,0 +1,4798 @@
+\chapter{源代码清单}
+
+本系统分为后端（Python/Flask）和前端（Flutter/Dart）两大部分。以下选取核心模块的源代码进行展示。
+
+\section{后端源代码}
+
+\subsection{主程序入口 (back/main.py)}
+\begin{lstlisting}[style=codestyle, language=Python, caption={后端主程序入口}]
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from config import config
+from services.firebase_service import FirebaseService
+from middleware.logging import setup_logging
+from utils.exceptions import register_error_handlers
+from scheduler import get_scheduler
+import os
+
+from api.auth import auth_bp
+from api.data import data_bp
+from api.analysis import analysis_bp
+from api.history import history_bp
+from api.optimization import optimization_bp
+
+def create_app(config_name=None):
+    """应用工厂函数"""
+    app = Flask(__name__)
+    
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'development')
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
+    
+    CORS(app, 
+         origins=app.config['CORS_ORIGINS'],
+         supports_credentials=True)
+    
+    setup_logging(app)
+    register_error_handlers(app)
+    
+    try:
+        FirebaseService.initialize(project_id=app.config['GCP_PROJECT_ID'])
+    except Exception as e:
+        print(f"Firebase Init Failed: {e}")
+    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(data_bp)
+    app.register_blueprint(analysis_bp)
+    app.register_blueprint(history_bp)
+    app.register_blueprint(optimization_bp)
+    
+    # GAE/Cloud Run Cron Handler
+    @app.route('/tasks/fetch-data', methods=['GET'])
+    def trigger_fetch_data():
+        if os.getenv('FLASK_ENV') != 'development' and request.headers.get('X-Appengine-Cron') != 'true':
+            return jsonify({'error': 'Unauthorized'}), 403
+        try:
+            get_scheduler().fetch_data_job()
+            return jsonify({'status': 'success'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    return app
+
+app = create_app()
+
+if __name__ == '__main__':
+    port = int(os.getenv('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)
+\end{lstlisting}
+
+\subsection{系统配置 (back/config.py)}
+\begin{lstlisting}[style=codestyle, language=Python, caption={后端配置定义}]
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    DEBUG = False
+    GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID', 'data-science-44398')
+    PRICE_SCHEDULE = {
+        'valley': 0.3,
+        'normal': 0.6,
+        'peak': 1.0,
+        'valley_hours_list': [0, 1, 2, 3, 4, 5, 6, 7, 22, 23],
+        'normal_hours_list': [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        'peak_hours_list': [18, 19, 20, 21]
+    }
+    CORS_ORIGINS = ['https://data-science-44398.web.app']
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    CORS_ORIGINS = Config.CORS_ORIGINS + ['http://localhost:*']
+
+class ProductionConfig(Config):
+    DEBUG = False
+
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig
+}
+\end{lstlisting}
+
+\subsection{能源预测服务 (back/services/ml\_service.py)}
+\begin{lstlisting}[style=codestyle, language=Python, caption={机器学习预测服务}]
+"""
+机器学习服务模块 - 能源负载预测
+ML Service Module for Energy Load Prediction
+
+支持多种模型：RandomForest、LightGBM、XGBoost
+自动模型选择和超参数优化
+"""
+
+import pandas as pd
+import numpy as np
+import joblib
+import os
+import tempfile
+from pathlib import Path
+from typing import List, Dict, Optional, Union, Any
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor, VotingRegressor
+from sklearn.model_selection import train_test_split, TimeSeriesSplit, RandomizedSearchCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import warnings
+
+warnings.filterwarnings('ignore')
+
+# 可选依赖：LightGBM 和 XGBoost
+try:
+    from lightgbm import LGBMRegressor
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+    print(" LightGBM 未安装，将使用 RandomForest")
+
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print(" XGBoost 未安装，将使用 RandomForest")
+
+
+from config import Config
+
+class EnergyPredictor:
+    """
+    能源负载预测器
+    
+    使用随机森林模型预测未来24小时的能源负载
+    支持模型训练、保存、加载和推理
+    """
+    
+    def __init__(self, model_path: str = None):
+        """
+        初始化预测器
+        
+        Args:
+            model_path: 本地兜底模型路径（可选），主要从 Firebase Storage 加载
+        """
+        # 获取项目根目录
+        self.script_dir = Path(__file__).parent  # services 目录
+        self.back_dir = self.script_dir.parent  # back 目录
+        
+        # Firebase Storage 模型路径（主要存储位置）
+        self.firebase_model_path = 'models/rf_model.joblib'
+        
+        # 本地兜底模型路径（部署包中自带的模型，仅用于首次加载）
+        if model_path:
+            self.local_model_path = Path(model_path)
+        else:
+            self.local_model_path = self.back_dir / 'models' / 'rf_model.joblib'
+        
+        # 初始化 StorageService
+        from services.storage_service import StorageService
+        self.storage_service = StorageService()
+        
+        # 初始化模型
+        self.model: Optional[RandomForestRegressor] = None
+        
+        # 基础特征列表（向后兼容）
+        self.base_feature_columns = [
+            'Hour', 'DayOfWeek', 'Temperature', 'Price',
+            'Lag_1h', 'Lag_24h', 'Lag_168h',
+            'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
+            'Temp_x_Hour', 'Lag24_x_DayOfWeek'
+        ]
+        
+        # 增强特征列表（新增的时间特征）
+        self.enhanced_feature_columns = [
+            # 基础时间特征
+            'Month', 'Season', 'IsWeekend', 'IsHoliday', 'DayOfMonth', 'WeekOfYear',
+            # 增强交互特征
+            'Temp_x_Season', 'Lag24_x_IsWeekend', 'Hour_x_IsHoliday',
+            # 周期编码特征
+            'Month_Sin', 'Month_Cos', 'Hour_Sin', 'Hour_Cos'
+        ]
+        
+        # 实际使用的特征列表（初始化为基础特征）
+        self.feature_columns = self.base_feature_columns.copy()
+        self.target_column = 'Site_Load'
+        
+        print(f" Firebase Storage 模型路径: {self.firebase_model_path}")
+        print(f" 本地兜底模型路径: {self.local_model_path}")
+    
+    def _load_feature_columns_from_metadata(self):
+        """
+        从模型元数据中加载特征列表
+        确保预测时使用与训练时相同的特征
+        """
+        try:
+            metadata = self.get_model_metadata()
+            if metadata and 'feature_engineering' in metadata:
+                fe_info = metadata['feature_engineering']
+                if fe_info.get('use_enhanced', False):
+                    # 模型使用了增强特征，更新特征列表
+                    enhanced_list = fe_info.get('enhanced_features_list', [])
+                    if enhanced_list:
+                        self.feature_columns = self.base_feature_columns.copy()
+                        self.feature_columns.extend(enhanced_list)
+                        print(f"    已从元数据恢复特征列表: {len(self.feature_columns)} 个特征")
+                        print(f"     (基础: {len(self.base_feature_columns)}, 增强: {len(enhanced_list)})")
+                else:
+                    # 模型只使用基础特征
+                    self.feature_columns = self.base_feature_columns.copy()
+                    print(f"    模型使用基础特征: {len(self.feature_columns)} 个")
+            else:
+                print(f"     未找到特征元数据，使用默认基础特征")
+                
+            # 加载训练配置 (Log Transform)
+            if metadata and 'training_config' in metadata:
+                config = metadata['training_config']
+                self.use_log_transform = config.get('use_log_transform', False)
+                if self.use_log_transform:
+                    print(f"    模型使用 Log1p 变换，预测时将自动还原")
+            else:
+                self.use_log_transform = False
+                
+        except Exception as e:
+            print(f"     加载特征元数据失败: {e}，使用默认基础特征")
+            self.use_log_transform = False
+    
+    def _get_model_type_name(self) -> str:
+        """获取当前模型的类型名称"""
+        if self.model is None:
+            return 'Unknown'
+        
+        model_class = type(self.model).__name__
+        name_map = {
+            'RandomForestRegressor': 'Random Forest Regressor',
+            'LGBMRegressor': 'LightGBM Regressor',
+            'XGBRegressor': 'XGBoost Regressor'
+        }
+        return name_map.get(model_class, model_class)
+    
+    def _create_model(self, model_type: str, n_estimators: int = 100, random_state: int = 42):
+        """
+        创建指定类型的模型
+        
+        Args:
+            model_type: 模型类型 ('randomforest', 'lightgbm', 'xgboost')
+            n_estimators: 树的数量
+            random_state: 随机种子
+            
+        Returns:
+            (model, hyperparameters) 元组
+        """
+        model_type = model_type.lower()
+        
+        if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+            model = LGBMRegressor(
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                max_depth=15,
+                num_leaves=31,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=-1
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'learning_rate': 0.05,
+                'max_depth': 15,
+                'num_leaves': 31
+            }
+        elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+            model = XGBRegressor(
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                max_depth=10,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=random_state,
+                n_jobs=-1,
+                verbosity=0
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'learning_rate': 0.05,
+                'max_depth': 10
+            }
+        else:
+            # 默认使用 RandomForest
+            model = RandomForestRegressor(
+                n_estimators=n_estimators,
+                max_depth=20,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                random_state=random_state,
+                n_jobs=-1,
+                verbose=0
+            )
+            params = {
+                'n_estimators': n_estimators,
+                'max_depth': 20,
+                'min_samples_split': 5,
+                'min_samples_leaf': 2
+            }
+        
+        return model, params
+    
+    def _tune_model(self, model_type: str, X_train, y_train, cv_split, n_iter: int = 20, random_state: int = 42):
+        """
+        使用 RandomizedSearchCV 对指定模型进行超参数调优
+        """
+        model_type = model_type.lower()
+        estimator = None
+        param_dist = {}
+        
+        if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+            estimator = LGBMRegressor(random_state=random_state, n_jobs=-1, verbose=-1)
+            param_dist = {
+                'n_estimators': [100, 200, 300, 500],
+                'learning_rate': [0.01, 0.03, 0.05, 0.1],
+                'num_leaves': [31, 50, 70, 100],
+                'max_depth': [10, 15, 20, -1],
+                'subsample': [0.7, 0.8, 0.9],
+                'colsample_bytree': [0.7, 0.8, 0.9]
+            }
+        elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+            estimator = XGBRegressor(random_state=random_state, n_jobs=-1, verbosity=0)
+            param_dist = {
+                'n_estimators': [100, 200, 300, 500],
+                'learning_rate': [0.01, 0.03, 0.05, 0.1],
+                'max_depth': [3, 6, 10, 15],
+                'subsample': [0.7, 0.8, 0.9],
+                'colsample_bytree': [0.7, 0.8, 0.9],
+                'gamma': [0, 0.1, 0.2]
+            }
+        else:
+            # RandomForest
+            estimator = RandomForestRegressor(random_state=random_state, n_jobs=-1)
+            param_dist = {
+                'n_estimators': [100, 200, 300],
+                'max_depth': [10, 20, 30, None],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4],
+                'max_features': ['sqrt', 'log2', None]
+            }
+            
+        print(f"    正在为 {model_type} 搜索最佳参数 (iter={n_iter})...")
+        
+        search = RandomizedSearchCV(
+            estimator=estimator,
+            param_distributions=param_dist,
+            n_iter=n_iter,
+            cv=cv_split,
+            scoring='neg_mean_absolute_error',
+            random_state=random_state,
+            n_jobs=-1,
+            verbose=0
+        )
+        
+        search.fit(X_train, y_train)
+        print(f"       最佳参数: {search.best_params_}")
+        return search.best_estimator_, search.best_params_
+
+    def _auto_select_best_model(
+        self, 
+        X_train, y_train, 
+        X_test, y_test, 
+        random_state: int = 42,
+        use_time_series_cv: bool = True,
+        n_splits: int = 5,
+        perform_tuning: bool = True  # 新增参数
+    ) -> tuple:
+        """
+        自动选择最佳模型（支持时间序列交叉验证）
+        
+        比较多种模型配置，选择测试集 MAE 最低的
+        
+        Args:
+            X_train, y_train: 训练数据
+            X_test, y_test: 测试数据
+            random_state: 随机种子
+            use_time_series_cv: 是否使用时间序列交叉验证（默认 True）
+            n_splits: 交叉验证折数（默认 5）
+            
+        Returns:
+            (best_model, best_params, selection_info) 元组
+        """
+        candidates = []
+        results = {}
+        cv_details = {}
+        
+        if perform_tuning:
+            # 如果启用调优，此时我们不使用预设的配置，而是针对每个模型类型运行搜索
+            # 但为了保持代码结构，我们构建一个待调优类型列表
+            # 这里的 (DisplayName, type, init_n_estimators) 仅用于元组解包，n_estimators 会被忽略
+            tuning_targets = [('RandomForest', 'randomforest', 100)]
+            if LIGHTGBM_AVAILABLE:
+                tuning_targets.append(('LightGBM', 'lightgbm', 100))
+            if XGBOOST_AVAILABLE:
+                tuning_targets.append(('XGBoost', 'xgboost', 100))
+            
+            model_configs = tuning_targets # 替换为调优目标
+        else:
+            # 原有的固定配置模式
+            model_configs = [
+                ('RandomForest', 'randomforest', 150),
+                ('RandomForest_200', 'randomforest', 200),
+            ]
+            
+            # 如果 LightGBM 可用，添加到候选
+            if LIGHTGBM_AVAILABLE:
+                model_configs.extend([
+                    ('LightGBM', 'lightgbm', 200),
+                    ('LightGBM_300', 'lightgbm', 300),
+                ])
+            
+            # 如果 XGBoost 可用，添加到候选
+            if XGBOOST_AVAILABLE:
+                model_configs.extend([
+                    ('XGBoost', 'xgboost', 200),
+                    ('XGBoost_300', 'xgboost', 300),
+                ])
+        
+        print(f"   评估 {len(model_configs)} 种模型配置...")
+        if use_time_series_cv:
+            print(f"    使用 TimeSeriesSplit 交叉验证 ({n_splits} 折)")
+        
+        baseline_mae = None
+        best_mae = float('inf')
+        best_model = None
+        best_params = None
+        best_name = None
+        
+        # 【修复】时间序列交叉验证只在训练集上进行，测试集保持独立用于最终评估
+        # 这避免了测试集参与模型选择导致的数据泄漏
+        if use_time_series_cv:
+            # CV 只在训练集上做，不再把测试集拼进去
+            tscv = TimeSeriesSplit(n_splits=n_splits)
+            print(f"    TimeSeriesSplit CV 仅在训练集上进行 ({len(X_train)} 样本)")
+        
+        # 存储每种类型的最佳模型，用于集成
+        best_estimators = {}
+        
+        for name, model_type, n_estimators in model_configs:
+            try:
+                model = None
+                params = None
+                
+                if perform_tuning:
+                    # 使用超参数搜索
+                    # 注意：复用 tscv 作为 cv_split
+                    # 如果未启用 TimeSeriesCV，则使用 KFold 或者默认的 5折
+                    cv_to_use = tscv if use_time_series_cv else 5
+                    
+                    # 调优后的名字加上 "Tuned" 后缀
+                    name = f"{name}_Tuned"
+                    model, params = self._tune_model(model_type, X_train, y_train, cv_to_use, n_iter=15, random_state=random_state)
+                else:
+                    # 使用固定配置
+                    print(f"   - 训练 {name}...", end=' ')
+                    model, params = self._create_model(model_type, n_estimators, random_state)
+                
+                if use_time_series_cv:
+                    # 【修复】时间序列交叉验证只在训练集上进行
+                    cv_scores = []
+                    for train_idx, val_idx in tscv.split(X_train):
+                        X_cv_train, X_cv_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                        y_cv_train, y_cv_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+                        
+                        model_cv, _ = self._create_model(model_type, n_estimators, random_state)
+                        model_cv.fit(X_cv_train, y_cv_train)
+                        y_cv_pred = model_cv.predict(X_cv_val)
+                        
+                        # 如果启用了对数变换，需要还原预测值
+                        if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                            y_cv_val = np.expm1(y_cv_val)
+                            y_cv_pred = np.expm1(y_cv_pred)
+                            
+                        cv_scores.append(mean_absolute_error(y_cv_val, y_cv_pred))
+                    
+                    # 计算交叉验证平均分
+                    cv_mae = np.mean(cv_scores)
+                    cv_std = np.std(cv_scores)
+                    
+                    # 使用完整训练数据重新训练最终模型
+                    model.fit(X_train, y_train)
+                    
+                    # 在独立的未来测试集上评估（严格未见数据）
+                    y_pred = model.predict(X_test)
+                    
+                    # 如果启用了对数变换，需要还原预测值
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                         # y_test 是原始值（如果不改动 y_test 的话），这里需要确认 split 时 y_test 是否被 log
+                         # 我们的策略是：只对训练集的 y 进行 log，测试集的 y 保持原样或者反变换
+                         # 为统一处理，假设 fit 时 y_train 是 log 后的，predict 输出 log 后的
+                         y_pred = np.expm1(y_pred)
+                         # y_test 在 split 前如果没变，那就是原始值。
+                         # 为了安全，我们稍后在 split 处做处理。
+                    
+                    test_mae = mean_absolute_error(y_test, y_pred)
+                    test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    
+                    # 使用交叉验证 MAE 作为选择依据（更可靠）
+                    mae = cv_mae
+                    rmse = test_rmse
+                    
+                    cv_details[name] = {
+                        'cv_mae_mean': round(cv_mae, 2),
+                        'cv_mae_std': round(cv_std, 2),
+                        'cv_scores': [round(s, 2) for s in cv_scores],
+                        'test_mae': round(test_mae, 2)  # 记录独立测试集的 MAE
+                    }
+                    
+                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW (独立未来数据)")
+                else:
+                    # 原有的简单训练-测试拆分
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                        y_pred = np.expm1(y_pred)
+                    
+                    mae = mean_absolute_error(y_test, y_pred)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    print(f"MAE={mae:.2f} kW")
+                
+                results[name] = {'mae': mae, 'rmse': rmse, 'model_type': model_type}
+                candidates.append(name)
+                
+                # 记录基准（第一个 RandomForest）
+                if baseline_mae is None:
+                    baseline_mae = mae
+                
+                # 更新最佳
+                if mae < best_mae:
+                    best_mae = mae
+                    best_model = model
+                    best_params = params
+                    best_name = name
+                    
+            except Exception as e:
+                print(f"失败: {str(e)}")
+                continue
+            
+            # 记录该类型的最佳模型用于集成
+            if model_type not in best_estimators or mae < best_estimators[model_type]['mae']:
+                best_estimators[model_type] = {
+                    'model': model,
+                    'mae': mae
+                }
+        
+        # 尝试集成学习 (VotingRegressor)
+        if len(best_estimators) >= 2:
+            try:
+                print(f"    尝试集成学习 (VotingRegressor)...", end=' ')
+                # 创建 VotingRegressor
+                estimators_list = [(k, v['model']) for k, v in best_estimators.items()]
+                voting_model = VotingRegressor(estimators=estimators_list, n_jobs=-1)
+                voting_name = "Voting_Ensemble"
+                
+                # 评估 Voting 模型
+                if use_time_series_cv:
+                    cv_scores = []
+                    for train_idx, val_idx in tscv.split(X_train):
+                        X_cv_train, X_cv_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                        y_cv_train, y_cv_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+                        
+                        from sklearn.base import clone
+                        model_cv = clone(voting_model)
+                        model_cv.fit(X_cv_train, y_cv_train)
+                        y_cv_pred = model_cv.predict(X_cv_val)
+                        cv_scores.append(mean_absolute_error(y_cv_val, y_cv_pred))
+                    
+                    cv_mae = np.mean(cv_scores)
+                    cv_std = np.std(cv_scores)
+                    
+                    voting_model.fit(X_train, y_train)
+                    y_pred = voting_model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                         y_pred = np.expm1(y_pred)
+                         
+                    test_mae = mean_absolute_error(y_test, y_pred)
+                    test_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    
+                    mae = cv_mae
+                    rmse = test_rmse
+                    
+                    cv_details[voting_name] = {
+                        'cv_mae_mean': round(cv_mae, 2),
+                        'cv_mae_std': round(cv_std, 2),
+                        'cv_scores': [round(s, 2) for s in cv_scores],
+                        'test_mae': round(test_mae, 2)
+                    }
+                    print(f"CV_MAE={cv_mae:.2f}±{cv_std:.2f} kW, Test_MAE={test_mae:.2f} kW")
+                else:
+                    voting_model.fit(X_train, y_train)
+                    y_pred = voting_model.predict(X_test)
+                    
+                    if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                        y_pred = np.expm1(y_pred)
+                    
+                    mae = mean_absolute_error(y_test, y_pred)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    print(f"MAE={mae:.2f} kW")
+                
+                results[voting_name] = {'mae': mae, 'rmse': rmse, 'model_type': 'voting'}
+                candidates.append(voting_name)
+                
+                if mae < best_mae:
+                    best_mae = mae
+                    best_model = voting_model
+                    best_params = {'estimators': [k for k in best_estimators.keys()]}
+                    best_name = voting_name
+                    print(f"    集成模型表现最佳!")
+                    
+            except Exception as e:
+                print(f"    集成学习失败: {str(e)}")
+
+        # 计算相对基准的提升
+        improvement = 'N/A'
+        if baseline_mae and baseline_mae > 0:
+            improvement_pct = (baseline_mae - best_mae) / baseline_mae * 100
+            improvement = f"{improvement_pct:.1f}%"
+        
+        print(f"\n    最佳模型: {best_name} (MAE={best_mae:.2f} kW)")
+        if improvement != 'N/A' and improvement != '0.0%':
+            print(f"    相比基准提升: {improvement}")
+        
+        selection_info = {
+            'winner': best_name,
+            'candidates_evaluated': candidates,
+            'all_scores': {k: {'mae': round(v['mae'], 2), 'rmse': round(v['rmse'], 2)} 
+                          for k, v in results.items()},
+            'improvement': improvement,
+            'validation_method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+            'cv_folds': n_splits if use_time_series_cv else None,
+            'cv_details': cv_details if use_time_series_cv else None
+        }
+        
+        return best_model, best_params, selection_info
+    
+    def _get_price(self, hour: int) -> float:
+        """
+        根据小时返回峰谷电价 (从配置读取)
+        
+        Args:
+            hour: 小时 (0-23)
+            
+        Returns:
+            电价 (元/kWh)
+        """
+        schedule = Config.PRICE_SCHEDULE
+        
+        if hour in schedule['peak_hours_list']:
+            return schedule['peak']
+        elif hour in schedule['normal_hours_list']:
+            return schedule['normal']
+        else:
+            return schedule['valley']
+    
+    def _save_model_metadata(self, metadata: dict) -> bool:
+        """
+        保存模型元数据到 Firebase Storage (JSON 文件)
+        
+        Args:
+            metadata: 模型元数据字典
+            
+        Returns:
+            是否保存成功
+        """
+        try:
+            import json
+            from datetime import datetime
+            
+            # 添加更新时间戳
+            metadata['updated_at'] = datetime.now().isoformat()
+            
+            # 转换为 JSON 字符串
+            json_data = json.dumps(metadata, indent=2, ensure_ascii=False)
+            
+            # 上传到 Storage (使用临时文件确保 Content-Type 正确)
+            import tempfile
+            metadata_path = 'models/model_metadata.json'
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+                f.write(json_data)
+                temp_path = f.name
+            
+            try:
+                with open(temp_path, 'rb') as f:
+                    self.storage_service.bucket.blob(metadata_path).upload_from_file(
+                        f, 
+                        content_type='application/json'
+                    )
+            finally:
+                import os
+                os.unlink(temp_path)
+            
+            print(f"    模型元数据已保存到 Firebase Storage: {metadata_path}")
+            return True
+            
+        except Exception as e:
+            print(f"    保存模型元数据失败: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_model_metadata() -> Optional[dict]:
+        """
+        从 Firebase Storage 获取模型元数据 (JSON 文件)
+        
+        Returns:
+            模型元数据字典，如果不存在返回 None
+        """
+        try:
+            import json
+            from services.storage_service import StorageService
+            
+            # 创建 Storage 服务实例
+            storage = StorageService()
+            
+            # 下载元数据 JSON
+            metadata_path = 'models/model_metadata.json'
+            json_bytes = storage.download_file(metadata_path)
+            
+            # 解析 JSON
+            metadata = json.loads(json_bytes.decode('utf-8'))
+            return metadata
+                
+        except Exception as e:
+            print(f"获取模型元数据失败: {str(e)}")
+            return None
+    
+    def _is_gae_environment(self) -> bool:
+        """检测是否在 GAE 环境"""
+        return bool(os.getenv('GAE_ENV') or os.getenv('K_SERVICE'))
+
+    def train_model(
+        self, 
+        data_path: str = None,
+        n_estimators: int = 100,
+        test_size: float = 0.2,
+        random_state: int = 42,
+        use_firebase_storage: bool = True,
+        auto_select_model: bool = True,
+        model_type: str = 'auto',
+        use_enhanced_features: bool = True,
+        use_time_series_cv: bool = True,
+        cv_folds: int = 5,
+        use_log_transform: bool = True,
+        remove_outliers: bool = True,
+        tune_hyperparameters: bool = True  # 新增控制开关 (默认开启)
+    ) -> Dict[str, float]:
+        """
+        训练预测模型（支持自动模型选择、增强特征和时间序列交叉验证）
+        
+        Args:
+            data_path: 数据文件路径
+            n_estimators: 树的数量
+            test_size: 测试集比例
+            random_state: 随机种子
+            use_firebase_storage: 是否从 Firebase Storage 下载数据
+            auto_select_model: 是否自动选择最佳模型
+            model_type: 指定模型类型
+            use_enhanced_features: 是否使用增强特征
+            use_time_series_cv: 是否使用时间序列交叉验证
+            cv_folds: 交叉验证折数
+            use_log_transform: 是否对目标变量进行 Log1p 变换 (默认 True)
+            remove_outliers: 是否自动过滤异常值 (默认 True)
+            tune_hyperparameters: 是否启用超参数自动搜索 (默认 True) 
+            
+        Returns:
+            包含评估指标的字典
+        """
+        print("\n" + "="*80)
+        print(" 开始训练能源负载预测模型")
+        print("="*80 + "\n")
+        
+        temp_data_path = None
+        
+        try:
+            # 从 Firebase Storage 下载数据
+            if use_firebase_storage:
+                print(" 从 Firebase Storage 下载训练数据...")
+                from services.storage_service import StorageService
+                
+                storage_service = StorageService()
+                firebase_path = data_path or 'data/processed/cleaned_energy_data_all.csv'
+                
+                temp_data_path = storage_service.download_to_temp(firebase_path)
+                
+                if temp_data_path is None:
+                    raise FileNotFoundError(f"无法从 Firebase Storage 下载数据: {firebase_path}")
+                
+                data_path = temp_data_path
+                print(f"    数据已下载到: {data_path}")
+            else:
+                # 本地文件模式 (开发环境)
+                if data_path is None:
+                    # 尝试多个可能的路径
+                    possible_paths = [
+                        self.back_dir.parent / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+                        self.back_dir / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+                    ]
+                    data_path = None
+                    for path in possible_paths:
+                        if path.exists():
+                            data_path = path
+                            break
+                    if data_path is None:
+                        data_path = possible_paths[0]  # 使用第一个作为默认
+                else:
+                    data_path = Path(data_path)
+            
+            # 读取数据
+            print(f" 读取数据: {data_path}")
+            try:
+                df = pd.read_csv(data_path, parse_dates=['Date'])
+                print(f"    数据读取成功: {len(df)} 行 × {len(df.columns)} 列")
+            except FileNotFoundError:
+                raise FileNotFoundError(f"数据文件不存在: {data_path}")
+            except Exception as e:
+                raise Exception(f"读取数据时出错: {str(e)}")
+            
+            # ================================================================
+            # 【修复】智能特征检查与自动补算
+            # 分层检查：硬必需列 vs 可补算的 engineered 特征
+            # ================================================================
+            
+            # 硬必需列：必须存在，无法自动生成
+            hard_required = ['Date', 'Site_Load', 'Temperature']
+            missing_hard = [col for col in hard_required if col not in df.columns]
+            if missing_hard:
+                raise ValueError(f"数据缺少核心必需列（无法自动生成）: {missing_hard}")
+            
+            # 可补算的基础时间特征
+            time_features = ['Hour', 'DayOfWeek', 'Price']
+            missing_time = [col for col in time_features if col not in df.columns]
+            
+            # 可补算的 Lag/Rolling 特征
+            engineered_features = ['Lag_1h', 'Lag_24h', 'Lag_168h', 
+                                   'Rolling_Mean_6h', 'Rolling_Std_6h', 'Rolling_Mean_24h',
+                                   'Temp_x_Hour', 'Lag24_x_DayOfWeek']
+            missing_engineered = [col for col in engineered_features if col not in df.columns]
+            
+            # 检查增强特征是否缺失
+            missing_enhanced_time = []
+            if use_enhanced_features:
+                 enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                 missing_enhanced_time = [c for c in enhanced_time_cols if c not in df.columns]
+
+            # 如果有缺失的可补算特征，自动调用 EnergyDataProcessor 补算
+            if missing_time or missing_engineered or missing_enhanced_time:
+                print(f"\n 检测到缺失特征，自动补算中...")
+                if missing_time:
+                    print(f"   - 缺失时间特征: {missing_time}")
+                if missing_engineered:
+                    print(f"   - 缺失工程特征: {missing_engineered}")
+                
+                from services.data_processor import EnergyDataProcessor
+                processor = EnergyDataProcessor()
+                
+                # 确保 Date 是 datetime 类型
+                if df['Date'].dtype == 'object':
+                    df['Date'] = pd.to_datetime(df['Date'])
+                
+                # 补算时间特征
+                if missing_time:
+                    if 'Hour' not in df.columns:
+                        df['Hour'] = df['Date'].dt.hour
+                    if 'DayOfWeek' not in df.columns:
+                        df['DayOfWeek'] = df['Date'].dt.dayofweek
+                    if 'Price' not in df.columns:
+                        df = processor.add_price_feature(df)
+                
+                # 补算增强时间特征（如果启用）
+                if use_enhanced_features:
+                    enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                    missing_enhanced_time = [c for c in enhanced_time_cols if c not in df.columns]
+                    if missing_enhanced_time:
+                        df = processor.add_enhanced_time_features(df)
+                        print(f"    已补算增强时间特征")
+                
+                # 补算 Lag/Rolling/Interaction 特征
+                if missing_engineered:
+                    df = processor.add_advanced_features(df, dropna=False, use_enhanced=use_enhanced_features)
+                    print(f"    已补算 Lag/Rolling/Interaction 特征")
+                
+                print(f"    特征补算完成，当前列数: {len(df.columns)}")
+            
+            # 处理缺失值
+            print(f"\n 检查数据质量...")
+            # 检查核心列的缺失值
+            core_cols = hard_required + time_features
+            null_counts = df[core_cols].isnull().sum()
+            if null_counts.sum() > 0:
+                print(f"     发现缺失值:")
+                for col, count in null_counts[null_counts > 0].items():
+                    print(f"      - {col}: {count} 个")
+                
+                # 对于 Temperature，使用均值填充
+                if 'Temperature' in null_counts and null_counts['Temperature'] > 0:
+                    # 使用线性插值填充温度缺失值（更适合时间序列）
+                    df['Temperature'] = df['Temperature'].interpolate(method='linear', limit_direction='both')
+                    # 如果仍有缺失（例如开头或结尾），使用均值兜底
+                    if df['Temperature'].isnull().sum() > 0:
+                         df['Temperature'].fillna(df['Temperature'].mean(), inplace=True)
+                    print(f"    Temperature 缺失值已使用线性插值填充")
+            else:
+                print(f"    无核心列缺失值")
+            
+            # ================================================================
+            # 动态特征选择（检测数据中可用的增强特征）
+            # ================================================================
+            print(f"\n 检测可用特征...")
+            
+            # 首先使用基础特征
+            available_features = [col for col in self.base_feature_columns if col in df.columns]
+            print(f"    基础特征: {len(available_features)}/{len(self.base_feature_columns)}")
+            
+            # 如果启用增强特征，检测并添加
+            enhanced_features_used = []
+            if use_enhanced_features:
+                for col in self.enhanced_feature_columns:
+                    if col in df.columns:
+                        available_features.append(col)
+                        enhanced_features_used.append(col)
+                
+                if enhanced_features_used:
+                    print(f"    增强特征: {len(enhanced_features_used)} 个")
+                    print(f"     {enhanced_features_used}")
+                else:
+                    print(f"     数据中未找到增强特征，使用基础特征")
+            
+            # 更新实际使用的特征列表
+            self.feature_columns = available_features
+            print(f"    总计使用 {len(self.feature_columns)} 个特征")
+                
+            # 清除因特征工程 (Lag/Rolling) 产生的 NaN 行
+            # 这些行通常位于数据集头部
+            before_drop = len(df)
+            df.dropna(inplace=True)
+            after_drop = len(df)
+            if before_drop != after_drop:
+                print(f"     已删除 {before_drop - after_drop} 行包含 NaN 的样本 (Lag/Rolling start-up)")
+            
+            # 准备特征和目标变量
+            print(f"\n 准备训练数据...")
+            X = df[self.feature_columns].copy()
+            y = df[self.target_column].copy()
+            
+            print(f"   - 特征列: {self.feature_columns}")
+            print(f"   - 目标变量: {self.target_column}")
+            print(f"   - 数据形状: X={X.shape}, y={y.shape}")
+            
+            # 划分训练集和测试集
+            # 【修复】时间序列数据必须按时间顺序拆分，避免数据泄漏
+            print(f"\n  划分数据集 (训练集: {int((1-test_size)*100)}%, 测试集: {int(test_size*100)}%)...")
+            
+            if use_time_series_cv:
+                # 时间序列模式：按时间顺序拆分，测试集为严格未来数据
+                # 确保数据按 Date 排序（如果 Date 列存在）
+                if 'Date' in df.columns:
+                    sort_idx = df['Date'].argsort()
+                    X = X.iloc[sort_idx].reset_index(drop=True)
+                    y = y.iloc[sort_idx].reset_index(drop=True)
+                    print(f"    已按时间顺序排序数据")
+                
+                # 按时间顺序拆分：最后 test_size 比例作为严格未来 holdout
+                split_idx = int(len(X) * (1 - test_size))
+                X_train = X.iloc[:split_idx].copy()
+                X_test = X.iloc[split_idx:].copy()
+                y_train = y.iloc[:split_idx].copy()
+                y_test = y.iloc[split_idx:].copy()
+                print(f"    时间序列拆分：测试集为严格未来数据 (避免数据泄漏)")
+            else:
+                # 非时间序列模式：保持原有随机拆分行为（向后兼容）
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=test_size, random_state=random_state
+                )
+                print(f"     随机拆分模式 (仅用于非时间序列数据)")
+            
+            print(f"   - 训练集: {X_train.shape[0]} 样本")
+            print(f"   - 测试集: {X_test.shape[0]} 样本")
+            
+            # 记录配置状态
+            self.use_log_transform = use_log_transform
+            
+            # ================================================================
+            # 异常值过滤 (Anomaly Detection) - 仅针对训练集
+            # ================================================================
+            if remove_outliers:
+                print(f"\n 执行异常值过滤 (IQR)...")
+                # 计算 IQR
+                Q1 = y_train.quantile(0.25)
+                Q3 = y_train.quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                
+                # 过滤索引
+                # 注意：这里我们同时需要过滤 X_train 和 y_train
+                mask = (y_train >= lower_bound) & (y_train <= upper_bound)
+                outliers_count = len(y_train) - mask.sum()
+                
+                if outliers_count > 0:
+                     X_train = X_train[mask]
+                     y_train = y_train[mask]
+                     print(f"    已移除 {outliers_count} 个异常样本")
+                     print(f"     阈值区间: [{lower_bound:.2f}, {upper_bound:.2f}]")
+                else:
+                     print(f"    未发现显著异常值")
+            
+            # ================================================================
+            # 目标变量对数变换 (Log Transform)
+            # ================================================================
+            if use_log_transform:
+                print(f"\n执行 Log1p 变换...")
+                # 检查负值
+                if (y_train < 0).any():
+                     print(f"     y_train 包含负值，无法进行 Log 变换，自动禁用")
+                     self.use_log_transform = False
+                else:
+                     y_train = np.log1p(y_train)
+                     # y_test 不变换，保持原始比例用于评估
+                     print(f"    y_train 已进行 np.log1p 变换")
+
+            # ================================================================
+            # 自动模型选择与训练
+            # ================================================================
+            if auto_select_model and model_type == 'auto':
+                print(f"\n 自动模型选择模式...")
+                best_model, best_params, selection_info = self._auto_select_best_model(
+                    X_train, y_train, X_test, y_test, random_state,
+                    use_time_series_cv=use_time_series_cv,
+                    n_splits=cv_folds,
+                    perform_tuning=tune_hyperparameters
+                )
+                self.model = best_model
+                selected_model_type = selection_info['winner']
+                hyperparameters = best_params
+            else:
+                # 手动模式：使用指定的模型类型
+                print(f"\n 训练 {model_type} 模型...")
+                self.model, hyperparameters = self._create_model(
+                    model_type, n_estimators, random_state
+                )
+                self.model.fit(X_train, y_train)
+                selected_model_type = model_type
+                selection_info = {'winner': model_type, 'candidates_evaluated': [model_type]}
+            
+            print(f"    模型训练完成! (类型: {selected_model_type})")
+            
+            # 评估模型
+            print(f"\n 评估模型性能...")
+            
+            # 训练集预测
+            y_train_pred = self.model.predict(X_train)
+            
+            # 还原
+            if self.use_log_transform:
+                y_train = np.expm1(y_train)
+                y_train_pred = np.expm1(y_train_pred)
+                
+            train_mae = mean_absolute_error(y_train, y_train_pred)
+            train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+            
+            # 测试集预测
+            y_test_pred = self.model.predict(X_test)
+            
+            if self.use_log_transform:
+                y_test_pred = np.expm1(y_test_pred)
+                
+            test_mae = mean_absolute_error(y_test, y_test_pred)
+            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+            
+            # 计算 R² Score (测试集)
+            test_r2 = r2_score(y_test, y_test_pred)
+            
+            # 计算 MAPE (测试集) - Mean Absolute Percentage Error
+            # 避免分母为 0
+            mask = y_test.values != 0
+            if np.sum(mask) > 0:
+                test_mape = np.mean(np.abs((y_test.values[mask] - y_test_pred[mask]) / y_test.values[mask])) * 100
+            else:
+                test_mape = 0.0
+            
+            print(f"\n   训练集性能:")
+            print(f"      - MAE:  {train_mae:.2f} kW")
+            print(f"      - RMSE: {train_rmse:.2f} kW")
+            
+            print(f"\n   测试集性能:")
+            print(f"      - MAE:  {test_mae:.2f} kW")
+            print(f"      - RMSE: {test_rmse:.2f} kW")
+            print(f"      - R²:   {test_r2:.4f}")
+            print(f"      - MAPE: {test_mape:.2f}%")
+
+            # ------------------------------------------------------------
+            # 验证信息汇总 (用于元数据和前端展示)
+            # ------------------------------------------------------------
+            validation_summary = {
+                'method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+                'cv_folds': cv_folds if use_time_series_cv else None,
+                'holdout_mae': float(test_mae),
+                'holdout_rmse': float(test_rmse),
+                'holdout_r2': float(test_r2),
+                'holdout_mape': float(test_mape / 100),  # 统一为小数
+            }
+
+            # 如果有交叉验证详情，记录当前胜出模型的均值和波动
+            if auto_select_model and model_type == 'auto' and selection_info:
+                winner_name = selection_info.get('winner')
+                cv_detail = (selection_info.get('cv_details') or {}).get(winner_name, {})
+                if cv_detail:
+                    validation_summary.update({
+                        'cv_mae_mean': cv_detail.get('cv_mae_mean'),
+                        'cv_mae_std': cv_detail.get('cv_mae_std'),
+                        'cv_scores': cv_detail.get('cv_scores')
+                    })
+
+            # 数据覆盖范围
+            data_coverage = None
+            if 'Date' in df.columns:
+                date_min = df['Date'].min()
+                date_max = df['Date'].max()
+                span_days = None
+                try:
+                    span_days = int((date_max - date_min).days)
+                except Exception:
+                    span_days = None
+
+                data_coverage = {
+                    'start': date_min.isoformat() if hasattr(date_min, 'isoformat') else str(date_min),
+                    'end': date_max.isoformat() if hasattr(date_max, 'isoformat') else str(date_max),
+                    'span_days': span_days,
+                    'rows': int(len(df))
+                }
+            
+            # 特征重要性
+            print(f"\n 特征重要性:")
+            importances = None
+            
+            if hasattr(self.model, 'feature_importances_'):
+                importances = self.model.feature_importances_
+            elif isinstance(self.model, VotingRegressor):
+                # 尝试计算平均特征重要性
+                try:
+                    all_importances = [est.feature_importances_ for est in self.model.estimators_]
+                    importances = np.mean(all_importances, axis=0)
+                except Exception:
+                     pass
+            
+            if importances is not None:
+                feature_importance = pd.DataFrame({
+                    'Feature': self.feature_columns,
+                    'Importance': importances
+                }).sort_values('Importance', ascending=False)
+                
+                for _, row in feature_importance.iterrows():
+                    print(f"      - {row['Feature']}: {row['Importance']:.4f}")
+            else:
+                print("      (当前模型不支持特征重要性输出)")
+                feature_importance = pd.DataFrame(columns=['Feature', 'Importance'])
+            
+            # 保存模型到 Firebase Storage
+            print(f"\n 保存模型到 Firebase Storage: {self.firebase_model_path}")
+            temp_model_path = None
+            try:
+                # Step A: 创建临时文件
+                with tempfile.NamedTemporaryFile(mode='wb', suffix='.joblib', delete=False) as tmp_file:
+                    temp_model_path = tmp_file.name
+                    print(f"   - 临时文件: {temp_model_path}")
+                
+                # Step B: 保存模型到临时文件
+                joblib.dump(self.model, temp_model_path)
+                print(f"    模型已保存到临时文件")
+                
+                # Step B-2: 保存模型到本地持久化路径 (用于开发环境调试)
+                # 仅在非 GAE 环境下执行，避免 Read-only file system 错误
+                if not self._is_gae_environment():
+                    try:
+                        # 确保存储目录存在
+                        self.local_model_path.parent.mkdir(parents=True, exist_ok=True)
+                        joblib.dump(self.model, self.local_model_path)
+                        print(f"    模型已备份到本地路径: {self.local_model_path}")
+                    except Exception as local_e:
+                        print(f"     无法保存本地模型副本: {str(local_e)}")
+                else:
+                    print(f"   ℹ  GAE 环境：跳过本地模型备份")
+
+                
+                # Step C: 上传到 Firebase Storage
+                with open(temp_model_path, 'rb') as f:
+                    self.storage_service.upload_file(
+                        file_data=f,
+                        destination_path=self.firebase_model_path,
+                        content_type='application/octet-stream'
+                    )
+                print(f"    模型已上传到 Firebase Storage")
+                
+            except Exception as e:
+                print(f"    模型保存失败: {str(e)}")
+                raise
+            finally:
+                # Step D: 清理临时文件
+                if temp_model_path and os.path.exists(temp_model_path):
+                    try:
+                        os.remove(temp_model_path)
+                        print(f"    已清理临时模型文件")
+                    except Exception as e:
+                        print(f"     清理临时模型文件失败: {str(e)}")
+            
+            print("\n" + "="*80)
+            print(" 模型训练完成!")
+            print("="*80 + "\n")
+            
+            # 保存模型元数据到 Firebase Storage (全局元数据)
+            # 获取模型类型名称
+            model_type_name = self._get_model_type_name()
+            
+            try:
+                metadata = {
+                    'model_type': model_type_name,
+                    'model_version': datetime.now().strftime('%Y%m%d_%H%M%S'),
+                    'trained_at': datetime.now().isoformat(),
+                    'metrics': {
+                        'train_mae': float(train_mae),
+                        'train_rmse': float(train_rmse),
+                        'test_mae': float(test_mae),
+                        'test_rmse': float(test_rmse),
+                        'r2_score': float(test_r2),
+                        'mape': float(test_mape / 100),  # 存储为小数形式, 5% -> 0.05
+                    },
+                    'training_samples': len(df),
+                    'data_source': 'CAISO Real-Time Stream',
+                    'feature_importance': feature_importance.to_dict('records'),
+                    'model_path': self.firebase_model_path,
+                    'status': 'active',
+                    # 数据覆盖信息
+                    'data_coverage': data_coverage,
+                    # 【新增】单位标注信息（向后兼容，不改变数值）
+                    'units': {
+                        'target_variable': self.target_column,
+                        'target_unit': 'kW',  # Site_Load 的单位
+                        'load_unit_multiplier': 1.0,  # 1.0 表示原始值，1000 表示 MW->kW
+                        'price_unit': 'CNY/kWh',  # 电价单位
+                        'temperature_unit': '°C',  # 温度单位
+                        'note': 'CAISO 原始数据为 MW，已转换为 kW 存储'
+                    },
+                    # 特征工程信息
+                    'feature_engineering': {
+                        'total_features': len(self.feature_columns),
+                        'base_features': len(self.base_feature_columns),
+                        'enhanced_features': len(enhanced_features_used) if use_enhanced_features else 0,
+                        'enhanced_features_list': enhanced_features_used if use_enhanced_features else [],
+                        'use_enhanced': use_enhanced_features
+                    },
+                    # 验证摘要 (交叉验证 / 留出验证)
+                    'validation_summary': validation_summary,
+                    # 【新增】训练配置记录（便于复现）
+                    'training_config': {
+                        'test_size': test_size,
+                        'random_state': random_state,
+                        'use_time_series_cv': use_time_series_cv,
+                        'cv_folds': cv_folds if use_time_series_cv else None,
+                        'cv_folds': cv_folds if use_time_series_cv else None,
+                        'time_series_split': use_time_series_cv,  # 标记是否使用了时间序列拆分
+                        'use_log_transform': use_log_transform,   # 记录是否使用了 Log 变换
+                        'remove_outliers': remove_outliers,       # 记录是否使用了异常值过滤
+                        'hyperparameter_tuning': tune_hyperparameters # 记录是否启用了超参数搜索
+                    }
+                }
+                
+                # 添加自动模型选择信息
+                if auto_select_model and model_type == 'auto':
+                    metadata['auto_selection'] = {
+                        'enabled': True,
+                        'candidates_evaluated': selection_info.get('candidates_evaluated', []),
+                        'winner': selection_info.get('winner', 'unknown'),
+                        'improvement_over_baseline': selection_info.get('improvement', 'N/A'),
+                        'all_scores': selection_info.get('all_scores', {}),
+                        # 新增：交叉验证信息
+                        'validation_method': selection_info.get('validation_method', 'HoldOut'),
+                        'cv_folds': selection_info.get('cv_folds'),
+                        'cv_details': selection_info.get('cv_details')
+                    }
+                    metadata['hyperparameters'] = hyperparameters
+                
+                self._save_model_metadata(metadata)
+            except Exception as e:
+                print(f"     保存模型元数据失败: {str(e)}")
+            
+            # 返回评估指标
+            return {
+                'train_mae': train_mae,
+                'train_rmse': train_rmse,
+                'test_mae': test_mae,
+                'test_rmse': test_rmse,
+                'r2_score': test_r2,  # 新增
+                'mape': test_mape / 100,  # 新增 (小数形式)
+                'feature_importance': feature_importance.to_dict('records'),
+                'model_type': model_type_name,
+                'hyperparameters': hyperparameters if auto_select_model else {'n_estimators': n_estimators},
+                'auto_selection': selection_info if auto_select_model and model_type == 'auto' else None,
+                # 新增：特征工程和交叉验证信息
+                'feature_engineering': {
+                    'total_features': len(self.feature_columns),
+                    'enhanced_features_used': enhanced_features_used if use_enhanced_features else []
+                },
+                'validation': {
+                    'method': 'TimeSeriesSplit' if use_time_series_cv else 'HoldOut',
+                    'cv_folds': cv_folds if use_time_series_cv else None,
+                    'summary': validation_summary
+                },
+                'data_coverage': data_coverage
+            }
+        
+        finally:
+            # 清理临时文件
+            if temp_data_path and os.path.exists(temp_data_path):
+                try:
+                    os.remove(temp_data_path)
+                    print(f" 清理临时训练数据文件")
+                except Exception as e:
+                    print(f"  清理临时文件失败: {str(e)}")
+    
+    def load_model(self) -> bool:
+        """
+        加载已保存的模型（优先从 Firebase Storage）
+        同时加载模型元数据以恢复正确的特征列表
+        
+        Returns:
+            是否加载成功
+            
+        Raises:
+            FileNotFoundError: 模型文件不存在
+            Exception: 加载模型时出错
+        """
+        print(f" 加载模型...")
+        temp_model_path = None
+        
+        try:
+            # Step A: 检查 Firebase Storage 中是否存在模型
+            print(f"   - 检查 Firebase Storage: {self.firebase_model_path}")
+            
+            if self.storage_service.file_exists(self.firebase_model_path):
+                print(f"    Firebase Storage 中存在模型")
+                
+                # Step B: 下载到临时目录
+                temp_model_path = self.storage_service.download_to_temp(self.firebase_model_path)
+                
+                if temp_model_path is None:
+                    raise Exception("从 Firebase Storage 下载模型失败")
+                
+                print(f"    模型已下载到: {temp_model_path}")
+                
+                # Step C: 从临时文件加载模型
+                self.model = joblib.load(temp_model_path)
+                print(f"    模型加载成功 (来源: Firebase Storage)")
+                
+                # Step D: 加载模型元数据以恢复特征列表
+                self._load_feature_columns_from_metadata()
+                
+                return True
+            
+            else:
+                # Step E: Firebase 中没有模型，尝试加载本地兜底模型
+                print(f"     Firebase Storage 中无模型，尝试加载本地兜底模型")
+                
+                if not self.local_model_path.exists():
+                    raise FileNotFoundError(
+                        f"模型文件不存在:\n"
+                        f"  - Firebase Storage: {self.firebase_model_path} (不存在)\n"
+                        f"  - 本地路径: {self.local_model_path} (不存在)\n"
+                        f"请先调用 train_model() 训练模型。"
+                    )
+                
+                self.model = joblib.load(self.local_model_path)
+                print(f"    模型加载成功 (来源: 本地兜底文件)")
+                
+                # 同样尝试加载元数据
+                self._load_feature_columns_from_metadata()
+                
+                return True
+        
+        except Exception as e:
+            raise Exception(f"加载模型时出错: {str(e)}")
+        
+        finally:
+            # 清理临时文件
+            if temp_model_path and os.path.exists(temp_model_path):
+                try:
+                    os.remove(temp_model_path)
+                    print(f"    已清理临时模型文件")
+                except Exception as e:
+                    print(f"     清理临时模型文件失败: {str(e)}")
+    
+    def _load_history_context(self, end_time: datetime, window_size: int = 200) -> pd.DataFrame:
+        """
+        加载用于特征构建的历史数据上下文
+        
+        Args:
+            end_time: 截止时间（不包含）
+            window_size: 需要加载的历史窗口大小（小时）
+            
+        Returns:
+            包含 Site_Load, Temperature 等列的历史 DataFrame
+        """
+        print(f" 加载历史上下文 (截止 {end_time})...")
+        
+        # 尝试加载全量数据文件
+        # 在生产环境中，这应该优化为只从数据库/Storage读取部分数据
+        # 但为了保持一致性，我们这里复用训练数据文件
+        data_path = None
+        
+        # 尝试从本地或临时目录查找
+        possible_paths = [
+            self.back_dir.parent / 'data' / 'processed' / 'cleaned_energy_data_all.csv', # 开发环境
+            Path('/tmp/cleaned_energy_data_all.csv'), # 临时目录
+            self.back_dir / 'data' / 'processed' / 'cleaned_energy_data_all.csv',
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                data_path = path
+                break
+                
+        if data_path is None:
+            # 尝试从 Storage 下载
+            print("    本地未找到数据，尝试从 Firebase Storage 下载...")
+            try:
+                data_path = self.storage_service.download_to_temp('data/processed/cleaned_energy_data_all.csv')
+            except Exception as e:
+                print(f"     无法下载历史数据: {e}")
+                
+        if data_path:
+            df = pd.read_csv(data_path, parse_dates=['Date'])
+            # 筛选截止时间之前的数据
+            history = df[df['Date'] < end_time].tail(window_size).copy()
+            if len(history) < 168:
+                print(f"     历史数据不足 168 小时 (实际: {len(history)}), 特征可能不准确")
+            return history
+        else:
+            print("     无法加载历史上下文，将使用全 0 填充 (仅用于测试/冷启动)")
+            # 创建虚拟历史数据
+            dates = [end_time - timedelta(hours=i) for i in range(window_size, 0, -1)]
+            return pd.DataFrame({
+                'Date': dates,
+                'Site_Load': [0.0] * window_size,
+                'Temperature': [25.0] * window_size,
+                'Hour': [d.hour for d in dates],
+                'DayOfWeek': [d.weekday() for d in dates]
+            })
+
+    def predict_next_24h(
+        self,
+        start_time: Union[str, datetime],
+        temp_forecast_list: Optional[List[float]] = None,
+        temp_adjust_delta: float = 0.0
+    ) -> List[Dict[str, Union[datetime, float]]]:
+        """
+        预测未来24小时的能源负载 (递归预测模式)
+        
+        Args:
+            start_time: 开始时间
+            temp_forecast_list: 温度预测列表
+            temp_adjust_delta: 温度调整值 (用于 What-If 分析)
+            
+        Returns:
+            预测结果列表
+        """
+        if self.model is None:
+            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        
+        if isinstance(start_time, str):
+            start_time = pd.to_datetime(start_time)
+        
+        # 验证温度预测列表长度
+        if temp_forecast_list is not None and len(temp_forecast_list) != 24:
+            raise ValueError(f"temp_forecast_list 长度必须为 24，当前为 {len(temp_forecast_list)}")
+            
+        print(f"\n 递归预测未来24小时负载 (从 {start_time} 开始)...")
+        
+        # 1. 加载历史上下文 (用于构建 Lag/Rolling 特征)
+        # 我们至少需要过去 168 小时的数据
+        history_df = self._load_history_context(start_time, window_size=200)
+        
+        # 转换为 list 以便高效 append
+        history_loads = history_df['Site_Load'].tolist()
+        history_temps = history_df['Temperature'].tolist() # 历史温度
+        
+        # 如果未提供温度预测，使用持久性预测 (昨天的温度)
+        if temp_forecast_list is None:
+            if len(history_temps) >= 24:
+                # 使用过去 24 小时的数据作为基准 (Persistence Forecast)
+                print("   ℹ  未提供温度预测，使用过去24小时温度作为基准 (Persistence Forecast)")
+                temp_forecast_list = history_temps[-24:]
+            else:
+                # 历史数据不足，回退到默认值
+                print("     历史温度不足，使用默认 25.0°C")
+                temp_forecast_list = [25.0] * 24
+        
+        # 应用温度调整 (What-If Analysis)
+        if temp_adjust_delta != 0.0:
+            print(f"     应用温度调整: {temp_adjust_delta:+.1f}°C")
+            temp_forecast_list = [t + temp_adjust_delta for t in temp_forecast_list]
+        
+        predictions = []
+        prediction_results = []
+        
+        # 2. 递归预测循环
+        current_time = start_time
+        
+        for i in range(24):
+            # A. 特征构建
+            hour = current_time.hour
+            day_of_week = current_time.weekday()
+            temperature = temp_forecast_list[i]
+            price = self._get_price(hour)
+            
+            # 构建高级特征
+            # 注意：history_loads 的最后一个元素是 t-1 时刻的负载
+            
+            # Lag Features
+            lag_1h = history_loads[-1] if len(history_loads) >= 1 else 0
+            lag_24h = history_loads[-24] if len(history_loads) >= 24 else 0
+            lag_168h = history_loads[-168] if len(history_loads) >= 168 else 0
+            
+            # Rolling Features
+            # 取最近 N 个点计算均值/标准差
+            # 【修复】使用 ddof=1 与训练时 pandas.rolling().std() 保持一致
+            roll_6h_mean = np.mean(history_loads[-6:]) if len(history_loads) >= 6 else lag_1h
+            roll_6h_std = np.std(history_loads[-6:], ddof=1) if len(history_loads) >= 6 else 0
+            roll_24h_mean = np.mean(history_loads[-24:]) if len(history_loads) >= 24 else lag_1h
+            
+            # Interaction Features (基础)
+            temp_x_hour = temperature * hour
+            lag24_x_dow = lag_24h * day_of_week
+            
+            # 组装基础特征向量
+            feature_dict = {
+                'Hour': hour,
+                'DayOfWeek': day_of_week,
+                'Temperature': temperature,
+                'Price': price,
+                'Lag_1h': lag_1h,
+                'Lag_24h': lag_24h,
+                'Lag_168h': lag_168h,
+                'Rolling_Mean_6h': roll_6h_mean,
+                'Rolling_Std_6h': roll_6h_std,
+                'Rolling_Mean_24h': roll_24h_mean,
+                'Temp_x_Hour': temp_x_hour,
+                'Lag24_x_DayOfWeek': lag24_x_dow
+            }
+            
+            # 添加增强特征（如果模型需要）
+            # 检查模型是否使用增强特征
+            if len(self.feature_columns) > 12:
+                # 时间特征
+                month = current_time.month
+                day_of_month = current_time.day
+                week_of_year = current_time.isocalendar()[1]
+                
+                # 季节 (北半球)
+                if month in [3, 4, 5]:
+                    season = 0  # 春
+                elif month in [6, 7, 8]:
+                    season = 1  # 夏
+                elif month in [9, 10, 11]:
+                    season = 2  # 秋
+                else:
+                    season = 3  # 冬
+                
+                # 是否周末
+                is_weekend = 1 if day_of_week >= 5 else 0
+                
+                # 是否节假日（美国加州）
+                # 优化: 避免在循环中重复初始化
+                if not hasattr(self, '_holidays_cache'):
+                    try:
+                        import holidays
+                        # 使用 subdiv 替代 deprecated 的 state 参数
+                        self._holidays_cache = holidays.US(subdiv='CA')
+                    except ImportError:
+                        self._holidays_cache = None
+                    except Exception:
+                        # 兼容旧版本 holidays (如不支持 subdiv)
+                        try:
+                            import holidays
+                            self._holidays_cache = holidays.US(state='CA')
+                        except:
+                            self._holidays_cache = None
+
+                if self._holidays_cache:
+                    is_holiday = 1 if current_time.date() in self._holidays_cache else 0
+                else:
+                    is_holiday = is_weekend  # 简化：周末视为假日
+                
+                # 增强交互特征
+                temp_x_season = temperature * season
+                lag24_x_is_weekend = lag_24h * is_weekend
+                hour_x_is_holiday = hour * is_holiday
+                
+                # 周期编码
+                month_sin = np.sin(2 * np.pi * month / 12)
+                month_cos = np.cos(2 * np.pi * month / 12)
+                hour_sin = np.sin(2 * np.pi * hour / 24)
+                hour_cos = np.cos(2 * np.pi * hour / 24)
+                
+                # 添加增强特征
+                feature_dict.update({
+                    'Month': month,
+                    'Season': season,
+                    'IsWeekend': is_weekend,
+                    'IsHoliday': is_holiday,
+                    'DayOfMonth': day_of_month,
+                    'WeekOfYear': week_of_year,
+                    'Temp_x_Season': temp_x_season,
+                    'Lag24_x_IsWeekend': lag24_x_is_weekend,
+                    'Hour_x_IsHoliday': hour_x_is_holiday,
+                    'Month_Sin': month_sin,
+                    'Month_Cos': month_cos,
+                    'Hour_Sin': hour_sin,
+                    'Hour_Cos': hour_cos
+                })
+            
+            # 确保特征顺序与模型一致
+            features = pd.DataFrame([{col: feature_dict[col] for col in self.feature_columns}])
+            
+            # B. 单步推理
+            pred_log = float(self.model.predict(features)[0])
+            
+            # 如果模型使用了 Log 变换，需要还原
+            if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                pred_load = float(np.expm1(pred_log))
+            else:
+                pred_load = pred_log
+            
+            # 【安全检查】强制约束预测值为非负 (物理常识)
+            pred_load = max(0.0, pred_load)
+            
+            # C. 更新历史序列 (递归关键)
+            # 将预测值作为"真实值"加入历史，用于下一步预测
+            history_loads.append(pred_load)
+            predictions.append(pred_load)
+            
+            # D. 记录结果
+            prediction_results.append({
+                'datetime': current_time,
+                'predicted_load': pred_load,
+                'temperature': temperature,
+                'price': price,
+                'hour': hour,
+                'day_of_week': day_of_week
+            })
+            
+            # 时间步进
+            current_time += timedelta(hours=1)
+            
+        print(f"    递归预测完成")
+        return prediction_results
+
+    def predict_single(self, *args, **kwargs):
+        """
+        单点预测已被递归预测取代，且不仅依赖简单输入。
+        为保持接口兼容抛出异常或仅做简单处理。
+        """
+        raise NotImplementedError("单点预测 (predict_single) 已废弃，请使用 predict_next_24h 进行序列预测。")
+    
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        获取模型的全局特征重要性
+        
+        使用随机森林内置的 feature_importances_ 属性，
+        反映各特征在整体预测中的平均贡献
+        
+        Returns:
+            特征名到重要性分数的映射字典
+            
+        Raises:
+            ValueError: 模型未加载
+        """
+        if self.model is None:
+            raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+        
+        importances = None
+        if hasattr(self.model, 'feature_importances_'):
+             importances = self.model.feature_importances_
+        elif isinstance(self.model, VotingRegressor):
+             try:
+                 all_importances = [est.feature_importances_ for est in self.model.estimators_]
+                 importances = np.mean(all_importances, axis=0)
+             except:
+                 pass
+                 
+        if importances is None:
+             # 如果无法获取，返回空字典或默认均匀分布
+             return {col: 0.0 for col in self.feature_columns}
+             
+        # 【修复】归一化特征重要性，确保总和为 1.0
+        # XGBoost/LightGBM 在 VotingRegressor 中可能返回未归一化的值 (如 gain/cover)
+        total_importance = np.sum(importances)
+        if total_importance > 0:
+            importances = importances / total_importance
+             
+        importance_dict = dict(zip(
+            self.feature_columns,
+            [float(v) for v in importances]
+        ))
+        
+        # 按重要性降序排序
+        sorted_importance = dict(sorted(
+            importance_dict.items(),
+            key=lambda x: x[1],
+            reverse=True
+        ))
+        
+        return sorted_importance
+    
+    def explain_prediction(
+        self,
+        hour: int,
+        day_of_week: int,
+        temperature: float,
+        price: float = None
+    ) -> Dict[str, Any]:
+        """
+        使用 SHAP 解释单次预测
+        
+        为给定输入提供详细的特征贡献分析，
+        展示每个特征如何影响最终预测值
+        
+        Args:
+            hour: 小时 (0-23)
+            day_of_week: 星期几 (0-6)
+            temperature: 温度 (°C)
+            price: 电价，如果为None则自动根据hour计算
+            
+        Returns:
+            包含以下字段的字典:
+            - base_value: 模型基准预测值（训练数据的平均值）
+            - predicted_value: 实际预测值
+            - feature_contributions: 各特征的贡献值字典
+            - interpretation: 人类可读的解释文字
+        """
+        try:
+            import shap
+            
+            # 检查模型是否已加载
+            if self.model is None:
+                raise ValueError("模型未加载，请先调用 load_model() 或 train_model()")
+
+            # 构建特征 DataFrame
+            # 【修复】如果 price 为 None，使用统一的 _get_price 方法计算（与推理一致）
+            if price is None:
+                price = self._get_price(hour)
+            
+            # 尝试从历史数据获取滞后特征，如果没有则使用合理的默认值
+            # 默认值基于典型的负载模式
+            default_load = 150.0  # 典型平均负载 (kW)
+            
+            # 构建与训练时相同的特征 DataFrame（包含所有12个特征）
+            features = pd.DataFrame({
+                'Hour': [hour],
+                'DayOfWeek': [day_of_week],
+                'Temperature': [temperature],
+                'Price': [price],
+                'Lag_1h': [default_load],  # 1小时前的负载
+                'Lag_24h': [default_load],  # 24小时前的负载
+                'Lag_168h': [default_load],  # 168小时(一周)前的负载
+                'Rolling_Mean_6h': [default_load],  # 6小时滚动平均
+                'Rolling_Std_6h': [default_load * 0.1],  # 6小时滚动标准差
+                'Rolling_Mean_24h': [default_load],  # 24小时滚动平均
+                'Temp_x_Hour': [temperature * hour],  # 温度与小时的交互特征
+                'Lag24_x_DayOfWeek': [default_load * day_of_week]  # 24小时滞后与星期的交互
+            })
+            
+            # 确保特征列顺序与训练时一致
+            features = features[self.feature_columns]
+            
+            # 使用 TreeExplainer 解释随机森林模型
+            # 只有当 explainer 尚未初始化时才创建，避免重复计算
+            if not hasattr(self, '_shap_explainer') or self._shap_explainer is None:
+                self._shap_explainer = shap.TreeExplainer(self.model)
+                
+            # 计算 SHAP 值
+            shap_values = self._shap_explainer.shap_values(features)
+            
+            # 获取期望值 (base value)
+            # 对于回归模型，expected_value 应该是一个标量
+            base_value = self._shap_explainer.expected_value
+            if isinstance(base_value, np.ndarray):
+                base_value = base_value[0]
+                
+            # 获取当前预测的 SHAP 值
+            # shap_values 对于回归可能是 (n_samples, n_features)
+            # 我们只需要第一个样本
+            current_shap_values = shap_values[0]
+            
+            # 预测值 = base_value + sum(shap_values)
+            predicted_value = base_value + np.sum(current_shap_values)
+            
+            # 构建特征贡献列表
+            contributions = []
+            for i, col in enumerate(self.feature_columns):
+                contributions.append({
+                    'feature': col,
+                    'value': float(features.iloc[0][col]),
+                    'contribution': float(current_shap_values[i])
+                })
+            
+            # 按贡献绝对值排序
+            contributions.sort(key=lambda x: abs(x['contribution']), reverse=True)
+            
+            # 生成人类可读的解释文字
+            top_feature = contributions[0]
+            direction = "增加" if top_feature['contribution'] > 0 else "减少"
+            interpretation = (
+                f"{top_feature['feature']} 是影响最大的因素，"
+                f"它使得预测负载{direction}了 {abs(top_feature['contribution']):.1f} kW。"
+            )
+
+            return {
+                'base_value': float(base_value),
+                'predicted_value': float(predicted_value),
+                'feature_contributions': contributions,
+                'interpretation': interpretation
+            }
+            
+        except Exception as e:
+            print(f"解释预测失败: {str(e)}")
+            return None
+
+    def evaluate_recent_performance(self, hours: int = 24) -> Dict[str, Union[float, str]]:
+        """
+        评估模型在最近一段时间的表现 (在线监控)
+        通过回测最近的真实数据来计算指标
+        
+        Args:
+            hours: 回测的小时数 (默认 24)
+            
+        Returns:
+            包含评估指标的字典 (mape, r2, last_update_time)
+        """
+        print(f"\n 开始在线模型评估 (最近 {hours} 小时)...")
+        
+        try:
+            # 1. 动态下载最新数据 (从 Firestore/Storage 持久化的 CSV)
+            from services.storage_service import StorageService
+            storage_service = StorageService()
+            
+            # 尝试下载最新的 cleaned_energy_data_all.csv
+            data_path = storage_service.download_to_temp('data/processed/cleaned_energy_data_all.csv')
+            
+            if not data_path:
+                print("    无法下载数据文件，跳过评估")
+                return {'status': 'no_data'}
+                
+            # 2. 读取数据
+            df = pd.read_csv(data_path, parse_dates=['Date'])
+            
+            # 3. 基于时间截取最近 N 小时的数据 (避免数据中断导致 tail(N) 跨度过大)
+            last_time = df['Date'].max()
+            start_time = last_time - timedelta(hours=hours)
+            
+            # 筛选时间窗口内的数据
+            recent_df = df[df['Date'] > start_time].copy()
+            
+            # 检查样本量
+            # 理论上应该有 hours 个样本，允许有一点缺失 (e.g. > 50%)
+            min_samples = int(hours * 0.5) 
+            if len(recent_df) < min_samples:
+                print(f"    最近 {hours} 小时内数据样本不足 ({len(recent_df)} < {min_samples})，跳过评估")
+                return {
+                    'status': 'insufficient_data',
+                    'message': f'Insufficient data in last {hours}h: found {len(recent_df)} samples'
+                }
+                
+            # 4. 准备特征和真实值
+            # 【修复】检查并自动补算缺失特征
+            missing_features = [col for col in self.feature_columns if col not in recent_df.columns]
+            if missing_features:
+                print(f"    检测到缺失特征: {missing_features}")
+                print(f"    尝试自动补算...")
+                
+                try:
+                    from services.data_processor import EnergyDataProcessor
+                    processor = EnergyDataProcessor()
+                    
+                    # 确保 Date 是 datetime 类型
+                    if recent_df['Date'].dtype == 'object':
+                        recent_df['Date'] = pd.to_datetime(recent_df['Date'])
+                    
+                    # 补算基础时间特征
+                    if 'Hour' not in recent_df.columns:
+                        recent_df['Hour'] = recent_df['Date'].dt.hour
+                    if 'DayOfWeek' not in recent_df.columns:
+                        recent_df['DayOfWeek'] = recent_df['Date'].dt.dayofweek
+                    if 'Price' not in recent_df.columns:
+                        recent_df = processor.add_price_feature(recent_df)
+                    
+                    # 补算增强时间特征
+                    enhanced_time_cols = ['Month', 'Season', 'IsWeekend', 'IsHoliday']
+                    if any(c in missing_features for c in enhanced_time_cols):
+                        recent_df = processor.add_enhanced_time_features(recent_df)
+                    
+                    # 补算 Lag/Rolling 特征
+                    lag_cols = ['Lag_1h', 'Lag_24h', 'Lag_168h', 'Rolling_Mean_6h', 'Rolling_Std_6h']
+                    if any(c in missing_features for c in lag_cols):
+                        recent_df = processor.add_advanced_features(recent_df, dropna=False, use_enhanced=True)
+                    
+                    # 再次检查是否还有缺失
+                    still_missing = [col for col in self.feature_columns if col not in recent_df.columns]
+                    if still_missing:
+                        print(f"    仍有无法补算的特征: {still_missing}")
+                        return {
+                            'status': 'feature_mismatch',
+                            'message': f'Cannot compute features: {still_missing}'
+                        }
+                    print(f"    特征补算完成")
+                except Exception as fe:
+                    print(f"    特征补算失败: {str(fe)}")
+                    return {
+                        'status': 'feature_error',
+                        'message': f'Feature computation failed: {str(fe)}'
+                    }
+            
+            # 删除因 Lag/Rolling 产生的 NaN 行
+            recent_df = recent_df.dropna(subset=self.feature_columns)
+            if len(recent_df) < min_samples:
+                print(f"    删除 NaN 后样本不足 ({len(recent_df)} < {min_samples})")
+                return {
+                    'status': 'insufficient_data',
+                    'message': f'Insufficient valid samples after feature computation'
+                }
+            
+            X_recent = recent_df[self.feature_columns]
+            y_true = recent_df[self.target_column].values
+            
+            # 5. 进行预测
+            y_pred = self.model.predict(X_recent)
+            
+            # 如果模型使用了 Log 变换，需要还原
+            if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                 y_pred = np.expm1(y_pred)
+            
+            # 6. 计算指标
+            # MAPE: Mean Absolute Percentage Error
+            # 避免分母为 0
+            mask = y_true != 0
+            if np.sum(mask) == 0:
+                print("    所有真实负载均为 0，无法计算 MAPE")
+                mape = 0.0
+            else:
+                mape = (np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
+            
+            # R2 Score
+            if len(y_true) < 2:
+                r2 = 0.0  # 样本太少
+            else:
+                r2 = r2_score(y_true, y_pred)
+            
+            # 7. 格式化结果
+            # 注意：mape 存储为小数形式 (0.05 = 5%)，以便与前端 percent indicator 直接兼容
+            metrics = {
+                'status': 'success',
+                'mape': round(mape / 100, 4),  # 转换为小数形式 (5.25% -> 0.0525)
+                'r2_score': round(r2, 3),  # 使用正确的 key 名称匹配前端
+                'sample_count': len(y_true),
+                'last_data_point': last_time.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            print(f"    评估完成: MAPE={mape:.2f}%, R2={metrics['r2_score']}")
+            return metrics
+            
+        except Exception as e:
+            print(f"    在线评估失败: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+\end{lstlisting}
+
+\subsection{优化调度服务 (back/services/optimization\_service.py)}
+\begin{lstlisting}[style=codestyle, language=Python, caption={Gurobi 优化调度服务}]
+"""
+能源优化服务模块 - 电池储能系统优化调度
+Energy Optimization Service - Battery Energy Storage System Scheduling
+
+使用 Gurobi 求解器进行混合整数规划 (MIP) 优化
+"""
+
+import os
+import numpy as np
+import pandas as pd
+from typing import List, Dict, Optional, Tuple
+import warnings
+
+from services.secrets import get_secret
+
+warnings.filterwarnings('ignore')
+
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+    GUROBI_AVAILABLE = True
+except ImportError:
+    gp = None  # 设置为 None 以避免 NameError
+    GRB = None
+    GUROBI_AVAILABLE = False
+    print("  警告: gurobipy 未安装，优化功能将不可用")
+
+
+class EnergyOptimizer:
+    """
+    能源优化器
+    
+    使用混合整数规划 (MIP) 优化电池储能系统的充放电调度
+    目标: 最小化总购电成本
+    """
+    
+    def __init__(
+        self,
+        battery_capacity: float = 60.0,
+        max_power: float = 20.0,
+        efficiency: float = 0.95
+    ):
+        """
+        初始化优化器
+        
+        Args:
+            battery_capacity: 电池容量 (kWh)，默认 60.0 (工业级储能)
+            max_power: 最大充放电功率 (kW)，默认 20.0
+            efficiency: 充放电效率，默认 0.95 (95%)
+        """
+        if not GUROBI_AVAILABLE:
+            raise ImportError(
+                "gurobipy 未安装。请运行: pip install gurobipy"
+            )
+        
+        # 电池参数
+        self.battery_capacity = battery_capacity
+        self.max_power = max_power
+        self.efficiency = efficiency
+        
+        # Gurobi 环境
+        self.env = None
+        
+        print(f" 电池参数:")
+        print(f"   - 容量: {battery_capacity} kWh")
+        print(f"   - 最大功率: {max_power} kW")
+        print(f"   - 效率: {efficiency * 100}%")
+    
+    def _create_gurobi_env(self) -> 'gp.Env':
+        """
+        创建 Gurobi 环境
+        
+        支持 WLS (Web License Service) 和本地许可证
+        
+        Returns:
+            Gurobi 环境对象
+            
+        Raises:
+            Exception: 许可证错误
+        """
+        try:
+            # 检查 WLS 环境变量（使用 secrets 模块统一管理）
+            wls_access_id = get_secret('GRB_WLSACCESSID')
+            wls_secret = get_secret('GRB_WLSSECRET')
+            wls_license_id = get_secret('GRB_LICENSEID')
+            
+            if wls_access_id and wls_secret:
+                print(" 使用 WLS (Web License Service) 许可证")
+                
+                # 创建 WLS 环境
+                env = gp.Env(empty=True)
+                env.setParam('WLSACCESSID', wls_access_id)
+                env.setParam('WLSSECRET', wls_secret)
+                
+                if wls_license_id:
+                    env.setParam('LICENSEID', int(wls_license_id))
+                
+                env.start()
+                print("    WLS 许可证验证成功")
+                
+            else:
+                print(" 使用本地许可证 (或 Size-Limited Trial)")
+                
+                # 使用默认环境
+                env = gp.Env()
+                print("    许可证验证成功")
+            
+            return env
+            
+        except gp.GurobiError as e:
+            error_msg = str(e)
+            
+            if "No Gurobi license found" in error_msg or "license" in error_msg.lower():
+                raise Exception(
+                    " Gurobi 许可证未找到或无效\n"
+                    "   请执行以下步骤之一:\n"
+                    "   1. 申请免费学术许可证: https://www.gurobi.com/academia/\n"
+                    "   2. 使用 Size-Limited Trial (自动激活，限制 2000 变量)\n"
+                    "   3. 配置 WLS 许可证环境变量:\n"
+                    "      export GRB_WLSACCESSID=your_access_id\n"
+                    "      export GRB_WLSSECRET=your_secret\n"
+                    f"   原始错误: {error_msg}"
+                )
+            else:
+                raise Exception(f"Gurobi 环境创建失败: {error_msg}")
+    
+    def optimize_schedule(
+        self,
+        load_profile: List[float],
+        price_profile: List[float],
+        initial_soc: float = 0.5
+    ) -> Dict:
+        """
+        优化电池充放电调度
+        
+        Args:
+            load_profile: 未来24小时的负载预测 (kW)
+            price_profile: 未来24小时的电价 (元/kWh)
+            initial_soc: 初始电池电量百分比 (0.0-1.0)
+            
+        Returns:
+            优化结果字典，包含:
+                - status: 求解状态
+                - schedule: 详细调度计划
+                - total_cost_without_battery: 无电池时的总成本
+                - total_cost_with_battery: 有电池时的总成本
+                - savings: 节省金额
+                
+        Raises:
+            ValueError: 输入参数错误
+            Exception: 优化失败
+        """
+        print("\n" + "="*80)
+        print(" 开始优化电池调度")
+        print("="*80 + "\n")
+        
+        # 验证输入
+        if len(load_profile) != 24:
+            raise ValueError(f"负载数据长度必须为24，当前为 {len(load_profile)}")
+        
+        if len(price_profile) != 24:
+            raise ValueError(f"电价数据长度必须为24，当前为 {len(price_profile)}")
+        
+        if not 0 <= initial_soc <= 1:
+            raise ValueError(f"初始SOC必须在 [0, 1] 范围内，当前为 {initial_soc}")
+        
+        # 转换为 numpy 数组
+        load = np.array(load_profile)
+        price = np.array(price_profile)
+        
+        print(f" 输入数据:")
+        print(f"   - 负载范围: {load.min():.2f} - {load.max():.2f} kW")
+        print(f"   - 电价范围: {price.min():.2f} - {price.max():.2f} 元/kWh")
+        print(f"   - 初始 SOC: {initial_soc * 100:.1f}%")
+        
+        # 计算无电池时的总成本
+        cost_without_battery = np.sum(load * price)
+        print(f"   - 无电池总成本: {cost_without_battery:.2f} 元")
+        
+        try:
+            # 创建 Gurobi 环境
+            if self.env is None:
+                self.env = self._create_gurobi_env()
+            
+            # 创建模型
+            print(f"\n  构建优化模型...")
+            model = gp.Model("BatteryScheduling", env=self.env)
+            model.setParam('OutputFlag', 0)  # 关闭求解器输出
+            
+            T = 24  # 时间步数
+            
+            # 决策变量
+            print(f"   - 创建决策变量...")
+            
+            # 充电功率 (kW)
+            P_charge = model.addVars(T, lb=0, ub=self.max_power, name="P_charge")
+            
+            # 放电功率 (kW)
+            P_discharge = model.addVars(T, lb=0, ub=self.max_power, name="P_discharge")
+            
+            # 电池存储电量 (kWh)
+            E_stored = model.addVars(T, lb=0, ub=self.battery_capacity, name="E_stored")
+            
+            # 二进制变量: 是否充电
+            Is_charge = model.addVars(T, vtype=GRB.BINARY, name="Is_charge")
+            
+            # 二进制变量: 是否放电
+            Is_discharge = model.addVars(T, vtype=GRB.BINARY, name="Is_discharge")
+            
+            print(f"    变量数量: {T * 5} 个")
+            
+            # 约束条件
+            print(f"   - 添加约束条件...")
+            
+            # 1. 状态互斥约束: 不能同时充放电
+            for t in range(T):
+                model.addConstr(
+                    Is_charge[t] + Is_discharge[t] <= 1,
+                    name=f"mutex_{t}"
+                )
+            
+            # 2. 功率限制约束
+            for t in range(T):
+                # 充电功率限制
+                model.addConstr(
+                    P_charge[t] <= self.max_power * Is_charge[t],
+                    name=f"charge_limit_{t}"
+                )
+                
+                # 放电功率限制
+                model.addConstr(
+                    P_discharge[t] <= self.max_power * Is_discharge[t],
+                    name=f"discharge_limit_{t}"
+                )
+            
+            # 3. 能量守恒约束 (电池动态方程)
+            # 单位检查 (防止 MW 数据被当作 kW 使用)
+            avg_load = float(np.mean(load_profile))
+            if avg_load > 10000:
+                # logger.error(f"异常巨大的负载数值 ({avg_load:.2f} kW). 疑似单位错误 (MW vs kW).") # Assuming logger is defined
+                # 严重警告，但不阻止运行 (可能会得到不合理的优化结果)
+                print(f"  警告: 检测到非常大的负载 ({avg_load:.2f})，请确认单位是否为 kW")
+                raise ValueError(
+                    f"检测到异常巨大的负载数值 ({avg_load:.2f} kW)。"
+                    "这可能表示单位错误 (例如，输入的是 MW 而非 kW)。"
+                    "请确保负载数据以 kW 为单位。"
+                )
+            
+            # 4. 防逆流约束 (No Grid Export)
+            # 确保: grid_power = load + charge - discharge >= 0
+            # 即: discharge <= load + charge
+            # 用户反馈负值是不合理的，因此我们默认开启"防逆流"模式，禁止向电网卖电
+            for t in range(T):
+                model.addConstr(
+                    load[t] + P_charge[t] - P_discharge[t] >= 0,
+                    name=f"no_export_{t}"
+                )
+            
+            initial_energy = initial_soc * self.battery_capacity
+            
+            for t in range(T):
+                if t == 0:
+                    # 初始时刻
+                    model.addConstr(
+                        E_stored[t] == initial_energy + 
+                        P_charge[t] * self.efficiency - 
+                        P_discharge[t] / self.efficiency,
+                        name=f"energy_balance_{t}"
+                    )
+                else:
+                    # 后续时刻
+                    model.addConstr(
+                        E_stored[t] == E_stored[t-1] + 
+                        P_charge[t] * self.efficiency - 
+                        P_discharge[t] / self.efficiency,
+                        name=f"energy_balance_{t}"
+                    )
+            
+            print(f"    约束数量: {T * 4} 个")
+            
+            # 目标函数: 最小化总购电成本
+            print(f"   - 设置目标函数...")
+            
+            total_cost = gp.quicksum(
+                (load[t] + P_charge[t] - P_discharge[t]) * price[t]
+                for t in range(T)
+            )
+            
+            model.setObjective(total_cost, GRB.MINIMIZE)
+            print(f"    目标: 最小化总购电成本")
+            
+            # 求解模型
+            print(f"\n 开始求解...")
+            model.optimize()
+            
+            # 检查求解状态
+            status = model.status
+            
+            if status == GRB.OPTIMAL:
+                print(f"    求解成功! (状态: OPTIMAL)")
+                
+                # 提取结果
+                schedule = []
+                soc_hits_min = 0
+                soc_hits_max = 0
+                charge_hits = 0
+                discharge_hits = 0
+                
+                for t in range(T):
+                    p_charge = P_charge[t].X
+                    p_discharge = P_discharge[t].X
+                    e_stored = E_stored[t].X
+                    soc = e_stored / self.battery_capacity
+
+                    if soc <= 0.10 + 1e-6:
+                        soc_hits_min += 1
+                    if soc >= 0.90 - 1e-6:
+                        soc_hits_max += 1
+                    if abs(p_charge - self.max_power) < 1e-5 and p_charge > 0:
+                        charge_hits += 1
+                    if abs(p_discharge - self.max_power) < 1e-5 and p_discharge > 0:
+                        discharge_hits += 1
+                    
+                    # 记录调度结果 (kW)
+                    # grid_power = load + charge - discharge
+                    # 正值 = 从电网买电, 负值 = 向电网卖电
+                    grid_power = load[t] + p_charge - p_discharge
+                    
+                    schedule.append({
+                        'hour': t,
+                        'load': float(load[t]),
+                        'price': float(price[t]),
+                        'charge_power': float(p_charge),
+                        'discharge_power': float(p_discharge),
+                        'battery_action': float(p_charge - p_discharge),
+                        'soc': float(soc),
+                        'stored_energy': float(e_stored),
+                        'grid_power': float(grid_power)
+                    })
+                    
+                # 检查是否存在大量反向送电 (Export)
+                total_export = sum(max(0, -item['grid_power']) for item in schedule)
+                if total_export > 1000: # 如果全天送电超过 1000 kWh (5MW 电池容易跑到这个值)
+                    print(f" 注意: 检测到大量反向送电 ({total_export:.2f} kWh)。")
+                    print("   如果这不是预期的，请检查电池容量设置是否过大 (MW级别?)")
+                
+                # 计算总成本
+                cost_with_battery = model.objVal
+                savings = cost_without_battery - cost_with_battery
+                savings_percent = (savings / cost_without_battery) * 100 if cost_without_battery > 0 else 0
+                
+                print(f"\n 优化结果:")
+                print(f"   - 无电池总成本: {cost_without_battery:.2f} 元")
+                print(f"   - 有电池总成本: {cost_with_battery:.2f} 元")
+                print(f"   - 节省金额: {savings:.2f} 元 ({savings_percent:.1f}%)")
+
+                diagnostics = {
+                    'runtime_sec': float(getattr(model, "Runtime", 0.0)),
+                    'mip_gap': float(getattr(model, "MIPGap", 0.0)) if hasattr(model, "MIPGap") else None,
+                    'node_count': int(getattr(model, "NodeCount", 0)) if hasattr(model, "NodeCount") else None,
+                    'iter_count': int(getattr(model, "IterCount", 0)) if hasattr(model, "IterCount") else None,
+                }
+
+                constraint_hits = {
+                    'soc_min_hits': soc_hits_min,
+                    'soc_max_hits': soc_hits_max,
+                    'max_charge_hits': charge_hits,
+                    'max_discharge_hits': discharge_hits
+                }
+                
+                return {
+                    'status': 'Optimal',
+                    'schedule': schedule,
+                    'total_cost_without_battery': float(cost_without_battery),
+                    'total_cost_with_battery': float(cost_with_battery),
+                    'savings': float(savings),
+                    'savings_percent': float(savings_percent),
+                    'diagnostics': diagnostics,
+                    'constraint_hits': constraint_hits
+                }
+                
+            elif status == GRB.INFEASIBLE:
+                print(f"    模型不可行 (INFEASIBLE)")
+                return {
+                    'status': 'Infeasible',
+                    'error': '模型约束不可行，请检查输入参数'
+                }
+                
+            elif status == GRB.UNBOUNDED:
+                print(f"    模型无界 (UNBOUNDED)")
+                return {
+                    'status': 'Unbounded',
+                    'error': '模型目标函数无界'
+                }
+                
+            else:
+                print(f"     求解未完成 (状态码: {status})")
+                return {
+                    'status': 'Unknown',
+                    'error': f'求解状态未知 (状态码: {status})'
+                }
+                
+        except gp.GurobiError as e:
+            error_msg = str(e)
+            
+            if "license" in error_msg.lower():
+                print(f"\n Gurobi 许可证错误")
+                return {
+                    'status': 'Error',
+                    'error': 'Optimization failed: Gurobi license not found'
+                }
+            else:
+                print(f"\n Gurobi 错误: {error_msg}")
+                return {
+                    'status': 'Error',
+                    'error': f'Gurobi error: {error_msg}'
+                }
+                
+        except Exception as e:
+            print(f"\n 优化失败: {str(e)}")
+            return {
+                'status': 'Error',
+                'error': str(e)
+            }
+    
+    def print_schedule(self, result: Dict):
+        """
+        打印优化调度结果
+        
+        Args:
+            result: optimize_schedule 返回的结果字典
+        """
+        if result['status'] != 'Optimal':
+            print(f"\n 优化失败: {result.get('error', 'Unknown error')}")
+            return
+        
+        print("\n" + "="*80)
+        print(" 优化调度计划")
+        print("="*80 + "\n")
+        
+        schedule = result['schedule']
+        
+        # 打印表头
+        print(f"{'时间':<6} {'负载':<10} {'电价':<10} {'电池动作':<12} {'SOC':<10} {'说明':<15}")
+        print("-" * 80)
+        
+        for item in schedule:
+            hour = item['hour']
+            load = item['load']
+            price = item['price']
+            action = item['battery_action']
+            soc = item['soc']
+            
+            # 判断电池动作
+            if abs(action) < 0.01:
+                action_str = "待机"
+                action_val = "0.00 kW"
+            elif action > 0:
+                action_str = "充电"
+                action_val = f"+{action:.2f} kW"
+            else:
+                action_str = "放电"
+                action_val = f"{action:.2f} kW"
+            
+            # 判断电价时段
+            if price <= 0.3:
+                period = "谷时"
+            elif price <= 0.6:
+                period = "平时"
+            else:
+                period = "峰时"
+            
+            print(f"{hour:02d}:00  {load:>6.2f} kW  {price:>6.2f}元  {action_val:<12} {soc*100:>5.1f}%  {action_str} ({period})")
+        
+        # 打印总结
+        print("\n" + "-" * 80)
+        print(f" 成本分析:")
+        print(f"   - 无电池总成本: {result['total_cost_without_battery']:.2f} 元")
+        print(f"   - 有电池总成本: {result['total_cost_with_battery']:.2f} 元")
+        print(f"   - 节省金额: {result['savings']:.2f} 元 ({result['savings_percent']:.1f}%)")
+        print("="*80 + "\n")
+    
+    def close(self):
+        """显式关闭 Gurobi 环境（推荐在使用完毕后调用）"""
+        if self.env is not None:
+            try:
+                self.env.dispose()
+                self.env = None
+                print(" Gurobi 环境已关闭")
+            except Exception as e:
+                print(f" 关闭 Gurobi 环境时出错: {e}")
+    
+    def __enter__(self):
+        """上下文管理器入口"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """上下文管理器出口 - 自动关闭环境"""
+        self.close()
+        return False
+    
+    def __del__(self):
+        """析构函数: 关闭 Gurobi 环境（兜底）"""
+        self.close()
+\end{lstlisting}
+
+\section{前端源代码}
+
+\subsection{Dart入口 (front/lib/main.dart)}
+\begin{lstlisting}[style=codestyle, language=Dart, caption={Flutter 应用入口}]
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'config/app_theme.dart';
+import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Power Data Analysis',
+      theme: AppTheme.lightTheme,
+      home: StreamBuilder(
+        stream: AuthService().authStateChanges,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            final user = snapshot.data;
+            return user == null ? const LoginScreen() : const MainNavigation();
+          }
+          return const CircularProgressIndicator();
+        },
+      ),
+    );
+  }
+}
+\end{lstlisting}
+
+\subsection{UI 主题配置 (front/lib/config/app\_theme.dart)}
+\begin{lstlisting}[style=codestyle, language=Dart, caption={Flutter Glassmorphism 主题}]
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  static ThemeData get lightTheme {
+    return ThemeData(
+      primarySwatch: Colors.blue,
+      scaffoldBackgroundColor: const Color(0xFFF5F7FA), // 浅灰背景
+      cardTheme: CardTheme(
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white.withOpacity(0.9), // 磨砂感底色
+      ),
+      useMaterial3: true,
+    );
+  }
+  
+  // Glassmorphism 装饰器
+  static BoxDecoration get glassDecoration => BoxDecoration(
+    color: Colors.white.withOpacity(0.2),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.white.withOpacity(0.3)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 10,
+        spreadRadius: 2,
+      )
+    ],
+  );
+}
+\end{lstlisting}
+
+\subsection{数据分析屏幕 (front/lib/screens/analysis\_screen.dart)}
+\begin{lstlisting}[style=codestyle, language=Dart, caption={数据分析界面}]
+class DataAnalysisScreen extends StatefulWidget {
+  @override
+  _DataAnalysisScreenState createState() => _DataAnalysisScreenState();
+}
+
+class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
+  // ... 状态变量 ...
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildControlPanel(), // 顶部控制栏
+            const SizedBox(height: 20),
+            if (_isLoading)
+               const CircularProgressIndicator()
+            else if (_result != null)
+               Column(
+                 children: [
+                   PowerChartWidget(data: _result!.predictions), // 功率图表
+                   const SizedBox(height: 16),
+                   FeatureImportanceChart(features: _result!.features), // 特征重要性
+                   const SizedBox(height: 16),
+                   CorrelationMatrixView(matrix: _result!.correlations), // 相关性矩阵
+                 ]
+               )
+          ],
+        ),
+      ),
+    );
+  }
+}
+\end{lstlisting}
+
+\subsection{建模与优化屏幕 (front/lib/screens/modeling\_screen.dart)}
+\begin{lstlisting}[style=codestyle, language=Dart, caption={建模与优化界面}]
+/// 能源优化仪表盘 - Glassmorphism 设计
+/// 交互式能源调度优化界面
+library;
+
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:percent_indicator/percent_indicator.dart';
+import 'package:intl/intl.dart';
+import '../config/app_theme.dart';
+import '../services/api_service.dart';
+import '../models/optimization_result.dart';
+import '../widgets/power_chart_widget.dart';
+import '../widgets/soc_chart_widget.dart';
+import '../widgets/responsive_wrapper.dart';
+import '../widgets/analysis/feature_importance_chart.dart';
+import '../utils/responsive_helper.dart';
+import '../config/constants.dart';
+
+class ModelingScreen extends StatefulWidget {
+  const ModelingScreen({super.key});
+
+  @override
+  State<ModelingScreen> createState() => _ModelingScreenState();
+}
+
+class _ModelingScreenState extends State<ModelingScreen> {
+  // 状态变量
+  bool _isLoading = false;
+  double _initialSoc = AppConstants.defaultInitialSoc; // 默认 50%
+  OptimizationResponse? _result;
+  OptimizationResponse? _previousResult; // 用于对比
+  String? _errorMessage;
+  DateTime? _selectedDate;
+  
+  //  电池参数 (方案一：交互式优化沙盒)
+  // 注意：负载规模约 150-300 kW (微网/商业楼宇级)
+  double _batteryCapacity = 500; // kWh (商业储能)
+  double _maxPower = 200; // kW
+  bool _showAdvancedParams = false; // 是否展开高级参数
+  
+  //  场景模拟 (方案二)
+  String? _selectedScenario; // 'summer', 'winter', 'overtime'
+  
+  //  What-If 预测 (方案三)
+  double _temperatureAdjust = 0.0; // -5 ~ +5 度
+
+  @override
+  void initState() {
+    super.initState();
+    // 默认选择明天
+    _selectedDate = DateTime.now().add(const Duration(days: 1));
+  }
+
+  /// 执行优化
+  Future<void> _runOptimization({bool saveForComparison = true}) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      if (saveForComparison && _result != null) {
+        _previousResult = _result; // 保存上次结果用于对比
+      }
+      _result = null;
+    });
+
+    try {
+      final result = await ApiService.runOptimization(
+        initialSoc: _initialSoc,
+        targetDate: _selectedDate,
+        batteryCapacity: _batteryCapacity,
+        batteryPower: _maxPower,
+        temperatureAdjust: _temperatureAdjust,
+      );
+
+      if (mounted) {
+        setState(() {
+          _result = result;
+          _isLoading = false;
+        });
+
+        if (result.isSuccess) {
+          _showSuccessSnackBar('优化完成！节省 ${result.optimization?.summary.savingsFormatted ?? "0"}');
+        } else {
+          setState(() {
+            _errorMessage = result.message ?? result.error ?? '优化失败';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+        _showErrorSnackBar(_errorMessage!);
+      }
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (!_isLoading && _initialSoc > 0) {
+            await _runOptimization();
+          }
+        },
+        child: ResponsiveWrapper(
+          maxWidth: ResponsiveHelper.getMaxContentWidth(context),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: ResponsiveHelper.getPagePadding(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              // 1. 顶部控制卡片
+              _buildControlPanel(),
+              
+              const SizedBox(height: 16),
+              
+              // 2. 错误提示
+              if (_errorMessage != null) _buildErrorCard(),
+              
+              // 3. 加载指示器
+              if (_isLoading) _buildLoadingCard(),
+              
+              // 4. AI模型健康度卡片 (关键新增！)
+              if (_result?.modelInfo != null) ...[
+                const SizedBox(height: 16),
+                _buildModelHealthCard(_result!.modelInfo!),
+              ],
+              
+              // 5. 关键指标卡片
+              if (_result?.optimization != null) ...[
+                const SizedBox(height: 16),
+                _buildKeyMetrics(_result!.optimization!),
+
+                if (_result!.optimization!.diagnostics != null ||
+                    _result!.optimization!.constraintHits != null) ...[
+                  const SizedBox(height: 12),
+                  _buildSolverDiagnosticsCard(_result!.optimization!),
+                ],
+                
+                const SizedBox(height: 24),
+                
+                // 5. 电网交互策略图
+                PowerChartWidget(
+                  chartData: _result!.optimization!.chartData,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // 6. 电池电量变化图
+                SocChartWidget(
+                  chartData: _result!.optimization!.chartData,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // 7. 策略详情
+                _buildStrategyDetails(_result!.optimization!),
+                
+                // 8. 模型可解释性 - 特征重要性图表
+                if (_result?.modelExplainability != null) ...[
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    initiallyExpanded: false,
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    collapsedShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    backgroundColor: Colors.white,
+                    collapsedBackgroundColor: Colors.white,
+                    leading: Icon(Icons.psychology, color: Colors.purple[600]),
+                    title: const Text(
+                      ' AI 预测解释',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    subtitle: Text(
+                      '了解哪些因素影响了负载预测',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: FeatureImportanceChart(
+                          featureImportance: _result!.modelExplainability!.featureImportance,
+                          featureDescriptions: _result!.modelExplainability!.featureDescriptions,
+                          interpretation: _result!.modelExplainability!.interpretation,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+              
+              // 空状态提示
+              if (_result == null && !_isLoading && _errorMessage == null)
+                _buildEmptyState(),
+              
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+        ),
+      ),
+    );
+  }
+
+  /// 1. 顶部控制卡片 - 交互式优化沙盒 (Glassmorphism)
+  Widget _buildControlPanel() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            boxShadow: AppDecorations.shadowMd,
+          ),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    ),
+                    child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '优化沙盒',
+                      style: AppTextStyles.h3,
+                    ),
+                  ),
+                  // 高级参数展开按钮
+                  TextButton.icon(
+                    onPressed: () => setState(() => _showAdvancedParams = !_showAdvancedParams),
+                    icon: Icon(
+                      _showAdvancedParams ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                    label: Text(
+                      _showAdvancedParams ? '收起' : '高级',
+                      style: AppTextStyles.labelMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            
+              // ========== 场景选择 ==========
+              Text('快速场景', style: AppTextStyles.labelMedium.copyWith(color: AppColors.textMuted)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildScenarioChip('summer', '夏季高温', AppColors.warning, Icons.wb_sunny_rounded),
+                  _buildScenarioChip('winter', '冬季寒潮', AppColors.info, Icons.ac_unit_rounded),
+                  _buildScenarioChip('overtime', '夜间加班', const Color(0xFF8B5CF6), Icons.nightlight_round),
+                ],
+              ),
+              
+              Divider(height: 32, color: AppColors.border),
+            
+            // ========== 初始电量滑块 ==========
+            _buildSliderRow(
+              icon: Icons.battery_charging_full,
+              iconColor: Colors.green,
+              label: '初始电量',
+              value: _initialSoc,
+              min: 0.0,
+              max: 1.0,
+              divisions: 20,
+              displayValue: '${(_initialSoc * 100).toInt()}%',
+              onChanged: (v) => setState(() => _initialSoc = v),
+            ),
+            
+            // ========== 高级参数 (可折叠) ==========
+            if (_showAdvancedParams) ...[
+              const SizedBox(height: 16),
+              
+              // 电池容量滑块 (商业级储能)
+              _buildSliderRow(
+                icon: Icons.battery_full,
+                iconColor: Colors.blue,
+                label: '电池容量 (商业微网)',
+                value: _batteryCapacity,
+                min: 100,
+                max: 2000,
+                divisions: 19,
+                displayValue: '${_batteryCapacity.toInt()} kWh',
+                onChanged: (v) => setState(() => _batteryCapacity = v),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // 最大功率滑块 (商业级)
+              _buildSliderRow(
+                icon: Icons.flash_on,
+                iconColor: Colors.amber,
+                label: '最大功率 (微网级)',
+                value: _maxPower,
+                min: 50,
+                max: 1000,
+                divisions: 19,
+                displayValue: '${_maxPower.toInt()} kW',
+                onChanged: (v) => setState(() => _maxPower = v),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // What-If 温度调整 (方案三)
+              _buildSliderRow(
+                icon: Icons.thermostat,
+                iconColor: Colors.red,
+                label: '温度调整 (What-If)',
+                value: _temperatureAdjust,
+                min: -5.0,
+                max: 5.0,
+                divisions: 10,
+                displayValue: '${_temperatureAdjust >= 0 ? "+" : ""}${_temperatureAdjust.toInt()}°C',
+                onChanged: (v) => setState(() => _temperatureAdjust = v),
+              ),
+            ],
+            
+            const SizedBox(height: 16),
+            
+            // 日期选择
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                const Text('目标日期', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                const Spacer(),
+                InkWell(
+                  onTap: _isLoading ? null : () => _selectDate(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _selectedDate != null
+                              ? DateFormat('MM-dd').format(_selectedDate!)
+                              : '选择',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down, color: Colors.grey[600], size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+              const SizedBox(height: 24),
+            
+              // 开始优化按钮 (CTA 橙色)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _runOptimization,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Icon(Icons.bolt_rounded, size: 22),
+                  label: Text(
+                    _isLoading ? '优化中...' : '开始智能调度',
+                    style: AppTextStyles.button,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cta,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            
+              // 参数摘要
+              if (_showAdvancedParams || _selectedScenario != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_batteryCapacity.toInt()}kWh | ${_maxPower.toInt()}kW | ${(_initialSoc * 100).toInt()}%'
+                          '${_temperatureAdjust != 0 ? " | ${_temperatureAdjust >= 0 ? "+" : ""}${_temperatureAdjust.toInt()}°C" : ""}',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 场景选择芯片 (无 emoji)
+  Widget _buildScenarioChip(String id, String label, Color color, IconData icon) {
+    final isSelected = _selectedScenario == id;
+    return FilterChip(
+      avatar: Icon(
+        icon,
+        size: 16,
+        color: isSelected ? Colors.white : color,
+      ),
+      label: Text(label, style: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+      )),
+      selected: isSelected,
+      onSelected: _isLoading ? null : (selected) {
+        setState(() {
+          _selectedScenario = selected ? id : null;
+          // 根据场景预设参数
+          if (selected) {
+            switch (id) {
+              case 'summer':
+                _temperatureAdjust = 5.0; // 高温
+                break;
+              case 'winter':
+                _temperatureAdjust = -5.0; // 低温
+                break;
+              case 'overtime':
+                _temperatureAdjust = 0.0;
+                break;
+            }
+            _showAdvancedParams = true; // 展开显示参数变化
+          }
+        });
+      },
+      backgroundColor: color.withOpacity(0.1),
+      selectedColor: color,
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+        side: BorderSide(color: isSelected ? color : color.withOpacity(0.3)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    );
+  }
+  
+  /// 通用滑块行
+  Widget _buildSliderRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String displayValue,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 20),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 100,
+          child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              activeColor: iconColor,
+              inactiveColor: iconColor.withOpacity(0.2),
+              onChanged: _isLoading ? null : onChanged,
+            ),
+          ),
+        ),
+        Container(
+          width: 70,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            displayValue,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: iconColor),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 选择日期
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 7)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue[700]!,
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  /// 2. 错误卡片
+  Widget _buildErrorCard() {
+    return Card(
+      color: Colors.red[50],
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.red[300]!, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[700], size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '优化失败',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[900],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _errorMessage ?? '未知错误',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red[800],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              color: Colors.red[700],
+              onPressed: () {
+                setState(() {
+                  _errorMessage = null;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 3. 加载卡片
+  Widget _buildLoadingCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              '正在执行优化...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '预计需要 30-60 秒',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 4. AI模型健康度卡片 - 核心展示"模型生命力"
+  Widget _buildModelHealthCard(ModelInfo modelInfo) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.purple[200]!, width: 2),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.purple[50]!, Colors.blue[50]!],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题行
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple[600],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.psychology, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ' AI 模型状态',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '机器学习预测引擎（眼睛）',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 状态指示器
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: modelInfo.isValid ? Colors.green : Colors.orange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      modelInfo.isValid ? '运行中' : '待训练',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 核心指标展示
+              if (modelInfo.metrics != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      // R2 Score (圆形进度条)
+                      Expanded(
+                        child: Column(
+                          children: [
+                            CircularPercentIndicator(
+                              radius: 40.0,
+                              lineWidth: 8.0,
+                              percent: (modelInfo.metrics!.r2Score ?? 0).clamp(0.0, 1.0),
+                              center: Text(
+                                "${((modelInfo.metrics!.r2Score ?? 0) * 100).toStringAsFixed(0)}%",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple[700],
+                                ),
+                              ),
+                              progressColor: (modelInfo.metrics!.r2Score ?? 0) > 0.8 
+                                  ? Colors.green 
+                                  : Colors.orange,
+                              backgroundColor: Colors.purple[50]!,
+                              circularStrokeCap: CircularStrokeCap.round,
+                              animation: true,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "R² Score",
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 16),
+                      
+                      // MAPE (线性进度条)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "MAPE (误差)",
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  "${((modelInfo.metrics!.mape ?? 0) * 100).toStringAsFixed(1)}%",
+                                  style: TextStyle(
+                                    color: (modelInfo.metrics!.mape ?? 0) < 0.1 
+                                        ? Colors.green 
+                                        : Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearPercentIndicator(
+                              lineHeight: 8.0,
+                              percent: (1.0 - (modelInfo.metrics!.mape ?? 0)).clamp(0.0, 1.0),
+                              progressColor: (modelInfo.metrics!.mape ?? 0) < 0.1 
+                                  ? Colors.green 
+                                  : Colors.orange,
+                              backgroundColor: Colors.purple[50]!,
+                              barRadius: const Radius.circular(4),
+                              animation: true,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              (modelInfo.metrics!.mape ?? 0) < 0.1 ? "精度优良" : "精度一般",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("暂无详细性能指标"),
+                  ),
+                ),
+              
+              const SizedBox(height: 16),
+              
+              // 模型详情网格
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.model_training,
+                      '模型类型',
+                      modelInfo.usedAutoSelection 
+                          ? modelInfo.winnerModel 
+                          : 'Random Forest',
+                      Colors.blue[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.storage,
+                      '训练数据',
+                      modelInfo.trainingSamples != null
+                          ? '${modelInfo.trainingSamples} 样本'
+                          : 'N/A',
+                      Colors.green[700]!,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.schedule,
+                      '最近更新',
+                      modelInfo.trainedAtFormatted,
+                      Colors.orange[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.precision_manufacturing,
+                      '预测精度 (MAE)',
+                      modelInfo.maeFormatted,
+                      Colors.purple[700]!,
+                    ),
+                  ),
+                ],
+              ),
+              
+              // 自动模型选择信息卡片 (新增)
+              if (modelInfo.usedAutoSelection) ...[
+                const SizedBox(height: 16),
+                _buildAutoSelectionCard(modelInfo),
+              ],
+              
+              // 训练配置信息 (新增)
+              if (modelInfo.trainingConfig != null) ...[
+                const SizedBox(height: 16),
+                _buildOptimizationConfigCard(modelInfo),
+              ],
+              
+              // 验证与数据覆盖
+              if (modelInfo.validationSummary != null || modelInfo.dataCoverage != null) ...[
+                const SizedBox(height: 16),
+                _buildValidationSummaryCard(modelInfo),
+              ],
+              
+              const SizedBox(height: 16),
+              
+              // 数据源说明
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.cloud_download, color: Colors.blue[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '数据来源: ${modelInfo.dataSource ?? "CAISO 实时流"}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '模型每日凌晨自动重训，持续学习最新用电模式',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建自动模型选择信息卡片
+  Widget _buildAutoSelectionCard(ModelInfo modelInfo) {
+    final autoSelection = modelInfo.autoSelection!;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题行
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.green[700], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                ' 自动模型选择',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[900],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green[600],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '已启用',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // 详情网格
+          Row(
+            children: [
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  ' 胜出模型',
+                  autoSelection.winner,
+                  Colors.amber[700]!,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  ' 性能提升',
+                  autoSelection.improvementOverBaseline,
+                  Colors.green[700]!,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  ' 验证方法',
+                  autoSelection.validationMethodFormatted,
+                  Colors.blue[700]!,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildAutoSelectionItem(
+                  ' 候选模型',
+                  '${autoSelection.candidatesEvaluated.length} 个',
+                  Colors.purple[700]!,
+                ),
+              ),
+            ],
+          ),
+          
+          // 展开查看所有候选模型得分
+          if (autoSelection.allScores != null && autoSelection.allScores!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                '查看所有候选模型得分',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.green[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Column(
+                    children: autoSelection.allScores!.entries.map((entry) {
+                      final scores = entry.value as Map<String, dynamic>;
+                      final mae = scores['mae'] ?? 0.0;
+                      final isWinner = entry.key == autoSelection.winner;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            if (isWinner)
+                              const Text(' ', style: TextStyle(fontSize: 12))
+                            else
+                              const SizedBox(width: 18),
+                            Expanded(
+                              child: Text(
+                                entry.key,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+                                  color: isWinner ? Colors.amber[800] : Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'MAE: ${mae.toStringAsFixed(2)} kW',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isWinner ? Colors.green[700] : Colors.grey[600],
+                                fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 构建优化配置信息卡片
+  Widget _buildOptimizationConfigCard(ModelInfo modelInfo) {
+    if (modelInfo.trainingConfig == null) return const SizedBox();
+    
+    final config = modelInfo.trainingConfig!;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.indigo[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.indigo[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune, color: Colors.indigo[700], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                ' 训练配置',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo[900],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildConfigChip(
+                'Log1p 变换', 
+                config.useLogTransform ?? false,
+                Icons.functions,
+              ),
+              _buildConfigChip(
+                '异常值剔除', 
+                config.removeOutliers ?? false,
+                Icons.filter_alt,
+              ),
+              _buildConfigChip(
+                '超参数调优', 
+                config.tuneHyperparameters ?? false,
+                Icons.explore,
+              ),
+               _buildConfigChip(
+                '时序交叉验证', 
+                config.useTimeSeriesCV ?? false,
+                Icons.timeline,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfigChip(String label, bool enabled, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: enabled ? Colors.white : Colors.grey[200],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: enabled ? Colors.indigo[200]! : Colors.grey[300]!,
+        ),
+        boxShadow: enabled ? [
+          BoxShadow(
+            color: Colors.indigo.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ] : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon, 
+            size: 14, 
+            color: enabled ? Colors.indigo[600] : Colors.grey[500]
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: enabled ? FontWeight.bold : FontWeight.normal,
+              color: enabled ? Colors.indigo[800] : Colors.grey[600],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            enabled ? Icons.check_circle : Icons.cancel,
+            size: 14,
+            color: enabled ? Colors.green[600] : Colors.grey[400],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoSelectionItem(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValidationSummaryCard(ModelInfo modelInfo) {
+    final validation = modelInfo.validationSummary;
+    final coverage = modelInfo.dataCoverage;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.indigo[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.indigo[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified, color: Colors.indigo[700], size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                '验证与数据覆盖',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (validation != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.rule,
+                    '验证方式',
+                    validation.method ?? 'N/A',
+                    Colors.indigo[800]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.repeat,
+                    '折数',
+                    validation.cvFolds?.toString() ?? '—',
+                    Colors.deepPurple[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.assessment,
+                    'CV MAE',
+                    validation.cvMaeMean != null
+                        ? '${validation.cvMaeMean!.toStringAsFixed(2)} kW ± ${validation.cvMaeStd?.toStringAsFixed(2) ?? "0"}'
+                        : 'N/A',
+                    Colors.teal[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.check_circle,
+                    'Holdout MAE',
+                    validation.holdoutMae != null
+                        ? '${validation.holdoutMae!.toStringAsFixed(2)} kW'
+                        : 'N/A',
+                    Colors.blueGrey[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (coverage != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.indigo[100]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.date_range, size: 16, color: Colors.indigo[700]),
+                      const SizedBox(width: 6),
+                      Text(
+                        '数据覆盖区间',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo[800],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${coverage.start ?? "N/A"}  至  ${coverage.end ?? "N/A"}',
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '跨度: ${coverage.spanDays != null ? "${coverage.spanDays} 天" : "未知"} · 样本: ${coverage.rows ?? 0}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSolverDiagnosticsCard(OptimizationData optimization) {
+    final diag = optimization.diagnostics;
+    final hits = optimization.constraintHits;
+    if (diag == null && hits == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.speed, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+                const Text(
+                  '求解器健康度',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.timer,
+                    '求解耗时',
+                    diag?.runtimeLabel ?? 'N/A',
+                    Colors.blue[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.data_usage,
+                    'MIP Gap',
+                    diag?.mipGap != null ? '${(diag!.mipGap! * 100).toStringAsFixed(2)}%' : 'N/A',
+                    Colors.deepOrange[700]!,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.account_tree,
+                    'Node',
+                    diag?.nodeCount?.toString() ?? '—',
+                    Colors.teal[700]!,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildModelStatItem(
+                    Icons.loop,
+                    '迭代',
+                    diag?.iterCount?.toString() ?? '—',
+                    Colors.indigo[700]!,
+                  ),
+                ),
+              ],
+            ),
+            if (hits != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.battery_alert,
+                      'SOC 下限命中',
+                      '${hits.socMinHits} 次',
+                      Colors.red[600]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.battery_full,
+                      'SOC 上限命中',
+                      '${hits.socMaxHits} 次',
+                      Colors.green[700]!,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.flash_on,
+                      '充电功率封顶',
+                      '${hits.maxChargeHits} 小时',
+                      Colors.orange[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModelStatItem(
+                      Icons.bolt,
+                      '放电功率封顶',
+                      '${hits.maxDischargeHits} 小时',
+                      Colors.blueGrey[700]!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModelStatItem(IconData icon, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 5. 关键指标卡片 - 增强版（方案一核心展示）
+  Widget _buildKeyMetrics(OptimizationData optimization) {
+    final summary = optimization.summary;
+    
+    // 计算与之前结果的差异（如果有）
+    double? savingsDiff;
+    if (_previousResult?.optimization != null) {
+      final prevSavings = _previousResult!.optimization!.summary.savings;
+      savingsDiff = summary.savings - prevSavings;
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.analytics, color: Colors.blue[700], size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              ' 优化效果',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            // 显示与之前结果的对比
+            if (savingsDiff != null && savingsDiff.abs() > 0.01) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: savingsDiff > 0 ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      savingsDiff > 0 ? Icons.trending_up : Icons.trending_down,
+                      size: 14,
+                      color: savingsDiff > 0 ? Colors.green[700] : Colors.red[700],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${savingsDiff > 0 ? "+" : ""}${savingsDiff.toStringAsFixed(2)}元 vs 上次',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: savingsDiff > 0 ? Colors.green[700] : Colors.red[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        // 三个指标卡片 - 响应式布局
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = ResponsiveHelper.isMobile(context);
+            
+            if (isMobile) {
+              // 移动端：垂直排列
+              return Column(
+                children: [
+                  _buildMetricCard(
+                    icon: Icons.savings,
+                    iconColor: Colors.green,
+                    label: '节省金额',
+                    value: summary.savingsFormatted,
+                    backgroundColor: Colors.green[50]!,
+                    valueColor: Colors.green[700]!,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMetricCard(
+                    icon: Icons.percent,
+                    iconColor: Colors.orange,
+                    label: '节省比例',
+                    value: summary.savingsPercentFormatted,
+                    backgroundColor: Colors.orange[50]!,
+                    valueColor: Colors.orange[700]!,
+                  ),
+                ],
+              );
+            } else {
+              // 平板/桌面端：水平排列
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      icon: Icons.savings,
+                      iconColor: Colors.green,
+                      label: '节省金额',
+                      value: summary.savingsFormatted,
+                      backgroundColor: Colors.green[50]!,
+                      valueColor: Colors.green[700]!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      icon: Icons.percent,
+                      iconColor: Colors.orange,
+                      label: '节省比例',
+                      value: summary.savingsPercentFormatted,
+                      backgroundColor: Colors.orange[50]!,
+                      valueColor: Colors.orange[700]!,
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // 成本对比卡片
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.compare_arrows, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '成本对比',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                _buildCostComparisonRow(
+                  '无电池成本',
+                  summary.totalCostWithoutBattery,
+                  Colors.grey,
+                ),
+                const SizedBox(height: 8),
+                _buildCostComparisonRow(
+                  '有电池成本',
+                  summary.totalCostWithBattery,
+                  Colors.blue,
+                ),
+                
+                const Divider(height: 24),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '总计节省',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      summary.savingsFormatted,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required Color backgroundColor,
+    required Color valueColor,
+  }) {
+    return Card(
+      elevation: 2,
+      color: backgroundColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: valueColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCostComparisonRow(String label, double cost, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        Text(
+          '¥${cost.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 7. 策略详情
+  Widget _buildStrategyDetails(OptimizationData optimization) {
+    final strategy = optimization.strategy;
+    
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule, color: Colors.blue[700], size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  ' 充放电策略',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // 充电时段
+            _buildStrategyRow(
+              icon: Icons.battery_charging_full,
+              iconColor: Colors.green,
+              label: '充电时段',
+              value: strategy.chargingHoursFormatted,
+              count: '${strategy.chargingCount} 小时',
+              backgroundColor: Colors.green[50]!,
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // 放电时段
+            _buildStrategyRow(
+              icon: Icons.flash_on,
+              iconColor: Colors.red,
+              label: '放电时段',
+              value: strategy.dischargingHoursFormatted,
+              count: '${strategy.dischargingCount} 小时',
+              backgroundColor: Colors.red[50]!,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 统计信息
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  _buildStatRow(
+                    '总充电量',
+                    '${optimization.summary.totalCharged.toStringAsFixed(2)} kWh',
+                  ),
+                  const Divider(height: 16),
+                  _buildStatRow(
+                    '总放电量',
+                    '${optimization.summary.totalDischarged.toStringAsFixed(2)} kWh',
+                  ),
+                  const Divider(height: 16),
+                  _buildStatRow(
+                    '循环效率',
+                    '${optimization.summary.cycleEfficiency.toStringAsFixed(1)}%',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStrategyRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String count,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 空状态
+  Widget _buildEmptyState() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '开始优化',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '调整初始电量参数，点击"开始智能调度"按钮',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 信息对话框
+  void _showInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.info, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('关于能源优化'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '功能说明',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 基于机器学习预测未来24小时能源负载'),
+              Text('• 使用混合整数规划优化电池充放电策略'),
+              Text('• 考虑峰谷电价，最小化总购电成本'),
+              SizedBox(height: 16),
+              Text(
+                '电价时段',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 谷时 (00:00-08:00, 22:00-24:00): 0.3 元/kWh'),
+              Text('• 平时 (08:00-18:00): 0.6 元/kWh'),
+              Text('• 峰时 (18:00-22:00): 1.0 元/kWh'),
+              SizedBox(height: 16),
+              Text(
+                '电池参数',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text('• 容量: 13.5 kWh (Tesla Powerwall)'),
+              Text('• 最大功率: 5.0 kW'),
+              Text('• 充放电效率: 95%'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+\end{lstlisting}
+
+\chapter{测试报告}
+
+\section{测试环境与策略}
+
+\subsection{测试环境}
+本系统的测试环境分为开发环境（本地）和生产环境（Google Cloud）。
+\begin{itemize}
+    \item \textbf{硬件环境}：MacBook Pro (M3 Pro, 18GB RAM) / Google Cloud Run (2 CPU, 4GB RAM)
+    \item \textbf{操作系统}：macOS Sequoia 15.0 / Linux (Container Optimized OS)
+    \item \textbf{软件依赖}：Python 3.10, Flutter 3.27, Gurobi 11.0, Firebase SDK
+\end{itemize}
+
+\subsection{测试策略}
+采用金字塔测试策略，包含以下三个层级：
+\begin{enumerate}
+    \item \textbf{单元测试 (Unit Testing)}：针对后端核心服务（ML、Optimization）和前端独立组件（Models、Utils）进行测试。
+    \item \textbf{集成测试 (Integration Testing)}：测试 API 接口的连通性、数据库交互以及前后端数据流转。
+    \item \textbf{系统测试 (System Testing)}：模拟完整用户流程，验证定时任务调度、生产环境部署工作流。
+\end{enumerate}
+
+\section{测试用例与执行记录}
+
+\subsection{后端单元与集成测试}
+使用 \texttt{pytest} 框架执行后端测试，覆盖率约 85\%。主要测试集如下：
+
+\begin{table}[h]
+    \centering
+    \caption{后端测试用例执行摘要}
+    \begin{tabular}{|l|l|l|l|}
+        \hline
+        \textbf{测试模块}                      & \textbf{测试内容} & \textbf{关键用例}                          & \textbf{结果}           \\ \hline
+        \texttt{test\_auth.py}             & 用户认证          & JWT生成/验证、密码哈希                          & \textcolor{green}{通过} \\ \hline
+        \texttt{test\_ml\_service.py}      & 机器学习服务        & 数据预处理、模型训练、预测输出格式                      & \textcolor{green}{通过} \\ \hline
+        \texttt{test\_optimization.py}     & Gurobi优化      & 约束条件有效性、目标函数收敛、边界值                     & \textcolor{green}{通过} \\ \hline
+        \texttt{test\_api\_integration.py} & API 接口        & GET /config, POST /analyze (Mock Auth) & \textcolor{green}{通过} \\ \hline
+        \texttt{test\_mlops.py}            & MLOps 流程      & 数据漂移检测、缺失值处理鲁棒性                        & \textcolor{green}{通过} \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{前端测试}
+使用 \texttt{flutter test} 进行测试，主要验证 Widget 构建和数据模型解析。
+
+\begin{table}[h]
+    \centering
+    \caption{前端测试用例执行摘要}
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{测试文件}              & \textbf{测试内容}                        & \textbf{结果}           \\ \hline
+        \texttt{widget\_test.dart} & 基础 Widget 构建、App 启动冒烟测试              & \textcolor{green}{通过} \\ \hline
+        \texttt{model\_test.dart}  & JSON 序列化/反序列化 (User, AnalysisResult) & \textcolor{green}{通过} \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{生产工作流验证脚本}
+为确保部署稳定性，开发了自动化验证脚本 \texttt{verify\_production\_workflow.py}，模拟真实生产环境的周期性任务。
+
+\begin{lstlisting}[style=codestyle, language=bash, caption={生产环境验证脚本执行日志}]
+$ python verify_production_workflow.py
+[KEY] 使用凭证: .../service-account-key.json
+============================================================
+[TEST] 测试任务 1: 每小时数据抓取 (Data Fetching)
+============================================================
+1. ExternalDataService 初始化成功
+2. 执行 fetch_and_publish()...
+[OK] 数据抓取成功！数据已保存到 Firebase Storage。
+
+============================================================
+[TEST] 测试任务 2: 每日模型训练 (Model Training)
+============================================================
+1. EnergyPredictor 初始化成功
+2. 执行 train_model(use_firebase_storage=True)...
+[OK] 模型训练成功！
+   MAE: 45.21
+   RMSE: 58.90
+   模型文件已更新到 Firebase Storage。
+
+============================================================
+[ALL PASS] 全部验证通过！您的生产工作流在本地测试正常。
+\end{lstlisting}
+
+\section{测试结论}
+经过全面的单元测试、集成测试及生产模拟验证，系统表现稳定。
+\begin{enumerate}
+    \item \textbf{功能符合性}：所有核心功能（数据抓取、负载预测、优化调度、可视化展示）均按照需求规格说明书实现。
+    \item \textbf{鲁棒性}：后端服务具备异常捕获机制，能够处理 Gurobi 求解失败、外部 API 超时等异常情况。
+    \item \textbf{安全性}：API 接口均受 JWT 验证保护，敏感配置已从代码中分离。
+\end{enumerate}
+
+系统已达到上线标准，可以进行生产部署。

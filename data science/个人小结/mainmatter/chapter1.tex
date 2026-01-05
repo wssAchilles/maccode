@@ -1,0 +1,178 @@
+\chapter{个人小结}
+
+\section{研究背景与意义}
+
+\subsection{能源转型的时代挑战}
+随着全球气候变化问题的日益严峻，能源结构的低碳化转型已成为各国共识。电力系统作为能源消费的核心环节，正经历着从“源随荷动”向“源网荷储协同互动”的深刻变革。在这一过程中，以风光为代表的可再生能源渗透率不断提高，但其固有的间歇性和波动性给电网的安全稳定运行带来了巨大挑战。与此同时，需求侧的用电模式也日益复杂，电动汽车等新型负荷的接入进一步增加了电网负荷的不确定性。
+
+\subsection{数据驱动的应对策略}
+面对上述挑战，数据驱动的方法展现出了巨大的潜力。电力大数据的挖掘与分析对于提升能源利用效率具有重要意义。通过对历史负荷数据的分析，可以揭示用户的用电行为模式；通过精准的负荷预测，电网调度部门可以提前安排发电机组出力，缓解供需矛盾。此外，储能技术作为平抑波动、削峰填谷的关键手段，其优化调度策略直接关系到系统的经济性和安全性。准确的负荷预测有助于电网的供需平衡，而合理的储能调度则能有效降低用户用电成本并削峰填谷\cite{lund2017batteries}。
+
+\subsection{项目目标与价值}
+本项目旨在构建一个集成的电力数据分析系统，通过结合机器学习算法与数学优化方法，实现对电力负荷的精准预测以及电池充放电策略的智能优化，并通过跨平台可视化界面展示分析结果。这不仅是对数据科学理论的实践应用，更是对解决实际能源问题的一次有益探索，具有重要的学术研究价值和实际应用前景。
+
+\section{主要工作内容详解}
+
+本项目历时数月，主要涵盖了后端服务开发、算法模型构建、以及前端交互界面实现三个方面的工作。以下是对各部分工作内容的深度解析。
+
+\subsection{后端架构与服务开发}
+
+系统的后端采用微服务架构思想设计，旨在解耦各个功能模块，提高系统的可扩展性和维护性。
+
+\subsubsection{技术选型与框架设计}
+基于 Python 生态构建了微服务架构的后端系统，采用了 Flask 框架\cite{grids2011flask}作为核心 API 服务引擎。Flask 作为一个轻量级的 Web 框架，具有高度的灵活性和可扩展性，非常适合快速构建 RESTful API。
+\begin{itemize}
+    \item \textbf{RESTful API 设计}：遵循 REST 架构风格，设计了清晰、规范的 API 接口。例如，\texttt{/api/predict} 用于处理负荷预测请求，\texttt{/api/optimize} 用于处理储能调度请求。每个接口都定义了明确的请求方法（GET/POST）、请求参数和响应格式，确保了前后端交互的顺畅。
+    \item \textbf{应用工厂模式}：采用了工厂模式（Factory Pattern）构建应用。通过 \texttt{create\_app} 函数动态创建 Flask 应用实例，并在其中完成配置加载、蓝图注册和扩展初始化。这种设计支持了开发（Development）、测试（Testing）及生产（Production）等多环境的无缝切换，极大地方便了开发调试和部署运维。
+    \item \textbf{模块化蓝图}：利用 Flask 本身的 Blueprint 机制，将路由逻辑按功能模块进行拆分。例如，将机器学习相关的路由注册在 \texttt{ml\_bp} 蓝图下，将优化相关的路由注册在 \texttt{opt\_bp} 蓝图下。这使得代码结构更加清晰，避免了单一文件过大导致的维护困难。
+\end{itemize}
+
+\subsubsection{数据持久化与云服务集成}
+为了实现数据的持久化存储和云端管理，项目集成了 Firebase Admin SDK。
+\begin{itemize}
+    \item \textbf{Cloud Storage 集成}：实现了基于 Firebase Cloud Storage 的文件存储通过 SDK 封装了文件的上传、下载及元数据管理功能。这使得训练好的模型文件（\texttt{.joblib}）以及用户的上传数据（\texttt{.csv}）可以安全、可靠地存储在云端，实现了服务的无状态化（Stateless），为后续的水平扩展打下了基础。
+    \item \textbf{NoSQL 数据管理}（扩展）：虽然本项目侧重于文件存储，但 Firebase 的设计理念也启发了我们在数据交互中采用更加灵活的 JSON 格式。后端在处理请求时，对输入数据进行了严格的 Schema 验证，确保存储和处理的数据符合预期的结构。
+\end{itemize}
+
+\subsection{数据分析与算法模型深度解析}
+
+核心算法是本项目的灵魂，主要包括高精度的负荷预测模型和基于运筹学的储能优化模型。
+
+\subsubsection{负荷预测算法原理与与实现}
+负荷预测属于典型的时间序列回归问题。本项目构建了基于集成学习的预测模型流程。
+
+\textbf{1. 集成学习算法原理}
+集成学习通过构建并结合多个学习器来完成学习任务，通常能获得比单一学习器更好的泛化性能。
+\begin{itemize}
+    \item \textbf{Random Forest (随机森林)}\cite{breiman2001random}：基于 Bagging 思想，通过自助采样法（Bootstrap）构建多棵决策树，并利用特征随机选择引入多样性。最终预测结果是所有决策树预测值的平均。其优势在于能够并行处理，且对异常值和噪声具有较强的鲁棒性。
+    \item \textbf{XGBoost (eXtreme Gradient Boosting)}\cite{chen2016xgboost}：基于 Boosting 思想，通过迭代地训练弱学习器（通常是 CART 回归树）来拟合前一轮的残差。XGBoost 在目标函数中引入了正则化项，有效地控制了模型复杂度，防止过拟合。其二阶泰勒展开的近似使得目标函数优化更加精准。
+    \item \textbf{LightGBM}：微软推出的高效 Gradient Boosting 实现。它采用了基于直方图的决策树算法、单边梯度采样（GOSS）和互斥特征捆绑（EFB）等技术，在保证精度的前提下显著提升了训练速度和内存效率，特别适合处理海量电力数据。
+\end{itemize}
+
+\textbf{2. 特征工程体系}
+针对电力负荷数据的时间序列特性，构建了多维度的特征体系，这被证明是提升模型精度的关键。
+\begin{itemize}
+    \item \textbf{时间特征}：从时间戳中提取 Hour, Day of Week, Month, Is\_Weekend 等特征。为了保持时间的连续性，利用正弦和余弦函数对周期性时间特征进行编码（Sin/Cos encoding），例如：
+          \[
+              t_{sin} = \sin\left(\frac{2\pi \times hour}{24}\right), \quad t_{cos} = \cos\left(\frac{2\pi \times hour}{24}\right)
+          \]
+          这种编码方式避免了 23 点和 0 点在数值上相距甚远但在时间上相邻的问题。
+    \item \textbf{滞后特征 (Lag Features)}：根据电网负荷的自相关性，构造了不同时间跨度的滞后特征，如 $L_{t-1}$ (上一时刻负荷), $L_{t-24}$ (昨天同一时刻负荷), $L_{t-168}$ (上周同一时刻负荷)。这些特征捕捉了负荷的短期惯性和长期周期性。
+    \item \textbf{滚动统计特征 (Rolling Statistics)}：计算过去一段时间窗口（如 6h, 12h, 24h）内的均值、标准差、最大值和最小值。这些特征反映了负荷近期趋势的平稳性和波动程度。
+\end{itemize}
+
+\textbf{3. 模型训练与评估}
+采用时间序列交叉验证（Time Series Cross-Validation）策略进行模型评估。与传统的 K-Fold 不同，时间序列验证必须严格遵守时间顺序，训练集必须在验证集之前。最终通过比较 MAPE (平均绝对百分比误差) 和 $R^2$ (决定系数) 指标，自动选择最优模型进行部署。
+
+\subsubsection{优化调度数学模型}
+引入 Gurobi 优化器\cite{gurobi}求解混合整数规划（MIP）问题，旨在在满足系统约束的前提下最小化用电成本。
+
+\textbf{1. 目标函数}
+目标是最小化一天（24小时）内的总用电成本。设 $P\_{grid, t}$ 为 $t$ 时刻从电网购买的功率，$C\_t$ 为 $t$ 时刻的电价：
+\[
+    \min \sum\_{t=1}^{T} P\_{grid, t} \times C\_t \times \Delta t
+\]
+其中 $T=24, \Delta t=1$。
+
+\textbf{2. 约束条件}
+模型需满足以下物理和逻辑约束：
+
+(1) \textbf{功率平衡约束}：用户负荷 $P\_{load, t}$ 由电网供电 $P\_{grid, t}$ 和电池放电 $P\_{dis, t}$ 共同满足，同时电池充电 $P\_{chg, t}$ 也是电网的负荷：
+\[
+    P\_{grid, t} + P\_{dis, t} = P\_{load, t} + P\_{chg, t}
+\]
+
+(2) \textbf{电池能量状态 (SOC) 更新}：
+\[
+    E\_{t} = E\_{t-1} + P\_{chg, t} \cdot \eta\_{chg} \cdot \Delta t - \frac{P\_{dis, t}}{\eta\_{dis}} \cdot \Delta t
+\]
+其中 $E\_t$ 为电池储能，$ \eta\_{chg}, \eta\_{dis} $ 分别为充放电效率。
+
+(3) \textbf{容量约束}：
+\[
+    E\_{min} \le E\_t \le E\_{max}
+\]
+
+(4) \textbf{充放电功率约束}：
+\[
+    0 \le P\_{chg, t} \le P\_{max} \cdot u\_t
+\]
+\[
+    0 \le P\_{dis, t} \le P\_{max} \cdot (1 - u\_t)
+\]
+在此引入二进制变量 $u\_t \in \{0, 1\}$，实现了“不可同时充放电”的逻辑约束，这是优化问题的核心难点之一，通过引入整数变量将问题转化为 MIP 问题。
+
+\subsection{前端可视化与交互实现}
+
+前端部分采用 Google 推出的 Flutter 框架\cite{flutter}进行开发，利用其“一次编写，处处运行”的特性，实现了 Web 端与移动端的跨平台适配。
+
+\subsubsection{Glassmorphism 现代 UI 设计体系}
+为了提供卓越的用户体验，系统采用了 Glassmorphism（毛玻璃）设计语言。
+\begin{itemize}
+    \item \textbf{视觉原理}：通过背景模糊（Background Blur）、半透明白色覆盖层（Translucent White Overlay）以及精细的边框高光，模拟出类似磨砂玻璃的质感。这不仅美观，还能通过层级关系突出内容。
+    \item \textbf{Flutter 实现}：利用 \texttt{BackdropFilter} 组件结合 \texttt{ImageFilter.blur} 实现高斯模糊效果；使用 \texttt{Container} 的 \texttt{BoxDecoration} 属性定义渐变色和透明度；通过 \texttt{CustomPainter} 或 \texttt{Border} 属性绘制细腻的内发光边框。这种设计要求对 Flutter 的渲染机制有深入理解。
+\end{itemize}
+
+\subsubsection{复杂数据交互与可视化}
+实现了数据的动态可视化，利用 \texttt{fl\_chart} 库绘制了交互式的图表。
+\begin{itemize}
+    \item \textbf{交互式图表}：开发的功率曲线图支持手势缩放、拖拽和平移，用户可以查看任意时间点的具体数值。特征重要性柱状图支持点击高亮，帮助用户直观理解模型决策依据。
+    \item \textbf{状态管理}：在复杂的数据流转中，合理的状态管理至关重要。虽然项目规模适中，但为了保证代码的清晰，采用了清晰的状态提升（State Lifting）和回调机制，确组件间数据同步的实时性。对于异步操作（如文件上传、模型预测），配合 \texttt{FutureBuilder} 或 \texttt{StreamBuilder} 实现了优雅的 Loading 状态和错误处理 UX。
+\end{itemize}
+
+\section{遇到的问题与深度复盘}
+
+在项目开发过程中，遇到了一些具有挑战性的技术问题。通过查阅文档、社区求助及反复调试，最终找到了解决方案。
+
+\subsection{Gurobi 许可证与容器化环境部署}
+\textbf{问题描述}：在本地开发环境中，Gurobi 可以直接读取本地许可证文件。但在云端容器化部署（如 Docker, Cloud Run）时，静态许可证失效。且 Gurobi 的商业许可证验证机制严格，如果容器环境缺少必要的标识（如 MAC 地址变化），会导致求解器初始化失败，抛出 License Error。
+
+\textbf{详细解决路径}：
+\begin{enumerate}
+    \item \textbf{尝试方案一}：将本地 \texttt{.lic} 文件复制到 Docker 镜像中。失败，因为许可证通常绑定硬件指纹。
+    \item \textbf{尝试方案二}：使用 Gurobi Cloud 远程服务。可行但成本较高且网络延迟不可忽视。
+    \item \textbf{最终方案}：申请学术版 Gurobi WLS (Web License Service)。在 \texttt{Dockerfile} 构建阶段并不写入许可证，而是通过环境变量 (\texttt{GRB\_WLSACCESSID}, \texttt{GRB\_WLSSECRET}, \texttt{GRB\_LICENSEID}) 将凭证注入。在 Python 代码初始化 Gurobi 环境 (\texttt{gp.Env}) 时，动态读取这些环境变量进行验证。此外，还在代码中增加了 \texttt{try-catch} 块和重试机制，确保在网络抖动导致验证超时时能够自动恢复，极大地增强了系统的鲁棒性。
+\end{enumerate}
+
+\subsection{时间序列预测的“未来数据泄漏”陷阱}
+\textbf{问题描述}：在初步模型验证阶段，Random Forest 模型的测试集 $R^2$ 高达 0.99，这在实际工程中极不正常。经仔细排查，发现在特征构建阶段，某些统计特征（如当天平均气温）使用了全天的数据，而在预测 10:00 的负荷时，实际上不应该知道 23:00 的气温。此外，使用了 \texttt{train\_test\_split} 进行随机划分，导致“通过未来的数据预测过去”，严重违反了因果律。
+
+\textbf{详细解决路径}：
+\begin{enumerate}
+    \item \textbf{数据分割重构}：废弃随机划分，严格按时间轴切分。例如，使用前 80\% 的时间段作为训练集，后 20\% 作为测试集。
+    \item \textbf{交叉验证修正}：引入 \texttt{TimeSeriesSplit}，其原理是滑动窗口验证。第 $k$ 折验证时，训练集为 $[0, t_k]$，验证集为 $[t_k, t_{k+1}]$，确保验证集永远在训练集之后。
+    \item \textbf{特征计算修正}：重写了滚动窗口（Rolling Window）的计算逻辑，设置 \texttt{closed='left'} 或明确 Shift 操作，确保 $t$ 时刻的特征只能由 $t$ 时刻以前的数据计算得到，杜绝了数据泄漏。修正后，$R^2$ 回落到 0.92 左右，虽有下降但更加真实可靠。
+\end{enumerate}
+
+\subsection{Flutter Web 的 CORS 跨域问题}
+\textbf{问题描述}：前端部署在 Web 端后，向后端 Flask API 发送请求时被浏览器拦截，报错 "Access to XMLHttpRequest ... has been blocked by CORS policy"。
+
+\textbf{解决方案}：这是浏览器的同源策略限制。解决方案是在 Flask 后端引入 \texttt{flask\_cors} 库，并配置 \texttt{CORS(app, resources={r"/api/*": {"origins": "*"}})}，显式允许来自前端域名的跨域请求。同时，在响应头中正确设置 \texttt{Access-Control-Allow-Origin}, \texttt{Access-Control-Allow-Methods} 等字段。
+
+\section{收获、反思与未来展望}
+
+\subsection{多维度的能力提升}
+通过本次项目实践，我深入理解了数据科学项目从需求分析、算法设计到工程落地的全流程。
+\begin{itemize}
+    \item \textbf{全栈工程能力}：跨越了 Python 后端与 Dart 前端的语言鸿沟，掌握了 RESTful API 的设计与对接技巧，具备了独立开发完整数据应用的能力。
+    \item \textbf{算法与业务结合}：深刻体会了机器学习在预测领域的优势以及运筹优化在决策领域的不可替代性。单纯的预测只是告诉我们“将会发生什么”，而结合优化调度则能告诉我们“该怎么做”，二者的结合（Predict then Optimize）是解决复杂工业问题的有效范式。
+    \item \textbf{工程规范意识}：在开发过程中遵循了模块化设计、代码规范化（PEP8, Dart Style）以及文档编写的要求。良好的代码风格和详尽的注释对于项目的长期维护至关重要。
+\end{itemize}
+
+\subsection{现有不足与反思}
+尽管系统已初具雏形，但仍存在局限性。
+\begin{enumerate}
+    \item \textbf{模型泛化能力}：目前的模型是基于特定数据集训练的，对于不同地区、不同类型的用户负荷，模型的迁移能力有待验证。
+    \item \textbf{实时性}：当前的调度优化是基于 Day-ahead（日前）模式，尚未实现 Real-time（实时）滚动修正。当实际负荷与预测偏差较大时，调度策略可能不再最优。
+    \item \textbf{计算效率}：随着约束条件的增加，MIP 问题的求解时间呈指数级增长。在处理大规模节点系统时，当前的求解效率可能成为瓶颈。
+\end{enumerate}
+
+\subsection{未来演进方向}
+未来，可以从以下几个维度对系统进行深化和扩展：
+\begin{itemize}
+    \item \textbf{深度学习模型应用}：引入 LSTM (Long Short-Term Memory) 或 Transformer 等深度学习模型。利用其强大的序列建模能力，捕捉更长周期的依赖关系，进一步提升预测精度。
+    \item \textbf{强化学习调度}：探索深度强化学习（Deep Reinforcement Learning, DRL）在实时动态调度中的应用。将电网环境建模为 MDP，训练智能体在不确定性环境下做出实时最优决策，实现从“基于模型”到“无模型”数据驱动控制的跨越。
+    \item \textbf{边缘计算部署}：将轻量级模型（如 TensorFlow Lite）部署到边缘网关设备，在本地实现数据的初步处理和实时推理，降低云端通信延迟和带宽成本。
+\end{itemize}
+
+综上所述，本项目通过构建端到端的电力数据分析系统，不仅验证了相关算法的有效性，也为后续更深层次的研究奠定了坚实的基础。

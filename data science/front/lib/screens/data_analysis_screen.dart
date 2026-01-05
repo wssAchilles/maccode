@@ -1,6 +1,8 @@
-/// 数据分析页面 - 完整功能实现
+/// 数据分析页面 - Glassmorphism 设计
+/// 完整功能实现
 library;
 
+import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +12,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../config/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_wrapper.dart';
+import '../widgets/common/glass_card.dart';
 import '../models/analysis_result.dart';
 import '../widgets/analysis/quality_dashboard.dart';
 import '../widgets/analysis/correlation_matrix_view.dart';
@@ -455,53 +459,78 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('数据科学即服务'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          if (_currentUser != null) ...[
-            IconButton(
-              icon: const Icon(Icons.history),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HistoryScreen(),
-                  ),
-                );
-              },
-              tooltip: '分析历史',
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _signOut,
-              tooltip: '登出',
-            ),
-          ],
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: _isLoading
           ? _buildLoadingView()
-          : ResponsiveWrapper(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildResponsiveTopSection(),
-                    const SizedBox(height: 24),
-                    _buildAnalysisButton(),
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      _buildErrorCard(),
-                    ],
-                    if (_analysisResult != null) ...[
-                      const SizedBox(height: 24),
-                      _buildResultsSection(),
+          : CustomScrollView(
+              slivers: [
+                // 现代化 SliverAppBar
+                SliverAppBar(
+                  expandedHeight: 120,
+                  floating: false,
+                  pinned: true,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  flexibleSpace: FlexibleSpaceBar(
+                    title: Text(
+                      '数据科学即服务',
+                      style: AppTextStyles.h4.copyWith(color: Colors.white),
+                    ),
+                    background: Container(
+                      decoration: const BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    if (_currentUser != null) ...[
+                      IconButton(
+                        icon: const Icon(Icons.history_rounded),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HistoryScreen(),
+                            ),
+                          );
+                        },
+                        tooltip: '分析历史',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout_rounded),
+                        onPressed: _signOut,
+                        tooltip: '登出',
+                      ),
+                      const SizedBox(width: 8),
                     ],
                   ],
                 ),
-              ),
+                // 内容区域
+                SliverToBoxAdapter(
+                  child: ResponsiveWrapper(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildResponsiveTopSection(),
+                          const SizedBox(height: 24),
+                          _buildAnalysisButton(),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            _buildErrorCard(),
+                          ],
+                          if (_analysisResult != null) ...[
+                            const SizedBox(height: 24),
+                            _buildResultsSection(),
+                          ],
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -555,271 +584,458 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     );
   }
 
-  /// 用户信息部分
+  /// 用户信息部分 - Glassmorphism 样式
   Widget _buildUserSection() {
     if (_currentUser == null) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const Icon(Icons.account_circle, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(
-                  _authMode == 'login' ? '登录以使用数据分析服务' : '注册新账户',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+      return GlassCard(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // 头像图标
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusXl),
                 ),
-                const SizedBox(height: 24),
-                
-                // 邮箱输入框
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: '邮箱',
-                    hintText: 'your@email.com',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
+                child: const Icon(Icons.person_rounded, size: 40, color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _authMode == 'login' ? '登录以使用数据分析服务' : '注册新账户',
+                style: AppTextStyles.h3,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              
+              // 邮箱输入框
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: '邮箱',
+                  hintText: 'your@email.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    borderSide: BorderSide.none,
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '请输入邮箱';
-                    }
-                    if (!value.contains('@')) {
-                      return '邮箱格式不正确';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                
-                // 密码输入框
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '密码',
-                    hintText: '至少6位字符',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '请输入密码';
-                    }
-                    if (value.length < 6) {
-                      return '密码至少需要6位字符';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 24),
-                
-                // 登录/注册按钮
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _authMode == 'login' 
-                        ? _signInWithEmail 
-                        : _registerWithEmail,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入邮箱';
+                  }
+                  if (!value.contains('@')) {
+                    return '邮箱格式不正确';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // 密码输入框
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: '密码',
+                  hintText: '至少6位字符',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '请输入密码';
+                  }
+                  if (value.length < 6) {
+                    return '密码至少需要6位字符';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              
+              // 登录/注册按钮 (CTA 橙色)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _authMode == 'login' 
+                      ? _signInWithEmail 
+                      : _registerWithEmail,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cta,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
                     ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    _authMode == 'login' ? '登录' : '注册',
+                    style: AppTextStyles.button,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // 切换登录/注册
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _authMode == 'login' ? '还没有账户？' : '已有账户？',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _authMode = _authMode == 'login' ? 'register' : 'login';
+                        _errorMessage = null;
+                      });
+                    },
                     child: Text(
-                      _authMode == 'login' ? '登录' : '注册',
-                      style: const TextStyle(fontSize: 16),
+                      _authMode == 'login' ? '立即注册' : '返回登录',
+                      style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: AppColors.border)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('或', style: AppTextStyles.bodySmall),
+                  ),
+                  Expanded(child: Divider(color: AppColors.border)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              // Google 登录按钮
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _signInWithGoogle,
+                  icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                  label: const Text('使用 Google 登录'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                
-                // 切换登录/注册
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 已登录状态
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          // 头像
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+            ),
+            child: _currentUser!.photoURL != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                    child: Image.network(_currentUser!.photoURL!, fit: BoxFit.cover),
+                  )
+                : const Icon(Icons.person_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          // 用户信息
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _currentUser!.displayName ?? _currentUser!.email ?? '用户',
+                  style: AppTextStyles.labelLarge,
+                ),
+                Text(
+                  _currentUser!.email ?? '',
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          // 验证徽章
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.successLight,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, size: 14, color: AppColors.success),
+                const SizedBox(width: 4),
+                Text('已登录', style: AppTextStyles.labelMedium.copyWith(color: AppColors.success)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 文件选择部分 - 虚线拖放区域样式
+  Widget _buildFileSection() {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                ),
+                child: const Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text('选择 CSV 文件', style: AppTextStyles.h4),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // 拖放区域
+          if (_pickedFile == null)
+            DropZoneContainer(
+              onTap: _currentUser != null ? _pickFile : null,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      _authMode == 'login' ? '还没有账户？' : '已有账户？',
-                      style: const TextStyle(color: Colors.grey),
+                    Icon(
+                      Icons.cloud_upload_outlined,
+                      size: 48,
+                      color: _currentUser != null ? AppColors.primary : AppColors.textMuted,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _authMode = _authMode == 'login' ? 'register' : 'login';
-                          _errorMessage = null;
-                        });
-                      },
-                      child: Text(
-                        _authMode == 'login' ? '立即注册' : '返回登录',
+                    const SizedBox(height: 12),
+                    Text(
+                      _currentUser != null ? '点击选择文件' : '请先登录',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: _currentUser != null ? AppColors.primary : AppColors.textMuted,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '仅支持 CSV 格式',
+                      style: AppTextStyles.bodySmall,
+                    ),
                   ],
                 ),
-                
-                const SizedBox(height: 8),
-                const Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('或', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          
+          // 已选择文件
+          if (_pickedFile != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
                     ),
-                    Expanded(child: Divider()),
-                  ],
+                    child: const Icon(Icons.description_rounded, color: AppColors.success, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _pickedFile!.name,
+                          style: AppTextStyles.labelLarge,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '${(_pickedFile!.size / 1024).toStringAsFixed(2)} KB',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () {
+                      setState(() {
+                        _pickedFile = null;
+                      });
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                      foregroundColor: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // 存储选项
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+              ),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _saveToStorage,
+                    onChanged: (value) {
+                      setState(() {
+                        _saveToStorage = value ?? true;
+                      });
+                    },
+                    activeColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('保存到 Cloud Storage', style: AppTextStyles.labelMedium),
+                        Text('将文件归档以便日后查看', style: AppTextStyles.bodySmall),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.cloud_outlined, color: AppColors.textMuted, size: 20),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 分析按钮 - CTA 渐变样式
+  Widget _buildAnalysisButton() {
+    final canAnalyze = _currentUser != null && _pickedFile != null && !_isLoading;
+
+    return AnimatedContainer(
+      duration: AppDecorations.animationFast,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: canAnalyze ? AppColors.ctaGradient : null,
+        color: canAnalyze ? null : AppColors.textMuted.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        boxShadow: canAnalyze ? AppDecorations.shadowMd : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: canAnalyze ? _startAnalysis : null,
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: canAnalyze ? Colors.white : AppColors.textMuted,
                 ),
-                const SizedBox(height: 8),
-                
-                // Google 登录按钮
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _signInWithGoogle,
-                    icon: const Icon(Icons.login),
-                    label: const Text('使用 Google 登录'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+                const SizedBox(width: 12),
+                Text(
+                  '开始分析',
+                  style: AppTextStyles.button.copyWith(
+                    color: canAnalyze ? Colors.white : AppColors.textMuted,
                   ),
                 ),
               ],
             ),
           ),
         ),
-      );
-    }
-
-    return Card(
-      child: ListTile(
-        leading: _currentUser!.photoURL != null
-            ? CircleAvatar(
-                backgroundImage: NetworkImage(_currentUser!.photoURL!),
-              )
-            : const CircleAvatar(
-                child: Icon(Icons.person),
-              ),
-        title: Text(_currentUser!.displayName ?? _currentUser!.email ?? '用户'),
-        subtitle: Text(_currentUser!.email ?? ''),
-        trailing: const Icon(Icons.check_circle, color: Colors.green),
       ),
     );
   }
 
-  /// 文件选择部分
-  Widget _buildFileSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '选择 CSV 文件',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _currentUser != null ? _pickFile : null,
-              icon: const Icon(Icons.file_upload),
-              label: const Text('选择文件'),
-            ),
-            if (_pickedFile != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.insert_drive_file, color: Colors.green),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _pickedFile!.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '${(_pickedFile!.size / 1024).toStringAsFixed(2)} KB',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          _pickedFile = null;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                title: const Text('保存到 Cloud Storage'),
-                subtitle: const Text('将文件归档以便日后查看'),
-                value: _saveToStorage,
-                onChanged: (value) {
-                  setState(() {
-                    _saveToStorage = value ?? true;
-                  });
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 分析按钮
-  Widget _buildAnalysisButton() {
-    final canAnalyze = _currentUser != null && _pickedFile != null && !_isLoading;
-
-    return ElevatedButton.icon(
-      onPressed: canAnalyze ? _startAnalysis : null,
-      icon: const Icon(Icons.analytics),
-      label: const Text('开始分析'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(fontSize: 18),
-      ),
-    );
-  }
-
-  /// 错误卡片
+  /// 错误卡片 - 现代化样式
   Widget _buildErrorCard() {
-    return Card(
-      color: Colors.red.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            const Icon(Icons.error, color: Colors.red),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.errorLight,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
             ),
-          ],
-        ),
+            child: const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _errorMessage ?? '发生错误',
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: () {
+              setState(() {
+                _errorMessage = null;
+              });
+            },
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
+          ),
+        ],
       ),
     );
   }
