@@ -46,12 +46,10 @@ class _GlassCardState extends State<GlassCard> {
     return MouseRegion(
       onEnter: widget.enableHover ? (_) => setState(() => _isHovered = true) : null,
       onExit: widget.enableHover ? (_) => setState(() => _isHovered = false) : null,
-      child: AnimatedContainer(
+      child: AnimatedScale(
+        scale: _isHovered && widget.enableHover ? 1.01 : 1.0,
         duration: AppDecorations.animationFast,
         curve: AppDecorations.animationCurve,
-        margin: widget.margin,
-        transform: Matrix4.identity()
-          ..scale(_isHovered && widget.enableHover ? 1.01 : 1.0),
         child: GestureDetector(
           onTap: widget.onTap,
           child: ClipRRect(

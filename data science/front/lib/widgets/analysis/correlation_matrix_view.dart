@@ -180,7 +180,7 @@ class CorrelationMatrixView extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: _getCorrelationColor(hc.correlation).withOpacity(0.2),
+                        color: _getCorrelationColor(hc.correlation).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _getCorrelationColor(hc.correlation),
@@ -261,7 +261,7 @@ class CorrelationMatrixView extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: _getCorrelationColor(pair.pearson.correlation)
-                              .withOpacity(0.2),
+                              .withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -359,10 +359,10 @@ class CorrelationMatrixView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: _getCorrelationColor(correlation).withOpacity(0.1),
+        color: _getCorrelationColor(correlation).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _getCorrelationColor(correlation).withOpacity(0.3),
+          color: _getCorrelationColor(correlation).withValues(alpha: 0.3),
         ),
       ),
       child: Column(

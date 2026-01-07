@@ -748,3 +748,55 @@ def simulate_scenario():
             'error': 'SERVER_ERROR',
             'message': f'服务器错误: {str(e)}'
         }), 500
+
+
+@optimization_bp.route('/sensitivity', methods=['POST', 'OPTIONS'])
+@rate_limit(max_requests=10, window_seconds=60)
+@require_auth
+def sensitivity_analysis():
+    """
+    敏感性分析 (Phase 2 新增)
+    批量模拟不同参数配置下的优化结果
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+        
+    try:
+        user = request.user
+        uid = user.get('uid')
+        data = request.get_json() or {}
+        
+        target_date = data.get('target_date')
+        variations = data.get('variations') # dict of lists
+        
+        logger.info(f"[{uid}] 开始敏感性分析")
+        
+        # 1. 预测负载 (复用 run_optimization 中的逻辑)
+        # 简单起见，这里再次调用预测
+        if target_date:
+            target_datetime = datetime.strptime(target_date, '%Y-%m-%d')
+            target_datetime = target_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            target_datetime = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            
+        predictor = EnergyPredictor()
+        predictor.load_model()
+        predictions = predictor.predict_next_24h(start_time=target_datetime)
+        
+        load_profile = [p['predicted_load'] for p in predictions]
+        price_profile = [p['price'] for p in predictions]
+        
+        # 2. 运行敏感性分析
+        optimizer = EnergyOptimizer() # 使用默认配置作为基准
+        results = optimizer.simulate_scenarios(load_profile, price_profile, variations=variations)
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'count': len(results)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"敏感性分析失败: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
+

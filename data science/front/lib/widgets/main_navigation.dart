@@ -151,7 +151,7 @@ class _MainNavigationState extends State<MainNavigation> {
           children: [
             _buildInfoRow(Icons.email_outlined, '邮箱', user.email ?? '未设置'),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.fingerprint, 'UID', user.uid.substring(0, 8) + '...'),
+            _buildInfoRow(Icons.fingerprint, 'UID', '${user.uid.substring(0, 8)}...'),
             const SizedBox(height: 12),
             _buildInfoRow(
               user.emailVerified ? Icons.verified_rounded : Icons.warning_rounded,
@@ -225,7 +225,7 @@ class _MainNavigationState extends State<MainNavigation> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
             ),
             child: Icon(_icons[_currentIndex], size: 18, color: Colors.white),
@@ -263,7 +263,7 @@ class _MainNavigationState extends State<MainNavigation> {
         color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -299,7 +299,7 @@ class _MainNavigationState extends State<MainNavigation> {
           vertical: 8,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
         ),
         child: Row(

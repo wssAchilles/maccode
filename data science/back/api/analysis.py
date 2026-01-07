@@ -8,6 +8,7 @@ from services.firebase_service import require_auth
 from services.analysis_service import AnalysisService
 from services.storage_service import StorageService
 from services.history_service import HistoryService
+from services.drift_service import DriftService
 from utils.exceptions import ValidationError
 from utils.validators import validate_file_type, validate_file_size
 from middleware.rate_limit import rate_limit
@@ -341,3 +342,56 @@ def supported_formats():
             }
         }
     }), 200
+
+
+@analysis_bp.route('/drift/detect', methods=['POST', 'OPTIONS'])
+@rate_limit(max_requests=10, window_seconds=60)
+@require_auth
+def detect_drift():
+    """
+    检测数据漂移 (PSI/KL)
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+        
+    try:
+        user = request.user
+        uid = user.get('uid')
+        data = request.get_json() or {}
+        
+        reference_path = data.get('reference_path')
+        current_path = data.get('current_path')
+        features = data.get('features') # list of strings
+        
+        if not reference_path or not current_path or not features:
+            raise ValidationError("缺少参数: reference_path, current_path, features")
+            
+        logger.info(f"[{uid}] 开始漂移检测")
+        
+        storage = StorageService()
+        
+        # 加载数据
+        ref_bytes = storage.download_file(reference_path)
+        cur_bytes = storage.download_file(current_path)
+        
+        ref_df = pd.read_csv(io.BytesIO(ref_bytes))
+        cur_df = pd.read_csv(io.BytesIO(cur_bytes))
+        
+        drift_service = DriftService()
+        
+        # 计算漂移
+        drift_results = drift_service.detect_drift(ref_df, cur_df, features)
+        
+        # 生成报告
+        report = drift_service.generate_drift_report(drift_results)
+        
+        return jsonify({
+            'success': True,
+            'drift_results': drift_results,
+            'report': report
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"漂移检测失败: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
+

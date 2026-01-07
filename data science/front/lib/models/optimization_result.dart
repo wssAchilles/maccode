@@ -923,7 +923,7 @@ class ConstraintHits {
   });
 
   factory ConstraintHits.fromJson(Map<String, dynamic> json) {
-    int _toInt(dynamic v) {
+    int toInt(dynamic v) {
       if (v is int) return v;
       if (v is double) return v.toInt();
       if (v is String) return int.tryParse(v) ?? 0;
@@ -931,10 +931,10 @@ class ConstraintHits {
     }
 
     return ConstraintHits(
-      socMinHits: _toInt(json['soc_min_hits']),
-      socMaxHits: _toInt(json['soc_max_hits']),
-      maxChargeHits: _toInt(json['max_charge_hits']),
-      maxDischargeHits: _toInt(json['max_discharge_hits']),
+      socMinHits: toInt(json['soc_min_hits']),
+      socMaxHits: toInt(json['soc_max_hits']),
+      maxChargeHits: toInt(json['max_charge_hits']),
+      maxDischargeHits: toInt(json['max_discharge_hits']),
     );
   }
 

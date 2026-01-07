@@ -11,7 +11,11 @@ import '../config/constants.dart';
 
 class ApiService {
   // 后端 API 基础 URL - 使用 AppConstants 中的配置
+  // 后端 API 基础 URL - 使用 AppConstants 中的配置
   static String get _baseUrl => AppConstants.apiBaseUrl;
+  
+  // Heavy Core API 基础 URL - 用于 Deep Learning 和 RAG
+  static String get _heavyBaseUrl => AppConstants.heavyApiBaseUrl;
 
   /// 获取认证请求头
   static Future<Map<String, String>> _getAuthHeaders() async {
@@ -579,5 +583,78 @@ class ApiService {
   /// 格式化日期为 YYYY-MM-DD
   static String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // ========================================================================
+  // Heavy Core API (Cloud Run) - Deep Learning & RAG
+  // ========================================================================
+
+  /// 训练深度学习模型 (Cloud Run)
+  static Future<Map<String, dynamic>> trainDeepModel({
+    required String storagePath,
+    String? modelType = 'lstm', // 'lstm' or 'gru'
+    int? epochs = 50,
+    int? batchSize = 32,
+    int? windowSize = 24,
+    String? targetColumn,
+  }) async {
+    final headers = await _getAuthHeaders();
+    
+    // 注意：这里使用 _heavyBaseUrl 连接 Cloud Run
+    final response = await http.post(
+      Uri.parse('$_heavyBaseUrl/api/ml/deep/train'),
+      headers: headers,
+      body: jsonEncode({
+        'storage_path': storagePath,
+        'model_type': modelType,
+        'epochs': epochs,
+        'batch_size': batchSize,
+        'window_size': windowSize,
+        if (targetColumn != null) 'target_column': targetColumn,
+      }),
+    ).timeout(
+      const Duration(minutes: 10), // 深度学习训练耗时较长
+      onTimeout: () {
+        throw Exception('训练请求超时，请稍后刷新查看结果');
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['message'] ?? 'Training failed');
+      }
+      return data;
+    } else {
+      throw Exception('Deep Learning training failed: ${response.body}');
+    }
+  }
+
+  /// RAG 问答 (Cloud Run)
+  static Future<Map<String, dynamic>> askRagQuestion({
+    required String question,
+    String? collectionName,
+  }) async {
+    final headers = await _getAuthHeaders();
+    
+    // 注意：这里使用 _heavyBaseUrl 连接 Cloud Run
+    final response = await http.post(
+      Uri.parse('$_heavyBaseUrl/api/rag/ask'),
+      headers: headers,
+      body: jsonEncode({
+        'query': question,
+        if (collectionName != null) 'collection_name': collectionName,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['message'] ?? 'RAG query failed');
+      }
+      return data;
+    } else {
+      throw Exception('RAG query failed: ${response.body}');
+    }
   }
 }

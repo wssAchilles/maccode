@@ -16,8 +16,9 @@ from api.auth import auth_bp
 from api.data import data_bp
 from api.analysis import analysis_bp
 from api.history import history_bp
-# from api.ml import ml_bp  # 暂时禁用
+from api.ml import ml_bp
 from api.optimization import optimization_bp
+from api.rag import rag_bp
 
 
 def create_app(config_name=None):
@@ -48,6 +49,8 @@ def create_app(config_name=None):
     app.register_blueprint(analysis_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(optimization_bp)
+    app.register_blueprint(ml_bp)
+    app.register_blueprint(rag_bp)
     
     # ---------------------------------------------------------
     # ❌ 移除/注释掉原来的 init_scheduler() 调用

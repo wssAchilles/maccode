@@ -41,6 +41,9 @@ class AppConstants {
     return prodUrl;
   }
   
+  // Cloud Run (Heavy Core) - 专用于 Deep Learning 和 RAG
+  static const String heavyApiBaseUrl = 'https://sentinel-backend-cloudrun-nj4m3gcxqq-uc.a.run.app';
+  
   static const String apiVersion = 'v1';
   
   // 超时配置

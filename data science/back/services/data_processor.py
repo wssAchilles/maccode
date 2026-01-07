@@ -352,6 +352,31 @@ class EnergyDataProcessor:
         # 过去24小时均值
         df['Rolling_Mean_24h'] = df['Site_Load'].shift(1).rolling(window=24).mean()
         
+        # ================================================================
+        # 新增: 分位数与波动率特征 (Quantile & Volatility Features)
+        # ================================================================
+        
+        # 分位数特征 (捕捉极端值分布，用于识别峰值负载模式)
+        # 95% 分位数：过去24小时的高负载阈值
+        df['Quantile_95_24h'] = df['Site_Load'].shift(1).rolling(window=24).quantile(0.95)
+        # 5% 分位数：过去24小时的低负载阈值
+        df['Quantile_05_24h'] = df['Site_Load'].shift(1).rolling(window=24).quantile(0.05)
+        
+        # 波动率特征 (捕捉负载变化剧烈程度，变异系数 CV)
+        rolling_mean = df['Site_Load'].shift(1).rolling(window=24).mean()
+        rolling_std = df['Site_Load'].shift(1).rolling(window=24).std()
+        # 变异系数 = 标准差 / 均值，值越大表示波动越剧烈
+        df['Volatility_24h'] = rolling_std / rolling_mean.replace(0, np.nan)
+        
+        # 价格变化特征 (峰谷电价切换敏感度)
+        df['Price_Change'] = df['Price'].diff().abs()
+        
+        # 负载变化率 (小时级负载变化)
+        df['Load_Change_1h'] = df['Site_Load'].diff()
+        df['Load_Change_Pct_1h'] = df['Site_Load'].pct_change() * 100
+        
+        # ================================================================
+        
         # 3. 基础交互特征 (Interaction Features)
         # Temperature x Hour: 捕捉不同时段温度的影响差异 (如中午高温vs深夜高温)
         df['Temp_x_Hour'] = df['Temperature'] * df['Hour']

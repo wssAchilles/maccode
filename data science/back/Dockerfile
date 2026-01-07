@@ -32,7 +32,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # 升级 pip 并安装依赖
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    # 安装 Cloud Run 专用的重型 AI 依赖 (实现动静分离)
+    pip install --no-cache-dir \
+    "tensorflow-cpu>=2.15.0" \
+    "tf-keras>=2.15.0" \
+    "sentence-transformers>=2.2.0" \
+    "chromadb>=0.4.0"
 
 # =============================================================================
 # Stage 2: 运行阶段 - 最小化镜像
@@ -111,8 +117,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["gunicorn", \
     "--bind", "0.0.0.0:8080", \
     "--timeout", "300", \
-    "--workers", "2", \
-    "--threads", "2", \
+    "--workers", "1", \
+    "--threads", "8", \
     "--access-logfile", "-", \
     "--error-logfile", "-", \
     "main:app"]

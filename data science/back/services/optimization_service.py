@@ -187,6 +187,15 @@ class EnergyOptimizer:
             model = gp.Model("BatteryScheduling", env=self.env)
             model.setParam('OutputFlag', 0)  # 关闭求解器输出
             
+            # ================================================================
+            # Phase 2 新增: 超时与容差参数 (防止计算阻塞)
+            # ================================================================
+            time_limit = getattr(self, 'time_limit', 60)  # 默认 60 秒
+            mip_gap = getattr(self, 'mip_gap', 0.05)  # 默认 5% 误差接受
+            model.setParam('TimeLimit', time_limit)
+            model.setParam('MIPGap', mip_gap)
+            print(f"   ⚙️  求解参数: TimeLimit={time_limit}s, MIPGap={mip_gap*100}%")
+            
             T = 24  # 时间步数
             
             # 决策变量
@@ -394,6 +403,16 @@ class EnergyOptimizer:
                 }
                 
             else:
+                # ================================================================
+                # Phase 2 新增: 超时降级处理
+                # ================================================================
+                if status == GRB.TIME_LIMIT:
+                    print(f"   ⚠️  求解超时，启用贪心降级算法...")
+                    fallback_result = self._greedy_fallback(load_profile, price_profile, initial_soc)
+                    fallback_result['status'] = 'Timeout_Fallback'
+                    fallback_result['warning'] = f'求解超时 ({time_limit}s)，使用贪心算法近似解'
+                    return fallback_result
+                
                 print(f"   ⚠️  求解未完成 (状态码: {status})")
                 return {
                     'status': 'Unknown',
@@ -502,5 +521,190 @@ class EnergyOptimizer:
     def __del__(self):
         """析构函数: 关闭 Gurobi 环境（兜底）"""
         self.close()
+    
+    # ================================================================
+    # Phase 2 新增: 贪心降级算法
+    # ================================================================
+    def _greedy_fallback(
+        self,
+        load_profile: List[float],
+        price_profile: List[float],
+        initial_soc: float = 0.5
+    ) -> Dict:
+        """
+        贪心降级算法 (当 Gurobi 超时或不可用时使用)
+        
+        策略:
+        - 谷时充电 (电价 < 0.4)
+        - 峰时放电 (电价 > 0.8)
+        - 其他时段待机
+        
+        Args:
+            load_profile: 负载预测 (kW)
+            price_profile: 电价 (元/kWh)
+            initial_soc: 初始电量百分比
+            
+        Returns:
+            近似优化结果
+        """
+        print("   🔄 执行贪心降级算法...")
+        
+        T = len(load_profile)
+        load = np.array(load_profile)
+        price = np.array(price_profile)
+        
+        # 电池状态
+        soc = initial_soc
+        energy = soc * self.battery_capacity
+        
+        schedule = []
+        total_cost = 0.0
+        
+        for t in range(T):
+            p_charge = 0.0
+            p_discharge = 0.0
+            
+            # 谷时充电 (电价低)
+            if price[t] <= 0.4 and energy < self.battery_capacity * 0.9:
+                # 充电，但不超过最大功率和容量限制
+                max_charge = min(
+                    self.max_power,
+                    (self.battery_capacity * 0.9 - energy) / self.efficiency
+                )
+                p_charge = max_charge
+                energy += p_charge * self.efficiency
+            
+            # 峰时放电 (电价高)
+            elif price[t] >= 0.8 and energy > self.battery_capacity * 0.1:
+                # 放电，但不超过最大功率、当前负载和电量限制
+                max_discharge = min(
+                    self.max_power,
+                    load[t],  # 不能超过负载 (防逆流)
+                    (energy - self.battery_capacity * 0.1) * self.efficiency
+                )
+                p_discharge = max_discharge
+                energy -= p_discharge / self.efficiency
+            
+            # 计算电网功率和成本
+            grid_power = load[t] + p_charge - p_discharge
+            cost = grid_power * price[t]
+            total_cost += cost
+            
+            soc = energy / self.battery_capacity
+            
+            schedule.append({
+                'hour': t,
+                'load': float(load[t]),
+                'price': float(price[t]),
+                'charge_power': float(p_charge),
+                'discharge_power': float(p_discharge),
+                'battery_action': float(p_charge - p_discharge),
+                'soc': float(soc),
+                'stored_energy': float(energy),
+                'grid_power': float(grid_power)
+            })
+        
+        # 计算节省
+        cost_without_battery = np.sum(load * price)
+        savings = cost_without_battery - total_cost
+        savings_percent = (savings / cost_without_battery) * 100 if cost_without_battery > 0 else 0
+        
+        print(f"   ✓ 贪心算法完成: 节省 {savings:.2f} 元 ({savings_percent:.1f}%)")
+        
+        return {
+            'status': 'Greedy_Fallback',
+            'schedule': schedule,
+            'total_cost_without_battery': float(cost_without_battery),
+            'total_cost_with_battery': float(total_cost),
+            'savings': float(savings),
+            'savings_percent': float(savings_percent),
+            'algorithm': 'greedy'
+        }
+    
+    # ================================================================
+    # Phase 2 新增: 批量敏感性分析
+    # ================================================================
+    def simulate_scenarios(
+        self,
+        load_profile: List[float],
+        price_profile: List[float],
+        variations: Optional[Dict[str, List]] = None
+    ) -> List[Dict]:
+        """
+        批量模拟多种参数配置的敏感性分析
+        
+        Args:
+            load_profile: 基准负载预测
+            price_profile: 基准电价
+            variations: 参数变化字典，例如:
+                {
+                    'battery_capacity': [10, 20, 50],
+                    'max_power': [5, 10, 20]
+                }
+                
+        Returns:
+            每种配置的优化结果列表
+        """
+        if variations is None:
+            # 默认敏感性分析范围
+            variations = {
+                'battery_capacity': [self.battery_capacity * 0.5, self.battery_capacity, self.battery_capacity * 1.5],
+                'max_power': [self.max_power * 0.5, self.max_power, self.max_power * 1.5]
+            }
+        
+        results = []
+        original_capacity = self.battery_capacity
+        original_power = self.max_power
+        
+        print(f"\n📊 开始敏感性分析...")
+        print(f"   参数范围:")
+        for param, values in variations.items():
+            print(f"   - {param}: {values}")
+        
+        # 生成所有参数组合
+        from itertools import product
+        
+        param_names = list(variations.keys())
+        param_values = list(variations.values())
+        
+        for combo in product(*param_values):
+            # 设置参数
+            params = dict(zip(param_names, combo))
+            
+            if 'battery_capacity' in params:
+                self.battery_capacity = params['battery_capacity']
+            if 'max_power' in params:
+                self.max_power = params['max_power']
+            
+            print(f"\n   🔄 测试配置: {params}")
+            
+            try:
+                # 使用贪心算法快速模拟 (避免每次都调用 Gurobi)
+                result = self._greedy_fallback(load_profile, price_profile)
+                result['params'] = params
+                results.append(result)
+                
+                print(f"      节省: {result['savings']:.2f} 元 ({result['savings_percent']:.1f}%)")
+                
+            except Exception as e:
+                results.append({
+                    'params': params,
+                    'status': 'Error',
+                    'error': str(e)
+                })
+        
+        # 恢复原始参数
+        self.battery_capacity = original_capacity
+        self.max_power = original_power
+        
+        # 按节省金额排序
+        results.sort(key=lambda x: x.get('savings', 0), reverse=True)
+        
+        print(f"\n✅ 敏感性分析完成: {len(results)} 种配置")
+        if results and results[0].get('savings'):
+            best = results[0]
+            print(f"   🏆 最佳配置: {best['params']}, 节省 {best['savings']:.2f} 元")
+        
+        return results
 
 

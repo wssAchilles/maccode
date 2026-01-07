@@ -8,6 +8,8 @@
 from flask import Blueprint, jsonify, request
 from services.firebase_service import require_auth
 from services.ml_service import MLService, MLServiceError, MemoryError as MLMemoryError
+from services.explainability_service import ExplainabilityService
+from services.deep_learning_service import DeepLearningService
 from services.storage_service import StorageService
 from services.history_service import HistoryService
 from utils.exceptions import ValidationError
@@ -17,6 +19,9 @@ import io
 import pandas as pd
 import time
 import gc
+import base64
+import tempfile
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -554,3 +559,357 @@ def get_model_info():
             'error': 'SERVER_ERROR',
             'message': f'服务器错误: {str(e)}'
         }), 500
+
+
+# ================================================================
+# 超参数调优 API (Phase 1 新增)
+# ================================================================
+
+@ml_bp.route('/tune', methods=['POST', 'OPTIONS'])
+@rate_limit(max_requests=2, window_seconds=3600)  # 每小时最多 2 次调参请求
+@require_auth
+def tune_hyperparameters():
+    """
+    使用 Optuna 进行超参数调优 (独立于训练流程)
+    
+    请求:
+        - Method: POST
+        - Headers: Authorization: Bearer <Firebase ID Token>
+        - Body: JSON
+          {
+            "model_type": "lightgbm",  # 'lightgbm', 'xgboost', 'randomforest'
+            "n_trials": 30,            # Optuna 试验次数 (默认 30)
+            "storage_path": "data/processed/cleaned_energy_data_all.csv"  # 可选
+          }
+    
+    响应:
+        {
+            "success": true,
+            "best_params": {...},
+            "best_score": 12.5,
+            "n_trials": 30,
+            "tuning_time_seconds": 120.5
+        }
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        start_time = time.time()
+        user = request.user
+        uid = user.get('uid')
+        data = request.get_json() or {}
+        
+        logger.info(f"[{uid}] 收到超参数调优请求")
+        
+        # 参数解析
+        model_type = data.get('model_type', 'lightgbm')
+        n_trials = min(int(data.get('n_trials', 30)), 100)  # 限制最大 100 次
+        storage_path = data.get('storage_path')
+        
+        # 模型类型校验
+        valid_types = ['lightgbm', 'xgboost', 'randomforest']
+        if model_type.lower() not in valid_types:
+            raise ValidationError(f"无效的 model_type: {model_type}. 支持: {valid_types}")
+        
+        logger.info(f"[{uid}] 调优参数: model_type={model_type}, n_trials={n_trials}")
+        
+        # 导入必要模块
+        try:
+            import optuna
+            from optuna.pruners import MedianPruner
+            from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
+        except ImportError:
+            raise ValidationError("Optuna 未安装，无法进行超参数调优")
+        
+        # 加载数据
+        from services.storage_service import StorageService
+        storage = StorageService()
+        
+        data_path = storage_path or 'data/processed/cleaned_energy_data_all.csv'
+        
+        if not storage.file_exists(data_path):
+            raise ValidationError(f"数据文件不存在: {data_path}")
+        
+        logger.info(f"[{uid}] 加载数据: {data_path}")
+        file_bytes = storage.download_file(data_path)
+        df = pd.read_csv(io.BytesIO(file_bytes), parse_dates=['Date'])
+        
+        del file_bytes
+        gc.collect()
+        
+        logger.info(f"[{uid}] 数据加载完成: {df.shape}")
+        
+        # 准备特征 (与 ml_service 保持一致)
+        from services.ml_service import EnergyPredictor
+        predictor = EnergyPredictor()
+        
+        # 动态检测可用特征
+        available_features = [col for col in predictor.base_feature_columns if col in df.columns]
+        for col in predictor.enhanced_feature_columns:
+            if col in df.columns:
+                available_features.append(col)
+        
+        # 清理 NaN
+        df = df.dropna(subset=available_features + [predictor.target_column])
+        
+        X = df[available_features]
+        y = df[predictor.target_column]
+        
+        logger.info(f"[{uid}] 特征数量: {len(available_features)}, 样本数量: {len(X)}")
+        
+        # 时间序列拆分
+        tscv = TimeSeriesSplit(n_splits=5)
+        
+        # 创建 Optuna 目标函数
+        def objective(trial):
+            if model_type.lower() == 'lightgbm':
+                from lightgbm import LGBMRegressor
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+                    'num_leaves': trial.suggest_int('num_leaves', 20, 150),
+                    'max_depth': trial.suggest_int('max_depth', 5, 25),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                }
+                model = LGBMRegressor(**params, random_state=42, n_jobs=-1, verbose=-1)
+                
+            elif model_type.lower() == 'xgboost':
+                from xgboost import XGBRegressor
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+                    'max_depth': trial.suggest_int('max_depth', 3, 15),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                }
+                model = XGBRegressor(**params, random_state=42, n_jobs=-1, verbosity=0)
+                
+            else:
+                from sklearn.ensemble import RandomForestRegressor
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 400),
+                    'max_depth': trial.suggest_int('max_depth', 5, 30),
+                    'min_samples_split': trial.suggest_int('min_samples_split', 2, 15),
+                    'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 8),
+                }
+                model = RandomForestRegressor(**params, random_state=42, n_jobs=-1)
+            
+            scores = cross_val_score(
+                model, X, y,
+                cv=tscv,
+                scoring='neg_mean_absolute_error',
+                n_jobs=1
+            )
+            return -scores.mean()
+        
+        # 运行 Optuna
+        logger.info(f"[{uid}] 开始 Optuna 调优 ({n_trials} trials)...")
+        
+        study = optuna.create_study(
+            direction='minimize',
+            pruner=MedianPruner(n_startup_trials=5),
+            sampler=optuna.samplers.TPESampler(seed=42)
+        )
+        
+        study.optimize(objective, n_trials=n_trials, show_progress_bar=False, n_jobs=1)
+        
+        tuning_time = time.time() - start_time
+        
+        # 保存调参日志
+        try:
+            log_df = study.trials_dataframe()
+            log_content = log_df.to_csv(index=False)
+            log_path = f'tuning_logs/{uid}/tuning_log_{model_type}.csv'
+            storage.bucket.blob(log_path).upload_from_string(
+                log_content, content_type='text/csv'
+            )
+            logger.info(f"[{uid}] 调参日志已保存: {log_path}")
+        except Exception as log_err:
+            logger.warning(f"[{uid}] 保存调参日志失败: {log_err}")
+        
+        logger.info(f"[{uid}] 调优完成: best_score={study.best_value:.4f}")
+        
+        # 清理
+        del df, X, y
+        gc.collect()
+        
+        return jsonify({
+            'success': True,
+            'model_type': model_type,
+            'best_params': study.best_params,
+            'best_score': round(study.best_value, 4),
+            'n_trials': n_trials,
+            'tuning_time_seconds': round(tuning_time, 2)
+        }), 200
+        
+    except ValidationError as e:
+        logger.warning(f"参数校验失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'VALIDATION_ERROR',
+            'message': str(e)
+        }), 400
+    
+    except Exception as e:
+        logger.error(f"调优请求异常: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'SERVER_ERROR',
+            'message': f'服务器错误: {str(e)}'
+        }), 500
+    
+    finally:
+        gc.collect()
+
+
+# ================================================================
+# 可解释性 API (Phase 2 新增)
+# ================================================================
+
+@ml_bp.route('/explain', methods=['POST', 'OPTIONS'])
+@rate_limit(max_requests=10, window_seconds=60)
+@require_auth
+def explain_model():
+    """
+    生成模型解释 (SHAP)
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        user = request.user
+        uid = user.get('uid')
+        data = request.get_json() or {}
+        
+        model_path = data.get('model_path')
+        storage_path = data.get('storage_path')
+        
+        if not model_path or not storage_path:
+            raise ValidationError('缺少参数: model_path 或 storage_path')
+
+        logger.info(f"[{uid}] 开始解释模型: {model_path}")
+
+        storage = StorageService()
+        
+        # 加载模型
+        pipeline = MLService.load_model(storage, model_path)
+        # 尝试获取内部模型
+        model = pipeline
+        if hasattr(pipeline, 'named_steps'):
+             model = pipeline.named_steps.get('model', pipeline)
+
+        # 加载数据
+        file_bytes = storage.download_file(storage_path)
+        df = pd.read_csv(io.BytesIO(file_bytes))
+        
+        # 简单选取数值特征用于解释
+        # 实际生产中应复用训练时的预处理逻辑
+        X = df.select_dtypes(include='number').iloc[:100]
+        
+        # 使用 ExplainabilityService
+        explainer_service = ExplainabilityService()
+        
+        # 计算 SHAP
+        shap_values, expected_value, feature_names = explainer_service.calculate_shap_values(
+            model=model,
+            X=X,
+            feature_names=X.columns.tolist(),
+            model_type='tree' # default
+        )
+        
+        # 生成摘要图
+        summary_plot = explainer_service.plot_summary(shap_values, X)
+        
+        # 上传图表
+        timestamp = int(time.time())
+        plot_path = f"explanations/{uid}/{timestamp}_summary.png"
+        storage.bucket.blob(plot_path).upload_from_string(base64.b64decode(summary_plot), content_type='image/png')
+        
+        return jsonify({
+            'success': True,
+            'shap_values_summary': 'SHAP values calculated',
+            'plot_url': f"gs://{storage.bucket_name}/{plot_path}"
+        }), 200
+
+    except Exception as e:
+        logger.error(f"解释模型失败: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
+
+
+# ================================================================
+# 深度学习 API (Phase 3 新增)
+# ================================================================
+
+@ml_bp.route('/deep/train', methods=['POST', 'OPTIONS'])
+@rate_limit(max_requests=2, window_seconds=600)
+@require_auth
+def train_deep_model():
+    """
+    训练深度学习模型 (LSTM/GRU)
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+        
+    try:
+        user = request.user
+        uid = user.get('uid')
+        data = request.get_json() or {}
+        
+        storage_path = data.get('storage_path')
+        model_type = data.get('model_type', 'lstm')
+        target_col = data.get('target_column')
+        lookback = int(data.get('lookback', 24))
+        horizon = int(data.get('horizon', 1))
+        epochs = int(data.get('epochs', 10))
+        
+        if not storage_path or not target_col:
+            raise ValidationError("缺少 storage_path 或 target_column")
+            
+        logger.info(f"[{uid}] 开始训练深度模型 {model_type}")
+        
+        dl_service = DeepLearningService()
+        if not dl_service.is_available():
+             raise ValidationError("深度学习依赖未安装")
+
+        storage = StorageService()
+        file_bytes = storage.download_file(storage_path)
+        df = pd.read_csv(io.BytesIO(file_bytes), parse_dates=['Date']) # 假设有 Date 列，或由用户指定时间列
+        
+        # 训练
+        result = dl_service.train_model(
+            data=df,
+            target_col=target_col,
+            model_type=model_type,
+            lookback=lookback,
+            horizon=horizon,
+            epochs=epochs
+        )
+        
+        model = result['model']
+        history = result['history']
+        metrics = result['metrics']
+        
+        # 保存模型 (.keras)
+        timestamp = int(time.time())
+        with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as tmp:
+            model.save(tmp.name)
+            tmp_path = tmp.name
+            
+        remote_path = f"models/{uid}/dl_{model_type}_{timestamp}.keras"
+        storage.upload_file(tmp_path, remote_path)
+        os.remove(tmp_path)
+        
+        return jsonify({
+            'success': True,
+            'model_path': remote_path,
+            'metrics': metrics,
+            'history': history.history if hasattr(history, 'history') else history
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"深度学习训练失败: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
+

@@ -2,16 +2,12 @@
 /// 完整功能实现
 library;
 
-import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import '../config/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -20,7 +16,10 @@ import '../models/analysis_result.dart';
 import '../widgets/analysis/quality_dashboard.dart';
 import '../widgets/analysis/correlation_matrix_view.dart';
 import '../widgets/analysis/statistical_panel.dart';
+import '../widgets/common/animated_glass_card.dart';
 import 'history_screen.dart';
+import 'deep_learning_screen.dart';
+import 'rag_screen.dart';
 
 class DataAnalysisScreen extends StatefulWidget {
   const DataAnalysisScreen({super.key});
@@ -30,8 +29,8 @@ class DataAnalysisScreen extends StatefulWidget {
 }
 
 class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
-  // 后端 URL - 生产环境
-  static const String backendUrl = 'https://data-science-44398.an.r.appspot.com';
+  // 后端 API URL 已移至 ApiService 管理
+  // static const String backendUrl = ...;
   
   // 状态变量
   User? _currentUser;
@@ -515,6 +514,8 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                         children: [
                           _buildResponsiveTopSection(),
                           const SizedBox(height: 24),
+                          _buildProFeaturesSection(context), // 新增 Pro 功能入口
+                          const SizedBox(height: 24),
                           _buildAnalysisButton(),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
@@ -581,6 +582,86 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Pro 功能入口 (Dual-Core Features)
+  Widget _buildProFeaturesSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.rocket_launch_rounded, color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text('Advanced Intelligence (Cloud Run)', style: AppTextStyles.h4),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            // Deep Learning Card
+            Expanded(
+              child: AnimatedGlassCard(
+                gradientBorder: AppColors.deepLearningGradient,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DeepLearningScreen()),
+                  );
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.deepLearningGradient,
+                        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+                      ),
+                      child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Deep Learning', style: AppTextStyles.labelLarge),
+                    const SizedBox(height: 4),
+                    Text('LSTM/GRU Time Series', style: AppTextStyles.labelSmall),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            // RAG Card
+            Expanded(
+              child: AnimatedGlassCard(
+                gradientBorder: AppColors.ragGradient,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RagScreen()),
+                  );
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.ragGradient,
+                        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+                      ),
+                      child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('RAG Knowledge', style: AppTextStyles.labelLarge),
+                    const SizedBox(height: 4),
+                    Text('Interactive Q&A', style: AppTextStyles.labelSmall),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1276,7 +1357,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columns: (preview[0] as Map<String, dynamic>).keys.map((key) {
+                columns: preview[0].keys.map((key) {
                   return DataColumn(
                     label: Text(
                       key,
@@ -1285,7 +1366,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                   );
                 }).toList(),
                 rows: preview.map((row) {
-                  final rowMap = row as Map<String, dynamic>;
+                  final rowMap = row;
                   return DataRow(
                     cells: rowMap.values.map((value) {
                       return DataCell(Text(value?.toString() ?? ''));

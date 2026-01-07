@@ -68,6 +68,21 @@ class AppColors {
     end: Alignment.bottomCenter,
     colors: [Color(0xFFDBEAFE), Color(0xFFF8FAFC)], // Blue 100 → Slate 50
   );
+
+  // 模块专属渐变 (Hybrid Core)
+  static const LinearGradient deepLearningGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)], // Purple -> Blue
+  );
+
+  static const LinearGradient ragGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF14B8A6), Color(0xFF0EA5E9)], // Teal -> Sky
+  );
+  
+  // 图表配色
   
   // 图表配色
   static const List<Color> chartColors = [
@@ -159,6 +174,13 @@ class AppTextStyles {
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
+  );
+
+  static TextStyle get labelSmall => GoogleFonts.dmSans(
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: AppColors.textSecondary,
+    letterSpacing: 0.5,
   );
   
   static TextStyle get button => GoogleFonts.dmSans(
@@ -413,9 +435,9 @@ class AppTheme {
       // 滑动条主题
       sliderTheme: SliderThemeData(
         activeTrackColor: AppColors.primary,
-        inactiveTrackColor: AppColors.primaryLight.withOpacity(0.3),
+        inactiveTrackColor: AppColors.primaryLight.withValues(alpha: 0.3),
         thumbColor: AppColors.primary,
-        overlayColor: AppColors.primary.withOpacity(0.12),
+        overlayColor: AppColors.primary.withValues(alpha: 0.12),
         trackHeight: 4,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
       ),
@@ -475,10 +497,10 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(opacity),
+              color: Colors.white.withValues(alpha: opacity),
               borderRadius: borderRadius ?? BorderRadius.circular(AppDecorations.radiusLg),
               border: border ?? Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1,
               ),
               boxShadow: AppDecorations.shadowMd,

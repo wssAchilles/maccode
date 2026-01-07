@@ -54,7 +54,7 @@ class SocChartWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getOverallStatusColor().withOpacity(0.2),
+                    color: _getOverallStatusColor().withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -73,9 +73,9 @@ class SocChartWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.05),
+                color: Colors.purple.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.purple.withOpacity(0.2)),
+                border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -114,13 +114,13 @@ class SocChartWidget extends StatelessWidget {
         verticalInterval: 4,
         getDrawingHorizontalLine: (value) {
           return FlLine(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             strokeWidth: 1,
           );
         },
         getDrawingVerticalLine: (value) {
           return FlLine(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             strokeWidth: 1,
           );
         },
@@ -172,7 +172,7 @@ class SocChartWidget extends StatelessWidget {
       ),
       borderData: FlBorderData(
         show: true,
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       minX: 0,
       maxX: 23,
@@ -213,8 +213,8 @@ class SocChartWidget extends StatelessWidget {
             show: true,
             gradient: LinearGradient(
               colors: [
-                Colors.purple.withOpacity(0.3),
-                Colors.purple.withOpacity(0.1),
+                Colors.purple.withValues(alpha: 0.3),
+                Colors.purple.withValues(alpha: 0.1),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -230,7 +230,7 @@ class SocChartWidget extends StatelessWidget {
         enabled: true,
         touchTooltipData: LineTouchTooltipData(
           getTooltipColor: (LineBarSpot spot) =>
-              Colors.purple.withOpacity(0.8),
+              Colors.purple.withValues(alpha: 0.8),
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
               final hour = barSpot.x.toInt();
@@ -287,7 +287,7 @@ class SocChartWidget extends StatelessWidget {
       HorizontalRangeAnnotation(
         y1: 0,
         y2: 100,
-        color: Colors.green.withOpacity(0.05),
+        color: Colors.green.withValues(alpha: 0.05),
       ),
     );
     
@@ -311,9 +311,9 @@ class SocChartWidget extends StatelessWidget {
       alignment: WrapAlignment.center,
       children: [
         _buildLegendItem(Colors.purple, 'SOC 趋势'),
-        _buildLegendItem(Colors.green.withOpacity(0.3), '谷时 (0.3元)', isBackground: true),
-        _buildLegendItem(Colors.orange.withOpacity(0.3), '平时 (0.6元)', isBackground: true),
-        _buildLegendItem(Colors.red.withOpacity(0.3), '峰时 (1.0元)', isBackground: true),
+        _buildLegendItem(Colors.green.withValues(alpha: 0.3), '谷时 (0.3元)', isBackground: true),
+        _buildLegendItem(Colors.orange.withValues(alpha: 0.3), '平时 (0.6元)', isBackground: true),
+        _buildLegendItem(Colors.red.withValues(alpha: 0.3), '峰时 (1.0元)', isBackground: true),
       ],
     );
   }

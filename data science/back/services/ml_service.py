@@ -39,6 +39,15 @@ except ImportError:
 
 from config import Config
 
+class MLServiceError(Exception):
+    """ML Service Generic Error"""
+    pass
+
+class MemoryError(Exception):
+    """Memory Limit Exceeded"""
+    pass
+
+
 class EnergyPredictor:
     """
     能源负载预测器
@@ -89,7 +98,10 @@ class EnergyPredictor:
             # 增强交互特征
             'Temp_x_Season', 'Lag24_x_IsWeekend', 'Hour_x_IsHoliday',
             # 周期编码特征
-            'Month_Sin', 'Month_Cos', 'Hour_Sin', 'Hour_Cos'
+            'Month_Sin', 'Month_Cos', 'Hour_Sin', 'Hour_Cos',
+            # 分位数与波动率特征 (Phase 1 新增)
+            'Quantile_95_24h', 'Quantile_05_24h', 'Volatility_24h',
+            'Price_Change', 'Load_Change_1h', 'Load_Change_Pct_1h'
         ]
         
         # 实际使用的特征列表（初始化为基础特征）
@@ -197,6 +209,48 @@ class EnergyPredictor:
                 'learning_rate': 0.05,
                 'max_depth': 10
             }
+        # ================================================================
+        # 新增: 线性基线模型 (Linear Baselines for Interpretability)
+        # ================================================================
+        elif model_type == 'ridge':
+            from sklearn.linear_model import Ridge
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.pipeline import Pipeline
+            # 使用 Pipeline 确保特征标准化 (线性模型对尺度敏感)
+            model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('ridge', Ridge(alpha=1.0, random_state=random_state))
+            ])
+            params = {
+                'alpha': 1.0,
+                'model_type': 'Ridge (L2 Regularization)'
+            }
+        elif model_type == 'lasso':
+            from sklearn.linear_model import Lasso
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.pipeline import Pipeline
+            model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('lasso', Lasso(alpha=0.1, random_state=random_state, max_iter=2000))
+            ])
+            params = {
+                'alpha': 0.1,
+                'model_type': 'Lasso (L1 Regularization)'
+            }
+        elif model_type == 'elasticnet':
+            from sklearn.linear_model import ElasticNet
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.pipeline import Pipeline
+            model = Pipeline([
+                ('scaler', StandardScaler()),
+                ('elasticnet', ElasticNet(alpha=0.1, l1_ratio=0.5, random_state=random_state, max_iter=2000))
+            ])
+            params = {
+                'alpha': 0.1,
+                'l1_ratio': 0.5,
+                'model_type': 'ElasticNet (L1+L2 Regularization)'
+            }
+        # ================================================================
         else:
             # 默认使用 RandomForest
             model = RandomForestRegressor(
@@ -219,7 +273,125 @@ class EnergyPredictor:
     
     def _tune_model(self, model_type: str, X_train, y_train, cv_split, n_iter: int = 20, random_state: int = 42):
         """
-        使用 RandomizedSearchCV 对指定模型进行超参数调优
+        使用 Optuna 对指定模型进行贝叶斯超参数调优 (Phase 1 改进)
+        
+        优势:
+        - 贝叶斯优化比随机搜索更高效
+        - MedianPruner 提前终止表现差的 trial
+        - 自动保存调参日志 (tuning_log.csv)
+        """
+        try:
+            import optuna
+            from optuna.pruners import MedianPruner
+            from sklearn.model_selection import cross_val_score
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
+            OPTUNA_AVAILABLE = True
+        except ImportError:
+            OPTUNA_AVAILABLE = False
+            print("   ⚠️ Optuna 未安装，回退到 RandomizedSearchCV")
+        
+        model_type = model_type.lower()
+        
+        # 如果 Optuna 不可用，使用原有的 RandomizedSearchCV
+        if not OPTUNA_AVAILABLE:
+            return self._tune_model_fallback(model_type, X_train, y_train, cv_split, n_iter, random_state)
+        
+        print(f"   🔍 使用 Optuna 为 {model_type} 搜索最佳参数 (trials={n_iter})...")
+        
+        def objective(trial):
+            """Optuna 目标函数"""
+            if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+                    'num_leaves': trial.suggest_int('num_leaves', 20, 150),
+                    'max_depth': trial.suggest_int('max_depth', 5, 25),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                    'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
+                    'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
+                }
+                model = LGBMRegressor(**params, random_state=random_state, n_jobs=-1, verbose=-1)
+                
+            elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.15, log=True),
+                    'max_depth': trial.suggest_int('max_depth', 3, 15),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                    'gamma': trial.suggest_float('gamma', 0, 0.5),
+                    'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
+                    'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
+                }
+                model = XGBRegressor(**params, random_state=random_state, n_jobs=-1, verbosity=0)
+                
+            else:
+                # RandomForest
+                params = {
+                    'n_estimators': trial.suggest_int('n_estimators', 100, 400),
+                    'max_depth': trial.suggest_int('max_depth', 5, 30),
+                    'min_samples_split': trial.suggest_int('min_samples_split', 2, 15),
+                    'min_samples_leaf': trial.suggest_int('min_samples_leaf', 1, 8),
+                    'max_features': trial.suggest_categorical('max_features', ['sqrt', 'log2', None]),
+                }
+                model = RandomForestRegressor(**params, random_state=random_state, n_jobs=-1)
+            
+            # 使用交叉验证评估
+            scores = cross_val_score(
+                model, X_train, y_train, 
+                cv=cv_split, 
+                scoring='neg_mean_absolute_error',
+                n_jobs=-1
+            )
+            
+            return -scores.mean()  # Optuna 默认最小化，负 MAE 的均值
+        
+        # 创建 Optuna Study
+        study = optuna.create_study(
+            direction='minimize',
+            pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=0),
+            sampler=optuna.samplers.TPESampler(seed=random_state)
+        )
+        
+        # 运行优化
+        study.optimize(
+            objective, 
+            n_trials=n_iter, 
+            show_progress_bar=False,
+            n_jobs=1  # 避免嵌套并行
+        )
+        
+        # 保存调参日志
+        try:
+            log_df = study.trials_dataframe()
+            log_path = 'tuning_log.csv'
+            log_df.to_csv(log_path, index=False)
+            print(f"      📝 调参日志已保存: {log_path}")
+        except Exception as e:
+            print(f"      ⚠️ 保存调参日志失败: {e}")
+        
+        # 使用最佳参数重新训练模型
+        best_params = study.best_params
+        print(f"      ✓ 最佳参数: {best_params}")
+        print(f"      ✓ 最佳 CV MAE: {study.best_value:.4f} kW")
+        
+        # 创建最终模型
+        if model_type == 'lightgbm' and LIGHTGBM_AVAILABLE:
+            best_model = LGBMRegressor(**best_params, random_state=random_state, n_jobs=-1, verbose=-1)
+        elif model_type == 'xgboost' and XGBOOST_AVAILABLE:
+            best_model = XGBRegressor(**best_params, random_state=random_state, n_jobs=-1, verbosity=0)
+        else:
+            best_model = RandomForestRegressor(**best_params, random_state=random_state, n_jobs=-1)
+        
+        # 在完整训练集上训练
+        best_model.fit(X_train, y_train)
+        
+        return best_model, best_params
+    
+    def _tune_model_fallback(self, model_type: str, X_train, y_train, cv_split, n_iter: int = 20, random_state: int = 42):
+        """
+        Fallback: 使用 RandomizedSearchCV 进行超参数调优 (当 Optuna 不可用时)
         """
         model_type = model_type.lower()
         estimator = None
@@ -246,7 +418,6 @@ class EnergyPredictor:
                 'gamma': [0, 0.1, 0.2]
             }
         else:
-            # RandomForest
             estimator = RandomForestRegressor(random_state=random_state, n_jobs=-1)
             param_dist = {
                 'n_estimators': [100, 200, 300],
@@ -256,7 +427,7 @@ class EnergyPredictor:
                 'max_features': ['sqrt', 'log2', None]
             }
             
-        print(f"   🔍 正在为 {model_type} 搜索最佳参数 (iter={n_iter})...")
+        print(f"   🔍 使用 RandomizedSearchCV 为 {model_type} 搜索最佳参数 (iter={n_iter})...")
         
         search = RandomizedSearchCV(
             estimator=estimator,
@@ -527,7 +698,55 @@ class EnergyPredictor:
                     print(f"   ✨ 集成模型表现最佳!")
                     
             except Exception as e:
-                print(f"   ⚠️ 集成学习失败: {str(e)}")
+                print(f"   ⚠️ Voting 集成学习失败: {str(e)}")
+        
+        # ================================================================
+        # 新增: StackingRegressor 集成 (使用 RidgeCV 作为 Meta-Learner)
+        # ================================================================
+        if len(best_estimators) >= 2:
+            try:
+                from sklearn.ensemble import StackingRegressor
+                from sklearn.linear_model import RidgeCV
+                
+                print(f"   🏗️  尝试 Stacking 集成 (Meta-Learner: RidgeCV)...", end=' ')
+                
+                # 创建 StackingRegressor
+                stacking_estimators = [(k, v['model']) for k, v in best_estimators.items()]
+                stacking_model = StackingRegressor(
+                    estimators=stacking_estimators,
+                    final_estimator=RidgeCV(alphas=[0.1, 1.0, 10.0]),
+                    cv=5,
+                    n_jobs=-1,
+                    passthrough=False  # 不传递原始特征给 Meta-Learner
+                )
+                stacking_name = "Stacking_Ensemble"
+                
+                # 评估 Stacking 模型
+                stacking_model.fit(X_train, y_train)
+                y_pred = stacking_model.predict(X_test)
+                
+                if hasattr(self, 'use_log_transform') and self.use_log_transform:
+                    y_pred = np.expm1(y_pred)
+                
+                mae = mean_absolute_error(y_test, y_pred)
+                rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                print(f"MAE={mae:.2f} kW")
+                
+                results[stacking_name] = {'mae': mae, 'rmse': rmse, 'model_type': 'stacking'}
+                candidates.append(stacking_name)
+                
+                if mae < best_mae:
+                    best_mae = mae
+                    best_model = stacking_model
+                    best_params = {
+                        'estimators': [k for k in best_estimators.keys()],
+                        'final_estimator': 'RidgeCV'
+                    }
+                    best_name = stacking_name
+                    print(f"   ✨ Stacking 模型表现最佳!")
+                    
+            except Exception as e:
+                print(f"   ⚠️ Stacking 集成失败: {str(e)}")
 
         # 计算相对基准的提升
         improvement = 'N/A'
@@ -661,7 +880,8 @@ class EnergyPredictor:
         cv_folds: int = 5,
         use_log_transform: bool = True,
         remove_outliers: bool = True,
-        tune_hyperparameters: bool = True  # 新增控制开关 (默认开启)
+        tune_hyperparameters: bool = True,
+        target_col: str = 'Site_Load'  # Allow custom target column
     ) -> Dict[str, float]:
         """
         训练预测模型（支持自动模型选择、增强特征和时间序列交叉验证）
@@ -687,6 +907,10 @@ class EnergyPredictor:
         print("\n" + "="*80)
         print("🚀 开始训练能源负载预测模型")
         print("="*80 + "\n")
+        
+        # Set target column
+        self.target_column = target_col
+        print(f"   🎯 目标列: {self.target_column}")
         
         temp_data_path = None
         
@@ -1029,6 +1253,52 @@ class EnergyPredictor:
                         'cv_mae_std': cv_detail.get('cv_mae_std'),
                         'cv_scores': cv_detail.get('cv_scores')
                     })
+
+            # ================================================================
+            # 生成评估报告 (使用 EvaluationService - Phase 1 新增)
+            # ================================================================
+            try:
+                from services.evaluation_service import EvaluationService
+                
+                print(f"\n📄 生成评估报告...")
+                
+                # 计算详细指标
+                eval_metrics = EvaluationService.calculate_time_series_metrics(
+                    y_true=y_test.values,
+                    y_pred=y_test_pred,
+                    cv_scores=validation_summary.get('cv_scores')
+                )
+                
+                # 构建模型信息
+                model_info = {
+                    'name': selected_model_type,
+                    'type': self._get_model_type_name(),
+                    'n_features': len(self.feature_columns),
+                    'n_train_samples': len(X_train),
+                    'hyperparameters': hyperparameters
+                }
+                
+                # 生成 Markdown 报告
+                report_content = EvaluationService.generate_report(
+                    metrics=eval_metrics,
+                    model_info=model_info,
+                    comparison_df=None,  # 可扩展为多模型对比
+                    output_path=None  # 不保存本地文件
+                )
+                
+                # 上传报告到 Firebase Storage
+                report_path = 'models/evaluation_report.md'
+                self.storage_service.bucket.blob(report_path).upload_from_string(
+                    report_content,
+                    content_type='text/markdown; charset=utf-8'
+                )
+                print(f"   ✓ 评估报告已保存到: {report_path}")
+                
+                # 将指标存入 validation_summary 供元数据使用
+                validation_summary['evaluation_metrics'] = eval_metrics
+                
+            except Exception as eval_err:
+                print(f"   ⚠️ 生成评估报告失败: {str(eval_err)}")
 
             # 数据覆盖范围
             data_coverage = None
@@ -1888,4 +2158,101 @@ class EnergyPredictor:
         except Exception as e:
             print(f"   ❌ 在线评估失败: {str(e)}")
             return {'status': 'error', 'message': str(e)}
+
+
+class MLService:
+    """
+    MLService Adapter for API compatibility.
+    Wraps EnergyPredictor for regression and implements basic logic for others.
+    """
+    
+    @staticmethod
+    def train_model(
+        df: pd.DataFrame,
+        target_col: str,
+        problem_type: str = 'regression',
+        model_name: str = None,
+        n_clusters: int = None
+    ):
+        """
+        Static wrapper for API calls
+        """
+        if problem_type == 'regression':
+            # Use EnergyPredictor
+            import tempfile
+            
+            # Save DF to temp CSV because EnergyPredictor expects a path
+            # This is a temporary workaround to avoid refactoring EnergyPredictor
+            with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as tmp:
+                df.to_csv(tmp.name, index=False)
+                tmp_path = tmp.name
+            
+            try:
+                predictor = EnergyPredictor()
+                
+                # Adapt model_name
+                metrics = predictor.train_model(
+                    data_path=tmp_path,
+                    use_firebase_storage=False,
+                    target_col=target_col,
+                    model_type=model_name if model_name else 'auto'
+                )
+                
+                # EnergyPredictor.train_model sets self.pipeline
+                pipeline = predictor.pipeline
+                
+                # Construct result
+                return {
+                    'pipeline': pipeline,
+                    'metrics': metrics,
+                    'model_type': predictor.model_type,
+                    'training_samples': len(df),
+                    'training_time_seconds': 0.0,
+                }
+            except Exception as e:
+                raise MLServiceError(str(e))
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+                    
+        else:
+            raise MLServiceError(f"Problem type '{problem_type}' not supported by MLService adapter yet.")
+
+    @staticmethod
+    def save_model(pipeline, storage_service, uid, model_name):
+        import joblib
+        import io
+        
+        # Save to bytes
+        buffer = io.BytesIO()
+        joblib.dump(pipeline, buffer)
+        buffer.seek(0)
+        
+        # Upload
+        model_filename = f"{model_name}.joblib"
+        remote_path = f"models/{uid}/{model_filename}"
+        
+        storage_service.upload_file_obj(buffer, remote_path, content_type='application/octet-stream')
+        return f"gs://{storage_service.bucket_name}/{remote_path}"
+
+    @staticmethod
+    def load_model(storage_service, model_path):
+        import joblib
+        import io
+        
+        try:
+            # Download
+            blob_path = model_path
+            if model_path.startswith('gs://'):
+                 # Extract relative path
+                 parts = model_path.split('/')
+                 blob_path = "/".join(parts[3:])
+            
+            file_bytes = storage_service.download_file(blob_path)
+            buffer = io.BytesIO(file_bytes)
+            model = joblib.load(buffer)
+            return model
+        except Exception as e:
+            raise MLServiceError(f"Failed to load model: {str(e)}")
+
         

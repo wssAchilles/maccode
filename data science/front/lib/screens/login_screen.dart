@@ -189,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen>
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                 ),
               ),
             ),
@@ -201,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen>
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.cta.withOpacity(0.1),
+                  color: AppColors.cta.withValues(alpha: 0.1),
                 ),
               ),
             ),
@@ -235,10 +235,10 @@ class _LoginScreenState extends State<LoginScreen>
         child: Container(
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
+            color: Colors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(AppDecorations.radiusXl),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               width: 1,
             ),
             boxShadow: AppDecorations.shadowLg,
@@ -291,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -332,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen>
         prefixIcon: const Icon(Icons.email_outlined),
         hintText: 'your@email.com',
         filled: true,
-        fillColor: AppColors.surfaceVariant.withOpacity(0.5),
+        fillColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -355,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen>
         prefixIcon: const Icon(Icons.lock_outlined),
         hintText: '至少 6 位字符',
         filled: true,
-        fillColor: AppColors.surfaceVariant.withOpacity(0.5),
+        fillColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,

@@ -125,6 +125,10 @@ def rate_limit(max_requests=100, window_seconds=60):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # 使用用户 ID 或 IP 作为限流键
+            from flask import current_app
+            if current_app.config.get('TESTING'):
+                return f(*args, **kwargs)
+
             if hasattr(request, 'user') and request.user:
                 key = f"user:{request.user.get('uid')}"
             else:

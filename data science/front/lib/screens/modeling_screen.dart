@@ -4,7 +4,7 @@ library;
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:intl/intl.dart';
 import '../config/app_theme.dart';
@@ -261,9 +261,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
+            color: Colors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             boxShadow: AppDecorations.shadowMd,
           ),
           padding: const EdgeInsets.all(20.0),
@@ -276,7 +276,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
                     ),
                     child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
@@ -512,12 +512,12 @@ class _ModelingScreenState extends State<ModelingScreen> {
           }
         });
       },
-      backgroundColor: color.withOpacity(0.1),
+      backgroundColor: color.withValues(alpha: 0.1),
       selectedColor: color,
       checkmarkColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-        side: BorderSide(color: isSelected ? color : color.withOpacity(0.3)),
+        side: BorderSide(color: isSelected ? color : color.withValues(alpha: 0.3)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
@@ -555,7 +555,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
               max: max,
               divisions: divisions,
               activeColor: iconColor,
-              inactiveColor: iconColor.withOpacity(0.2),
+              inactiveColor: iconColor.withValues(alpha: 0.2),
               onChanged: _isLoading ? null : onChanged,
             ),
           ),
@@ -564,7 +564,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
           width: 70,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -771,7 +771,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -1217,7 +1217,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
         ),
         boxShadow: enabled ? [
           BoxShadow(
-            color: Colors.indigo.withOpacity(0.1),
+            color: Colors.indigo.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           )
@@ -1598,7 +1598,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: savingsDiff > 0 ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                  color: savingsDiff > 0 ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -1942,7 +1942,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.2),
+                  color: iconColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -2027,58 +2027,4 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   /// 信息对话框
-  void _showInfoDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.info, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('关于能源优化'),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '功能说明',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text('• 基于机器学习预测未来24小时能源负载'),
-              Text('• 使用混合整数规划优化电池充放电策略'),
-              Text('• 考虑峰谷电价，最小化总购电成本'),
-              SizedBox(height: 16),
-              Text(
-                '电价时段',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text('• 谷时 (00:00-08:00, 22:00-24:00): 0.3 元/kWh'),
-              Text('• 平时 (08:00-18:00): 0.6 元/kWh'),
-              Text('• 峰时 (18:00-22:00): 1.0 元/kWh'),
-              SizedBox(height: 16),
-              Text(
-                '电池参数',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 8),
-              Text('• 容量: 13.5 kWh (Tesla Powerwall)'),
-              Text('• 最大功率: 5.0 kW'),
-              Text('• 充放电效率: 95%'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
-  }
 }

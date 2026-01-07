@@ -78,9 +78,18 @@ class ProductionConfig(Config):
     DEBUG = False
 
 
+class TestingConfig(Config):
+    """测试环境配置"""
+    TESTING = True
+    DEBUG = True
+    WTF_CSRF_ENABLED = False
+
+
+
 # 配置字典
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'testing': TestingConfig,
     'default': DevelopmentConfig
 }

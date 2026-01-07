@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 /// 优化服务使用示例
 /// 展示如何调用优化 API
 library;

@@ -3,9 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../widgets/analysis/quality_dashboard.dart';
-import '../widgets/analysis/correlation_matrix_view.dart';
-import '../widgets/analysis/statistical_panel.dart';
+
 
 class AnalysisDetailScreen extends StatelessWidget {
   final Map<String, dynamic> record;
@@ -378,7 +376,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -447,7 +445,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
               const SizedBox(height: 16),
             ],
 
@@ -478,7 +476,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -568,7 +566,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
               const SizedBox(height: 16),
             ],
 
@@ -626,7 +624,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),
@@ -677,7 +675,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ],
         ),

@@ -106,13 +106,13 @@ class PowerChartWidget extends StatelessWidget {
         verticalInterval: 4,
         getDrawingHorizontalLine: (value) {
           return FlLine(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             strokeWidth: 1,
           );
         },
         getDrawingVerticalLine: (value) {
           return FlLine(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             strokeWidth: 1,
           );
         },
@@ -175,7 +175,7 @@ class PowerChartWidget extends StatelessWidget {
       ),
       borderData: FlBorderData(
         show: true,
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       minX: 0,
       maxX: 23,
@@ -228,8 +228,8 @@ class PowerChartWidget extends StatelessWidget {
             show: true,
             gradient: LinearGradient(
               colors: [
-                Colors.blue.withOpacity(0.2),
-                Colors.blue.withOpacity(0.05),
+                Colors.blue.withValues(alpha: 0.2),
+                Colors.blue.withValues(alpha: 0.05),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -250,7 +250,7 @@ class PowerChartWidget extends StatelessWidget {
         horizontalLines: [
           HorizontalLine(
             y: 0,
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             strokeWidth: 1,
             dashArray: [5, 5],
           ),
@@ -260,7 +260,7 @@ class PowerChartWidget extends StatelessWidget {
         enabled: true,
         touchTooltipData: LineTouchTooltipData(
           getTooltipColor: (LineBarSpot spot) =>
-              Colors.blueGrey.withOpacity(0.8),
+              Colors.blueGrey.withValues(alpha: 0.8),
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
               final hour = barSpot.x.toInt();
@@ -341,9 +341,9 @@ class PowerChartWidget extends StatelessWidget {
     
     // 混合颜色：充电多用绿色，放电多用橙色
     if (totalCharging > totalDischarging) {
-      return Colors.green.withOpacity(0.15);
+      return Colors.green.withValues(alpha: 0.15);
     } else {
-      return Colors.orange.withOpacity(0.15);
+      return Colors.orange.withValues(alpha: 0.15);
     }
   }
 
@@ -372,7 +372,7 @@ class PowerChartWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -398,7 +398,7 @@ class PowerChartWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.purple.withOpacity(0.1),
+              color: Colors.purple.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
