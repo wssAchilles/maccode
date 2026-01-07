@@ -40,7 +40,7 @@
         \draw[arrow] (check) -- node[above, font=\tiny] {否} (error);
         \draw[arrow] (token) -- (home);
         \draw[arrow] (home) -- (end);
-        \draw[arrow] (error.south) |- ++(0,-0.5) -| (input.east);
+        \draw[arrow] (error.east) -- ++(0.8,0) |- (input.east);
     \end{tikzpicture}
     \caption{用户认证流程图}
     \label{fig:auth-flow}

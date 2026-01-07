@@ -1,9 +1,7 @@
 % !TEX root = ../main.tex
-\chapter{技术实施与部署方案}
+\chapter{技术实施方案}
 
-\section{技术栈选型}
-
-\subsection{技术选型原则}
+\section{技术选型原则}
 
 本项目的技术选型遵循以下原则：
 \begin{enumerate}
@@ -12,290 +10,71 @@
     \item \textbf{性能优先}：在满足功能需求的前提下，优化运行效率。
 \end{enumerate}
 
-\subsection{技术栈全景图}
+\section{技术栈概览}
 
-表~\ref{tab:tech_stack}展示了项目的完整技术栈。
-
-\begin{table}[H]
-    \centering
-    \caption{项目技术栈全景}
-    \label{tab:tech_stack}
-    \begin{tabularx}{\textwidth}{l l X}
-        \toprule
-        \textbf{层次} & \textbf{技术选型}     & \textbf{选型理由}                     \\
-        \midrule
-        \multirow{3}{*}{前端}
-                    & Flutter Web       & 跨平台一致性，独立渲染引擎，高性能图表交互             \\
-                    & fl\_chart         & 声明式API，支持动态数据更新，流畅的动画效果           \\
-                    & Firebase Auth     & 与后端统一认证体系，一键Google登录              \\
-        \midrule
-        \multirow{5}{*}{后端}
-                    & Python 3.11       & 数据科学生态成熟，异步支持，类型注解                \\
-                    & Flask 2.x         & 轻量灵活，易于扩展，GAE原生支持                 \\
-                    & Pandas/NumPy      & 数据处理标准库\cite{mckinney2010pandas}  \\
-                    & Scikit-learn      & ML算法库\cite{pedregosa2011scikit}   \\
-        \midrule
-        \multirow{3}{*}{ML/优化}
-                    & LightGBM          & 高效梯度提升\cite{ke2017lightgbm}，训练速度快 \\
-                    & Gurobi            & 商业级MIP求解器\cite{gurobi2023}，全局最优保证 \\
-                    & SHAP              & 模型可解释性\cite{lundberg2017shap}     \\
-        \midrule
-        \multirow{4}{*}{云服务}
-                    & Google App Engine & 全托管PaaS，自动扩缩容，免运维                 \\
-                    & Firebase Hosting  & 全球CDN，HTTPS默认开启                   \\
-                    & Cloud Firestore   & NoSQL文档数据库，实时同步                   \\
-                    & Cloud Storage     & 对象存储，模型和数据持久化                     \\
-        \midrule
-        DevOps      & Docker            & 本地开发环境一致性                         \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\subsection{前端技术详述}
-
-\subsubsection{Flutter Web 选型论证}
-
-Flutter Web 相较于传统Web框架（React、Vue）具有以下优势：
-
-\begin{enumerate}
-    \item \textbf{渲染一致性}：Flutter使用自研的Skia渲染引擎，在不同浏览器上呈现效果完全一致，避免了CSS兼容性问题；
-    \item \textbf{高性能图表}：配合fl\_chart库，可实现60fps的流畅动画，适合实时数据可视化场景；
-    \item \textbf{代码复用}：未来可以低成本扩展至移动端（iOS/Android）。
-\end{enumerate}
-
-如图~\ref{fig:app_dashboard}所示，Flutter实现的能源仪表盘提供了直观的用户交互体验。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{app2.png}
-    \caption{Flutter Web 能源优化仪表盘界面}
-    \label{fig:app_dashboard}
-\end{figure}
-
-\subsection{后端技术详述}
-
-\subsubsection{Flask 微服务架构}
-
-后端采用Flask蓝图（Blueprint）组织模块化API，如图~\ref{fig:backend_arch}所示。
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=0.8cm and 1.5cm,
-            box/.style={rectangle, draw, rounded corners, minimum width=2.5cm, minimum height=0.8cm, align=center, font=\footnotesize},
-            api/.style={box, fill=blue!20},
-            svc/.style={box, fill=green!20},
-            ext/.style={box, fill=orange!20},
-            arrow/.style={->, >=stealth, thick}
-        ]
-        % API层
-        \node[api] (auth) {/api/auth};
-        \node[api, right=of auth] (opt) {/api/optimization};
-        \node[api, right=of opt] (ml) {/api/ml};
-        \node[api, right=of ml] (data) {/api/data};
-
-        % 入口
-        \node[above=1cm of opt, font=\small\bfseries] (entry) {Flask App (main.py)};
-        \draw[arrow] (entry) -- (auth);
-        \draw[arrow] (entry) -- (opt);
-        \draw[arrow] (entry) -- (ml);
-        \draw[arrow] (entry) -- (data);
-
-        % 服务层
-        \node[svc, below=1.5cm of auth] (firebase) {FirebaseService};
-        \node[svc, below=1.5cm of opt] (optimizer) {EnergyOptimizer\\(Gurobi)};
-        \node[svc, below=1.5cm of ml] (predictor) {EnergyPredictor\\(ML)};
-        \node[svc, below=1.5cm of data] (storage) {StorageService};
-
-        % API到服务的箭头
-        \draw[arrow] (auth) -- (firebase);
-        \draw[arrow] (opt) -- (optimizer);
-        \draw[arrow] (ml) -- (predictor);
-        \draw[arrow] (data) -- (storage);
-
-        % 外部依赖
-        \node[ext, below=1cm of firebase] (fb) {Firebase\\Auth};
-        \node[ext, below=1cm of optimizer] (grb) {Gurobi\\Solver};
-        \node[ext, below=1cm of predictor] (model) {ML\\Model};
-        \node[ext, below=1cm of storage] (gcs) {Cloud\\Storage};
-
-        \draw[arrow, dashed] (firebase) -- (fb);
-        \draw[arrow, dashed] (optimizer) -- (grb);
-        \draw[arrow, dashed] (predictor) -- (model);
-        \draw[arrow, dashed] (storage) -- (gcs);
-    \end{tikzpicture}
-    \caption{后端微服务架构图}
-    \label{fig:backend_arch}
-\end{figure}
-
-\subsubsection{Gurobi 求解器集成}
-
-Gurobi是业界领先的数学优化求解器，本项目通过以下方式集成：
-
-\begin{enumerate}
-    \item \textbf{许可证管理}：使用WLS（Web License Service）支持云端部署，无需物理机器绑定；
-    \item \textbf{延迟初始化}：仅在首次调用优化接口时初始化Gurobi环境，节省启动时间；
-    \item \textbf{环境复用}：使用上下文管理器确保Gurobi环境正确释放，避免许可证泄露。
-\end{enumerate}
-
-如图~\ref{fig:gurobi_config}所示，Gurobi WLS许可证配置界面。
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.7\textwidth]{gurobi1.png}
-    \caption{Gurobi WLS 许可证配置}
-    \label{fig:gurobi_config}
-\end{figure}
-
-\section{系统架构设计}
-
-\subsection{整体架构}
-
-系统采用\textbf{分层架构}设计，如图~\ref{fig:system_arch}所示。
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=0.5cm,
-            layer/.style={rectangle, draw, minimum width=14cm, minimum height=1.5cm, align=center, font=\small},
-            component/.style={rectangle, draw, rounded corners, minimum width=3cm, minimum height=0.8cm, align=center, font=\footnotesize, fill=white}
-        ]
-        % 分层
-        \node[layer, fill=blue!15] (presentation) {表现层 (Presentation)};
-        \node[layer, fill=green!15, below=of presentation] (application) {应用层 (Application)};
-        \node[layer, fill=orange!15, below=of application] (domain) {领域层 (Domain)};
-        \node[layer, fill=purple!15, below=of domain] (infrastructure) {基础设施层 (Infrastructure)};
-
-        % 表现层组件
-        \node[component] at ([xshift=-4cm]presentation.center) {Flutter Web};
-        \node[component] at (presentation.center) {REST API};
-        \node[component] at ([xshift=4cm]presentation.center) {Firebase Auth};
-
-        % 应用层组件
-        \node[component] at ([xshift=-4cm]application.center) {优化调度服务};
-        \node[component] at (application.center) {负载预测服务};
-        \node[component] at ([xshift=4cm]application.center) {数据分析服务};
-
-        % 领域层组件
-        \node[component] at ([xshift=-3cm]domain.center) {MIP模型};
-        \node[component] at (domain.center) {ML模型};
-        \node[component] at ([xshift=3cm]domain.center) {特征工程};
-
-        % 基础设施层组件
-        \node[component] at ([xshift=-4cm]infrastructure.center) {Firestore};
-        \node[component] at ([xshift=-1.3cm]infrastructure.center) {Cloud Storage};
-        \node[component] at ([xshift=1.3cm]infrastructure.center) {CAISO API};
-        \node[component] at ([xshift=4cm]infrastructure.center) {Weather API};
-    \end{tikzpicture}
-    \caption{系统分层架构图}
-    \label{fig:system_arch}
-\end{figure}
-
-\subsection{数据流设计}
-
-系统的核心数据流如图~\ref{fig:data_flow}所示，展示了从用户请求到优化结果返回的完整流程。
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=1.2cm,
-            box/.style={rectangle, draw, rounded corners, minimum width=2cm, minimum height=0.8cm, align=center, font=\footnotesize},
-            data/.style={box, fill=yellow!30},
-            process/.style={box, fill=blue!20},
-            storage/.style={cylinder, draw, shape border rotate=90, aspect=0.3, minimum height=1cm, minimum width=1.5cm, font=\footnotesize},
-            arrow/.style={->, >=stealth, thick}
-        ]
-        % 节点
-        \node[box, fill=green!30] (user) {用户};
-        \node[process, right=of user] (api) {API网关};
-        \node[process, right=of api] (predict) {负载预测};
-        \node[storage, right=of predict] (model) {ML模型};
-        \node[process, below=of predict] (opt) {储能优化};
-        \node[data, left=of opt] (result) {优化结果};
-
-        % 箭头
-        \draw[arrow] (user) -- node[above, font=\tiny] {请求} (api);
-        \draw[arrow] (api) -- node[above, font=\tiny] {参数} (predict);
-        \draw[arrow] (model) -- node[above, font=\tiny] {模型} (predict);
-        \draw[arrow] (predict) -- node[right, font=\tiny] {预测值} (opt);
-        \draw[arrow] (opt) -- node[above, font=\tiny] {调度计划} (result);
-        \draw[arrow] (result) -- node[left, font=\tiny] {响应} (user);
-    \end{tikzpicture}
-    \caption{核心数据流图}
-    \label{fig:data_flow}
-\end{figure}
-
-\section{开发环境配置}
-
-\subsection{本地开发环境}
-
-表~\ref{tab:dev_env}列出了本地开发所需的软件环境。
+基于上述原则，项目技术栈如表~\ref{tab:tech_stack_simple}所示。
 
 \begin{table}[htbp]
     \centering
-    \caption{开发环境配置清单}
-    \label{tab:dev_env}
-    \begin{tabular}{lll}
+    \caption{项目技术栈}
+    \label{tab:tech_stack_simple}
+    \begin{tabular}{l l}
         \toprule
-        \textbf{类别} & \textbf{软件/工具}          & \textbf{版本要求} \\
+        \textbf{层次} & \textbf{技术选型}                                \\
         \midrule
-        操作系统        & macOS / Linux / Windows & 最新稳定版         \\
-        \midrule
-        \multirow{4}{*}{后端}
-                    & Python                  & 3.11+         \\
-                    & pip                     & 最新版           \\
-                    & virtualenv              & 最新版           \\
-                    & Gurobi                  & 11.0+ (学术许可)  \\
-        \midrule
-        \multirow{3}{*}{前端}
-                    & Flutter SDK             & 3.16+         \\
-                    & Dart SDK                & 3.2+          \\
-                    & Chrome                  & 最新版 (调试用)     \\
-        \midrule
-        \multirow{3}{*}{工具}
-                    & VS Code / PyCharm       & 最新版           \\
-                    & Git                     & 2.40+         \\
-                    & Docker                  & 24.0+ (可选)    \\
+        前端          & Flutter Web + fl\_chart + Firebase Auth      \\
+        后端          & Python 3.11 + Flask 2.x                      \\
+        ML/优化       & LightGBM + Gurobi + SHAP                     \\
+        云服务         & Google App Engine + Firebase + Cloud Storage \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-\subsection{Docker 开发环境}
+\section{系统架构}
 
-为确保开发环境一致性，项目提供了Docker Compose配置：
+系统采用\textbf{分层架构}设计，如图~\ref{fig:system_arch_simple}所示，自顶向下分为表现层、应用层、领域层和基础设施层。
 
-\begin{lstlisting}[caption=docker-compose.yml 核心配置]
-services:
-  backend:
-    build: ./back
-    ports: ["8080:8080"]
-    environment:
-      FLASK_ENV: development
-      GRB_WLSACCESSID: ${GRB_WLSACCESSID}
-    volumes: ["./back:/app"]
-
-  frontend:
-    build: ./front
-    ports: ["8000:80"]
-    depends_on: [backend]
-\end{lstlisting}
-
-\section{系统部署架构}
-
-\subsection{云端部署架构}
-
-系统部署在Google Cloud Platform上，如图~\ref{fig:gae_deploy}所示。
-
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{GAE.png}
-    \caption{Google App Engine 部署架构}
-    \label{fig:gae_deploy}
+    \begin{tikzpicture}[
+            node distance=0.5cm,
+            layer/.style={rectangle, draw, minimum width=12cm, minimum height=1.2cm, align=center, font=\small}
+        ]
+        % 分层
+        \node[layer, fill=blue!15] (presentation) {表现层：Flutter Web + REST API + Firebase Auth};
+        \node[layer, fill=green!15, below=of presentation] (application) {应用层：优化调度服务 + 负载预测服务 + 数据分析服务};
+        \node[layer, fill=orange!15, below=of application] (domain) {领域层：MIP模型 + ML模型 + 特征工程};
+        \node[layer, fill=purple!15, below=of domain] (infrastructure) {基础设施层：Firestore + Cloud Storage + 外部API};
+    \end{tikzpicture}
+    \caption{系统分层架构图}
+    \label{fig:system_arch_simple}
 \end{figure}
 
-\subsection{部署流程}
+\section{云端部署架构}
 
-部署流程如图~\ref{fig:deploy_flow}所示。
+系统部署在Google Cloud Platform上，采用全托管的PaaS服务，实现自动扩缩容与高可用。主要部署组件如表~\ref{tab:deploy_components}所示。
+
+\begin{table}[H]
+    \centering
+    \caption{云端部署组件}
+    \label{tab:deploy_components}
+    \begin{tabular}{l l l}
+        \toprule
+        \textbf{组件} & \textbf{服务}             & \textbf{职责}    \\
+        \midrule
+        后端API服务     & Google App Engine       & Flask应用托管、自动扩缩 \\
+        前端静态资源      & Firebase Hosting        & 全球CDN分发、HTTPS  \\
+        用户认证        & Firebase Authentication & 身份验证、会话管理      \\
+        数据存储        & Cloud Firestore         & 用户数据、操作历史      \\
+        文件存储        & Cloud Storage           & CSV数据、ML模型文件   \\
+        定时任务        & Cloud Scheduler         & 数据采集、模型更新触发    \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{部署流程}
+
+项目采用CI/CD自动化部署流程，如图~\ref{fig:deploy_flow_simple}所示。
 
 \begin{figure}[htbp]
     \centering
@@ -314,43 +93,11 @@ services:
         \draw[arrow] (deploy) -- (route);
     \end{tikzpicture}
     \caption{CI/CD 部署流程}
-    \label{fig:deploy_flow}
+    \label{fig:deploy_flow_simple}
 \end{figure}
 
-\section{运行维护计划}
-
-\subsection{监控策略}
-
-系统运行期间采用以下监控手段：
-
-\begin{enumerate}
-    \item \textbf{应用性能监控}：使用Cloud Monitoring监控API响应时间、错误率；
-    \item \textbf{日志管理}：使用Cloud Logging集中收集和分析日志；
-\end{enumerate}
-
-\subsection{定时任务}
-
-系统配置了以下定时任务（通过Cloud Scheduler触发）：
-
-\begin{table}[htbp]
-    \centering
-    \caption{定时任务配置}
-    \label{tab:cron_jobs}
-    \begin{tabular}{lll}
-        \toprule
-        \textbf{任务名称} & \textbf{执行频率} & \textbf{功能描述}            \\
-        \midrule
-        数据采集          & 每小时整点         & 从CAISO和OpenWeather获取最新数据 \\
-        模型更新          & 每日凌晨4:00 UTC  & 使用最新数据重训ML模型             \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-如图~\ref{fig:data_fetch}所示，系统自动从外部API获取实时数据。
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{数据抓取1.png}
-    \caption{定时数据采集任务执行日志}
-    \label{fig:data_fetch}
-\end{figure}
+部署命令示例：
+\begin{itemize}
+    \item 后端部署：\texttt{gcloud app deploy back/app.yaml}
+    \item 前端部署：\texttt{firebase deploy --only hosting}
+\end{itemize}

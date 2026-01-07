@@ -1,4 +1,4 @@
-\begin{thebibliography}{16}
+\begin{thebibliography}{14}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{#1}
 \expandafter\ifx\csname urlstyle\endcsname\relax\else
@@ -76,16 +76,6 @@ Lundberg S~M, Lee S~I.
 \newblock Firebase documentation\allowbreak[M/OL].
 \newblock Google LLC, 2023.
 \newblock \url{https://firebase.google.com/docs}.
-
-\bibitem[McKinney(2010)]{mckinney2010pandas}
-McKinney W.
-\newblock Data structures for statistical computing in python\allowbreak[J].
-\newblock Proceedings of the 9th Python in Science Conference, 2010: 56-61.
-
-\bibitem[Breiman(2001)]{breiman2001random}
-Breiman L.
-\newblock Random forests\allowbreak[J].
-\newblock Machine Learning, 2001, 45\allowbreak (1): 5-32.
 
 \bibitem[Pressman et~al.(2014)Pressman and Maxim]{pressman2014software}
 Pressman R~S, Maxim B~R.
