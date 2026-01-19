@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 临时开放规则，用于开发测试
+    // 将于 2026-02-10 过期
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2026, 2, 10);
+    }
+  }
+}
