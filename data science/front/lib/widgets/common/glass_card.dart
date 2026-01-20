@@ -4,6 +4,7 @@ library;
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../config/app_theme.dart';
 
 /// 玻璃卡片组件 - 用于整个应用的统一卡片样式
@@ -43,42 +44,62 @@ class _GlassCardState extends State<GlassCard> {
     final radius = widget.borderRadius ?? 
         BorderRadius.circular(AppDecorations.radiusLg);
     
-    return MouseRegion(
-      onEnter: widget.enableHover ? (_) => setState(() => _isHovered = true) : null,
-      onExit: widget.enableHover ? (_) => setState(() => _isHovered = false) : null,
-      child: AnimatedScale(
-        scale: _isHovered && widget.enableHover ? 1.01 : 1.0,
-        duration: AppDecorations.animationFast,
-        curve: AppDecorations.animationCurve,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: ClipRRect(
-            borderRadius: radius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: widget.blur,
-                sigmaY: widget.blur,
-              ),
-              child: AnimatedContainer(
-                duration: AppDecorations.animationFast,
-                padding: widget.padding ?? const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: widget.gradient,
-                  color: widget.gradient == null 
-                      ? Colors.white.withValues(alpha: widget.opacity)
-                      : null,
-                  borderRadius: radius,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                  boxShadow: _isHovered 
-                      ? AppDecorations.shadowLg 
-                      : AppDecorations.shadowMd,
-                ),
-                child: widget.child,
-              ),
-            ),
+    // 核心内容容器
+    Widget content = AnimatedContainer(
+      duration: AppDecorations.animationFast,
+      padding: widget.padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: widget.gradient,
+        color: widget.gradient == null 
+            ? Colors.white.withValues(alpha: widget.opacity)
+            : null,
+        borderRadius: radius,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: _isHovered 
+            ? AppDecorations.shadowLg 
+            : AppDecorations.shadowMd,
+      ),
+      child: widget.child,
+    );
+    
+    // 【性能优化】Web 端禁用 BackdropFilter，改用简单半透明背景
+    // BackdropFilter 是 GPU 密集型操作，Web 端性能较差
+    Widget card;
+    if (kIsWeb) {
+      // Web 端：简单的 ClipRRect + 半透明背景（高性能）
+      card = ClipRRect(
+        borderRadius: radius,
+        child: content,
+      );
+    } else {
+      // 移动端：保留 BackdropFilter 模糊效果（GPU 加速良好）
+      card = ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: widget.blur,
+            sigmaY: widget.blur,
+          ),
+          child: content,
+        ),
+      );
+    }
+    
+    // 【性能优化】使用 RepaintBoundary 隔离动画区域
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: widget.enableHover ? (_) => setState(() => _isHovered = true) : null,
+        onExit: widget.enableHover ? (_) => setState(() => _isHovered = false) : null,
+        child: AnimatedScale(
+          scale: _isHovered && widget.enableHover ? 1.01 : 1.0,
+          duration: AppDecorations.animationFast,
+          curve: AppDecorations.animationCurve,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: card,
           ),
         ),
       ),

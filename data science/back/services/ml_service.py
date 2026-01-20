@@ -1805,6 +1805,48 @@ class EnergyPredictor:
                     'Hour_Sin': hour_sin,
                     'Hour_Cos': hour_cos
                 })
+                
+                # ================================================================
+                # 分位数与波动率特征 (Phase 1 新增，修复 Quantile_95_24h KeyError)
+                # ================================================================
+                # 计算过去 24 小时的分位数和波动率
+                if len(history_loads) >= 24:
+                    recent_24h = history_loads[-24:]
+                    quantile_95_24h = np.percentile(recent_24h, 95)
+                    quantile_05_24h = np.percentile(recent_24h, 5)
+                    roll_24h_std = np.std(recent_24h, ddof=1)
+                    # 波动率 = 标准差 / 均值 (变异系数)
+                    volatility_24h = roll_24h_std / roll_24h_mean if roll_24h_mean > 0 else 0
+                else:
+                    # 历史数据不足时使用合理默认值
+                    quantile_95_24h = lag_1h * 1.2 if lag_1h > 0 else 0
+                    quantile_05_24h = lag_1h * 0.8 if lag_1h > 0 else 0
+                    volatility_24h = 0.1  # 默认 10% 波动
+                
+                # 价格变化特征
+                # 在预测循环中，我们需要与上一时刻的价格对比
+                if i == 0:
+                    # 第一个时间步，使用历史最后一个价格（如果有）
+                    # 简化处理：假设上一小时价格与当前价格比较
+                    prev_hour = (hour - 1) % 24
+                    prev_price = self._get_price(prev_hour)
+                else:
+                    prev_price = prediction_results[-1]['price']
+                price_change = abs(price - prev_price)
+                
+                # 负载变化特征
+                load_change_1h = lag_1h - (history_loads[-2] if len(history_loads) >= 2 else lag_1h)
+                load_change_pct_1h = (load_change_1h / history_loads[-2] * 100) if len(history_loads) >= 2 and history_loads[-2] != 0 else 0
+                
+                # 添加分位数和波动率特征
+                feature_dict.update({
+                    'Quantile_95_24h': quantile_95_24h,
+                    'Quantile_05_24h': quantile_05_24h,
+                    'Volatility_24h': volatility_24h,
+                    'Price_Change': price_change,
+                    'Load_Change_1h': load_change_1h,
+                    'Load_Change_Pct_1h': load_change_pct_1h
+                })
             
             # 确保特征顺序与模型一致
             features = pd.DataFrame([{col: feature_dict[col] for col in self.feature_columns}])
