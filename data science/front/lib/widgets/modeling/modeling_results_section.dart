@@ -1,0 +1,111 @@
+/// 建模页面结果展示组件
+library;
+
+import 'package:flutter/material.dart';
+
+import '../../models/optimization_result.dart';
+import '../analysis/feature_importance_chart.dart';
+import '../power_chart_widget.dart';
+import '../soc_chart_widget.dart';
+import 'modeling_health_section.dart';
+import 'modeling_state_cards.dart';
+import 'optimization_insights_section.dart';
+
+class ModelingResultsSection extends StatelessWidget {
+  const ModelingResultsSection({
+    super.key,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.result,
+    required this.previousResult,
+    required this.onDismissError,
+  });
+
+  final bool isLoading;
+  final String? errorMessage;
+  final OptimizationResponse? result;
+  final OptimizationResponse? previousResult;
+  final VoidCallback onDismissError;
+
+  @override
+  Widget build(BuildContext context) {
+    final optimization = result?.optimization;
+    final modelExplainability = result?.modelExplainability;
+    final modelInfo = result?.modelInfo;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (errorMessage != null)
+          ModelingErrorCard(
+            message: errorMessage!,
+            onDismiss: onDismissError,
+          ),
+        if (isLoading) ...[
+          if (errorMessage != null) const SizedBox(height: 16),
+          const ModelingLoadingCard(),
+        ],
+        if (modelInfo != null) ...[
+          if (errorMessage != null || isLoading) const SizedBox(height: 16),
+          ModelingHealthCard(modelInfo: modelInfo),
+        ],
+        if (optimization != null) ...[
+          if (errorMessage != null || isLoading || modelInfo != null)
+            const SizedBox(height: 16),
+          OptimizationMetricsSection(
+            optimization: optimization,
+            previousResult: previousResult,
+          ),
+          if (optimization.diagnostics != null ||
+              optimization.constraintHits != null) ...[
+            const SizedBox(height: 12),
+            SolverDiagnosticsCard(optimization: optimization),
+          ],
+          const SizedBox(height: 24),
+          PowerChartWidget(chartData: optimization.chartData),
+          const SizedBox(height: 16),
+          SocChartWidget(chartData: optimization.chartData),
+          const SizedBox(height: 16),
+          OptimizationStrategyDetailsCard(optimization: optimization),
+          if (modelExplainability != null) ...[
+            const SizedBox(height: 16),
+            ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              collapsedShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              backgroundColor: Colors.white,
+              collapsedBackgroundColor: Colors.white,
+              leading: Icon(Icons.psychology, color: Colors.purple[600]),
+              title: const Text(
+                'AI 预测解释',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              subtitle: Text(
+                '了解哪些因素影响了负载预测',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: FeatureImportanceChart(
+                    featureImportance: modelExplainability.featureImportance,
+                    featureDescriptions:
+                        modelExplainability.featureDescriptions,
+                    interpretation: modelExplainability.interpretation,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+        if (result == null && !isLoading && errorMessage == null)
+          const ModelingEmptyStateCard(),
+      ],
+    );
+  }
+}

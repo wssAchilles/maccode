@@ -1,21 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+
 import '../../config/app_theme.dart';
-// Note: Removed unused import constants.dart
-// Note: Removed unused import
 
 /// 高级动态玻璃卡片
-/// 支持鼠标悬停光泽效果、淡入动画和点击反馈
-/// 【性能优化】Web 端禁用动画以提升性能
+/// 支持鼠标悬停光泽效果、淡入动画和点击反馈。
+/// Web 端保留样式反馈，但禁用缩放动画以降低 GPU 压力。
 class AnimatedGlassCard extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-  final LinearGradient? gradientBorder;
-  final EdgeInsets padding;
-  final EdgeInsetsGeometry? margin;
-  final double borderRadius;
-  final bool enableHover;
-
   const AnimatedGlassCard({
     super.key,
     required this.child,
@@ -27,6 +18,14 @@ class AnimatedGlassCard extends StatefulWidget {
     this.enableHover = true,
   });
 
+  final Widget child;
+  final VoidCallback? onTap;
+  final LinearGradient? gradientBorder;
+  final EdgeInsets padding;
+  final EdgeInsetsGeometry? margin;
+  final double borderRadius;
+  final bool enableHover;
+
   @override
   State<AnimatedGlassCard> createState() => _AnimatedGlassCardState();
 }
@@ -34,8 +33,8 @@ class AnimatedGlassCard extends StatefulWidget {
 class _AnimatedGlassCardState extends State<AnimatedGlassCard>
     with SingleTickerProviderStateMixin {
   bool _isHovered = false;
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -44,9 +43,10 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.02,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -55,12 +55,13 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
     super.dispose();
   }
 
-  void _onHover(bool isHovered) {
-    if (!widget.enableHover) return;
-    setState(() {
-      _isHovered = isHovered;
-    });
-    // 【性能优化】Web 端禁用动画
+  void _setHoverState(bool isHovered) {
+    if (!widget.enableHover || _isHovered == isHovered) {
+      return;
+    }
+
+    setState(() => _isHovered = isHovered);
+
     if (!kIsWeb) {
       if (isHovered) {
         _controller.forward();
@@ -72,15 +73,22 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
 
   @override
   Widget build(BuildContext context) {
-    // 【性能优化】使用 RepaintBoundary 隔离动画区域
     return RepaintBoundary(
       child: MouseRegion(
-        onEnter: (_) => _onHover(true),
-        onExit: (_) => _onHover(false),
-        cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: _buildCard(),
+        onEnter: (_) => _setHoverState(true),
+        onExit: (_) => _setHoverState(false),
+        cursor: widget.onTap != null
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
+        child: Semantics(
+          button: widget.onTap != null,
+          child: GestureDetector(
+            behavior: widget.onTap != null
+                ? HitTestBehavior.opaque
+                : HitTestBehavior.deferToChild,
+            onTap: widget.onTap,
+            child: _buildCard(),
+          ),
         ),
       ),
     );
@@ -99,8 +107,9 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
         borderRadius: BorderRadius.circular(widget.borderRadius),
         padding: widget.padding,
         border: Border.all(
-          color: _isHovered 
-              ? (widget.gradientBorder?.colors.first ?? Colors.white).withValues(alpha: 0.5)
+          color: _isHovered
+              ? (widget.gradientBorder?.colors.first ?? Colors.white)
+                    .withValues(alpha: 0.5)
               : AppColors.glassBorder,
           width: 1.5,
         ),
@@ -108,7 +117,6 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
       ),
     );
 
-    // 【性能优化】Web 端禁用 Transform.scale 动画
     if (kIsWeb) {
       return cardContent;
     }

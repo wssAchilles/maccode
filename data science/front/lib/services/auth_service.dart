@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../models/auth_failure.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
@@ -27,7 +29,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthFailureException(_mapAuthException(e));
     }
   }
 
@@ -42,7 +44,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthFailureException(_mapAuthException(e));
     }
   }
 
@@ -52,9 +54,7 @@ class AuthService {
       if (kIsWeb) {
         // Web 平台使用 Firebase Auth 内建的 OAuth 流程
         final googleProvider = GoogleAuthProvider();
-        googleProvider.setCustomParameters({
-          'prompt': 'select_account',
-        });
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
         return await _auth.signInWithPopup(googleProvider);
       }
 
@@ -62,7 +62,9 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        throw '登录已取消';
+        throw const AuthFailureException(
+          AuthFailure(code: 'cancelled', message: '登录已取消'),
+        );
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -75,9 +77,14 @@ class AuthService {
 
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthFailureException(_mapAuthException(e));
     } catch (e) {
-      throw '谷歌登录失败: $e';
+      if (e is AuthFailureException) {
+        rethrow;
+      }
+      throw AuthFailureException(
+        AuthFailure(code: 'google-sign-in-failed', message: '谷歌登录失败: $e'),
+      );
     }
   }
 
@@ -96,7 +103,7 @@ class AuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthFailureException(_mapAuthException(e));
     }
   }
 
@@ -115,28 +122,37 @@ class AuthService {
   }
 
   /// 处理 Firebase 认证异常
-  String _handleAuthException(FirebaseAuthException e) {
+  AuthFailure _mapAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
-        return '用户不存在';
+        return const AuthFailure(code: 'user-not-found', message: '用户不存在');
       case 'wrong-password':
-        return '密码错误';
+        return const AuthFailure(code: 'wrong-password', message: '密码错误');
       case 'invalid-credential':
       case 'INVALID_LOGIN_CREDENTIALS':
         // Firebase 新版本合并了 user-not-found 和 wrong-password
-        return '用户不存在或密码错误';
+        return const AuthFailure(
+          code: 'invalid-credential',
+          message: '用户不存在或密码错误',
+        );
       case 'email-already-in-use':
-        return '邮箱已被注册';
+        return const AuthFailure(
+          code: 'email-already-in-use',
+          message: '邮箱已被注册',
+        );
       case 'invalid-email':
-        return '邮箱格式不正确';
+        return const AuthFailure(code: 'invalid-email', message: '邮箱格式不正确');
       case 'weak-password':
-        return '密码强度太弱';
+        return const AuthFailure(code: 'weak-password', message: '密码强度太弱');
       case 'operation-not-allowed':
-        return '操作不被允许';
+        return const AuthFailure(
+          code: 'operation-not-allowed',
+          message: '操作不被允许',
+        );
       case 'user-disabled':
-        return '用户已被禁用';
+        return const AuthFailure(code: 'user-disabled', message: '用户已被禁用');
       default:
-        return '认证失败: ${e.message}';
+        return AuthFailure(code: 'auth-failed', message: '认证失败: ${e.message}');
     }
   }
 }

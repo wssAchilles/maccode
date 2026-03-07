@@ -1,11 +1,18 @@
+/// RAG 对话页面
+library;
+
 import 'package:flutter/material.dart';
+
 import '../config/app_theme.dart';
-import '../services/api_service.dart';
-import '../widgets/common/animated_glass_card.dart';
+import '../viewmodels/rag_view_model.dart';
+import '../widgets/rag/rag_input_area.dart';
+import '../widgets/rag/rag_message_list.dart';
 import '../widgets/responsive_wrapper.dart';
 
 class RagScreen extends StatefulWidget {
-  const RagScreen({super.key});
+  const RagScreen({super.key, this.viewModel});
+
+  final RagViewModel? viewModel;
 
   @override
   State<RagScreen> createState() => _RagScreenState();
@@ -13,43 +20,63 @@ class RagScreen extends StatefulWidget {
 
 class _RagScreenState extends State<RagScreen> {
   final _controller = TextEditingController();
-  final List<Message> _messages = [];
-  bool _isLoading = false;
+  final _scrollController = ScrollController();
+  late final RagViewModel _viewModel;
+  late final bool _ownsViewModel;
+  int _lastMessageCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsViewModel = widget.viewModel == null;
+    _viewModel = widget.viewModel ?? RagViewModel();
+    _lastMessageCount = _viewModel.messages.length;
+    _viewModel.addListener(_handleViewModelChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    _viewModel.removeListener(_handleViewModelChanged);
+    if (_ownsViewModel) {
+      _viewModel.dispose();
+    }
+    super.dispose();
+  }
+
+  void _handleViewModelChanged() {
+    final count = _viewModel.messages.length;
+    if (count == _lastMessageCount) {
+      return;
+    }
+
+    _lastMessageCount = count;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+  }
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      _messages.add(Message(role: 'user', content: text));
-      _isLoading = true;
-    });
-    _controller.clear();
-
-    try {
-      final result = await ApiService.askRagQuestion(question: text);
-      final answer = result['answer'] ?? 'No answer found.';
-      final context = result['context'] as List<dynamic>?;
-
-      setState(() {
-        _messages.add(Message(
-          role: 'assistant',
-          content: answer,
-          sources: context,
-        ));
-      });
-    } catch (e) {
-      setState(() {
-        _messages.add(Message(
-          role: 'error',
-          content: 'Error: $e',
-        ));
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    if (text.isEmpty || _viewModel.isLoading) {
+      return;
     }
+
+    _controller.clear();
+    await _viewModel.sendMessage(text);
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -75,110 +102,29 @@ class _RagScreenState extends State<RagScreen> {
         ),
         child: SafeArea(
           child: ResponsiveWrapper(
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      return _buildMessage(_messages[index]);
-                    },
-                  ),
-                ),
-                _buildInputArea(),
-              ],
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, _) {
+                return Column(
+                  children: [
+                    Expanded(
+                      child: RagMessageList(
+                        messages: _viewModel.messages,
+                        scrollController: _scrollController,
+                      ),
+                    ),
+                    RagInputArea(
+                      controller: _controller,
+                      isLoading: _viewModel.isLoading,
+                      onSend: _sendMessage,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
       ),
     );
   }
-
-  Widget _buildMessage(Message msg) {
-    final isUser = msg.role == 'user';
-    final isError = msg.role == 'error';
-
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            AnimatedGlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              gradientBorder: isUser 
-                  ? null 
-                  : (isError ? null : AppColors.ragGradient),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: SelectableText( // Copyable text
-                msg.content,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: isError ? AppColors.error : AppColors.textPrimary,
-                ),
-              ),
-            ),
-            if (!isUser && msg.sources != null && msg.sources!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(left: 8, bottom: 16),
-                child: Wrap(
-                  spacing: 8,
-                  children: msg.sources!.take(2).map((s) { // 只显示前2个来源
-                     // 简单解析，假设 context 是 list of strings
-                     String preview = s.toString();
-                     if (preview.length > 20) preview = '${preview.substring(0, 20)}...';
-                     return Chip(
-                       label: Text('Source: $preview'),
-                       backgroundColor: AppColors.surfaceVariant,
-                       labelStyle: AppTextStyles.labelSmall, // 需添加或使用 bodySmall
-                       visualDensity: VisualDensity.compact,
-                     );
-                  }).toList(),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputArea() {
-    return AnimatedGlassCard(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      borderRadius: 30, // Capsule shape
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: 'Ask anything about your documents...',
-                border: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                fillColor: Colors.transparent,
-              ),
-              onSubmitted: (_) => _sendMessage(),
-            ),
-          ),
-          IconButton(
-            onPressed: _isLoading ? null : _sendMessage,
-            icon: _isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.send_rounded, color: Color(0xFF0EA5E9)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class Message {
-  final String role;
-  final String content;
-  final List<dynamic>? sources;
-
-  Message({required this.role, required this.content, this.sources});
 }

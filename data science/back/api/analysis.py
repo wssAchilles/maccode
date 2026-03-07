@@ -56,6 +56,9 @@ def analyze_csv():
             
         storage_path = data['storage_path']
         filename = data.get('filename', storage_path.split('/')[-1])
+        save_to_storage = data.get('save_to_storage', True)
+        if not isinstance(save_to_storage, bool):
+            save_to_storage = str(save_to_storage).lower() in ('1', 'true', 'yes', 'on')
         
         logger.info(f"[{uid}] 收到 CSV 分析请求: {storage_path}")
         
@@ -181,26 +184,31 @@ def analyze_csv():
             'statistical_tests': statistical_tests
         }
         
-        # 保存历史记录到 Firestore
-        try:
-            # 构建 Cloud Storage 文件 URL
-            storage_url = f"gs://{storage.bucket_name}/{storage_path}"
-            
-            # 异步保存历史记录（不阻塞响应）
-            record_id = HistoryService.save_analysis_record(
-                uid=uid,
-                filename=filename,
-                storage_url=storage_url,
-                analysis_result=analysis_result
-            )
-            
-            if record_id:
-                logger.info(f"[{uid}] 分析记录已保存: {record_id}")
-            else:
-                logger.warning(f"[{uid}] 分析记录保存失败")
-        except Exception as e:
-            # 历史记录保存失败不影响响应
-            logger.error(f"[{uid}] 保存历史记录失败: {str(e)}")
+        # 根据前端开关决定是否保留文件和写入历史
+        if save_to_storage:
+            try:
+                storage_url = f"gs://{storage.bucket_name}/{storage_path}"
+                record_id = HistoryService.save_analysis_record(
+                    uid=uid,
+                    filename=filename,
+                    storage_url=storage_url,
+                    analysis_result=analysis_result
+                )
+
+                if record_id:
+                    logger.info(f"[{uid}] 分析记录已保存: {record_id}")
+                else:
+                    logger.warning(f"[{uid}] 分析记录保存失败")
+            except Exception as e:
+                # 历史记录保存失败不影响响应
+                logger.error(f"[{uid}] 保存历史记录失败: {str(e)}")
+        else:
+            try:
+                storage.delete_file(storage_path)
+                logger.info(f"[{uid}] 临时文件已删除: {storage_path}")
+            except Exception as e:
+                # 文件删除失败不影响响应
+                logger.warning(f"[{uid}] 临时文件删除失败: {str(e)}")
         
         # 构建响应
         response = {
@@ -208,6 +216,7 @@ def analyze_csv():
             'analysis_result': analysis_result,
             'message': '分析完成',
             'storage_path': storage_path,
+            'storage_retained': save_to_storage,
             'performance': {
                 'load_time': round(load_time, 2),
                 'basic_analysis_time': round(basic_time, 2),
@@ -394,4 +403,3 @@ def detect_drift():
     except Exception as e:
         logger.error(f"漂移检测失败: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
-
