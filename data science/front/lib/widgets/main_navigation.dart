@@ -1,184 +1,174 @@
-/// 主导航页 - Glassmorphism 设计
-/// 使用底部导航栏整合三个主要功能模块
+/// 工业驾驶舱主导航壳
 library;
 
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../config/app_theme.dart';
-import '../screens/modeling_screen.dart';
+import '../models/ai_lab_launch_intent.dart';
+import '../repositories/auth_repository.dart';
+import '../screens/ai_lab_screen.dart';
 import '../screens/data_analysis_screen.dart';
-import '../screens/history_screen.dart';
+import '../screens/history_audit_screen.dart';
+import '../screens/modeling_screen.dart';
+import '../screens/operations_hub_screen.dart';
 import '../services/auth_gateway.dart';
+import '../utils/responsive_helper.dart';
+import '../viewmodels/dashboard_view_model.dart';
+import 'operations/system_status_strip.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.pages, AuthGateway? authGateway})
-    : _authGateway = authGateway,
-      assert(
-        pages == null || pages.length == 3,
-        'MainNavigation expects exactly 3 pages',
-      );
+  const MainNavigation({
+    super.key,
+    this.pages,
+    this.embedDefaultPages = true,
+    AuthRepository? authRepository,
+    AuthGateway? authGateway,
+    DashboardViewModel? dashboardViewModel,
+  }) : _authRepository = authRepository,
+       _authGateway = authGateway,
+       _dashboardViewModel = dashboardViewModel,
+       assert(
+         authRepository == null || authGateway == null,
+         'Provide either authRepository or authGateway, not both.',
+       ),
+       assert(
+         pages == null || pages.length == 5,
+         'MainNavigation expects exactly 5 pages when custom pages are provided.',
+       );
 
   final List<Widget>? pages;
+  final bool embedDefaultPages;
+  final AuthRepository? _authRepository;
   final AuthGateway? _authGateway;
+  final DashboardViewModel? _dashboardViewModel;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
+  static const List<_NavDestination> _destinations = [
+    _NavDestination(label: '概览', icon: Icons.dashboard_customize_rounded),
+    _NavDestination(label: '能源优化', icon: Icons.bolt_rounded),
+    _NavDestination(label: '数据分析', icon: Icons.analytics_rounded),
+    _NavDestination(label: 'AI Lab', icon: Icons.auto_awesome_rounded),
+    _NavDestination(label: '历史与审计', icon: Icons.fact_check_rounded),
+  ];
+
   int _currentIndex = 0;
-  late final AuthGateway _authGateway;
-  late final List<Widget> _pages;
+  late final AuthRepository _authRepository;
+  late final DashboardViewModel _dashboardViewModel;
+  late final bool _ownsDashboardViewModel;
+  StreamSubscription<User?>? _authSubscription;
+  User? _currentUser;
+  AiLabLaunchIntent? _pendingAiLabIntent;
+
+  bool get _hasAuthenticatedUser => _currentUser != null;
 
   @override
   void initState() {
     super.initState();
-    _authGateway = widget._authGateway ?? FirebaseAuthGateway();
-    _pages =
-        widget.pages ??
-        [
-          const ModelingScreen(),
-          DataAnalysisScreen(onOpenHistory: () => _onNavTap(2)),
-          const HistoryScreen(),
-        ];
+    _authRepository =
+        widget._authRepository ??
+        GatewayAuthRepository(authGateway: widget._authGateway);
+    _dashboardViewModel = widget._dashboardViewModel ?? DashboardViewModel();
+    _ownsDashboardViewModel = widget._dashboardViewModel == null;
+    _currentUser = _authRepository.currentUser;
+    _authSubscription = _authRepository.authStateChanges.listen((user) {
+      if (!mounted || user == _currentUser) {
+        return;
+      }
+      setState(() {
+        _currentUser = user;
+      });
+    });
+    _dashboardViewModel.initialize();
   }
 
-  // 页面标题
-  final List<String> _titles = const ['能源优化', '数据分析', '历史记录'];
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    if (_ownsDashboardViewModel) {
+      _dashboardViewModel.dispose();
+    }
+    super.dispose();
+  }
 
-  // 页面图标
-  final List<IconData> _icons = const [
-    Icons.bolt_rounded,
-    Icons.analytics_rounded,
-    Icons.history_rounded,
-  ];
-
-  /// 退出登录
   Future<void> _handleSignOut() async {
+    if (!_hasAuthenticatedUser) {
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.warningLight,
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-              ),
-              child: const Icon(Icons.logout_rounded, color: AppColors.warning),
-            ),
-            const SizedBox(width: 12),
-            const Text('确认退出'),
-          ],
-        ),
-        content: const Text('确定要退出登录吗？'),
+        title: const Text('确认退出登录'),
+        content: const Text('退出后将返回登录页。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('取消'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('退出'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && mounted) {
-      try {
-        await _authGateway.signOut();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('已退出登录'),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('退出失败: $e'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-              ),
-            ),
-          );
-        }
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _authRepository.signOut();
+      if (!mounted) {
+        return;
       }
+      setState(() {
+        _currentUser = null;
+        _currentIndex = 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已退出登录'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('退出失败: $e'), backgroundColor: AppColors.error),
+      );
     }
   }
 
-  /// 显示用户信息
   void _showUserInfo() {
-    final user = _authGateway.currentUser;
-    if (user == null) return;
+    final user = _currentUser;
+    if (user == null) {
+      return;
+    }
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
-        ),
-        title: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('用户信息'),
-          ],
-        ),
+        title: const Text('用户信息'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow(Icons.email_outlined, '邮箱', user.email ?? '未设置'),
+            _InfoRow(label: '邮箱', value: user.email ?? '未设置'),
             const SizedBox(height: 12),
-            _buildInfoRow(
-              Icons.fingerprint,
-              'UID',
-              '${user.uid.substring(0, user.uid.length >= 8 ? 8 : user.uid.length)}...',
-            ),
+            _InfoRow(label: 'UID', value: user.uid),
             const SizedBox(height: 12),
-            _buildInfoRow(
-              user.emailVerified
-                  ? Icons.verified_rounded
-                  : Icons.warning_rounded,
-              '状态',
-              user.emailVerified ? '已验证' : '未验证',
-              statusColor: user.emailVerified
-                  ? AppColors.success
-                  : AppColors.warning,
-            ),
+            _InfoRow(label: '状态', value: user.emailVerified ? '已验证' : '未验证'),
           ],
         ),
         actions: [
@@ -191,100 +181,120 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  Widget _buildInfoRow(
-    IconData icon,
-    String label,
-    String value, {
-    Color? statusColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: statusColor ?? AppColors.textMuted),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 48,
-            child: Text(
-              label,
-              style: AppTextStyles.labelMedium.copyWith(
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: statusColor ?? AppColors.textPrimary,
-                fontWeight: statusColor != null
-                    ? FontWeight.w600
-                    : FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // MainNavigation owns only the persistent bottom navigation shell.
-    // Each tab remains free to provide its own page-level Scaffold/AppBar.
-    return ColoredBox(
-      color: AppColors.background,
-      child: Column(
-        children: [
-          Expanded(
-            child: IndexedStack(index: _currentIndex, children: _pages),
-          ),
-          _buildBottomNavBar(),
-        ],
-      ),
-    );
-  }
+    final desktopShell = ResponsiveHelper.isDesktop(context);
+    final statusItems =
+        _dashboardViewModel.summary?.systemStatus ?? const <dynamic>[];
 
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+    if (desktopShell) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            SystemStatusStrip(
+              items: statusItems.cast(),
+              compact: true,
+              trailing: _buildAccountActions(compact: true),
+            ),
+            Expanded(
+              child: Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: _currentIndex,
+                    onDestinationSelected: _onNavTap,
+                    extended: MediaQuery.of(context).size.width >= 1280,
+                    minWidth: 88,
+                    labelType: NavigationRailLabelType.none,
+                    leading: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(
+                                AppDecorations.radiusLg,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.hub_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Sentinel Ops',
+                            style: AppTextStyles.labelMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    destinations: _destinations
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => NavigationRailDestination(
+                            icon: Icon(entry.value.icon),
+                            selectedIcon: Icon(entry.value.icon),
+                            label: Text(entry.value.label),
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: SafeArea(
+                      top: false,
+                      bottom: false,
+                      child: IndexedStack(
+                        index: _currentIndex,
+                        children: _pages,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: IndexedStack(index: _currentIndex, children: _pages),
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(3, (index) => _buildNavItem(index)),
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Row(children: [Expanded(child: _buildAccountActions())]),
               ),
-              IconButton(
-                icon: const Icon(Icons.account_circle_outlined),
-                onPressed: _showUserInfo,
-                tooltip: '用户信息',
-                color: AppColors.textMuted,
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded),
-                onPressed: _handleSignOut,
-                tooltip: '退出登录',
-                color: AppColors.textMuted,
+              NavigationBar(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: _onNavTap,
+                destinations: _destinations
+                    .map(
+                      (item) => NavigationDestination(
+                        icon: Icon(item.icon),
+                        label: item.label,
+                      ),
+                    )
+                    .toList(growable: false),
               ),
             ],
           ),
@@ -293,69 +303,105 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  Widget _buildNavItem(int index) {
-    final isSelected = _currentIndex == index;
-    final color = isSelected ? AppColors.primary : AppColors.textMuted;
-
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: _titles[index],
-      child: FocusableActionDetector(
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              _onNavTap(index);
-              return null;
-            },
-          ),
-        },
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: ValueKey('main-nav-item-$index'),
-            borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-            onTap: () => _onNavTap(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 20 : 16,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(_icons[index], color: color, size: 22),
-                  if (isSelected) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      _titles[index],
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+  Widget _buildAccountActions({bool compact = false}) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
+      children: [
+        OutlinedButton.icon(
+          key: const ValueKey('main-nav-user-info'),
+          onPressed: _hasAuthenticatedUser ? _showUserInfo : null,
+          icon: const Icon(Icons.account_circle_outlined),
+          label: Text(compact ? '用户' : '用户信息'),
         ),
-      ),
+        FilledButton.tonalIcon(
+          key: const ValueKey('main-nav-sign-out'),
+          onPressed: _hasAuthenticatedUser ? _handleSignOut : null,
+          icon: const Icon(Icons.logout_rounded),
+          label: Text(compact ? '退出' : '退出登录'),
+        ),
+      ],
     );
   }
 
   void _onNavTap(int index) {
-    if (_currentIndex == index) return;
+    if (_currentIndex == index) {
+      return;
+    }
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  List<Widget> get _pages =>
+      widget.pages ??
+      [
+        OperationsHubScreen(
+          viewModel: _dashboardViewModel,
+          onNavigateToTab: _onNavTap,
+          embedded: widget.embedDefaultPages,
+        ),
+        ModelingScreen(embedded: widget.embedDefaultPages),
+        DataAnalysisScreen(
+          onOpenHistory: () => _onNavTap(4),
+          onSendToAiLab: _openAiLabWithIntent,
+          embedded: widget.embedDefaultPages,
+        ),
+        AiLabScreen(
+          dashboardViewModel: _dashboardViewModel,
+          launchIntent: _pendingAiLabIntent,
+          onLaunchIntentHandled: _clearAiLabIntent,
+          embedded: widget.embedDefaultPages,
+        ),
+        HistoryAuditScreen(
+          dashboardViewModel: _dashboardViewModel,
+          embedded: widget.embedDefaultPages,
+        ),
+      ];
+
+  void _openAiLabWithIntent(AiLabLaunchIntent intent) {
+    setState(() {
+      _pendingAiLabIntent = intent;
+      _currentIndex = 3;
+    });
+  }
+
+  void _clearAiLabIntent() {
+    if (_pendingAiLabIntent == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _pendingAiLabIntent = null;
+    });
+  }
+}
+
+class _NavDestination {
+  const _NavDestination({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 56,
+          child: Text(label, style: AppTextStyles.labelMedium),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: SelectableText(value, style: AppTextStyles.bodyMedium)),
+      ],
+    );
   }
 }

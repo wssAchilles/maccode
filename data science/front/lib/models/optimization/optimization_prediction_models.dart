@@ -17,10 +17,20 @@ class PredictionInfo {
   factory PredictionInfo.fromJson(Map<String, dynamic> json) {
     try {
       return PredictionInfo(
-        targetDate: json['target_date'] as String? ?? '',
-        avgLoad: ChartDataPoint._toDouble(json['avg_load']),
-        peakLoad: ChartDataPoint._toDouble(json['peak_load']),
-        minLoad: ChartDataPoint._toDouble(json['min_load']),
+        targetDate:
+            _toNullableString(
+              _firstPresent(json, ['target_date', 'targetDate', 'date']),
+            ) ??
+            '',
+        avgLoad: ChartDataPoint._toDouble(
+          _firstPresent(json, ['avg_load', 'avgLoad', 'average_load']),
+        ),
+        peakLoad: ChartDataPoint._toDouble(
+          _firstPresent(json, ['peak_load', 'peakLoad', 'max_load']),
+        ),
+        minLoad: ChartDataPoint._toDouble(
+          _firstPresent(json, ['min_load', 'minLoad', 'low_load']),
+        ),
       );
     } catch (e) {
       throw FormatException('Failed to parse PredictionInfo: $e');
@@ -54,10 +64,38 @@ class BatteryConfig {
   factory BatteryConfig.fromJson(Map<String, dynamic> json) {
     try {
       return BatteryConfig(
-        capacity: ChartDataPoint._toDouble(json['capacity']),
-        maxPower: ChartDataPoint._toDouble(json['max_power']),
-        efficiency: ChartDataPoint._toDouble(json['efficiency']),
-        initialSoc: ChartDataPoint._toDouble(json['initial_soc']),
+        capacity: ChartDataPoint._toDouble(
+          _firstPresent(json, [
+            'capacity',
+            'battery_capacity',
+            'batteryCapacity',
+          ]),
+        ),
+        maxPower: ChartDataPoint._toDouble(
+          _firstPresent(json, [
+            'max_power',
+            'maxPower',
+            'battery_power',
+            'batteryPower',
+            'power',
+          ]),
+        ),
+        efficiency: ChartDataPoint._toDouble(
+          _firstPresent(json, [
+            'efficiency',
+            'battery_efficiency',
+            'batteryEfficiency',
+          ]),
+        ),
+        initialSoc: ChartDataPoint._toDouble(
+          _firstPresent(json, [
+            'initial_soc',
+            'initialSoc',
+            'initial_charge',
+            'initialCharge',
+            'soc',
+          ]),
+        ),
       );
     } catch (e) {
       throw FormatException('Failed to parse BatteryConfig: $e');

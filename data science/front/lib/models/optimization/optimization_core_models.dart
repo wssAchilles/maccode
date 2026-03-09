@@ -24,33 +24,41 @@ class OptimizationResponse {
 
   factory OptimizationResponse.fromJson(Map<String, dynamic> json) {
     try {
+      final optimizationMap = _toStringDynamicMap(
+        _firstPresent(json, ['optimization']),
+      );
+      final predictionMap = _toStringDynamicMap(
+        _firstPresent(json, ['prediction']),
+      );
+      final batteryConfigMap = _toStringDynamicMap(
+        _firstPresent(json, ['battery_config', 'batteryConfig']),
+      );
+      final modelInfoMap = _toStringDynamicMap(
+        _firstPresent(json, ['model_info', 'modelInfo']),
+      );
+      final explainabilityMap = _toStringDynamicMap(
+        _firstPresent(json, ['model_explainability', 'modelExplainability']),
+      );
+
       return OptimizationResponse(
-        success: json['success'] as bool? ?? false,
-        optimization: json['optimization'] != null
-            ? OptimizationData.fromJson(
-                json['optimization'] as Map<String, dynamic>,
-              )
+        success: _toNullableBool(json['success']) ?? false,
+        optimization: optimizationMap != null
+            ? OptimizationData.fromJson(optimizationMap)
             : null,
-        prediction: json['prediction'] != null
-            ? PredictionInfo.fromJson(
-                json['prediction'] as Map<String, dynamic>,
-              )
+        prediction: predictionMap != null
+            ? PredictionInfo.fromJson(predictionMap)
             : null,
-        batteryConfig: json['battery_config'] != null
-            ? BatteryConfig.fromJson(
-                json['battery_config'] as Map<String, dynamic>,
-              )
+        batteryConfig: batteryConfigMap != null
+            ? BatteryConfig.fromJson(batteryConfigMap)
             : null,
-        modelInfo: json['model_info'] != null
-            ? ModelInfo.fromJson(json['model_info'] as Map<String, dynamic>)
+        modelInfo: modelInfoMap != null
+            ? ModelInfo.fromJson(modelInfoMap)
             : null,
-        modelExplainability: json['model_explainability'] != null
-            ? ModelExplainability.fromJson(
-                json['model_explainability'] as Map<String, dynamic>,
-              )
+        modelExplainability: explainabilityMap != null
+            ? ModelExplainability.fromJson(explainabilityMap)
             : null,
-        error: json['error'] as String?,
-        message: json['message'] as String?,
+        error: _toNullableString(json['error']),
+        message: _toNullableString(json['message']),
       );
     } catch (e) {
       throw FormatException('Failed to parse OptimizationResponse: $e');
@@ -95,30 +103,34 @@ class OptimizationData {
 
   factory OptimizationData.fromJson(Map<String, dynamic> json) {
     try {
+      final chartData = <ChartDataPoint>[];
+      final rawChartData = json['chart_data'];
+      if (rawChartData is List) {
+        for (final item in rawChartData) {
+          final itemMap = _toStringDynamicMap(item);
+          if (itemMap != null) {
+            chartData.add(ChartDataPoint.fromJson(itemMap));
+          }
+        }
+      }
+
       return OptimizationData(
-        status: json['status'] as String? ?? 'Unknown',
-        chartData:
-            (json['chart_data'] as List<dynamic>?)
-                ?.map(
-                  (item) =>
-                      ChartDataPoint.fromJson(item as Map<String, dynamic>),
-                )
-                .toList() ??
-            [],
+        status: _toNullableString(json['status']) ?? 'Unknown',
+        chartData: chartData,
         summary: OptimizationSummary.fromJson(
-          json['summary'] as Map<String, dynamic>? ?? {},
+          _toStringDynamicMap(json['summary']) ?? const <String, dynamic>{},
         ),
         strategy: OptimizationStrategy.fromJson(
-          json['strategy'] as Map<String, dynamic>? ?? {},
+          _toStringDynamicMap(json['strategy']) ?? const <String, dynamic>{},
         ),
-        diagnostics: json['diagnostics'] != null
+        diagnostics: _toStringDynamicMap(json['diagnostics']) != null
             ? SolverDiagnostics.fromJson(
-                json['diagnostics'] as Map<String, dynamic>,
+                _toStringDynamicMap(json['diagnostics'])!,
               )
             : null,
-        constraintHits: json['constraint_hits'] != null
+        constraintHits: _toStringDynamicMap(json['constraint_hits']) != null
             ? ConstraintHits.fromJson(
-                json['constraint_hits'] as Map<String, dynamic>,
+                _toStringDynamicMap(json['constraint_hits'])!,
               )
             : null,
       );
@@ -171,8 +183,8 @@ class ChartDataPoint {
   factory ChartDataPoint.fromJson(Map<String, dynamic> json) {
     try {
       return ChartDataPoint(
-        hour: json['hour'] as int? ?? 0,
-        datetime: json['datetime'] as String? ?? '',
+        hour: _toNullableInt(json['hour']) ?? 0,
+        datetime: _toNullableString(json['datetime']) ?? '',
         load: _toDouble(json['load']),
         price: _toDouble(json['price']),
         batteryAction: _toDouble(json['battery_action']),
@@ -219,11 +231,7 @@ class ChartDataPoint {
   }
 
   static double _toDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
+    return _toNullableDouble(value) ?? 0.0;
   }
 }
 
@@ -317,18 +325,10 @@ class OptimizationStrategy {
   factory OptimizationStrategy.fromJson(Map<String, dynamic> json) {
     try {
       return OptimizationStrategy(
-        chargingHours:
-            (json['charging_hours'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toList() ??
-            [],
-        dischargingHours:
-            (json['discharging_hours'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toList() ??
-            [],
-        chargingCount: json['charging_count'] as int? ?? 0,
-        dischargingCount: json['discharging_count'] as int? ?? 0,
+        chargingHours: _toIntList(json['charging_hours']) ?? [],
+        dischargingHours: _toIntList(json['discharging_hours']) ?? [],
+        chargingCount: _toNullableInt(json['charging_count']) ?? 0,
+        dischargingCount: _toNullableInt(json['discharging_count']) ?? 0,
       );
     } catch (e) {
       throw FormatException('Failed to parse OptimizationStrategy: $e');

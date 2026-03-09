@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
+import '../common/glass_card.dart';
 
 class DataAnalysisLoadingView extends StatelessWidget {
   const DataAnalysisLoadingView({super.key, required this.isAuthenticated});
@@ -13,18 +14,34 @@ class DataAnalysisLoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            isAuthenticated ? '分析中，请稍候...' : '登录中...',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          const Text('GAE 后端可能需要几秒钟唤醒', style: TextStyle(color: Colors.grey)),
-        ],
+      child: GlassCard(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              isAuthenticated ? '分析任务执行中' : '认证处理中',
+              style: AppTextStyles.h4,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isAuthenticated ? '正在上传数据、唤醒分析服务并生成结果面板。' : '正在建立会话并准备访问分析能力。',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'GAE 后端可能需要几秒钟冷启动。',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

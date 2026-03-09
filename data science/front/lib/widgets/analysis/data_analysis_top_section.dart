@@ -47,7 +47,7 @@ class DataAnalysisTopSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth > 800) {
+        if (constraints.maxWidth > 960) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

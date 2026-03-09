@@ -7,7 +7,24 @@ import 'package:front/screens/login_screen.dart';
 import 'package:front/services/auth_gateway.dart';
 import 'package:front/viewmodels/login_view_model.dart';
 
-class _FakeUserCredential extends Fake implements UserCredential {}
+class _FakeUser extends Fake implements User {
+  _FakeUser(this.email);
+
+  @override
+  final String? email;
+
+  @override
+  String get uid => 'user-12345678';
+}
+
+class _FakeUserCredential extends Fake implements UserCredential {
+  _FakeUserCredential([this._user]);
+
+  final User? _user;
+
+  @override
+  User? get user => _user;
+}
 
 class _FakeAuthGateway implements AuthGateway {
   _FakeAuthGateway({
@@ -37,7 +54,7 @@ class _FakeAuthGateway implements AuthGateway {
   }) {
     signInCallCount += 1;
     return signInWithEmailHandler?.call(email, password) ??
-        Future<UserCredential>.value(_FakeUserCredential());
+        Future<UserCredential>.value(_FakeUserCredential(_FakeUser(email)));
   }
 
   @override
@@ -46,13 +63,15 @@ class _FakeAuthGateway implements AuthGateway {
     required String password,
   }) {
     return registerWithEmailHandler?.call(email, password) ??
-        Future<UserCredential>.value(_FakeUserCredential());
+        Future<UserCredential>.value(_FakeUserCredential(_FakeUser(email)));
   }
 
   @override
   Future<UserCredential> signInWithGoogle() {
     return signInWithGoogleHandler?.call() ??
-        Future<UserCredential>.value(_FakeUserCredential());
+        Future<UserCredential>.value(
+          _FakeUserCredential(_FakeUser('user@example.com')),
+        );
   }
 
   @override
@@ -63,11 +82,7 @@ Future<void> _pumpLoginScreen(
   WidgetTester tester, {
   required LoginViewModel viewModel,
 }) async {
-  await tester.pumpWidget(
-    MaterialApp(
-      home: LoginScreen(viewModel: viewModel),
-    ),
-  );
+  await tester.pumpWidget(MaterialApp(home: LoginScreen(viewModel: viewModel)));
   await tester.pumpAndSettle();
 }
 
@@ -100,7 +115,9 @@ void main() {
           );
         },
         registerWithEmailHandler: (_, _) {
-          return Future<UserCredential>.value(_FakeUserCredential());
+          return Future<UserCredential>.value(
+            _FakeUserCredential(_FakeUser('new@example.com')),
+          );
         },
       ),
     );

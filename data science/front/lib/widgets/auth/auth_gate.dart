@@ -5,6 +5,7 @@ library;
 import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter/material.dart';
 
+import '../../repositories/auth_repository.dart';
 import '../../screens/login_screen.dart';
 import '../../services/auth_gateway.dart';
 import '../main_navigation.dart';
@@ -15,14 +16,20 @@ typedef AuthErrorBuilder = Widget Function(BuildContext context, Object error);
 class AuthGate extends StatelessWidget {
   AuthGate({
     super.key,
+    AuthRepository? authRepository,
     AuthGateway? authGateway,
     this.authenticatedBuilder,
     this.unauthenticatedBuilder,
     this.loadingBuilder,
     this.errorBuilder,
-  }) : _authGateway = authGateway ?? FirebaseAuthGateway();
+  }) : assert(
+         authRepository == null || authGateway == null,
+         'Provide either authRepository or authGateway, not both.',
+       ),
+       _authRepository =
+           authRepository ?? GatewayAuthRepository(authGateway: authGateway);
 
-  final AuthGateway _authGateway;
+  final AuthRepository _authRepository;
   final AuthenticatedBuilder? authenticatedBuilder;
   final WidgetBuilder? unauthenticatedBuilder;
   final WidgetBuilder? loadingBuilder;
@@ -31,8 +38,8 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: _authGateway.authStateChanges,
-      initialData: _authGateway.currentUser,
+      stream: _authRepository.authStateChanges,
+      initialData: _authRepository.currentUser,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             snapshot.data == null &&
@@ -51,7 +58,8 @@ class AuthGate extends StatelessWidget {
         final user = snapshot.data;
         if (user != null) {
           final builder = authenticatedBuilder;
-          return builder?.call(context, user) ?? const MainNavigation();
+          return builder?.call(context, user) ??
+              MainNavigation(authRepository: _authRepository);
         }
 
         final builder = unauthenticatedBuilder;

@@ -15,6 +15,7 @@ import 'api_service_exception.dart';
 
 part 'api_service/api_service_auth_data.dart';
 part 'api_service/api_service_core.dart';
+part 'api_service/api_service_dashboard_jobs.dart';
 part 'api_service/api_service_history_ml.dart';
 part 'api_service/api_service_optimization.dart';
 
@@ -71,8 +72,80 @@ class ApiService {
 
   static Future<bool> checkHealth() => _checkHealth();
 
+  static Future<Map<String, dynamic>> getDashboardSummary() =>
+      _getDashboardSummary();
+
+  static Future<List<Map<String, dynamic>>> listJobs({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) => _listJobs(type: type, status: status, limit: limit);
+
+  static Future<Map<String, dynamic>> getJob(String jobId) => _getJob(jobId);
+
+  static Future<Map<String, dynamic>> retryJob(String jobId) =>
+      _retryJob(jobId);
+
+  static Future<Map<String, dynamic>> createOptimizationJob({
+    required double initialSoc,
+    DateTime? targetDate,
+    double? batteryCapacity,
+    double? batteryPower,
+    double? batteryEfficiency,
+    double? temperatureAdjust,
+  }) => _createOptimizationJob(
+    initialSoc: initialSoc,
+    targetDate: targetDate,
+    batteryCapacity: batteryCapacity,
+    batteryPower: batteryPower,
+    batteryEfficiency: batteryEfficiency,
+    temperatureAdjust: temperatureAdjust,
+  );
+
+  static Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) => _createAnalysisJob(
+    storagePath: storagePath,
+    filename: filename,
+    saveToStorage: saveToStorage,
+  );
+
+  static Future<Map<String, dynamic>> createMlTrainJob({
+    required String storagePath,
+    required String modelType,
+    required int epochs,
+    required int batchSize,
+    required int windowSize,
+    required String targetColumn,
+  }) => _createMlTrainJob(
+    storagePath: storagePath,
+    modelType: modelType,
+    epochs: epochs,
+    batchSize: batchSize,
+    windowSize: windowSize,
+    targetColumn: targetColumn,
+  );
+
+  static Future<Map<String, dynamic>> createRagIngestJob({
+    required String storagePath,
+    String? collectionName,
+    bool reset = false,
+  }) => _createRagIngestJob(
+    storagePath: storagePath,
+    collectionName: collectionName,
+    reset: reset,
+  );
+
   static Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20}) =>
       _getUserHistory(limit: limit);
+
+  static Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) => _getAuditActivity(type: type, status: status, limit: limit);
 
   static Future<Map<String, dynamic>> getHistoryDetail(String recordId) =>
       _getHistoryDetail(recordId);

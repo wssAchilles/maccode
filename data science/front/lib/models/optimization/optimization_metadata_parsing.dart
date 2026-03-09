@@ -27,6 +27,13 @@ List<double>? _toDoubleList(Object? value) {
       .toList();
 }
 
+List<int>? _toIntList(Object? value) {
+  if (value is! List) {
+    return null;
+  }
+  return value.map((entry) => _toNullableInt(entry)).whereType<int>().toList();
+}
+
 String? _toNullableString(Object? value) {
   if (value == null) {
     return null;
@@ -88,6 +95,15 @@ bool? _toNullableBool(Object? value) {
       case 'no':
       case 'n':
         return false;
+    }
+  }
+  return null;
+}
+
+Object? _firstPresent(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    if (json.containsKey(key)) {
+      return json[key];
     }
   }
   return null;

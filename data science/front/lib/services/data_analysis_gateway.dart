@@ -22,6 +22,12 @@ abstract class DataAnalysisGateway {
     String? filename,
     bool saveToStorage = true,
   });
+
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  });
 }
 
 class ApiDataAnalysisGateway implements DataAnalysisGateway {
@@ -61,6 +67,19 @@ class ApiDataAnalysisGateway implements DataAnalysisGateway {
     bool saveToStorage = true,
   }) {
     return _apiClient.analyzeCsv(
+      storagePath: storagePath,
+      filename: filename,
+      saveToStorage: saveToStorage,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) {
+    return _apiClient.createAnalysisJob(
       storagePath: storagePath,
       filename: filename,
       saveToStorage: saveToStorage,

@@ -15,16 +15,16 @@ class ModelExplainability {
   factory ModelExplainability.fromJson(Map<String, dynamic> json) {
     try {
       final rawImportance =
-          json['feature_importance'] as Map<String, dynamic>? ?? {};
+          _toStringDynamicMap(json['feature_importance']) ?? {};
       final importance = <String, double>{};
       rawImportance.forEach((key, value) {
-        if (value is num) {
-          importance[key] = value.toDouble();
+        final parsedValue = _toNullableDouble(value);
+        if (parsedValue != null) {
+          importance[key] = parsedValue;
         }
       });
 
-      final rawDescriptions =
-          json['feature_descriptions'] as Map<String, dynamic>?;
+      final rawDescriptions = _toStringDynamicMap(json['feature_descriptions']);
       Map<String, String>? descriptions;
       if (rawDescriptions != null) {
         descriptions = rawDescriptions.map((k, v) => MapEntry(k, v.toString()));
@@ -33,7 +33,7 @@ class ModelExplainability {
       return ModelExplainability(
         featureImportance: importance,
         featureDescriptions: descriptions,
-        interpretation: json['interpretation'] as String?,
+        interpretation: _toNullableString(json['interpretation']),
       );
     } catch (e) {
       throw FormatException('Failed to parse ModelExplainability: $e');
@@ -82,10 +82,10 @@ class SolverDiagnostics {
 
   factory SolverDiagnostics.fromJson(Map<String, dynamic> json) {
     return SolverDiagnostics(
-      runtimeSec: (json['runtime_sec'] as num?)?.toDouble() ?? 0.0,
-      mipGap: (json['mip_gap'] as num?)?.toDouble(),
-      nodeCount: json['node_count'] as int?,
-      iterCount: json['iter_count'] as int?,
+      runtimeSec: _toNullableDouble(json['runtime_sec']) ?? 0.0,
+      mipGap: _toNullableDouble(json['mip_gap']),
+      nodeCount: _toNullableInt(json['node_count']),
+      iterCount: _toNullableInt(json['iter_count']),
     );
   }
 

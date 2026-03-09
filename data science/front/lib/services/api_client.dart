@@ -24,7 +24,19 @@ abstract interface class ApiClient {
     bool saveToStorage = true,
   });
 
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  });
+
   Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20});
+
+  Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 20,
+  });
 
   Future<void> deleteHistoryRecord(String recordId);
 
@@ -92,8 +104,34 @@ class DefaultApiClient implements ApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) {
+    return ApiService.createAnalysisJob(
+      storagePath: storagePath,
+      filename: filename,
+      saveToStorage: saveToStorage,
+    );
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20}) {
     return ApiService.getUserHistory(limit: limit);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) {
+    return ApiService.getAuditActivity(
+      type: type,
+      status: status,
+      limit: limit,
+    );
   }
 
   @override

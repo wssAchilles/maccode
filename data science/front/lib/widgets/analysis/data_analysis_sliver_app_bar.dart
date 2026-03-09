@@ -20,18 +20,17 @@ class DataAnalysisSliverAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 136,
       floating: false,
       pinned: true,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
+      foregroundColor: AppColors.textPrimary,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          '数据科学即服务',
-          style: AppTextStyles.h4.copyWith(color: Colors.white),
-        ),
+        title: Text('Data Analysis Workbench', style: AppTextStyles.h4),
         background: Container(
-          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+          decoration: const BoxDecoration(
+            gradient: AppColors.backgroundGradient,
+          ),
         ),
       ),
       actions: [
@@ -39,7 +38,7 @@ class DataAnalysisSliverAppBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.history_rounded),
             onPressed: onOpenHistory,
-            tooltip: '分析历史',
+            tooltip: '历史与审计',
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),

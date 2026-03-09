@@ -38,11 +38,12 @@ class AnalysisResultsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '分析结果',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            _ResultSummaryBanner(result: result),
             const SizedBox(height: 16),
+            _AssetConsoleSection(result: result),
+            const SizedBox(height: 16),
+            Text('详细分析面板', style: AppTextStyles.h4),
+            const SizedBox(height: 12),
             if (isMobile) ...[
               if (result.qualityAnalysis != null)
                 QualityDashboard(qualityAnalysis: result.qualityAnalysis!),

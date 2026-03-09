@@ -11,7 +11,10 @@ Future<List<Map<String, dynamic>>> _getUserHistory({int limit = 20}) async {
     fallback: 'Failed to get history',
     requireSuccessFlag: true,
   );
-  return List<Map<String, dynamic>>.from(data['history'] ?? const []);
+  final payload = data['data'] is Map
+      ? Map<String, dynamic>.from(data['data'] as Map)
+      : data;
+  return List<Map<String, dynamic>>.from(payload['history'] ?? const []);
 }
 
 Future<Map<String, dynamic>> _getHistoryDetail(String recordId) async {
@@ -30,8 +33,11 @@ Future<Map<String, dynamic>> _getHistoryDetail(String recordId) async {
     fallback: 'Failed to get record',
     requireSuccessFlag: true,
   );
+  final payload = data['data'] is Map
+      ? Map<String, dynamic>.from(data['data'] as Map)
+      : data;
 
-  final record = data['record'];
+  final record = payload['record'];
   if (record is! Map) {
     throw const ApiServiceException(
       'Failed to get record: record missing',
@@ -47,6 +53,31 @@ Future<void> _deleteHistoryRecord(String recordId) async {
   if (!_isSuccessStatus(response.statusCode)) {
     _throwResponseException(response, fallback: 'Failed to delete record');
   }
+}
+
+Future<List<Map<String, dynamic>>> _getAuditActivity({
+  String? type,
+  String? status,
+  int limit = 20,
+}) async {
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/history/activity',
+    queryParameters: <String, Object?>{
+      if (type != null) 'type': type,
+      if (status != null) 'status': status,
+      'limit': limit,
+    },
+  );
+  final data = _decodeResponseMap(
+    response,
+    fallback: 'Failed to get audit activity',
+    requireSuccessFlag: true,
+  );
+  final payload = data['data'] is Map
+      ? Map<String, dynamic>.from(data['data'] as Map)
+      : data;
+  return List<Map<String, dynamic>>.from(payload['activity'] ?? const []);
 }
 
 Future<Map<String, dynamic>> _trainModel({

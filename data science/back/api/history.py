@@ -1,12 +1,10 @@
-"""
-历史记录 API 路由
-处理用户分析历史记录的查询
-"""
+"""历史记录与审计 API 路由."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from services.firebase_service import require_auth
 from services.history_service import HistoryService
 from middleware.rate_limit import rate_limit
+from utils.responses import error_response, success_response
 import logging
 
 logger = logging.getLogger(__name__)
@@ -77,19 +75,18 @@ def get_history():
         
         logger.info(f"[{uid}] 返回 {len(history)} 条历史记录")
         
-        return jsonify({
-            'success': True,
+        return success_response({
             'history': history,
-            'count': len(history)
-        }), 200
+            'count': len(history),
+        })
         
     except Exception as e:
         logger.error(f"获取历史记录失败: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': 'HISTORY_FETCH_ERROR',
-            'message': f'获取历史记录失败: {str(e)}'
-        }), 500
+        return error_response(
+            'HISTORY_FETCH_ERROR',
+            f'获取历史记录失败: {str(e)}',
+            status_code=500,
+        )
 
 
 @history_bp.route('/<record_id>', methods=['GET'])
@@ -120,11 +117,7 @@ def get_history_detail(record_id):
         record = HistoryService.get_history_detail(uid, record_id)
         
         if not record:
-            return jsonify({
-                'success': False,
-                'error': 'RECORD_NOT_FOUND',
-                'message': '记录不存在'
-            }), 404
+            return error_response('RECORD_NOT_FOUND', '记录不存在', status_code=404)
         
         # 转换时间戳
         if 'created_at' in record and record['created_at']:
@@ -136,18 +129,15 @@ def get_history_detail(record_id):
                 dt = datetime.fromtimestamp(created_at.seconds)
                 record['created_at'] = dt.isoformat()
         
-        return jsonify({
-            'success': True,
-            'record': record
-        }), 200
+        return success_response({'record': record})
         
     except Exception as e:
         logger.error(f"获取历史记录详情失败: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': 'RECORD_FETCH_ERROR',
-            'message': f'获取记录失败: {str(e)}'
-        }), 500
+        return error_response(
+            'RECORD_FETCH_ERROR',
+            f'获取记录失败: {str(e)}',
+            status_code=500,
+        )
 
 
 @history_bp.route('/<record_id>', methods=['DELETE'])
@@ -179,15 +169,43 @@ def delete_history_record(record_id):
         
         logger.info(f"[{uid}] 历史记录已删除: {record_id}")
         
-        return jsonify({
-            'success': True,
-            'message': '记录已删除'
-        }), 200
+        return success_response({'message': '记录已删除'})
         
     except Exception as e:
         logger.error(f"删除历史记录失败: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': 'DELETE_ERROR',
-            'message': f'删除失败: {str(e)}'
-        }), 500
+        return error_response('DELETE_ERROR', f'删除失败: {str(e)}', status_code=500)
+
+
+@history_bp.route('/activity', methods=['GET'])
+@require_auth
+@rate_limit(max_requests=60, window_seconds=60)
+def get_activity():
+    """获取用户审计活动流."""
+    try:
+        uid = request.user.get('uid')
+        limit = request.args.get('limit', default=20, type=int) or 20
+        activity_type = request.args.get('type')
+        status = request.args.get('status')
+
+        if limit > 100:
+            limit = 100
+        elif limit < 1:
+            limit = 20
+
+        activity = HistoryService.get_recent_activity(
+            uid,
+            limit=limit,
+            activity_type=activity_type,
+            status=status,
+        )
+        return success_response({
+            'activity': activity,
+            'count': len(activity),
+        })
+    except Exception as e:
+        logger.error(f"获取审计活动失败: {str(e)}", exc_info=True)
+        return error_response(
+            'ACTIVITY_FETCH_ERROR',
+            f'获取审计活动失败: {str(e)}',
+            status_code=500,
+        )

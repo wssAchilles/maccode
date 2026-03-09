@@ -5,15 +5,17 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../models/auth_failure.dart';
+import '../repositories/auth_repository.dart';
 import '../services/auth_gateway.dart';
 
 enum LoginSubmissionResult { signedIn, registered, failed }
 
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel({AuthGateway? authGateway})
-    : _authGateway = authGateway ?? FirebaseAuthGateway();
+  LoginViewModel({AuthRepository? authRepository, AuthGateway? authGateway})
+    : _authRepository =
+          authRepository ?? GatewayAuthRepository(authGateway: authGateway);
 
-  final AuthGateway _authGateway;
+  final AuthRepository _authRepository;
 
   bool _isDisposed = false;
   bool _isLoading = false;
@@ -43,10 +45,21 @@ class LoginViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      await _authGateway.signInWithEmail(email: email, password: password);
-      return LoginSubmissionResult.signedIn;
-    } on AuthFailureException catch (failure) {
-      if (!failure.failure.canAutoRegister) {
+      final result = await _authRepository.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      if (result.isSuccess) {
+        return LoginSubmissionResult.signedIn;
+      }
+
+      final failure = result.failure;
+      if (failure == null) {
+        _errorMessage = '登录失败: 未知错误';
+        return LoginSubmissionResult.failed;
+      }
+
+      if (!failure.canAutoRegister) {
         _errorMessage = '登录失败: ${failure.message}';
         return LoginSubmissionResult.failed;
       }
@@ -55,18 +68,6 @@ class LoginViewModel extends ChangeNotifier {
         email: email,
         password: password,
         originalFailure: failure,
-      );
-    } catch (e) {
-      final message = e.toString();
-      if (!_matchesLegacyAutoRegisterSignals(message)) {
-        _errorMessage = '登录失败: $e';
-        return LoginSubmissionResult.failed;
-      }
-
-      return _registerAfterFailedSignIn(
-        email: email,
-        password: password,
-        originalFailure: null,
       );
     } finally {
       _setLoading(false);
@@ -80,15 +81,15 @@ class LoginViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      await _authGateway.signInWithGoogle();
-      return true;
-    } on AuthFailureException catch (failure) {
-      if (failure.code != 'cancelled') {
-        _errorMessage = '谷歌登录失败: ${failure.message}';
+      final result = await _authRepository.signInWithGoogle();
+      if (result.isSuccess) {
+        return true;
       }
-      return false;
-    } catch (e) {
-      _errorMessage = '谷歌登录失败: $e';
+
+      if (!result.isCancelled && result.failure != null) {
+        _errorMessage = '谷歌登录失败: ${result.failure!.message}';
+      }
+
       return false;
     } finally {
       _setLoading(false);
@@ -99,30 +100,26 @@ class LoginViewModel extends ChangeNotifier {
   Future<LoginSubmissionResult> _registerAfterFailedSignIn({
     required String email,
     required String password,
-    required AuthFailureException? originalFailure,
+    required AuthFailure? originalFailure,
   }) async {
-    try {
-      await _authGateway.registerWithEmail(email: email, password: password);
+    final result = await _authRepository.registerWithEmail(
+      email: email,
+      password: password,
+    );
+    if (result.isSuccess) {
       return LoginSubmissionResult.registered;
-    } on AuthFailureException catch (failure) {
+    }
+
+    final failure = result.failure;
+    if (failure != null) {
       if (failure.code == 'email-already-in-use' && originalFailure != null) {
         _errorMessage = '登录失败: ${originalFailure.message}';
       } else {
         _errorMessage = '注册失败: ${failure.message}';
       }
-      return LoginSubmissionResult.failed;
-    } catch (e) {
-      _errorMessage = '注册失败: $e';
-      return LoginSubmissionResult.failed;
     }
-  }
 
-  bool _matchesLegacyAutoRegisterSignals(String message) {
-    return message.contains('用户不存在') ||
-        message.contains('user-not-found') ||
-        message.contains('用户不存在或密码错误') ||
-        message.contains('invalid-credential') ||
-        message.contains('INVALID_LOGIN_CREDENTIALS');
+    return LoginSubmissionResult.failed;
   }
 
   void _setLoading(bool value) {

@@ -67,7 +67,10 @@ Future<AnalysisResult> _analyzeCsv({
     requireSuccessFlag: true,
   );
 
-  final analysisData = data['analysis_result'];
+  final payload = data['data'] is Map
+      ? Map<String, dynamic>.from(data['data'])
+      : data;
+  final analysisData = payload['analysis_result'];
   if (analysisData is! Map) {
     throw const ApiServiceException(
       'Analysis failed: 缺少 analysis_result',

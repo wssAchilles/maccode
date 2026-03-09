@@ -19,6 +19,8 @@ from api.history import history_bp
 from api.ml import ml_bp
 from api.optimization import optimization_bp
 from api.rag import rag_bp
+from api.dashboard import dashboard_bp
+from api.jobs import internal_jobs_bp, jobs_bp
 
 
 def create_app(config_name=None):
@@ -51,6 +53,9 @@ def create_app(config_name=None):
     app.register_blueprint(optimization_bp)
     app.register_blueprint(ml_bp)
     app.register_blueprint(rag_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(jobs_bp)
+    app.register_blueprint(internal_jobs_bp)
     
     # ---------------------------------------------------------
     # ❌ 移除/注释掉原来的 init_scheduler() 调用
@@ -144,7 +149,8 @@ def create_app(config_name=None):
     def health():
         return jsonify({
             'status': 'ok',
-            'timestamp': os.popen('date -u +"%Y-%m-%dT%H:%M:%SZ"').read().strip()
+            'timestamp': os.popen('date -u +\"%Y-%m-%dT%H:%M:%SZ\"').read().strip(),
+            'tasks_execution_mode': app.config.get('TASKS_EXECUTION_MODE'),
         })
     
     @app.errorhandler(404)

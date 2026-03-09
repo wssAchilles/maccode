@@ -12,7 +12,10 @@ class _FakeApiClient implements ApiClient {
   Map<String, dynamic>? uploadUrlArgs;
   Map<String, dynamic>? uploadFileArgs;
   Map<String, dynamic>? analyzeArgs;
+  Map<String, dynamic>? analysisJobArgs;
   int? historyLimit;
+  String? activityType;
+  String? activityStatus;
   String? deletedRecordId;
   Map<String, dynamic>? optimizationArgs;
   Map<String, dynamic>? deepLearningArgs;
@@ -75,9 +78,47 @@ class _FakeApiClient implements ApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) async {
+    analysisJobArgs = {
+      'storagePath': storagePath,
+      'filename': filename,
+      'saveToStorage': saveToStorage,
+    };
+    return {
+      'job_id': 'analysis-job-1',
+      'type': 'analysis',
+      'status': 'queued',
+      'progress': 0,
+      'requested_by': 'test-user',
+      'attempt_count': 0,
+      'max_attempts': 1,
+      'input': {'storage_path': storagePath},
+      'result': const <String, dynamic>{},
+      'retryable': false,
+      'events': const <Map<String, dynamic>>[],
+    };
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20}) async {
     historyLimit = limit;
     return historyResult;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) async {
+    historyLimit = limit;
+    activityType = type;
+    activityStatus = status;
+    return const <Map<String, dynamic>>[];
   }
 
   @override

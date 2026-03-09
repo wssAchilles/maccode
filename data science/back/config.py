@@ -27,6 +27,31 @@ class Config:
     
     # Cloud Storage 配置
     STORAGE_BUCKET_NAME = os.getenv('STORAGE_BUCKET_NAME', 'data-science-44398.firebasestorage.app')
+    HEAVY_SERVICE_URL = os.getenv('HEAVY_SERVICE_URL', '')
+
+    # 任务系统配置
+    JOBS_COLLECTION = os.getenv('JOBS_COLLECTION', 'jobs')
+    ACTIVITY_COLLECTION = os.getenv('ACTIVITY_COLLECTION', 'activity')
+    TASKS_EXECUTION_MODE = os.getenv(
+        'TASKS_EXECUTION_MODE',
+        'inline' if DEBUG else 'cloud_tasks',
+    ).lower()
+    TASKS_QUEUE_NAME = os.getenv('TASKS_QUEUE_NAME', 'industrial-jobs')
+    TASKS_LOCATION = os.getenv('TASKS_LOCATION', GCP_REGION)
+    TASKS_MAX_ATTEMPTS = int(os.getenv('TASKS_MAX_ATTEMPTS', '3'))
+    INTERNAL_BASE_URL = os.getenv('INTERNAL_BASE_URL', 'http://localhost:8080')
+    INTERNAL_JOB_TOKEN = os.getenv('INTERNAL_JOB_TOKEN', 'dev-internal-job-token')
+    RATE_LIMIT_BACKEND = os.getenv(
+        'RATE_LIMIT_BACKEND',
+        'memory' if DEBUG else 'firestore',
+    ).lower()
+
+    # 优化业务配置
+    BATTERY_CONFIG = {
+        'capacity': float(os.getenv('DEFAULT_BATTERY_CAPACITY', 100.0)),
+        'max_power': float(os.getenv('DEFAULT_BATTERY_POWER', 40.0)),
+        'efficiency': float(os.getenv('DEFAULT_BATTERY_EFFICIENCY', 0.95)),
+    }
 
     # 电价配置 (单一事实来源)
     PRICE_SCHEDULE = {
@@ -65,6 +90,8 @@ class Config:
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
+    TASKS_EXECUTION_MODE = 'inline'
+    RATE_LIMIT_BACKEND = 'memory'
     
     # 开发环境允许 localhost
     CORS_ORIGINS = Config.CORS_ORIGINS + [
@@ -76,12 +103,15 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
+    RATE_LIMIT_BACKEND = 'firestore'
 
 
 class TestingConfig(Config):
     """测试环境配置"""
     TESTING = True
     DEBUG = True
+    TASKS_EXECUTION_MODE = 'inline'
+    RATE_LIMIT_BACKEND = 'memory'
     WTF_CSRF_ENABLED = False
 
 

@@ -10,29 +10,40 @@ import 'package:flutter/foundation.dart';
 
 import '../models/analysis_result.dart';
 import '../models/data_analysis_error.dart';
+import '../models/job_record.dart';
+import '../repositories/auth_repository.dart';
+import '../repositories/data_analysis_repository.dart';
 import '../services/auth_gateway.dart';
 import '../services/data_analysis_gateway.dart';
 
 class DataAnalysisViewModel extends ChangeNotifier {
   DataAnalysisViewModel({
+    AuthRepository? authRepository,
     AuthGateway? authGateway,
+    DataAnalysisRepository? repository,
     DataAnalysisGateway? dataGateway,
     bool Function()? isAuthenticated,
-  }) : _authGateway = authGateway ?? FirebaseAuthGateway(),
-       _dataGateway = dataGateway ?? ApiDataAnalysisGateway(),
+  }) : _authRepository =
+           authRepository ?? GatewayAuthRepository(authGateway: authGateway),
+       _repository =
+           repository ??
+           GatewayDataAnalysisRepository(dataGateway: dataGateway),
        _isAuthenticatedOverride = isAuthenticated;
 
-  final AuthGateway _authGateway;
-  final DataAnalysisGateway _dataGateway;
+  final AuthRepository _authRepository;
+  final DataAnalysisRepository _repository;
   final bool Function()? _isAuthenticatedOverride;
 
   StreamSubscription<User?>? _authSubscription;
   bool _isDisposed = false;
+  bool _isInitialized = false;
 
   User? _currentUser;
   PlatformFile? _pickedFile;
   AnalysisResult? _analysisResult;
+  String? _latestStoragePath;
   bool _isLoading = false;
+  bool _isSubmittingAnalysisJob = false;
   bool _saveToStorage = true;
   DataAnalysisError? _error;
   String _authMode = 'login';
@@ -40,7 +51,9 @@ class DataAnalysisViewModel extends ChangeNotifier {
   User? get currentUser => _currentUser;
   PlatformFile? get pickedFile => _pickedFile;
   AnalysisResult? get analysisResult => _analysisResult;
+  String? get latestStoragePath => _latestStoragePath;
   bool get isLoading => _isLoading;
+  bool get isSubmittingAnalysisJob => _isSubmittingAnalysisJob;
   bool get saveToStorage => _saveToStorage;
   DataAnalysisError? get error => _error;
   String? get errorMessage => _error?.message;
@@ -49,12 +62,18 @@ class DataAnalysisViewModel extends ChangeNotifier {
       _isAuthenticatedOverride?.call() ?? (_currentUser != null);
 
   void initialize() {
-    _currentUser = _authGateway.currentUser;
-    _authSubscription = _authGateway.authStateChanges.listen((user) {
+    if (_isDisposed || _isInitialized) {
+      return;
+    }
+
+    _isInitialized = true;
+    _currentUser = _authRepository.currentUser;
+    _authSubscription = _authRepository.authStateChanges.listen((user) {
       _currentUser = user;
       if (user == null) {
         _pickedFile = null;
         _analysisResult = null;
+        _latestStoragePath = null;
       }
       _notifySafely();
     });
@@ -74,6 +93,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
 
   void clearPickedFile() {
     _pickedFile = null;
+    _latestStoragePath = null;
     _notifySafely();
   }
 
@@ -88,11 +108,15 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      final userCredential = await _authGateway.signInWithGoogle();
-      _currentUser = userCredential.user;
-      return userCredential.user;
-    } catch (e) {
-      _setError(DataAnalysisErrorType.auth, 'Google 登录失败: $e');
+      final result = await _authRepository.signInWithGoogle();
+      if (result.isSuccess) {
+        _currentUser = result.user;
+        return result.user;
+      }
+
+      if (!result.isCancelled && result.failure != null) {
+        _setAuthError('谷歌登录失败', result.failure!.message);
+      }
       return null;
     } finally {
       _setLoading(false);
@@ -109,14 +133,16 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      final userCredential = await _authGateway.signInWithEmail(
+      final result = await _authRepository.signInWithEmail(
         email: email,
         password: password,
       );
-      _currentUser = userCredential.user;
-      return userCredential.user;
-    } catch (e) {
-      _setError(DataAnalysisErrorType.auth, '登录失败: $e');
+      if (result.isSuccess) {
+        _currentUser = result.user;
+        return result.user;
+      }
+
+      _setAuthError('登录失败', result.failure?.message ?? '未知错误');
       return null;
     } finally {
       _setLoading(false);
@@ -133,14 +159,16 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      final userCredential = await _authGateway.registerWithEmail(
+      final result = await _authRepository.registerWithEmail(
         email: email,
         password: password,
       );
-      _currentUser = userCredential.user;
-      return userCredential.user;
-    } catch (e) {
-      _setError(DataAnalysisErrorType.auth, '注册失败: $e');
+      if (result.isSuccess) {
+        _currentUser = result.user;
+        return result.user;
+      }
+
+      _setAuthError('注册失败', result.failure?.message ?? '未知错误');
       return null;
     } finally {
       _setLoading(false);
@@ -149,10 +177,11 @@ class DataAnalysisViewModel extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    await _authGateway.signOut();
+    await _authRepository.signOut();
     _currentUser = null;
     _pickedFile = null;
     _analysisResult = null;
+    _latestStoragePath = null;
     _error = null;
     _notifySafely();
   }
@@ -188,52 +217,89 @@ class DataAnalysisViewModel extends ChangeNotifier {
       return false;
     }
 
-    final bytes = file.bytes;
-    if (bytes == null) {
-      _setError(DataAnalysisErrorType.validation, '文件读取失败，请重新选择文件');
-      _notifySafely();
-      return false;
-    }
-
     _setLoading(true);
     _error = null;
     _analysisResult = null;
+    _latestStoragePath = null;
     _notifySafely();
 
     try {
-      final uploadInfo = await _dataGateway.getUploadUrl(
-        fileName: file.name,
-        contentType: 'text/csv',
-      );
-
-      final uploadUrl = uploadInfo['uploadUrl'] as String?;
-      final storagePath = uploadInfo['storagePath'] as String?;
-
-      if (uploadUrl == null || storagePath == null) {
-        _setError(DataAnalysisErrorType.upload, '上传信息不完整，请稍后重试');
-        return false;
-      }
-
-      await _dataGateway.uploadFileToGcs(
-        uploadUrl: uploadUrl,
-        fileData: bytes,
-        contentType: 'text/csv',
-      );
-
-      final result = await _dataGateway.analyzeCsv(
-        storagePath: storagePath,
-        filename: file.name,
+      final submission = await _repository.submitCsvAnalysis(
+        file: file,
         saveToStorage: _saveToStorage,
       );
 
-      _analysisResult = result;
-      return true;
-    } catch (e) {
-      _setError(DataAnalysisErrorType.analysis, '分析失败: $e');
+      if (submission.isSuccess) {
+        _analysisResult = submission.analysisResult;
+        _latestStoragePath = submission.storagePath;
+        return true;
+      }
+
+      _error = submission.error;
       return false;
     } finally {
       _setLoading(false);
       _notifySafely();
+    }
+  }
+
+  Future<JobRecord?> submitAnalysisJob() async {
+    final file = _pickedFile;
+    if (!_isAuthenticated || file == null) {
+      _setError(DataAnalysisErrorType.validation, '请先登录并选择 CSV 文件');
+      _notifySafely();
+      return null;
+    }
+
+    _isSubmittingAnalysisJob = true;
+    _error = null;
+    _notifySafely();
+
+    try {
+      final submission = await _repository.submitCsvAnalysisJob(
+        file: file,
+        saveToStorage: _saveToStorage,
+      );
+      if (submission.isSuccess) {
+        _latestStoragePath = submission.storagePath;
+        return submission.job;
+      }
+
+      _error = submission.error;
+      return null;
+    } finally {
+      _isSubmittingAnalysisJob = false;
+      _notifySafely();
+    }
+  }
+
+  bool loadAnalysisResultFromJobPayload(Map<String, dynamic> payload) {
+    final rawResult = payload['analysis_result'];
+    if (rawResult is! Map) {
+      _setError(DataAnalysisErrorType.analysis, '后台分析任务结果格式无效');
+      _notifySafely();
+      return false;
+    }
+
+    try {
+      _analysisResult = AnalysisResult.fromJson(
+        Map<String, dynamic>.from(rawResult),
+      );
+      final storagePath = payload['storage_path'];
+      if (storagePath is String && storagePath.isNotEmpty) {
+        _latestStoragePath = storagePath;
+      }
+      final retained = payload['storage_retained'];
+      if (retained is bool) {
+        _saveToStorage = retained;
+      }
+      _error = null;
+      _notifySafely();
+      return true;
+    } catch (e) {
+      _setError(DataAnalysisErrorType.analysis, '后台分析结果解析失败: $e');
+      _notifySafely();
+      return false;
     }
   }
 
@@ -250,6 +316,10 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _error = DataAnalysisError(type: type, message: message);
   }
 
+  void _setAuthError(String prefix, String message) {
+    _setError(DataAnalysisErrorType.auth, '$prefix: $message');
+  }
+
   void _notifySafely() {
     if (!_isDisposed) {
       notifyListeners();
@@ -260,6 +330,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _authSubscription?.cancel();
+    _authSubscription = null;
     super.dispose();
   }
 }

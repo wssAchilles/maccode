@@ -4,7 +4,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../config/app_theme.dart';
 import '../../models/analysis_result.dart';
+import '../common/glass_card.dart';
 import 'correlation_matrix_view.dart';
 import 'quality_dashboard.dart';
 import 'statistical_panel.dart';

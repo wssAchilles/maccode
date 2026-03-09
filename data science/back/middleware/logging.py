@@ -1,76 +1,76 @@
-"""
-日志中间件
-记录所有 API 请求和响应
-"""
+"""Structured request logging."""
 
-import time
+from __future__ import annotations
+
+import json
 import logging
-from flask import request, g
+import time
+import uuid
 from functools import wraps
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+from flask import g, request
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def _emit(level: str, **fields):
+    payload = json.dumps(fields, ensure_ascii=False, default=str)
+    getattr(logger, level.lower(), logger.info)(payload)
+
+
 def setup_logging(app):
-    """
-    设置 Flask 应用的日志中间件
-    
-    Args:
-        app: Flask 应用实例
-    """
-    
     @app.before_request
     def before_request():
-        """请求前记录"""
         g.start_time = time.time()
-        g.request_id = request.headers.get('X-Request-ID', 'unknown')
-        
-        logger.info(f"[{g.request_id}] {request.method} {request.path} - Start")
-    
+        g.request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+        g.user_id = None
+        _emit(
+            'info',
+            event='request_started',
+            request_id=g.request_id,
+            route=request.path,
+            method=request.method,
+            user_id=g.user_id,
+        )
+
     @app.after_request
     def after_request(response):
-        """请求后记录"""
+        elapsed = None
         if hasattr(g, 'start_time'):
-            elapsed = time.time() - g.start_time
-            logger.info(
-                f"[{g.request_id}] {request.method} {request.path} - "
-                f"Status: {response.status_code} - "
-                f"Duration: {elapsed:.3f}s"
-            )
+            elapsed = int((time.time() - g.start_time) * 1000)
+        response.headers['X-Request-ID'] = getattr(g, 'request_id', 'unknown')
+        _emit(
+            'info',
+            event='request_finished',
+            request_id=getattr(g, 'request_id', 'unknown'),
+            route=request.path,
+            method=request.method,
+            status_code=response.status_code,
+            duration_ms=elapsed,
+            user_id=getattr(request, 'user', {}).get('uid') if hasattr(request, 'user') else None,
+        )
         return response
-    
+
     @app.errorhandler(Exception)
-    def handle_exception(e):
-        """全局异常处理"""
-        logger.error(
-            f"[{g.get('request_id', 'unknown')}] Unhandled exception: {str(e)}",
-            exc_info=True
+    def handle_exception(exc):
+        _emit(
+            'error',
+            event='request_failed',
+            request_id=getattr(g, 'request_id', 'unknown'),
+            route=request.path,
+            method=request.method,
+            duration_ms=int((time.time() - g.start_time) * 1000) if hasattr(g, 'start_time') else None,
+            user_id=getattr(request, 'user', {}).get('uid') if hasattr(request, 'user') else None,
+            error=str(exc),
         )
         raise
 
 
 def log_function_call(func):
-    """
-    装饰器：记录函数调用
-    
-    使用方法:
-        @log_function_call
-        def my_function():
-            pass
-    """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logger.debug(f"Calling {func.__name__} with args={args}, kwargs={kwargs}")
-        try:
-            result = func(*args, **kwargs)
-            logger.debug(f"{func.__name__} returned: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"{func.__name__} raised exception: {str(e)}", exc_info=True)
-            raise
+        _emit('info', event='function_call', function=func.__name__)
+        return func(*args, **kwargs)
+
     return wrapper

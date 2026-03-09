@@ -68,6 +68,27 @@ class ModelingViewModel extends ChangeNotifier {
     }
   }
 
+  bool loadResultFromJobPayload(
+    Map<String, dynamic> payload, {
+    bool saveForComparison = true,
+  }) {
+    try {
+      final wrapped = <String, dynamic>{'success': true, ...payload};
+      final parsed = OptimizationResponse.fromJson(wrapped);
+      if (saveForComparison && _result != null) {
+        _previousResult = _result;
+      }
+      _result = parsed;
+      _errorMessage = null;
+      _notifySafely();
+      return true;
+    } catch (e) {
+      _errorMessage = '加载后台任务结果失败: $e';
+      _notifySafely();
+      return false;
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     _notifySafely();

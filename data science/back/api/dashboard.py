@@ -1,0 +1,32 @@
+"""Dashboard aggregation API."""
+
+from __future__ import annotations
+
+import logging
+
+from flask import Blueprint, request
+
+from middleware.rate_limit import rate_limit
+from services.dashboard_service import DashboardService
+from services.firebase_service import require_auth
+from utils.responses import error_response, success_response
+
+logger = logging.getLogger(__name__)
+
+dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/api/dashboard')
+
+
+@dashboard_bp.route('/summary', methods=['GET', 'OPTIONS'])
+@rate_limit(max_requests=30, window_seconds=60)
+@require_auth
+def get_dashboard_summary():
+    if request.method == 'OPTIONS':
+        return success_response({'status': 'ok'})
+
+    try:
+        uid = request.user.get('uid')
+        payload = DashboardService.build_summary(uid)
+        return success_response(payload)
+    except Exception as exc:
+        logger.error('Failed to build dashboard summary: %s', exc, exc_info=True)
+        return error_response('DASHBOARD_SUMMARY_ERROR', f'获取驾驶舱摘要失败: {exc}', status_code=500)

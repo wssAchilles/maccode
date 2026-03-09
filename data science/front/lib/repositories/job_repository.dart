@@ -1,0 +1,125 @@
+/// 作业系统仓储
+library;
+
+import '../models/job_record.dart';
+import '../services/api_service.dart';
+
+abstract class JobRepository {
+  Future<List<JobRecord>> listJobs({
+    String? type,
+    String? status,
+    int limit = 20,
+  });
+
+  Future<JobRecord> getJob(String jobId);
+
+  Future<JobRecord> retryJob(String jobId);
+
+  Future<JobRecord> createOptimizationJob({
+    required double initialSoc,
+    DateTime? targetDate,
+    double? batteryCapacity,
+    double? batteryPower,
+    double? batteryEfficiency,
+    double? temperatureAdjust,
+  });
+
+  Future<JobRecord> createMlTrainJob({
+    required String storagePath,
+    required String modelType,
+    required int epochs,
+    required int batchSize,
+    required int windowSize,
+    required String targetColumn,
+  });
+
+  Future<JobRecord> createRagIngestJob({
+    required String storagePath,
+    String? collectionName,
+    bool reset = false,
+  });
+}
+
+class ApiJobRepository implements JobRepository {
+  const ApiJobRepository();
+
+  @override
+  Future<List<JobRecord>> listJobs({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) async {
+    final items = await ApiService.listJobs(
+      type: type,
+      status: status,
+      limit: limit,
+    );
+    return items.map(JobRecord.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<JobRecord> getJob(String jobId) async {
+    final payload = await ApiService.getJob(jobId);
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> retryJob(String jobId) async {
+    final payload = await ApiService.retryJob(jobId);
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> createOptimizationJob({
+    required double initialSoc,
+    DateTime? targetDate,
+    double? batteryCapacity,
+    double? batteryPower,
+    double? batteryEfficiency,
+    double? temperatureAdjust,
+  }) async {
+    final payload = await ApiService.createOptimizationJob(
+      initialSoc: initialSoc,
+      targetDate: targetDate,
+      batteryCapacity: batteryCapacity,
+      batteryPower: batteryPower,
+      batteryEfficiency: batteryEfficiency,
+      temperatureAdjust: temperatureAdjust,
+    );
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> createMlTrainJob({
+    required String storagePath,
+    required String modelType,
+    required int epochs,
+    required int batchSize,
+    required int windowSize,
+    required String targetColumn,
+  }) async {
+    final payload = await ApiService.createMlTrainJob(
+      storagePath: storagePath,
+      modelType: modelType,
+      epochs: epochs,
+      batchSize: batchSize,
+      windowSize: windowSize,
+      targetColumn: targetColumn,
+    );
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> createRagIngestJob({
+    required String storagePath,
+    String? collectionName,
+    bool reset = false,
+  }) async {
+    final payload = await ApiService.createRagIngestJob(
+      storagePath: storagePath,
+      collectionName: collectionName,
+      reset: reset,
+    );
+    return JobRecord.fromJson(payload);
+  }
+}

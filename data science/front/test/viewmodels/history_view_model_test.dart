@@ -21,6 +21,15 @@ class _FakeHistoryGateway implements HistoryGateway {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 50,
+  }) async {
+    return const <Map<String, dynamic>>[];
+  }
+
+  @override
   Future<void> deleteHistoryRecord(String recordId) async {
     deletedIds.add(recordId);
 

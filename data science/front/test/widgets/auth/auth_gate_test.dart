@@ -4,13 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:front/services/auth_gateway.dart';
+import 'package:front/models/auth_action_result.dart';
+import 'package:front/repositories/auth_repository.dart';
 import 'package:front/widgets/auth/auth_gate.dart';
 
 class _FakeUser extends Fake implements User {}
 
-class _FakeAuthGateway implements AuthGateway {
-  _FakeAuthGateway(this._controller, {this.currentUserValue});
+class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository(this._controller, {this.currentUserValue});
 
   final StreamController<User?> _controller;
   final User? currentUserValue;
@@ -22,16 +23,16 @@ class _FakeAuthGateway implements AuthGateway {
   Stream<User?> get authStateChanges => _controller.stream;
 
   @override
-  Future<UserCredential> signInWithGoogle() => throw UnimplementedError();
+  Future<AuthActionResult> signInWithGoogle() => throw UnimplementedError();
 
   @override
-  Future<UserCredential> signInWithEmail({
+  Future<AuthActionResult> signInWithEmail({
     required String email,
     required String password,
   }) => throw UnimplementedError();
 
   @override
-  Future<UserCredential> registerWithEmail({
+  Future<AuthActionResult> registerWithEmail({
     required String email,
     required String password,
   }) => throw UnimplementedError();
@@ -49,7 +50,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          authGateway: _FakeAuthGateway(controller),
+          authRepository: _FakeAuthRepository(controller),
           authenticatedBuilder: (_, user) => const Text('已登录'),
           unauthenticatedBuilder: (_) => const Text('未登录'),
         ),
@@ -69,7 +70,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          authGateway: _FakeAuthGateway(controller),
+          authRepository: _FakeAuthRepository(controller),
           authenticatedBuilder: (_, user) => const Text('已登录'),
           unauthenticatedBuilder: (_) => const Text('未登录'),
         ),
@@ -92,7 +93,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          authGateway: _FakeAuthGateway(controller),
+          authRepository: _FakeAuthRepository(controller),
           authenticatedBuilder: (_, user) => const Text('已登录'),
           unauthenticatedBuilder: (_) => const Text('未登录'),
         ),
@@ -115,7 +116,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          authGateway: _FakeAuthGateway(
+          authRepository: _FakeAuthRepository(
             controller,
             currentUserValue: _FakeUser(),
           ),
@@ -139,7 +140,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          authGateway: _FakeAuthGateway(controller),
+          authRepository: _FakeAuthRepository(controller),
           authenticatedBuilder: (_, user) => const Text('已登录'),
           unauthenticatedBuilder: (_) => const Text('未登录'),
         ),

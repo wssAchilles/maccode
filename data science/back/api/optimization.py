@@ -82,11 +82,7 @@ optimization_bp = Blueprint('optimization', __name__, url_prefix='/api/optimizat
 
 # 电池配置（可以从配置文件或数据库读取）
 # 注意：负载规模约 20000-30000 kW，需要工业级储能
-BATTERY_CONFIG = {
-    'capacity': 100.0,      # kWh (适配当前 100-400kW 负载规模)
-    'max_power': 40.0,      # kW (充放电功率)
-    'efficiency': 0.95      # 95% (高效能电池)
-}
+BATTERY_CONFIG = Config.BATTERY_CONFIG
 
 
 @optimization_bp.route('/run', methods=['POST', 'OPTIONS'])

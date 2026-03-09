@@ -164,5 +164,115 @@ void main() {
       expect(result.modelInfo?.trainingConfig?.removeOutliers, isTrue);
       expect(result.modelInfo?.trainingConfig?.tuneHyperparameters, isTrue);
     });
+
+    test('parses flexible optimization payloads without type crashes', () {
+      final result = OptimizationResponse.fromJson({
+        'success': 'true',
+        'optimization': <String, Object?>{
+          'status': 'Optimal',
+          'chart_data': [
+            <Object?, Object?>{
+              'hour': '7',
+              'datetime': '2026-03-08T07:00:00',
+              'load': '11.5',
+              'price': '0.45',
+              'battery_action': '-2.5',
+              'charge_power': '0',
+              'discharge_power': '2.5',
+              'soc': '58',
+              'stored_energy': '29.0',
+              'grid_power': '9.0',
+            },
+          ],
+          'summary': <Object?, Object?>{
+            'total_cost_without_battery': '120',
+            'total_cost_with_battery': '90',
+            'savings': '30',
+            'savings_percent': '25',
+            'total_load': '200',
+            'total_charged': '20',
+            'total_discharged': '18',
+            'peak_load': '15',
+            'min_load': '5',
+            'avg_load': '8.3',
+          },
+          'strategy': <Object?, Object?>{
+            'charging_hours': ['1', 2.0],
+            'discharging_hours': ['18', 19.0],
+            'charging_count': '2',
+            'discharging_count': 2.0,
+          },
+          'diagnostics': <Object?, Object?>{
+            'runtime_sec': '1.5',
+            'mip_gap': '0.02',
+            'node_count': '6',
+            'iter_count': 7.0,
+          },
+          'constraint_hits': <Object?, Object?>{
+            'soc_min_hits': '1',
+            'soc_max_hits': '2',
+            'max_charge_hits': '3',
+            'max_discharge_hits': 4.0,
+          },
+        },
+        'prediction': <Object?, Object?>{
+          'target_date': '2026-03-09',
+          'avg_load': '13',
+          'peak_load': '20',
+          'min_load': '6',
+        },
+        'battery_config': <Object?, Object?>{
+          'capacity': '60',
+          'max_power': '25',
+          'efficiency': '0.9',
+          'initial_soc': '45',
+        },
+        'model_explainability': <Object?, Object?>{
+          'feature_importance': <Object?, Object?>{'temp': '0.7', 'hour': 0.3},
+          'feature_descriptions': <Object?, Object?>{'temp': '温度'},
+          'interpretation': 'string weights still parse',
+        },
+      });
+
+      expect(result.success, isTrue);
+      expect(result.optimization?.chartData.first.hour, 7);
+      expect(result.optimization?.chartData.first.isDischarging, isTrue);
+      expect(result.optimization?.strategy.chargingHours, [1, 2]);
+      expect(result.optimization?.strategy.dischargingHours, [18, 19]);
+      expect(result.optimization?.strategy.chargingCount, 2);
+      expect(result.optimization?.diagnostics?.nodeCount, 6);
+      expect(result.optimization?.constraintHits?.maxDischargeHits, 4);
+      expect(result.prediction?.avgLoad, 13);
+      expect(result.batteryConfig?.capacity, 60);
+      expect(result.modelExplainability?.featureImportance['temp'], 0.7);
+      expect(result.modelExplainability?.featureDescriptions?['temp'], '温度');
+    });
+
+    test('parses prediction and battery aliases without type crashes', () {
+      final result = OptimizationResponse.fromJson({
+        'success': true,
+        'prediction': <Object?, Object?>{
+          'targetDate': '2026-03-10',
+          'average_load': '14.5',
+          'peakLoad': '21',
+          'low_load': 7,
+        },
+        'batteryConfig': <Object?, Object?>{
+          'battery_capacity': '75',
+          'batteryPower': '30',
+          'battery_efficiency': '0.92',
+          'initialCharge': '48',
+        },
+      });
+
+      expect(result.prediction?.targetDate, '2026-03-10');
+      expect(result.prediction?.avgLoad, 14.5);
+      expect(result.prediction?.peakLoad, 21);
+      expect(result.prediction?.minLoad, 7);
+      expect(result.batteryConfig?.capacity, 75);
+      expect(result.batteryConfig?.maxPower, 30);
+      expect(result.batteryConfig?.efficiency, 0.92);
+      expect(result.batteryConfig?.initialSoc, 48);
+    });
   });
 }
