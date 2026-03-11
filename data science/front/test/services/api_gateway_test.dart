@@ -13,6 +13,7 @@ class _FakeApiClient implements ApiClient {
   Map<String, dynamic>? uploadFileArgs;
   Map<String, dynamic>? analyzeArgs;
   Map<String, dynamic>? analysisJobArgs;
+  Map<String, dynamic>? driftArgs;
   int? historyLimit;
   String? activityType;
   String? activityStatus;
@@ -30,6 +31,22 @@ class _FakeApiClient implements ApiClient {
   ];
   final deepLearningResult = <String, dynamic>{'success': true};
   final ragResult = <String, dynamic>{'success': true, 'answer': 'ok'};
+
+  @override
+  Future<Map<String, dynamic>> getDashboardAssets() async {
+    return {
+      'inventory': {
+        'dataset_assets': 1,
+        'model_assets': 1,
+        'knowledge_assets': 1,
+        'optimization_assets': 1,
+      },
+      'datasets': const <Map<String, dynamic>>[],
+      'models': const <Map<String, dynamic>>[],
+      'knowledge_bases': const <Map<String, dynamic>>[],
+      'optimizations': const <Map<String, dynamic>>[],
+    };
+  }
 
   @override
   Future<Map<String, dynamic>> getUploadUrl({
@@ -100,6 +117,28 @@ class _FakeApiClient implements ApiClient {
       'result': const <String, dynamic>{},
       'retryable': false,
       'events': const <Map<String, dynamic>>[],
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) async {
+    driftArgs = {
+      'referencePath': referencePath,
+      'currentPath': currentPath,
+      'features': features,
+    };
+    return {
+      'drift_results': {
+        'overall_status': 'stable',
+        'recommendation': 'ok',
+        'summary': {'stable': 1, 'warning': 0, 'drift': 0},
+        'features': const <String, dynamic>{},
+      },
+      'report': '# ok',
     };
   }
 

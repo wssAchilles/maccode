@@ -4,18 +4,28 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
+import '../models/ai_lab_launch_intent.dart';
+import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
-import '../models/job_record.dart';
+import '../models/optimization_launch_intent.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../widgets/common/glass_card.dart';
 import '../widgets/operations/alert_panel.dart';
+import '../widgets/operations/asset_governance_queue.dart';
+import '../widgets/operations/asset_inventory_board.dart';
+import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/dataset_asset_card.dart';
-import '../widgets/operations/job_activity_list.dart';
+import '../widgets/operations/embedded_page_header.dart';
+import '../widgets/operations/incident_priority_strip.dart';
+import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/metric_card.dart';
 import '../widgets/operations/model_status_card.dart';
+import '../widgets/operations/operations_event_bus_board.dart';
+import '../widgets/operations/operations_narrative_board.dart';
 import '../widgets/operations/quick_actions_section.dart';
 import '../widgets/operations/system_status_strip.dart';
+import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/responsive_wrapper.dart';
 
 class OperationsHubScreen extends StatefulWidget {
@@ -23,12 +33,18 @@ class OperationsHubScreen extends StatefulWidget {
     super.key,
     required this.viewModel,
     required this.onNavigateToTab,
-    this.embedded = false,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+    this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
   final DashboardViewModel viewModel;
   final ValueChanged<int> onNavigateToTab;
-  final bool embedded;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+  final WorkbenchSurfaceMode surfaceMode;
 
   @override
   State<OperationsHubScreen> createState() => _OperationsHubScreenState();
@@ -39,6 +55,93 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   void initState() {
     super.initState();
     widget.viewModel.initialize();
+  }
+
+  void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
+    final sourceLabel = [
+      source,
+      chain.label,
+      chain.workspaceTargetLabel,
+      chain.incidentTargetLabel,
+      chain.focusLabel,
+    ].join(' · ');
+    switch (chain.key) {
+      case 'dataset':
+        final onOpenDataAnalysis = widget.onOpenDataAnalysis;
+        if (onOpenDataAnalysis != null) {
+          onOpenDataAnalysis(
+            DataAnalysisLaunchIntent.workspace(sourceLabel: sourceLabel),
+          );
+        } else {
+          widget.onNavigateToTab(2);
+        }
+        break;
+      case 'model':
+        final onOpenAiLab = widget.onOpenAiLab;
+        if (onOpenAiLab != null) {
+          onOpenAiLab(
+            AiLabLaunchIntent.deepLearning('', sourceLabel: sourceLabel),
+          );
+        } else {
+          widget.onNavigateToTab(3);
+        }
+        break;
+      case 'knowledge':
+        final onOpenAiLab = widget.onOpenAiLab;
+        if (onOpenAiLab != null) {
+          onOpenAiLab(AiLabLaunchIntent.rag('', sourceLabel: sourceLabel));
+        } else {
+          widget.onNavigateToTab(3);
+        }
+        break;
+      case 'optimization':
+        final onOpenOptimization = widget.onOpenOptimization;
+        if (onOpenOptimization != null) {
+          onOpenOptimization(
+            OptimizationLaunchIntent(sourceLabel: sourceLabel),
+          );
+        } else {
+          widget.onNavigateToTab(1);
+        }
+        break;
+      default:
+        widget.onNavigateToTab(0);
+    }
+  }
+
+  AssetChainSummary? _chainFor(DashboardSummary summary, String key) {
+    return summary.assetSummary.chainSummaries
+        .cast<AssetChainSummary?>()
+        .firstWhere((chain) => chain?.key == key, orElse: () => null);
+  }
+
+  QuickActionItem _chainQuickAction({
+    required String label,
+    required IconData icon,
+    required int fallbackTab,
+    required String source,
+    required String fallbackDescription,
+    required String fallbackActionLabel,
+    required Color accent,
+    required AssetChainSummary? chain,
+    bool emphasis = false,
+  }) {
+    return QuickActionItem(
+      label: label,
+      icon: icon,
+      emphasis: emphasis,
+      accent: accent,
+      description: chain == null ? fallbackDescription : chain.workspaceBrief,
+      contextLabel: chain?.workspaceTargetLabel ?? '工作台',
+      actionLabel: chain?.actionLabel ?? fallbackActionLabel,
+      onTap: () {
+        if (chain != null) {
+          _openChainWorkspace(chain, source: source);
+        } else {
+          widget.onNavigateToTab(fallbackTab);
+        }
+      },
+    );
   }
 
   @override
@@ -52,7 +155,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              if (!widget.embedded)
+              if (widget.surfaceMode.isStandalone)
                 SliverAppBar(
                   pinned: true,
                   expandedHeight: 120,
@@ -70,7 +173,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                 ),
               if (!ResponsiveHelper.isDesktop(context) &&
                   summary != null &&
-                  !widget.embedded)
+                  widget.surfaceMode.isStandalone)
                 SliverToBoxAdapter(
                   child: SystemStatusStrip(items: summary.systemStatus),
                 ),
@@ -86,11 +189,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           ),
         );
 
-        if (widget.embedded) {
-          return content;
-        }
-
-        return Scaffold(backgroundColor: AppColors.background, body: content);
+        return WorkbenchPageFrame(
+          surfaceMode: widget.surfaceMode,
+          body: content,
+        );
       },
     );
   }
@@ -138,40 +240,175 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final ragStatus = safeSummary.systemStatus
         .cast<SystemStatusItem?>()
         .firstWhere((item) => item?.key == 'rag', orElse: () => null);
+    final datasetChain = _chainFor(safeSummary, 'dataset');
+    final modelChain = _chainFor(safeSummary, 'model');
+    final knowledgeChain = _chainFor(safeSummary, 'knowledge');
+    final optimizationChain = _chainFor(safeSummary, 'optimization');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.surfaceMode.isEmbedded) ...[
+          EmbeddedPageHeader(
+            title: 'Operations Hub',
+            description: '统一查看系统状态、最近任务、数据资产和风险提醒。概览页只展示当前最关键的运行信号。',
+            badges: [
+              EmbeddedHeaderBadge(
+                label: '24h 作业',
+                value: '${safeSummary.kpis.jobs24h}',
+                accent: AppColors.primary,
+                icon: Icons.schedule_rounded,
+              ),
+              EmbeddedHeaderBadge(
+                label: '失败任务',
+                value: '${safeSummary.kpis.failedJobs}',
+                accent: safeSummary.kpis.failedJobs > 0
+                    ? AppColors.warning
+                    : AppColors.success,
+                icon: safeSummary.kpis.failedJobs > 0
+                    ? Icons.warning_amber_rounded
+                    : Icons.verified_rounded,
+              ),
+              EmbeddedHeaderBadge(
+                label: '模型资产',
+                value: '${safeSummary.kpis.modelCount}',
+                accent: AppColors.cta,
+                icon: Icons.memory_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
         _buildHero(safeSummary),
         const SizedBox(height: 20),
         _buildMetrics(safeSummary.kpis),
         const SizedBox(height: 20),
+        IncidentPriorityStrip(
+          summary: safeSummary.assetSummary,
+          onOpenChain: (chain) {
+            _openChainWorkspace(chain, source: 'Incident Priority Strip');
+          },
+        ),
+        const SizedBox(height: 20),
+        IncidentRunbookBoard(
+          summary: safeSummary.assetSummary,
+          onOpenChain: (chain) {
+            _openChainWorkspace(chain, source: 'Runbook Queue');
+          },
+        ),
+        const SizedBox(height: 20),
+        _SectionTitle(title: '资产库存', subtitle: '统一查看数据、模型、知识库和优化快照的最近版本'),
+        const SizedBox(height: 12),
+        AssetInventoryBoard(
+          summary: safeSummary.assetSummary,
+          alerts: safeSummary.alerts,
+          onNavigateToTab: widget.onNavigateToTab,
+          onOpenChain: (chain) {
+            _openChainWorkspace(chain, source: 'Asset Inventory');
+          },
+        ),
+        const SizedBox(height: 20),
+        _SectionTitle(title: '版本轨迹', subtitle: '查看统一资产台账中的最近版本和血缘摘要'),
+        const SizedBox(height: 12),
+        AssetVersionTimelineBoard(
+          summary: safeSummary.assetSummary,
+          onNavigateToTab: widget.onNavigateToTab,
+        ),
+        const SizedBox(height: 20),
+        _SectionTitle(title: '运维叙事', subtitle: '把版本、最近活动和失败链路按资产链路串成统一处置上下文。'),
+        const SizedBox(height: 12),
+        OperationsNarrativeBoard(
+          summary: safeSummary,
+          onOpenChain: (chain) {
+            _openChainWorkspace(chain, source: 'Operations Narrative');
+          },
+        ),
+        const SizedBox(height: 20),
+        AssetGovernanceQueue(
+          items: safeSummary.assetSummary.governance,
+          failureChains: safeSummary.assetSummary.failureChains,
+          title: '全局处置中心',
+          description: '基于统一资产摘要直接给出当前需要优先处理的资产链路。',
+          onAction: (item) {
+            switch (item.key) {
+              case 'dataset':
+                widget.onNavigateToTab(2);
+                break;
+              case 'model':
+              case 'knowledge':
+                widget.onNavigateToTab(3);
+                break;
+              case 'optimization':
+                widget.onNavigateToTab(1);
+                break;
+            }
+          },
+          onFailureAction: (chain) {
+            switch (chain.key) {
+              case 'dataset':
+                widget.onNavigateToTab(2);
+                break;
+              case 'model':
+              case 'knowledge':
+                widget.onNavigateToTab(3);
+                break;
+              case 'optimization':
+                widget.onNavigateToTab(1);
+                break;
+            }
+          },
+        ),
+        const SizedBox(height: 20),
         QuickActionsSection(
           actions: [
-            QuickActionItem(
+            _chainQuickAction(
               label: '上传并分析数据',
               icon: Icons.upload_file_rounded,
               emphasis: true,
-              onTap: () => widget.onNavigateToTab(2),
+              accent: AppColors.primary,
+              chain: datasetChain,
+              fallbackTab: 2,
+              source: 'Quick Actions',
+              fallbackDescription: '进入数据分析工作台，上传数据并启动分析任务。',
+              fallbackActionLabel: '打开数据分析',
             ),
-            QuickActionItem(
+            _chainQuickAction(
               label: '运行能源优化',
               icon: Icons.bolt_rounded,
-              onTap: () => widget.onNavigateToTab(1),
+              accent: AppColors.warning,
+              chain: optimizationChain,
+              fallbackTab: 1,
+              source: 'Quick Actions',
+              fallbackDescription: '进入优化工作台，查看求解状态并提交新的优化任务。',
+              fallbackActionLabel: '打开能源优化',
             ),
-            QuickActionItem(
+            _chainQuickAction(
               label: '开始模型训练',
               icon: Icons.model_training_rounded,
-              onTap: () => widget.onNavigateToTab(3),
+              accent: AppColors.cta,
+              chain: modelChain,
+              fallbackTab: 3,
+              source: 'Quick Actions',
+              fallbackDescription: '进入 AI Lab 训练入口，配置模型并提交训练任务。',
+              fallbackActionLabel: '打开 AI Lab',
             ),
-            QuickActionItem(
+            _chainQuickAction(
               label: '构建知识库',
               icon: Icons.auto_awesome_rounded,
-              onTap: () => widget.onNavigateToTab(3),
+              accent: AppColors.success,
+              chain: knowledgeChain,
+              fallbackTab: 3,
+              source: 'Quick Actions',
+              fallbackDescription: '进入 AI Lab 知识入口，刷新知识快照并构建检索链路。',
+              fallbackActionLabel: '打开 AI Lab',
             ),
             QuickActionItem(
               label: '查看历史与审计',
               icon: Icons.fact_check_rounded,
+              accent: AppColors.textPrimary,
+              description: '打开统一审计与资产台账，查看失败链路、风险处置和回放入口。',
+              contextLabel: '处置中心',
+              actionLabel: '打开历史与审计',
               onTap: () => widget.onNavigateToTab(4),
             ),
           ],
@@ -183,11 +420,16 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             final left = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle(title: '最近任务', subtitle: '进行中与最近完成作业'),
+                _SectionTitle(
+                  title: '统一事件总线',
+                  subtitle: '按时间查看链路版本、活跃作业、失败节点和审计动作',
+                ),
                 const SizedBox(height: 12),
-                JobActivityList(
-                  jobs: safeSummary.recentJobs,
-                  emptyMessage: '暂无最近任务，提交优化、训练或知识库构建后会出现在这里。',
+                OperationsEventBusBoard(
+                  summary: safeSummary,
+                  onOpenChain: (chain) {
+                    _openChainWorkspace(chain, source: 'Unified Event Bus');
+                  },
                 ),
                 const SizedBox(height: 20),
                 _SectionTitle(title: '最近数据资产', subtitle: '最近完成分析的数据集'),
@@ -207,13 +449,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                         )
                         .toList(growable: false),
                   ),
-                const SizedBox(height: 20),
-                _SectionTitle(title: '最近活动', subtitle: '关键审计动作与系统轨迹'),
-                const SizedBox(height: 12),
-                if (safeSummary.recentHistory.isEmpty)
-                  const _EmptySection(message: '暂无最近活动')
-                else
-                  _RecentActivityFeed(items: safeSummary.recentHistory),
               ],
             );
 
@@ -417,74 +652,6 @@ class _EmptySection extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Text(message, style: AppTextStyles.bodyMedium),
-    );
-  }
-}
-
-class _RecentActivityFeed extends StatelessWidget {
-  const _RecentActivityFeed({required this.items});
-
-  final List<AuditActivity> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        children: items
-            .map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ActivityRow(item: item),
-              ),
-            )
-            .toList(growable: false),
-      ),
-    );
-  }
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.item});
-
-  final AuditActivity item;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (item.severity) {
-      'error' => AppColors.error,
-      'warning' => AppColors.warning,
-      _ => AppColors.primary,
-    };
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          margin: const EdgeInsets.only(top: 4),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.title, style: AppTextStyles.labelLarge),
-              const SizedBox(height: 4),
-              Text(
-                '${item.source} · ${item.status}',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -129,7 +129,7 @@ class _ScaffoldPage extends StatelessWidget {
 
 void main() {
   MainNavigation buildShell() {
-    return MainNavigation(
+    return MainNavigation.custom(
       authRepository: _FakeAuthRepository(),
       pages: const [
         _PlainPage('概览内容'),
@@ -179,7 +179,7 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: MainNavigation(
+          home: MainNavigation.custom(
             authRepository: _FakeAuthRepository(),
             pages: const [
               _ScaffoldPage('概览页'),
@@ -228,7 +228,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MainNavigation(
+        home: MainNavigation.custom(
           authRepository: authRepository,
           pages: const [
             _PlainPage('概览内容'),

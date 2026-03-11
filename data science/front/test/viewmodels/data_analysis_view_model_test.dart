@@ -220,6 +220,23 @@ class _FakeDataAnalysisGateway implements DataAnalysisGateway {
       'events': const <Map<String, dynamic>>[],
     };
   }
+
+  @override
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) async {
+    return {
+      'drift_results': {
+        'overall_status': 'stable',
+        'recommendation': 'ok',
+        'summary': {'stable': 1, 'warning': 0, 'drift': 0},
+        'features': const <String, dynamic>{},
+      },
+      'report': '# ok',
+    };
+  }
 }
 
 void main() {

@@ -17,6 +17,14 @@ class HistoryRecord {
   final Map<String, dynamic> raw;
 
   bool get hasValidId => id.isNotEmpty;
+  String? get storageUrl {
+    final value = raw['storage_url'];
+    if (value is String && value.isNotEmpty) {
+      return value;
+    }
+    return null;
+  }
+
   Map<String, dynamic>? get summary => _asMap(raw['summary']);
   Map<String, dynamic>? get qualityAnalysis =>
       _asMap(summary?['quality_analysis']);

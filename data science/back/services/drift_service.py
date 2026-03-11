@@ -254,6 +254,26 @@ class DriftService:
             results['recommendation'] = '数据分布稳定，模型可继续使用'
         
         return results
+
+    @staticmethod
+    def detect_drift(
+        reference_df: pd.DataFrame,
+        current_df: pd.DataFrame,
+        features: Optional[List[str]] = None,
+        threshold: float = 0.2,
+    ) -> Dict[str, Any]:
+        """
+        与 API 路由保持一致的漂移检测入口。
+
+        历史代码路径调用 `detect_drift`，这里显式桥接到
+        `detect_feature_drift`，避免运行时 AttributeError。
+        """
+        return DriftService.detect_feature_drift(
+            train_df=reference_df,
+            serving_df=current_df,
+            features=features,
+            threshold=threshold,
+        )
     
     @staticmethod
     def generate_drift_report(drift_results: Dict[str, Any]) -> str:

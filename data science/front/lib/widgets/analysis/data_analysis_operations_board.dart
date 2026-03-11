@@ -7,12 +7,15 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/analysis_result.dart';
+import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
+import '../operations/asset_chain_section_header.dart';
 
 class DataAnalysisOperationsBoard extends StatelessWidget {
   const DataAnalysisOperationsBoard({
     super.key,
+    required this.chain,
     required this.currentUser,
     required this.pickedFile,
     required this.analysisResult,
@@ -23,6 +26,7 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
     required this.jobErrorMessage,
   });
 
+  final AssetChainSummary? chain;
   final User? currentUser;
   final PlatformFile? pickedFile;
   final AnalysisResult? analysisResult;
@@ -51,17 +55,16 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
     final backgroundRecommended =
         (pickedFile?.size ?? 0) >= 5 * 1024 * 1024 ||
         (analysisResult?.basicInfo.rows ?? 0) >= 50000;
+    final focusArea = _operationsFocusArea(chain);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('运营态概览', style: AppTextStyles.h4),
-        const SizedBox(height: 6),
-        Text(
-          '把执行策略、任务健康、资产沉淀和 AI 准备度放到同一视图，减少在分析完成后的额外判断。',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
+        AssetChainSectionHeader(
+          title: '运营态概览',
+          subtitle: '把执行策略、任务健康、资产沉淀和 AI 准备度放到同一视图，减少在分析完成后的额外判断。',
+          chain: chain,
+          icon: Icons.radar_rounded,
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -77,6 +80,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 icon: backgroundRecommended
                     ? Icons.schedule_rounded
                     : Icons.bolt_rounded,
+                highlighted: focusArea == 'strategy',
+                focusLabel: focusArea == 'strategy' ? chain?.focusLabel : null,
+                incidentLabel: focusArea == 'strategy'
+                    ? chain?.incidentTargetLabel
+                    : null,
+                incidentSummary: focusArea == 'strategy'
+                    ? chain?.incidentBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -136,6 +147,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 icon: failedJobs > 0
                     ? Icons.warning_amber_rounded
                     : Icons.monitor_heart_rounded,
+                highlighted: focusArea == 'task',
+                focusLabel: focusArea == 'task' ? chain?.focusLabel : null,
+                incidentLabel: focusArea == 'task'
+                    ? chain?.incidentTargetLabel
+                    : null,
+                incidentSummary: focusArea == 'task'
+                    ? chain?.incidentBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -166,6 +185,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 subtitle: '明确结果是否已沉淀为可复用资产，以及下一跳工作流。',
                 accent: assetReady ? AppColors.primary : AppColors.warning,
                 icon: assetReady ? Icons.route_rounded : Icons.route_outlined,
+                highlighted: focusArea == 'asset',
+                focusLabel: focusArea == 'asset' ? chain?.focusLabel : null,
+                incidentLabel: focusArea == 'asset'
+                    ? chain?.incidentTargetLabel
+                    : null,
+                incidentSummary: focusArea == 'asset'
+                    ? chain?.incidentBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -210,6 +237,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 icon: highRiskColumns > 0
                     ? Icons.dataset_linked_rounded
                     : Icons.fact_check_rounded,
+                highlighted: focusArea == 'quality',
+                focusLabel: focusArea == 'quality' ? chain?.focusLabel : null,
+                incidentLabel: focusArea == 'quality'
+                    ? chain?.incidentTargetLabel
+                    : null,
+                incidentSummary: focusArea == 'quality'
+                    ? chain?.incidentBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -292,6 +327,10 @@ class _OperationsCard extends StatelessWidget {
     required this.accent,
     required this.icon,
     required this.child,
+    this.highlighted = false,
+    this.focusLabel,
+    this.incidentLabel,
+    this.incidentSummary,
   });
 
   final String title;
@@ -299,10 +338,14 @@ class _OperationsCard extends StatelessWidget {
   final Color accent;
   final IconData icon;
   final Widget child;
+  final bool highlighted;
+  final String? focusLabel;
+  final String? incidentLabel;
+  final String? incidentSummary;
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    final card = GlassCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,15 +374,59 @@ class _OperationsCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    if (highlighted && incidentLabel != null) ...[
+                      const SizedBox(height: 6),
+                      _StateBadge(
+                        label: 'Current watch · $incidentLabel',
+                        tone: _BadgeTone.info,
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
+          if (highlighted &&
+              (incidentSummary != null || focusLabel != null)) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                border: Border.all(color: accent.withValues(alpha: 0.16)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (incidentSummary != null)
+                    Text(
+                      incidentSummary!,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  if (focusLabel != null) ...[
+                    if (incidentSummary != null) const SizedBox(height: 4),
+                    Text(
+                      'Target · $focusLabel',
+                      style: AppTextStyles.bodySmall.copyWith(color: accent),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           child,
         ],
       ),
+    );
+    return _highlightShell(
+      highlighted: highlighted,
+      color: accent,
+      child: card,
     );
   }
 }
@@ -470,6 +557,60 @@ class _SchemaMix {
         value.contains('time') ||
         value.contains('timestamp');
   }
+}
+
+String _operationsFocusArea(AssetChainSummary? chain) {
+  switch (chain?.sectionTarget) {
+    case 'data_analysis_operations':
+      if (chain?.focusTarget == 'dataset_job_panel') {
+        return 'task';
+      }
+      return 'strategy';
+    case 'data_analysis_results':
+      if (chain?.focusTarget == 'dataset_current_asset') {
+        return 'asset';
+      }
+      return 'quality';
+  }
+  switch (chain?.focusTarget) {
+    case 'dataset_job_panel':
+      return 'task';
+    case 'dataset_current_asset':
+      return 'asset';
+    case 'dataset_reference_asset':
+    case 'dataset_drift_report':
+    case 'dataset_governance_decision':
+    case 'dataset_results':
+      return 'quality';
+    default:
+      if (chain?.status == 'active' || chain?.status == 'incident') {
+        return 'task';
+      }
+      if (chain?.status == 'action') {
+        return 'asset';
+      }
+      if (chain?.status == 'watch') {
+        return 'quality';
+      }
+      return 'strategy';
+  }
+}
+
+Widget _highlightShell({
+  required bool highlighted,
+  required Color color,
+  required Widget child,
+}) {
+  if (!highlighted) {
+    return child;
+  }
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+      border: Border.all(color: color.withValues(alpha: 0.32), width: 1.3),
+    ),
+    child: child,
+  );
 }
 
 String _formatBytes(int bytes) {

@@ -30,3 +30,20 @@ def get_dashboard_summary():
     except Exception as exc:
         logger.error('Failed to build dashboard summary: %s', exc, exc_info=True)
         return error_response('DASHBOARD_SUMMARY_ERROR', f'获取驾驶舱摘要失败: {exc}', status_code=500)
+
+
+@dashboard_bp.route('/assets', methods=['GET', 'OPTIONS'])
+@rate_limit(max_requests=30, window_seconds=60)
+@require_auth
+def get_dashboard_assets():
+    if request.method == 'OPTIONS':
+        return success_response({'status': 'ok'})
+
+    try:
+        uid = request.user.get('uid')
+        limit = int(request.args.get('limit', 6))
+        payload = DashboardService.build_asset_summary(uid, limit=limit)
+        return success_response(payload)
+    except Exception as exc:
+        logger.error('Failed to build asset summary: %s', exc, exc_info=True)
+        return error_response('DASHBOARD_ASSET_SUMMARY_ERROR', f'获取资产摘要失败: {exc}', status_code=500)

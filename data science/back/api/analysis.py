@@ -187,6 +187,10 @@ def detect_drift():
         return jsonify({'status': 'ok'}), 200
         
     try:
+        import io
+        import pandas as pd
+        from services.storage_service import StorageService
+
         user = request.user
         uid = user.get('uid')
         data = request.get_json() or {}
@@ -216,13 +220,19 @@ def detect_drift():
         
         # 生成报告
         report = drift_service.generate_drift_report(drift_results)
-        
-        return jsonify({
-            'success': True,
+
+        return success_response({
             'drift_results': drift_results,
-            'report': report
-        }), 200
-        
+            'report': report,
+        })
+
+    except ValidationError as e:
+        logger.warning(f"漂移检测参数错误: {str(e)}")
+        return error_response('VALIDATION_ERROR', str(e), status_code=400)
     except Exception as e:
         logger.error(f"漂移检测失败: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500
+        return error_response(
+            'DRIFT_DETECTION_ERROR',
+            f'漂移检测失败: {str(e)}',
+            status_code=500,
+        )

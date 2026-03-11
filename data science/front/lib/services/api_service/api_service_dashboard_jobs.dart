@@ -28,6 +28,11 @@ Future<Map<String, dynamic>> _getDashboardSummary() async {
   return _unwrapEnvelopeData(response, fallback: '获取驾驶舱摘要失败');
 }
 
+Future<Map<String, dynamic>> _getDashboardAssets() async {
+  final response = await _authorizedGet(_baseUrl, '/api/dashboard/assets');
+  return _unwrapEnvelopeData(response, fallback: '获取资产摘要失败');
+}
+
 Future<List<Map<String, dynamic>>> _listJobs({
   String? type,
   String? status,

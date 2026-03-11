@@ -75,6 +75,9 @@ class ApiService {
   static Future<Map<String, dynamic>> getDashboardSummary() =>
       _getDashboardSummary();
 
+  static Future<Map<String, dynamic>> getDashboardAssets() =>
+      _getDashboardAssets();
+
   static Future<List<Map<String, dynamic>>> listJobs({
     String? type,
     String? status,
@@ -110,6 +113,16 @@ class ApiService {
     storagePath: storagePath,
     filename: filename,
     saveToStorage: saveToStorage,
+  );
+
+  static Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) => _detectDataDrift(
+    referencePath: referencePath,
+    currentPath: currentPath,
+    features: features,
   );
 
   static Future<Map<String, dynamic>> createMlTrainJob({

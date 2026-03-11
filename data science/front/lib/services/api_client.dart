@@ -30,6 +30,14 @@ abstract interface class ApiClient {
     bool saveToStorage = true,
   });
 
+  Future<Map<String, dynamic>> getDashboardAssets();
+
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  });
+
   Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20});
 
   Future<List<Map<String, dynamic>>> getAuditActivity({
@@ -113,6 +121,24 @@ class DefaultApiClient implements ApiClient {
       storagePath: storagePath,
       filename: filename,
       saveToStorage: saveToStorage,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDashboardAssets() {
+    return ApiService.getDashboardAssets();
+  }
+
+  @override
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) {
+    return ApiService.detectDataDrift(
+      referencePath: referencePath,
+      currentPath: currentPath,
+      features: features,
     );
   }
 

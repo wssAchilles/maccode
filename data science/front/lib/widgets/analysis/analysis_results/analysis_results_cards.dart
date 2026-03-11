@@ -1,9 +1,10 @@
 part of '../analysis_results_section.dart';
 
 class _ResultSummaryBanner extends StatelessWidget {
-  const _ResultSummaryBanner({required this.result});
+  const _ResultSummaryBanner({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
@@ -18,13 +19,11 @@ class _ResultSummaryBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('分析结果总览', style: AppTextStyles.h4),
-          const SizedBox(height: 6),
-          Text(
-            '先看质量与结构，再深入相关性和统计检验。这里保留的是最适合快速判断数据是否可进入下一阶段的信号。',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
+          AssetChainSectionHeader(
+            title: '分析结果总览',
+            subtitle: '先看质量与结构，再深入相关性和统计检验。这里保留的是最适合快速判断数据是否可进入下一阶段的信号。',
+            chain: chain,
+            icon: Icons.assessment_rounded,
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -145,43 +144,76 @@ class _BasicInfoCard extends StatelessWidget {
 }
 
 class _AssetConsoleSection extends StatelessWidget {
-  const _AssetConsoleSection({required this.result});
+  const _AssetConsoleSection({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
+    final focusArea = _assetConsoleFocusArea(chain);
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 1320;
         final cards = [
-          _SchemaTopologyCard(result: result),
-          _FieldDistributionCard(result: result),
-          _DataRiskDigestCard(result: result),
-          _NextActionsCard(result: result),
+          _consoleShell(
+            highlighted: focusArea == 'schema',
+            color: AppColors.primary,
+            chain: focusArea == 'schema' ? chain : null,
+            child: _SchemaTopologyCard(result: result),
+          ),
+          _consoleShell(
+            highlighted: focusArea == 'distribution',
+            color: AppColors.cta,
+            chain: focusArea == 'distribution' ? chain : null,
+            child: _FieldDistributionCard(result: result),
+          ),
+          _consoleShell(
+            highlighted: focusArea == 'risk',
+            color: AppColors.warning,
+            chain: focusArea == 'risk' ? chain : null,
+            child: _DataRiskDigestCard(result: result),
+          ),
+          _consoleShell(
+            highlighted: focusArea == 'actions',
+            color: AppColors.cta,
+            chain: focusArea == 'actions' ? chain : null,
+            child: _NextActionsCard(result: result),
+          ),
         ];
 
-        if (compact) {
-          return Column(
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                cards[i],
-                if (i < cards.length - 1) const SizedBox(height: 12),
-              ],
-            ],
-          );
-        }
-
-        return Row(
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: cards[0]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[1]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[2]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[3]),
+            AssetChainSectionHeader(
+              title: 'Asset Console',
+              subtitle: '把 schema、字段分布、风险摘要和下一步动作收成同一层，便于按当前数据链路继续判断。',
+              chain: chain,
+              icon: Icons.inventory_2_rounded,
+            ),
+            const SizedBox(height: 12),
+            if (compact)
+              Column(
+                children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    cards[i],
+                    if (i < cards.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[1]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[2]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[3]),
+                ],
+              ),
           ],
         );
       },
@@ -656,6 +688,106 @@ class _ActionBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+String _assetConsoleFocusArea(AssetChainSummary? chain) {
+  switch (chain?.sectionTarget) {
+    case 'data_analysis_operations':
+      return 'distribution';
+    case 'data_analysis_results':
+      if (chain?.focusTarget == 'dataset_drift_report' ||
+          chain?.focusTarget == 'dataset_governance_decision') {
+        return 'risk';
+      }
+      if (chain?.focusTarget == 'dataset_results') {
+        return 'actions';
+      }
+      return 'schema';
+  }
+  switch (chain?.focusTarget) {
+    case 'dataset_current_asset':
+    case 'dataset_reference_asset':
+      return 'schema';
+    case 'dataset_drift_report':
+    case 'dataset_governance_decision':
+      return 'risk';
+    case 'dataset_results':
+      return 'actions';
+    case 'dataset_job_panel':
+      return 'distribution';
+    default:
+      if (chain?.status == 'watch' || chain?.status == 'incident') {
+        return 'risk';
+      }
+      if (chain?.status == 'action') {
+        return 'actions';
+      }
+      return 'schema';
+  }
+}
+
+Widget _consoleShell({
+  required bool highlighted,
+  required Color color,
+  AssetChainSummary? chain,
+  required Widget child,
+}) {
+  if (!highlighted) {
+    return child;
+  }
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+      border: Border.all(color: color.withValues(alpha: 0.32), width: 1.3),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (chain != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                color.withValues(alpha: 0.06),
+                AppColors.surfaceVariant,
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppDecorations.radiusLg),
+                topRight: Radius.circular(AppDecorations.radiusLg),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ActionBadge(
+                      label: 'Current watch · ${chain.incidentTargetLabel}',
+                      tone: _ActionTone.info,
+                    ),
+                    _ActionBadge(
+                      label: chain.focusTargetLabel,
+                      tone: _ActionTone.cta,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  chain.incidentBrief,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        child,
+      ],
+    ),
+  );
 }
 
 class _DistributionBar extends StatelessWidget {

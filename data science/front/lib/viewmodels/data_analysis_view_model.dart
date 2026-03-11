@@ -303,6 +303,23 @@ class DataAnalysisViewModel extends ChangeNotifier {
     }
   }
 
+  void loadAnalysisSnapshot({
+    required AnalysisResult result,
+    String? storagePath,
+    String? filename,
+    bool saveToStorage = false,
+  }) {
+    _analysisResult = result;
+    _latestStoragePath = storagePath;
+    _saveToStorage =
+        saveToStorage || (storagePath != null && storagePath.isNotEmpty);
+    if (filename != null && filename.isNotEmpty) {
+      _pickedFile = PlatformFile(name: filename, size: 0);
+    }
+    _error = null;
+    _notifySafely();
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
   }

@@ -1,0 +1,280 @@
+library;
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../config/app_theme.dart';
+import '../../models/dashboard_summary.dart';
+import '../common/glass_card.dart';
+
+class IncidentRunbookBoard extends StatelessWidget {
+  const IncidentRunbookBoard({
+    super.key,
+    required this.summary,
+    required this.onOpenChain,
+    this.title = 'Runbook Queue',
+    this.description = '把最需要处置的链路压成共享 runbook，概览页和值班审计页都消费同一份后端处置说明。',
+  });
+
+  final AssetSummary summary;
+  final ValueChanged<AssetChainSummary> onOpenChain;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final chains = [...summary.chainSummaries]
+      ..sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+    final items = chains
+        .where((chain) => chain.runbookSteps.isNotEmpty)
+        .take(3)
+        .toList(growable: false);
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppTextStyles.h4),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 1180) {
+              return Column(
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    _RunbookCard(
+                      chain: items[i],
+                      onOpen: () => onOpenChain(items[i]),
+                    ),
+                    if (i < items.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  Expanded(
+                    child: _RunbookCard(
+                      chain: items[i],
+                      onOpen: () => onOpenChain(items[i]),
+                    ),
+                  ),
+                  if (i < items.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RunbookCard extends StatelessWidget {
+  const _RunbookCard({required this.chain, required this.onOpen});
+
+  final AssetChainSummary chain;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _toneFor(chain);
+    final accent = _chainColor(chain.key);
+
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _RunbookBadge(
+                label: chain.label,
+                foreground: accent,
+                background: accent.withValues(alpha: 0.12),
+              ),
+              _RunbookBadge(
+                label: chain.statusLabel,
+                foreground: tone,
+                background: tone.withValues(alpha: 0.12),
+              ),
+              _RunbookBadge(
+                label: chain.workspaceTargetLabel,
+                foreground: AppColors.textPrimary,
+                background: AppColors.surfaceVariant,
+              ),
+              if (chain.isOverdue)
+                _RunbookBadge(
+                  label: 'OVERDUE ${chain.overdueMinutes}m',
+                  foreground: AppColors.error,
+                  background: AppColors.errorLight,
+                )
+              else if (chain.escalationTier > 0)
+                _RunbookBadge(
+                  label: 'SLA WATCH',
+                  foreground: AppColors.warning,
+                  background: AppColors.warningLight,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(chain.runbookTitle, style: AppTextStyles.h4),
+          const SizedBox(height: 6),
+          Text(
+            '${chain.ownerLabel} · SLA ${chain.slaMinutes}min · ${chain.escalationStateLabel}',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (chain.slaDeadlineAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'deadline ${DateFormat('MM-dd HH:mm').format(chain.slaDeadlineAt!.toLocal())} · ${chain.escalationLabel}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: chain.isOverdue
+                    ? AppColors.error
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          for (var i = 0; i < chain.runbookSteps.length; i++) ...[
+            _RunbookStep(index: i + 1, text: chain.runbookSteps[i], tone: tone),
+            if (i < chain.runbookSteps.length - 1) const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('当前焦点', style: AppTextStyles.labelMedium),
+                const SizedBox(height: 4),
+                Text(
+                  '${chain.workspaceTargetLabel} · ${chain.workspaceBrief}',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.tonalIcon(
+            onPressed: onOpen,
+            icon: const Icon(Icons.arrow_outward_rounded),
+            label: Text(chain.actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RunbookStep extends StatelessWidget {
+  const _RunbookStep({
+    required this.index,
+    required this.text,
+    required this.tone,
+  });
+
+  final int index;
+  final String text;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+          ),
+          child: Text(
+            '$index',
+            style: AppTextStyles.labelMedium.copyWith(color: tone),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: AppTextStyles.bodyMedium)),
+      ],
+    );
+  }
+}
+
+class _RunbookBadge extends StatelessWidget {
+  const _RunbookBadge({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.labelMedium.copyWith(color: foreground),
+      ),
+    );
+  }
+}
+
+Color _toneFor(AssetChainSummary chain) {
+  if (chain.isOverdue || chain.status == 'incident') {
+    return AppColors.error;
+  }
+  if (chain.escalationTier > 0 || chain.status == 'active') {
+    return AppColors.warning;
+  }
+  return AppColors.primary;
+}
+
+Color _chainColor(String key) {
+  switch (key) {
+    case 'dataset':
+      return AppColors.primary;
+    case 'model':
+      return AppColors.cta;
+    case 'knowledge':
+      return AppColors.success;
+    case 'optimization':
+      return AppColors.warning;
+    default:
+      return AppColors.textSecondary;
+  }
+}

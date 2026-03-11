@@ -18,6 +18,14 @@ class RagViewModel extends ChangeNotifier {
   List<RagMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
 
+  void clearMessages() {
+    if (_messages.isEmpty || _isLoading) {
+      return;
+    }
+    _messages = const [];
+    _notifySafely();
+  }
+
   Future<void> sendMessage(String rawText) async {
     final text = rawText.trim();
     if (text.isEmpty || _isLoading) {

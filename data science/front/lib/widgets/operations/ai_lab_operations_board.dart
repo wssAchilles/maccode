@@ -10,7 +10,6 @@ import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
 import 'metric_card.dart';
-import 'quick_actions_section.dart';
 
 class AiLabOperationsBoard extends StatelessWidget {
   const AiLabOperationsBoard({
@@ -21,9 +20,6 @@ class AiLabOperationsBoard extends StatelessWidget {
     required this.currentTab,
     required this.trainingStoragePath,
     required this.ragStoragePath,
-    required this.onSelectDeepLearning,
-    required this.onSelectRag,
-    required this.onRefresh,
     this.launchIntent,
   });
 
@@ -33,9 +29,6 @@ class AiLabOperationsBoard extends StatelessWidget {
   final String currentTab;
   final String trainingStoragePath;
   final String ragStoragePath;
-  final VoidCallback onSelectDeepLearning;
-  final VoidCallback onSelectRag;
-  final VoidCallback onRefresh;
   final AiLabLaunchIntent? launchIntent;
 
   @override
@@ -179,28 +172,6 @@ class AiLabOperationsBoard extends StatelessWidget {
               ],
             );
           },
-        ),
-        const SizedBox(height: 12),
-        QuickActionsSection(
-          actions: [
-            QuickActionItem(
-              label: '切到深度学习',
-              icon: Icons.model_training_rounded,
-              onTap: onSelectDeepLearning,
-              emphasis: currentTab != 'deepLearning',
-            ),
-            QuickActionItem(
-              label: '切到知识助手',
-              icon: Icons.auto_awesome_rounded,
-              onTap: onSelectRag,
-              emphasis: currentTab != 'rag',
-            ),
-            QuickActionItem(
-              label: '刷新 AI 驾驶舱',
-              icon: Icons.refresh_rounded,
-              onTap: onRefresh,
-            ),
-          ],
         ),
       ],
     );

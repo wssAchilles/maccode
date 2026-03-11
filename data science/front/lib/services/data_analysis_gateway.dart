@@ -28,6 +28,12 @@ abstract class DataAnalysisGateway {
     String? filename,
     bool saveToStorage = true,
   });
+
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  });
 }
 
 class ApiDataAnalysisGateway implements DataAnalysisGateway {
@@ -83,6 +89,19 @@ class ApiDataAnalysisGateway implements DataAnalysisGateway {
       storagePath: storagePath,
       filename: filename,
       saveToStorage: saveToStorage,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) {
+    return _apiClient.detectDataDrift(
+      referencePath: referencePath,
+      currentPath: currentPath,
+      features: features,
     );
   }
 }

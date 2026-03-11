@@ -88,6 +88,46 @@ Future<AnalysisResult> _analyzeCsv({
   }
 }
 
+Future<Map<String, dynamic>> _detectDataDrift({
+  required String referencePath,
+  required String currentPath,
+  required List<String> features,
+}) async {
+  final response = await _authorizedPost(
+    _baseUrl,
+    '/api/analysis/drift/detect',
+    body: jsonEncode(<String, dynamic>{
+      'reference_path': referencePath,
+      'current_path': currentPath,
+      'features': features,
+    }),
+    timeout: const Duration(minutes: 2),
+    timeoutMessage: '漂移检测超时，请稍后重试',
+  );
+
+  final data = _decodeResponseMap(
+    response,
+    fallback: 'Drift detection failed',
+    requireSuccessFlag: true,
+  );
+  final payload = data['data'] is Map
+      ? Map<String, dynamic>.from(data['data'] as Map)
+      : data;
+
+  final rawResults = payload['drift_results'];
+  if (rawResults is! Map) {
+    throw const ApiServiceException(
+      'Drift detection failed: 缺少 drift_results',
+      kind: ApiServiceErrorKind.badResponse,
+    );
+  }
+
+  return <String, dynamic>{
+    'drift_results': Map<String, dynamic>.from(rawResults),
+    'report': payload['report']?.toString() ?? '',
+  };
+}
+
 Future<List<String>> _listUserFiles() async {
   final response = await _authorizedGet(_baseUrl, '/api/data/list');
   final data = _decodeResponseMap(response, fallback: 'Failed to list files');

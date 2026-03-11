@@ -1,9 +1,10 @@
 part of '../analysis_results_section.dart';
 
 class AnalysisResultsSection extends StatelessWidget {
-  const AnalysisResultsSection({super.key, required this.result});
+  const AnalysisResultsSection({super.key, required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   List<String> _previewColumns() {
     final orderedColumns = <String>[];
@@ -38,11 +39,16 @@ class AnalysisResultsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ResultSummaryBanner(result: result),
+            _ResultSummaryBanner(result: result, chain: chain),
             const SizedBox(height: 16),
-            _AssetConsoleSection(result: result),
+            _AssetConsoleSection(result: result, chain: chain),
             const SizedBox(height: 16),
-            Text('详细分析面板', style: AppTextStyles.h4),
+            AssetChainSectionHeader(
+              title: '详细分析面板',
+              subtitle: '把质量、统计检验和相关性放到同一诊断面板里，便于按当前链路焦点继续深入。',
+              chain: chain,
+              icon: Icons.analytics_rounded,
+            ),
             const SizedBox(height: 12),
             if (isMobile) ...[
               if (result.qualityAnalysis != null)

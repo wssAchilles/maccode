@@ -1,0 +1,1436 @@
+/// 历史与审计资产台账
+library;
+
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../config/app_theme.dart';
+import '../../models/ai_lab_launch_intent.dart';
+import '../../models/data_analysis_launch_intent.dart';
+import '../../models/history_record.dart';
+import '../../models/job_record.dart';
+import '../../models/optimization_launch_intent.dart';
+import '../../models/dashboard_summary.dart';
+import '../common/glass_card.dart';
+
+class HistoryAssetLedger extends StatelessWidget {
+  const HistoryAssetLedger({
+    super.key,
+    required this.jobs,
+    required this.records,
+    this.assetSummary,
+    this.alerts = const <DashboardAlert>[],
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+  });
+
+  final List<JobRecord> jobs;
+  final List<HistoryRecord> records;
+  final AssetSummary? assetSummary;
+  final List<DashboardAlert> alerts;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    final datasetAssets = records
+        .where(
+          (record) =>
+              record.summary != null ||
+              (record.storageUrl?.isNotEmpty ?? false),
+        )
+        .take(4)
+        .toList(growable: false);
+    final modelAssets = jobs
+        .where(
+          (job) =>
+              job.type == 'ml_train' &&
+              job.status == 'succeeded' &&
+              (job.result['model_path']?.toString().isNotEmpty ?? false),
+        )
+        .take(4)
+        .toList(growable: false);
+    final knowledgeAssets = jobs
+        .where(
+          (job) =>
+              job.type == 'rag_ingest' &&
+              job.status == 'succeeded' &&
+              (_firstString([
+                    job.result['collection'],
+                    job.input['collection_name'],
+                  ])?.isNotEmpty ??
+                  false),
+        )
+        .take(4)
+        .toList(growable: false);
+    final optimizationAssets = jobs
+        .where(
+          (job) =>
+              job.type == 'optimization' &&
+              job.status == 'succeeded' &&
+              job.result.isNotEmpty,
+        )
+        .take(4)
+        .toList(growable: false);
+    final assetAlerts = alerts
+        .where((alert) => (alert.assetKey ?? '').isNotEmpty)
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (assetAlerts.isNotEmpty) ...[
+          _AssetRiskStrip(
+            alerts: assetAlerts,
+            onOpenAiLab: onOpenAiLab,
+            onOpenDataAnalysis: onOpenDataAnalysis,
+            onOpenOptimization: onOpenOptimization,
+          ),
+          const SizedBox(height: 16),
+        ],
+        _buildInventoryStrip(
+          datasetCount:
+              assetSummary?.inventory.datasetAssets ?? datasetAssets.length,
+          modelCount: assetSummary?.inventory.modelAssets ?? modelAssets.length,
+          knowledgeCount:
+              assetSummary?.inventory.knowledgeAssets ?? knowledgeAssets.length,
+          optimizationCount:
+              assetSummary?.inventory.optimizationAssets ??
+              optimizationAssets.length,
+        ),
+        const SizedBox(height: 16),
+        if (assetSummary != null) ...[
+          _CompactLedgerMatrix(
+            summary: assetSummary!,
+            datasetReplayCount: datasetAssets.length,
+            modelReplayCount: modelAssets.length,
+            knowledgeReplayCount: knowledgeAssets.length,
+            optimizationReplayCount: optimizationAssets.length,
+            onOpenAiLab: onOpenAiLab,
+            onOpenDataAnalysis: onOpenDataAnalysis,
+            onOpenOptimization: onOpenOptimization,
+          ),
+          const SizedBox(height: 16),
+        ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stacked = constraints.maxWidth < 1180;
+            final panels = [
+              _LedgerPanel(
+                title: '数据资产台账',
+                description: '保留分析结果、质量评分和可继续治理的存储路径。',
+                accent: AppColors.primary,
+                icon: Icons.dataset_rounded,
+                emptyMessage: '暂无可治理的数据资产。',
+                children: datasetAssets
+                    .map(
+                      (record) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _DatasetLedgerTile(
+                          record: record,
+                          onOpenAiLab: onOpenAiLab,
+                          onOpenDataAnalysis: onOpenDataAnalysis,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              _LedgerPanel(
+                title: '模型资产台账',
+                description: '训练产物的来源、目标列、指标和回填入口都固定在同一视图。',
+                accent: AppColors.cta,
+                icon: Icons.model_training_rounded,
+                emptyMessage: '暂无成功训练产物。',
+                children: modelAssets
+                    .map(
+                      (job) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ModelLedgerTile(
+                          job: job,
+                          onOpenAiLab: onOpenAiLab,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              _LedgerPanel(
+                title: '知识库资产台账',
+                description: '集合名、文档来源和索引规模集中展示，方便继续治理和问答复盘。',
+                accent: AppColors.success,
+                icon: Icons.account_tree_rounded,
+                emptyMessage: '暂无成功知识库快照。',
+                children: knowledgeAssets
+                    .map(
+                      (job) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _KnowledgeLedgerTile(
+                          job: job,
+                          onOpenAiLab: onOpenAiLab,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              _LedgerPanel(
+                title: '优化结果台账',
+                description: '保留场景参数和最近节省结果，便于回看 What-If 推演。',
+                accent: AppColors.warning,
+                icon: Icons.bolt_rounded,
+                emptyMessage: '暂无可回放的优化结果。',
+                children: optimizationAssets
+                    .map(
+                      (job) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _OptimizationLedgerTile(
+                          job: job,
+                          onOpenOptimization: onOpenOptimization,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ];
+
+            if (stacked) {
+              return Column(
+                children: [
+                  for (var i = 0; i < panels.length; i++) ...[
+                    panels[i],
+                    if (i < panels.length - 1) const SizedBox(height: 16),
+                  ],
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: panels[0]),
+                    const SizedBox(width: 16),
+                    Expanded(child: panels[1]),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: panels[2]),
+                    const SizedBox(width: 16),
+                    Expanded(child: panels[3]),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInventoryStrip({
+    required int datasetCount,
+    required int modelCount,
+    required int knowledgeCount,
+    required int optimizationCount,
+  }) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _LedgerInventoryChip(
+          label: '数据资产',
+          value: '$datasetCount',
+          icon: Icons.dataset_rounded,
+          color: AppColors.primary,
+        ),
+        _LedgerInventoryChip(
+          label: '模型产物',
+          value: '$modelCount',
+          icon: Icons.model_training_rounded,
+          color: AppColors.cta,
+        ),
+        _LedgerInventoryChip(
+          label: '知识快照',
+          value: '$knowledgeCount',
+          icon: Icons.account_tree_rounded,
+          color: AppColors.success,
+        ),
+        _LedgerInventoryChip(
+          label: '优化结果',
+          value: '$optimizationCount',
+          icon: Icons.bolt_rounded,
+          color: AppColors.warning,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactLedgerMatrix extends StatelessWidget {
+  const _CompactLedgerMatrix({
+    required this.summary,
+    required this.datasetReplayCount,
+    required this.modelReplayCount,
+    required this.knowledgeReplayCount,
+    required this.optimizationReplayCount,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+  });
+
+  final AssetSummary summary;
+  final int datasetReplayCount;
+  final int modelReplayCount;
+  final int knowledgeReplayCount;
+  final int optimizationReplayCount;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows =
+        summary.chainSummaries
+            .map((chain) {
+              final replayCount = switch (chain.key) {
+                'dataset' => datasetReplayCount,
+                'model' => modelReplayCount,
+                'knowledge' => knowledgeReplayCount,
+                'optimization' => optimizationReplayCount,
+                _ => 0,
+              };
+              return _CompactLedgerRow(
+                chain: chain,
+                replayCount: replayCount,
+                onOpenAiLab: onOpenAiLab,
+                onOpenDataAnalysis: onOpenDataAnalysis,
+                onOpenOptimization: onOpenOptimization,
+              );
+            })
+            .toList(growable: false)
+          ..sort(
+            (a, b) => b.chain.priorityScore.compareTo(a.chain.priorityScore),
+          );
+
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('资产台账矩阵', style: AppTextStyles.h4),
+          const SizedBox(height: 8),
+          Text(
+            '用更高密度的方式统一查看链路状态、版本、焦点、责任和回放库存，减少在四类资产卡片之间来回切换。',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                rows[i],
+                if (i < rows.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactLedgerRow extends StatelessWidget {
+  const _CompactLedgerRow({
+    required this.chain,
+    required this.replayCount,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+  });
+
+  final AssetChainSummary chain;
+  final int replayCount;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _matrixTone(chain);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: chain.status == 'healthy'
+            ? AppColors.surfaceVariant
+            : Color.alphaBlend(
+                tone.withValues(alpha: 0.06),
+                AppColors.surfaceVariant,
+              ),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(
+          color: tone.withValues(
+            alpha: chain.isOverdue || chain.status != 'healthy' ? 0.28 : 0.16,
+          ),
+          width: chain.isOverdue ? 1.4 : 1,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 920;
+          final summary = _rowSummary(context);
+          final action = _rowAction();
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: 10),
+                if (action != null) action,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: summary),
+              const SizedBox(width: 16),
+              if (action != null) action,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _rowSummary(BuildContext context) {
+    final tone = _matrixTone(chain);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _LedgerTag(label: chain.label, color: _matrixTone(chain)),
+            _LedgerTag(
+              label: chain.statusLabel,
+              color: chain.isOverdue ? AppColors.error : AppColors.primary,
+            ),
+            _LedgerTag(label: chain.incidentTargetLabel, color: tone),
+            _LedgerTag(label: chain.workspaceTargetLabel, color: tone),
+            _LedgerTag(label: chain.sectionTargetLabel, color: tone),
+            _LedgerTag(label: chain.focusTargetLabel, color: tone),
+            if (chain.isOverdue)
+              _LedgerTag(
+                label: 'OVERDUE ${chain.overdueMinutes}m',
+                color: AppColors.error,
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'v${chain.latestVersion} · ${chain.latestLabel}',
+          style: AppTextStyles.labelLarge,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${chain.workspaceTargetLabel} · ${chain.workspaceBrief}',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _MatrixFocusBand(chain: chain, replayCount: replayCount, accent: tone),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'Current Focus',
+                value:
+                    '${chain.dispositionTargetLabel} · ${chain.workspaceBrief}',
+                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.focus,
+                accent: tone,
+              ),
+            ),
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'SLA',
+                value:
+                    '${chain.escalationStateLabel} · ${chain.isOverdue ? 'overdue ${chain.overdueMinutes}m' : 'elapsed ${chain.elapsedMinutes}m'}',
+                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.sla,
+                accent: tone,
+              ),
+            ),
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'Replay',
+                value: '$replayCount ready · ${chain.actionLabel}',
+                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.replay,
+                accent: tone,
+              ),
+            ),
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'Active Job',
+                value: _matrixJobSummary(chain),
+                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.job,
+                accent: tone,
+              ),
+            ),
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'Failure / Lineage',
+                value: _matrixFailureOrLineage(chain),
+                highlighted:
+                    _matrixHighlight(chain) == _MatrixFocusArea.failure,
+                accent: tone,
+              ),
+            ),
+            SizedBox(
+              width: 190,
+              child: _MatrixFactCard(
+                label: 'Target',
+                value:
+                    '${chain.workspaceTargetLabel} / ${chain.sectionTargetLabel} / ${chain.focusTargetLabel}',
+                accent: tone,
+              ),
+            ),
+            _LedgerFact(label: 'Owner', value: chain.ownerLabel),
+            _LedgerFact(
+              label: 'SLA',
+              value: '${chain.slaMinutes}min / ${chain.escalationStateLabel}',
+            ),
+            _LedgerFact(label: 'Lineage', value: chain.lineageSummary),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget? _rowAction() {
+    switch (chain.key) {
+      case 'dataset':
+        if (onOpenDataAnalysis == null) {
+          return null;
+        }
+        return FilledButton.tonalIcon(
+          onPressed: () => onOpenDataAnalysis!(
+            DataAnalysisLaunchIntent.workspace(
+              sourceLabel: _matrixSourceLabel(chain),
+            ),
+          ),
+          icon: const Icon(Icons.analytics_rounded),
+          label: Text(chain.actionLabel),
+        );
+      case 'model':
+        if (onOpenAiLab == null) {
+          return null;
+        }
+        return FilledButton.tonalIcon(
+          onPressed: () => onOpenAiLab!(
+            AiLabLaunchIntent.deepLearning(
+              '',
+              sourceLabel: _matrixSourceLabel(chain),
+            ),
+          ),
+          icon: const Icon(Icons.model_training_rounded),
+          label: Text(chain.actionLabel),
+        );
+      case 'knowledge':
+        if (onOpenAiLab == null) {
+          return null;
+        }
+        return FilledButton.tonalIcon(
+          onPressed: () => onOpenAiLab!(
+            AiLabLaunchIntent.rag('', sourceLabel: _matrixSourceLabel(chain)),
+          ),
+          icon: const Icon(Icons.account_tree_rounded),
+          label: Text(chain.actionLabel),
+        );
+      case 'optimization':
+        if (onOpenOptimization == null) {
+          return null;
+        }
+        return FilledButton.tonalIcon(
+          onPressed: () => onOpenOptimization!(
+            OptimizationLaunchIntent(sourceLabel: _matrixSourceLabel(chain)),
+          ),
+          icon: const Icon(Icons.bolt_rounded),
+          label: Text(chain.actionLabel),
+        );
+      default:
+        return null;
+    }
+  }
+}
+
+class _MatrixFocusBand extends StatelessWidget {
+  const _MatrixFocusBand({
+    required this.chain,
+    required this.replayCount,
+    required this.accent,
+  });
+
+  final AssetChainSummary chain;
+  final int replayCount;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          accent.withValues(alpha: 0.05),
+          AppColors.surfaceVariant,
+        ),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: accent.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current disposition',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _matrixDispositionSummary(chain, replayCount),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _LedgerTag(label: chain.dispositionTargetLabel, color: accent),
+        ],
+      ),
+    );
+  }
+}
+
+class _MatrixFactCard extends StatelessWidget {
+  const _MatrixFactCard({
+    required this.label,
+    required this.value,
+    required this.accent,
+    this.highlighted = false,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? Color.alphaBlend(
+                accent.withValues(alpha: 0.08),
+                AppColors.surface,
+              )
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(
+          color: accent.withValues(alpha: highlighted ? 0.22 : 0.1),
+          width: highlighted ? 1.3 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: highlighted ? accent : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(value, style: AppTextStyles.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+class _LedgerTag extends StatelessWidget {
+  const _LedgerTag({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.labelMedium.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+class _LedgerFact extends StatelessWidget {
+  const _LedgerFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+        children: [
+          TextSpan(text: '$label: '),
+          TextSpan(
+            text: value,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Color _matrixTone(AssetChainSummary chain) {
+  if (chain.isOverdue || chain.status == 'incident') {
+    return AppColors.error;
+  }
+  if (chain.escalationTier > 0 || chain.status == 'active') {
+    return AppColors.warning;
+  }
+  switch (chain.key) {
+    case 'dataset':
+      return AppColors.primary;
+    case 'model':
+      return AppColors.cta;
+    case 'knowledge':
+      return AppColors.success;
+    case 'optimization':
+      return AppColors.warning;
+    default:
+      return AppColors.textSecondary;
+  }
+}
+
+String _matrixSourceLabel(AssetChainSummary chain) {
+  return '资产台账矩阵 · ${chain.label} · ${chain.workspaceTargetLabel} · ${chain.dispositionTargetLabel} · ${chain.incidentTargetLabel}';
+}
+
+enum _MatrixFocusArea { focus, sla, replay, failure, job }
+
+_MatrixFocusArea _matrixHighlight(AssetChainSummary chain) {
+  switch (chain.dispositionTarget) {
+    case 'sla':
+      return _MatrixFocusArea.sla;
+    case 'replay':
+      return _MatrixFocusArea.replay;
+    case 'failure':
+      return _MatrixFocusArea.failure;
+    case 'job':
+      return _MatrixFocusArea.job;
+    case 'governance':
+    case 'focus':
+    default:
+      return _MatrixFocusArea.focus;
+  }
+}
+
+String _matrixDispositionSummary(AssetChainSummary chain, int replayCount) {
+  switch (chain.dispositionTarget) {
+    case 'sla':
+      return '${chain.escalationStateLabel} · ${chain.isOverdue ? 'overdue ${chain.overdueMinutes}m' : 'elapsed ${chain.elapsedMinutes}m'}';
+    case 'replay':
+      return '$replayCount replayable assets · ${chain.workspaceBrief}';
+    case 'failure':
+      return _matrixFailureOrLineage(chain);
+    case 'job':
+      return _matrixJobSummary(chain);
+    case 'governance':
+    case 'focus':
+    default:
+      return chain.incidentBrief;
+  }
+}
+
+String _matrixJobSummary(AssetChainSummary chain) {
+  if (chain.jobStatus == '--') {
+    return 'No active job';
+  }
+  return '${chain.jobStatus} · ${chain.jobPhase} · ${chain.jobProgress}%';
+}
+
+String _matrixFailureOrLineage(AssetChainSummary chain) {
+  if (chain.failureSource != '--') {
+    return '${chain.failurePhase} · ${chain.failureSource}';
+  }
+  return chain.lineageSummary;
+}
+
+class _AssetRiskStrip extends StatelessWidget {
+  const _AssetRiskStrip({
+    required this.alerts,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+  });
+
+  final List<DashboardAlert> alerts;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('资产风险联动', style: AppTextStyles.h4),
+        const SizedBox(height: 8),
+        Text(
+          '把概览页发现的资产缺口直接落到台账入口，并给出对应工作台的处理动作。',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: alerts
+              .map(
+                (alert) => SizedBox(
+                  width: 320,
+                  child: _AssetRiskCard(
+                    alert: alert,
+                    onOpenAiLab: onOpenAiLab,
+                    onOpenDataAnalysis: onOpenDataAnalysis,
+                    onOpenOptimization: onOpenOptimization,
+                  ),
+                ),
+              )
+              .toList(growable: false),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssetRiskCard extends StatelessWidget {
+  const _AssetRiskCard({
+    required this.alert,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+    this.onOpenOptimization,
+  });
+
+  final DashboardAlert alert;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _riskTone(alert.severity);
+    final action = _riskAction(
+      alert.assetKey,
+      onOpenAiLab: onOpenAiLab,
+      onOpenDataAnalysis: onOpenDataAnalysis,
+      onOpenOptimization: onOpenOptimization,
+    );
+
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(tone.icon, color: tone.color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(alert.title, style: AppTextStyles.labelLarge),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: tone.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(
+                    AppDecorations.radiusFull,
+                  ),
+                ),
+                child: Text(
+                  alert.severity.toUpperCase(),
+                  style: AppTextStyles.labelMedium.copyWith(color: tone.color),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            alert.message,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: action.onTap,
+              icon: Icon(action.icon),
+              label: Text(action.label),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RiskAction {
+  const _RiskAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _RiskTone {
+  const _RiskTone({required this.color, required this.icon});
+
+  final Color color;
+  final IconData icon;
+}
+
+_RiskTone _riskTone(String severity) {
+  switch (severity) {
+    case 'error':
+      return const _RiskTone(color: AppColors.error, icon: Icons.error_outline);
+    case 'warning':
+      return const _RiskTone(
+        color: AppColors.warning,
+        icon: Icons.warning_amber_rounded,
+      );
+    default:
+      return const _RiskTone(
+        color: AppColors.primary,
+        icon: Icons.info_outline,
+      );
+  }
+}
+
+_RiskAction? _riskAction(
+  String? assetKey, {
+  ValueChanged<AiLabLaunchIntent>? onOpenAiLab,
+  ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis,
+  ValueChanged<OptimizationLaunchIntent>? onOpenOptimization,
+}) {
+  switch (assetKey) {
+    case 'dataset':
+      if (onOpenDataAnalysis == null) {
+        return null;
+      }
+      return _RiskAction(
+        label: '打开数据分析工作台',
+        icon: Icons.analytics_rounded,
+        onTap: () => onOpenDataAnalysis(
+          DataAnalysisLaunchIntent.workspace(sourceLabel: '资产风险联动'),
+        ),
+      );
+    case 'model':
+      if (onOpenAiLab == null) {
+        return null;
+      }
+      return _RiskAction(
+        label: '打开训练工作台',
+        icon: Icons.model_training_rounded,
+        onTap: () => onOpenAiLab(
+          AiLabLaunchIntent.deepLearning('', sourceLabel: '资产风险联动'),
+        ),
+      );
+    case 'knowledge':
+      if (onOpenAiLab == null) {
+        return null;
+      }
+      return _RiskAction(
+        label: '打开知识库工作台',
+        icon: Icons.account_tree_rounded,
+        onTap: () =>
+            onOpenAiLab(AiLabLaunchIntent.rag('', sourceLabel: '资产风险联动')),
+      );
+    case 'optimization':
+      if (onOpenOptimization == null) {
+        return null;
+      }
+      return _RiskAction(
+        label: '打开优化工作台',
+        icon: Icons.bolt_rounded,
+        onTap: () => onOpenOptimization(
+          const OptimizationLaunchIntent(sourceLabel: '资产风险联动'),
+        ),
+      );
+    default:
+      return null;
+  }
+}
+
+class _LedgerPanel extends StatelessWidget {
+  const _LedgerPanel({
+    required this.title,
+    required this.description,
+    required this.accent,
+    required this.icon,
+    required this.emptyMessage,
+    required this.children,
+  });
+
+  final String title;
+  final String description;
+  final Color accent;
+  final IconData icon;
+  final String emptyMessage;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+                ),
+                child: Icon(icon, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTextStyles.h4),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (children.isEmpty)
+            Text(emptyMessage, style: AppTextStyles.bodySmall)
+          else
+            ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _LedgerInventoryChip extends StatelessWidget {
+  const _LedgerInventoryChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Text(label, style: AppTextStyles.labelMedium),
+          const SizedBox(width: 10),
+          Text(value, style: AppTextStyles.labelLarge.copyWith(color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DatasetLedgerTile extends StatelessWidget {
+  const _DatasetLedgerTile({
+    required this.record,
+    this.onOpenAiLab,
+    this.onOpenDataAnalysis,
+  });
+
+  final HistoryRecord record;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+  final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = record.qualityScore == null
+        ? '未评分'
+        : record.qualityScore!.toStringAsFixed(1);
+    final rows = record.basicInfo?['rows']?.toString() ?? '--';
+    final columns = record.basicInfo?['columns']?.toString() ?? '--';
+
+    return _LedgerTile(
+      accent: AppColors.primary,
+      title: record.filename,
+      subtitle:
+          'quality=$score · rows=$rows · cols=$columns · ${_formatTime(record.createdAt)}',
+      metaRows: [
+        _LedgerMetaRow(label: '存储路径', value: record.storageUrl ?? '未归档'),
+        _LedgerMetaRow(label: '来源链路', value: 'CSV -> Analysis -> Asset'),
+      ],
+      actions: [
+        if (onOpenDataAnalysis != null && record.summary != null)
+          FilledButton.tonalIcon(
+            onPressed: () => onOpenDataAnalysis!(
+              DataAnalysisLaunchIntent.fromHistoryRecord(record),
+            ),
+            icon: const Icon(Icons.analytics_rounded),
+            label: const Text('回放分析'),
+          ),
+        if (onOpenAiLab != null && (record.storageUrl?.isNotEmpty ?? false))
+          OutlinedButton.icon(
+            onPressed: () => onOpenAiLab!(
+              AiLabLaunchIntent.fromHistoryRecordForTraining(record),
+            ),
+            icon: const Icon(Icons.model_training_rounded),
+            label: const Text('送入训练'),
+          ),
+      ],
+    );
+  }
+}
+
+class _ModelLedgerTile extends StatelessWidget {
+  const _ModelLedgerTile({required this.job, this.onOpenAiLab});
+
+  final JobRecord job;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+
+  @override
+  Widget build(BuildContext context) {
+    final modelPath = job.result['model_path']?.toString() ?? '--';
+    final modelType = job.result['model_type']?.toString() ?? 'model';
+    final targetColumn =
+        _firstString([
+          job.result['target_column'],
+          job.input['target_column'],
+        ]) ??
+        '--';
+    final storagePath = _firstString([job.input['storage_path']]) ?? '--';
+
+    return _LedgerTile(
+      accent: AppColors.cta,
+      title: 'v${_versionFor(job)} · ${modelType.toUpperCase()}',
+      subtitle:
+          'job=${job.jobId.substring(0, 8)} · 尝试 ${job.attemptCount}/${job.maxAttempts} · ${_formatTime(job.completedAt)}',
+      metaRows: [
+        _LedgerMetaRow(label: '模型路径', value: modelPath),
+        _LedgerMetaRow(label: '来源数据', value: storagePath),
+        _LedgerMetaRow(label: '目标列', value: targetColumn),
+        _LedgerMetaRow(
+          label: '来源链路',
+          value: 'Dataset -> Sequence -> Train -> Artifact',
+        ),
+      ],
+      actions: [
+        if (onOpenAiLab != null)
+          FilledButton.tonalIcon(
+            onPressed: () =>
+                onOpenAiLab!(AiLabLaunchIntent.fromTrainingJob(job)),
+            icon: const Icon(Icons.restart_alt_rounded),
+            label: const Text('回填训练入口'),
+          ),
+      ],
+    );
+  }
+}
+
+class _KnowledgeLedgerTile extends StatelessWidget {
+  const _KnowledgeLedgerTile({required this.job, this.onOpenAiLab});
+
+  final JobRecord job;
+  final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
+
+  @override
+  Widget build(BuildContext context) {
+    final collection =
+        _firstString([
+          job.result['collection'],
+          job.input['collection_name'],
+        ]) ??
+        'default';
+    final storagePath =
+        _firstString([job.result['storage_path'], job.input['storage_path']]) ??
+        '--';
+    final count = job.result['count']?.toString() ?? '--';
+    final reset = _asBool(job.input['reset']) == true ? '重建' : '增量';
+
+    return _LedgerTile(
+      accent: AppColors.success,
+      title: 'v${_versionFor(job)} · $collection',
+      subtitle:
+          'job=${job.jobId.substring(0, 8)} · $reset 模式 · ${_formatTime(job.completedAt)}',
+      metaRows: [
+        _LedgerMetaRow(label: '文档来源', value: storagePath),
+        _LedgerMetaRow(label: '片段规模', value: count),
+        _LedgerMetaRow(
+          label: '最近阶段',
+          value: job.latestEvent?.phase ?? 'packaging',
+        ),
+        _LedgerMetaRow(
+          label: '来源链路',
+          value: 'Docs -> Parse -> Embed -> Collection',
+        ),
+      ],
+      actions: [
+        if (onOpenAiLab != null)
+          FilledButton.tonalIcon(
+            onPressed: () => onOpenAiLab!(AiLabLaunchIntent.fromRagJob(job)),
+            icon: const Icon(Icons.hub_rounded),
+            label: const Text('回填知识入口'),
+          ),
+      ],
+    );
+  }
+}
+
+class _OptimizationLedgerTile extends StatelessWidget {
+  const _OptimizationLedgerTile({required this.job, this.onOpenOptimization});
+
+  final JobRecord job;
+  final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+
+  @override
+  Widget build(BuildContext context) {
+    final targetDate = job.input['target_date']?.toString() ?? '--';
+    final initialSoc = job.input['initial_soc']?.toString() ?? '--';
+    final optimization = job.result['optimization'];
+    String savings = '--';
+    if (optimization is Map) {
+      final summary = optimization['summary'];
+      if (summary is Map && summary['savings'] != null) {
+        savings = summary['savings'].toString();
+      }
+    }
+
+    return _LedgerTile(
+      accent: AppColors.warning,
+      title: 'v${_versionFor(job)} · ${job.displayTitle}',
+      subtitle:
+          'job=${job.jobId.substring(0, 8)} · target=$targetDate · ${_formatTime(job.completedAt)}',
+      metaRows: [
+        _LedgerMetaRow(label: '初始 SOC', value: initialSoc),
+        _LedgerMetaRow(
+          label: '节省结果',
+          value: savings == '--' ? '--' : '$savings 元',
+        ),
+        _LedgerMetaRow(
+          label: '来源链路',
+          value: 'Scenario -> Forecast -> Solver -> Strategy',
+        ),
+      ],
+      actions: [
+        if (onOpenOptimization != null)
+          FilledButton.tonalIcon(
+            onPressed: () =>
+                onOpenOptimization!(OptimizationLaunchIntent.fromJob(job)),
+            icon: const Icon(Icons.bolt_rounded),
+            label: const Text('回放优化'),
+          ),
+      ],
+    );
+  }
+}
+
+class _LedgerTile extends StatelessWidget {
+  const _LedgerTile({
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    required this.metaRows,
+    required this.actions,
+  });
+
+  final Color accent;
+  final String title;
+  final String subtitle;
+  final List<_LedgerMetaRow> metaRows;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: accent.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.labelLarge),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < metaRows.length; i++) ...[
+            _LedgerInfoRow(row: metaRows[i]),
+            if (i < metaRows.length - 1) const SizedBox(height: 8),
+          ],
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: actions),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LedgerMetaRow {
+  const _LedgerMetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
+class _LedgerInfoRow extends StatelessWidget {
+  const _LedgerInfoRow({required this.row});
+
+  final _LedgerMetaRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 72,
+          child: Text(
+            row.label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(row.value, style: AppTextStyles.bodySmall)),
+      ],
+    );
+  }
+}
+
+String _versionFor(JobRecord job) {
+  final timestamp = job.completedAt ?? job.submittedAt;
+  if (timestamp == null) {
+    return job.jobId.substring(0, 6);
+  }
+  return DateFormat('MMdd-HHmm').format(timestamp.toLocal());
+}
+
+String _formatTime(DateTime? value) {
+  if (value == null) {
+    return '--';
+  }
+  return DateFormat('MM-dd HH:mm').format(value.toLocal());
+}
+
+String? _firstString(List<Object?> values) {
+  for (final value in values) {
+    if (value is String && value.isNotEmpty) {
+      return value;
+    }
+  }
+  return null;
+}
+
+bool? _asBool(Object? value) {
+  if (value is bool) {
+    return value;
+  }
+  if (value is num) {
+    return value != 0;
+  }
+  if (value is String) {
+    final normalized = value.toLowerCase();
+    if (normalized == 'true' || normalized == '1') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0') {
+      return false;
+    }
+  }
+  return null;
+}

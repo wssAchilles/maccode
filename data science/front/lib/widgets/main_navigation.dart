@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
+import '../models/data_analysis_launch_intent.dart';
+import '../models/optimization_launch_intent.dart';
 import '../repositories/auth_repository.dart';
 import '../screens/ai_lab_screen.dart';
 import '../screens/data_analysis_screen.dart';
@@ -17,33 +19,50 @@ import '../screens/operations_hub_screen.dart';
 import '../services/auth_gateway.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
+import 'operations/workbench_page_frame.dart';
 import 'operations/system_status_strip.dart';
 
 class MainNavigation extends StatefulWidget {
+  /// The app-wide shell owns the only top-level Scaffold for the default
+  /// product experience. Default pages always render as embedded content.
   const MainNavigation({
     super.key,
-    this.pages,
-    this.embedDefaultPages = true,
     AuthRepository? authRepository,
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
+       _customPages = null,
+       assert(
+         authRepository == null || authGateway == null,
+         'Provide either authRepository or authGateway, not both.',
+       );
+
+  /// Custom pages are allowed to define their own page-shell contract.
+  const MainNavigation.custom({
+    super.key,
+    required List<Widget> pages,
+    AuthRepository? authRepository,
+    AuthGateway? authGateway,
+    DashboardViewModel? dashboardViewModel,
+  }) : _authRepository = authRepository,
+       _authGateway = authGateway,
+       _dashboardViewModel = dashboardViewModel,
+       _customPages = pages,
        assert(
          authRepository == null || authGateway == null,
          'Provide either authRepository or authGateway, not both.',
        ),
        assert(
-         pages == null || pages.length == 5,
-         'MainNavigation expects exactly 5 pages when custom pages are provided.',
+         pages.length == 5,
+         'MainNavigation.custom expects exactly 5 pages.',
        );
 
-  final List<Widget>? pages;
-  final bool embedDefaultPages;
   final AuthRepository? _authRepository;
   final AuthGateway? _authGateway;
   final DashboardViewModel? _dashboardViewModel;
+  final List<Widget>? _customPages;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -65,6 +84,8 @@ class _MainNavigationState extends State<MainNavigation> {
   StreamSubscription<User?>? _authSubscription;
   User? _currentUser;
   AiLabLaunchIntent? _pendingAiLabIntent;
+  DataAnalysisLaunchIntent? _pendingDataAnalysisIntent;
+  OptimizationLaunchIntent? _pendingOptimizationIntent;
 
   bool get _hasAuthenticatedUser => _currentUser != null;
 
@@ -335,28 +356,43 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   List<Widget> get _pages =>
-      widget.pages ??
+      widget._customPages ??
       [
+        // Default product pages always render as shell content.
         OperationsHubScreen(
           viewModel: _dashboardViewModel,
           onNavigateToTab: _onNavTap,
-          embedded: widget.embedDefaultPages,
+          onOpenAiLab: _openAiLabWithIntent,
+          onOpenDataAnalysis: _openDataAnalysisWithIntent,
+          onOpenOptimization: _openOptimizationWithIntent,
+          surfaceMode: WorkbenchSurfaceMode.embedded,
         ),
-        ModelingScreen(embedded: widget.embedDefaultPages),
+        ModelingScreen(
+          dashboardViewModel: _dashboardViewModel,
+          launchIntent: _pendingOptimizationIntent,
+          onLaunchIntentHandled: _clearOptimizationIntent,
+          surfaceMode: WorkbenchSurfaceMode.embedded,
+        ),
         DataAnalysisScreen(
           onOpenHistory: () => _onNavTap(4),
           onSendToAiLab: _openAiLabWithIntent,
-          embedded: widget.embedDefaultPages,
+          dashboardViewModel: _dashboardViewModel,
+          launchIntent: _pendingDataAnalysisIntent,
+          onLaunchIntentHandled: _clearDataAnalysisIntent,
+          surfaceMode: WorkbenchSurfaceMode.embedded,
         ),
         AiLabScreen(
           dashboardViewModel: _dashboardViewModel,
           launchIntent: _pendingAiLabIntent,
           onLaunchIntentHandled: _clearAiLabIntent,
-          embedded: widget.embedDefaultPages,
+          surfaceMode: WorkbenchSurfaceMode.embedded,
         ),
         HistoryAuditScreen(
           dashboardViewModel: _dashboardViewModel,
-          embedded: widget.embedDefaultPages,
+          onOpenAiLab: _openAiLabWithIntent,
+          onOpenDataAnalysis: _openDataAnalysisWithIntent,
+          onOpenOptimization: _openOptimizationWithIntent,
+          surfaceMode: WorkbenchSurfaceMode.embedded,
         ),
       ];
 
@@ -367,12 +403,44 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
+  void _openDataAnalysisWithIntent(DataAnalysisLaunchIntent intent) {
+    setState(() {
+      _pendingDataAnalysisIntent = intent;
+      _currentIndex = 2;
+    });
+  }
+
+  void _openOptimizationWithIntent(OptimizationLaunchIntent intent) {
+    setState(() {
+      _pendingOptimizationIntent = intent;
+      _currentIndex = 1;
+    });
+  }
+
   void _clearAiLabIntent() {
     if (_pendingAiLabIntent == null || !mounted) {
       return;
     }
     setState(() {
       _pendingAiLabIntent = null;
+    });
+  }
+
+  void _clearDataAnalysisIntent() {
+    if (_pendingDataAnalysisIntent == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _pendingDataAnalysisIntent = null;
+    });
+  }
+
+  void _clearOptimizationIntent() {
+    if (_pendingOptimizationIntent == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _pendingOptimizationIntent = null;
     });
   }
 }
