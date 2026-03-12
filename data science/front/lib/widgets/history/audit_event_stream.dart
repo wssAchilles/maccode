@@ -8,6 +8,7 @@ import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
+import '../operations/section_intro.dart';
 
 class AuditEventStream extends StatelessWidget {
   const AuditEventStream({
@@ -35,13 +36,9 @@ class AuditEventStream extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('统一审计事件流', style: AppTextStyles.h4),
-          const SizedBox(height: 8),
-          Text(
-            '把任务执行和审计活动合并到同一条时间线里，减少在审计页里并行维护两套列表。',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
+          const SectionIntro(
+            title: '统一审计事件流',
+            subtitle: '把任务执行和审计活动合并到同一条时间线里，减少在审计页里并行维护两套列表。',
           ),
           const SizedBox(height: 14),
           if (entries.isEmpty)
@@ -268,7 +265,7 @@ class _AuditStreamTile extends StatelessWidget {
                       ),
                     if (entry.chain != null)
                       _AuditStreamBadge(
-                        label: entry.chain!.focusTargetLabel,
+                        label: entry.chain!.cardTargetLabel,
                         foreground: tone,
                         background: tone.withValues(alpha: 0.12),
                       ),

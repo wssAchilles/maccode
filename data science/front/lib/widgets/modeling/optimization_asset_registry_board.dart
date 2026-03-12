@@ -8,6 +8,8 @@ import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
+import '../operations/incident_card_header.dart';
+import '../operations/workspace_action_lane.dart';
 
 class OptimizationAssetRegistryBoard extends StatelessWidget {
   const OptimizationAssetRegistryBoard({
@@ -34,9 +36,17 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
         : null;
     final inventoryCount = assetSummary?.inventory.optimizationAssets ?? 0;
     final assetSectionFocused = chain?.sectionTarget == 'optimization_assets';
+    final summaryFocused =
+        chain?.cardTarget == 'registry_summary' ||
+        chain?.cardTarget == 'optimization_registry';
+    final snapshotFocused =
+        chain?.cardTarget == 'latest_snapshot' ||
+        chain?.cardTarget == 'registry_snapshot' ||
+        chain?.focusTarget == 'optimization_registry';
     final cards = <Widget>[
       _RegistrySummaryCard(
         chain: chain,
+        highlighted: summaryFocused,
         count: inventoryCount,
         latestVersion: latestAsset?.version ?? '--',
         latestTargetDate: latestAsset?.targetDate ?? '--',
@@ -44,6 +54,7 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
       if (latestAsset != null)
         _OptimizationRegistryCard(
           chain: chain,
+          highlighted: snapshotFocused,
           asset: latestAsset,
           onApply: () => onApplyAsset(latestAsset),
           onCopyPassport: () => onCopyAssetPassport(latestAsset),
@@ -87,12 +98,14 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
 class _RegistrySummaryCard extends StatelessWidget {
   const _RegistrySummaryCard({
     this.chain,
+    required this.highlighted,
     required this.count,
     required this.latestVersion,
     required this.latestTargetDate,
   });
 
   final AssetChainSummary? chain;
+  final bool highlighted;
   final int count;
   final String latestVersion;
   final String latestTargetDate;
@@ -104,48 +117,23 @@ class _RegistrySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: const Icon(
-                  Icons.inventory_2_rounded,
-                  color: AppColors.warning,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('优化资产注册表', style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      '统一资产摘要里的优化快照库存和最新版本。',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (chain?.sectionTarget == 'optimization_assets') ...[
-                      const SizedBox(height: 6),
-                      _RegistrySignal(
-                        accent: AppColors.warning,
-                        incidentLabel: chain?.incidentTargetLabel,
-                        incidentSummary: chain?.incidentBrief,
-                        sectionLabel: chain?.sectionTargetLabel,
-                        focusLabel: chain?.focusLabel,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: AppColors.warning,
+            icon: Icons.inventory_2_rounded,
+            title: '优化资产注册表',
+            subtitle: '统一资产摘要里的优化快照库存和最新版本。',
+            trailing: highlighted
+                ? WorkspaceStatusChip(
+                    label: chain?.cardTargetLabel ?? '注册表',
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: AppColors.warning,
+                    background: AppColors.warning.withValues(alpha: 0.12),
+                  )
+                : null,
+            workspaceLabel: chain?.workspaceTargetLabel,
+            cardLabel: highlighted ? chain?.cardTargetLabel : null,
+            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
+            summary: highlighted ? chain?.workspaceBrief : null,
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -181,6 +169,7 @@ class _RegistrySummaryCard extends StatelessWidget {
 class _OptimizationRegistryCard extends StatelessWidget {
   const _OptimizationRegistryCard({
     this.chain,
+    required this.highlighted,
     required this.asset,
     required this.onApply,
     required this.onCopyPassport,
@@ -189,6 +178,7 @@ class _OptimizationRegistryCard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final bool highlighted;
   final OptimizationAsset asset;
   final VoidCallback onApply;
   final VoidCallback onCopyPassport;
@@ -206,52 +196,21 @@ class _OptimizationRegistryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('最新优化快照', style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      '把登记到资产台账的优化快照回填到当前工作台，用于版本复盘和参数重放。',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (chain?.focusTarget == 'optimization_registry') ...[
-                      const SizedBox(height: 6),
-                      _RegistrySignal(
-                        accent: AppColors.warning,
-                        incidentLabel: chain?.incidentTargetLabel,
-                        incidentSummary: chain?.incidentBrief,
-                        sectionLabel: chain?.sectionTargetLabel,
-                        focusLabel: chain?.focusLabel,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(
-                    AppDecorations.radiusFull,
-                  ),
-                ),
-                child: Text(
-                  'v${asset.version}',
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.warning,
-                  ),
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: AppColors.warning,
+            icon: Icons.auto_graph_rounded,
+            title: '最新优化快照',
+            subtitle: '把登记到资产台账的优化快照回填到当前工作台，用于版本复盘和参数重放。',
+            trailing: WorkspaceStatusChip(
+              label: 'v${asset.version}',
+              icon: Icons.new_releases_rounded,
+              foreground: AppColors.warning,
+              background: AppColors.warning.withValues(alpha: 0.12),
+            ),
+            workspaceLabel: chain?.workspaceTargetLabel,
+            cardLabel: highlighted ? chain?.cardTargetLabel : null,
+            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
+            summary: highlighted ? chain?.workspaceBrief : null,
           ),
           const SizedBox(height: 14),
           _Line(label: '目标日期', value: asset.targetDate ?? '--'),
@@ -285,25 +244,24 @@ class _OptimizationRegistryCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.restart_alt_rounded),
-                label: const Text('回填优化配置'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '回填优化配置',
+                icon: Icons.restart_alt_rounded,
+                onTap: onApply,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPassport,
-                icon: const Icon(Icons.badge_rounded),
-                label: const Text('复制优化护照'),
+              WorkspaceActionLaneAction(
+                label: '复制优化护照',
+                icon: Icons.badge_rounded,
+                onTap: onCopyPassport,
               ),
               if (onLoadLatestJobResult != null)
-                OutlinedButton.icon(
-                  onPressed: onLoadLatestJobResult,
-                  icon: const Icon(Icons.download_done_rounded),
-                  label: Text(latestJobMatches ? '载入完整结果' : '载入最近后台结果'),
+                WorkspaceActionLaneAction(
+                  label: latestJobMatches ? '载入完整结果' : '载入最近后台结果',
+                  icon: Icons.download_done_rounded,
+                  onTap: onLoadLatestJobResult,
                 ),
             ],
           ),
@@ -311,7 +269,7 @@ class _OptimizationRegistryCard extends StatelessWidget {
       ),
     );
     return _highlightShell(
-      highlighted: chain?.focusTarget == 'optimization_registry',
+      highlighted: highlighted,
       color: AppColors.warning,
       child: card,
     );
@@ -381,71 +339,6 @@ class _RegistryChip extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RegistrySignal extends StatelessWidget {
-  const _RegistrySignal({
-    required this.accent,
-    this.incidentLabel,
-    this.incidentSummary,
-    this.sectionLabel,
-    this.focusLabel,
-  });
-
-  final Color accent;
-  final String? incidentLabel;
-  final String? incidentSummary;
-  final String? sectionLabel;
-  final String? focusLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (incidentLabel != null)
-                _RegistryChip(
-                  label: 'Current watch',
-                  value: incidentLabel!,
-                  accent: accent,
-                  icon: Icons.flag_rounded,
-                ),
-              if (focusLabel != null)
-                _RegistryChip(
-                  label: 'Target',
-                  value: sectionLabel == null
-                      ? focusLabel!
-                      : '${sectionLabel!} · ${focusLabel!}',
-                  accent: AppColors.primary,
-                  icon: Icons.track_changes_rounded,
-                ),
-            ],
-          ),
-          if (incidentSummary != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              incidentSummary!,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
         ],
       ),
     );

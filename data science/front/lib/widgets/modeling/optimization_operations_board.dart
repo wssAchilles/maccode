@@ -270,6 +270,25 @@ bool _focusTelemetryCard(AssetChainSummary? chain, String section) {
   if (chain.sectionTarget == 'optimization_assets') {
     return false;
   }
+  switch (chain.cardTarget) {
+    case 'solver_health':
+      return section == 'solver';
+    case 'constraint_pressure':
+      return section == 'constraint';
+    case 'explainability_probe':
+      return section == 'explainability';
+    case 'recent_artifact':
+      return section == 'artifact';
+    case 'optimization_solver':
+      return section == 'solver';
+    case 'optimization_constraint':
+      return section == 'constraint';
+    case 'optimization_explainability':
+      return section == 'explainability';
+    case 'optimization_registry':
+    case 'optimization_job_panel':
+      return section == 'artifact';
+  }
   switch (chain.focusTarget) {
     case 'optimization_solver':
       return section == 'solver';

@@ -105,7 +105,10 @@ def main():
             print(f"\n📊 能量统计:")
             print(f"   - 总充电量: {total_charged:.2f} kWh")
             print(f"   - 总放电量: {total_discharged:.2f} kWh")
-            print(f"   - 循环效率: {(total_discharged / total_charged * 100):.1f}%")
+            if total_charged > 0:
+                print(f"   - 循环效率: {(total_discharged / total_charged * 100):.1f}%")
+            else:
+                print(f"   - 循环效率: N/A (无充电)")
         
         # 总结
         print("\n" + "="*80)

@@ -9,6 +9,8 @@ import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
 import 'asset_chain_section_header.dart';
+import 'incident_card_header.dart';
+import 'workspace_action_lane.dart';
 
 class AiLabAssetControlBoard extends StatelessWidget {
   const AiLabAssetControlBoard({
@@ -94,24 +96,32 @@ class AiLabAssetControlBoard extends StatelessWidget {
         final hasVersionTimeline =
             (assetSummary?.models.isNotEmpty ?? false) ||
             (assetSummary?.knowledgeBases.isNotEmpty ?? false);
-        final runtimeFocus = activeChain?.sectionTarget == 'ai_lab_runtime';
+        final runtimeFocus =
+            activeChain?.workspaceTarget == 'ai_runtime' ||
+            activeChain?.sectionTarget == 'ai_lab_runtime';
+        final runtimeCardFocused =
+            activeChain?.cardTarget == 'runtime_product' || runtimeFocus;
+        final timelineCardFocused =
+            activeChain?.cardTarget == 'version_timeline';
+        final registryCardFocused =
+            activeChain?.cardTarget == 'registry_snapshot';
         final panels = [
           _ArtifactPanel(
             title: '最近训练任务产物',
             description: '运行期产物保留训练配置、指标和尝试次数，用来快速回填或核查最近执行。',
             icon: Icons.inventory_2_rounded,
             accent: AppColors.cta,
-            sectionLabel: runtimeFocus && activeChain?.key == 'model'
+            workspaceLabel: runtimeCardFocused && activeChain?.key == 'model'
                 ? activeChain?.workspaceTargetLabel
                 : null,
-            highlighted: runtimeFocus && activeChain?.key == 'model',
-            focusLabel: runtimeFocus && activeChain?.key == 'model'
-                ? activeChain?.sectionTargetLabel
+            highlighted: runtimeCardFocused && activeChain?.key == 'model',
+            cardLabel: runtimeCardFocused && activeChain?.key == 'model'
+                ? activeChain?.cardTargetLabel
                 : null,
-            incidentLabel: runtimeFocus && activeChain?.key == 'model'
+            incidentLabel: runtimeCardFocused && activeChain?.key == 'model'
                 ? activeChain?.incidentTargetLabel
                 : null,
-            incidentSummary: runtimeFocus && activeChain?.key == 'model'
+            summary: runtimeCardFocused && activeChain?.key == 'model'
                 ? activeChain?.workspaceBrief
                 : null,
             emptyMessage: '暂无已完成训练产物。提交训练任务后，这里会出现可回填的模型资产。',
@@ -136,17 +146,17 @@ class AiLabAssetControlBoard extends StatelessWidget {
             description: '最近成功构建的集合、文档规模和来源路径集中在这里，便于回填和问答治理。',
             icon: Icons.account_tree_rounded,
             accent: AppColors.primary,
-            sectionLabel: runtimeFocus && activeChain?.key == 'knowledge'
+            workspaceLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
                 ? activeChain?.workspaceTargetLabel
                 : null,
-            highlighted: runtimeFocus && activeChain?.key == 'knowledge',
-            focusLabel: runtimeFocus && activeChain?.key == 'knowledge'
-                ? activeChain?.sectionTargetLabel
+            highlighted: runtimeCardFocused && activeChain?.key == 'knowledge',
+            cardLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
+                ? activeChain?.cardTargetLabel
                 : null,
-            incidentLabel: runtimeFocus && activeChain?.key == 'knowledge'
+            incidentLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
                 ? activeChain?.incidentTargetLabel
                 : null,
-            incidentSummary: runtimeFocus && activeChain?.key == 'knowledge'
+            summary: runtimeCardFocused && activeChain?.key == 'knowledge'
                 ? activeChain?.workspaceBrief
                 : null,
             emptyMessage: '暂无成功的知识库构建结果。提供文档路径后即可生成可复用快照。',
@@ -188,6 +198,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
               const SizedBox(height: 16),
               _RegistrySnapshotSection(
                 activeChain: activeChain,
+                highlighted: registryCardFocused,
                 latestModelAsset: latestModelAsset,
                 latestKnowledgeAsset: latestKnowledgeAsset,
                 onApplyModelAsset: onApplyModelAsset,
@@ -203,6 +214,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
               _AiLabVersionTimelineSection(
                 summary: assetSummary!,
                 activeChain: activeChain,
+                highlighted: timelineCardFocused,
               ),
             ],
             const SizedBox(height: 16),
@@ -235,10 +247,12 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
   const _AiLabVersionTimelineSection({
     required this.summary,
     required this.activeChain,
+    this.highlighted = false,
   });
 
   final AssetSummary summary;
   final AssetChainSummary? activeChain;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -248,26 +262,17 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
         description: '按统一资产摘要查看最近模型版本和来源数据。',
         accent: AppColors.cta,
         icon: Icons.model_training_rounded,
-        sectionLabel:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'model'
+        workspaceLabel: highlighted && activeChain?.key == 'model'
             ? activeChain?.workspaceTargetLabel
             : null,
-        highlighted:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-            activeChain?.key == 'model' &&
-            activeChain?.focusTarget == 'model_registry',
-        focusLabel: activeChain?.key == 'model'
-            ? activeChain?.sectionTargetLabel
+        highlighted: highlighted && activeChain?.key == 'model',
+        cardLabel: activeChain?.key == 'model'
+            ? activeChain?.cardTargetLabel
             : null,
-        incidentLabel:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'model'
+        incidentLabel: highlighted && activeChain?.key == 'model'
             ? activeChain?.incidentTargetLabel
             : null,
-        incidentSummary:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'model'
+        summary: highlighted && activeChain?.key == 'model'
             ? activeChain?.workspaceBrief
             : null,
         items: summary.models
@@ -288,26 +293,17 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
         description: '按统一资产摘要查看最近知识集合版本和索引模式。',
         accent: AppColors.primary,
         icon: Icons.account_tree_rounded,
-        sectionLabel:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'knowledge'
+        workspaceLabel: highlighted && activeChain?.key == 'knowledge'
             ? activeChain?.workspaceTargetLabel
             : null,
-        highlighted:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-            activeChain?.key == 'knowledge' &&
-            activeChain?.focusTarget == 'knowledge_registry',
-        focusLabel: activeChain?.key == 'knowledge'
-            ? activeChain?.sectionTargetLabel
+        highlighted: highlighted && activeChain?.key == 'knowledge',
+        cardLabel: activeChain?.key == 'knowledge'
+            ? activeChain?.cardTargetLabel
             : null,
-        incidentLabel:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'knowledge'
+        incidentLabel: highlighted && activeChain?.key == 'knowledge'
             ? activeChain?.incidentTargetLabel
             : null,
-        incidentSummary:
-            activeChain?.sectionTarget == 'ai_lab_assets' &&
-                activeChain?.key == 'knowledge'
+        summary: highlighted && activeChain?.key == 'knowledge'
             ? activeChain?.workspaceBrief
             : null,
         items: summary.knowledgeBases
@@ -357,11 +353,11 @@ class _VersionLane extends StatelessWidget {
     required this.description,
     required this.accent,
     required this.icon,
-    this.sectionLabel,
+    this.workspaceLabel,
     this.highlighted = false,
-    this.focusLabel,
+    this.cardLabel,
     this.incidentLabel,
-    this.incidentSummary,
+    this.summary,
     required this.items,
   });
 
@@ -369,11 +365,11 @@ class _VersionLane extends StatelessWidget {
   final String description;
   final Color accent;
   final IconData icon;
-  final String? sectionLabel;
+  final String? workspaceLabel;
   final bool highlighted;
-  final String? focusLabel;
+  final String? cardLabel;
   final String? incidentLabel;
-  final String? incidentSummary;
+  final String? summary;
   final List<_VersionItem> items;
 
   @override
@@ -383,47 +379,24 @@ class _VersionLane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: accent,
+            icon: icon,
+            title: title,
+            subtitle: description,
+            trailing: highlighted && cardLabel != null
+                ? WorkspaceStatusChip(
+                    label: cardLabel!,
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: accent,
+                    background: accent.withValues(alpha: 0.12),
+                  )
+                : null,
+            workspaceLabel: highlighted ? workspaceLabel : null,
+            cardLabel: highlighted ? cardLabel : null,
+            incidentLabel: highlighted ? incidentLabel : null,
+            summary: highlighted ? summary : null,
           ),
-          if (highlighted &&
-              (incidentSummary != null || focusLabel != null)) ...[
-            const SizedBox(height: 12),
-            _HighlightSignal(
-              accent: accent,
-              incidentLabel: incidentLabel,
-              incidentSummary: incidentSummary,
-              sectionLabel: sectionLabel,
-              focusLabel: focusLabel,
-            ),
-          ],
           const SizedBox(height: 14),
           if (items.isEmpty)
             Text('暂无版本轨迹。', style: AppTextStyles.bodySmall)
@@ -455,67 +428,6 @@ class _VersionItem {
   final String version;
   final String headline;
   final String supporting;
-}
-
-class _HighlightSignal extends StatelessWidget {
-  const _HighlightSignal({
-    required this.accent,
-    this.incidentLabel,
-    this.incidentSummary,
-    this.sectionLabel,
-    this.focusLabel,
-  });
-
-  final Color accent;
-  final String? incidentLabel;
-  final String? incidentSummary;
-  final String? sectionLabel;
-  final String? focusLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (incidentLabel != null)
-                _ToneChip(
-                  label: 'Current watch · $incidentLabel',
-                  color: accent,
-                ),
-              if (focusLabel != null)
-                _ToneChip(
-                  label: sectionLabel == null
-                      ? focusLabel!
-                      : '${sectionLabel!} · ${focusLabel!}',
-                  color: AppColors.primary,
-                ),
-            ],
-          ),
-          if (incidentSummary != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              incidentSummary!,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _VersionTile extends StatelessWidget {
@@ -550,6 +462,7 @@ class _VersionTile extends StatelessWidget {
 class _RegistrySnapshotSection extends StatelessWidget {
   const _RegistrySnapshotSection({
     required this.activeChain,
+    this.highlighted = false,
     required this.latestModelAsset,
     required this.latestKnowledgeAsset,
     required this.onApplyModelAsset,
@@ -561,6 +474,7 @@ class _RegistrySnapshotSection extends StatelessWidget {
   });
 
   final AssetChainSummary? activeChain;
+  final bool highlighted;
   final AssetModel? latestModelAsset;
   final KnowledgeAsset? latestKnowledgeAsset;
   final ValueChanged<AssetModel> onApplyModelAsset;
@@ -579,26 +493,17 @@ class _RegistrySnapshotSection extends StatelessWidget {
           description: '统一资产摘要中的最新模型版本，用于版本治理、回填和交接。',
           accent: AppColors.cta,
           icon: Icons.model_training_rounded,
-          sectionLabel:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'model'
+          workspaceLabel: highlighted && activeChain?.key == 'model'
               ? activeChain?.workspaceTargetLabel
               : null,
-          highlighted:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-              activeChain?.key == 'model' &&
-              activeChain?.focusTarget == 'model_registry',
-          focusLabel: activeChain?.key == 'model'
-              ? activeChain?.sectionTargetLabel
+          highlighted: highlighted && activeChain?.key == 'model',
+          cardLabel: activeChain?.key == 'model'
+              ? activeChain?.cardTargetLabel
               : null,
-          incidentLabel:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'model'
+          incidentLabel: highlighted && activeChain?.key == 'model'
               ? activeChain?.incidentTargetLabel
               : null,
-          incidentSummary:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'model'
+          summary: highlighted && activeChain?.key == 'model'
               ? activeChain?.workspaceBrief
               : null,
           child: _ModelRegistryTile(
@@ -615,26 +520,17 @@ class _RegistrySnapshotSection extends StatelessWidget {
           description: '统一资产摘要中的最新知识集合版本，便于回放、问答和集合治理。',
           accent: AppColors.primary,
           icon: Icons.account_tree_rounded,
-          sectionLabel:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'knowledge'
+          workspaceLabel: highlighted && activeChain?.key == 'knowledge'
               ? activeChain?.workspaceTargetLabel
               : null,
-          highlighted:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-              activeChain?.key == 'knowledge' &&
-              activeChain?.focusTarget == 'knowledge_registry',
-          focusLabel: activeChain?.key == 'knowledge'
-              ? activeChain?.sectionTargetLabel
+          highlighted: highlighted && activeChain?.key == 'knowledge',
+          cardLabel: activeChain?.key == 'knowledge'
+              ? activeChain?.cardTargetLabel
               : null,
-          incidentLabel:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'knowledge'
+          incidentLabel: highlighted && activeChain?.key == 'knowledge'
               ? activeChain?.incidentTargetLabel
               : null,
-          incidentSummary:
-              activeChain?.sectionTarget == 'ai_lab_assets' &&
-                  activeChain?.key == 'knowledge'
+          summary: highlighted && activeChain?.key == 'knowledge'
               ? activeChain?.workspaceBrief
               : null,
           child: _KnowledgeRegistryTile(
@@ -684,11 +580,11 @@ class _RegistrySnapshotCard extends StatelessWidget {
     required this.description,
     required this.accent,
     required this.icon,
-    this.sectionLabel,
+    this.workspaceLabel,
     this.highlighted = false,
-    this.focusLabel,
+    this.cardLabel,
     this.incidentLabel,
-    this.incidentSummary,
+    this.summary,
     required this.child,
   });
 
@@ -696,11 +592,11 @@ class _RegistrySnapshotCard extends StatelessWidget {
   final String description;
   final Color accent;
   final IconData icon;
-  final String? sectionLabel;
+  final String? workspaceLabel;
   final bool highlighted;
-  final String? focusLabel;
+  final String? cardLabel;
   final String? incidentLabel;
-  final String? incidentSummary;
+  final String? summary;
   final Widget child;
 
   @override
@@ -710,47 +606,24 @@ class _RegistrySnapshotCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: accent,
+            icon: icon,
+            title: title,
+            subtitle: description,
+            trailing: highlighted && cardLabel != null
+                ? WorkspaceStatusChip(
+                    label: cardLabel!,
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: accent,
+                    background: accent.withValues(alpha: 0.12),
+                  )
+                : null,
+            workspaceLabel: highlighted ? workspaceLabel : null,
+            cardLabel: highlighted ? cardLabel : null,
+            incidentLabel: highlighted ? incidentLabel : null,
+            summary: highlighted ? summary : null,
           ),
-          if (highlighted &&
-              (incidentSummary != null || focusLabel != null)) ...[
-            const SizedBox(height: 12),
-            _HighlightSignal(
-              accent: accent,
-              incidentLabel: incidentLabel,
-              incidentSummary: incidentSummary,
-              sectionLabel: sectionLabel,
-              focusLabel: focusLabel,
-            ),
-          ],
           const SizedBox(height: 14),
           child,
         ],
@@ -812,24 +685,23 @@ class _ModelRegistryTile extends StatelessWidget {
           const SizedBox(height: 8),
           _LabeledValue(label: '资产血缘', value: lineage),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.restart_alt_rounded),
-                label: const Text('回填训练入口'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '回填训练入口',
+                icon: Icons.restart_alt_rounded,
+                onTap: onApply,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPath,
-                icon: const Icon(Icons.copy_all_rounded),
-                label: const Text('复制模型路径'),
+              WorkspaceActionLaneAction(
+                label: '复制模型路径',
+                icon: Icons.copy_all_rounded,
+                onTap: onCopyPath,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPassport,
-                icon: const Icon(Icons.badge_rounded),
-                label: const Text('复制模型护照'),
+              WorkspaceActionLaneAction(
+                label: '复制模型护照',
+                icon: Icons.badge_rounded,
+                onTap: onCopyPassport,
               ),
             ],
           ),
@@ -885,24 +757,23 @@ class _KnowledgeRegistryTile extends StatelessWidget {
           const SizedBox(height: 8),
           _LabeledValue(label: '资产血缘', value: lineage),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.hub_rounded),
-                label: const Text('回填知识入口'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '回填知识入口',
+                icon: Icons.hub_rounded,
+                onTap: onApply,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyCollection,
-                icon: const Icon(Icons.copy_rounded),
-                label: const Text('复制集合名'),
+              WorkspaceActionLaneAction(
+                label: '复制集合名',
+                icon: Icons.copy_rounded,
+                onTap: onCopyCollection,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPassport,
-                icon: const Icon(Icons.badge_rounded),
-                label: const Text('复制快照护照'),
+              WorkspaceActionLaneAction(
+                label: '复制快照护照',
+                icon: Icons.badge_rounded,
+                onTap: onCopyPassport,
               ),
             ],
           ),
@@ -956,11 +827,11 @@ class _ArtifactPanel extends StatelessWidget {
     required this.description,
     required this.icon,
     required this.accent,
-    this.sectionLabel,
+    this.workspaceLabel,
     this.highlighted = false,
-    this.focusLabel,
+    this.cardLabel,
     this.incidentLabel,
-    this.incidentSummary,
+    this.summary,
     required this.emptyMessage,
     required this.children,
     this.footer,
@@ -970,11 +841,11 @@ class _ArtifactPanel extends StatelessWidget {
   final String description;
   final IconData icon;
   final Color accent;
-  final String? sectionLabel;
+  final String? workspaceLabel;
   final bool highlighted;
-  final String? focusLabel;
+  final String? cardLabel;
   final String? incidentLabel;
-  final String? incidentSummary;
+  final String? summary;
   final String emptyMessage;
   final List<Widget> children;
   final Widget? footer;
@@ -986,47 +857,24 @@ class _ArtifactPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: accent,
+            icon: icon,
+            title: title,
+            subtitle: description,
+            trailing: highlighted && cardLabel != null
+                ? WorkspaceStatusChip(
+                    label: cardLabel!,
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: accent,
+                    background: accent.withValues(alpha: 0.12),
+                  )
+                : null,
+            workspaceLabel: highlighted ? workspaceLabel : null,
+            cardLabel: highlighted ? cardLabel : null,
+            incidentLabel: highlighted ? incidentLabel : null,
+            summary: highlighted ? summary : null,
           ),
-          if (highlighted &&
-              (incidentSummary != null || focusLabel != null)) ...[
-            const SizedBox(height: 12),
-            _HighlightSignal(
-              accent: accent,
-              incidentLabel: incidentLabel,
-              incidentSummary: incidentSummary,
-              sectionLabel: sectionLabel,
-              focusLabel: focusLabel,
-            ),
-          ],
           const SizedBox(height: 14),
           if (children.isEmpty)
             Text(emptyMessage, style: AppTextStyles.bodySmall)
@@ -1115,19 +963,18 @@ class _TrainingArtifactTile extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.restart_alt_rounded),
-                label: const Text('回填训练配置'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '回填训练配置',
+                icon: Icons.restart_alt_rounded,
+                onTap: onApply,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPath,
-                icon: const Icon(Icons.copy_all_rounded),
-                label: const Text('复制模型路径'),
+              WorkspaceActionLaneAction(
+                label: '复制模型路径',
+                icon: Icons.copy_all_rounded,
+                onTap: onCopyPath,
               ),
             ],
           ),
@@ -1191,19 +1038,18 @@ class _KnowledgeSnapshotTile extends StatelessWidget {
                 'job=${job.jobId.substring(0, 8)} · ${_asBool(job.input["reset"]) == true ? "重建" : "增量"} 索引',
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: onApply,
-                icon: const Icon(Icons.hub_rounded),
-                label: const Text('回填知识库入口'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '回填知识库入口',
+                icon: Icons.hub_rounded,
+                onTap: onApply,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyCollection,
-                icon: const Icon(Icons.copy_rounded),
-                label: const Text('复制集合名'),
+              WorkspaceActionLaneAction(
+                label: '复制集合名',
+                icon: Icons.copy_rounded,
+                onTap: onCopyCollection,
               ),
             ],
           ),

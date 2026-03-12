@@ -123,6 +123,8 @@ class AssetChainSummary {
     required this.workspaceTarget,
     required this.workspaceTargetLabel,
     required this.workspaceBrief,
+    required this.cardTarget,
+    required this.cardTargetLabel,
     required this.incidentTarget,
     required this.incidentTargetLabel,
     required this.incidentBrief,
@@ -173,6 +175,8 @@ class AssetChainSummary {
   final String workspaceTarget;
   final String workspaceTargetLabel;
   final String workspaceBrief;
+  final String cardTarget;
+  final String cardTargetLabel;
   final String incidentTarget;
   final String incidentTargetLabel;
   final String incidentBrief;
@@ -239,6 +243,13 @@ class AssetChainSummary {
                   ))
               .toString(),
       workspaceBrief: (json['workspace_brief'] ?? '--').toString(),
+      cardTarget: (json['card_target'] ?? 'summary').toString(),
+      cardTargetLabel:
+          (json['card_target_label'] ??
+                  _defaultCardTargetLabel(
+                    (json['card_target'] ?? 'summary').toString(),
+                  ))
+              .toString(),
       incidentTarget: (json['incident_target'] ?? 'focus').toString(),
       incidentTargetLabel:
           (json['incident_target_label'] ??
@@ -276,6 +287,56 @@ class AssetChainSummary {
       actionLabel: (json['action_label'] ?? '打开工作台').toString(),
       timeline: _mapList(json['timeline'], AssetChainNode.fromJson),
     );
+  }
+}
+
+String _defaultCardTargetLabel(String target) {
+  switch (target) {
+    case 'strategy':
+      return '执行策略';
+    case 'job_health':
+      return '任务健康';
+    case 'asset_route':
+      return '资产路线';
+    case 'asset_quality':
+      return '资产质量';
+    case 'schema_topology':
+      return 'Schema 拓扑';
+    case 'field_distribution':
+      return '字段分布';
+    case 'risk_digest':
+      return '风险摘要';
+    case 'next_actions':
+      return '下一步动作';
+    case 'current_asset':
+      return '当前资产';
+    case 'reference_asset':
+      return '基线资产';
+    case 'drift_report':
+      return '漂移报告';
+    case 'governance_decision':
+      return '治理结论';
+    case 'runtime_product':
+      return '运行产物';
+    case 'version_timeline':
+      return '版本轨迹';
+    case 'registry_snapshot':
+      return '注册表快照';
+    case 'solver_health':
+      return '求解器健康';
+    case 'constraint_pressure':
+      return '约束压力';
+    case 'explainability_probe':
+      return '解释性前哨';
+    case 'recent_artifact':
+      return '最近产物';
+    case 'registry_summary':
+      return '注册表摘要';
+    case 'latest_snapshot':
+      return '最新快照';
+    case 'summary':
+    default:
+      return '当前卡片';
   }
 }
 

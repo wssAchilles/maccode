@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import 'incident_card_header.dart';
+import 'section_intro.dart';
+import 'workspace_action_lane.dart';
 
 class AssetGovernanceQueue extends StatelessWidget {
   const AssetGovernanceQueue({
@@ -34,14 +37,7 @@ class AssetGovernanceQueue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
+        SectionIntro(title: title, subtitle: description),
         const SizedBox(height: 12),
         if (failureChains.isNotEmpty) ...[
           _SectionLabel(title: '失败链路'),
@@ -142,65 +138,35 @@ class _GovernanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: tone.background,
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(tone.icon, color: tone.foreground, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.label, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      'latest v${item.latestVersion} · ${item.latestLabel}',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: tone.background,
-                  borderRadius: BorderRadius.circular(
-                    AppDecorations.radiusFull,
-                  ),
-                ),
-                child: Text(
-                  item.riskLevel.toUpperCase(),
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: tone.foreground,
-                  ),
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: tone.foreground,
+            icon: tone.icon,
+            title: item.label,
+            subtitle: 'latest v${item.latestVersion} · ${item.latestLabel}',
+            trailing: WorkspaceStatusChip(
+              label: item.riskLevel.toUpperCase(),
+              icon: tone.icon,
+              foreground: tone.foreground,
+              background: tone.background,
+            ),
+            workspaceLabel: item.workspaceTargetLabel,
+            incidentLabel: item.actionLabel,
+            summary: item.workspaceBrief,
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _QueueBadge(
+              WorkspaceStatusChip(
                 label: item.workspaceTargetLabel,
+                icon: Icons.account_tree_rounded,
                 foreground: tone.foreground,
                 background: tone.background,
               ),
-              _QueueBadge(
+              WorkspaceStatusChip(
                 label: item.actionLabel,
+                icon: Icons.playlist_add_check_circle_rounded,
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
@@ -221,10 +187,15 @@ class _GovernanceCard extends StatelessWidget {
             _MetricRow(label: '失败来源', value: item.failureSummary),
           _MetricRow(label: '处置建议', value: item.recommendedAction),
           const SizedBox(height: 14),
-          FilledButton.tonalIcon(
-            onPressed: onAction,
-            icon: Icon(tone.icon),
-            label: Text(item.actionLabel),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: item.actionLabel,
+                icon: tone.icon,
+                onTap: onAction,
+                tone: WorkspaceActionLaneTone.tonal,
+              ),
+            ],
           ),
         ],
       ),
@@ -262,33 +233,6 @@ class _MetricRow extends StatelessWidget {
   }
 }
 
-class _QueueBadge extends StatelessWidget {
-  const _QueueBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelMedium.copyWith(color: foreground),
-      ),
-    );
-  }
-}
-
 class _FailureChainCard extends StatelessWidget {
   const _FailureChainCard({required this.chain, this.onAction});
 
@@ -302,69 +246,35 @@ class _FailureChainCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.errorLight,
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  color: AppColors.error,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(chain.label, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      'v${chain.latestVersion} · ${chain.contextLabel}',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.errorLight,
-                  borderRadius: BorderRadius.circular(
-                    AppDecorations.radiusFull,
-                  ),
-                ),
-                child: Text(
-                  chain.latestPhase.toUpperCase(),
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.error,
-                  ),
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: AppColors.error,
+            icon: Icons.error_outline_rounded,
+            title: chain.label,
+            subtitle: 'v${chain.latestVersion} · ${chain.contextLabel}',
+            trailing: WorkspaceStatusChip(
+              label: chain.latestPhase.toUpperCase(),
+              icon: Icons.error_outline_rounded,
+              foreground: AppColors.error,
+              background: AppColors.errorLight,
+            ),
+            workspaceLabel: chain.workspaceTargetLabel,
+            incidentLabel: chain.actionLabel,
+            summary: chain.workspaceBrief,
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _QueueBadge(
+              WorkspaceStatusChip(
                 label: chain.workspaceTargetLabel,
+                icon: Icons.account_tree_rounded,
                 foreground: AppColors.error,
                 background: AppColors.errorLight,
               ),
-              _QueueBadge(
+              WorkspaceStatusChip(
                 label: chain.actionLabel,
+                icon: Icons.build_circle_outlined,
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
@@ -389,10 +299,15 @@ class _FailureChainCard extends StatelessWidget {
           _MetricRow(label: '处置建议', value: chain.recommendedAction),
           if (onAction != null) ...[
             const SizedBox(height: 14),
-            FilledButton.tonalIcon(
-              onPressed: onAction,
-              icon: const Icon(Icons.build_circle_outlined),
-              label: Text(chain.actionLabel),
+            WorkspaceInlineActionBar(
+              actions: [
+                WorkspaceActionLaneAction(
+                  label: chain.actionLabel,
+                  icon: Icons.build_circle_outlined,
+                  onTap: onAction,
+                  tone: WorkspaceActionLaneTone.tonal,
+                ),
+              ],
             ),
           ],
         ],

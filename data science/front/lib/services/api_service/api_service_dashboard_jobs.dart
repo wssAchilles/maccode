@@ -42,9 +42,9 @@ Future<List<Map<String, dynamic>>> _listJobs({
     _baseUrl,
     '/api/jobs',
     queryParameters: <String, Object?>{
-      if (type != null) 'type': type,
-      if (status != null) 'status': status,
       'limit': limit,
+      ...?type == null ? null : <String, Object?>{'type': type},
+      ...?status == null ? null : <String, Object?>{'status': status},
     },
   );
   final data = _unwrapEnvelopeData(response, fallback: '获取任务列表失败');
@@ -79,11 +79,21 @@ Future<Map<String, dynamic>> _createOptimizationJob({
     '/api/jobs/optimization',
     body: jsonEncode(<String, dynamic>{
       'initial_soc': initialSoc,
-      if (targetDate != null) 'target_date': _formatDate(targetDate),
-      if (batteryCapacity != null) 'battery_capacity': batteryCapacity,
-      if (batteryPower != null) 'battery_power': batteryPower,
-      if (batteryEfficiency != null) 'battery_efficiency': batteryEfficiency,
-      if (temperatureAdjust != null) 'temperature_adjust': temperatureAdjust,
+      ...?targetDate == null
+          ? null
+          : <String, dynamic>{'target_date': _formatDate(targetDate)},
+      ...?batteryCapacity == null
+          ? null
+          : <String, dynamic>{'battery_capacity': batteryCapacity},
+      ...?batteryPower == null
+          ? null
+          : <String, dynamic>{'battery_power': batteryPower},
+      ...?batteryEfficiency == null
+          ? null
+          : <String, dynamic>{'battery_efficiency': batteryEfficiency},
+      ...?temperatureAdjust == null
+          ? null
+          : <String, dynamic>{'temperature_adjust': temperatureAdjust},
     }),
     timeout: AppConstants.optimizationTimeout,
   );
@@ -100,8 +110,8 @@ Future<Map<String, dynamic>> _createAnalysisJob({
     '/api/jobs/analysis',
     body: jsonEncode(<String, dynamic>{
       'storage_path': storagePath,
-      if (filename != null) 'filename': filename,
       'save_to_storage': saveToStorage,
+      ...?filename == null ? null : <String, dynamic>{'filename': filename},
     }),
     timeout: AppConstants.optimizationTimeout,
   );
@@ -142,9 +152,10 @@ Future<Map<String, dynamic>> _createRagIngestJob({
     '/api/jobs/rag-ingest',
     body: jsonEncode(<String, dynamic>{
       'storage_path': storagePath,
-      if (collectionName != null && collectionName.isNotEmpty)
-        'collection_name': collectionName,
       'reset': reset,
+      ...?collectionName == null || collectionName.isEmpty
+          ? null
+          : <String, dynamic>{'collection_name': collectionName},
     }),
     timeout: AppConstants.optimizationTimeout,
   );

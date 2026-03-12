@@ -11,6 +11,7 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/data_analysis_launch_intent.dart';
+import '../utils/asset_chain_context.dart';
 import '../widgets/responsive_wrapper.dart';
 import '../models/analysis_result.dart';
 import '../models/history_record.dart';
@@ -1063,17 +1064,12 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     AssetChainSummary? chain, {
     required String prefix,
   }) {
-    if (chain == null) {
-      return prefix;
-    }
-    return [
-      prefix,
-      chain.label,
-      chain.workspaceTargetLabel,
-      chain.sectionTargetLabel,
-      chain.incidentTargetLabel,
-      chain.focusLabel,
-    ].join(' · ');
+    return buildChainSourceLabel(
+      chain,
+      prefix: prefix,
+      includeSection: true,
+      includeFocus: true,
+    );
   }
 
   AssetChainSummary? _datasetChain() {
@@ -1083,17 +1079,11 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   String _datasetFeedbackMessage(String prefix, {String? detail}) {
-    final chain = _datasetChain();
-    if (chain == null) {
-      return detail == null || detail.isEmpty ? prefix : '$prefix · $detail';
-    }
-    final buffer = StringBuffer(
-      '$prefix · ${chain.workspaceTargetLabel} · ${chain.incidentTargetLabel}',
+    return buildChainFeedbackMessage(
+      _datasetChain(),
+      prefix: prefix,
+      detail: detail,
     );
-    if (detail != null && detail.isNotEmpty) {
-      buffer.write(' · $detail');
-    }
-    return buffer.toString();
   }
 }
 

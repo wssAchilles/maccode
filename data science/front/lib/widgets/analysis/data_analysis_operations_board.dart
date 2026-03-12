@@ -11,6 +11,7 @@ import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
+import '../operations/incident_card_header.dart';
 
 class DataAnalysisOperationsBoard extends StatelessWidget {
   const DataAnalysisOperationsBoard({
@@ -81,13 +82,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     ? Icons.schedule_rounded
                     : Icons.bolt_rounded,
                 highlighted: focusArea == 'strategy',
-                focusLabel: focusArea == 'strategy' ? chain?.focusLabel : null,
+                workspaceLabel: focusArea == 'strategy'
+                    ? chain?.workspaceTargetLabel
+                    : null,
+                cardLabel: focusArea == 'strategy' ? chain?.cardTargetLabel : null,
                 incidentLabel: focusArea == 'strategy'
                     ? chain?.incidentTargetLabel
                     : null,
-                incidentSummary: focusArea == 'strategy'
-                    ? chain?.incidentBrief
-                    : null,
+                summary: focusArea == 'strategy' ? chain?.workspaceBrief : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -148,13 +150,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     ? Icons.warning_amber_rounded
                     : Icons.monitor_heart_rounded,
                 highlighted: focusArea == 'task',
-                focusLabel: focusArea == 'task' ? chain?.focusLabel : null,
+                workspaceLabel: focusArea == 'task'
+                    ? chain?.workspaceTargetLabel
+                    : null,
+                cardLabel: focusArea == 'task' ? chain?.cardTargetLabel : null,
                 incidentLabel: focusArea == 'task'
                     ? chain?.incidentTargetLabel
                     : null,
-                incidentSummary: focusArea == 'task'
-                    ? chain?.incidentBrief
-                    : null,
+                summary: focusArea == 'task' ? chain?.workspaceBrief : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -186,13 +189,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 accent: assetReady ? AppColors.primary : AppColors.warning,
                 icon: assetReady ? Icons.route_rounded : Icons.route_outlined,
                 highlighted: focusArea == 'asset',
-                focusLabel: focusArea == 'asset' ? chain?.focusLabel : null,
+                workspaceLabel: focusArea == 'asset'
+                    ? chain?.workspaceTargetLabel
+                    : null,
+                cardLabel: focusArea == 'asset' ? chain?.cardTargetLabel : null,
                 incidentLabel: focusArea == 'asset'
                     ? chain?.incidentTargetLabel
                     : null,
-                incidentSummary: focusArea == 'asset'
-                    ? chain?.incidentBrief
-                    : null,
+                summary: focusArea == 'asset' ? chain?.workspaceBrief : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -238,13 +242,14 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     ? Icons.dataset_linked_rounded
                     : Icons.fact_check_rounded,
                 highlighted: focusArea == 'quality',
-                focusLabel: focusArea == 'quality' ? chain?.focusLabel : null,
+                workspaceLabel: focusArea == 'quality'
+                    ? chain?.workspaceTargetLabel
+                    : null,
+                cardLabel: focusArea == 'quality' ? chain?.cardTargetLabel : null,
                 incidentLabel: focusArea == 'quality'
                     ? chain?.incidentTargetLabel
                     : null,
-                incidentSummary: focusArea == 'quality'
-                    ? chain?.incidentBrief
-                    : null,
+                summary: focusArea == 'quality' ? chain?.workspaceBrief : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -328,9 +333,10 @@ class _OperationsCard extends StatelessWidget {
     required this.icon,
     required this.child,
     this.highlighted = false,
-    this.focusLabel,
+    this.workspaceLabel,
+    this.cardLabel,
     this.incidentLabel,
-    this.incidentSummary,
+    this.summary,
   });
 
   final String title;
@@ -339,9 +345,10 @@ class _OperationsCard extends StatelessWidget {
   final IconData icon;
   final Widget child;
   final bool highlighted;
-  final String? focusLabel;
+  final String? workspaceLabel;
+  final String? cardLabel;
   final String? incidentLabel;
-  final String? incidentSummary;
+  final String? summary;
 
   @override
   Widget build(BuildContext context) {
@@ -350,74 +357,22 @@ class _OperationsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, size: 20, color: accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (highlighted && incidentLabel != null) ...[
-                      const SizedBox(height: 6),
-                      _StateBadge(
-                        label: 'Current watch · $incidentLabel',
-                        tone: _BadgeTone.info,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: accent,
+            icon: icon,
+            title: title,
+            subtitle: subtitle,
+            trailing: highlighted && cardLabel != null
+                ? _StateBadge(
+                    label: cardLabel!,
+                    tone: _BadgeTone.info,
+                  )
+                : null,
+            workspaceLabel: highlighted ? workspaceLabel : null,
+            cardLabel: highlighted ? cardLabel : null,
+            incidentLabel: highlighted ? incidentLabel : null,
+            summary: highlighted ? summary : null,
           ),
-          if (highlighted &&
-              (incidentSummary != null || focusLabel != null)) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                border: Border.all(color: accent.withValues(alpha: 0.16)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (incidentSummary != null)
-                    Text(
-                      incidentSummary!,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  if (focusLabel != null) ...[
-                    if (incidentSummary != null) const SizedBox(height: 4),
-                    Text(
-                      'Target · $focusLabel',
-                      style: AppTextStyles.bodySmall.copyWith(color: accent),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
           child,
         ],
@@ -560,16 +515,29 @@ class _SchemaMix {
 }
 
 String _operationsFocusArea(AssetChainSummary? chain) {
+  switch (chain?.cardTarget) {
+    case 'strategy':
+      return 'strategy';
+    case 'job_health':
+      return 'task';
+    case 'asset_route':
+      return 'asset';
+    case 'asset_quality':
+      return 'quality';
+    case 'dataset_job_panel':
+      return 'task';
+    case 'dataset_current_asset':
+      return 'asset';
+    case 'dataset_reference_asset':
+    case 'dataset_drift_report':
+    case 'dataset_governance_decision':
+    case 'dataset_results':
+      return 'quality';
+  }
   switch (chain?.sectionTarget) {
     case 'data_analysis_operations':
-      if (chain?.focusTarget == 'dataset_job_panel') {
-        return 'task';
-      }
       return 'strategy';
     case 'data_analysis_results':
-      if (chain?.focusTarget == 'dataset_current_asset') {
-        return 'asset';
-      }
       return 'quality';
   }
   switch (chain?.focusTarget) {

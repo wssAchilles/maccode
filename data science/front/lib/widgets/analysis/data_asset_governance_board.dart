@@ -10,6 +10,8 @@ import '../../models/dashboard_summary.dart';
 import '../../models/history_record.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
+import '../operations/incident_card_header.dart';
+import '../operations/workspace_action_lane.dart';
 
 class DataAssetGovernanceBoard extends StatelessWidget {
   const DataAssetGovernanceBoard({
@@ -134,41 +136,16 @@ class DataAssetGovernanceBoard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.cta.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(
-                        AppDecorations.radiusMd,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.analytics_rounded,
-                      color: AppColors.cta,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('资产对比与漂移检测', style: AppTextStyles.h4),
-                        const SizedBox(height: 4),
-                        Text(
-                          '基于最近资产选择基线，针对关键数值字段运行 PSI 漂移检测，决定是否需要重新训练或继续监控。',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              IncidentCardHeader(
+                accent: AppColors.cta,
+                icon: Icons.analytics_rounded,
+                title: '资产对比与漂移检测',
+                subtitle:
+                    '基于最近资产选择基线，针对关键数值字段运行 PSI 漂移检测，决定是否需要重新训练或继续监控。',
+                workspaceLabel: chain?.workspaceTargetLabel,
+                cardLabel: chain?.cardTargetLabel,
+                incidentLabel: chain?.incidentTargetLabel,
+                summary: chain?.workspaceBrief,
               ),
               const SizedBox(height: 16),
               Text('检测字段', style: AppTextStyles.labelLarge),
@@ -195,25 +172,19 @@ class DataAssetGovernanceBoard extends StatelessWidget {
                       .toList(growable: false),
                 ),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton.icon(
-                    onPressed: canRunDrift ? onRunDrift : null,
-                    icon: isRunningDrift
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.analytics_rounded),
-                    label: Text(isRunningDrift ? '检测中...' : '运行漂移检测'),
+              WorkspaceInlineActionBar(
+                actions: [
+                  WorkspaceActionLaneAction(
+                    label: isRunningDrift ? '检测中...' : '运行漂移检测',
+                    icon: Icons.analytics_rounded,
+                    onTap: canRunDrift ? onRunDrift : null,
+                    tone: WorkspaceActionLaneTone.primary,
+                    isLoading: isRunningDrift,
                   ),
-                  OutlinedButton.icon(
-                    onPressed: report == null ? null : onCopyDriftReport,
-                    icon: const Icon(Icons.content_copy_rounded),
-                    label: const Text('复制漂移报告'),
+                  WorkspaceActionLaneAction(
+                    label: '复制漂移报告',
+                    icon: Icons.content_copy_rounded,
+                    onTap: report == null ? null : onCopyDriftReport,
                   ),
                 ],
               ),
@@ -276,27 +247,24 @@ class _CurrentAssetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text('当前资产', style: AppTextStyles.h4)),
-              if (highlighted)
-                _SummaryChip(
-                  label: 'WATCH',
-                  value: chain?.incidentTargetLabel ?? '当前资产',
-                  color: AppColors.primary,
-                ),
-            ],
+          IncidentCardHeader(
+            accent: AppColors.primary,
+            icon: Icons.inventory_2_rounded,
+            title: '当前资产',
+            subtitle: currentAssetLabel,
+            trailing: highlighted
+                ? WorkspaceStatusChip(
+                    label: chain?.cardTargetLabel ?? '当前资产',
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: AppColors.primary,
+                    background: AppColors.primary.withValues(alpha: 0.12),
+                  )
+                : null,
+            workspaceLabel: highlighted ? chain?.workspaceTargetLabel : null,
+            cardLabel: highlighted ? chain?.cardTargetLabel : null,
+            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
+            summary: highlighted ? chain?.workspaceBrief : null,
           ),
-          if (highlighted && chain != null) ...[
-            const SizedBox(height: 8),
-            _ContextSignal(
-              accent: AppColors.primary,
-              sectionLabel: chain!.sectionTargetLabel,
-              focusLabel: chain!.focusTargetLabel,
-              incidentLabel: chain!.incidentTargetLabel,
-              incidentSummary: chain!.incidentBrief,
-            ),
-          ],
           const SizedBox(height: 8),
           _DigestRow(label: '资产标签', value: currentAssetLabel),
           const SizedBox(height: 8),
@@ -316,10 +284,14 @@ class _CurrentAssetCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: hasPath ? onCopyCurrentPath : null,
-            icon: const Icon(Icons.copy_rounded),
-            label: const Text('复制当前路径'),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '复制当前路径',
+                icon: Icons.copy_rounded,
+                onTap: hasPath ? onCopyCurrentPath : null,
+              ),
+            ],
           ),
         ],
       ),
@@ -362,35 +334,35 @@ class _ReferenceAssetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text('基线资产', style: AppTextStyles.h4)),
-              if (highlighted)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _SummaryChip(
-                    label: 'WATCH',
-                    value: chain?.incidentTargetLabel ?? '选择基线',
-                    color: AppColors.warning,
+          IncidentCardHeader(
+            accent: AppColors.warning,
+            icon: Icons.compare_arrows_rounded,
+            title: '基线资产',
+            subtitle: selectedReference == null
+                ? '选择一个历史资产作为漂移对比基线。'
+                : _assetLabel(selectedReference!),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (highlighted)
+                  WorkspaceStatusChip(
+                    label: chain?.cardTargetLabel ?? '选择基线',
+                    icon: Icons.dashboard_customize_rounded,
+                    foreground: AppColors.warning,
+                    background: AppColors.warning.withValues(alpha: 0.12),
                   ),
+                IconButton(
+                  onPressed: isLoadingAssets ? null : onRefreshAssets,
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: '刷新资产列表',
                 ),
-              IconButton(
-                onPressed: isLoadingAssets ? null : onRefreshAssets,
-                icon: const Icon(Icons.refresh_rounded),
-                tooltip: '刷新资产列表',
-              ),
-            ],
-          ),
-          if (highlighted && chain != null) ...[
-            const SizedBox(height: 8),
-            _ContextSignal(
-              accent: AppColors.warning,
-              sectionLabel: chain!.sectionTargetLabel,
-              focusLabel: chain!.focusTargetLabel,
-              incidentLabel: chain!.incidentTargetLabel,
-              incidentSummary: chain!.incidentBrief,
+              ],
             ),
-          ],
+            workspaceLabel: highlighted ? chain?.workspaceTargetLabel : null,
+            cardLabel: highlighted ? chain?.cardTargetLabel : null,
+            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
+            summary: highlighted ? chain?.workspaceBrief : null,
+          ),
           const SizedBox(height: 8),
           if (assets.isEmpty)
             Text(
@@ -683,66 +655,22 @@ class _GovernanceDecisionCard extends StatelessWidget {
   }
 }
 
-class _ContextSignal extends StatelessWidget {
-  const _ContextSignal({
-    required this.accent,
-    required this.sectionLabel,
-    required this.focusLabel,
-    required this.incidentLabel,
-    required this.incidentSummary,
-  });
-
-  final Color accent;
-  final String sectionLabel;
-  final String focusLabel;
-  final String incidentLabel;
-  final String incidentSummary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _SummaryChip(
-                label: 'Section',
-                value: sectionLabel,
-                color: accent,
-              ),
-              _SummaryChip(label: 'Target', value: focusLabel, color: accent),
-              _SummaryChip(label: 'Watch', value: incidentLabel, color: accent),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            incidentSummary,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 String _focusArea(
   AssetChainSummary? chain, {
   required bool hasCurrentAsset,
   required bool hasReference,
   required bool hasReport,
 }) {
+  switch (chain?.cardTarget) {
+    case 'current_asset':
+      return 'current';
+    case 'reference_asset':
+      return 'reference';
+    case 'drift_report':
+      return 'report';
+    case 'governance_decision':
+      return 'decision';
+  }
   switch (chain?.focusTarget) {
     case 'dataset_current_asset':
       return 'current';

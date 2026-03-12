@@ -53,8 +53,8 @@ OptimizationResponse _buildResponse({
 }) {
   return OptimizationResponse.fromJson({
     'success': success,
-    if (message != null) 'message': message,
-    if (error != null) 'error': error,
+    ...?message == null ? null : <String, dynamic>{'message': message},
+    ...?error == null ? null : <String, dynamic>{'error': error},
     'optimization': <String, dynamic>{
       'status': success ? 'Optimal' : 'Failed',
       'chart_data': <dynamic>[],

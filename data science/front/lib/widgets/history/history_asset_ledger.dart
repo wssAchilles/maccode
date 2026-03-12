@@ -12,6 +12,9 @@ import '../../models/job_record.dart';
 import '../../models/optimization_launch_intent.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import '../operations/incident_card_header.dart';
+import '../operations/section_intro.dart';
+import '../operations/workspace_action_lane.dart';
 
 class HistoryAssetLedger extends StatelessWidget {
   const HistoryAssetLedger({
@@ -321,13 +324,9 @@ class _CompactLedgerMatrix extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('资产台账矩阵', style: AppTextStyles.h4),
-          const SizedBox(height: 8),
-          Text(
-            '用更高密度的方式统一查看链路状态、版本、焦点、责任和回放库存，减少在四类资产卡片之间来回切换。',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
+          const SectionIntro(
+            title: '资产台账矩阵',
+            subtitle: '用更高密度的方式统一查看链路状态、版本、焦点、责任和回放库存，减少在四类资产卡片之间来回切换。',
           ),
           const SizedBox(height: 12),
           Column(
@@ -385,13 +384,15 @@ class _CompactLedgerRow extends StatelessWidget {
           final compact = constraints.maxWidth < 920;
           final summary = _rowSummary(context);
           final action = _rowAction();
+          final actionWidgets =
+              action == null ? const <Widget>[] : <Widget>[action];
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 summary,
                 const SizedBox(height: 10),
-                if (action != null) action,
+                ...actionWidgets,
               ],
             );
           }
@@ -400,7 +401,7 @@ class _CompactLedgerRow extends StatelessWidget {
             children: [
               Expanded(child: summary),
               const SizedBox(width: 16),
-              if (action != null) action,
+              ...actionWidgets,
             ],
           );
         },
@@ -422,10 +423,9 @@ class _CompactLedgerRow extends StatelessWidget {
               label: chain.statusLabel,
               color: chain.isOverdue ? AppColors.error : AppColors.primary,
             ),
-            _LedgerTag(label: chain.incidentTargetLabel, color: tone),
             _LedgerTag(label: chain.workspaceTargetLabel, color: tone),
-            _LedgerTag(label: chain.sectionTargetLabel, color: tone),
-            _LedgerTag(label: chain.focusTargetLabel, color: tone),
+            _LedgerTag(label: chain.cardTargetLabel, color: tone),
+            _LedgerTag(label: chain.incidentTargetLabel, color: tone),
             if (chain.isOverdue)
               _LedgerTag(
                 label: 'OVERDUE ${chain.overdueMinutes}m',
@@ -505,7 +505,7 @@ class _CompactLedgerRow extends StatelessWidget {
               child: _MatrixFactCard(
                 label: 'Target',
                 value:
-                    '${chain.workspaceTargetLabel} / ${chain.sectionTargetLabel} / ${chain.focusTargetLabel}',
+                    '${chain.workspaceTargetLabel} / ${chain.cardTargetLabel} / ${chain.incidentTargetLabel}',
                 accent: tone,
               ),
             ),
@@ -749,7 +749,7 @@ Color _matrixTone(AssetChainSummary chain) {
 }
 
 String _matrixSourceLabel(AssetChainSummary chain) {
-  return '资产台账矩阵 · ${chain.label} · ${chain.workspaceTargetLabel} · ${chain.dispositionTargetLabel} · ${chain.incidentTargetLabel}';
+  return '资产台账矩阵 · ${chain.label} · ${chain.workspaceTargetLabel} · ${chain.cardTargetLabel} · ${chain.incidentTargetLabel} · ${chain.workspaceBrief}';
 }
 
 enum _MatrixFocusArea { focus, sla, replay, failure, job }
@@ -820,13 +820,9 @@ class _AssetRiskStrip extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('资产风险联动', style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        Text(
-          '把概览页发现的资产缺口直接落到台账入口，并给出对应工作台的处理动作。',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
+        const SectionIntro(
+          title: '资产风险联动',
+          subtitle: '把概览页发现的资产缺口直接落到台账入口，并给出对应工作台的处理动作。',
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -879,44 +875,29 @@ class _AssetRiskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(tone.icon, color: tone.color, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(alert.title, style: AppTextStyles.labelLarge),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: tone.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(
-                    AppDecorations.radiusFull,
-                  ),
-                ),
-                child: Text(
-                  alert.severity.toUpperCase(),
-                  style: AppTextStyles.labelMedium.copyWith(color: tone.color),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            alert.message,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+          IncidentCardHeader(
+            accent: tone.color,
+            icon: tone.icon,
+            title: alert.title,
+            subtitle: alert.message,
+            trailing: WorkspaceStatusChip(
+              label: alert.severity.toUpperCase(),
+              icon: tone.icon,
+              foreground: tone.color,
+              background: tone.color.withValues(alpha: 0.12),
             ),
           ),
           if (action != null) ...[
             const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: action.onTap,
-              icon: Icon(action.icon),
-              label: Text(action.label),
+            WorkspaceInlineActionBar(
+              actions: [
+                WorkspaceActionLaneAction(
+                  label: action.label,
+                  icon: action.icon,
+                  onTap: action.onTap,
+                  tone: WorkspaceActionLaneTone.tonal,
+                ),
+              ],
             ),
           ],
         ],
@@ -1040,35 +1021,11 @@ class _LedgerPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          IncidentCardHeader(
+            accent: accent,
+            icon: icon,
+            title: title,
+            subtitle: description,
           ),
           const SizedBox(height: 14),
           if (children.isEmpty)

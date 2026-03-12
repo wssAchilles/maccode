@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, Any
 from enum import Enum
 
+from config import Config
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +45,7 @@ class TaskMonitor:
         if self._firestore_client is None:
             try:
                 from google.cloud import firestore
-                self._firestore_client = firestore.Client()
+                self._firestore_client = firestore.Client(database=Config.FIRESTORE_DATABASE)
             except Exception as e:
                 logger.warning(f"Firestore 初始化失败: {e}")
                 return None

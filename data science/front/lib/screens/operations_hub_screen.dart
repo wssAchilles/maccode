@@ -8,22 +8,23 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/optimization_launch_intent.dart';
+import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
-import '../widgets/common/glass_card.dart';
 import '../widgets/operations/alert_panel.dart';
 import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/dataset_asset_card.dart';
+import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/embedded_page_header.dart';
 import '../widgets/operations/incident_priority_strip.dart';
 import '../widgets/operations/incident_runbook_board.dart';
-import '../widgets/operations/metric_card.dart';
 import '../widgets/operations/model_status_card.dart';
 import '../widgets/operations/operations_event_bus_board.dart';
 import '../widgets/operations/operations_narrative_board.dart';
 import '../widgets/operations/quick_actions_section.dart';
+import '../widgets/operations/section_intro.dart';
 import '../widgets/operations/system_status_strip.dart';
 import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -58,13 +59,11 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
-    final sourceLabel = [
-      source,
-      chain.label,
-      chain.workspaceTargetLabel,
-      chain.incidentTargetLabel,
-      chain.focusLabel,
-    ].join(' · ');
+    final sourceLabel = buildChainSourceLabel(
+      chain,
+      prefix: source,
+      includeWorkspaceBrief: true,
+    );
     switch (chain.key) {
       case 'dataset':
         final onOpenDataAnalysis = widget.onOpenDataAnalysis;
@@ -244,6 +243,14 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final modelChain = _chainFor(safeSummary, 'model');
     final knowledgeChain = _chainFor(safeSummary, 'knowledge');
     final optimizationChain = _chainFor(safeSummary, 'optimization');
+    final focusChain = safeSummary.assetSummary.chainSummaries.isEmpty
+        ? null
+        : ([
+            ...safeSummary.assetSummary.chainSummaries,
+          ]..sort((a, b) => b.priorityScore.compareTo(a.priorityScore))).first;
+    final degradedSystems = safeSummary.systemStatus
+        .where((item) => item.status != 'healthy')
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,9 +286,84 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           ),
           const SizedBox(height: 20),
         ],
-        _buildHero(safeSummary),
-        const SizedBox(height: 20),
-        _buildMetrics(safeSummary.kpis),
+        DutyContextBoard(
+          title: '工业能源与 AI 驾驶舱',
+          description: '把作业密度、资产库存、当前值班链路和系统健康收在同一块控制板里，减少概览页顶部的分散摘要。',
+          icon: Icons.space_dashboard_rounded,
+          accent: AppColors.primary,
+          metrics: [
+            DutyMetric(
+              label: '数据资产',
+              value: '${safeSummary.kpis.datasetCount}',
+              color: AppColors.primary,
+            ),
+            DutyMetric(
+              label: '分析记录',
+              value: '${safeSummary.kpis.analysisCount}',
+              color: AppColors.cta,
+            ),
+            DutyMetric(
+              label: '模型资产',
+              value: '${safeSummary.kpis.modelCount}',
+              color: AppColors.success,
+            ),
+            DutyMetric(
+              label: '24h 作业',
+              value: '${safeSummary.kpis.jobs24h}',
+              color: AppColors.primary,
+            ),
+            DutyMetric(
+              label: '失败作业',
+              value: '${safeSummary.kpis.failedJobs}',
+              color: safeSummary.kpis.failedJobs > 0
+                  ? AppColors.error
+                  : AppColors.success,
+            ),
+          ],
+          currentWatch: focusChain == null
+              ? '当前暂无高优先级资产链路，优先关注系统状态、失败作业和统一事件总线。'
+              : buildChainCurrentWatch(focusChain),
+          contextFacts: [
+            if (focusChain != null)
+              DutyContextFact(
+                label: '工作台',
+                value: focusChain.workspaceTargetLabel,
+                icon: Icons.account_tree_rounded,
+                foreground: AppColors.primary,
+                background: AppColors.infoLight,
+              ),
+            if (focusChain != null)
+              DutyContextFact(
+                label: '卡片',
+                value: focusChain.cardTargetLabel,
+                icon: Icons.dashboard_customize_rounded,
+              ),
+            if (focusChain != null)
+              DutyContextFact(
+                label: '值班',
+                value: focusChain.incidentTargetLabel,
+                icon: Icons.priority_high_rounded,
+                foreground: AppColors.warning,
+                background: AppColors.warningLight,
+              ),
+            DutyContextFact(
+              label: '系统',
+              value: degradedSystems == 0 ? '健康' : '$degradedSystems 项关注',
+              icon: Icons.health_and_safety_rounded,
+              foreground: degradedSystems == 0
+                  ? AppColors.success
+                  : AppColors.warning,
+              background: degradedSystems == 0
+                  ? AppColors.successLight
+                  : AppColors.warningLight,
+            ),
+            DutyContextFact(
+              label: '告警',
+              value: '${safeSummary.alerts.length}',
+              icon: Icons.notifications_active_rounded,
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
         IncidentPriorityStrip(
           summary: safeSummary.assetSummary,
@@ -297,7 +379,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           },
         ),
         const SizedBox(height: 20),
-        _SectionTitle(title: '资产库存', subtitle: '统一查看数据、模型、知识库和优化快照的最近版本'),
+        const SectionIntro(
+          title: '资产库存',
+          subtitle: '统一查看数据、模型、知识库和优化快照的最近版本',
+        ),
         const SizedBox(height: 12),
         AssetInventoryBoard(
           summary: safeSummary.assetSummary,
@@ -308,14 +393,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           },
         ),
         const SizedBox(height: 20),
-        _SectionTitle(title: '版本轨迹', subtitle: '查看统一资产台账中的最近版本和血缘摘要'),
+        const SectionIntro(
+          title: '版本轨迹',
+          subtitle: '查看统一资产台账中的最近版本和血缘摘要',
+        ),
         const SizedBox(height: 12),
         AssetVersionTimelineBoard(
           summary: safeSummary.assetSummary,
           onNavigateToTab: widget.onNavigateToTab,
         ),
         const SizedBox(height: 20),
-        _SectionTitle(title: '运维叙事', subtitle: '把版本、最近活动和失败链路按资产链路串成统一处置上下文。'),
+        const SectionIntro(
+          title: '运维叙事',
+          subtitle: '把版本、最近活动和失败链路按资产链路串成统一处置上下文。',
+        ),
         const SizedBox(height: 12),
         OperationsNarrativeBoard(
           summary: safeSummary,
@@ -420,7 +511,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             final left = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle(
+                const SectionIntro(
                   title: '统一事件总线',
                   subtitle: '按时间查看链路版本、活跃作业、失败节点和审计动作',
                 ),
@@ -432,7 +523,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                _SectionTitle(title: '最近数据资产', subtitle: '最近完成分析的数据集'),
+                const SectionIntro(title: '最近数据资产', subtitle: '最近完成分析的数据集'),
                 const SizedBox(height: 12),
                 if (safeSummary.recentAssets.isEmpty)
                   const _EmptySection(message: '暂无近期数据资产')
@@ -455,7 +546,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             final right = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle(title: '系统提醒', subtitle: '依赖、失败任务与数据空缺'),
+                const SectionIntro(title: '系统提醒', subtitle: '依赖、失败任务与数据空缺'),
                 const SizedBox(height: 12),
                 if (safeSummary.alerts.isEmpty)
                   const _EmptySection(message: '当前无高优先级告警')
@@ -471,7 +562,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                         .toList(growable: false),
                   ),
                 const SizedBox(height: 20),
-                _SectionTitle(title: '模型与知识状态', subtitle: '核心服务可用性'),
+                const SectionIntro(title: '模型与知识状态', subtitle: '核心服务可用性'),
                 const SizedBox(height: 12),
                 if (modelStatus != null)
                   ModelStatusCard(
@@ -511,129 +602,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     );
   }
 
-  Widget _buildHero(DashboardSummary summary) {
-    return GlassCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('工业能源与 AI 驾驶舱', style: AppTextStyles.h2),
-          const SizedBox(height: 10),
-          Text(
-            '统一查看系统状态、最近任务、数据资产和风险提醒。概览页只展示当前最关键的运行信号。',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _HeroStat(label: '近 24h 任务', value: '${summary.kpis.jobs24h}'),
-              _HeroStat(label: '失败任务', value: '${summary.kpis.failedJobs}'),
-              _HeroStat(label: '最近分析', value: '${summary.kpis.analysisCount}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetrics(DashboardKpis kpis) {
-    final cards = [
-      MetricCard(
-        label: '数据集数',
-        value: '${kpis.datasetCount}',
-        icon: Icons.dataset_rounded,
-        supportingText: '最近沉淀的数据资产',
-      ),
-      MetricCard(
-        label: '分析次数',
-        value: '${kpis.analysisCount}',
-        icon: Icons.analytics_rounded,
-        supportingText: '历史分析记录总量',
-      ),
-      MetricCard(
-        label: '模型数量',
-        value: '${kpis.modelCount}',
-        icon: Icons.memory_rounded,
-        supportingText: '最近训练产生的模型',
-      ),
-      MetricCard(
-        label: '24h 作业数',
-        value: '${kpis.jobs24h}',
-        icon: Icons.schedule_rounded,
-        supportingText: '近一天执行任务',
-      ),
-      MetricCard(
-        label: '失败作业',
-        value: '${kpis.failedJobs}',
-        icon: Icons.report_problem_rounded,
-        supportingText: '需要排查的失败项',
-        emphasis: kpis.failedJobs > 0,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 1100;
-        final width = isDesktop ? (constraints.maxWidth - 48) / 5 : 240.0;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: cards
-              .map((card) => SizedBox(width: width, child: card))
-              .toList(growable: false),
-        );
-      },
-    );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppTextStyles.labelMedium),
-          const SizedBox(height: 6),
-          Text(value, style: AppTextStyles.h4),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: AppTextStyles.h4),
-        const SizedBox(height: 4),
-        Text(subtitle, style: AppTextStyles.bodySmall),
-      ],
-    );
-  }
 }
 
 class _EmptySection extends StatelessWidget {

@@ -161,7 +161,7 @@ class _PriorityStripTile extends StatelessWidget {
                 background: tone.withValues(alpha: 0.12),
               ),
               _MiniBadge(
-                label: chain.sectionTargetLabel,
+                label: chain.cardTargetLabel,
                 foreground: chainTone,
                 background: chainTone.withValues(alpha: 0.1),
               ),
@@ -190,7 +190,7 @@ class _PriorityStripTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(chain.focusLabel, style: AppTextStyles.labelLarge),
+          Text(chain.cardTargetLabel, style: AppTextStyles.labelLarge),
           const SizedBox(height: 4),
           Text(
             chain.workspaceBrief,

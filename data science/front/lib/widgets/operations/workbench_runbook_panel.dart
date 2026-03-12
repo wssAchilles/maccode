@@ -171,7 +171,7 @@ class _RunbookSignal extends StatelessWidget {
                 background: tone.withValues(alpha: 0.1),
               ),
               _RunbookBadge(
-                label: chain.sectionTargetLabel,
+                label: chain.cardTargetLabel,
                 foreground: accent,
                 background: accent.withValues(alpha: 0.08),
               ),

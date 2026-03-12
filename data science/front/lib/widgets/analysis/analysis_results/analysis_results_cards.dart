@@ -159,26 +159,34 @@ class _AssetConsoleSection extends StatelessWidget {
           _consoleShell(
             highlighted: focusArea == 'schema',
             color: AppColors.primary,
-            chain: focusArea == 'schema' ? chain : null,
-            child: _SchemaTopologyCard(result: result),
+            child: _SchemaTopologyCard(
+              result: result,
+              chain: focusArea == 'schema' ? chain : null,
+            ),
           ),
           _consoleShell(
             highlighted: focusArea == 'distribution',
             color: AppColors.cta,
-            chain: focusArea == 'distribution' ? chain : null,
-            child: _FieldDistributionCard(result: result),
+            child: _FieldDistributionCard(
+              result: result,
+              chain: focusArea == 'distribution' ? chain : null,
+            ),
           ),
           _consoleShell(
             highlighted: focusArea == 'risk',
             color: AppColors.warning,
-            chain: focusArea == 'risk' ? chain : null,
-            child: _DataRiskDigestCard(result: result),
+            child: _DataRiskDigestCard(
+              result: result,
+              chain: focusArea == 'risk' ? chain : null,
+            ),
           ),
           _consoleShell(
             highlighted: focusArea == 'actions',
             color: AppColors.cta,
-            chain: focusArea == 'actions' ? chain : null,
-            child: _NextActionsCard(result: result),
+            child: _NextActionsCard(
+              result: result,
+              chain: focusArea == 'actions' ? chain : null,
+            ),
           ),
         ];
 
@@ -222,9 +230,10 @@ class _AssetConsoleSection extends StatelessWidget {
 }
 
 class _SchemaTopologyCard extends StatelessWidget {
-  const _SchemaTopologyCard({required this.result});
+  const _SchemaTopologyCard({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +250,7 @@ class _SchemaTopologyCard extends StatelessWidget {
             subtitle: '快速判断数据集的字段构成和可建模性。',
             accent: AppColors.primary,
             icon: Icons.account_tree_rounded,
+            chain: chain,
           ),
           const SizedBox(height: 14),
           _AnalysisInfoRow(label: '数值字段', value: '${mix.numericCount}'),
@@ -282,9 +292,10 @@ class _SchemaTopologyCard extends StatelessWidget {
 }
 
 class _FieldDistributionCard extends StatelessWidget {
-  const _FieldDistributionCard({required this.result});
+  const _FieldDistributionCard({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
@@ -305,6 +316,7 @@ class _FieldDistributionCard extends StatelessWidget {
             subtitle: '用字段配比判断资产更偏建模、索引还是治理准备。',
             accent: AppColors.cta,
             icon: Icons.pie_chart_outline_rounded,
+            chain: chain,
           ),
           const SizedBox(height: 14),
           _DistributionBar(
@@ -341,9 +353,10 @@ class _FieldDistributionCard extends StatelessWidget {
 }
 
 class _DataRiskDigestCard extends StatelessWidget {
-  const _DataRiskDigestCard({required this.result});
+  const _DataRiskDigestCard({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +379,7 @@ class _DataRiskDigestCard extends StatelessWidget {
             icon: highRiskColumns > 0
                 ? Icons.warning_amber_rounded
                 : Icons.verified_rounded,
+            chain: chain,
           ),
           const SizedBox(height: 14),
           _AnalysisInfoRow(
@@ -416,9 +430,10 @@ class _DataRiskDigestCard extends StatelessWidget {
 }
 
 class _NextActionsCard extends StatelessWidget {
-  const _NextActionsCard({required this.result});
+  const _NextActionsCard({required this.result, this.chain});
 
   final AnalysisResult result;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
@@ -446,6 +461,7 @@ class _NextActionsCard extends StatelessWidget {
             subtitle: '把结果转换成后续治理、训练和知识库动作建议。',
             accent: AppColors.cta,
             icon: Icons.alt_route_rounded,
+            chain: chain,
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -586,44 +602,26 @@ class _ConsoleCardHeader extends StatelessWidget {
     required this.subtitle,
     required this.accent,
     required this.icon,
+    this.chain,
   });
 
   final String title;
   final String subtitle;
   final Color accent;
   final IconData icon;
+  final AssetChainSummary? chain;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-          ),
-          child: Icon(icon, size: 20, color: accent),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: AppTextStyles.h4),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return IncidentCardHeader(
+      accent: accent,
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      workspaceLabel: chain?.workspaceTargetLabel,
+      cardLabel: chain?.cardTargetLabel,
+      incidentLabel: chain?.incidentTargetLabel,
+      summary: chain?.workspaceBrief,
     );
   }
 }
@@ -691,17 +689,30 @@ class _ActionBadge extends StatelessWidget {
 }
 
 String _assetConsoleFocusArea(AssetChainSummary? chain) {
+  switch (chain?.cardTarget) {
+    case 'schema_topology':
+      return 'schema';
+    case 'field_distribution':
+      return 'distribution';
+    case 'risk_digest':
+      return 'risk';
+    case 'next_actions':
+      return 'actions';
+    case 'dataset_current_asset':
+    case 'dataset_reference_asset':
+      return 'schema';
+    case 'dataset_drift_report':
+    case 'dataset_governance_decision':
+      return 'risk';
+    case 'dataset_results':
+      return 'actions';
+    case 'dataset_job_panel':
+      return 'distribution';
+  }
   switch (chain?.sectionTarget) {
     case 'data_analysis_operations':
       return 'distribution';
     case 'data_analysis_results':
-      if (chain?.focusTarget == 'dataset_drift_report' ||
-          chain?.focusTarget == 'dataset_governance_decision') {
-        return 'risk';
-      }
-      if (chain?.focusTarget == 'dataset_results') {
-        return 'actions';
-      }
       return 'schema';
   }
   switch (chain?.focusTarget) {
@@ -729,7 +740,6 @@ String _assetConsoleFocusArea(AssetChainSummary? chain) {
 Widget _consoleShell({
   required bool highlighted,
   required Color color,
-  AssetChainSummary? chain,
   required Widget child,
 }) {
   if (!highlighted) {
@@ -740,53 +750,7 @@ Widget _consoleShell({
       borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
       border: Border.all(color: color.withValues(alpha: 0.32), width: 1.3),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (chain != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Color.alphaBlend(
-                color.withValues(alpha: 0.06),
-                AppColors.surfaceVariant,
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(AppDecorations.radiusLg),
-                topRight: Radius.circular(AppDecorations.radiusLg),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _ActionBadge(
-                      label: 'Current watch · ${chain.incidentTargetLabel}',
-                      tone: _ActionTone.info,
-                    ),
-                    _ActionBadge(
-                      label: chain.focusTargetLabel,
-                      tone: _ActionTone.cta,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  chain.incidentBrief,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        child,
-      ],
-    ),
+    child: child,
   );
 }
 

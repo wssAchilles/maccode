@@ -41,7 +41,7 @@ OptimizationResponse _buildOptimizationResponse({
 }) {
   return OptimizationResponse.fromJson({
     'success': success,
-    if (message != null) 'message': message,
+    ...?message == null ? null : <String, dynamic>{'message': message},
     'model_info': {
       'model_type': 'random_forest',
       'status': success ? 'active' : 'pending',

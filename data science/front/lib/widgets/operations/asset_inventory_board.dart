@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import 'incident_card_header.dart';
+import 'workspace_action_lane.dart';
 
 class AssetInventoryBoard extends StatelessWidget {
   const AssetInventoryBoard({
@@ -198,6 +200,8 @@ class _AssetInventoryCard extends StatelessWidget {
     final borderColor = chain != null
         ? _chainBorderColor(chain!)
         : accent.withValues(alpha: 0.14);
+    final inventorySummary =
+        'inventory=$count · latest v$version${chain == null ? '' : ' · ${chain!.statusLabel}'}';
 
     return Container(
       decoration: BoxDecoration(
@@ -209,97 +213,30 @@ class _AssetInventoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(
-                      AppDecorations.radiusMd,
-                    ),
-                  ),
-                  child: Icon(icon, color: accent, size: 20),
+            IncidentCardHeader(
+              accent: accent,
+              icon: icon,
+              title: title,
+              subtitle: '资产库存、最新版本和当前处置入口。',
+              supportingText: inventorySummary,
+              supportingColor: AppColors.textSecondary,
+              trailing: alert == null ? null : _AlertBadge(alert: alert!),
+              workspaceLabel: chain?.workspaceTargetLabel,
+              cardLabel: chain?.cardTargetLabel,
+              incidentLabel: chain?.incidentTargetLabel,
+              summary: chain?.workspaceBrief,
+            ),
+            const SizedBox(height: 14),
+            WorkspaceInlineActionBar(
+              actions: [
+                WorkspaceActionLaneAction(
+                  label: actionLabel,
+                  icon: Icons.arrow_outward_rounded,
+                  onTap: onTap,
+                  tone: WorkspaceActionLaneTone.tonal,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: AppTextStyles.h4),
-                      const SizedBox(height: 4),
-                      Text(
-                        'inventory=$count · latest v$version${chain == null ? '' : ' · ${chain!.statusLabel}'}',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (alert != null) ...[
-                  const SizedBox(width: 8),
-                  _AlertBadge(alert: alert!),
-                ],
               ],
             ),
-            if (chain != null) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _ChainBadge(
-                    label: chain!.sectionTargetLabel,
-                    foreground: accent,
-                    background: accent.withValues(alpha: 0.12),
-                  ),
-                  _ChainBadge(
-                    label: chain!.workspaceTargetLabel,
-                    foreground: AppColors.textPrimary,
-                    background: AppColors.surfaceVariant,
-                  ),
-                  _ChainBadge(
-                    label: chain!.incidentTargetLabel,
-                    foreground: _chainBorderColor(chain!),
-                    background: _chainBorderColor(
-                      chain!,
-                    ).withValues(alpha: 0.08),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: borderColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Current watch · ${chain!.incidentTargetLabel}',
-                      style: AppTextStyles.labelLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      chain!.workspaceBrief,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${chain!.focusTargetLabel} · ${chain!.focusLabel}',
-                      style: AppTextStyles.labelMedium.copyWith(color: accent),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 14),
             Text(headline, style: AppTextStyles.labelLarge),
             if (alert != null) ...[
@@ -336,41 +273,8 @@ class _AssetInventoryCard extends StatelessWidget {
               ),
               if (i < details.length - 1) const SizedBox(height: 4),
             ],
-            const SizedBox(height: 14),
-            FilledButton.tonalIcon(
-              onPressed: onTap,
-              icon: const Icon(Icons.arrow_outward_rounded),
-              label: Text(actionLabel),
-            ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ChainBadge extends StatelessWidget {
-  const _ChainBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelMedium.copyWith(color: foreground),
       ),
     );
   }

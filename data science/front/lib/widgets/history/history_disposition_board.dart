@@ -9,6 +9,9 @@ import '../../models/dashboard_summary.dart';
 import '../../models/history_record.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
+import '../operations/incident_card_header.dart';
+import '../operations/section_intro.dart';
+import '../operations/workspace_action_lane.dart';
 
 class HistoryDispositionBoard extends StatelessWidget {
   const HistoryDispositionBoard({
@@ -36,13 +39,10 @@ class HistoryDispositionBoard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('分组处置流', style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        Text(
-          '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
+        const SectionIntro(
+          title: '分组处置流',
+          subtitle:
+              '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
         ),
         const SizedBox(height: 12),
         LayoutBuilder(
@@ -306,51 +306,34 @@ class _DispositionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: tone.background,
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(group.icon, color: tone.foreground, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(group.label, style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      'latest v${group.governance.latestVersion} · ${group.governance.latestLabel}',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (group.chain != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${group.chain!.statusLabel} · ${group.chain!.workspaceTargetLabel}',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: group.accent,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              _DispositionBadge(
-                label: group.failure != null
-                    ? 'FAIL'
-                    : group.governance.riskLevel.toUpperCase(),
-                foreground: tone.foreground,
-                background: tone.background,
-              ),
-            ],
+          IncidentCardHeader(
+            accent: tone.foreground,
+            icon: group.icon,
+            title: group.label,
+            subtitle:
+                'latest v${group.governance.latestVersion} · ${group.governance.latestLabel}',
+            supportingText: group.chain == null
+                ? '${group.governance.ownerLabel} · SLA ${group.governance.slaMinutes}min · ${group.governance.escalationLabel}'
+                : '${group.chain!.statusLabel} · ${group.chain!.workspaceTargetLabel}',
+            supportingColor: group.chain == null
+                ? AppColors.textSecondary
+                : group.accent,
+            trailing: WorkspaceStatusChip(
+              label: group.failure != null
+                  ? 'FAIL'
+                  : group.governance.riskLevel.toUpperCase(),
+              icon: group.failure != null
+                  ? Icons.error_outline_rounded
+                  : group.icon,
+              foreground: tone.foreground,
+              background: tone.background,
+            ),
+            workspaceLabel:
+                group.chain?.workspaceTargetLabel ??
+                group.governance.workspaceTargetLabel,
+            cardLabel: group.chain?.cardTargetLabel,
+            incidentLabel: group.chain?.incidentTargetLabel,
+            summary: group.chain?.workspaceBrief ?? group.governance.workspaceBrief,
           ),
           const SizedBox(height: 14),
           _DispositionRow(
@@ -369,7 +352,7 @@ class _DispositionCard extends StatelessWidget {
             label: '目标落点',
             value: group.chain == null
                 ? '当前无目标落点'
-                : '${group.chain!.workspaceTargetLabel} · ${group.chain!.sectionTargetLabel} · ${group.chain!.focusTargetLabel}',
+                : '${group.chain!.workspaceTargetLabel} · ${group.chain!.cardTargetLabel} · ${group.chain!.incidentTargetLabel}',
             highlighted: group.chain != null,
             accent: group.accent,
           ),
@@ -430,34 +413,29 @@ class _DispositionCard extends StatelessWidget {
             _DispositionTimeline(nodes: group.chain!.timeline),
           ],
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
+          WorkspaceInlineActionBar(
+            actions: [
               if (onFilterFailures != null)
-                OutlinedButton.icon(
-                  onPressed: onFilterFailures,
-                  icon: const Icon(Icons.filter_alt_rounded),
-                  label: const Text('仅看失败'),
+                WorkspaceActionLaneAction(
+                  label: '仅看失败',
+                  icon: Icons.filter_alt_rounded,
+                  onTap: onFilterFailures,
                 ),
               if (onReplayAction != null)
-                OutlinedButton.icon(
-                  onPressed: onReplayAction,
-                  icon: const Icon(Icons.replay_circle_filled_rounded),
-                  label: const Text('回放最新'),
+                WorkspaceActionLaneAction(
+                  label: '回放最新',
+                  icon: Icons.replay_circle_filled_rounded,
+                  onTap: onReplayAction,
                 ),
-              FilledButton.tonalIcon(
-                onPressed: onFailureAction ?? onGovernanceAction,
-                icon: Icon(
-                  onFailureAction == null
-                      ? Icons.arrow_outward_rounded
-                      : Icons.build_circle_outlined,
-                ),
-                label: Text(
-                  onFailureAction == null
-                      ? group.governance.actionLabel
-                      : group.failure!.actionLabel,
-                ),
+              WorkspaceActionLaneAction(
+                label: onFailureAction == null
+                    ? group.governance.actionLabel
+                    : group.failure!.actionLabel,
+                icon: onFailureAction == null
+                    ? Icons.arrow_outward_rounded
+                    : Icons.build_circle_outlined,
+                onTap: onFailureAction ?? onGovernanceAction,
+                tone: WorkspaceActionLaneTone.tonal,
               ),
             ],
           ),
@@ -595,33 +573,6 @@ class _DispositionNode extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DispositionBadge extends StatelessWidget {
-  const _DispositionBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelMedium.copyWith(color: foreground),
-      ),
     );
   }
 }

@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import 'incident_card_header.dart';
+import 'section_intro.dart';
+import 'workspace_action_lane.dart';
 
 class IncidentRunbookBoard extends StatelessWidget {
   const IncidentRunbookBoard({
@@ -36,14 +39,7 @@ class IncidentRunbookBoard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
+        SectionIntro(title: title, subtitle: description),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -132,58 +128,38 @@ class _RunbookCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(chain.runbookTitle, style: AppTextStyles.h4),
-          const SizedBox(height: 6),
-          Text(
-            '${chain.ownerLabel} · SLA ${chain.slaMinutes}min · ${chain.escalationStateLabel}',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
+          IncidentCardHeader(
+            accent: accent,
+            icon: Icons.rule_folder_rounded,
+            title: chain.runbookTitle,
+            subtitle:
+                '${chain.ownerLabel} · SLA ${chain.slaMinutes}min · ${chain.escalationStateLabel}',
+            supportingText: chain.slaDeadlineAt == null
+                ? null
+                : 'deadline ${DateFormat('MM-dd HH:mm').format(chain.slaDeadlineAt!.toLocal())} · ${chain.escalationLabel}',
+            supportingColor: chain.isOverdue
+                ? AppColors.error
+                : AppColors.textSecondary,
+            workspaceLabel: chain.workspaceTargetLabel,
+            cardLabel: chain.cardTargetLabel,
+            incidentLabel: chain.incidentTargetLabel,
+            summary: chain.workspaceBrief,
           ),
-          if (chain.slaDeadlineAt != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'deadline ${DateFormat('MM-dd HH:mm').format(chain.slaDeadlineAt!.toLocal())} · ${chain.escalationLabel}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: chain.isOverdue
-                    ? AppColors.error
-                    : AppColors.textSecondary,
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
           for (var i = 0; i < chain.runbookSteps.length; i++) ...[
             _RunbookStep(index: i + 1, text: chain.runbookSteps[i], tone: tone),
             if (i < chain.runbookSteps.length - 1) const SizedBox(height: 10),
           ],
           const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('当前焦点', style: AppTextStyles.labelMedium),
-                const SizedBox(height: 4),
-                Text(
-                  '${chain.workspaceTargetLabel} · ${chain.workspaceBrief}',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          FilledButton.tonalIcon(
-            onPressed: onOpen,
-            icon: const Icon(Icons.arrow_outward_rounded),
-            label: Text(chain.actionLabel),
+          WorkspaceInlineActionBar(
+            actions: [
+              WorkspaceActionLaneAction(
+                label: chain.actionLabel,
+                icon: Icons.arrow_outward_rounded,
+                onTap: onOpen,
+                tone: WorkspaceActionLaneTone.tonal,
+              ),
+            ],
           ),
         ],
       ),

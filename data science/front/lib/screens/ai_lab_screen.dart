@@ -10,6 +10,7 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/deep_learning_config_state.dart';
 import '../models/job_record.dart';
+import '../utils/asset_chain_context.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
 import '../viewmodels/rag_view_model.dart';
@@ -205,17 +206,12 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   String _chainSourceLabel(AssetChainSummary? chain, {required String prefix}) {
-    if (chain == null) {
-      return prefix;
-    }
-    return [
-      prefix,
-      chain.label,
-      chain.workspaceTargetLabel,
-      chain.sectionTargetLabel,
-      chain.incidentTargetLabel,
-      chain.focusLabel,
-    ].join(' · ');
+    return buildChainSourceLabel(
+      chain,
+      prefix: prefix,
+      includeSection: true,
+      includeFocus: true,
+    );
   }
 
   String _chainFeedbackMessage(
@@ -223,16 +219,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     required String prefix,
     String? detail,
   }) {
-    if (chain == null) {
-      return detail == null || detail.isEmpty ? prefix : '$prefix · $detail';
-    }
-    final buffer = StringBuffer(
-      '$prefix · ${chain.workspaceTargetLabel} · ${chain.incidentTargetLabel}',
-    );
-    if (detail != null && detail.isNotEmpty) {
-      buffer.write(' · $detail');
-    }
-    return buffer.toString();
+    return buildChainFeedbackMessage(chain, prefix: prefix, detail: detail);
   }
 
   void _showFeedback(String message, {Color color = AppColors.success}) {

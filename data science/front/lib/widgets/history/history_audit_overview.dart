@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
-import '../common/glass_card.dart';
+import '../../utils/asset_chain_context.dart';
+import '../operations/duty_context_board.dart';
 
 class HistoryAuditOverview extends StatelessWidget {
   const HistoryAuditOverview({
@@ -46,144 +47,95 @@ class HistoryAuditOverview extends StatelessWidget {
             ...assetSummary!.chainSummaries,
           ]..sort((a, b) => b.priorityScore.compareTo(a.priorityScore))).first;
 
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
+    return DutyContextBoard(
+      title: '值班概览',
+      description: '把筛选上下文、队列健康和审计覆盖收在一个控制板里，减少在审计页主路径里的重复摘要卡。',
+      icon: Icons.space_dashboard_rounded,
+      accent: AppColors.primary,
+      metrics: [
+        DutyMetric(
+          label: '24h 作业',
+          value: '${kpis?.jobs24h ?? 0}',
+          color: AppColors.primary,
+        ),
+        DutyMetric(
+          label: '运行中',
+          value: '$runningJobs',
+          color: AppColors.warning,
+        ),
+        DutyMetric(
+          label: '失败',
+          value: '$failedJobs',
+          color: AppColors.error,
+        ),
+        DutyMetric(
+          label: '已完成',
+          value: '$completedJobs',
+          color: AppColors.success,
+        ),
+        DutyMetric(
+          label: '活动',
+          value: '$activityCount',
+          color: AppColors.cta,
+        ),
+        DutyMetric(
+          label: '记录',
+          value: '$recordCount',
+          color: AppColors.primary,
+        ),
+      ],
+      currentWatch: focusChain != null
+          ? buildChainCurrentWatch(focusChain)
+          : latestJob == null
+          ? '当前暂无最新任务，重点关注筛选上下文和资产链路处置。'
+          : '${latestJob.displayTitle} · ${latestJob.statusMessage ?? latestJob.status}',
+      contextFacts: [
+        if (focusChain != null)
+          DutyContextFact(
+            label: '工作台',
+            value: focusChain.workspaceTargetLabel,
+            icon: Icons.account_tree_rounded,
+            foreground: AppColors.primary,
+            background: AppColors.infoLight,
+          ),
+        if (focusChain != null)
+          DutyContextFact(
+            label: '卡片',
+            value: focusChain.cardTargetLabel,
+            icon: Icons.dashboard_customize_rounded,
+          ),
+        if (focusChain != null)
+          DutyContextFact(
+            label: '值班',
+            value: focusChain.incidentTargetLabel,
+            icon: Icons.priority_high_rounded,
+            foreground: AppColors.warning,
+            background: AppColors.warningLight,
+          ),
+        DutyContextFact(
+          label: '类型',
+          value: _typeLabel(selectedType),
+          icon: Icons.category_rounded,
+        ),
+        DutyContextFact(
+          label: '状态',
+          value: _statusLabel(selectedStatus),
+          icon: Icons.tune_rounded,
+        ),
+        DutyContextFact(
+          label: '覆盖',
+          value: _coverageLabel(
+            activityCount: activityCount,
+            recordCount: recordCount,
+            failedJobs: kpis?.failedJobs ?? 0,
+          ),
+          icon: Icons.fact_check_rounded,
+        ),
+      ],
+      footerTitle: '筛选控制',
+      footer: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: const Icon(
-                  Icons.space_dashboard_rounded,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('值班概览', style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text(
-                      '把筛选上下文、队列健康和审计覆盖收在一个控制板里，减少在审计页主路径里的重复摘要卡。',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _AuditKpiChip(
-                label: '24h 作业',
-                value: '${kpis?.jobs24h ?? 0}',
-                color: AppColors.primary,
-              ),
-              _AuditKpiChip(
-                label: '运行中',
-                value: '$runningJobs',
-                color: AppColors.warning,
-              ),
-              _AuditKpiChip(
-                label: '失败',
-                value: '$failedJobs',
-                color: AppColors.error,
-              ),
-              _AuditKpiChip(
-                label: '已完成',
-                value: '$completedJobs',
-                color: AppColors.success,
-              ),
-              _AuditKpiChip(
-                label: '活动',
-                value: '$activityCount',
-                color: AppColors.cta,
-              ),
-              _AuditKpiChip(
-                label: '记录',
-                value: '$recordCount',
-                color: AppColors.primary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Current watch', style: AppTextStyles.labelMedium),
-                const SizedBox(height: 6),
-                Text(
-                  focusChain != null
-                      ? '${focusChain.workspaceTargetLabel} · ${focusChain.workspaceBrief}'
-                      : latestJob == null
-                      ? '当前暂无最新任务，重点关注筛选上下文和资产链路处置。'
-                      : '${latestJob.displayTitle} · ${latestJob.statusMessage ?? latestJob.status}',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (focusChain != null)
-                      _AuditContextChip(
-                        label: '工作台',
-                        value: focusChain.workspaceTargetLabel,
-                      ),
-                    if (focusChain != null)
-                      _AuditContextChip(
-                        label: '值班',
-                        value: focusChain.incidentTargetLabel,
-                      ),
-                    _AuditContextChip(
-                      label: '类型',
-                      value: _typeLabel(selectedType),
-                    ),
-                    _AuditContextChip(
-                      label: '状态',
-                      value: _statusLabel(selectedStatus),
-                    ),
-                    _AuditContextChip(
-                      label: '覆盖',
-                      value: _coverageLabel(
-                        activityCount: activityCount,
-                        recordCount: recordCount,
-                        failedJobs: kpis?.failedJobs ?? 0,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('筛选控制', style: AppTextStyles.labelLarge),
-          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -248,67 +200,6 @@ class HistoryAuditOverview extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AuditKpiChip extends StatelessWidget {
-  const _AuditKpiChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(value, style: AppTextStyles.labelLarge.copyWith(color: color)),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuditContextChip extends StatelessWidget {
-  const _AuditContextChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Text(
-        '$label · $value',
-        style: AppTextStyles.labelMedium.copyWith(
-          color: AppColors.textSecondary,
-        ),
       ),
     );
   }

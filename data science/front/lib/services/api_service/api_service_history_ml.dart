@@ -64,9 +64,9 @@ Future<List<Map<String, dynamic>>> _getAuditActivity({
     _baseUrl,
     '/api/history/activity',
     queryParameters: <String, Object?>{
-      if (type != null) 'type': type,
-      if (status != null) 'status': status,
       'limit': limit,
+      ...?type == null ? null : <String, Object?>{'type': type},
+      ...?status == null ? null : <String, Object?>{'status': status},
     },
   );
   final data = _decodeResponseMap(
@@ -93,9 +93,13 @@ Future<Map<String, dynamic>> _trainModel({
     body: jsonEncode(<String, dynamic>{
       'storage_path': storagePath,
       'problem_type': problemType,
-      if (targetColumn != null) 'target_column': targetColumn,
-      if (modelName != null) 'model_name': modelName,
-      if (nClusters != null) 'n_clusters': nClusters,
+      ...?targetColumn == null
+          ? null
+          : <String, dynamic>{'target_column': targetColumn},
+      ...?modelName == null
+          ? null
+          : <String, dynamic>{'model_name': modelName},
+      ...?nClusters == null ? null : <String, dynamic>{'n_clusters': nClusters},
     }),
     timeout: AppConstants.optimizationTimeout,
   );
@@ -117,8 +121,12 @@ Future<Map<String, dynamic>> _predict({
     '/api/ml/predict',
     body: jsonEncode(<String, dynamic>{
       'model_path': modelPath,
-      if (inputData != null) 'input_data': inputData,
-      if (storagePath != null) 'storage_path': storagePath,
+      ...?inputData == null
+          ? null
+          : <String, dynamic>{'input_data': inputData},
+      ...?storagePath == null
+          ? null
+          : <String, dynamic>{'storage_path': storagePath},
     }),
     timeout: AppConstants.optimizationTimeout,
   );

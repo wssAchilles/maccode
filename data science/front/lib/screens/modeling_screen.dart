@@ -13,6 +13,7 @@ import '../models/job_record.dart';
 import '../models/modeling_controls_state.dart';
 import '../models/optimization_result.dart';
 import '../models/optimization_launch_intent.dart';
+import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
@@ -25,6 +26,7 @@ import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/operations/workbench_command_strip.dart';
 import '../widgets/operations/workbench_runbook_panel.dart';
 import '../widgets/operations/workbench_section_signal.dart';
+import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/modeling/modeling_control_panel.dart';
 import '../widgets/modeling/optimization_asset_registry_board.dart';
 import '../widgets/modeling/optimization_operations_board.dart';
@@ -253,17 +255,11 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   String _optimizationFeedbackMessage(String prefix, {String? detail}) {
-    final chain = _optimizationChain();
-    if (chain == null) {
-      return detail == null || detail.isEmpty ? prefix : '$prefix · $detail';
-    }
-    final buffer = StringBuffer(
-      '$prefix · ${chain.workspaceTargetLabel} · ${chain.incidentTargetLabel}',
+    return buildChainFeedbackMessage(
+      _optimizationChain(),
+      prefix: prefix,
+      detail: detail,
     );
-    if (detail != null && detail.isNotEmpty) {
-      buffer.write(' · $detail');
-    }
-    return buffer.toString();
   }
 
   void _showErrorSnackBar(String message) {
@@ -746,35 +742,33 @@ class _ModelingScreenState extends State<ModelingScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _OperationContextBadge(
+                WorkspaceStatusChip(
                   label: chain.workspaceTargetLabel,
+                  icon: Icons.account_tree_rounded,
                   foreground: AppColors.warning,
                   background: AppColors.warningLight,
                 ),
-                _OperationContextBadge(
+                WorkspaceStatusChip(
+                  label: chain.cardTargetLabel,
+                  icon: Icons.dashboard_customize_rounded,
+                  foreground: AppColors.textPrimary,
+                  background: AppColors.surfaceVariant,
+                ),
+                WorkspaceStatusChip(
                   label: chain.incidentTargetLabel,
+                  icon: Icons.priority_high_rounded,
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                border: Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.16),
-                ),
-              ),
-              child: Text(
-                chain.workspaceBrief,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
+            WorkspaceContextBanner(
+              accent: AppColors.warning,
+              workspaceLabel: chain.workspaceTargetLabel,
+              cardLabel: chain.cardTargetLabel,
+              incidentLabel: chain.incidentTargetLabel,
+              summary: chain.workspaceBrief,
             ),
           ],
           const SizedBox(height: 16),
@@ -845,53 +839,115 @@ class _ModelingScreenState extends State<ModelingScreen> {
             },
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                onPressed: hasExportableResult ? _copyResultJson : null,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('复制结果 JSON'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: hasExportableResult ? _copySummaryDigest : null,
-                icon: const Icon(Icons.content_copy_rounded),
-                label: const Text('复制节省摘要'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _copyScenarioDigest,
-                icon: const Icon(Icons.copy_rounded),
-                label: const Text('复制配置摘要'),
-              ),
-              OutlinedButton.icon(
-                onPressed: hasExportableResult ? _copyStrategyDigest : null,
-                icon: const Icon(Icons.rule_rounded),
-                label: const Text('复制策略摘要'),
-              ),
-              OutlinedButton.icon(
-                onPressed: hasExportableResult ? _copySnapshotDigest : null,
-                icon: const Icon(Icons.inventory_2_rounded),
-                label: const Text('复制结果护照'),
-              ),
-              OutlinedButton.icon(
-                onPressed: hasExportableResult ? _copyOperationsDigest : null,
-                icon: const Icon(Icons.monitor_heart_rounded),
-                label: const Text('复制运维摘要'),
-              ),
-              OutlinedButton.icon(
-                onPressed: latestCompletedJob == null
-                    ? null
-                    : () => _hydrateLatestJobResult(latestCompletedJob),
-                icon: const Icon(Icons.download_done_rounded),
-                label: const Text('载入最近后台结果'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _jobViewModel.loadJobs,
-                icon: const Icon(Icons.sync_rounded),
-                label: const Text('刷新任务状态'),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 980;
+              final lanes = [
+                WorkspaceActionLane(
+                  title: '结果导出与协作',
+                  description: hasExportableResult
+                      ? '将当前优化结果、节省摘要和策略摘要直接打包给协作方，不再让复制动作散在一排按钮里。'
+                      : '先完成一次有效优化，再导出 JSON、快照和节省摘要。',
+                  accent: AppColors.primary,
+                  icon: Icons.ios_share_rounded,
+                  workspaceLabel: chain?.workspaceTargetLabel,
+                  cardLabel: chain?.cardTargetLabel,
+                  incidentLabel: chain?.incidentTargetLabel,
+                  summary: chain?.workspaceBrief,
+                  statusLabel: hasExportableResult ? 'Ready' : 'Blocked',
+                  statusColor: hasExportableResult
+                      ? AppColors.success
+                      : AppColors.warning,
+                  actions: [
+                    WorkspaceActionLaneAction(
+                      label: '复制结果 JSON',
+                      icon: Icons.download_rounded,
+                      onTap: hasExportableResult ? _copyResultJson : null,
+                      tone: WorkspaceActionLaneTone.primary,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '复制节省摘要',
+                      icon: Icons.content_copy_rounded,
+                      onTap: hasExportableResult ? _copySummaryDigest : null,
+                      tone: WorkspaceActionLaneTone.tonal,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '复制配置摘要',
+                      icon: Icons.copy_rounded,
+                      onTap: _copyScenarioDigest,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '复制策略摘要',
+                      icon: Icons.rule_rounded,
+                      onTap: hasExportableResult ? _copyStrategyDigest : null,
+                    ),
+                  ],
+                ),
+                WorkspaceActionLane(
+                  title: '运维回填与复盘',
+                  description: latestCompletedJob != null
+                      ? '把最近后台结果、结果护照和运维摘要收在同一条复盘车道里，便于值班处理。'
+                      : '当前还没有可回填的后台结果，但可以先刷新任务队列并保留运维摘要出口。',
+                  accent: AppColors.warning,
+                  icon: Icons.monitor_heart_rounded,
+                  workspaceLabel: chain?.workspaceTargetLabel,
+                  cardLabel: chain?.cardTargetLabel,
+                  incidentLabel: chain?.incidentTargetLabel,
+                  summary: chain?.workspaceBrief,
+                  statusLabel: latestCompletedJob == null ? 'Waiting' : 'Hot',
+                  statusColor: latestCompletedJob == null
+                      ? AppColors.textSecondary
+                      : AppColors.warning,
+                  actions: [
+                    WorkspaceActionLaneAction(
+                      label: '复制结果护照',
+                      icon: Icons.inventory_2_rounded,
+                      onTap: hasExportableResult ? _copySnapshotDigest : null,
+                      tone: WorkspaceActionLaneTone.tonal,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '复制运维摘要',
+                      icon: Icons.monitor_heart_rounded,
+                      onTap: hasExportableResult ? _copyOperationsDigest : null,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '载入最近后台结果',
+                      icon: Icons.download_done_rounded,
+                      onTap: latestCompletedJob == null
+                          ? null
+                          : () => _hydrateLatestJobResult(latestCompletedJob),
+                      tone: WorkspaceActionLaneTone.primary,
+                    ),
+                    WorkspaceActionLaneAction(
+                      label: '刷新任务状态',
+                      icon: Icons.sync_rounded,
+                      onTap: _jobViewModel.loadJobs,
+                    ),
+                  ],
+                ),
+              ];
+
+              if (stacked) {
+                return Column(
+                  children: [
+                    for (var i = 0; i < lanes.length; i++) ...[
+                      lanes[i],
+                      if (i < lanes.length - 1) const SizedBox(height: 12),
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < lanes.length; i++) ...[
+                    Expanded(child: lanes[i]),
+                    if (i < lanes.length - 1) const SizedBox(width: 12),
+                  ],
+                ],
+              );
+            },
           ),
           if (summary != null) ...[
             const SizedBox(height: 16),
@@ -1256,50 +1312,27 @@ class _OptimizationDigestCard extends StatelessWidget {
   }
 }
 
-class _OperationContextBadge extends StatelessWidget {
-  const _OperationContextBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelMedium.copyWith(color: foreground),
-      ),
-    );
-  }
-}
-
 bool _operationsDigestFocus(AssetChainSummary? chain, String card) {
   if (chain == null) {
     return false;
   }
-  if (chain.sectionTarget == 'optimization_assets') {
-    return card == 'snapshot';
-  }
-  switch (chain.focusTarget) {
-    case 'optimization_solver':
-    case 'optimization_constraint':
-    case 'optimization_explainability':
-      return card == 'operations';
-    case 'optimization_registry':
+  switch (chain.cardTarget) {
+    case 'strategy':
+      return card == 'strategy';
+    case 'comparison':
+      return card == 'comparison';
+    case 'latest_snapshot':
+    case 'recent_artifact':
+    case 'registry_summary':
+    case 'summary':
       return card == 'snapshot';
+    case 'solver_health':
+    case 'constraint_pressure':
+    case 'explainability_probe':
+      return card == 'operations';
   }
-  if (chain.status == 'active' || chain.status == 'incident') {
-    return card == 'operations';
-  }
-  return false;
+  return chain.sectionTarget == 'optimization_assets'
+      ? card == 'snapshot'
+      : card == 'operations' &&
+            (chain.status == 'active' || chain.status == 'incident');
 }

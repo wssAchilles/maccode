@@ -45,7 +45,7 @@ class WorkbenchSectionSignal extends StatelessWidget {
             _SignalFact(
               label: 'Section Target',
               value:
-                  '${activeChain.workspaceTargetLabel} · ${activeChain.sectionTargetLabel}',
+                  '${activeChain.workspaceTargetLabel} · ${activeChain.cardTargetLabel}',
               accent: tone,
             ),
             _SignalFact(
@@ -100,6 +100,11 @@ class WorkbenchSectionSignal extends StatelessWidget {
                               label: activeChain.workspaceTargetLabel,
                               foreground: tone,
                               background: tone.withValues(alpha: 0.08),
+                            ),
+                            _SignalBadge(
+                              label: activeChain.cardTargetLabel,
+                              foreground: AppColors.textPrimary,
+                              background: AppColors.surfaceVariant,
                             ),
                             _SignalBadge(
                               label: activeChain.incidentTargetLabel,

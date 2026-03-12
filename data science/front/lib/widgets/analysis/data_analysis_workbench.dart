@@ -11,6 +11,7 @@ import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
 import '../operations/embedded_page_header.dart';
 import '../operations/metric_card.dart';
+import '../operations/workspace_action_lane.dart';
 import 'data_analysis_state_views.dart';
 
 class DataAnalysisWorkbenchHeader extends StatelessWidget {
@@ -364,7 +365,7 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
             children: [
               Text('分析后续动作', style: AppTextStyles.h4),
               const Spacer(),
-              _StatusChip(
+              WorkspaceStatusChip(
                 label: savedAsAsset ? '已写入资产链路' : '未归档，仅当前会话',
                 icon: savedAsAsset
                     ? Icons.cloud_done_rounded
@@ -384,27 +385,33 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _StatusChip(
+                WorkspaceStatusChip(
                   label: chain!.workspaceTargetLabel,
                   icon: Icons.account_tree_rounded,
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
                 ),
-                _StatusChip(
+                WorkspaceStatusChip(
+                  label: chain!.cardTargetLabel,
+                  icon: Icons.dashboard_customize_rounded,
+                  foreground: AppColors.textPrimary,
+                  background: AppColors.surfaceVariant,
+                ),
+                WorkspaceStatusChip(
                   label: chain!.incidentTargetLabel,
-                  icon: Icons.adjust_rounded,
+                  icon: Icons.priority_high_rounded,
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _WorkflowContextBanner(
+            WorkspaceContextBanner(
               accent: AppColors.primary,
-              sectionLabel: chain!.workspaceTargetLabel,
-              focusLabel: chain!.sectionTargetLabel,
+              workspaceLabel: chain!.workspaceTargetLabel,
+              cardLabel: chain!.cardTargetLabel,
               incidentLabel: chain!.incidentTargetLabel,
-              incidentSummary: chain!.workspaceBrief,
+              summary: chain!.workspaceBrief,
             ),
           ],
           const SizedBox(height: 14),
@@ -512,39 +519,42 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
             onSendToRag: onSendToRag,
           ),
           const SizedBox(height: 16),
-          Wrap(
+          WorkspaceInlineActionBar(
             spacing: 12,
             runSpacing: 12,
-            children: [
-              FilledButton.tonalIcon(
-                onPressed: onOpenHistory,
-                icon: const Icon(Icons.history_rounded),
-                label: const Text('查看历史与审计'),
+            actions: [
+              WorkspaceActionLaneAction(
+                label: '查看历史与审计',
+                icon: Icons.history_rounded,
+                onTap: onOpenHistory,
+                tone: WorkspaceActionLaneTone.tonal,
               ),
-              OutlinedButton.icon(
-                onPressed: hasStoragePath ? onCopyStoragePath : null,
-                icon: const Icon(Icons.content_copy_rounded),
-                label: const Text('复制 Storage Path'),
+              WorkspaceActionLaneAction(
+                label: '复制 Storage Path',
+                icon: Icons.content_copy_rounded,
+                onTap: hasStoragePath ? onCopyStoragePath : null,
               ),
-              FilledButton.icon(
-                onPressed: hasStoragePath ? onSendToTraining : null,
-                icon: const Icon(Icons.model_training_rounded),
-                label: const Text('送入训练'),
+              WorkspaceActionLaneAction(
+                label: '送入训练',
+                icon: Icons.model_training_rounded,
+                onTap: hasStoragePath ? onSendToTraining : null,
+                tone: WorkspaceActionLaneTone.primary,
               ),
-              FilledButton.tonalIcon(
-                onPressed: hasStoragePath ? onSendToRag : null,
-                icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text('送入 RAG'),
+              WorkspaceActionLaneAction(
+                label: '送入 RAG',
+                icon: Icons.auto_awesome_rounded,
+                onTap: hasStoragePath ? onSendToRag : null,
+                tone: WorkspaceActionLaneTone.tonal,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyAssetPassport,
-                icon: const Icon(Icons.badge_rounded),
-                label: const Text('复制资产护照'),
+              WorkspaceActionLaneAction(
+                label: '复制资产护照',
+                icon: Icons.badge_rounded,
+                onTap: onCopyAssetPassport,
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyCollaborationBrief,
-                icon: const Icon(Icons.share_rounded),
-                label: const Text('复制协作摘要'),
+              WorkspaceActionLaneAction(
+                label: '复制协作摘要',
+                icon: Icons.share_rounded,
+                onTap: onCopyCollaborationBrief,
               ),
             ],
           ),
@@ -591,93 +601,96 @@ class _WorkflowHandoffBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lanes = [
-      _HandoffLane(
+      WorkspaceActionLane(
         title: '训练交接',
         description: hasStoragePath
             ? '将资产护照和对比摘要一并送入训练工作台，保留资产来源和基线差异。'
             : '缺少可复用 Storage Path，当前无法直接进入训练链路。',
         accent: AppColors.cta,
         icon: Icons.model_training_rounded,
-        contextLabel: chain?.workspaceTargetLabel,
+        workspaceLabel: chain?.workspaceTargetLabel,
+        cardLabel: chain?.cardTargetLabel,
         incidentLabel: chain?.incidentTargetLabel,
-        incidentSummary: chain?.workspaceBrief,
+        summary: chain?.workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         actions: [
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '送入训练',
             icon: Icons.arrow_forward_rounded,
             onTap: hasStoragePath ? onSendToTraining : null,
-            filled: true,
+            tone: WorkspaceActionLaneTone.primary,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制资产护照',
             icon: Icons.badge_rounded,
             onTap: onCopyAssetPassport,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制对比摘要',
             icon: Icons.compare_arrows_rounded,
             onTap: onCopyCompareDigest,
           ),
         ],
       ),
-      _HandoffLane(
+      WorkspaceActionLane(
         title: '知识库交接',
         description: hasStoragePath
             ? '将资产路径和协作摘要带入 RAG 构建入口，避免知识库来源脱节。'
             : '当前分析结果尚未沉淀为资产，不能直接进入知识库构建流程。',
         accent: AppColors.primary,
         icon: Icons.auto_awesome_rounded,
-        contextLabel: chain?.workspaceTargetLabel,
+        workspaceLabel: chain?.workspaceTargetLabel,
+        cardLabel: chain?.cardTargetLabel,
         incidentLabel: chain?.incidentTargetLabel,
-        incidentSummary: chain?.workspaceBrief,
+        summary: chain?.workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         actions: [
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '送入 RAG',
             icon: Icons.hub_rounded,
             onTap: hasStoragePath ? onSendToRag : null,
-            filled: true,
+            tone: WorkspaceActionLaneTone.primary,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制资产护照',
             icon: Icons.badge_rounded,
             onTap: onCopyAssetPassport,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制协作摘要',
             icon: Icons.share_rounded,
             onTap: onCopyCollaborationBrief,
           ),
         ],
       ),
-      _HandoffLane(
+      WorkspaceActionLane(
         title: '协作与审计',
         description: savedAsAsset
             ? '资产已经进入历史链路，可直接把治理摘要和协作摘要交给审计或团队协作。'
             : '即使未归档，也可以先复制治理摘要供人工审核，但不会进入资产台账。',
         accent: AppColors.success,
         icon: Icons.fact_check_rounded,
-        contextLabel: savedAsAsset ? '资产已登记' : chain?.workspaceTargetLabel,
+        workspaceLabel: savedAsAsset ? '资产已登记' : chain?.workspaceTargetLabel,
+        cardLabel: chain?.cardTargetLabel,
         incidentLabel: chain?.incidentTargetLabel,
-        incidentSummary: chain?.workspaceBrief,
+        summary: chain?.workspaceBrief,
         statusLabel: savedAsAsset ? 'Tracked' : 'Session Only',
         statusColor: savedAsAsset ? AppColors.success : AppColors.warning,
         actions: [
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '打开历史与审计',
             icon: Icons.history_rounded,
             onTap: onOpenHistory,
-            filled: true,
+            tone: WorkspaceActionLaneTone.primary,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制治理摘要',
             icon: Icons.health_and_safety_rounded,
             onTap: onCopyGovernanceDigest,
           ),
-          _HandoffLaneAction(
+          WorkspaceActionLaneAction(
             label: '复制协作摘要',
             icon: Icons.groups_rounded,
             onTap: onCopyCollaborationBrief,
@@ -710,210 +723,6 @@ class _WorkflowHandoffBoard extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _HandoffLane extends StatelessWidget {
-  const _HandoffLane({
-    required this.title,
-    required this.description,
-    required this.accent,
-    required this.icon,
-    this.contextLabel,
-    this.incidentLabel,
-    this.incidentSummary,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.actions,
-  });
-
-  final String title;
-  final String description;
-  final Color accent;
-  final IconData icon;
-  final String? contextLabel;
-  final String? incidentLabel;
-  final String? incidentSummary;
-  final String statusLabel;
-  final Color statusColor;
-  final List<_HandoffLaneAction> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: accent.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-                ),
-                child: Icon(icon, size: 18, color: accent),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(title, style: AppTextStyles.labelLarge)),
-              if (contextLabel != null && contextLabel!.isNotEmpty) ...[
-                _StatusChip(
-                  label: contextLabel!,
-                  icon: Icons.account_tree_rounded,
-                  foreground: accent,
-                  background: accent.withValues(alpha: 0.12),
-                ),
-                const SizedBox(width: 8),
-              ],
-              _StatusChip(
-                label: statusLabel,
-                icon: Icons.radio_button_checked_rounded,
-                foreground: statusColor,
-                background: statusColor.withValues(alpha: 0.12),
-              ),
-            ],
-          ),
-          if ((incidentLabel ?? '').isNotEmpty ||
-              (incidentSummary ?? '').isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _WorkflowContextBanner(
-              accent: accent,
-              sectionLabel: contextLabel,
-              focusLabel: statusLabel,
-              incidentLabel: incidentLabel,
-              incidentSummary: incidentSummary,
-            ),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            description,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: actions
-                .map(
-                  (action) => action.filled
-                      ? FilledButton.tonalIcon(
-                          onPressed: action.onTap,
-                          icon: Icon(action.icon),
-                          label: Text(action.label),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: action.onTap,
-                          icon: Icon(action.icon),
-                          label: Text(action.label),
-                        ),
-                )
-                .toList(growable: false),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HandoffLaneAction {
-  const _HandoffLaneAction({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    this.filled = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool filled;
-}
-
-class _WorkflowContextBanner extends StatelessWidget {
-  const _WorkflowContextBanner({
-    required this.accent,
-    this.sectionLabel,
-    this.focusLabel,
-    this.incidentLabel,
-    this.incidentSummary,
-  });
-
-  final Color accent;
-  final String? sectionLabel;
-  final String? focusLabel;
-  final String? incidentLabel;
-  final String? incidentSummary;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasSignal =
-        (sectionLabel ?? '').isNotEmpty ||
-        (focusLabel ?? '').isNotEmpty ||
-        (incidentLabel ?? '').isNotEmpty ||
-        (incidentSummary ?? '').isNotEmpty;
-    if (!hasSignal) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if ((sectionLabel ?? '').isNotEmpty)
-                _StatusChip(
-                  label: sectionLabel!,
-                  icon: Icons.account_tree_rounded,
-                  foreground: accent,
-                  background: accent.withValues(alpha: 0.12),
-                ),
-              if ((focusLabel ?? '').isNotEmpty)
-                _StatusChip(
-                  label: focusLabel!,
-                  icon: Icons.adjust_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-              if ((incidentLabel ?? '').isNotEmpty)
-                _StatusChip(
-                  label: 'Current watch · $incidentLabel',
-                  icon: Icons.priority_high_rounded,
-                  foreground: accent,
-                  background: accent.withValues(alpha: 0.12),
-                ),
-            ],
-          ),
-          if ((incidentSummary ?? '').isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              incidentSummary!,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -963,49 +772,6 @@ class _WorkflowDigestCard extends StatelessWidget {
             value,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.label,
-    required this.icon,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: foreground),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.labelMedium.copyWith(
-                color: foreground,
-                fontWeight: FontWeight.w700,
-              ),
             ),
           ),
         ],

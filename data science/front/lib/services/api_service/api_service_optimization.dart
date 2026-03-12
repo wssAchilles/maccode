@@ -24,13 +24,24 @@ Future<OptimizationResponse> _runOptimization({
     '/api/optimization/run',
     body: jsonEncode(<String, dynamic>{
       'initial_soc': initialSoc,
-      if (targetDate != null) 'target_date': _formatDate(targetDate),
-      if (temperatureForecast != null)
-        'temperature_forecast': temperatureForecast,
-      if (temperatureAdjust != null) 'temperature_adjust': temperatureAdjust,
-      if (batteryCapacity != null) 'battery_capacity': batteryCapacity,
-      if (batteryPower != null) 'battery_power': batteryPower,
-      if (batteryEfficiency != null) 'battery_efficiency': batteryEfficiency,
+      ...?targetDate == null
+          ? null
+          : <String, dynamic>{'target_date': _formatDate(targetDate)},
+      ...?temperatureForecast == null
+          ? null
+          : <String, dynamic>{'temperature_forecast': temperatureForecast},
+      ...?temperatureAdjust == null
+          ? null
+          : <String, dynamic>{'temperature_adjust': temperatureAdjust},
+      ...?batteryCapacity == null
+          ? null
+          : <String, dynamic>{'battery_capacity': batteryCapacity},
+      ...?batteryPower == null
+          ? null
+          : <String, dynamic>{'battery_power': batteryPower},
+      ...?batteryEfficiency == null
+          ? null
+          : <String, dynamic>{'battery_efficiency': batteryEfficiency},
     }),
     timeout: AppConstants.optimizationTimeout,
     timeoutMessage: '优化请求超时，请稍后重试',
@@ -141,8 +152,10 @@ Future<Map<String, dynamic>> _simulateScenarios({
     _baseUrl,
     '/api/optimization/simulate',
     body: jsonEncode(<String, dynamic>{
-      if (targetDate != null) 'target_date': _formatDate(targetDate),
-      if (scenarios != null) 'scenarios': scenarios,
+      ...?targetDate == null
+          ? null
+          : <String, dynamic>{'target_date': _formatDate(targetDate)},
+      ...?scenarios == null ? null : <String, dynamic>{'scenarios': scenarios},
     }),
     timeout: AppConstants.optimizationTimeout,
     timeoutMessage: '模拟请求超时',
@@ -172,7 +185,9 @@ Future<Map<String, dynamic>> _trainDeepModel({
       'epochs': epochs,
       'batch_size': batchSize,
       'window_size': windowSize,
-      if (targetColumn != null) 'target_column': targetColumn,
+      ...?targetColumn == null
+          ? null
+          : <String, dynamic>{'target_column': targetColumn},
     }),
     timeout: const Duration(minutes: 10),
     timeoutMessage: '训练请求超时，请稍后刷新查看结果',
@@ -194,7 +209,9 @@ Future<Map<String, dynamic>> _askRagQuestion({
     '/api/rag/ask',
     body: jsonEncode(<String, dynamic>{
       'query': question,
-      if (collectionName != null) 'collection_name': collectionName,
+      ...?collectionName == null
+          ? null
+          : <String, dynamic>{'collection_name': collectionName},
     }),
   );
 

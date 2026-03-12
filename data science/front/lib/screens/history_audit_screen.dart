@@ -10,6 +10,7 @@ import '../models/dashboard_summary.dart';
 import '../models/history_record.dart';
 import '../models/job_record.dart';
 import '../models/optimization_launch_intent.dart';
+import '../utils/asset_chain_context.dart';
 import '../viewmodels/audit_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/history_view_model.dart';
@@ -388,13 +389,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _openChainSummary(AssetChainSummary chain, {required String prefix}) {
-    final sourceLabel = [
-      prefix,
-      chain.label,
-      chain.workspaceTargetLabel,
-      chain.incidentTargetLabel,
-      chain.focusLabel,
-    ].join(' · ');
+    final sourceLabel = buildChainSourceLabel(
+      chain,
+      prefix: prefix,
+      includeWorkspaceBrief: true,
+    );
     switch (chain.key) {
       case 'dataset':
         widget.onOpenDataAnalysis?.call(
@@ -537,13 +536,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     if (chain == null) {
       return prefix;
     }
-    return [
-      prefix,
-      chain.label,
-      chain.workspaceTargetLabel,
-      chain.dispositionTargetLabel,
-      chain.incidentTargetLabel,
-    ].join(' · ');
+    return buildChainSourceLabel(
+      chain,
+      prefix: prefix,
+      includeWorkspaceBrief: true,
+    );
   }
 }
 
