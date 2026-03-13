@@ -16,17 +16,21 @@ class AuditEventStream extends StatelessWidget {
     required this.jobs,
     required this.activity,
     this.assetSummary,
+    this.dutySummary,
     required this.onOpenChain,
     this.onOpenChainSummary,
     required this.onFilterFailures,
+    this.trailing,
   });
 
   final List<JobRecord> jobs;
   final List<AuditActivity> activity;
   final AssetSummary? assetSummary;
+  final DutySummary? dutySummary;
   final ValueChanged<String> onOpenChain;
   final ValueChanged<AssetChainSummary>? onOpenChainSummary;
   final ValueChanged<String> onFilterFailures;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +40,7 @@ class AuditEventStream extends StatelessWidget {
       child: DutySectionBlock(
         title: '统一审计事件流',
         subtitle: '把任务执行和审计活动合并到同一条时间线里，减少在审计页里并行维护两套列表。',
+        trailing: trailing,
         spacing: 14,
         child: entries.isEmpty
             ? Text('当前过滤条件下暂无事件。', style: AppTextStyles.bodyMedium)
@@ -44,6 +49,8 @@ class AuditEventStream extends StatelessWidget {
                   for (var i = 0; i < entries.length; i++) ...[
                     _AuditStreamTile(
                       entry: entries[i],
+                      isDutyFocus:
+                          entries[i].chain?.key == dutySummary?.focusChainKey,
                       onOpen: () {
                         final chain = entries[i].chain;
                         if (chain != null && onOpenChainSummary != null) {
@@ -106,6 +113,14 @@ class AuditEventStream extends StatelessWidget {
     ];
 
     entries.sort((a, b) {
+      final focusKey = dutySummary?.focusChainKey;
+      if (focusKey != null && focusKey.isNotEmpty) {
+        final aFocused = a.chain?.key == focusKey ? 1 : 0;
+        final bFocused = b.chain?.key == focusKey ? 1 : 0;
+        if (aFocused != bFocused) {
+          return bFocused.compareTo(aFocused);
+        }
+      }
       final priorityCompare = _entryPriority(b).compareTo(_entryPriority(a));
       if (priorityCompare != 0) {
         return priorityCompare;
@@ -177,11 +192,13 @@ class _AuditStreamEntry {
 class _AuditStreamTile extends StatelessWidget {
   const _AuditStreamTile({
     required this.entry,
+    required this.isDutyFocus,
     required this.onOpen,
     this.onFilterFailure,
   });
 
   final _AuditStreamEntry entry;
+  final bool isDutyFocus;
   final VoidCallback onOpen;
   final VoidCallback? onFilterFailure;
 
@@ -262,6 +279,12 @@ class _AuditStreamTile extends StatelessWidget {
                         label: entry.chain!.cardTargetLabel,
                         foreground: tone,
                         background: tone.withValues(alpha: 0.12),
+                      ),
+                    if (isDutyFocus)
+                      const _AuditStreamBadge(
+                        label: 'DUTY FOCUS',
+                        foreground: AppColors.primary,
+                        background: AppColors.infoLight,
                       ),
                   ],
                 ),

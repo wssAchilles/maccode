@@ -360,7 +360,8 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasStoragePath = storagePath != null && storagePath!.isNotEmpty;
     final workspaceLabel =
-        continuationContext?.workspaceTargetLabel ?? chain?.workspaceTargetLabel;
+        continuationContext?.workspaceTargetLabel ??
+        chain?.workspaceTargetLabel;
     final cardLabel =
         continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel;
     final incidentLabel =
@@ -535,39 +536,49 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
           WorkspaceInlineActionBar(
             spacing: 12,
             runSpacing: 12,
+            recommendedActionKey: _recommendedWorkflowActionKey(
+              continuationContext,
+              hasStoragePath: hasStoragePath,
+            ),
             actions: [
               WorkspaceActionLaneAction(
                 label: '查看历史与审计',
                 icon: Icons.history_rounded,
                 onTap: onOpenHistory,
+                semanticKey: 'open_history',
                 tone: WorkspaceActionLaneTone.tonal,
               ),
               WorkspaceActionLaneAction(
                 label: '复制 Storage Path',
                 icon: Icons.content_copy_rounded,
                 onTap: hasStoragePath ? onCopyStoragePath : null,
+                semanticKey: 'copy_storage_path',
               ),
               WorkspaceActionLaneAction(
                 label: '送入训练',
                 icon: Icons.model_training_rounded,
                 onTap: hasStoragePath ? onSendToTraining : null,
+                semanticKey: 'send_training',
                 tone: WorkspaceActionLaneTone.primary,
               ),
               WorkspaceActionLaneAction(
                 label: '送入 RAG',
                 icon: Icons.auto_awesome_rounded,
                 onTap: hasStoragePath ? onSendToRag : null,
+                semanticKey: 'send_rag',
                 tone: WorkspaceActionLaneTone.tonal,
               ),
               WorkspaceActionLaneAction(
                 label: '复制资产护照',
                 icon: Icons.badge_rounded,
                 onTap: onCopyAssetPassport,
+                semanticKey: 'copy_asset_passport',
               ),
               WorkspaceActionLaneAction(
                 label: '复制协作摘要',
                 icon: Icons.share_rounded,
                 onTap: onCopyCollaborationBrief,
+                semanticKey: 'copy_collaboration_brief',
               ),
             ],
           ),
@@ -616,7 +627,8 @@ class _WorkflowHandoffBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final workspaceLabel =
-        continuationContext?.workspaceTargetLabel ?? chain?.workspaceTargetLabel;
+        continuationContext?.workspaceTargetLabel ??
+        chain?.workspaceTargetLabel;
     final cardLabel =
         continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel;
     final incidentLabel =
@@ -637,22 +649,28 @@ class _WorkflowHandoffBoard extends StatelessWidget {
         summary: workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
+        recommendedActionKey: hasStoragePath
+            ? 'send_training'
+            : 'copy_asset_passport',
         actions: [
           WorkspaceActionLaneAction(
             label: '送入训练',
             icon: Icons.arrow_forward_rounded,
             onTap: hasStoragePath ? onSendToTraining : null,
+            semanticKey: 'send_training',
             tone: WorkspaceActionLaneTone.primary,
           ),
           WorkspaceActionLaneAction(
             label: '复制资产护照',
             icon: Icons.badge_rounded,
             onTap: onCopyAssetPassport,
+            semanticKey: 'copy_asset_passport',
           ),
           WorkspaceActionLaneAction(
             label: '复制对比摘要',
             icon: Icons.compare_arrows_rounded,
             onTap: onCopyCompareDigest,
+            semanticKey: 'copy_compare_digest',
           ),
         ],
       ),
@@ -669,22 +687,28 @@ class _WorkflowHandoffBoard extends StatelessWidget {
         summary: workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
+        recommendedActionKey: hasStoragePath
+            ? 'send_rag'
+            : 'copy_asset_passport',
         actions: [
           WorkspaceActionLaneAction(
             label: '送入 RAG',
             icon: Icons.hub_rounded,
             onTap: hasStoragePath ? onSendToRag : null,
+            semanticKey: 'send_rag',
             tone: WorkspaceActionLaneTone.primary,
           ),
           WorkspaceActionLaneAction(
             label: '复制资产护照',
             icon: Icons.badge_rounded,
             onTap: onCopyAssetPassport,
+            semanticKey: 'copy_asset_passport',
           ),
           WorkspaceActionLaneAction(
             label: '复制协作摘要',
             icon: Icons.share_rounded,
             onTap: onCopyCollaborationBrief,
+            semanticKey: 'copy_collaboration_brief',
           ),
         ],
       ),
@@ -695,34 +719,71 @@ class _WorkflowHandoffBoard extends StatelessWidget {
             : '即使未归档，也可以先复制治理摘要供人工审核，但不会进入资产台账。',
         accent: AppColors.success,
         icon: Icons.fact_check_rounded,
-        workspaceLabel: savedAsAsset ? (workspaceLabel ?? '资产已登记') : workspaceLabel,
+        workspaceLabel: savedAsAsset
+            ? (workspaceLabel ?? '资产已登记')
+            : workspaceLabel,
         cardLabel: cardLabel,
         incidentLabel: incidentLabel,
         summary: workspaceBrief,
         statusLabel: savedAsAsset ? 'Tracked' : 'Session Only',
         statusColor: savedAsAsset ? AppColors.success : AppColors.warning,
+        recommendedActionKey: savedAsAsset
+            ? 'open_history'
+            : 'copy_governance_digest',
         actions: [
           WorkspaceActionLaneAction(
             label: '打开历史与审计',
             icon: Icons.history_rounded,
             onTap: onOpenHistory,
+            semanticKey: 'open_history',
             tone: WorkspaceActionLaneTone.primary,
           ),
           WorkspaceActionLaneAction(
             label: '复制治理摘要',
             icon: Icons.health_and_safety_rounded,
             onTap: onCopyGovernanceDigest,
+            semanticKey: 'copy_governance_digest',
           ),
           WorkspaceActionLaneAction(
             label: '复制协作摘要',
             icon: Icons.groups_rounded,
             onTap: onCopyCollaborationBrief,
+            semanticKey: 'copy_collaboration_brief',
           ),
         ],
       ),
     ];
 
     return WorkspaceActionDeck(lanes: lanes);
+  }
+}
+
+String _recommendedWorkflowActionKey(
+  WorkbenchLaunchContext? context, {
+  required bool hasStoragePath,
+}) {
+  switch (context?.workspaceTarget) {
+    case 'data_governance':
+      switch (context?.cardTarget) {
+        case 'schema_topology':
+          return 'copy_storage_path';
+        case 'field_distribution':
+          return hasStoragePath ? 'send_rag' : 'copy_asset_passport';
+        case 'risk_digest':
+        case 'governance_decision':
+          return 'copy_collaboration_brief';
+        case 'current_asset':
+        case 'reference_asset':
+        case 'drift_report':
+          return 'copy_asset_passport';
+      }
+      return 'copy_asset_passport';
+    case 'data_handoff':
+      return hasStoragePath ? 'send_training' : 'copy_collaboration_brief';
+    case 'data_job_center':
+      return 'open_history';
+    default:
+      return hasStoragePath ? 'send_training' : 'open_history';
   }
 }
 

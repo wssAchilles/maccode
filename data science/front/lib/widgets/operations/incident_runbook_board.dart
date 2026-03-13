@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 import 'incident_card_header.dart';
@@ -17,17 +18,21 @@ class IncidentRunbookBoard extends StatelessWidget {
     required this.onOpenChain,
     this.title = 'Runbook Queue',
     this.description = '把最需要处置的链路压成共享 runbook，概览页和值班审计页都消费同一份后端处置说明。',
+    this.trailing,
+    this.dutySummary,
   });
 
   final AssetSummary summary;
   final ValueChanged<AssetChainSummary> onOpenChain;
   final String title;
   final String description;
+  final Widget? trailing;
+  final DutySummary? dutySummary;
 
   @override
   Widget build(BuildContext context) {
     final chains = [...summary.chainSummaries]
-      ..sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+      ..sort((a, b) => compareChainsByDutyFocus(a, b, dutySummary));
     final items = chains
         .where((chain) => chain.runbookSteps.isNotEmpty)
         .take(3)
@@ -39,6 +44,7 @@ class IncidentRunbookBoard extends StatelessWidget {
     return DutySectionBlock(
       title: title,
       subtitle: description,
+      trailing: trailing,
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 1180) {
@@ -47,6 +53,7 @@ class IncidentRunbookBoard extends StatelessWidget {
                 for (var i = 0; i < items.length; i++) ...[
                   _RunbookCard(
                     chain: items[i],
+                    isDutyFocus: isDutyFocusChain(items[i], dutySummary),
                     onOpen: () => onOpenChain(items[i]),
                   ),
                   if (i < items.length - 1) const SizedBox(height: 12),
@@ -62,6 +69,7 @@ class IncidentRunbookBoard extends StatelessWidget {
                 Expanded(
                   child: _RunbookCard(
                     chain: items[i],
+                    isDutyFocus: isDutyFocusChain(items[i], dutySummary),
                     onOpen: () => onOpenChain(items[i]),
                   ),
                 ),
@@ -76,9 +84,14 @@ class IncidentRunbookBoard extends StatelessWidget {
 }
 
 class _RunbookCard extends StatelessWidget {
-  const _RunbookCard({required this.chain, required this.onOpen});
+  const _RunbookCard({
+    required this.chain,
+    required this.isDutyFocus,
+    required this.onOpen,
+  });
 
   final AssetChainSummary chain;
+  final bool isDutyFocus;
   final VoidCallback onOpen;
 
   @override
@@ -110,6 +123,12 @@ class _RunbookCard extends StatelessWidget {
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
+              if (isDutyFocus)
+                _RunbookBadge(
+                  label: 'DUTY FOCUS',
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
+                ),
               if (chain.isOverdue)
                 _RunbookBadge(
                   label: 'OVERDUE ${chain.overdueMinutes}m',

@@ -19,6 +19,8 @@ class AssetGovernanceQueue extends StatelessWidget {
     this.onFailureAction,
     this.title = '风险处置中心',
     this.description = '将资产缺口、失败链路和推荐动作收成统一治理队列。',
+    this.trailing,
+    this.dutySummary,
   });
 
   final List<AssetGovernanceItem> items;
@@ -27,16 +29,42 @@ class AssetGovernanceQueue extends StatelessWidget {
   final ValueChanged<AssetFailureChain>? onFailureAction;
   final String title;
   final String description;
+  final Widget? trailing;
+  final DutySummary? dutySummary;
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty && failureChains.isEmpty) {
       return const SizedBox.shrink();
     }
+    final sortedFailureChains = [...failureChains]
+      ..sort((a, b) {
+        final focusKey = dutySummary?.focusChainKey;
+        final aFocused = a.key == focusKey ? 1 : 0;
+        final bFocused = b.key == focusKey ? 1 : 0;
+        if (aFocused != bFocused) {
+          return bFocused.compareTo(aFocused);
+        }
+        return b.attemptCount.compareTo(a.attemptCount);
+      });
+    final sortedItems = [...items]
+      ..sort((a, b) {
+        final focusKey = dutySummary?.focusChainKey;
+        final aFocused = a.key == focusKey ? 1 : 0;
+        final bFocused = b.key == focusKey ? 1 : 0;
+        if (aFocused != bFocused) {
+          return bFocused.compareTo(aFocused);
+        }
+        if (a.failedJobs != b.failedJobs) {
+          return b.failedJobs.compareTo(a.failedJobs);
+        }
+        return b.assetCount.compareTo(a.assetCount);
+      });
 
     return DutySectionBlock(
       title: title,
       subtitle: description,
+      trailing: trailing,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,10 +72,11 @@ class AssetGovernanceQueue extends StatelessWidget {
             _SectionLabel(title: '失败链路'),
             const SizedBox(height: 12),
             _AdaptiveGrid(
-              children: failureChains
+              children: sortedFailureChains
                   .map(
                     (chain) => _FailureChainCard(
                       chain: chain,
+                      isDutyFocus: chain.key == dutySummary?.focusChainKey,
                       onAction: onFailureAction == null
                           ? null
                           : () => onFailureAction!(chain),
@@ -61,10 +90,11 @@ class AssetGovernanceQueue extends StatelessWidget {
             _SectionLabel(title: '治理项'),
             const SizedBox(height: 12),
             _AdaptiveGrid(
-              children: items
+              children: sortedItems
                   .map(
                     (item) => _GovernanceCard(
                       item: item,
+                      isDutyFocus: item.key == dutySummary?.focusChainKey,
                       onAction: () => onAction(item),
                     ),
                   )
@@ -127,9 +157,14 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _GovernanceCard extends StatelessWidget {
-  const _GovernanceCard({required this.item, required this.onAction});
+  const _GovernanceCard({
+    required this.item,
+    required this.isDutyFocus,
+    required this.onAction,
+  });
 
   final AssetGovernanceItem item;
+  final bool isDutyFocus;
   final VoidCallback onAction;
 
   @override
@@ -172,6 +207,13 @@ class _GovernanceCard extends StatelessWidget {
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
+              if (isDutyFocus)
+                const WorkspaceStatusChip(
+                  label: 'DUTY FOCUS',
+                  icon: Icons.center_focus_strong_rounded,
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -236,9 +278,14 @@ class _MetricRow extends StatelessWidget {
 }
 
 class _FailureChainCard extends StatelessWidget {
-  const _FailureChainCard({required this.chain, this.onAction});
+  const _FailureChainCard({
+    required this.chain,
+    required this.isDutyFocus,
+    this.onAction,
+  });
 
   final AssetFailureChain chain;
+  final bool isDutyFocus;
   final VoidCallback? onAction;
 
   @override
@@ -280,6 +327,13 @@ class _FailureChainCard extends StatelessWidget {
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
+              if (isDutyFocus)
+                const WorkspaceStatusChip(
+                  label: 'DUTY FOCUS',
+                  icon: Icons.center_focus_strong_rounded,
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
+                ),
             ],
           ),
           const SizedBox(height: 8),

@@ -787,7 +787,8 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   _activeLaunchContext?.workspaceTargetLabel ??
                   chain.workspaceTargetLabel,
               cardLabel:
-                  _activeLaunchContext?.cardTargetLabel ?? chain.cardTargetLabel,
+                  _activeLaunchContext?.cardTargetLabel ??
+                  chain.cardTargetLabel,
               incidentLabel:
                   _activeLaunchContext?.incidentTargetLabel ??
                   chain.incidentTargetLabel,
@@ -907,33 +908,43 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     _activeLaunchContext?.incidentTargetLabel ??
                     chain?.incidentTargetLabel,
                 summary:
-                    _activeLaunchContext?.workspaceBrief ?? chain?.workspaceBrief,
+                    _activeLaunchContext?.workspaceBrief ??
+                    chain?.workspaceBrief,
                 statusLabel: hasExportableResult ? 'Ready' : 'Blocked',
                 statusColor: hasExportableResult
                     ? AppColors.success
                     : AppColors.warning,
+                recommendedActionKey: _recommendedExportAction(
+                  chain,
+                  _activeLaunchContext,
+                  hasExportableResult: hasExportableResult,
+                ),
                 actions: [
                   WorkspaceActionLaneAction(
                     label: '复制结果 JSON',
                     icon: Icons.download_rounded,
                     onTap: hasExportableResult ? _copyResultJson : null,
+                    semanticKey: 'copy_result_json',
                     tone: WorkspaceActionLaneTone.primary,
                   ),
                   WorkspaceActionLaneAction(
                     label: '复制节省摘要',
                     icon: Icons.content_copy_rounded,
                     onTap: hasExportableResult ? _copySummaryDigest : null,
+                    semanticKey: 'copy_summary_digest',
                     tone: WorkspaceActionLaneTone.tonal,
                   ),
                   WorkspaceActionLaneAction(
                     label: '复制配置摘要',
                     icon: Icons.copy_rounded,
                     onTap: _copyScenarioDigest,
+                    semanticKey: 'copy_scenario_digest',
                   ),
                   WorkspaceActionLaneAction(
                     label: '复制策略摘要',
                     icon: Icons.rule_rounded,
                     onTap: hasExportableResult ? _copyStrategyDigest : null,
+                    semanticKey: 'copy_strategy_digest',
                   ),
                 ],
               ),
@@ -954,22 +965,30 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     _activeLaunchContext?.incidentTargetLabel ??
                     chain?.incidentTargetLabel,
                 summary:
-                    _activeLaunchContext?.workspaceBrief ?? chain?.workspaceBrief,
+                    _activeLaunchContext?.workspaceBrief ??
+                    chain?.workspaceBrief,
                 statusLabel: latestCompletedJob == null ? 'Waiting' : 'Hot',
                 statusColor: latestCompletedJob == null
                     ? AppColors.textSecondary
                     : AppColors.warning,
+                recommendedActionKey: _recommendedOperationsAction(
+                  chain,
+                  _activeLaunchContext,
+                  latestCompletedJob != null,
+                ),
                 actions: [
                   WorkspaceActionLaneAction(
                     label: '复制结果护照',
                     icon: Icons.inventory_2_rounded,
                     onTap: hasExportableResult ? _copySnapshotDigest : null,
+                    semanticKey: 'copy_snapshot_digest',
                     tone: WorkspaceActionLaneTone.tonal,
                   ),
                   WorkspaceActionLaneAction(
                     label: '复制运维摘要',
                     icon: Icons.monitor_heart_rounded,
                     onTap: hasExportableResult ? _copyOperationsDigest : null,
+                    semanticKey: 'copy_operations_digest',
                   ),
                   WorkspaceActionLaneAction(
                     label: '载入最近后台结果',
@@ -977,12 +996,14 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     onTap: latestCompletedJob == null
                         ? null
                         : () => _hydrateLatestJobResult(latestCompletedJob),
+                    semanticKey: 'load_latest_job_result',
                     tone: WorkspaceActionLaneTone.primary,
                   ),
                   WorkspaceActionLaneAction(
                     label: '刷新任务状态',
                     icon: Icons.sync_rounded,
                     onTap: _jobViewModel.loadJobs,
+                    semanticKey: 'refresh_jobs',
                   ),
                 ],
               ),
@@ -1326,4 +1347,55 @@ bool _operationsDigestFocus(
       ? card == 'snapshot'
       : card == 'operations' &&
             (chain?.status == 'active' || chain?.status == 'incident');
+}
+
+String _recommendedExportAction(
+  AssetChainSummary? chain,
+  WorkbenchLaunchContext? continuationContext, {
+  required bool hasExportableResult,
+}) {
+  final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
+  if (!hasExportableResult) {
+    return 'copy_scenario_digest';
+  }
+  switch (cardTarget) {
+    case 'solver_health':
+    case 'constraint_pressure':
+    case 'explainability_probe':
+      return 'copy_strategy_digest';
+    case 'recent_artifact':
+    case 'latest_snapshot':
+    case 'registry_summary':
+      return 'copy_result_json';
+    default:
+      return 'copy_result_json';
+  }
+}
+
+String _recommendedOperationsAction(
+  AssetChainSummary? chain,
+  WorkbenchLaunchContext? continuationContext,
+  bool hasLatestCompletedJob,
+) {
+  final workspaceTarget =
+      continuationContext?.workspaceTarget ?? chain?.workspaceTarget;
+  final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
+  if (workspaceTarget == 'optimization_registry' ||
+      cardTarget == 'latest_snapshot') {
+    return hasLatestCompletedJob
+        ? 'load_latest_job_result'
+        : 'copy_snapshot_digest';
+  }
+  switch (cardTarget) {
+    case 'solver_health':
+    case 'constraint_pressure':
+    case 'explainability_probe':
+      return 'copy_operations_digest';
+    case 'recent_artifact':
+      return hasLatestCompletedJob
+          ? 'load_latest_job_result'
+          : 'copy_snapshot_digest';
+    default:
+      return hasLatestCompletedJob ? 'load_latest_job_result' : 'refresh_jobs';
+  }
 }

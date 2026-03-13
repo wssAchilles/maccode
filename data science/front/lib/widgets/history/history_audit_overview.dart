@@ -49,7 +49,7 @@ class HistoryAuditOverview extends StatelessWidget {
     final failedJobs = jobs.where((job) => job.status == 'failed').length;
     final completedJobs = jobs.where((job) => job.status == 'succeeded').length;
     final latestJob = jobs.isEmpty ? null : jobs.first;
-    final focusChain = selectPriorityChain(assetSummary);
+    final focusChain = selectDutyFocusChain(assetSummary, dutySummary);
 
     return DutyContextBoard(
       title: '值班概览',
@@ -67,21 +67,13 @@ class HistoryAuditOverview extends StatelessWidget {
           value: '$runningJobs',
           color: AppColors.warning,
         ),
-        DutyMetric(
-          label: '失败',
-          value: '$failedJobs',
-          color: AppColors.error,
-        ),
+        DutyMetric(label: '失败', value: '$failedJobs', color: AppColors.error),
         DutyMetric(
           label: '已完成',
           value: '$completedJobs',
           color: AppColors.success,
         ),
-        DutyMetric(
-          label: '活动',
-          value: '$activityCount',
-          color: AppColors.cta,
-        ),
+        DutyMetric(label: '活动', value: '$activityCount', color: AppColors.cta),
         DutyMetric(
           label: '记录',
           value: '$recordCount',
@@ -91,8 +83,7 @@ class HistoryAuditOverview extends StatelessWidget {
       signalStrip: dutySummary == null
           ? null
           : DutySignalStrip(summary: dutySummary!, accent: AppColors.primary),
-      currentWatch:
-          (dutySummary?.focusWatch.isNotEmpty ?? false)
+      currentWatch: (dutySummary?.focusWatch.isNotEmpty ?? false)
           ? dutySummary!.focusWatch
           : focusChain != null
           ? buildChainCurrentWatch(focusChain)
@@ -168,11 +159,16 @@ class HistoryAuditOverview extends StatelessWidget {
             WorkspaceInlineActionBar(
               spacing: 12,
               runSpacing: 12,
+              recommendedActionKey: _recommendedDutyActionKey(
+                dutySummary,
+                dutyActions,
+              ),
               actions: dutyActions
                   .map(
                     (action) => WorkspaceActionLaneAction(
                       label: action.label,
                       icon: _dutyActionIcon(action.command, action.chainKey),
+                      semanticKey: '${action.command}:${action.chainKey}',
                       onTap: () => onDutyAction!(action),
                       tone: _dutyActionTone(action.tone),
                     ),
@@ -259,6 +255,29 @@ WorkspaceActionLaneTone _dutyActionTone(String tone) {
     default:
       return WorkspaceActionLaneTone.outline;
   }
+}
+
+String? _recommendedDutyActionKey(
+  DutySummary? summary,
+  List<DutyAction> actions,
+) {
+  final focusKey = summary?.focusChainKey;
+  if (focusKey != null && focusKey.isNotEmpty) {
+    for (final action in actions) {
+      if (action.command == 'open_workspace' && action.chainKey == focusKey) {
+        return '${action.command}:${action.chainKey}';
+      }
+    }
+  }
+  for (final action in actions) {
+    if (action.command == 'filter_failed' && action.chainKey == focusKey) {
+      return '${action.command}:${action.chainKey}';
+    }
+  }
+  if (actions.isNotEmpty) {
+    return '${actions.first.command}:${actions.first.chainKey}';
+  }
+  return null;
 }
 
 IconData _dutyActionIcon(String command, String chainKey) {

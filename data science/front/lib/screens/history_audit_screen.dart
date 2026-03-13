@@ -21,10 +21,12 @@ import '../widgets/history/history_disposition_board.dart';
 import '../widgets/history/audit_event_stream.dart';
 import '../widgets/history/history_record_card.dart';
 import '../widgets/history/history_state_sections.dart';
+import '../widgets/operations/duty_section_block.dart';
 import '../widgets/operations/embedded_page_header.dart';
 import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/operations/workbench_command_strip.dart';
+import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/responsive_wrapper.dart';
 import 'analysis_detail_screen.dart';
 
@@ -103,6 +105,178 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       builder: (context, _) {
         final summary = _dashboardViewModel.summary;
         final activity = _auditViewModel.activity;
+        final orderedSections =
+            <MapEntry<String, Widget>>[
+              if ((summary?.assetSummary.governance.isNotEmpty ?? false))
+                MapEntry(
+                  'disposition',
+                  HistoryDispositionBoard(
+                    assetSummary: summary!.assetSummary,
+                    dutySummary: summary.dutySummary,
+                    jobs: _jobsViewModel.jobs,
+                    records: _historyViewModel.records,
+                    trailing:
+                        _isHistoryFocusSection(
+                          'disposition',
+                          summary.dutySummary,
+                        )
+                        ? _historyDutyFocusChip()
+                        : null,
+                    onGovernanceAction: _handleGovernanceAction,
+                    onFailureAction: _handleFailureChainAction,
+                    onFilterFailures: _handleFailureFilter,
+                    onReplayAction: _handleReplayAction,
+                  ),
+                ),
+              if ((summary?.assetSummary.governance.isNotEmpty ?? false))
+                MapEntry(
+                  'runbook',
+                  IncidentRunbookBoard(
+                    summary: summary!.assetSummary,
+                    title: '处置 Runbook',
+                    description:
+                        '审计页直接复用驾驶舱链路 runbook，把快速回放、失败筛选和值班动作压成统一处置清单。',
+                    dutySummary: summary.dutySummary,
+                    trailing:
+                        _isHistoryFocusSection('runbook', summary.dutySummary)
+                        ? _historyDutyFocusChip()
+                        : null,
+                    onOpenChain: (chain) {
+                      _openChainSummary(chain, prefix: '处置 Runbook');
+                    },
+                  ),
+                ),
+              MapEntry(
+                'ledger',
+                DutySectionBlock(
+                  title: '资产台账与联动',
+                  subtitle: '统一查看资产库存、风险联动、矩阵回放和资产台账入口。',
+                  trailing:
+                      _isHistoryFocusSection('ledger', summary?.dutySummary)
+                      ? _historyDutyFocusChip()
+                      : null,
+                  child: HistoryAssetLedger(
+                    jobs: _jobsViewModel.jobs,
+                    records: _historyViewModel.records,
+                    assetSummary: summary?.assetSummary,
+                    dutySummary: summary?.dutySummary,
+                    alerts: summary?.alerts ?? const <DashboardAlert>[],
+                    onOpenAiLab: widget.onOpenAiLab,
+                    onOpenDataAnalysis: widget.onOpenDataAnalysis,
+                    onOpenOptimization: widget.onOpenOptimization,
+                  ),
+                ),
+              ),
+              MapEntry(
+                'event_stream',
+                (_auditViewModel.isLoading || _jobsViewModel.isLoading)
+                    ? DutySectionBlock(
+                        title: '统一审计事件流',
+                        subtitle: '把任务执行和审计活动合并到同一条时间线里，减少并行维护两套列表。',
+                        trailing:
+                            _isHistoryFocusSection(
+                              'event_stream',
+                              summary?.dutySummary,
+                            )
+                            ? _historyDutyFocusChip()
+                            : null,
+                        child: const HistoryLoadingState(),
+                      )
+                    : _auditViewModel.errorMessage != null
+                    ? DutySectionBlock(
+                        title: '统一审计事件流',
+                        subtitle: '把任务执行和审计活动合并到同一条时间线里，减少并行维护两套列表。',
+                        trailing:
+                            _isHistoryFocusSection(
+                              'event_stream',
+                              summary?.dutySummary,
+                            )
+                            ? _historyDutyFocusChip()
+                            : null,
+                        child: HistoryErrorState(
+                          message: _auditViewModel.errorMessage!,
+                          onRetry: () => _auditViewModel.loadActivity(),
+                        ),
+                      )
+                    : AuditEventStream(
+                        jobs: _jobsViewModel.jobs,
+                        activity: activity,
+                        assetSummary: summary?.assetSummary,
+                        dutySummary: summary?.dutySummary,
+                        trailing:
+                            _isHistoryFocusSection(
+                              'event_stream',
+                              summary?.dutySummary,
+                            )
+                            ? _historyDutyFocusChip()
+                            : null,
+                        onOpenChain: _openChainWorkspace,
+                        onOpenChainSummary: (chain) {
+                          _openChainSummary(chain, prefix: '统一审计事件流');
+                        },
+                        onFilterFailures: _handleFailureFilter,
+                      ),
+              ),
+              MapEntry(
+                'records',
+                DutySectionBlock(
+                  title: '分析记录',
+                  subtitle: '查看分析沉淀记录，并继续进入详情或删除清理。',
+                  trailing:
+                      _isHistoryFocusSection('records', summary?.dutySummary)
+                      ? _historyDutyFocusChip()
+                      : null,
+                  child: _historyViewModel.isLoading
+                      ? const HistoryLoadingState()
+                      : _historyViewModel.errorMessage != null
+                      ? HistoryErrorState(
+                          message: _historyViewModel.errorMessage!,
+                          onRetry: () =>
+                              _historyViewModel.loadHistory(limit: 50),
+                        )
+                      : _historyViewModel.records.isEmpty
+                      ? const HistoryEmptyState()
+                      : Column(
+                          children: _historyViewModel.records
+                              .map(
+                                (record) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: HistoryRecordCard(
+                                    record: record,
+                                    isDeleting: _historyViewModel.isDeleting(
+                                      record.id,
+                                    ),
+                                    onOpen: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AnalysisDetailScreen(
+                                                record: record,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    onDelete: () async {
+                                      await _historyViewModel.deleteRecord(
+                                        record.id,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                ),
+              ),
+            ]..sort(
+              (a, b) => compareSectionKeysByDutyFocus(
+                a.key,
+                b.key,
+                summary?.dutySummary,
+                _historySectionFocusOrder,
+              ),
+            );
         final content = RefreshIndicator(
           onRefresh: _refreshAll,
           child: ResponsiveWrapper(
@@ -136,41 +310,6 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                       _applyFilters(type: null, status: null);
                     },
                     onDutyAction: _handleDutyAction,
-                  ),
-                  const SizedBox(height: 20),
-                  if ((summary?.assetSummary.governance.isNotEmpty ??
-                      false)) ...[
-                    HistoryDispositionBoard(
-                      assetSummary: summary!.assetSummary,
-                      dutySummary: summary.dutySummary,
-                      jobs: _jobsViewModel.jobs,
-                      records: _historyViewModel.records,
-                      onGovernanceAction: _handleGovernanceAction,
-                      onFailureAction: _handleFailureChainAction,
-                      onFilterFailures: _handleFailureFilter,
-                      onReplayAction: _handleReplayAction,
-                    ),
-                    const SizedBox(height: 20),
-                    IncidentRunbookBoard(
-                      summary: summary.assetSummary,
-                      title: '处置 Runbook',
-                      description:
-                          '审计页直接复用驾驶舱链路 runbook，把快速回放、失败筛选和值班动作压成统一处置清单。',
-                      onOpenChain: (chain) {
-                        _openChainSummary(chain, prefix: '处置 Runbook');
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  HistoryAssetLedger(
-                    jobs: _jobsViewModel.jobs,
-                    records: _historyViewModel.records,
-                    assetSummary: summary?.assetSummary,
-                    dutySummary: summary?.dutySummary,
-                    alerts: summary?.alerts ?? const <DashboardAlert>[],
-                    onOpenAiLab: widget.onOpenAiLab,
-                    onOpenDataAnalysis: widget.onOpenDataAnalysis,
-                    onOpenOptimization: widget.onOpenOptimization,
                   ),
                   const SizedBox(height: 20),
                   WorkbenchCommandStrip(
@@ -212,66 +351,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  if (_auditViewModel.isLoading || _jobsViewModel.isLoading)
-                    const HistoryLoadingState()
-                  else if (_auditViewModel.errorMessage != null)
-                    HistoryErrorState(
-                      message: _auditViewModel.errorMessage!,
-                      onRetry: () => _auditViewModel.loadActivity(),
-                    )
-                  else
-                    AuditEventStream(
-                      jobs: _jobsViewModel.jobs,
-                      activity: activity,
-                      assetSummary: summary?.assetSummary,
-                      onOpenChain: _openChainWorkspace,
-                      onOpenChainSummary: (chain) {
-                        _openChainSummary(chain, prefix: '统一审计事件流');
-                      },
-                      onFilterFailures: _handleFailureFilter,
-                    ),
-                  const SizedBox(height: 24),
-                  Text('分析记录', style: AppTextStyles.h4),
-                  const SizedBox(height: 12),
-                  if (_historyViewModel.isLoading)
-                    const HistoryLoadingState()
-                  else if (_historyViewModel.errorMessage != null)
-                    HistoryErrorState(
-                      message: _historyViewModel.errorMessage!,
-                      onRetry: () => _historyViewModel.loadHistory(limit: 50),
-                    )
-                  else if (_historyViewModel.records.isEmpty)
-                    const HistoryEmptyState()
-                  else
-                    Column(
-                      children: _historyViewModel.records
-                          .map(
-                            (record) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: HistoryRecordCard(
-                                record: record,
-                                isDeleting: _historyViewModel.isDeleting(
-                                  record.id,
-                                ),
-                                onOpen: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          AnalysisDetailScreen(record: record),
-                                    ),
-                                  );
-                                },
-                                onDelete: () async {
-                                  await _historyViewModel.deleteRecord(
-                                    record.id,
-                                  );
-                                },
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
+                  for (var i = 0; i < orderedSections.length; i++) ...[
+                    orderedSections[i].value,
+                    if (i < orderedSections.length - 1)
+                      const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),
@@ -346,11 +430,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
           status: item.failedJobs > 0 ? 'failed' : null,
         );
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag(
-            '',
-            sourceLabel: sourceLabel,
-            context: context,
-          ),
+          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel, context: context),
         );
         break;
       case 'optimization':
@@ -387,7 +467,10 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       case 'open_workspace':
         final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
             .cast<AssetChainSummary?>()
-            .firstWhere((item) => item?.key == action.chainKey, orElse: () => null);
+            .firstWhere(
+              (item) => item?.key == action.chainKey,
+              orElse: () => null,
+            );
         if (chain != null) {
           final context = buildLaunchContextFromDutyAction(
             action,
@@ -470,10 +553,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == key, orElse: () => null);
-    final context = buildLaunchContextFromChain(
-      chain,
-      prefix: '统一审计事件流',
-    );
+    final context = buildLaunchContextFromChain(chain, prefix: '统一审计事件流');
     switch (key) {
       case 'dataset':
         widget.onOpenDataAnalysis?.call(
@@ -494,11 +574,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
         break;
       case 'knowledge':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag(
-            '',
-            sourceLabel: sourceLabel,
-            context: context,
-          ),
+          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel, context: context),
         );
         break;
       case 'optimization':
@@ -536,11 +612,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
         break;
       case 'knowledge':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag(
-            '',
-            sourceLabel: sourceLabel,
-            context: context,
-          ),
+          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel, context: context),
         );
         break;
       case 'optimization':
@@ -552,32 +624,92 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleReplayAction(String key) {
+    final chain = findChainSummary(
+      _dashboardViewModel.summary?.assetSummary,
+      key,
+    );
     switch (key) {
       case 'dataset':
+        final context = buildLaunchContext(
+          sourceLabel: '回放最新',
+          chain: chain,
+          workspaceTarget: 'data_governance',
+          cardTarget: 'current_asset',
+          incidentTarget: 'asset',
+          workspaceBrief: '历史分析资产已载入当前资产',
+          watchSummary: '优先核对当前资产质量与结果摘要',
+        );
         final record = _latestReplayableRecord();
         if (record != null) {
           widget.onOpenDataAnalysis?.call(
-            DataAnalysisLaunchIntent.fromHistoryRecord(record),
+            DataAnalysisLaunchIntent.fromHistoryRecord(
+              record,
+              sourceLabel: buildWorkbenchSourceLabel(context, prefix: '回放最新'),
+              context: context,
+            ),
           );
         }
         break;
       case 'model':
+        final context = buildLaunchContext(
+          sourceLabel: '回放最新',
+          chain: chain,
+          workspaceTarget: 'ai_runtime',
+          cardTarget: 'runtime_product',
+          incidentTarget: 'runtime',
+          workspaceBrief: '训练产物已回填到训练入口',
+          watchSummary: '优先核对训练配置和最新模型产物',
+        );
         final job = _latestReplayableTrainingJob();
         if (job != null) {
-          widget.onOpenAiLab?.call(AiLabLaunchIntent.fromTrainingJob(job));
+          widget.onOpenAiLab?.call(
+            AiLabLaunchIntent.fromTrainingJob(
+              job,
+              sourceLabel: buildWorkbenchSourceLabel(context, prefix: '回放最新'),
+              context: context,
+            ),
+          );
         }
         break;
       case 'knowledge':
+        final context = buildLaunchContext(
+          sourceLabel: '回放最新',
+          chain: chain,
+          workspaceTarget: 'ai_runtime',
+          cardTarget: 'runtime_product',
+          incidentTarget: 'runtime',
+          workspaceBrief: '知识快照已回填到知识入口',
+          watchSummary: '优先核对集合配置和最新知识快照',
+        );
         final job = _latestReplayableKnowledgeJob();
         if (job != null) {
-          widget.onOpenAiLab?.call(AiLabLaunchIntent.fromRagJob(job));
+          widget.onOpenAiLab?.call(
+            AiLabLaunchIntent.fromRagJob(
+              job,
+              sourceLabel: buildWorkbenchSourceLabel(context, prefix: '回放最新'),
+              context: context,
+            ),
+          );
         }
         break;
       case 'optimization':
+        final context = buildLaunchContext(
+          sourceLabel: '回放最新',
+          chain: chain,
+          workspaceTarget: 'optimization_registry',
+          cardTarget: 'latest_snapshot',
+          incidentTarget: 'asset',
+          workspaceBrief: '优化快照已载入结果工作台',
+          watchSummary: '优先核对最新快照与结果摘要',
+        );
         final job = _latestReplayableOptimizationJob();
         if (job != null) {
           widget.onOpenOptimization?.call(
-            OptimizationLaunchIntent.fromJob(job),
+            OptimizationLaunchIntent.fromJob(
+              job,
+              sourceLabel: buildWorkbenchSourceLabel(context, prefix: '回放最新'),
+              context: context,
+            ),
           );
         }
         break;
@@ -634,7 +766,10 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       chain.key,
       prefix: '${chain.label} ${chain.jobId.substring(0, 8)}',
     );
-    final chainSummary = _dashboardViewModel.summary?.assetSummary.chainSummaries
+    final chainSummary = _dashboardViewModel
+        .summary
+        ?.assetSummary
+        .chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == chain.key, orElse: () => null);
     final context = buildLaunchContextFromChain(
@@ -664,11 +799,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       case 'knowledge':
         _applyFilters(type: 'rag_ingest', status: 'failed');
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag(
-            '',
-            sourceLabel: sourceLabel,
-            context: context,
-          ),
+          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel, context: context),
         );
         break;
       case 'optimization':
@@ -712,4 +843,57 @@ class _EmbeddedAuditHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+const Map<String, List<String>> _historySectionFocusOrder = {
+  'data_governance': [
+    'ledger',
+    'disposition',
+    'event_stream',
+    'records',
+    'runbook',
+  ],
+  'data_handoff': [
+    'disposition',
+    'ledger',
+    'event_stream',
+    'records',
+    'runbook',
+  ],
+  'ai_runtime': ['disposition', 'runbook', 'ledger', 'event_stream', 'records'],
+  'ai_assets': ['ledger', 'disposition', 'runbook', 'event_stream', 'records'],
+  'optimization_operations': [
+    'disposition',
+    'runbook',
+    'event_stream',
+    'ledger',
+    'records',
+  ],
+  'optimization_registry': [
+    'ledger',
+    'disposition',
+    'runbook',
+    'event_stream',
+    'records',
+  ],
+  'audit_center': [
+    'event_stream',
+    'disposition',
+    'runbook',
+    'ledger',
+    'records',
+  ],
+};
+
+bool _isHistoryFocusSection(String key, DutySummary? summary) {
+  return isDutyFocusSection(key, summary, _historySectionFocusOrder);
+}
+
+Widget _historyDutyFocusChip() {
+  return const WorkspaceStatusChip(
+    label: 'DUTY FOCUS',
+    icon: Icons.center_focus_strong_rounded,
+    foreground: AppColors.primary,
+    background: AppColors.infoLight,
+  );
 }

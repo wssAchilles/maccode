@@ -36,18 +36,26 @@ class DataAnalysisLaunchIntent {
     );
   }
 
-  factory DataAnalysisLaunchIntent.fromHistoryRecord(HistoryRecord record) {
+  factory DataAnalysisLaunchIntent.fromHistoryRecord(
+    HistoryRecord record, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     return DataAnalysisLaunchIntent(
       analysisResult: _parseAnalysisResult(record.summary),
       storagePath: record.storageUrl,
       filename: record.filename,
       savedAsAsset: (record.storageUrl?.isNotEmpty ?? false),
-      sourceLabel: record.filename,
-      context: null,
+      sourceLabel: sourceLabel ?? record.filename,
+      context: context,
     );
   }
 
-  factory DataAnalysisLaunchIntent.fromJob(JobRecord job) {
+  factory DataAnalysisLaunchIntent.fromJob(
+    JobRecord job, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     final resultMap = _asMap(job.result['analysis_result']);
     final storagePath = _firstString([
       job.result['storage_path'],
@@ -66,8 +74,8 @@ class DataAnalysisLaunchIntent {
       savedAsAsset: retained is bool
           ? retained
           : (storagePath != null && storagePath.isNotEmpty),
-      sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
-      context: null,
+      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: context,
     );
   }
 

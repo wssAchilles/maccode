@@ -80,6 +80,10 @@ class HistoryAssetLedger extends StatelessWidget {
         )
         .take(4)
         .toList(growable: false);
+    final datasetChain = findChainSummary(assetSummary, 'dataset');
+    final modelChain = findChainSummary(assetSummary, 'model');
+    final knowledgeChain = findChainSummary(assetSummary, 'knowledge');
+    final optimizationChain = findChainSummary(assetSummary, 'optimization');
     final assetAlerts = alerts
         .where((alert) => (alert.assetKey ?? '').isNotEmpty)
         .toList(growable: false);
@@ -90,6 +94,7 @@ class HistoryAssetLedger extends StatelessWidget {
         if (assetAlerts.isNotEmpty) ...[
           _AssetRiskStrip(
             alerts: assetAlerts,
+            assetSummary: assetSummary,
             onOpenAiLab: onOpenAiLab,
             onOpenDataAnalysis: onOpenDataAnalysis,
             onOpenOptimization: onOpenOptimization,
@@ -137,6 +142,7 @@ class HistoryAssetLedger extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _DatasetLedgerTile(
                           record: record,
+                          chain: datasetChain,
                           onOpenAiLab: onOpenAiLab,
                           onOpenDataAnalysis: onOpenDataAnalysis,
                         ),
@@ -156,6 +162,7 @@ class HistoryAssetLedger extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _ModelLedgerTile(
                           job: job,
+                          chain: modelChain,
                           onOpenAiLab: onOpenAiLab,
                         ),
                       ),
@@ -174,6 +181,7 @@ class HistoryAssetLedger extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _KnowledgeLedgerTile(
                           job: job,
+                          chain: knowledgeChain,
                           onOpenAiLab: onOpenAiLab,
                         ),
                       ),
@@ -192,6 +200,7 @@ class HistoryAssetLedger extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _OptimizationLedgerTile(
                           job: job,
+                          chain: optimizationChain,
                           onOpenOptimization: onOpenOptimization,
                         ),
                       ),
@@ -322,7 +331,9 @@ class _CompactLedgerMatrix extends StatelessWidget {
               );
             })
             .toList(growable: false)
-          ..sort((a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary));
+          ..sort(
+            (a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary),
+          );
 
     return GlassCard(
       padding: const EdgeInsets.all(18),
@@ -385,16 +396,13 @@ class _CompactLedgerRow extends StatelessWidget {
           final compact = constraints.maxWidth < 920;
           final summary = _rowSummary(context);
           final action = _rowAction();
-          final actionWidgets =
-              action == null ? const <Widget>[] : <Widget>[action];
+          final actionWidgets = action == null
+              ? const <Widget>[]
+              : <Widget>[action];
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                summary,
-                const SizedBox(height: 10),
-                ...actionWidgets,
-              ],
+              children: [summary, const SizedBox(height: 10), ...actionWidgets],
             );
           }
           return Row(
@@ -525,6 +533,12 @@ class _CompactLedgerRow extends StatelessWidget {
   }
 
   Widget? _rowAction() {
+    final context = buildLaunchContextFromChain(chain, prefix: '资产台账矩阵');
+    final sourceLabel = buildChainSourceLabel(
+      chain,
+      prefix: '资产台账矩阵',
+      includeWorkspaceBrief: true,
+    );
     switch (chain.key) {
       case 'dataset':
         if (onOpenDataAnalysis == null) {
@@ -533,7 +547,8 @@ class _CompactLedgerRow extends StatelessWidget {
         return FilledButton.tonalIcon(
           onPressed: () => onOpenDataAnalysis!(
             DataAnalysisLaunchIntent.workspace(
-              sourceLabel: _matrixSourceLabel(chain),
+              sourceLabel: sourceLabel,
+              context: context,
             ),
           ),
           icon: const Icon(Icons.analytics_rounded),
@@ -547,7 +562,8 @@ class _CompactLedgerRow extends StatelessWidget {
           onPressed: () => onOpenAiLab!(
             AiLabLaunchIntent.deepLearning(
               '',
-              sourceLabel: _matrixSourceLabel(chain),
+              sourceLabel: sourceLabel,
+              context: context,
             ),
           ),
           icon: const Icon(Icons.model_training_rounded),
@@ -559,7 +575,11 @@ class _CompactLedgerRow extends StatelessWidget {
         }
         return FilledButton.tonalIcon(
           onPressed: () => onOpenAiLab!(
-            AiLabLaunchIntent.rag('', sourceLabel: _matrixSourceLabel(chain)),
+            AiLabLaunchIntent.rag(
+              '',
+              sourceLabel: sourceLabel,
+              context: context,
+            ),
           ),
           icon: const Icon(Icons.account_tree_rounded),
           label: Text(chain.actionLabel),
@@ -570,7 +590,10 @@ class _CompactLedgerRow extends StatelessWidget {
         }
         return FilledButton.tonalIcon(
           onPressed: () => onOpenOptimization!(
-            OptimizationLaunchIntent(sourceLabel: _matrixSourceLabel(chain)),
+            OptimizationLaunchIntent(
+              sourceLabel: sourceLabel,
+              context: context,
+            ),
           ),
           icon: const Icon(Icons.bolt_rounded),
           label: Text(chain.actionLabel),
@@ -751,10 +774,6 @@ Color _matrixTone(AssetChainSummary chain) {
   }
 }
 
-String _matrixSourceLabel(AssetChainSummary chain) {
-  return '资产台账矩阵 · ${chain.label} · ${chain.workspaceTargetLabel} · ${chain.cardTargetLabel} · ${chain.incidentTargetLabel} · ${chain.workspaceBrief}';
-}
-
 enum _MatrixFocusArea { focus, sla, replay, failure, job }
 
 _MatrixFocusArea _matrixHighlight(AssetChainSummary chain) {
@@ -808,12 +827,14 @@ String _matrixFailureOrLineage(AssetChainSummary chain) {
 class _AssetRiskStrip extends StatelessWidget {
   const _AssetRiskStrip({
     required this.alerts,
+    this.assetSummary,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
   });
 
   final List<DashboardAlert> alerts;
+  final AssetSummary? assetSummary;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
@@ -832,6 +853,7 @@ class _AssetRiskStrip extends StatelessWidget {
                 width: 320,
                 child: _AssetRiskCard(
                   alert: alert,
+                  chain: findChainSummary(assetSummary, alert.assetKey ?? ''),
                   onOpenAiLab: onOpenAiLab,
                   onOpenDataAnalysis: onOpenDataAnalysis,
                   onOpenOptimization: onOpenOptimization,
@@ -847,12 +869,14 @@ class _AssetRiskStrip extends StatelessWidget {
 class _AssetRiskCard extends StatelessWidget {
   const _AssetRiskCard({
     required this.alert,
+    this.chain,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
   });
 
   final DashboardAlert alert;
+  final AssetChainSummary? chain;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
@@ -862,6 +886,7 @@ class _AssetRiskCard extends StatelessWidget {
     final tone = _riskTone(alert.severity);
     final action = _riskAction(
       alert.assetKey,
+      chain: chain,
       onOpenAiLab: onOpenAiLab,
       onOpenDataAnalysis: onOpenDataAnalysis,
       onOpenOptimization: onOpenOptimization,
@@ -941,10 +966,17 @@ _RiskTone _riskTone(String severity) {
 
 _RiskAction? _riskAction(
   String? assetKey, {
+  AssetChainSummary? chain,
   ValueChanged<AiLabLaunchIntent>? onOpenAiLab,
   ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis,
   ValueChanged<OptimizationLaunchIntent>? onOpenOptimization,
 }) {
+  final context = buildLaunchContextFromChain(chain, prefix: '资产风险联动');
+  final sourceLabel = buildChainSourceLabel(
+    chain,
+    prefix: '资产风险联动',
+    includeWorkspaceBrief: true,
+  );
   switch (assetKey) {
     case 'dataset':
       if (onOpenDataAnalysis == null) {
@@ -954,7 +986,10 @@ _RiskAction? _riskAction(
         label: '打开数据分析工作台',
         icon: Icons.analytics_rounded,
         onTap: () => onOpenDataAnalysis(
-          DataAnalysisLaunchIntent.workspace(sourceLabel: '资产风险联动'),
+          DataAnalysisLaunchIntent.workspace(
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         ),
       );
     case 'model':
@@ -965,7 +1000,11 @@ _RiskAction? _riskAction(
         label: '打开训练工作台',
         icon: Icons.model_training_rounded,
         onTap: () => onOpenAiLab(
-          AiLabLaunchIntent.deepLearning('', sourceLabel: '资产风险联动'),
+          AiLabLaunchIntent.deepLearning(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         ),
       );
     case 'knowledge':
@@ -975,8 +1014,9 @@ _RiskAction? _riskAction(
       return _RiskAction(
         label: '打开知识库工作台',
         icon: Icons.account_tree_rounded,
-        onTap: () =>
-            onOpenAiLab(AiLabLaunchIntent.rag('', sourceLabel: '资产风险联动')),
+        onTap: () => onOpenAiLab(
+          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel, context: context),
+        ),
       );
     case 'optimization':
       if (onOpenOptimization == null) {
@@ -986,7 +1026,7 @@ _RiskAction? _riskAction(
         label: '打开优化工作台',
         icon: Icons.bolt_rounded,
         onTap: () => onOpenOptimization(
-          const OptimizationLaunchIntent(sourceLabel: '资产风险联动'),
+          OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
         ),
       );
     default:
@@ -1074,16 +1114,44 @@ class _LedgerInventoryChip extends StatelessWidget {
 class _DatasetLedgerTile extends StatelessWidget {
   const _DatasetLedgerTile({
     required this.record,
+    this.chain,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
   });
 
   final HistoryRecord record;
+  final AssetChainSummary? chain;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
 
   @override
   Widget build(BuildContext context) {
+    final replayContext = buildLaunchContext(
+      sourceLabel: '数据资产台账',
+      chain: chain,
+      workspaceTarget: 'data_governance',
+      cardTarget: 'current_asset',
+      incidentTarget: 'asset',
+      workspaceBrief: '数据资产已载入当前资产',
+      watchSummary: '优先核对当前资产质量与结果摘要',
+    );
+    final replaySourceLabel = buildWorkbenchSourceLabel(
+      replayContext,
+      prefix: '数据资产台账',
+    );
+    final trainingContext = buildLaunchContext(
+      sourceLabel: '数据资产台账',
+      chain: chain,
+      workspaceTarget: 'ai_runtime',
+      cardTarget: 'runtime_product',
+      incidentTarget: 'runtime',
+      workspaceBrief: '数据资产已送入训练入口',
+      watchSummary: '优先核对训练配置和目标列',
+    );
+    final trainingSourceLabel = buildWorkbenchSourceLabel(
+      trainingContext,
+      prefix: '数据资产台账',
+    );
     final score = record.qualityScore == null
         ? '未评分'
         : record.qualityScore!.toStringAsFixed(1);
@@ -1103,7 +1171,11 @@ class _DatasetLedgerTile extends StatelessWidget {
         if (onOpenDataAnalysis != null && record.summary != null)
           FilledButton.tonalIcon(
             onPressed: () => onOpenDataAnalysis!(
-              DataAnalysisLaunchIntent.fromHistoryRecord(record),
+              DataAnalysisLaunchIntent.fromHistoryRecord(
+                record,
+                sourceLabel: replaySourceLabel,
+                context: replayContext,
+              ),
             ),
             icon: const Icon(Icons.analytics_rounded),
             label: const Text('回放分析'),
@@ -1111,7 +1183,11 @@ class _DatasetLedgerTile extends StatelessWidget {
         if (onOpenAiLab != null && (record.storageUrl?.isNotEmpty ?? false))
           OutlinedButton.icon(
             onPressed: () => onOpenAiLab!(
-              AiLabLaunchIntent.fromHistoryRecordForTraining(record),
+              AiLabLaunchIntent.fromHistoryRecordForTraining(
+                record,
+                sourceLabel: trainingSourceLabel,
+                context: trainingContext,
+              ),
             ),
             icon: const Icon(Icons.model_training_rounded),
             label: const Text('送入训练'),
@@ -1122,13 +1198,27 @@ class _DatasetLedgerTile extends StatelessWidget {
 }
 
 class _ModelLedgerTile extends StatelessWidget {
-  const _ModelLedgerTile({required this.job, this.onOpenAiLab});
+  const _ModelLedgerTile({required this.job, this.chain, this.onOpenAiLab});
 
   final JobRecord job;
+  final AssetChainSummary? chain;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
 
   @override
   Widget build(BuildContext context) {
+    final launchContext = buildLaunchContext(
+      sourceLabel: '模型资产台账',
+      chain: chain,
+      workspaceTarget: 'ai_runtime',
+      cardTarget: 'runtime_product',
+      incidentTarget: 'runtime',
+      workspaceBrief: '模型资产已回填到训练入口',
+      watchSummary: '优先核对训练配置与最新模型产物',
+    );
+    final sourceLabel = buildWorkbenchSourceLabel(
+      launchContext,
+      prefix: '模型资产台账',
+    );
     final modelPath = job.result['model_path']?.toString() ?? '--';
     final modelType = job.result['model_type']?.toString() ?? 'model';
     final targetColumn =
@@ -1156,8 +1246,13 @@ class _ModelLedgerTile extends StatelessWidget {
       actions: [
         if (onOpenAiLab != null)
           FilledButton.tonalIcon(
-            onPressed: () =>
-                onOpenAiLab!(AiLabLaunchIntent.fromTrainingJob(job)),
+            onPressed: () => onOpenAiLab!(
+              AiLabLaunchIntent.fromTrainingJob(
+                job,
+                sourceLabel: sourceLabel,
+                context: launchContext,
+              ),
+            ),
             icon: const Icon(Icons.restart_alt_rounded),
             label: const Text('回填训练入口'),
           ),
@@ -1167,13 +1262,27 @@ class _ModelLedgerTile extends StatelessWidget {
 }
 
 class _KnowledgeLedgerTile extends StatelessWidget {
-  const _KnowledgeLedgerTile({required this.job, this.onOpenAiLab});
+  const _KnowledgeLedgerTile({required this.job, this.chain, this.onOpenAiLab});
 
   final JobRecord job;
+  final AssetChainSummary? chain;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
 
   @override
   Widget build(BuildContext context) {
+    final launchContext = buildLaunchContext(
+      sourceLabel: '知识库资产台账',
+      chain: chain,
+      workspaceTarget: 'ai_runtime',
+      cardTarget: 'runtime_product',
+      incidentTarget: 'runtime',
+      workspaceBrief: '知识快照已回填到知识入口',
+      watchSummary: '优先核对集合配置和最新知识快照',
+    );
+    final sourceLabel = buildWorkbenchSourceLabel(
+      launchContext,
+      prefix: '知识库资产台账',
+    );
     final collection =
         _firstString([
           job.result['collection'],
@@ -1206,7 +1315,13 @@ class _KnowledgeLedgerTile extends StatelessWidget {
       actions: [
         if (onOpenAiLab != null)
           FilledButton.tonalIcon(
-            onPressed: () => onOpenAiLab!(AiLabLaunchIntent.fromRagJob(job)),
+            onPressed: () => onOpenAiLab!(
+              AiLabLaunchIntent.fromRagJob(
+                job,
+                sourceLabel: sourceLabel,
+                context: launchContext,
+              ),
+            ),
             icon: const Icon(Icons.hub_rounded),
             label: const Text('回填知识入口'),
           ),
@@ -1216,13 +1331,31 @@ class _KnowledgeLedgerTile extends StatelessWidget {
 }
 
 class _OptimizationLedgerTile extends StatelessWidget {
-  const _OptimizationLedgerTile({required this.job, this.onOpenOptimization});
+  const _OptimizationLedgerTile({
+    required this.job,
+    this.chain,
+    this.onOpenOptimization,
+  });
 
   final JobRecord job;
+  final AssetChainSummary? chain;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
 
   @override
   Widget build(BuildContext context) {
+    final launchContext = buildLaunchContext(
+      sourceLabel: '优化资产台账',
+      chain: chain,
+      workspaceTarget: 'optimization_registry',
+      cardTarget: 'latest_snapshot',
+      incidentTarget: 'asset',
+      workspaceBrief: '优化快照已载入结果工作台',
+      watchSummary: '优先核对最新快照与结果摘要',
+    );
+    final sourceLabel = buildWorkbenchSourceLabel(
+      launchContext,
+      prefix: '优化资产台账',
+    );
     final targetDate = job.input['target_date']?.toString() ?? '--';
     final initialSoc = job.input['initial_soc']?.toString() ?? '--';
     final optimization = job.result['optimization'];
@@ -1253,8 +1386,13 @@ class _OptimizationLedgerTile extends StatelessWidget {
       actions: [
         if (onOpenOptimization != null)
           FilledButton.tonalIcon(
-            onPressed: () =>
-                onOpenOptimization!(OptimizationLaunchIntent.fromJob(job)),
+            onPressed: () => onOpenOptimization!(
+              OptimizationLaunchIntent.fromJob(
+                job,
+                sourceLabel: sourceLabel,
+                context: launchContext,
+              ),
+            ),
             icon: const Icon(Icons.bolt_rounded),
             label: const Text('回放优化'),
           ),

@@ -28,7 +28,11 @@ class OptimizationLaunchIntent {
   bool get hasResultPayload =>
       resultPayload != null && resultPayload!.isNotEmpty;
 
-  factory OptimizationLaunchIntent.fromJob(JobRecord job) {
+  factory OptimizationLaunchIntent.fromJob(
+    JobRecord job, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     return OptimizationLaunchIntent(
       initialSoc: _asDouble(job.input['initial_soc']),
       targetDate: _parseDateTime(job.input['target_date']),
@@ -36,8 +40,8 @@ class OptimizationLaunchIntent {
       batteryPower: _asDouble(job.input['battery_power']),
       temperatureAdjust: _asDouble(job.input['temperature_adjust']),
       resultPayload: _asMap(job.result),
-      sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
-      context: null,
+      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: context,
     );
   }
 

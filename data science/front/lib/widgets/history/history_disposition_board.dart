@@ -25,6 +25,7 @@ class HistoryDispositionBoard extends StatelessWidget {
     required this.onFailureAction,
     required this.onFilterFailures,
     required this.onReplayAction,
+    this.trailing,
   });
 
   final AssetSummary assetSummary;
@@ -35,70 +36,71 @@ class HistoryDispositionBoard extends StatelessWidget {
   final ValueChanged<AssetFailureChain> onFailureAction;
   final ValueChanged<String> onFilterFailures;
   final ValueChanged<String> onReplayAction;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final groups = _buildGroups();
     return DutySectionBlock(
       title: '分组处置流',
-      subtitle:
-          '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
+      subtitle: '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
+      trailing: trailing,
       child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 1180;
-            if (compact) {
-              return Column(
-                children: [
-                  for (var i = 0; i < groups.length; i++) ...[
-                    _DispositionCard(
-                      group: groups[i],
-                      isDutyFocus: isDutyFocusChain(groups[i].chain, dutySummary),
-                      onGovernanceAction: () =>
-                          onGovernanceAction(groups[i].governance),
-                      onFailureAction: groups[i].failure == null
-                          ? null
-                          : () => onFailureAction(groups[i].failure!),
-                      onFilterFailures: groups[i].failure == null
-                          ? null
-                          : () => onFilterFailures(groups[i].key),
-                      onReplayAction: groups[i].replayCount == 0
-                          ? null
-                          : () => onReplayAction(groups[i].key),
-                    ),
-                    if (i < groups.length - 1) const SizedBox(height: 12),
-                  ],
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 1180;
+          if (compact) {
+            return Column(
+              children: [
+                for (var i = 0; i < groups.length; i++) ...[
+                  _DispositionCard(
+                    group: groups[i],
+                    isDutyFocus: isDutyFocusChain(groups[i].chain, dutySummary),
+                    onGovernanceAction: () =>
+                        onGovernanceAction(groups[i].governance),
+                    onFailureAction: groups[i].failure == null
+                        ? null
+                        : () => onFailureAction(groups[i].failure!),
+                    onFilterFailures: groups[i].failure == null
+                        ? null
+                        : () => onFilterFailures(groups[i].key),
+                    onReplayAction: groups[i].replayCount == 0
+                        ? null
+                        : () => onReplayAction(groups[i].key),
+                  ),
+                  if (i < groups.length - 1) const SizedBox(height: 12),
                 ],
-              );
-            }
-
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: groups
-                  .map(
-                    (group) => SizedBox(
-                      width: (constraints.maxWidth - 12) / 2,
-                      child: _DispositionCard(
-                        group: group,
-                        isDutyFocus: isDutyFocusChain(group.chain, dutySummary),
-                        onGovernanceAction: () =>
-                            onGovernanceAction(group.governance),
-                        onFailureAction: group.failure == null
-                            ? null
-                            : () => onFailureAction(group.failure!),
-                        onFilterFailures: group.failure == null
-                            ? null
-                            : () => onFilterFailures(group.key),
-                        onReplayAction: group.replayCount == 0
-                            ? null
-                            : () => onReplayAction(group.key),
-                      ),
-                    ),
-                  )
-                  .toList(growable: false),
+              ],
             );
-          },
-        ),
+          }
+
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: groups
+                .map(
+                  (group) => SizedBox(
+                    width: (constraints.maxWidth - 12) / 2,
+                    child: _DispositionCard(
+                      group: group,
+                      isDutyFocus: isDutyFocusChain(group.chain, dutySummary),
+                      onGovernanceAction: () =>
+                          onGovernanceAction(group.governance),
+                      onFailureAction: group.failure == null
+                          ? null
+                          : () => onFailureAction(group.failure!),
+                      onFilterFailures: group.failure == null
+                          ? null
+                          : () => onFilterFailures(group.key),
+                      onReplayAction: group.replayCount == 0
+                          ? null
+                          : () => onReplayAction(group.key),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+          );
+        },
+      ),
     );
   }
 
@@ -161,7 +163,9 @@ class HistoryDispositionBoard extends StatelessWidget {
           );
         })
         .toList(growable: false);
-    groups.sort((a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary));
+    groups.sort(
+      (a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary),
+    );
     return groups;
   }
 
@@ -335,7 +339,8 @@ class _DispositionCard extends StatelessWidget {
                 group.governance.workspaceTargetLabel,
             cardLabel: group.chain?.cardTargetLabel,
             incidentLabel: group.chain?.incidentTargetLabel,
-            summary: group.chain?.workspaceBrief ?? group.governance.workspaceBrief,
+            summary:
+                group.chain?.workspaceBrief ?? group.governance.workspaceBrief,
           ),
           const SizedBox(height: 14),
           _DispositionRow(

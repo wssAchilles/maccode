@@ -15,6 +15,7 @@ class WorkspaceActionLane extends StatelessWidget {
     required this.statusLabel,
     required this.statusColor,
     required this.actions,
+    this.recommendedActionKey,
     this.workspaceLabel,
     this.cardLabel,
     this.incidentLabel,
@@ -28,6 +29,7 @@ class WorkspaceActionLane extends StatelessWidget {
   final String statusLabel;
   final Color statusColor;
   final List<WorkspaceActionLaneAction> actions;
+  final String? recommendedActionKey;
   final String? workspaceLabel;
   final String? cardLabel;
   final String? incidentLabel;
@@ -99,8 +101,13 @@ class WorkspaceActionLane extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: actions
-                .map((action) => action.build(context))
+            children: _prioritizedActions(actions, recommendedActionKey)
+                .map(
+                  (action) => action.build(
+                    context,
+                    recommended: action.semanticKey == recommendedActionKey,
+                  ),
+                )
                 .toList(growable: false),
           ),
         ],
@@ -113,11 +120,13 @@ class WorkspaceInlineActionBar extends StatelessWidget {
   const WorkspaceInlineActionBar({
     super.key,
     required this.actions,
+    this.recommendedActionKey,
     this.spacing = 8,
     this.runSpacing = 8,
   });
 
   final List<WorkspaceActionLaneAction> actions;
+  final String? recommendedActionKey;
   final double spacing;
   final double runSpacing;
 
@@ -126,8 +135,13 @@ class WorkspaceInlineActionBar extends StatelessWidget {
     return Wrap(
       spacing: spacing,
       runSpacing: runSpacing,
-      children: actions
-          .map((action) => action.build(context))
+      children: _prioritizedActions(actions, recommendedActionKey)
+          .map(
+            (action) => action.build(
+              context,
+              recommended: action.semanticKey == recommendedActionKey,
+            ),
+          )
           .toList(growable: false),
     );
   }
@@ -180,6 +194,7 @@ class WorkspaceActionLaneAction {
     required this.label,
     required this.icon,
     required this.onTap,
+    this.semanticKey,
     this.tone = WorkspaceActionLaneTone.outline,
     this.isLoading = false,
   });
@@ -187,10 +202,11 @@ class WorkspaceActionLaneAction {
   final String label;
   final IconData icon;
   final VoidCallback? onTap;
+  final String? semanticKey;
   final WorkspaceActionLaneTone tone;
   final bool isLoading;
 
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, {bool recommended = false}) {
     final iconWidget = isLoading
         ? const SizedBox(
             width: 18,
@@ -198,7 +214,8 @@ class WorkspaceActionLaneAction {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Icon(icon);
-    switch (tone) {
+    final effectiveTone = _elevatedTone(tone, recommended: recommended);
+    switch (effectiveTone) {
       case WorkspaceActionLaneTone.primary:
         return FilledButton.icon(
           onPressed: onTap,
@@ -222,6 +239,39 @@ class WorkspaceActionLaneAction {
 }
 
 enum WorkspaceActionLaneTone { primary, tonal, outline }
+
+List<WorkspaceActionLaneAction> _prioritizedActions(
+  List<WorkspaceActionLaneAction> actions,
+  String? recommendedActionKey,
+) {
+  if (recommendedActionKey == null || recommendedActionKey.isEmpty) {
+    return actions;
+  }
+  final prioritized = [...actions];
+  prioritized.sort((a, b) {
+    final aPriority = a.semanticKey == recommendedActionKey ? 1 : 0;
+    final bPriority = b.semanticKey == recommendedActionKey ? 1 : 0;
+    return bPriority.compareTo(aPriority);
+  });
+  return prioritized;
+}
+
+WorkspaceActionLaneTone _elevatedTone(
+  WorkspaceActionLaneTone tone, {
+  required bool recommended,
+}) {
+  if (!recommended) {
+    return tone;
+  }
+  switch (tone) {
+    case WorkspaceActionLaneTone.primary:
+      return WorkspaceActionLaneTone.primary;
+    case WorkspaceActionLaneTone.tonal:
+      return WorkspaceActionLaneTone.primary;
+    case WorkspaceActionLaneTone.outline:
+      return WorkspaceActionLaneTone.tonal;
+  }
+}
 
 class WorkspaceContextBanner extends StatelessWidget {
   const WorkspaceContextBanner({

@@ -112,7 +112,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         final onOpenOptimization = widget.onOpenOptimization;
         if (onOpenOptimization != null) {
           onOpenOptimization(
-            OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
+            OptimizationLaunchIntent(
+              sourceLabel: sourceLabel,
+              context: context,
+            ),
           );
         } else {
           widget.onNavigateToTab(1);
@@ -135,11 +138,13 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     required int fallbackTab,
     required String source,
     required AssetChainSummary? chain,
+    String? semanticKey,
     WorkspaceActionLaneTone tone = WorkspaceActionLaneTone.outline,
   }) {
     return WorkspaceActionLaneAction(
       label: label,
       icon: icon,
+      semanticKey: semanticKey,
       onTap: () {
         if (chain != null) {
           _openChainWorkspace(chain, source: source);
@@ -338,10 +343,258 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final modelChain = _chainFor(safeSummary, 'model');
     final knowledgeChain = _chainFor(safeSummary, 'knowledge');
     final optimizationChain = _chainFor(safeSummary, 'optimization');
-    final focusChain = selectPriorityChain(safeSummary.assetSummary);
+    final focusChain = selectDutyFocusChain(
+      safeSummary.assetSummary,
+      safeSummary.dutySummary,
+    );
     final degradedSystems = safeSummary.systemStatus
         .where((item) => item.status != 'healthy')
         .length;
+    final orderedSections =
+        <MapEntry<String, Widget>>[
+          MapEntry(
+            'inventory',
+            DutySectionBlock(
+              title: '资产库存',
+              subtitle: '统一查看数据、模型、知识库和优化快照的最近版本',
+              trailing:
+                  _isDutyFocusSection(
+                    'inventory',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: AssetInventoryBoard(
+                summary: safeSummary.assetSummary,
+                dutySummary: safeSummary.dutySummary,
+                alerts: safeSummary.alerts,
+                onNavigateToTab: widget.onNavigateToTab,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: 'Asset Inventory');
+                },
+              ),
+            ),
+          ),
+          MapEntry(
+            'timeline',
+            DutySectionBlock(
+              title: '版本轨迹',
+              subtitle: '查看统一资产台账中的最近版本和血缘摘要',
+              trailing:
+                  _isDutyFocusSection(
+                    'timeline',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: AssetVersionTimelineBoard(
+                summary: safeSummary.assetSummary,
+                dutySummary: safeSummary.dutySummary,
+                onNavigateToTab: widget.onNavigateToTab,
+              ),
+            ),
+          ),
+          MapEntry(
+            'narrative',
+            DutySectionBlock(
+              title: '运维叙事',
+              subtitle: '把版本、最近活动和失败链路按资产链路串成统一处置上下文。',
+              trailing:
+                  _isDutyFocusSection(
+                    'narrative',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: OperationsNarrativeBoard(
+                summary: safeSummary,
+                dutySummary: safeSummary.dutySummary,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: 'Operations Narrative');
+                },
+              ),
+            ),
+          ),
+          MapEntry(
+            'governance',
+            AssetGovernanceQueue(
+              items: safeSummary.assetSummary.governance,
+              failureChains: safeSummary.assetSummary.failureChains,
+              dutySummary: safeSummary.dutySummary,
+              title: '全局处置中心',
+              description: '基于统一资产摘要直接给出当前需要优先处理的资产链路。',
+              trailing:
+                  _isDutyFocusSection(
+                    'governance',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              onAction: (item) {
+                final chain = _chainFor(safeSummary, item.key);
+                if (chain != null) {
+                  _openChainWorkspace(chain, source: 'Asset Governance Queue');
+                  return;
+                }
+                switch (item.key) {
+                  case 'dataset':
+                    widget.onNavigateToTab(2);
+                    return;
+                  case 'model':
+                  case 'knowledge':
+                    widget.onNavigateToTab(3);
+                    return;
+                  case 'optimization':
+                    widget.onNavigateToTab(1);
+                    return;
+                }
+              },
+              onFailureAction: (chain) {
+                final chainSummary = _chainFor(safeSummary, chain.key);
+                if (chainSummary != null) {
+                  _openChainWorkspace(
+                    chainSummary,
+                    source: 'Asset Governance Queue',
+                  );
+                  return;
+                }
+                switch (chain.key) {
+                  case 'dataset':
+                    widget.onNavigateToTab(2);
+                    return;
+                  case 'model':
+                  case 'knowledge':
+                    widget.onNavigateToTab(3);
+                    return;
+                  case 'optimization':
+                    widget.onNavigateToTab(1);
+                    return;
+                }
+              },
+            ),
+          ),
+          MapEntry(
+            'event_bus',
+            DutySectionBlock(
+              title: '统一事件总线',
+              subtitle: '按时间查看链路版本、活跃作业、失败节点和审计动作',
+              trailing:
+                  _isDutyFocusSection(
+                    'event_bus',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: OperationsEventBusBoard(
+                summary: safeSummary,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: 'Unified Event Bus');
+                },
+              ),
+            ),
+          ),
+          MapEntry(
+            'recent_assets',
+            DutySectionBlock(
+              title: '最近数据资产',
+              subtitle: '最近完成分析的数据集',
+              trailing:
+                  _isDutyFocusSection(
+                    'recent_assets',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: safeSummary.recentAssets.isEmpty
+                  ? const _EmptySection(message: '暂无近期数据资产')
+                  : Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: safeSummary.recentAssets
+                          .map(
+                            (asset) => SizedBox(
+                              width: double.infinity,
+                              child: DatasetAssetCard(asset: asset),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+            ),
+          ),
+          MapEntry(
+            'alerts',
+            DutySectionBlock(
+              title: '系统提醒',
+              subtitle: '依赖、失败任务与数据空缺',
+              trailing:
+                  _isDutyFocusSection(
+                    'alerts',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: safeSummary.alerts.isEmpty
+                  ? const _EmptySection(message: '当前无高优先级告警')
+                  : Column(
+                      children: safeSummary.alerts
+                          .map(
+                            (alert) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: AlertPanel(alert: alert),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+            ),
+          ),
+          MapEntry(
+            'service_status',
+            DutySectionBlock(
+              title: '模型与知识状态',
+              subtitle: '核心服务可用性',
+              trailing:
+                  _isDutyFocusSection(
+                    'service_status',
+                    safeSummary.dutySummary,
+                    _operationsSectionFocusOrder,
+                  )
+                  ? _dutyFocusChip()
+                  : null,
+              child: Column(
+                children: [
+                  if (modelStatus != null)
+                    ModelStatusCard(
+                      title: '负载预测模型',
+                      status: modelStatus,
+                      subtitle: '能源优化和驾驶舱预测依赖该模型。',
+                    ),
+                  if (modelStatus != null && ragStatus != null)
+                    const SizedBox(height: 12),
+                  if (ragStatus != null)
+                    ModelStatusCard(
+                      title: 'RAG 知识服务',
+                      status: ragStatus,
+                      subtitle: '问答和文档检索依赖知识库构建结果。',
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ]..sort(
+          (a, b) => compareSectionKeysByDutyFocus(
+            a.key,
+            b.key,
+            safeSummary.dutySummary,
+            _operationsSectionFocusOrder,
+          ),
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,12 +735,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           footer: WorkspaceInlineActionBar(
             spacing: 12,
             runSpacing: 12,
+            recommendedActionKey: _recommendedDutyActionKey(
+              safeSummary.dutySummary,
+              safeSummary.dutySummary.overviewActions,
+            ),
             actions: safeSummary.dutySummary.overviewActions.isNotEmpty
                 ? safeSummary.dutySummary.overviewActions
                       .map(
                         (action) => WorkspaceActionLaneAction(
                           label: action.label,
-                          icon: _dutyActionIcon(action.command, action.chainKey),
+                          icon: _dutyActionIcon(
+                            action.command,
+                            action.chainKey,
+                          ),
+                          semanticKey: '${action.command}:${action.chainKey}',
                           onTap: () => _handleDutyAction(action, safeSummary),
                           tone: _dutyActionTone(action.tone),
                         ),
@@ -500,6 +761,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       chain: datasetChain,
                       fallbackTab: 2,
                       source: 'Duty Actions',
+                      semanticKey: 'open_workspace:dataset',
                       tone: WorkspaceActionLaneTone.primary,
                     ),
                     _chainQuickAction(
@@ -508,6 +770,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       chain: optimizationChain,
                       fallbackTab: 1,
                       source: 'Duty Actions',
+                      semanticKey: 'open_workspace:optimization',
                       tone: WorkspaceActionLaneTone.tonal,
                     ),
                     _chainQuickAction(
@@ -516,6 +779,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       chain: modelChain,
                       fallbackTab: 3,
                       source: 'Duty Actions',
+                      semanticKey: 'open_workspace:model',
                     ),
                     _chainQuickAction(
                       label: '构建知识库',
@@ -523,10 +787,12 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       chain: knowledgeChain,
                       fallbackTab: 3,
                       source: 'Duty Actions',
+                      semanticKey: 'open_workspace:knowledge',
                     ),
                     WorkspaceActionLaneAction(
                       label: '查看历史与审计',
                       icon: Icons.fact_check_rounded,
+                      semanticKey: 'open_audit:',
                       onTap: () => widget.onNavigateToTab(4),
                     ),
                   ],
@@ -543,189 +809,64 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         const SizedBox(height: 20),
         IncidentRunbookBoard(
           summary: safeSummary.assetSummary,
+          dutySummary: safeSummary.dutySummary,
+          trailing:
+              _isDutyFocusSection(
+                'runbook',
+                safeSummary.dutySummary,
+                _operationsSectionFocusOrder,
+              )
+              ? _dutyFocusChip()
+              : null,
           onOpenChain: (chain) {
             _openChainWorkspace(chain, source: 'Runbook Queue');
-          },
-        ),
-        const SizedBox(height: 20),
-        DutySectionBlock(
-          title: '资产库存',
-          subtitle: '统一查看数据、模型、知识库和优化快照的最近版本',
-          child: AssetInventoryBoard(
-            summary: safeSummary.assetSummary,
-            dutySummary: safeSummary.dutySummary,
-            alerts: safeSummary.alerts,
-            onNavigateToTab: widget.onNavigateToTab,
-            onOpenChain: (chain) {
-              _openChainWorkspace(chain, source: 'Asset Inventory');
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-        DutySectionBlock(
-          title: '版本轨迹',
-          subtitle: '查看统一资产台账中的最近版本和血缘摘要',
-          child: AssetVersionTimelineBoard(
-            summary: safeSummary.assetSummary,
-            onNavigateToTab: widget.onNavigateToTab,
-          ),
-        ),
-        const SizedBox(height: 20),
-        DutySectionBlock(
-          title: '运维叙事',
-          subtitle: '把版本、最近活动和失败链路按资产链路串成统一处置上下文。',
-          child: OperationsNarrativeBoard(
-            summary: safeSummary,
-            onOpenChain: (chain) {
-              _openChainWorkspace(chain, source: 'Operations Narrative');
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-        AssetGovernanceQueue(
-          items: safeSummary.assetSummary.governance,
-          failureChains: safeSummary.assetSummary.failureChains,
-          title: '全局处置中心',
-          description: '基于统一资产摘要直接给出当前需要优先处理的资产链路。',
-          onAction: (item) {
-            final chain = _chainFor(safeSummary, item.key);
-            if (chain != null) {
-              _openChainWorkspace(chain, source: 'Asset Governance Queue');
-              return;
-            }
-            switch (item.key) {
-              case 'dataset':
-                widget.onNavigateToTab(2);
-                return;
-              case 'model':
-              case 'knowledge':
-                widget.onNavigateToTab(3);
-                return;
-              case 'optimization':
-                widget.onNavigateToTab(1);
-                return;
-            }
-          },
-          onFailureAction: (chain) {
-            final chainSummary = _chainFor(safeSummary, chain.key);
-            if (chainSummary != null) {
-              _openChainWorkspace(
-                chainSummary,
-                source: 'Asset Governance Queue',
-              );
-              return;
-            }
-            switch (chain.key) {
-              case 'dataset':
-                widget.onNavigateToTab(2);
-                return;
-              case 'model':
-              case 'knowledge':
-                widget.onNavigateToTab(3);
-                return;
-              case 'optimization':
-                widget.onNavigateToTab(1);
-                return;
-            }
           },
         ),
         const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 1040;
-            final left = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DutySectionBlock(
-                  title: '统一事件总线',
-                  subtitle: '按时间查看链路版本、活跃作业、失败节点和审计动作',
-                  child: OperationsEventBusBoard(
-                    summary: safeSummary,
-                    onOpenChain: (chain) {
-                      _openChainWorkspace(chain, source: 'Unified Event Bus');
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                DutySectionBlock(
-                  title: '最近数据资产',
-                  subtitle: '最近完成分析的数据集',
-                  child: safeSummary.recentAssets.isEmpty
-                      ? const _EmptySection(message: '暂无近期数据资产')
-                      : Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: safeSummary.recentAssets
-                              .map(
-                                (asset) => SizedBox(
-                                  width: stacked ? double.infinity : 260,
-                                  child: DatasetAssetCard(asset: asset),
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
-                  ),
-              ],
-            );
-
-            final right = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DutySectionBlock(
-                  title: '系统提醒',
-                  subtitle: '依赖、失败任务与数据空缺',
-                  child: safeSummary.alerts.isEmpty
-                      ? const _EmptySection(message: '当前无高优先级告警')
-                      : Column(
-                          children: safeSummary.alerts
-                              .map(
-                                (alert) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: AlertPanel(alert: alert),
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
-                  ),
-                const SizedBox(height: 20),
-                DutySectionBlock(
-                  title: '模型与知识状态',
-                  subtitle: '核心服务可用性',
-                  child: Column(
-                    children: [
-                      if (modelStatus != null)
-                        ModelStatusCard(
-                          title: '负载预测模型',
-                          status: modelStatus,
-                          subtitle: '能源优化和驾驶舱预测依赖该模型。',
-                        ),
-                      if (modelStatus != null && ragStatus != null)
-                        const SizedBox(height: 12),
-                      if (ragStatus != null)
-                        ModelStatusCard(
-                          title: 'RAG 知识服务',
-                          status: ragStatus,
-                          subtitle: '问答和文档检索依赖知识库构建结果。',
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-
             if (stacked) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [left, const SizedBox(height: 20), right],
+                children: [
+                  for (var i = 0; i < orderedSections.length; i++) ...[
+                    orderedSections[i].value,
+                    if (i < orderedSections.length - 1)
+                      const SizedBox(height: 20),
+                  ],
+                ],
               );
+            }
+
+            final leftSections = <Widget>[];
+            final rightSections = <Widget>[];
+            for (var i = 0; i < orderedSections.length; i++) {
+              final target = i.isEven ? leftSections : rightSections;
+              target.add(orderedSections[i].value);
+              if (i + 2 < orderedSections.length) {
+                target.add(const SizedBox(height: 20));
+              }
             }
 
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 7, child: left),
+                Expanded(
+                  flex: 7,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: leftSections,
+                  ),
+                ),
                 const SizedBox(width: 20),
-                Expanded(flex: 5, child: right),
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: rightSections,
+                  ),
+                ),
               ],
             );
           },
@@ -733,7 +874,121 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       ],
     );
   }
+}
 
+const Map<String, List<String>> _operationsSectionFocusOrder = {
+  'data_governance': [
+    'inventory',
+    'recent_assets',
+    'governance',
+    'event_bus',
+    'timeline',
+    'narrative',
+    'alerts',
+    'service_status',
+  ],
+  'data_handoff': [
+    'inventory',
+    'recent_assets',
+    'event_bus',
+    'governance',
+    'timeline',
+    'narrative',
+    'alerts',
+    'service_status',
+  ],
+  'ai_runtime': [
+    'governance',
+    'event_bus',
+    'narrative',
+    'service_status',
+    'inventory',
+    'timeline',
+    'alerts',
+    'recent_assets',
+  ],
+  'ai_assets': [
+    'inventory',
+    'timeline',
+    'governance',
+    'event_bus',
+    'narrative',
+    'service_status',
+    'alerts',
+    'recent_assets',
+  ],
+  'optimization_operations': [
+    'narrative',
+    'event_bus',
+    'governance',
+    'inventory',
+    'timeline',
+    'alerts',
+    'service_status',
+    'recent_assets',
+  ],
+  'optimization_registry': [
+    'timeline',
+    'inventory',
+    'governance',
+    'narrative',
+    'event_bus',
+    'recent_assets',
+    'alerts',
+    'service_status',
+  ],
+  'audit_center': [
+    'event_bus',
+    'governance',
+    'narrative',
+    'inventory',
+    'timeline',
+    'alerts',
+    'service_status',
+    'recent_assets',
+  ],
+};
+
+bool _isDutyFocusSection(
+  String key,
+  DutySummary? summary,
+  Map<String, List<String>> focusOrder,
+) {
+  return isDutyFocusSection(key, summary, focusOrder);
+}
+
+Widget _dutyFocusChip() {
+  return const WorkspaceStatusChip(
+    label: 'DUTY FOCUS',
+    icon: Icons.center_focus_strong_rounded,
+    foreground: AppColors.primary,
+    background: AppColors.infoLight,
+  );
+}
+
+String? _recommendedDutyActionKey(
+  DutySummary? summary,
+  List<DutyAction> actions,
+) {
+  final focusKey = summary?.focusChainKey;
+  if (focusKey != null && focusKey.isNotEmpty) {
+    for (final action in actions) {
+      if (action.command == 'open_workspace' && action.chainKey == focusKey) {
+        return '${action.command}:${action.chainKey}';
+      }
+    }
+  }
+  for (final action in actions) {
+    if (action.command == 'open_workspace') {
+      return '${action.command}:${action.chainKey}';
+    }
+  }
+  for (final action in actions) {
+    if (action.command == 'open_audit') {
+      return '${action.command}:${action.chainKey}';
+    }
+  }
+  return null;
 }
 
 WorkspaceActionLaneTone _dutyActionTone(String tone) {

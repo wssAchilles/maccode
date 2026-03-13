@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 
 class OperationsNarrativeBoard extends StatelessWidget {
@@ -13,10 +14,12 @@ class OperationsNarrativeBoard extends StatelessWidget {
     super.key,
     required this.summary,
     required this.onOpenChain,
+    this.dutySummary,
   });
 
   final DashboardSummary summary;
   final ValueChanged<AssetChainSummary> onOpenChain;
+  final DutySummary? dutySummary;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +78,7 @@ class OperationsNarrativeBoard extends StatelessWidget {
       ),
     ];
 
-    return configs
+    final cards = configs
         .map((config) {
           final chain = summary.assetSummary.chainSummaries
               .cast<AssetChainSummary?>()
@@ -86,6 +89,7 @@ class OperationsNarrativeBoard extends StatelessWidget {
           return _NarrativeCard(
             config: config,
             chain: chain,
+            isDutyFocus: isDutyFocusChain(chain, dutySummary),
             governance: summary.assetSummary.governance
                 .cast<AssetGovernanceItem?>()
                 .firstWhere(
@@ -102,6 +106,10 @@ class OperationsNarrativeBoard extends StatelessWidget {
           );
         })
         .toList(growable: false);
+    cards.sort(
+      (a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary),
+    );
+    return cards;
   }
 }
 
@@ -121,6 +129,7 @@ class _NarrativeCard extends StatelessWidget {
   const _NarrativeCard({
     required this.config,
     required this.chain,
+    required this.isDutyFocus,
     required this.governance,
     required this.failure,
     this.onTap,
@@ -128,6 +137,7 @@ class _NarrativeCard extends StatelessWidget {
 
   final _NarrativeConfig config;
   final AssetChainSummary? chain;
+  final bool isDutyFocus;
   final AssetGovernanceItem? governance;
   final AssetFailureChain? failure;
   final VoidCallback? onTap;
@@ -194,6 +204,14 @@ class _NarrativeCard extends StatelessWidget {
                 foreground: tone.foreground,
                 background: tone.background,
               ),
+              if (isDutyFocus) ...[
+                const SizedBox(width: 8),
+                const _NarrativeBadge(
+                  label: 'DUTY FOCUS',
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 14),

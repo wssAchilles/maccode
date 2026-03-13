@@ -58,7 +58,11 @@ class AiLabLaunchIntent {
     );
   }
 
-  factory AiLabLaunchIntent.fromTrainingJob(JobRecord job) {
+  factory AiLabLaunchIntent.fromTrainingJob(
+    JobRecord job, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     final storagePath = _firstString([
       job.input['storage_path'],
       job.result['storage_path'],
@@ -69,12 +73,16 @@ class AiLabLaunchIntent {
         job.result['target_column'],
         job.input['target_column'],
       ]),
-      sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
-      context: null,
+      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: context,
     );
   }
 
-  factory AiLabLaunchIntent.fromRagJob(JobRecord job) {
+  factory AiLabLaunchIntent.fromRagJob(
+    JobRecord job, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     final storagePath = _firstString([
       job.result['storage_path'],
       job.input['storage_path'],
@@ -86,25 +94,33 @@ class AiLabLaunchIntent {
         job.input['collection_name'],
       ]),
       resetCollection: _asBool(job.input['reset']) ?? false,
-      sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
-      context: null,
+      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: context,
     );
   }
 
-  factory AiLabLaunchIntent.fromHistoryRecordForTraining(HistoryRecord record) {
+  factory AiLabLaunchIntent.fromHistoryRecordForTraining(
+    HistoryRecord record, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     return AiLabLaunchIntent.deepLearning(
       record.storageUrl ?? '',
       targetColumn: _firstNumericColumn(record),
-      sourceLabel: record.filename,
-      context: null,
+      sourceLabel: sourceLabel ?? record.filename,
+      context: context,
     );
   }
 
-  factory AiLabLaunchIntent.fromHistoryRecordForRag(HistoryRecord record) {
+  factory AiLabLaunchIntent.fromHistoryRecordForRag(
+    HistoryRecord record, {
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     return AiLabLaunchIntent.rag(
       record.storageUrl ?? '',
-      sourceLabel: record.filename,
-      context: null,
+      sourceLabel: sourceLabel ?? record.filename,
+      context: context,
     );
   }
 

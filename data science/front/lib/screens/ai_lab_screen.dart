@@ -583,22 +583,29 @@ class _AiLabScreenState extends State<AiLabScreen> {
                   lanes: [
                     WorkspaceActionLane(
                       title: '模型训练车道',
-                      description: '把训练提交、最新模型回填、护照复制和队列刷新收在一条主工作流里，避免训练动作继续散在顶部按钮和资产卡内部。',
+                      description:
+                          '把训练提交、最新模型回填、护照复制和队列刷新收在一条主工作流里，避免训练动作继续散在顶部按钮和资产卡内部。',
                       accent: AppColors.cta,
                       icon: Icons.model_training_rounded,
                       workspaceLabel:
-                          _contextForTab(_AiLabTab.deepLearning)
-                              ?.workspaceTargetLabel ??
+                          _contextForTab(
+                            _AiLabTab.deepLearning,
+                          )?.workspaceTargetLabel ??
                           modelChain?.workspaceTargetLabel,
                       cardLabel:
-                          _contextForTab(_AiLabTab.deepLearning)?.cardTargetLabel ??
+                          _contextForTab(
+                            _AiLabTab.deepLearning,
+                          )?.cardTargetLabel ??
                           modelChain?.cardTargetLabel,
                       incidentLabel:
-                          _contextForTab(_AiLabTab.deepLearning)
-                              ?.incidentTargetLabel ??
+                          _contextForTab(
+                            _AiLabTab.deepLearning,
+                          )?.incidentTargetLabel ??
                           modelChain?.incidentTargetLabel,
                       summary:
-                          _contextForTab(_AiLabTab.deepLearning)?.workspaceBrief ??
+                          _contextForTab(
+                            _AiLabTab.deepLearning,
+                          )?.workspaceBrief ??
                           modelChain?.workspaceBrief,
                       statusLabel: _trainingJobsViewModel.isSubmitting
                           ? 'Submitting'
@@ -611,20 +618,28 @@ class _AiLabScreenState extends State<AiLabScreen> {
                           : (_trainingJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
                                 : AppColors.success),
+                      recommendedActionKey: _recommendedAiLaneAction(
+                        _contextForTab(_AiLabTab.deepLearning),
+                        hasLatestAsset: latestModelAsset != null,
+                        runtimeActionKey: 'submit_training',
+                        registryActionKey: 'apply_latest_model_asset',
+                        timelineActionKey: 'copy_model_passport',
+                      ),
                       actions: [
                         WorkspaceActionLaneAction(
                           label: '提交训练任务',
                           icon: Icons.play_arrow_rounded,
                           onTap:
                               (_trainingStorageController.text
-                                          .trim()
-                                          .isNotEmpty &&
-                                      _trainingTargetController.text
-                                          .trim()
-                                          .isNotEmpty &&
-                                      !_trainingJobsViewModel.isSubmitting)
+                                      .trim()
+                                      .isNotEmpty &&
+                                  _trainingTargetController.text
+                                      .trim()
+                                      .isNotEmpty &&
+                                  !_trainingJobsViewModel.isSubmitting)
                               ? _submitTrainingJob
                               : null,
+                          semanticKey: 'submit_training',
                           tone: WorkspaceActionLaneTone.primary,
                           isLoading: _trainingJobsViewModel.isSubmitting,
                         ),
@@ -637,6 +652,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                                   latestModelAsset,
                                   chain: modelChain,
                                 ),
+                          semanticKey: 'apply_latest_model_asset',
                           tone: WorkspaceActionLaneTone.tonal,
                         ),
                         WorkspaceActionLaneAction(
@@ -648,17 +664,20 @@ class _AiLabScreenState extends State<AiLabScreen> {
                                   latestModelAsset,
                                   chain: modelChain,
                                 ),
+                          semanticKey: 'copy_model_passport',
                         ),
                         WorkspaceActionLaneAction(
                           label: '刷新训练队列',
                           icon: Icons.refresh_rounded,
                           onTap: _trainingJobsViewModel.loadJobs,
+                          semanticKey: 'refresh_training_jobs',
                         ),
                       ],
                     ),
                     WorkspaceActionLane(
                       title: '知识构建车道',
-                      description: '把知识库构建、快照回填、护照复制和会话治理收在同一条知识工作流里，减少在资产区和问答区之间来回切换。',
+                      description:
+                          '把知识库构建、快照回填、护照复制和会话治理收在同一条知识工作流里，减少在资产区和问答区之间来回切换。',
                       accent: AppColors.success,
                       icon: Icons.auto_awesome_rounded,
                       workspaceLabel:
@@ -684,18 +703,26 @@ class _AiLabScreenState extends State<AiLabScreen> {
                           : (_ragJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
                                 : AppColors.success),
+                      recommendedActionKey: _recommendedAiLaneAction(
+                        _contextForTab(_AiLabTab.rag),
+                        hasLatestAsset: latestKnowledgeAsset != null,
+                        runtimeActionKey: 'build_knowledge',
+                        registryActionKey: 'apply_latest_knowledge_asset',
+                        timelineActionKey: 'copy_knowledge_passport',
+                      ),
                       actions: [
                         WorkspaceActionLaneAction(
                           label: '构建知识库',
                           icon: Icons.hub_rounded,
                           onTap:
                               (_ragStorageController.text.trim().isNotEmpty &&
-                                      _ragCollectionController.text
-                                          .trim()
-                                          .isNotEmpty &&
-                                      !_ragJobsViewModel.isSubmitting)
+                                  _ragCollectionController.text
+                                      .trim()
+                                      .isNotEmpty &&
+                                  !_ragJobsViewModel.isSubmitting)
                               ? _submitRagIngestJob
                               : null,
+                          semanticKey: 'build_knowledge',
                           tone: WorkspaceActionLaneTone.primary,
                           isLoading: _ragJobsViewModel.isSubmitting,
                         ),
@@ -708,6 +735,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                                   latestKnowledgeAsset,
                                   chain: knowledgeChain,
                                 ),
+                          semanticKey: 'apply_latest_knowledge_asset',
                           tone: WorkspaceActionLaneTone.tonal,
                         ),
                         WorkspaceActionLaneAction(
@@ -719,12 +747,14 @@ class _AiLabScreenState extends State<AiLabScreen> {
                                   latestKnowledgeAsset,
                                   chain: knowledgeChain,
                                 ),
+                          semanticKey: 'copy_knowledge_passport',
                         ),
                         WorkspaceActionLaneAction(
                           label: '清空问答会话',
                           icon: Icons.cleaning_services_rounded,
                           onTap: () =>
                               _clearRagConversation(chain: knowledgeChain),
+                          semanticKey: 'clear_rag_conversation',
                         ),
                       ],
                     ),
@@ -1143,6 +1173,25 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   WorkbenchLaunchContext? _contextForTab(_AiLabTab tab) {
     return _activeLaunchTab == tab ? _activeLaunchContext : null;
+  }
+}
+
+String _recommendedAiLaneAction(
+  WorkbenchLaunchContext? context, {
+  required bool hasLatestAsset,
+  required String runtimeActionKey,
+  required String registryActionKey,
+  required String timelineActionKey,
+}) {
+  switch (context?.cardTarget) {
+    case 'registry_snapshot':
+      return hasLatestAsset ? registryActionKey : runtimeActionKey;
+    case 'version_timeline':
+      return hasLatestAsset ? timelineActionKey : runtimeActionKey;
+    case 'runtime_product':
+      return runtimeActionKey;
+    default:
+      return hasLatestAsset ? registryActionKey : runtimeActionKey;
   }
 }
 
