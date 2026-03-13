@@ -8,6 +8,7 @@ import '../../config/app_theme.dart';
 import '../../models/data_drift_report.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/history_record.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
 import '../operations/incident_card_header.dart';
@@ -17,6 +18,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
   const DataAssetGovernanceBoard({
     super.key,
     this.chain,
+    this.continuationContext,
     required this.currentStoragePath,
     required this.currentQualityScore,
     required this.currentAssetLabel,
@@ -38,6 +40,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final String? currentStoragePath;
   final double? currentQualityScore;
   final String currentAssetLabel;
@@ -72,6 +75,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
         !isRunningDrift;
     final focusArea = _focusArea(
       chain,
+      continuationContext: continuationContext,
       hasCurrentAsset:
           currentStoragePath != null && currentStoragePath!.isNotEmpty,
       hasReference:
@@ -86,6 +90,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
           title: '资产治理与漂移检测',
           subtitle: '围绕当前数据链路完成资产基线选择、漂移检测和治理结论，不把治理动作埋在结果区之后。',
           chain: chain,
+          continuationContext: continuationContext,
           icon: Icons.analytics_rounded,
         ),
         const SizedBox(height: 16),
@@ -96,6 +101,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
               _CurrentAssetCard(
                 highlighted: focusArea == 'current',
                 chain: chain,
+                continuationContext: continuationContext,
                 currentAssetLabel: currentAssetLabel,
                 currentStoragePath: currentStoragePath,
                 currentQualityScore: currentQualityScore,
@@ -104,6 +110,7 @@ class DataAssetGovernanceBoard extends StatelessWidget {
               _ReferenceAssetCard(
                 highlighted: focusArea == 'reference',
                 chain: chain,
+                continuationContext: continuationContext,
                 assets: referenceAssets,
                 selectedReferencePath: selectedReferencePath,
                 selectedReference: selectedReference,
@@ -142,10 +149,16 @@ class DataAssetGovernanceBoard extends StatelessWidget {
                 title: '资产对比与漂移检测',
                 subtitle:
                     '基于最近资产选择基线，针对关键数值字段运行 PSI 漂移检测，决定是否需要重新训练或继续监控。',
-                workspaceLabel: chain?.workspaceTargetLabel,
-                cardLabel: chain?.cardTargetLabel,
-                incidentLabel: chain?.incidentTargetLabel,
-                summary: chain?.workspaceBrief,
+                workspaceLabel:
+                    continuationContext?.workspaceTargetLabel ??
+                    chain?.workspaceTargetLabel,
+                cardLabel:
+                    continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel,
+                incidentLabel:
+                    continuationContext?.incidentTargetLabel ??
+                    chain?.incidentTargetLabel,
+                summary:
+                    continuationContext?.workspaceBrief ?? chain?.workspaceBrief,
               ),
               const SizedBox(height: 16),
               Text('检测字段', style: AppTextStyles.labelLarge),
@@ -225,6 +238,7 @@ class _CurrentAssetCard extends StatelessWidget {
   const _CurrentAssetCard({
     required this.highlighted,
     this.chain,
+    this.continuationContext,
     required this.currentAssetLabel,
     required this.currentStoragePath,
     required this.currentQualityScore,
@@ -233,6 +247,7 @@ class _CurrentAssetCard extends StatelessWidget {
 
   final bool highlighted;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final String currentAssetLabel;
   final String? currentStoragePath;
   final double? currentQualityScore;
@@ -254,16 +269,29 @@ class _CurrentAssetCard extends StatelessWidget {
             subtitle: currentAssetLabel,
             trailing: highlighted
                 ? WorkspaceStatusChip(
-                    label: chain?.cardTargetLabel ?? '当前资产',
+                    label:
+                        continuationContext?.cardTargetLabel ??
+                        chain?.cardTargetLabel ??
+                        '当前资产',
                     icon: Icons.dashboard_customize_rounded,
                     foreground: AppColors.primary,
                     background: AppColors.primary.withValues(alpha: 0.12),
                   )
                 : null,
-            workspaceLabel: highlighted ? chain?.workspaceTargetLabel : null,
-            cardLabel: highlighted ? chain?.cardTargetLabel : null,
-            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
-            summary: highlighted ? chain?.workspaceBrief : null,
+            workspaceLabel: highlighted
+                ? continuationContext?.workspaceTargetLabel ??
+                      chain?.workspaceTargetLabel
+                : null,
+            cardLabel: highlighted
+                ? continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel
+                : null,
+            incidentLabel: highlighted
+                ? continuationContext?.incidentTargetLabel ??
+                      chain?.incidentTargetLabel
+                : null,
+            summary: highlighted
+                ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                : null,
           ),
           const SizedBox(height: 8),
           _DigestRow(label: '资产标签', value: currentAssetLabel),
@@ -308,6 +336,7 @@ class _ReferenceAssetCard extends StatelessWidget {
   const _ReferenceAssetCard({
     required this.highlighted,
     this.chain,
+    this.continuationContext,
     required this.assets,
     required this.selectedReferencePath,
     required this.selectedReference,
@@ -319,6 +348,7 @@ class _ReferenceAssetCard extends StatelessWidget {
 
   final bool highlighted;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final List<HistoryRecord> assets;
   final String? selectedReferencePath;
   final HistoryRecord? selectedReference;
@@ -346,7 +376,10 @@ class _ReferenceAssetCard extends StatelessWidget {
               children: [
                 if (highlighted)
                   WorkspaceStatusChip(
-                    label: chain?.cardTargetLabel ?? '选择基线',
+                    label:
+                        continuationContext?.cardTargetLabel ??
+                        chain?.cardTargetLabel ??
+                        '选择基线',
                     icon: Icons.dashboard_customize_rounded,
                     foreground: AppColors.warning,
                     background: AppColors.warning.withValues(alpha: 0.12),
@@ -358,10 +391,20 @@ class _ReferenceAssetCard extends StatelessWidget {
                 ),
               ],
             ),
-            workspaceLabel: highlighted ? chain?.workspaceTargetLabel : null,
-            cardLabel: highlighted ? chain?.cardTargetLabel : null,
-            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
-            summary: highlighted ? chain?.workspaceBrief : null,
+            workspaceLabel: highlighted
+                ? continuationContext?.workspaceTargetLabel ??
+                      chain?.workspaceTargetLabel
+                : null,
+            cardLabel: highlighted
+                ? continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel
+                : null,
+            incidentLabel: highlighted
+                ? continuationContext?.incidentTargetLabel ??
+                      chain?.incidentTargetLabel
+                : null,
+            summary: highlighted
+                ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                : null,
           ),
           const SizedBox(height: 8),
           if (assets.isEmpty)
@@ -657,11 +700,12 @@ class _GovernanceDecisionCard extends StatelessWidget {
 
 String _focusArea(
   AssetChainSummary? chain, {
+  WorkbenchLaunchContext? continuationContext,
   required bool hasCurrentAsset,
   required bool hasReference,
   required bool hasReport,
 }) {
-  switch (chain?.cardTarget) {
+  switch (continuationContext?.cardTarget ?? chain?.cardTarget) {
     case 'current_asset':
       return 'current';
     case 'reference_asset':
@@ -670,20 +714,6 @@ String _focusArea(
       return 'report';
     case 'governance_decision':
       return 'decision';
-  }
-  switch (chain?.focusTarget) {
-    case 'dataset_current_asset':
-      return 'current';
-    case 'dataset_reference_asset':
-      return 'reference';
-    case 'dataset_drift_report':
-      return 'report';
-    case 'dataset_governance_decision':
-      return 'decision';
-    case 'dataset_results':
-      return hasReport ? 'report' : 'reference';
-    case 'dataset_job_panel':
-      return hasCurrentAsset ? 'current' : 'reference';
   }
   if (!hasCurrentAsset || chain?.status == 'action') {
     return 'current';

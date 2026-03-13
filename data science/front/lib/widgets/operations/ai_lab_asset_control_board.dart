@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import 'asset_chain_section_header.dart';
 import 'incident_card_header.dart';
@@ -16,6 +17,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
   const AiLabAssetControlBoard({
     super.key,
     this.activeChain,
+    this.continuationContext,
     this.assetSummary,
     required this.trainingJobs,
     required this.ragJobs,
@@ -31,6 +33,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
   });
 
   final AssetChainSummary? activeChain;
+  final WorkbenchLaunchContext? continuationContext;
   final AssetSummary? assetSummary;
   final List<JobRecord> trainingJobs;
   final List<JobRecord> ragJobs;
@@ -100,10 +103,14 @@ class AiLabAssetControlBoard extends StatelessWidget {
             activeChain?.workspaceTarget == 'ai_runtime' ||
             activeChain?.sectionTarget == 'ai_lab_runtime';
         final runtimeCardFocused =
-            activeChain?.cardTarget == 'runtime_product' || runtimeFocus;
+            continuationContext?.cardTarget == 'runtime_product' ||
+            activeChain?.cardTarget == 'runtime_product' ||
+            runtimeFocus;
         final timelineCardFocused =
+            continuationContext?.cardTarget == 'version_timeline' ||
             activeChain?.cardTarget == 'version_timeline';
         final registryCardFocused =
+            continuationContext?.cardTarget == 'registry_snapshot' ||
             activeChain?.cardTarget == 'registry_snapshot';
         final panels = [
           _ArtifactPanel(
@@ -112,17 +119,21 @@ class AiLabAssetControlBoard extends StatelessWidget {
             icon: Icons.inventory_2_rounded,
             accent: AppColors.cta,
             workspaceLabel: runtimeCardFocused && activeChain?.key == 'model'
-                ? activeChain?.workspaceTargetLabel
+                ? continuationContext?.workspaceTargetLabel ??
+                      activeChain?.workspaceTargetLabel
                 : null,
             highlighted: runtimeCardFocused && activeChain?.key == 'model',
             cardLabel: runtimeCardFocused && activeChain?.key == 'model'
-                ? activeChain?.cardTargetLabel
+                ? continuationContext?.cardTargetLabel ??
+                      activeChain?.cardTargetLabel
                 : null,
             incidentLabel: runtimeCardFocused && activeChain?.key == 'model'
-                ? activeChain?.incidentTargetLabel
+                ? continuationContext?.incidentTargetLabel ??
+                      activeChain?.incidentTargetLabel
                 : null,
             summary: runtimeCardFocused && activeChain?.key == 'model'
-                ? activeChain?.workspaceBrief
+                ? continuationContext?.workspaceBrief ??
+                      activeChain?.workspaceBrief
                 : null,
             emptyMessage: '暂无已完成训练产物。提交训练任务后，这里会出现可回填的模型资产。',
             footer: null,
@@ -147,17 +158,21 @@ class AiLabAssetControlBoard extends StatelessWidget {
             icon: Icons.account_tree_rounded,
             accent: AppColors.primary,
             workspaceLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
-                ? activeChain?.workspaceTargetLabel
+                ? continuationContext?.workspaceTargetLabel ??
+                      activeChain?.workspaceTargetLabel
                 : null,
             highlighted: runtimeCardFocused && activeChain?.key == 'knowledge',
             cardLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
-                ? activeChain?.cardTargetLabel
+                ? continuationContext?.cardTargetLabel ??
+                      activeChain?.cardTargetLabel
                 : null,
             incidentLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
-                ? activeChain?.incidentTargetLabel
+                ? continuationContext?.incidentTargetLabel ??
+                      activeChain?.incidentTargetLabel
                 : null,
             summary: runtimeCardFocused && activeChain?.key == 'knowledge'
-                ? activeChain?.workspaceBrief
+                ? continuationContext?.workspaceBrief ??
+                      activeChain?.workspaceBrief
                 : null,
             emptyMessage: '暂无成功的知识库构建结果。提供文档路径后即可生成可复用快照。',
             footer: Align(
@@ -201,6 +216,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
                 highlighted: registryCardFocused,
                 latestModelAsset: latestModelAsset,
                 latestKnowledgeAsset: latestKnowledgeAsset,
+                continuationContext: continuationContext,
                 onApplyModelAsset: onApplyModelAsset,
                 onCopyModelPath: onCopyModelPath,
                 onCopyModelPassport: onCopyModelPassport,
@@ -215,6 +231,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
                 summary: assetSummary!,
                 activeChain: activeChain,
                 highlighted: timelineCardFocused,
+                continuationContext: continuationContext,
               ),
             ],
             const SizedBox(height: 16),
@@ -248,11 +265,13 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
     required this.summary,
     required this.activeChain,
     this.highlighted = false,
+    this.continuationContext,
   });
 
   final AssetSummary summary;
   final AssetChainSummary? activeChain;
   final bool highlighted;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -263,17 +282,19 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
         accent: AppColors.cta,
         icon: Icons.model_training_rounded,
         workspaceLabel: highlighted && activeChain?.key == 'model'
-            ? activeChain?.workspaceTargetLabel
+            ? continuationContext?.workspaceTargetLabel ??
+                  activeChain?.workspaceTargetLabel
             : null,
         highlighted: highlighted && activeChain?.key == 'model',
         cardLabel: activeChain?.key == 'model'
-            ? activeChain?.cardTargetLabel
+            ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
             : null,
         incidentLabel: highlighted && activeChain?.key == 'model'
-            ? activeChain?.incidentTargetLabel
+            ? continuationContext?.incidentTargetLabel ??
+                  activeChain?.incidentTargetLabel
             : null,
         summary: highlighted && activeChain?.key == 'model'
-            ? activeChain?.workspaceBrief
+            ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
             : null,
         items: summary.models
             .take(3)
@@ -294,17 +315,19 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
         accent: AppColors.primary,
         icon: Icons.account_tree_rounded,
         workspaceLabel: highlighted && activeChain?.key == 'knowledge'
-            ? activeChain?.workspaceTargetLabel
+            ? continuationContext?.workspaceTargetLabel ??
+                  activeChain?.workspaceTargetLabel
             : null,
         highlighted: highlighted && activeChain?.key == 'knowledge',
         cardLabel: activeChain?.key == 'knowledge'
-            ? activeChain?.cardTargetLabel
+            ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
             : null,
         incidentLabel: highlighted && activeChain?.key == 'knowledge'
-            ? activeChain?.incidentTargetLabel
+            ? continuationContext?.incidentTargetLabel ??
+                  activeChain?.incidentTargetLabel
             : null,
         summary: highlighted && activeChain?.key == 'knowledge'
-            ? activeChain?.workspaceBrief
+            ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
             : null,
         items: summary.knowledgeBases
             .take(3)
@@ -463,6 +486,7 @@ class _RegistrySnapshotSection extends StatelessWidget {
   const _RegistrySnapshotSection({
     required this.activeChain,
     this.highlighted = false,
+    this.continuationContext,
     required this.latestModelAsset,
     required this.latestKnowledgeAsset,
     required this.onApplyModelAsset,
@@ -475,6 +499,7 @@ class _RegistrySnapshotSection extends StatelessWidget {
 
   final AssetChainSummary? activeChain;
   final bool highlighted;
+  final WorkbenchLaunchContext? continuationContext;
   final AssetModel? latestModelAsset;
   final KnowledgeAsset? latestKnowledgeAsset;
   final ValueChanged<AssetModel> onApplyModelAsset;
@@ -494,17 +519,19 @@ class _RegistrySnapshotSection extends StatelessWidget {
           accent: AppColors.cta,
           icon: Icons.model_training_rounded,
           workspaceLabel: highlighted && activeChain?.key == 'model'
-              ? activeChain?.workspaceTargetLabel
+              ? continuationContext?.workspaceTargetLabel ??
+                    activeChain?.workspaceTargetLabel
               : null,
           highlighted: highlighted && activeChain?.key == 'model',
           cardLabel: activeChain?.key == 'model'
-              ? activeChain?.cardTargetLabel
+              ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
               : null,
           incidentLabel: highlighted && activeChain?.key == 'model'
-              ? activeChain?.incidentTargetLabel
+              ? continuationContext?.incidentTargetLabel ??
+                    activeChain?.incidentTargetLabel
               : null,
           summary: highlighted && activeChain?.key == 'model'
-              ? activeChain?.workspaceBrief
+              ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
               : null,
           child: _ModelRegistryTile(
             asset: latestModelAsset!,
@@ -521,17 +548,19 @@ class _RegistrySnapshotSection extends StatelessWidget {
           accent: AppColors.primary,
           icon: Icons.account_tree_rounded,
           workspaceLabel: highlighted && activeChain?.key == 'knowledge'
-              ? activeChain?.workspaceTargetLabel
+              ? continuationContext?.workspaceTargetLabel ??
+                    activeChain?.workspaceTargetLabel
               : null,
           highlighted: highlighted && activeChain?.key == 'knowledge',
           cardLabel: activeChain?.key == 'knowledge'
-              ? activeChain?.cardTargetLabel
+              ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
               : null,
           incidentLabel: highlighted && activeChain?.key == 'knowledge'
-              ? activeChain?.incidentTargetLabel
+              ? continuationContext?.incidentTargetLabel ??
+                    activeChain?.incidentTargetLabel
               : null,
           summary: highlighted && activeChain?.key == 'knowledge'
-              ? activeChain?.workspaceBrief
+              ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
               : null,
           child: _KnowledgeRegistryTile(
             asset: latestKnowledgeAsset!,

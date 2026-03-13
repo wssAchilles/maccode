@@ -8,13 +8,17 @@ import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../../utils/asset_chain_context.dart';
 import '../operations/duty_context_board.dart';
+import '../operations/duty_signal_strip.dart';
+import '../operations/workspace_action_lane.dart';
 
 class HistoryAuditOverview extends StatelessWidget {
   const HistoryAuditOverview({
     super.key,
     required this.kpis,
     required this.jobs,
+    this.dutySummary,
     this.assetSummary,
+    this.dutyActions = const [],
     required this.activityCount,
     required this.recordCount,
     required this.selectedType,
@@ -22,11 +26,14 @@ class HistoryAuditOverview extends StatelessWidget {
     required this.onTypeChanged,
     required this.onStatusChanged,
     required this.onClearFilters,
+    this.onDutyAction,
   });
 
   final DashboardKpis? kpis;
   final List<JobRecord> jobs;
+  final DutySummary? dutySummary;
   final AssetSummary? assetSummary;
+  final List<DutyAction> dutyActions;
   final int activityCount;
   final int recordCount;
   final String? selectedType;
@@ -34,6 +41,7 @@ class HistoryAuditOverview extends StatelessWidget {
   final ValueChanged<String?> onTypeChanged;
   final ValueChanged<String?> onStatusChanged;
   final VoidCallback onClearFilters;
+  final ValueChanged<DutyAction>? onDutyAction;
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +49,7 @@ class HistoryAuditOverview extends StatelessWidget {
     final failedJobs = jobs.where((job) => job.status == 'failed').length;
     final completedJobs = jobs.where((job) => job.status == 'succeeded').length;
     final latestJob = jobs.isEmpty ? null : jobs.first;
-    final focusChain = assetSummary?.chainSummaries.isEmpty ?? true
-        ? null
-        : ([
-            ...assetSummary!.chainSummaries,
-          ]..sort((a, b) => b.priorityScore.compareTo(a.priorityScore))).first;
+    final focusChain = selectPriorityChain(assetSummary);
 
     return DutyContextBoard(
       title: '值班概览',
@@ -84,7 +88,13 @@ class HistoryAuditOverview extends StatelessWidget {
           color: AppColors.primary,
         ),
       ],
-      currentWatch: focusChain != null
+      signalStrip: dutySummary == null
+          ? null
+          : DutySignalStrip(summary: dutySummary!, accent: AppColors.primary),
+      currentWatch:
+          (dutySummary?.focusWatch.isNotEmpty ?? false)
+          ? dutySummary!.focusWatch
+          : focusChain != null
           ? buildChainCurrentWatch(focusChain)
           : latestJob == null
           ? '当前暂无最新任务，重点关注筛选上下文和资产链路处置。'
@@ -112,6 +122,24 @@ class HistoryAuditOverview extends StatelessWidget {
             foreground: AppColors.warning,
             background: AppColors.warningLight,
           ),
+        if ((dutySummary?.focusOwnerLabel ?? '--') != '--')
+          DutyContextFact(
+            label: '责任',
+            value: dutySummary!.focusOwnerLabel,
+            icon: Icons.badge_rounded,
+          ),
+        if ((dutySummary?.focusEscalationStateLabel ?? '--') != '--')
+          DutyContextFact(
+            label: '升级',
+            value: dutySummary!.focusEscalationStateLabel,
+            icon: Icons.escalator_warning_rounded,
+            foreground: (dutySummary?.escalatedCount ?? 0) > 0
+                ? AppColors.warning
+                : AppColors.textSecondary,
+            background: (dutySummary?.escalatedCount ?? 0) > 0
+                ? AppColors.warningLight
+                : AppColors.background,
+          ),
         DutyContextFact(
           label: '类型',
           value: _typeLabel(selectedType),
@@ -132,10 +160,27 @@ class HistoryAuditOverview extends StatelessWidget {
           icon: Icons.fact_check_rounded,
         ),
       ],
-      footerTitle: '筛选控制',
+      footerTitle: dutyActions.isEmpty ? '筛选控制' : '值班动作与筛选',
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (dutyActions.isNotEmpty && onDutyAction != null) ...[
+            WorkspaceInlineActionBar(
+              spacing: 12,
+              runSpacing: 12,
+              actions: dutyActions
+                  .map(
+                    (action) => WorkspaceActionLaneAction(
+                      label: action.label,
+                      icon: _dutyActionIcon(action.command, action.chainKey),
+                      onTap: () => onDutyAction!(action),
+                      tone: _dutyActionTone(action.tone),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 12),
+          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -202,6 +247,43 @@ class HistoryAuditOverview extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+WorkspaceActionLaneTone _dutyActionTone(String tone) {
+  switch (tone) {
+    case 'primary':
+      return WorkspaceActionLaneTone.primary;
+    case 'tonal':
+      return WorkspaceActionLaneTone.tonal;
+    default:
+      return WorkspaceActionLaneTone.outline;
+  }
+}
+
+IconData _dutyActionIcon(String command, String chainKey) {
+  switch (command) {
+    case 'filter_failed':
+      return Icons.error_outline_rounded;
+    case 'filter_running':
+      return Icons.autorenew_rounded;
+    case 'clear_filters':
+      return Icons.filter_alt_off_rounded;
+    case 'open_audit':
+      return Icons.fact_check_rounded;
+  }
+
+  switch (chainKey) {
+    case 'dataset':
+      return Icons.upload_file_rounded;
+    case 'model':
+      return Icons.model_training_rounded;
+    case 'knowledge':
+      return Icons.auto_awesome_rounded;
+    case 'optimization':
+      return Icons.bolt_rounded;
+    default:
+      return Icons.arrow_outward_rounded;
   }
 }
 

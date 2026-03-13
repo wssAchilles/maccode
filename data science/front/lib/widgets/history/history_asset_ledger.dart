@@ -11,9 +11,10 @@ import '../../models/history_record.dart';
 import '../../models/job_record.dart';
 import '../../models/optimization_launch_intent.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
+import '../operations/duty_section_block.dart';
 import '../operations/incident_card_header.dart';
-import '../operations/section_intro.dart';
 import '../operations/workspace_action_lane.dart';
 
 class HistoryAssetLedger extends StatelessWidget {
@@ -22,6 +23,7 @@ class HistoryAssetLedger extends StatelessWidget {
     required this.jobs,
     required this.records,
     this.assetSummary,
+    this.dutySummary,
     this.alerts = const <DashboardAlert>[],
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
@@ -31,6 +33,7 @@ class HistoryAssetLedger extends StatelessWidget {
   final List<JobRecord> jobs;
   final List<HistoryRecord> records;
   final AssetSummary? assetSummary;
+  final DutySummary? dutySummary;
   final List<DashboardAlert> alerts;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
@@ -107,6 +110,7 @@ class HistoryAssetLedger extends StatelessWidget {
         if (assetSummary != null) ...[
           _CompactLedgerMatrix(
             summary: assetSummary!,
+            dutySummary: dutySummary,
             datasetReplayCount: datasetAssets.length,
             modelReplayCount: modelAssets.length,
             knowledgeReplayCount: knowledgeAssets.length,
@@ -276,6 +280,7 @@ class HistoryAssetLedger extends StatelessWidget {
 class _CompactLedgerMatrix extends StatelessWidget {
   const _CompactLedgerMatrix({
     required this.summary,
+    this.dutySummary,
     required this.datasetReplayCount,
     required this.modelReplayCount,
     required this.knowledgeReplayCount,
@@ -286,6 +291,7 @@ class _CompactLedgerMatrix extends StatelessWidget {
   });
 
   final AssetSummary summary;
+  final DutySummary? dutySummary;
   final int datasetReplayCount;
   final int modelReplayCount;
   final int knowledgeReplayCount;
@@ -308,6 +314,7 @@ class _CompactLedgerMatrix extends StatelessWidget {
               };
               return _CompactLedgerRow(
                 chain: chain,
+                isDutyFocus: isDutyFocusChain(chain, dutySummary),
                 replayCount: replayCount,
                 onOpenAiLab: onOpenAiLab,
                 onOpenDataAnalysis: onOpenDataAnalysis,
@@ -315,29 +322,21 @@ class _CompactLedgerMatrix extends StatelessWidget {
               );
             })
             .toList(growable: false)
-          ..sort(
-            (a, b) => b.chain.priorityScore.compareTo(a.chain.priorityScore),
-          );
+          ..sort((a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary));
 
     return GlassCard(
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionIntro(
-            title: '资产台账矩阵',
-            subtitle: '用更高密度的方式统一查看链路状态、版本、焦点、责任和回放库存，减少在四类资产卡片之间来回切换。',
-          ),
-          const SizedBox(height: 12),
-          Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                rows[i],
-                if (i < rows.length - 1) const SizedBox(height: 10),
-              ],
+      child: DutySectionBlock(
+        title: '资产台账矩阵',
+        subtitle: '用更高密度的方式统一查看链路状态、版本、焦点、责任和回放库存，减少在四类资产卡片之间来回切换。',
+        child: Column(
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              rows[i],
+              if (i < rows.length - 1) const SizedBox(height: 10),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -346,6 +345,7 @@ class _CompactLedgerMatrix extends StatelessWidget {
 class _CompactLedgerRow extends StatelessWidget {
   const _CompactLedgerRow({
     required this.chain,
+    required this.isDutyFocus,
     required this.replayCount,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
@@ -353,6 +353,7 @@ class _CompactLedgerRow extends StatelessWidget {
   });
 
   final AssetChainSummary chain;
+  final bool isDutyFocus;
   final int replayCount;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
@@ -423,6 +424,8 @@ class _CompactLedgerRow extends StatelessWidget {
               label: chain.statusLabel,
               color: chain.isOverdue ? AppColors.error : AppColors.primary,
             ),
+            if (isDutyFocus)
+              const _LedgerTag(label: 'Duty Focus', color: AppColors.primary),
             _LedgerTag(label: chain.workspaceTargetLabel, color: tone),
             _LedgerTag(label: chain.cardTargetLabel, color: tone),
             _LedgerTag(label: chain.incidentTargetLabel, color: tone),
@@ -817,32 +820,26 @@ class _AssetRiskStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionIntro(
-          title: '资产风险联动',
-          subtitle: '把概览页发现的资产缺口直接落到台账入口，并给出对应工作台的处理动作。',
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: alerts
-              .map(
-                (alert) => SizedBox(
-                  width: 320,
-                  child: _AssetRiskCard(
-                    alert: alert,
-                    onOpenAiLab: onOpenAiLab,
-                    onOpenDataAnalysis: onOpenDataAnalysis,
-                    onOpenOptimization: onOpenOptimization,
-                  ),
+    return DutySectionBlock(
+      title: '资产风险联动',
+      subtitle: '把概览页发现的资产缺口直接落到台账入口，并给出对应工作台的处理动作。',
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: alerts
+            .map(
+              (alert) => SizedBox(
+                width: 320,
+                child: _AssetRiskCard(
+                  alert: alert,
+                  onOpenAiLab: onOpenAiLab,
+                  onOpenDataAnalysis: onOpenDataAnalysis,
+                  onOpenOptimization: onOpenOptimization,
                 ),
-              )
-              .toList(growable: false),
-        ),
-      ],
+              ),
+            )
+            .toList(growable: false),
+      ),
     );
   }
 }

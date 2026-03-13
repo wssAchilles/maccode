@@ -13,6 +13,7 @@ import '../models/job_record.dart';
 import '../models/modeling_controls_state.dart';
 import '../models/optimization_result.dart';
 import '../models/optimization_launch_intent.dart';
+import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
@@ -27,6 +28,7 @@ import '../widgets/operations/workbench_command_strip.dart';
 import '../widgets/operations/workbench_runbook_panel.dart';
 import '../widgets/operations/workbench_section_signal.dart';
 import '../widgets/operations/workspace_action_lane.dart';
+import '../widgets/operations/workspace_digest_card.dart';
 import '../widgets/modeling/modeling_control_panel.dart';
 import '../widgets/modeling/optimization_asset_registry_board.dart';
 import '../widgets/modeling/optimization_operations_board.dart';
@@ -60,6 +62,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   late final JobViewModel _jobViewModel;
   late final bool _ownsViewModel;
   late ModelingControlsState _controls;
+  WorkbenchLaunchContext? _activeLaunchContext;
 
   bool get _isLoading => _viewModel.isLoading;
   OptimizationResponse? get _result => _viewModel.result;
@@ -378,6 +381,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
 
     setState(() {
       _controls = nextState;
+      _activeLaunchContext = intent.context;
     });
 
     if (intent.hasResultPayload) {
@@ -388,7 +392,14 @@ class _ModelingScreenState extends State<ModelingScreen> {
       if (!mounted) {
         return;
       }
-      _showSuccessSnackBar('${intent.sourceLabel ?? "后台任务"}已载入优化工作台');
+      _showSuccessSnackBar(
+        buildLaunchArrivalMessage(
+          intent.context,
+          fallbackSubject: intent.sourceLabel ?? '后台任务',
+          destination: '优化工作台',
+          verb: '已载入',
+        ),
+      );
       widget.onLaunchIntentHandled?.call();
     });
   }
@@ -483,6 +494,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   const SizedBox(height: 16),
                   WorkbenchRunbookPanel(
                     chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                     description:
                         '把优化链路的处置步骤、责任和 SLA 直接压进工作台，优先处理最新结果回填、快照复盘和运维摘要。',
                     actions: [
@@ -529,6 +541,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   if (optimizationChain != null) const SizedBox(height: 16),
                   WorkbenchSectionSignal(
                     chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                     title: '后台求解任务',
                     description: '先看当前求解链路的阶段、进度和 SLA，再决定是继续观察、重试还是直接回填最近结果。',
                     icon: Icons.timeline_rounded,
@@ -571,6 +584,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   const SizedBox(height: 16),
                   WorkbenchSectionSignal(
                     chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                     title: '资产注册表与结果运维',
                     description: '任务完成后，优先在这一层完成快照回填、运维摘要复查和结果协作导出。',
                     icon: Icons.inventory_2_rounded,
@@ -578,12 +592,14 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   if (optimizationChain != null) const SizedBox(height: 16),
                   OptimizationOperationsBoard(
                     chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                     result: _result,
                     latestCompletedJob: latestCompletedJob,
                   ),
                   const SizedBox(height: 16),
                   OptimizationAssetRegistryBoard(
                     chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                     assetSummary: assetSummary,
                     latestCompletedJob: latestCompletedJob,
                     onApplyAsset: _applyOptimizationAsset,
@@ -603,6 +619,8 @@ class _ModelingScreenState extends State<ModelingScreen> {
                     result: _result,
                     previousResult: _previousResult,
                     onDismissError: _viewModel.clearError,
+                    chain: optimizationChain,
+                    continuationContext: _activeLaunchContext,
                   ),
                   const SizedBox(height: 32),
                 ],
@@ -765,10 +783,16 @@ class _ModelingScreenState extends State<ModelingScreen> {
             const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: AppColors.warning,
-              workspaceLabel: chain.workspaceTargetLabel,
-              cardLabel: chain.cardTargetLabel,
-              incidentLabel: chain.incidentTargetLabel,
-              summary: chain.workspaceBrief,
+              workspaceLabel:
+                  _activeLaunchContext?.workspaceTargetLabel ??
+                  chain.workspaceTargetLabel,
+              cardLabel:
+                  _activeLaunchContext?.cardTargetLabel ?? chain.cardTargetLabel,
+              incidentLabel:
+                  _activeLaunchContext?.incidentTargetLabel ??
+                  chain.incidentTargetLabel,
+              summary:
+                  _activeLaunchContext?.workspaceBrief ?? chain.workspaceBrief,
             ),
           ],
           const SizedBox(height: 16),
@@ -776,40 +800,65 @@ class _ModelingScreenState extends State<ModelingScreen> {
             builder: (context, constraints) {
               final stacked = constraints.maxWidth < 1100;
               final cards = [
-                _OptimizationDigestCard(
+                WorkspaceDigestCard(
                   title: 'Scenario Digest',
                   value: scenarioDigest,
                   icon: Icons.tune_rounded,
                   accent: AppColors.primary,
-                  highlighted: _operationsDigestFocus(chain, 'scenario'),
+                  highlighted: _operationsDigestFocus(
+                    chain,
+                    'scenario',
+                    _activeLaunchContext,
+                  ),
+                  highlightLabel: '当前链路焦点',
                 ),
-                _OptimizationDigestCard(
+                WorkspaceDigestCard(
                   title: '策略摘要',
                   value: strategyDigest,
                   icon: Icons.route_rounded,
                   accent: AppColors.cta,
-                  highlighted: _operationsDigestFocus(chain, 'strategy'),
+                  highlighted: _operationsDigestFocus(
+                    chain,
+                    'strategy',
+                    _activeLaunchContext,
+                  ),
+                  highlightLabel: '当前链路焦点',
                 ),
-                _OptimizationDigestCard(
+                WorkspaceDigestCard(
                   title: '结果对比',
                   value: comparisonDigest,
                   icon: Icons.compare_arrows_rounded,
                   accent: AppColors.success,
-                  highlighted: _operationsDigestFocus(chain, 'comparison'),
+                  highlighted: _operationsDigestFocus(
+                    chain,
+                    'comparison',
+                    _activeLaunchContext,
+                  ),
+                  highlightLabel: '当前链路焦点',
                 ),
-                _OptimizationDigestCard(
+                WorkspaceDigestCard(
                   title: 'Result Snapshot',
                   value: snapshotDigest,
                   icon: Icons.inventory_2_rounded,
                   accent: AppColors.warning,
-                  highlighted: _operationsDigestFocus(chain, 'snapshot'),
+                  highlighted: _operationsDigestFocus(
+                    chain,
+                    'snapshot',
+                    _activeLaunchContext,
+                  ),
+                  highlightLabel: '当前链路焦点',
                 ),
-                _OptimizationDigestCard(
+                WorkspaceDigestCard(
                   title: '运维摘要',
                   value: operationsDigest,
                   icon: Icons.monitor_heart_rounded,
                   accent: AppColors.primary,
-                  highlighted: _operationsDigestFocus(chain, 'operations'),
+                  highlighted: _operationsDigestFocus(
+                    chain,
+                    'operations',
+                    _activeLaunchContext,
+                  ),
+                  highlightLabel: '当前链路焦点',
                 ),
               ];
 
@@ -839,115 +888,105 @@ class _ModelingScreenState extends State<ModelingScreen> {
             },
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 980;
-              final lanes = [
-                WorkspaceActionLane(
-                  title: '结果导出与协作',
-                  description: hasExportableResult
-                      ? '将当前优化结果、节省摘要和策略摘要直接打包给协作方，不再让复制动作散在一排按钮里。'
-                      : '先完成一次有效优化，再导出 JSON、快照和节省摘要。',
-                  accent: AppColors.primary,
-                  icon: Icons.ios_share_rounded,
-                  workspaceLabel: chain?.workspaceTargetLabel,
-                  cardLabel: chain?.cardTargetLabel,
-                  incidentLabel: chain?.incidentTargetLabel,
-                  summary: chain?.workspaceBrief,
-                  statusLabel: hasExportableResult ? 'Ready' : 'Blocked',
-                  statusColor: hasExportableResult
-                      ? AppColors.success
-                      : AppColors.warning,
-                  actions: [
-                    WorkspaceActionLaneAction(
-                      label: '复制结果 JSON',
-                      icon: Icons.download_rounded,
-                      onTap: hasExportableResult ? _copyResultJson : null,
-                      tone: WorkspaceActionLaneTone.primary,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '复制节省摘要',
-                      icon: Icons.content_copy_rounded,
-                      onTap: hasExportableResult ? _copySummaryDigest : null,
-                      tone: WorkspaceActionLaneTone.tonal,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '复制配置摘要',
-                      icon: Icons.copy_rounded,
-                      onTap: _copyScenarioDigest,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '复制策略摘要',
-                      icon: Icons.rule_rounded,
-                      onTap: hasExportableResult ? _copyStrategyDigest : null,
-                    ),
-                  ],
-                ),
-                WorkspaceActionLane(
-                  title: '运维回填与复盘',
-                  description: latestCompletedJob != null
-                      ? '把最近后台结果、结果护照和运维摘要收在同一条复盘车道里，便于值班处理。'
-                      : '当前还没有可回填的后台结果，但可以先刷新任务队列并保留运维摘要出口。',
-                  accent: AppColors.warning,
-                  icon: Icons.monitor_heart_rounded,
-                  workspaceLabel: chain?.workspaceTargetLabel,
-                  cardLabel: chain?.cardTargetLabel,
-                  incidentLabel: chain?.incidentTargetLabel,
-                  summary: chain?.workspaceBrief,
-                  statusLabel: latestCompletedJob == null ? 'Waiting' : 'Hot',
-                  statusColor: latestCompletedJob == null
-                      ? AppColors.textSecondary
-                      : AppColors.warning,
-                  actions: [
-                    WorkspaceActionLaneAction(
-                      label: '复制结果护照',
-                      icon: Icons.inventory_2_rounded,
-                      onTap: hasExportableResult ? _copySnapshotDigest : null,
-                      tone: WorkspaceActionLaneTone.tonal,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '复制运维摘要',
-                      icon: Icons.monitor_heart_rounded,
-                      onTap: hasExportableResult ? _copyOperationsDigest : null,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '载入最近后台结果',
-                      icon: Icons.download_done_rounded,
-                      onTap: latestCompletedJob == null
-                          ? null
-                          : () => _hydrateLatestJobResult(latestCompletedJob),
-                      tone: WorkspaceActionLaneTone.primary,
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '刷新任务状态',
-                      icon: Icons.sync_rounded,
-                      onTap: _jobViewModel.loadJobs,
-                    ),
-                  ],
-                ),
-              ];
-
-              if (stacked) {
-                return Column(
-                  children: [
-                    for (var i = 0; i < lanes.length; i++) ...[
-                      lanes[i],
-                      if (i < lanes.length - 1) const SizedBox(height: 12),
-                    ],
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < lanes.length; i++) ...[
-                    Expanded(child: lanes[i]),
-                    if (i < lanes.length - 1) const SizedBox(width: 12),
-                  ],
+          WorkspaceActionDeck(
+            lanes: [
+              WorkspaceActionLane(
+                title: '结果导出与协作',
+                description: hasExportableResult
+                    ? '将当前优化结果、节省摘要和策略摘要直接打包给协作方，不再让复制动作散在一排按钮里。'
+                    : '先完成一次有效优化，再导出 JSON、快照和节省摘要。',
+                accent: AppColors.primary,
+                icon: Icons.ios_share_rounded,
+                workspaceLabel:
+                    _activeLaunchContext?.workspaceTargetLabel ??
+                    chain?.workspaceTargetLabel,
+                cardLabel:
+                    _activeLaunchContext?.cardTargetLabel ??
+                    chain?.cardTargetLabel,
+                incidentLabel:
+                    _activeLaunchContext?.incidentTargetLabel ??
+                    chain?.incidentTargetLabel,
+                summary:
+                    _activeLaunchContext?.workspaceBrief ?? chain?.workspaceBrief,
+                statusLabel: hasExportableResult ? 'Ready' : 'Blocked',
+                statusColor: hasExportableResult
+                    ? AppColors.success
+                    : AppColors.warning,
+                actions: [
+                  WorkspaceActionLaneAction(
+                    label: '复制结果 JSON',
+                    icon: Icons.download_rounded,
+                    onTap: hasExportableResult ? _copyResultJson : null,
+                    tone: WorkspaceActionLaneTone.primary,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '复制节省摘要',
+                    icon: Icons.content_copy_rounded,
+                    onTap: hasExportableResult ? _copySummaryDigest : null,
+                    tone: WorkspaceActionLaneTone.tonal,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '复制配置摘要',
+                    icon: Icons.copy_rounded,
+                    onTap: _copyScenarioDigest,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '复制策略摘要',
+                    icon: Icons.rule_rounded,
+                    onTap: hasExportableResult ? _copyStrategyDigest : null,
+                  ),
                 ],
-              );
-            },
+              ),
+              WorkspaceActionLane(
+                title: '运维回填与复盘',
+                description: latestCompletedJob != null
+                    ? '把最近后台结果、结果护照和运维摘要收在同一条复盘车道里，便于值班处理。'
+                    : '当前还没有可回填的后台结果，但可以先刷新任务队列并保留运维摘要出口。',
+                accent: AppColors.warning,
+                icon: Icons.monitor_heart_rounded,
+                workspaceLabel:
+                    _activeLaunchContext?.workspaceTargetLabel ??
+                    chain?.workspaceTargetLabel,
+                cardLabel:
+                    _activeLaunchContext?.cardTargetLabel ??
+                    chain?.cardTargetLabel,
+                incidentLabel:
+                    _activeLaunchContext?.incidentTargetLabel ??
+                    chain?.incidentTargetLabel,
+                summary:
+                    _activeLaunchContext?.workspaceBrief ?? chain?.workspaceBrief,
+                statusLabel: latestCompletedJob == null ? 'Waiting' : 'Hot',
+                statusColor: latestCompletedJob == null
+                    ? AppColors.textSecondary
+                    : AppColors.warning,
+                actions: [
+                  WorkspaceActionLaneAction(
+                    label: '复制结果护照',
+                    icon: Icons.inventory_2_rounded,
+                    onTap: hasExportableResult ? _copySnapshotDigest : null,
+                    tone: WorkspaceActionLaneTone.tonal,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '复制运维摘要',
+                    icon: Icons.monitor_heart_rounded,
+                    onTap: hasExportableResult ? _copyOperationsDigest : null,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '载入最近后台结果',
+                    icon: Icons.download_done_rounded,
+                    onTap: latestCompletedJob == null
+                        ? null
+                        : () => _hydrateLatestJobResult(latestCompletedJob),
+                    tone: WorkspaceActionLaneTone.primary,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '刷新任务状态',
+                    icon: Icons.sync_rounded,
+                    onTap: _jobViewModel.loadJobs,
+                  ),
+                ],
+              ),
+            ],
           ),
           if (summary != null) ...[
             const SizedBox(height: 16),
@@ -1255,68 +1294,20 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 }
 
-class _OptimizationDigestCard extends StatelessWidget {
-  const _OptimizationDigestCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.accent,
-    this.highlighted = false,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color accent;
-  final bool highlighted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: highlighted
-            ? Border.all(color: accent.withValues(alpha: 0.28))
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: accent),
-              const SizedBox(width: 8),
-              Expanded(child: Text(title, style: AppTextStyles.labelLarge)),
-            ],
-          ),
-          if (highlighted) ...[
-            const SizedBox(height: 8),
-            Text(
-              '当前链路焦点',
-              style: AppTextStyles.labelMedium.copyWith(color: accent),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-bool _operationsDigestFocus(AssetChainSummary? chain, String card) {
-  if (chain == null) {
+bool _operationsDigestFocus(
+  AssetChainSummary? chain,
+  String card,
+  WorkbenchLaunchContext? continuationContext,
+) {
+  final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
+  final sectionTarget =
+      continuationContext?.workspaceTarget == 'optimization_registry'
+      ? 'optimization_assets'
+      : chain?.sectionTarget;
+  if (cardTarget == null && chain == null) {
     return false;
   }
-  switch (chain.cardTarget) {
+  switch (cardTarget) {
     case 'strategy':
       return card == 'strategy';
     case 'comparison':
@@ -1331,8 +1322,8 @@ bool _operationsDigestFocus(AssetChainSummary? chain, String card) {
     case 'explainability_probe':
       return card == 'operations';
   }
-  return chain.sectionTarget == 'optimization_assets'
+  return sectionTarget == 'optimization_assets'
       ? card == 'snapshot'
       : card == 'operations' &&
-            (chain.status == 'active' || chain.status == 'incident');
+            (chain?.status == 'active' || chain?.status == 'incident');
 }

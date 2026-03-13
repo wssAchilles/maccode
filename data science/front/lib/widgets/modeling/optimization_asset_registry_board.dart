@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import '../operations/incident_card_header.dart';
 import '../operations/workspace_action_lane.dart';
@@ -15,6 +16,7 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
   const OptimizationAssetRegistryBoard({
     super.key,
     this.chain,
+    this.continuationContext,
     required this.assetSummary,
     required this.latestCompletedJob,
     required this.onApplyAsset,
@@ -23,6 +25,7 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final AssetSummary? assetSummary;
   final JobRecord? latestCompletedJob;
   final ValueChanged<OptimizationAsset> onApplyAsset;
@@ -35,17 +38,18 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
         ? assetSummary!.optimizations.first
         : null;
     final inventoryCount = assetSummary?.inventory.optimizationAssets ?? 0;
-    final assetSectionFocused = chain?.sectionTarget == 'optimization_assets';
+    final assetSectionFocused =
+        continuationContext?.workspaceTarget == 'optimization_registry' ||
+        chain?.sectionTarget == 'optimization_assets';
+    final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
     final summaryFocused =
-        chain?.cardTarget == 'registry_summary' ||
-        chain?.cardTarget == 'optimization_registry';
+        cardTarget == 'registry_summary' || cardTarget == 'optimization_registry';
     final snapshotFocused =
-        chain?.cardTarget == 'latest_snapshot' ||
-        chain?.cardTarget == 'registry_snapshot' ||
-        chain?.focusTarget == 'optimization_registry';
+        cardTarget == 'latest_snapshot' || cardTarget == 'registry_snapshot';
     final cards = <Widget>[
       _RegistrySummaryCard(
         chain: chain,
+        continuationContext: continuationContext,
         highlighted: summaryFocused,
         count: inventoryCount,
         latestVersion: latestAsset?.version ?? '--',
@@ -54,6 +58,7 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
       if (latestAsset != null)
         _OptimizationRegistryCard(
           chain: chain,
+          continuationContext: continuationContext,
           highlighted: snapshotFocused,
           asset: latestAsset,
           onApply: () => onApplyAsset(latestAsset),
@@ -98,6 +103,7 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
 class _RegistrySummaryCard extends StatelessWidget {
   const _RegistrySummaryCard({
     this.chain,
+    this.continuationContext,
     required this.highlighted,
     required this.count,
     required this.latestVersion,
@@ -105,6 +111,7 @@ class _RegistrySummaryCard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final bool highlighted;
   final int count;
   final String latestVersion;
@@ -124,16 +131,28 @@ class _RegistrySummaryCard extends StatelessWidget {
             subtitle: '统一资产摘要里的优化快照库存和最新版本。',
             trailing: highlighted
                 ? WorkspaceStatusChip(
-                    label: chain?.cardTargetLabel ?? '注册表',
+                    label:
+                        continuationContext?.cardTargetLabel ??
+                        chain?.cardTargetLabel ??
+                        '注册表',
                     icon: Icons.dashboard_customize_rounded,
                     foreground: AppColors.warning,
                     background: AppColors.warning.withValues(alpha: 0.12),
                   )
                 : null,
-            workspaceLabel: chain?.workspaceTargetLabel,
-            cardLabel: highlighted ? chain?.cardTargetLabel : null,
-            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
-            summary: highlighted ? chain?.workspaceBrief : null,
+            workspaceLabel:
+                continuationContext?.workspaceTargetLabel ??
+                chain?.workspaceTargetLabel,
+            cardLabel: highlighted
+                ? continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel
+                : null,
+            incidentLabel: highlighted
+                ? continuationContext?.incidentTargetLabel ??
+                      chain?.incidentTargetLabel
+                : null,
+            summary: highlighted
+                ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                : null,
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -169,6 +188,7 @@ class _RegistrySummaryCard extends StatelessWidget {
 class _OptimizationRegistryCard extends StatelessWidget {
   const _OptimizationRegistryCard({
     this.chain,
+    this.continuationContext,
     required this.highlighted,
     required this.asset,
     required this.onApply,
@@ -178,6 +198,7 @@ class _OptimizationRegistryCard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final bool highlighted;
   final OptimizationAsset asset;
   final VoidCallback onApply;
@@ -207,10 +228,19 @@ class _OptimizationRegistryCard extends StatelessWidget {
               foreground: AppColors.warning,
               background: AppColors.warning.withValues(alpha: 0.12),
             ),
-            workspaceLabel: chain?.workspaceTargetLabel,
-            cardLabel: highlighted ? chain?.cardTargetLabel : null,
-            incidentLabel: highlighted ? chain?.incidentTargetLabel : null,
-            summary: highlighted ? chain?.workspaceBrief : null,
+            workspaceLabel:
+                continuationContext?.workspaceTargetLabel ??
+                chain?.workspaceTargetLabel,
+            cardLabel: highlighted
+                ? continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel
+                : null,
+            incidentLabel: highlighted
+                ? continuationContext?.incidentTargetLabel ??
+                      chain?.incidentTargetLabel
+                : null,
+            summary: highlighted
+                ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                : null,
           ),
           const SizedBox(height: 14),
           _Line(label: '目标日期', value: asset.targetDate ?? '--'),

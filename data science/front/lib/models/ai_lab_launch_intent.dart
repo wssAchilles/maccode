@@ -3,6 +3,7 @@ library;
 
 import 'history_record.dart';
 import 'job_record.dart';
+import 'workbench_launch_context.dart';
 
 enum AiLabLaunchTarget { deepLearning, rag }
 
@@ -14,6 +15,7 @@ class AiLabLaunchIntent {
     this.collectionName,
     this.resetCollection = false,
     this.sourceLabel,
+    this.context,
   });
 
   final AiLabLaunchTarget target;
@@ -22,17 +24,20 @@ class AiLabLaunchIntent {
   final String? collectionName;
   final bool resetCollection;
   final String? sourceLabel;
+  final WorkbenchLaunchContext? context;
 
   factory AiLabLaunchIntent.deepLearning(
     String storagePath, {
     String? targetColumn,
     String? sourceLabel,
+    WorkbenchLaunchContext? context,
   }) {
     return AiLabLaunchIntent(
       target: AiLabLaunchTarget.deepLearning,
       storagePath: storagePath,
       targetColumn: targetColumn,
       sourceLabel: sourceLabel,
+      context: context,
     );
   }
 
@@ -41,6 +46,7 @@ class AiLabLaunchIntent {
     String? collectionName,
     bool resetCollection = false,
     String? sourceLabel,
+    WorkbenchLaunchContext? context,
   }) {
     return AiLabLaunchIntent(
       target: AiLabLaunchTarget.rag,
@@ -48,6 +54,7 @@ class AiLabLaunchIntent {
       collectionName: collectionName,
       resetCollection: resetCollection,
       sourceLabel: sourceLabel,
+      context: context,
     );
   }
 
@@ -63,6 +70,7 @@ class AiLabLaunchIntent {
         job.input['target_column'],
       ]),
       sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: null,
     );
   }
 
@@ -79,6 +87,7 @@ class AiLabLaunchIntent {
       ]),
       resetCollection: _asBool(job.input['reset']) ?? false,
       sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: null,
     );
   }
 
@@ -87,6 +96,7 @@ class AiLabLaunchIntent {
       record.storageUrl ?? '',
       targetColumn: _firstNumericColumn(record),
       sourceLabel: record.filename,
+      context: null,
     );
   }
 
@@ -94,6 +104,7 @@ class AiLabLaunchIntent {
     return AiLabLaunchIntent.rag(
       record.storageUrl ?? '',
       sourceLabel: record.filename,
+      context: null,
     );
   }
 

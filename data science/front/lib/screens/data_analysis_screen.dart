@@ -11,6 +11,7 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/data_analysis_launch_intent.dart';
+import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../widgets/responsive_wrapper.dart';
 import '../models/analysis_result.dart';
@@ -72,6 +73,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   late final DataDriftViewModel _driftViewModel;
   late final bool _ownsViewModel;
   late final bool _ownsDashboardViewModel;
+  WorkbenchLaunchContext? _activeLaunchContext;
   String? _selectedReferencePath;
   Set<String>? _selectedDriftFeatures;
 
@@ -348,6 +350,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                             const SizedBox(height: 24),
                             WorkbenchRunbookPanel(
                               chain: datasetChain,
+                              continuationContext: _activeLaunchContext,
                               description:
                                   '把数据链路的当前处置说明直接压进工作台，优先完成治理摘要、资产路径和审计交接。',
                               actions: [
@@ -395,6 +398,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                               const SizedBox(height: 24),
                             WorkbenchSectionSignal(
                               chain: datasetChain,
+                              continuationContext: _activeLaunchContext,
                               title: '执行态联动',
                               description:
                                   '先看当前分析链路的运行态、归档状态和责任焦点，再进入执行看板与控制面板。',
@@ -404,6 +408,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                               const SizedBox(height: 24),
                             DataAnalysisOperationsBoard(
                               chain: datasetChain,
+                              continuationContext: _activeLaunchContext,
                               currentUser: _currentUser,
                               pickedFile: _pickedFile,
                               analysisResult: _analysisResult,
@@ -473,6 +478,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                             const SizedBox(height: 24),
                             WorkbenchSectionSignal(
                               chain: datasetChain,
+                              continuationContext: _activeLaunchContext,
                               title: '后台任务跟进',
                               description:
                                   '如果当前链路处于 active 或 incident，这一块优先用来跟进阶段、失败和结果回填。',
@@ -492,6 +498,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                               const SizedBox(height: 24),
                               WorkbenchSectionSignal(
                                 chain: datasetChain,
+                                continuationContext: _activeLaunchContext,
                                 title: '资产交接与结果治理',
                                 description:
                                     '结果生成后，优先完成资产护照、漂移治理和跨工作台交接，而不是只停留在报告浏览。',
@@ -534,6 +541,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     return AnalysisResultsSection(
       result: _analysisResult!,
       chain: datasetChain,
+      continuationContext: _activeLaunchContext,
     );
   }
 
@@ -562,6 +570,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
 
     return DataAnalysisWorkflowActionsCard(
       chain: datasetChain,
+      continuationContext: _activeLaunchContext,
       storagePath: _latestStoragePath,
       savedAsAsset: _saveToStorage,
       schemaDigest: _buildSchemaDigest(result),
@@ -630,6 +639,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
 
     return DataAssetGovernanceBoard(
       chain: datasetChain,
+      continuationContext: _activeLaunchContext,
       currentStoragePath: _latestStoragePath,
       currentQualityScore: result.qualityAnalysis?.qualityScore,
       currentAssetLabel: _pickedFile?.name ?? '当前会话资产',
@@ -752,6 +762,8 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
 
+    _activeLaunchContext = intent.context;
+
     if (intent.analysisResult != null) {
       _viewModel.loadAnalysisSnapshot(
         result: intent.analysisResult!,
@@ -767,7 +779,12 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
           return;
         }
         _showSuccessFeedback(
-          '${intent.sourceLabel ?? intent.filename ?? "资产"}已载入数据分析工作台',
+          buildLaunchArrivalMessage(
+            intent.context,
+            fallbackSubject: intent.sourceLabel ?? intent.filename ?? '资产',
+            destination: '数据分析工作台',
+            verb: '已载入',
+          ),
         );
       });
     } else if ((intent.sourceLabel ?? '').isNotEmpty) {
@@ -775,7 +792,13 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         if (!mounted) {
           return;
         }
-        _showSuccessFeedback('${intent.sourceLabel!}已打开数据分析工作台');
+        _showSuccessFeedback(
+          buildLaunchArrivalMessage(
+            intent.context,
+            fallbackSubject: intent.sourceLabel!,
+            destination: '数据分析工作台',
+          ),
+        );
       });
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1067,8 +1090,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     return buildChainSourceLabel(
       chain,
       prefix: prefix,
-      includeSection: true,
-      includeFocus: true,
+      includeWorkspaceBrief: true,
     );
   }
 

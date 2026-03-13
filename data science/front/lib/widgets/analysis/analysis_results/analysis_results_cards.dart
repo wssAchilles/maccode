@@ -1,10 +1,15 @@
 part of '../analysis_results_section.dart';
 
 class _ResultSummaryBanner extends StatelessWidget {
-  const _ResultSummaryBanner({required this.result, this.chain});
+  const _ResultSummaryBanner({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +28,7 @@ class _ResultSummaryBanner extends StatelessWidget {
             title: '分析结果总览',
             subtitle: '先看质量与结构，再深入相关性和统计检验。这里保留的是最适合快速判断数据是否可进入下一阶段的信号。',
             chain: chain,
+            continuationContext: continuationContext,
             icon: Icons.assessment_rounded,
           ),
           const SizedBox(height: 16),
@@ -144,10 +150,15 @@ class _BasicInfoCard extends StatelessWidget {
 }
 
 class _AssetConsoleSection extends StatelessWidget {
-  const _AssetConsoleSection({required this.result, this.chain});
+  const _AssetConsoleSection({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +173,9 @@ class _AssetConsoleSection extends StatelessWidget {
             child: _SchemaTopologyCard(
               result: result,
               chain: focusArea == 'schema' ? chain : null,
+              continuationContext: focusArea == 'schema'
+                  ? continuationContext
+                  : null,
             ),
           ),
           _consoleShell(
@@ -170,6 +184,9 @@ class _AssetConsoleSection extends StatelessWidget {
             child: _FieldDistributionCard(
               result: result,
               chain: focusArea == 'distribution' ? chain : null,
+              continuationContext: focusArea == 'distribution'
+                  ? continuationContext
+                  : null,
             ),
           ),
           _consoleShell(
@@ -178,6 +195,9 @@ class _AssetConsoleSection extends StatelessWidget {
             child: _DataRiskDigestCard(
               result: result,
               chain: focusArea == 'risk' ? chain : null,
+              continuationContext: focusArea == 'risk'
+                  ? continuationContext
+                  : null,
             ),
           ),
           _consoleShell(
@@ -186,6 +206,9 @@ class _AssetConsoleSection extends StatelessWidget {
             child: _NextActionsCard(
               result: result,
               chain: focusArea == 'actions' ? chain : null,
+              continuationContext: focusArea == 'actions'
+                  ? continuationContext
+                  : null,
             ),
           ),
         ];
@@ -197,6 +220,7 @@ class _AssetConsoleSection extends StatelessWidget {
               title: 'Asset Console',
               subtitle: '把 schema、字段分布、风险摘要和下一步动作收成同一层，便于按当前数据链路继续判断。',
               chain: chain,
+              continuationContext: continuationContext,
               icon: Icons.inventory_2_rounded,
             ),
             const SizedBox(height: 12),
@@ -230,10 +254,15 @@ class _AssetConsoleSection extends StatelessWidget {
 }
 
 class _SchemaTopologyCard extends StatelessWidget {
-  const _SchemaTopologyCard({required this.result, this.chain});
+  const _SchemaTopologyCard({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -251,6 +280,7 @@ class _SchemaTopologyCard extends StatelessWidget {
             accent: AppColors.primary,
             icon: Icons.account_tree_rounded,
             chain: chain,
+            continuationContext: continuationContext,
           ),
           const SizedBox(height: 14),
           _AnalysisInfoRow(label: '数值字段', value: '${mix.numericCount}'),
@@ -292,10 +322,15 @@ class _SchemaTopologyCard extends StatelessWidget {
 }
 
 class _FieldDistributionCard extends StatelessWidget {
-  const _FieldDistributionCard({required this.result, this.chain});
+  const _FieldDistributionCard({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -317,6 +352,7 @@ class _FieldDistributionCard extends StatelessWidget {
             accent: AppColors.cta,
             icon: Icons.pie_chart_outline_rounded,
             chain: chain,
+            continuationContext: continuationContext,
           ),
           const SizedBox(height: 14),
           _DistributionBar(
@@ -353,10 +389,15 @@ class _FieldDistributionCard extends StatelessWidget {
 }
 
 class _DataRiskDigestCard extends StatelessWidget {
-  const _DataRiskDigestCard({required this.result, this.chain});
+  const _DataRiskDigestCard({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -380,6 +421,7 @@ class _DataRiskDigestCard extends StatelessWidget {
                 ? Icons.warning_amber_rounded
                 : Icons.verified_rounded,
             chain: chain,
+            continuationContext: continuationContext,
           ),
           const SizedBox(height: 14),
           _AnalysisInfoRow(
@@ -430,10 +472,15 @@ class _DataRiskDigestCard extends StatelessWidget {
 }
 
 class _NextActionsCard extends StatelessWidget {
-  const _NextActionsCard({required this.result, this.chain});
+  const _NextActionsCard({
+    required this.result,
+    this.chain,
+    this.continuationContext,
+  });
 
   final AnalysisResult result;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +509,7 @@ class _NextActionsCard extends StatelessWidget {
             accent: AppColors.cta,
             icon: Icons.alt_route_rounded,
             chain: chain,
+            continuationContext: continuationContext,
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -603,6 +651,7 @@ class _ConsoleCardHeader extends StatelessWidget {
     required this.accent,
     required this.icon,
     this.chain,
+    this.continuationContext,
   });
 
   final String title;
@@ -610,6 +659,7 @@ class _ConsoleCardHeader extends StatelessWidget {
   final Color accent;
   final IconData icon;
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -618,10 +668,15 @@ class _ConsoleCardHeader extends StatelessWidget {
       icon: icon,
       title: title,
       subtitle: subtitle,
-      workspaceLabel: chain?.workspaceTargetLabel,
-      cardLabel: chain?.cardTargetLabel,
-      incidentLabel: chain?.incidentTargetLabel,
-      summary: chain?.workspaceBrief,
+      workspaceLabel:
+          continuationContext?.workspaceTargetLabel ??
+          chain?.workspaceTargetLabel,
+      cardLabel:
+          continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel,
+      incidentLabel:
+          continuationContext?.incidentTargetLabel ??
+          chain?.incidentTargetLabel,
+      summary: continuationContext?.workspaceBrief ?? chain?.workspaceBrief,
     );
   }
 }
@@ -715,26 +770,13 @@ String _assetConsoleFocusArea(AssetChainSummary? chain) {
     case 'data_analysis_results':
       return 'schema';
   }
-  switch (chain?.focusTarget) {
-    case 'dataset_current_asset':
-    case 'dataset_reference_asset':
-      return 'schema';
-    case 'dataset_drift_report':
-    case 'dataset_governance_decision':
-      return 'risk';
-    case 'dataset_results':
-      return 'actions';
-    case 'dataset_job_panel':
-      return 'distribution';
-    default:
-      if (chain?.status == 'watch' || chain?.status == 'incident') {
-        return 'risk';
-      }
-      if (chain?.status == 'action') {
-        return 'actions';
-      }
-      return 'schema';
+  if (chain?.status == 'watch' || chain?.status == 'incident') {
+    return 'risk';
   }
+  if (chain?.status == 'action') {
+    return 'actions';
+  }
+  return 'schema';
 }
 
 Widget _consoleShell({

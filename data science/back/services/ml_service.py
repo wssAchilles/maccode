@@ -365,9 +365,20 @@ class EnergyPredictor:
         # 保存调参日志
         try:
             log_df = study.trials_dataframe()
-            log_path = 'tuning_log.csv'
-            log_df.to_csv(log_path, index=False)
-            print(f"      📝 调参日志已保存: {log_path}")
+            if self._is_gae_environment():
+                timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                log_path = f"tuning_logs/{model_type}/tuning_log_{timestamp}.csv"
+                log_csv = log_df.to_csv(index=False)
+                self.storage_service.upload_file(
+                    file_data=log_csv.encode('utf-8'),
+                    destination_path=log_path,
+                    content_type='text/csv'
+                )
+                print(f"      📝 调参日志已上传: {log_path}")
+            else:
+                log_path = 'tuning_log.csv'
+                log_df.to_csv(log_path, index=False)
+                print(f"      📝 调参日志已保存: {log_path}")
         except Exception as e:
             print(f"      ⚠️ 保存调参日志失败: {e}")
         

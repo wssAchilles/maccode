@@ -13,6 +13,7 @@ class DutyContextBoard extends StatelessWidget {
     required this.description,
     required this.icon,
     required this.metrics,
+    this.signalStrip,
     required this.currentWatch,
     this.contextFacts = const [],
     this.footerTitle,
@@ -24,6 +25,7 @@ class DutyContextBoard extends StatelessWidget {
   final String description;
   final IconData icon;
   final List<DutyMetric> metrics;
+  final Widget? signalStrip;
   final String currentWatch;
   final List<DutyContextFact> contextFacts;
   final String? footerTitle;
@@ -76,6 +78,10 @@ class DutyContextBoard extends StatelessWidget {
                   .map((metric) => _DutyMetricChip(metric: metric))
                   .toList(growable: false),
             ),
+          ],
+          if (signalStrip != null) ...[
+            const SizedBox(height: 14),
+            signalStrip!,
           ],
           const SizedBox(height: 14),
           Container(

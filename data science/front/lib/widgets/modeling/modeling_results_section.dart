@@ -3,8 +3,11 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../models/dashboard_summary.dart';
 import '../../models/optimization_result.dart';
+import '../../models/workbench_launch_context.dart';
 import '../analysis/feature_importance_chart.dart';
+import '../operations/asset_chain_section_header.dart';
 import '../power_chart_widget.dart';
 import '../soc_chart_widget.dart';
 import 'modeling_health_section.dart';
@@ -19,6 +22,8 @@ class ModelingResultsSection extends StatelessWidget {
     required this.result,
     required this.previousResult,
     required this.onDismissError,
+    this.chain,
+    this.continuationContext,
   });
 
   final bool isLoading;
@@ -26,6 +31,8 @@ class ModelingResultsSection extends StatelessWidget {
   final OptimizationResponse? result;
   final OptimizationResponse? previousResult;
   final VoidCallback onDismissError;
+  final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +43,16 @@ class ModelingResultsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (result != null || isLoading || errorMessage != null) ...[
+          AssetChainSectionHeader(
+            title: '结果控制台',
+            subtitle: '把模型健康、优化结果、图表和解释性集中到同一结果层，延续当前工作台上下文。',
+            chain: chain,
+            continuationContext: continuationContext,
+            icon: Icons.auto_graph_rounded,
+          ),
+          const SizedBox(height: 16),
+        ],
         if (errorMessage != null)
           ModelingErrorCard(
             message: errorMessage!,

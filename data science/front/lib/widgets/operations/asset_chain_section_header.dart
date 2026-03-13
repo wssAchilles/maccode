@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../models/workbench_launch_context.dart';
 
 class AssetChainSectionHeader extends StatelessWidget {
   const AssetChainSectionHeader({
@@ -12,12 +13,14 @@ class AssetChainSectionHeader extends StatelessWidget {
     required this.subtitle,
     this.chain,
     this.icon,
+    this.continuationContext,
   });
 
   final String title;
   final String subtitle;
   final AssetChainSummary? chain;
   final IconData? icon;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +28,16 @@ class AssetChainSectionHeader extends StatelessWidget {
     final tone = activeChain == null
         ? AppColors.primary
         : _toneFor(activeChain);
+    final workspaceLabel =
+        continuationContext?.workspaceTargetLabel ??
+        activeChain?.workspaceTargetLabel;
+    final cardLabel =
+        continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel;
+    final incidentLabel =
+        continuationContext?.incidentTargetLabel ??
+        activeChain?.incidentTargetLabel;
+    final watchSummary =
+        continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,9 +69,21 @@ class AssetChainSectionHeader extends StatelessWidget {
                       foreground: tone,
                       background: tone.withValues(alpha: 0.12),
                     ),
-                  if (activeChain != null)
+                  if ((workspaceLabel ?? '').isNotEmpty)
                     _HeaderBadge(
-                      label: activeChain.workspaceTargetLabel,
+                      label: workspaceLabel!,
+                      foreground: tone,
+                      background: tone.withValues(alpha: 0.08),
+                    ),
+                  if ((cardLabel ?? '').isNotEmpty)
+                    _HeaderBadge(
+                      label: cardLabel!,
+                      foreground: AppColors.textPrimary,
+                      background: AppColors.surfaceVariant,
+                    ),
+                  if ((incidentLabel ?? '').isNotEmpty)
+                    _HeaderBadge(
+                      label: incidentLabel!,
                       foreground: tone,
                       background: tone.withValues(alpha: 0.08),
                     ),
@@ -77,10 +102,14 @@ class AssetChainSectionHeader extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              if (activeChain != null) ...[
+              if ((workspaceLabel ?? '').isNotEmpty ||
+                  (watchSummary ?? '').isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
-                  '${activeChain.workspaceTargetLabel} · ${activeChain.workspaceBrief}',
+                  [
+                    workspaceLabel,
+                    watchSummary,
+                  ].whereType<String>().where((item) => item.isNotEmpty).join(' · '),
                   style: AppTextStyles.bodySmall.copyWith(color: tone),
                 ),
               ],

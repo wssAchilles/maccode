@@ -2,6 +2,7 @@
 library;
 
 import 'job_record.dart';
+import 'workbench_launch_context.dart';
 
 class OptimizationLaunchIntent {
   const OptimizationLaunchIntent({
@@ -12,6 +13,7 @@ class OptimizationLaunchIntent {
     this.temperatureAdjust,
     this.resultPayload,
     this.sourceLabel,
+    this.context,
   });
 
   final double? initialSoc;
@@ -21,6 +23,7 @@ class OptimizationLaunchIntent {
   final double? temperatureAdjust;
   final Map<String, dynamic>? resultPayload;
   final String? sourceLabel;
+  final WorkbenchLaunchContext? context;
 
   bool get hasResultPayload =>
       resultPayload != null && resultPayload!.isNotEmpty;
@@ -34,6 +37,7 @@ class OptimizationLaunchIntent {
       temperatureAdjust: _asDouble(job.input['temperature_adjust']),
       resultPayload: _asMap(job.result),
       sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: null,
     );
   }
 

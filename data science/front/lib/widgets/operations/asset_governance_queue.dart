@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import 'duty_section_block.dart';
 import 'incident_card_header.dart';
-import 'section_intro.dart';
 import 'workspace_action_lane.dart';
 
 class AssetGovernanceQueue extends StatelessWidget {
@@ -34,43 +34,45 @@ class AssetGovernanceQueue extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionIntro(title: title, subtitle: description),
-        const SizedBox(height: 12),
-        if (failureChains.isNotEmpty) ...[
-          _SectionLabel(title: '失败链路'),
-          const SizedBox(height: 12),
-          _AdaptiveGrid(
-            children: failureChains
-                .map(
-                  (chain) => _FailureChainCard(
-                    chain: chain,
-                    onAction: onFailureAction == null
-                        ? null
-                        : () => onFailureAction!(chain),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 16),
+    return DutySectionBlock(
+      title: title,
+      subtitle: description,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (failureChains.isNotEmpty) ...[
+            _SectionLabel(title: '失败链路'),
+            const SizedBox(height: 12),
+            _AdaptiveGrid(
+              children: failureChains
+                  .map(
+                    (chain) => _FailureChainCard(
+                      chain: chain,
+                      onAction: onFailureAction == null
+                          ? null
+                          : () => onFailureAction!(chain),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (items.isNotEmpty) ...[
+            _SectionLabel(title: '治理项'),
+            const SizedBox(height: 12),
+            _AdaptiveGrid(
+              children: items
+                  .map(
+                    (item) => _GovernanceCard(
+                      item: item,
+                      onAction: () => onAction(item),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
         ],
-        if (items.isNotEmpty) ...[
-          _SectionLabel(title: '治理项'),
-          const SizedBox(height: 12),
-          _AdaptiveGrid(
-            children: items
-                .map(
-                  (item) => _GovernanceCard(
-                    item: item,
-                    onAction: () => onAction(item),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

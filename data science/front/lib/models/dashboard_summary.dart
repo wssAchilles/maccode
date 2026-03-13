@@ -7,6 +7,7 @@ class DashboardSummary {
   const DashboardSummary({
     required this.systemStatus,
     required this.kpis,
+    this.dutySummary = const DutySummary.empty(),
     required this.recentJobs,
     required this.recentAssets,
     required this.recentHistory,
@@ -16,6 +17,7 @@ class DashboardSummary {
 
   final List<SystemStatusItem> systemStatus;
   final DashboardKpis kpis;
+  final DutySummary dutySummary;
   final List<JobRecord> recentJobs;
   final List<DatasetAsset> recentAssets;
   final List<AuditActivity> recentHistory;
@@ -30,6 +32,11 @@ class DashboardSummary {
             ? Map<String, dynamic>.from(json['kpis'] as Map)
             : const {},
       ),
+      dutySummary: DutySummary.fromJson(
+        json['duty_summary'] is Map
+            ? Map<String, dynamic>.from(json['duty_summary'] as Map)
+            : const {},
+      ),
       recentJobs: _mapList(json['recent_jobs'], JobRecord.fromJson),
       recentAssets: _mapList(json['recent_assets'], DatasetAsset.fromJson),
       recentHistory: _mapList(json['recent_history'], AuditActivity.fromJson),
@@ -39,6 +46,181 @@ class DashboardSummary {
             : const {},
       ),
       alerts: _mapList(json['alerts'], DashboardAlert.fromJson),
+    );
+  }
+}
+
+class DutySummary {
+  const DutySummary({
+    required this.incidentCount,
+    required this.activeCount,
+    required this.watchCount,
+    required this.overdueCount,
+    required this.escalatedCount,
+    required this.alertCount,
+    required this.degradedSystemCount,
+    required this.focusChainKey,
+    required this.focusChainLabel,
+    required this.focusWorkspaceTarget,
+    required this.focusWorkspaceTargetLabel,
+    required this.focusCardTarget,
+    required this.focusCardTargetLabel,
+    required this.focusIncidentTarget,
+    required this.focusIncidentTargetLabel,
+    required this.focusWatch,
+    required this.focusOwnerLabel,
+    required this.focusEscalationStateLabel,
+    this.overviewActions = const [],
+    this.auditActions = const [],
+  });
+
+  const DutySummary.empty()
+    : incidentCount = 0,
+      activeCount = 0,
+      watchCount = 0,
+      overdueCount = 0,
+      escalatedCount = 0,
+      alertCount = 0,
+      degradedSystemCount = 0,
+      focusChainKey = '',
+      focusChainLabel = '--',
+      focusWorkspaceTarget = 'workspace',
+      focusWorkspaceTargetLabel = '工作台',
+      focusCardTarget = 'summary',
+      focusCardTargetLabel = '当前卡片',
+      focusIncidentTarget = 'focus',
+      focusIncidentTargetLabel = '当前焦点',
+      focusWatch = '当前暂无高优先级链路',
+      focusOwnerLabel = '--',
+      focusEscalationStateLabel = '--',
+      overviewActions = const [],
+      auditActions = const [];
+
+  final int incidentCount;
+  final int activeCount;
+  final int watchCount;
+  final int overdueCount;
+  final int escalatedCount;
+  final int alertCount;
+  final int degradedSystemCount;
+  final String focusChainKey;
+  final String focusChainLabel;
+  final String focusWorkspaceTarget;
+  final String focusWorkspaceTargetLabel;
+  final String focusCardTarget;
+  final String focusCardTargetLabel;
+  final String focusIncidentTarget;
+  final String focusIncidentTargetLabel;
+  final String focusWatch;
+  final String focusOwnerLabel;
+  final String focusEscalationStateLabel;
+  final List<DutyAction> overviewActions;
+  final List<DutyAction> auditActions;
+
+  factory DutySummary.fromJson(Map<String, dynamic> json) {
+    return DutySummary(
+      incidentCount: _asInt(json['incident_count']) ?? 0,
+      activeCount: _asInt(json['active_count']) ?? 0,
+      watchCount: _asInt(json['watch_count']) ?? 0,
+      overdueCount: _asInt(json['overdue_count']) ?? 0,
+      escalatedCount: _asInt(json['escalated_count']) ?? 0,
+      alertCount: _asInt(json['alert_count']) ?? 0,
+      degradedSystemCount: _asInt(json['degraded_system_count']) ?? 0,
+      focusChainKey: (json['focus_chain_key'] ?? '').toString(),
+      focusChainLabel: (json['focus_chain_label'] ?? '--').toString(),
+      focusWorkspaceTarget:
+          (json['focus_workspace_target'] ?? 'workspace').toString(),
+      focusWorkspaceTargetLabel:
+          (json['focus_workspace_target_label'] ??
+                  _defaultWorkspaceTargetLabel(
+                    (json['focus_workspace_target'] ?? 'workspace').toString(),
+                  ))
+              .toString(),
+      focusCardTarget: (json['focus_card_target'] ?? 'summary').toString(),
+      focusCardTargetLabel:
+          (json['focus_card_target_label'] ??
+                  _defaultCardTargetLabel(
+                    (json['focus_card_target'] ?? 'summary').toString(),
+                  ))
+              .toString(),
+      focusIncidentTarget:
+          (json['focus_incident_target'] ?? 'focus').toString(),
+      focusIncidentTargetLabel:
+          (json['focus_incident_target_label'] ??
+                  _defaultIncidentTargetLabel(
+                    (json['focus_incident_target'] ?? 'focus').toString(),
+                  ))
+              .toString(),
+      focusWatch: (json['focus_watch'] ?? '当前暂无高优先级链路').toString(),
+      focusOwnerLabel: (json['focus_owner_label'] ?? '--').toString(),
+      focusEscalationStateLabel:
+          (json['focus_escalation_state_label'] ?? '--').toString(),
+      overviewActions: _mapList(
+        json['overview_actions'],
+        DutyAction.fromJson,
+      ),
+      auditActions: _mapList(
+        json['audit_actions'],
+        DutyAction.fromJson,
+      ),
+    );
+  }
+}
+
+class DutyAction {
+  const DutyAction({
+    required this.command,
+    required this.label,
+    required this.tone,
+    required this.chainKey,
+    required this.chainLabel,
+    required this.workspaceTarget,
+    required this.workspaceTargetLabel,
+    required this.cardTarget,
+    required this.cardTargetLabel,
+    required this.incidentTarget,
+    required this.incidentTargetLabel,
+    required this.workspaceBrief,
+  });
+
+  final String command;
+  final String label;
+  final String tone;
+  final String chainKey;
+  final String chainLabel;
+  final String workspaceTarget;
+  final String workspaceTargetLabel;
+  final String cardTarget;
+  final String cardTargetLabel;
+  final String incidentTarget;
+  final String incidentTargetLabel;
+  final String workspaceBrief;
+
+  factory DutyAction.fromJson(Map<String, dynamic> json) {
+    final workspaceTarget = (json['workspace_target'] ?? 'workspace').toString();
+    final cardTarget = (json['card_target'] ?? 'summary').toString();
+    final incidentTarget = (json['incident_target'] ?? 'focus').toString();
+    return DutyAction(
+      command: (json['command'] ?? 'open_workspace').toString(),
+      label: (json['label'] ?? '打开工作台').toString(),
+      tone: (json['tone'] ?? 'outline').toString(),
+      chainKey: (json['chain_key'] ?? '').toString(),
+      chainLabel: (json['chain_label'] ?? '--').toString(),
+      workspaceTarget: workspaceTarget,
+      workspaceTargetLabel:
+          (json['workspace_target_label'] ??
+                  _defaultWorkspaceTargetLabel(workspaceTarget))
+              .toString(),
+      cardTarget: cardTarget,
+      cardTargetLabel:
+          (json['card_target_label'] ?? _defaultCardTargetLabel(cardTarget))
+              .toString(),
+      incidentTarget: incidentTarget,
+      incidentTargetLabel:
+          (json['incident_target_label'] ??
+                  _defaultIncidentTargetLabel(incidentTarget))
+              .toString(),
+      workspaceBrief: (json['workspace_brief'] ?? '--').toString(),
     );
   }
 }
@@ -342,6 +524,8 @@ String _defaultCardTargetLabel(String target) {
 
 String _defaultWorkspaceTargetLabel(String target) {
   switch (target) {
+    case 'audit_center':
+      return '历史与审计';
     case 'data_job_center':
       return '分析任务中心';
     case 'data_governance':

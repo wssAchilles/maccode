@@ -8,7 +8,7 @@ import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../common/glass_card.dart';
-import '../operations/section_intro.dart';
+import '../operations/duty_section_block.dart';
 
 class AuditEventStream extends StatelessWidget {
   const AuditEventStream({
@@ -33,39 +33,33 @@ class AuditEventStream extends StatelessWidget {
     final entries = _buildEntries();
     return GlassCard(
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionIntro(
-            title: '统一审计事件流',
-            subtitle: '把任务执行和审计活动合并到同一条时间线里，减少在审计页里并行维护两套列表。',
-          ),
-          const SizedBox(height: 14),
-          if (entries.isEmpty)
-            Text('当前过滤条件下暂无事件。', style: AppTextStyles.bodyMedium)
-          else
-            Column(
-              children: [
-                for (var i = 0; i < entries.length; i++) ...[
-                  _AuditStreamTile(
-                    entry: entries[i],
-                    onOpen: () {
-                      final chain = entries[i].chain;
-                      if (chain != null && onOpenChainSummary != null) {
-                        onOpenChainSummary!(chain);
-                        return;
-                      }
-                      onOpenChain(entries[i].key);
-                    },
-                    onFilterFailure: entries[i].isFailure
-                        ? () => onFilterFailures(entries[i].key)
-                        : null,
-                  ),
-                  if (i < entries.length - 1) const SizedBox(height: 12),
+      child: DutySectionBlock(
+        title: '统一审计事件流',
+        subtitle: '把任务执行和审计活动合并到同一条时间线里，减少在审计页里并行维护两套列表。',
+        spacing: 14,
+        child: entries.isEmpty
+            ? Text('当前过滤条件下暂无事件。', style: AppTextStyles.bodyMedium)
+            : Column(
+                children: [
+                  for (var i = 0; i < entries.length; i++) ...[
+                    _AuditStreamTile(
+                      entry: entries[i],
+                      onOpen: () {
+                        final chain = entries[i].chain;
+                        if (chain != null && onOpenChainSummary != null) {
+                          onOpenChainSummary!(chain);
+                          return;
+                        }
+                        onOpenChain(entries[i].key);
+                      },
+                      onFilterFailure: entries[i].isFailure
+                          ? () => onFilterFailures(entries[i].key)
+                          : null,
+                    ),
+                    if (i < entries.length - 1) const SizedBox(height: 12),
+                  ],
                 ],
-              ],
-            ),
-        ],
+              ),
       ),
     );
   }

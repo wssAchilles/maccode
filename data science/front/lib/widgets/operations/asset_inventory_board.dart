@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 import 'incident_card_header.dart';
 import 'workspace_action_lane.dart';
@@ -15,12 +16,14 @@ class AssetInventoryBoard extends StatelessWidget {
     super.key,
     required this.summary,
     required this.onNavigateToTab,
+    this.dutySummary,
     this.onOpenChain,
     this.alerts = const <DashboardAlert>[],
   });
 
   final AssetSummary summary;
   final ValueChanged<int> onNavigateToTab;
+  final DutySummary? dutySummary;
   final ValueChanged<AssetChainSummary>? onOpenChain;
   final List<DashboardAlert> alerts;
 
@@ -64,6 +67,7 @@ class AssetInventoryBoard extends StatelessWidget {
         ],
         actionLabel: datasetChain?.actionLabel ?? '打开数据分析',
         onTap: () => _openAssetChain(datasetChain, fallbackTab: 2),
+        isDutyFocus: isDutyFocusChain(datasetChain, dutySummary),
       ),
       _AssetInventoryCard(
         title: '模型产物',
@@ -83,6 +87,7 @@ class AssetInventoryBoard extends StatelessWidget {
         ],
         actionLabel: modelChain?.actionLabel ?? '打开 AI Lab',
         onTap: () => _openAssetChain(modelChain, fallbackTab: 3),
+        isDutyFocus: isDutyFocusChain(modelChain, dutySummary),
       ),
       _AssetInventoryCard(
         title: '知识快照',
@@ -100,6 +105,7 @@ class AssetInventoryBoard extends StatelessWidget {
         ],
         actionLabel: knowledgeChain?.actionLabel ?? '打开 AI Lab',
         onTap: () => _openAssetChain(knowledgeChain, fallbackTab: 3),
+        isDutyFocus: isDutyFocusChain(knowledgeChain, dutySummary),
       ),
       _AssetInventoryCard(
         title: '优化快照',
@@ -119,8 +125,9 @@ class AssetInventoryBoard extends StatelessWidget {
         ],
         actionLabel: optimizationChain?.actionLabel ?? '打开能源优化',
         onTap: () => _openAssetChain(optimizationChain, fallbackTab: 1),
+        isDutyFocus: isDutyFocusChain(optimizationChain, dutySummary),
       ),
-    ];
+    ]..sort((a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -181,6 +188,7 @@ class _AssetInventoryCard extends StatelessWidget {
     required this.details,
     required this.actionLabel,
     required this.onTap,
+    this.isDutyFocus = false,
   });
 
   final String title;
@@ -194,6 +202,7 @@ class _AssetInventoryCard extends StatelessWidget {
   final List<String> details;
   final String actionLabel;
   final VoidCallback onTap;
+  final bool isDutyFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +235,15 @@ class _AssetInventoryCard extends StatelessWidget {
               incidentLabel: chain?.incidentTargetLabel,
               summary: chain?.workspaceBrief,
             ),
+            if (isDutyFocus) ...[
+              const SizedBox(height: 10),
+              WorkspaceStatusChip(
+                label: 'Duty Focus',
+                icon: Icons.center_focus_strong_rounded,
+                foreground: accent,
+                background: accent.withValues(alpha: 0.12),
+              ),
+            ],
             const SizedBox(height: 14),
             WorkspaceInlineActionBar(
               actions: [

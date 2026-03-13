@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import 'workbench_command_strip.dart';
 
@@ -14,11 +15,13 @@ class WorkbenchRunbookPanel extends StatelessWidget {
     required this.chain,
     required this.description,
     required this.actions,
+    this.continuationContext,
   });
 
   final AssetChainSummary? chain;
   final String description;
   final List<WorkbenchCommandAction> actions;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +32,16 @@ class WorkbenchRunbookPanel extends StatelessWidget {
 
     final tone = _toneFor(activeChain);
     final accent = _chainColor(activeChain.key);
+    final workspaceLabel =
+        continuationContext?.workspaceTargetLabel ??
+        activeChain.workspaceTargetLabel;
+    final cardLabel =
+        continuationContext?.cardTargetLabel ?? activeChain.cardTargetLabel;
+    final incidentLabel =
+        continuationContext?.incidentTargetLabel ??
+        activeChain.incidentTargetLabel;
+    final workspaceBrief =
+        continuationContext?.workspaceBrief ?? activeChain.workspaceBrief;
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -50,12 +63,12 @@ class WorkbenchRunbookPanel extends StatelessWidget {
                 background: tone.withValues(alpha: 0.12),
               ),
               _RunbookBadge(
-                label: activeChain.workspaceTargetLabel,
+                label: workspaceLabel,
                 foreground: accent,
                 background: accent.withValues(alpha: 0.1),
               ),
               _RunbookBadge(
-                label: activeChain.incidentTargetLabel,
+                label: incidentLabel,
                 foreground: tone,
                 background: tone.withValues(alpha: 0.08),
               ),
@@ -111,7 +124,16 @@ class WorkbenchRunbookPanel extends StatelessWidget {
               const SizedBox(height: 10),
           ],
           const SizedBox(height: 14),
-          _RunbookSignal(chain: activeChain, tone: tone, accent: accent),
+          _RunbookSignal(
+            chain: activeChain,
+            tone: tone,
+            accent: accent,
+            continuationContext: continuationContext,
+            cardLabel: cardLabel,
+            incidentLabel: incidentLabel,
+            workspaceLabel: workspaceLabel,
+            workspaceBrief: workspaceBrief,
+          ),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 16),
             Wrap(
@@ -138,11 +160,21 @@ class _RunbookSignal extends StatelessWidget {
     required this.chain,
     required this.tone,
     required this.accent,
+    required this.cardLabel,
+    required this.incidentLabel,
+    required this.workspaceLabel,
+    required this.workspaceBrief,
+    this.continuationContext,
   });
 
   final AssetChainSummary chain;
   final Color tone;
   final Color accent;
+  final String cardLabel;
+  final String incidentLabel;
+  final String workspaceLabel;
+  final String workspaceBrief;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -166,12 +198,12 @@ class _RunbookSignal extends StatelessWidget {
             children: [
               Text('Current watch', style: AppTextStyles.labelMedium),
               _RunbookBadge(
-                label: chain.incidentTargetLabel,
+                label: incidentLabel,
                 foreground: tone,
                 background: tone.withValues(alpha: 0.1),
               ),
               _RunbookBadge(
-                label: chain.cardTargetLabel,
+                label: cardLabel,
                 foreground: accent,
                 background: accent.withValues(alpha: 0.08),
               ),
@@ -179,14 +211,14 @@ class _RunbookSignal extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            chain.incidentBrief,
+            continuationContext?.watchSummary ?? chain.incidentBrief,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '${chain.workspaceTargetLabel} · ${chain.workspaceBrief}',
+            '$workspaceLabel · $workspaceBrief',
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),

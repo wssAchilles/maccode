@@ -8,15 +8,17 @@ import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/history_record.dart';
 import '../../models/job_record.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
+import '../operations/duty_section_block.dart';
 import '../operations/incident_card_header.dart';
-import '../operations/section_intro.dart';
 import '../operations/workspace_action_lane.dart';
 
 class HistoryDispositionBoard extends StatelessWidget {
   const HistoryDispositionBoard({
     super.key,
     required this.assetSummary,
+    this.dutySummary,
     required this.jobs,
     required this.records,
     required this.onGovernanceAction,
@@ -26,6 +28,7 @@ class HistoryDispositionBoard extends StatelessWidget {
   });
 
   final AssetSummary assetSummary;
+  final DutySummary? dutySummary;
   final List<JobRecord> jobs;
   final List<HistoryRecord> records;
   final ValueChanged<AssetGovernanceItem> onGovernanceAction;
@@ -36,16 +39,11 @@ class HistoryDispositionBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final groups = _buildGroups();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionIntro(
-          title: '分组处置流',
-          subtitle:
-              '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
+    return DutySectionBlock(
+      title: '分组处置流',
+      subtitle:
+          '把失败链路、资产风险、快速回放和最近链路节点按资产类型收成统一处置面，不再在审计页里来回切换重复入口。',
+      child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 1180;
             if (compact) {
@@ -54,6 +52,7 @@ class HistoryDispositionBoard extends StatelessWidget {
                   for (var i = 0; i < groups.length; i++) ...[
                     _DispositionCard(
                       group: groups[i],
+                      isDutyFocus: isDutyFocusChain(groups[i].chain, dutySummary),
                       onGovernanceAction: () =>
                           onGovernanceAction(groups[i].governance),
                       onFailureAction: groups[i].failure == null
@@ -81,6 +80,7 @@ class HistoryDispositionBoard extends StatelessWidget {
                       width: (constraints.maxWidth - 12) / 2,
                       child: _DispositionCard(
                         group: group,
+                        isDutyFocus: isDutyFocusChain(group.chain, dutySummary),
                         onGovernanceAction: () =>
                             onGovernanceAction(group.governance),
                         onFailureAction: group.failure == null
@@ -99,7 +99,6 @@ class HistoryDispositionBoard extends StatelessWidget {
             );
           },
         ),
-      ],
     );
   }
 
@@ -162,10 +161,7 @@ class HistoryDispositionBoard extends StatelessWidget {
           );
         })
         .toList(growable: false);
-    groups.sort(
-      (a, b) =>
-          (b.chain?.priorityScore ?? 0).compareTo(a.chain?.priorityScore ?? 0),
-    );
+    groups.sort((a, b) => compareChainsByDutyFocus(a.chain, b.chain, dutySummary));
     return groups;
   }
 
@@ -281,6 +277,7 @@ class _DispositionGroup {
 class _DispositionCard extends StatelessWidget {
   const _DispositionCard({
     required this.group,
+    required this.isDutyFocus,
     required this.onGovernanceAction,
     this.onFailureAction,
     this.onFilterFailures,
@@ -288,6 +285,7 @@ class _DispositionCard extends StatelessWidget {
   });
 
   final _DispositionGroup group;
+  final bool isDutyFocus;
   final VoidCallback onGovernanceAction;
   final VoidCallback? onFailureAction;
   final VoidCallback? onFilterFailures;
@@ -319,11 +317,15 @@ class _DispositionCard extends StatelessWidget {
                 ? AppColors.textSecondary
                 : group.accent,
             trailing: WorkspaceStatusChip(
-              label: group.failure != null
+              label: isDutyFocus
+                  ? 'DUTY FOCUS'
+                  : group.failure != null
                   ? 'FAIL'
                   : group.governance.riskLevel.toUpperCase(),
               icon: group.failure != null
                   ? Icons.error_outline_rounded
+                  : isDutyFocus
+                  ? Icons.center_focus_strong_rounded
                   : group.icon,
               foreground: tone.foreground,
               background: tone.background,

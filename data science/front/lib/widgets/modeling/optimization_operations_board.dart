@@ -7,6 +7,7 @@ import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../../models/optimization_result.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
 
@@ -14,11 +15,13 @@ class OptimizationOperationsBoard extends StatelessWidget {
   const OptimizationOperationsBoard({
     super.key,
     required this.chain,
+    this.continuationContext,
     required this.result,
     required this.latestCompletedJob,
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final OptimizationResponse? result;
   final JobRecord? latestCompletedJob;
 
@@ -42,12 +45,13 @@ class OptimizationOperationsBoard extends StatelessWidget {
         accent: solverHealth.color,
         icon: Icons.monitor_heart_rounded,
         badge: solverHealth.label,
-        highlighted: _focusTelemetryCard(chain, 'solver'),
-        noteLabel: _focusTelemetryCard(chain, 'solver')
-            ? chain?.incidentTargetLabel
+        highlighted: _focusTelemetryCard(chain, 'solver', continuationContext),
+        noteLabel: _focusTelemetryCard(chain, 'solver', continuationContext)
+            ? continuationContext?.incidentTargetLabel ??
+                  chain?.incidentTargetLabel
             : null,
-        note: _focusTelemetryCard(chain, 'solver')
-            ? chain?.incidentBrief
+        note: _focusTelemetryCard(chain, 'solver', continuationContext)
+            ? continuationContext?.watchSummary ?? chain?.incidentBrief
             : null,
         lines: [
           'runtime=${diagnostics?.runtimeLabel ?? '--'}',
@@ -66,12 +70,18 @@ class OptimizationOperationsBoard extends StatelessWidget {
             : totalConstraintHits > 12
             ? 'HIGH'
             : 'MEDIUM',
-        highlighted: _focusTelemetryCard(chain, 'constraint'),
-        noteLabel: _focusTelemetryCard(chain, 'constraint')
-            ? chain?.incidentTargetLabel
+        highlighted: _focusTelemetryCard(
+          chain,
+          'constraint',
+          continuationContext,
+        ),
+        noteLabel:
+            _focusTelemetryCard(chain, 'constraint', continuationContext)
+            ? continuationContext?.incidentTargetLabel ??
+                  chain?.incidentTargetLabel
             : null,
-        note: _focusTelemetryCard(chain, 'constraint')
-            ? chain?.incidentBrief
+        note: _focusTelemetryCard(chain, 'constraint', continuationContext)
+            ? continuationContext?.watchSummary ?? chain?.incidentBrief
             : null,
         lines: [
           'soc_min=${hits?.socMinHits ?? 0}',
@@ -86,12 +96,18 @@ class OptimizationOperationsBoard extends StatelessWidget {
         badge: explainability?.topFeature == null
             ? 'N/A'
             : explainability!.topFeaturePercent,
-        highlighted: _focusTelemetryCard(chain, 'explainability'),
-        noteLabel: _focusTelemetryCard(chain, 'explainability')
-            ? chain?.incidentTargetLabel
+        highlighted: _focusTelemetryCard(
+          chain,
+          'explainability',
+          continuationContext,
+        ),
+        noteLabel:
+            _focusTelemetryCard(chain, 'explainability', continuationContext)
+            ? continuationContext?.incidentTargetLabel ??
+                  chain?.incidentTargetLabel
             : null,
-        note: _focusTelemetryCard(chain, 'explainability')
-            ? chain?.incidentBrief
+        note: _focusTelemetryCard(chain, 'explainability', continuationContext)
+            ? continuationContext?.watchSummary ?? chain?.incidentBrief
             : null,
         lines: [
           'top_feature=${explainability?.topFeature ?? '--'}',
@@ -108,12 +124,14 @@ class OptimizationOperationsBoard extends StatelessWidget {
         badge: latestCompletedJob == null
             ? 'IDLE'
             : latestCompletedJob!.jobId.substring(0, 8),
-        highlighted: _focusTelemetryCard(chain, 'artifact'),
-        noteLabel: _focusTelemetryCard(chain, 'artifact')
-            ? chain?.incidentTargetLabel
+        highlighted: _focusTelemetryCard(chain, 'artifact', continuationContext),
+        noteLabel:
+            _focusTelemetryCard(chain, 'artifact', continuationContext)
+            ? continuationContext?.incidentTargetLabel ??
+                  chain?.incidentTargetLabel
             : null,
-        note: _focusTelemetryCard(chain, 'artifact')
-            ? chain?.incidentBrief
+        note: _focusTelemetryCard(chain, 'artifact', continuationContext)
+            ? continuationContext?.watchSummary ?? chain?.incidentBrief
             : null,
         lines: [
           'status=${latestCompletedJob?.statusMessage ?? latestCompletedJob?.status ?? '--'}',
@@ -155,6 +173,7 @@ class OptimizationOperationsBoard extends StatelessWidget {
               title: '优化运维视图',
               subtitle: '把求解器健康、约束压力、解释性前哨和最近产物放到同一块运行摘要里。',
               chain: chain,
+              continuationContext: continuationContext,
               icon: Icons.monitor_heart_rounded,
             ),
             const SizedBox(height: 16),
@@ -263,14 +282,22 @@ class _TelemetryCard extends StatelessWidget {
   }
 }
 
-bool _focusTelemetryCard(AssetChainSummary? chain, String section) {
-  if (chain == null) {
+bool _focusTelemetryCard(
+  AssetChainSummary? chain,
+  String section,
+  WorkbenchLaunchContext? continuationContext,
+) {
+  final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
+  final workspaceTarget =
+      continuationContext?.workspaceTarget ?? chain?.workspaceTarget;
+  if (cardTarget == null && chain == null) {
     return false;
   }
-  if (chain.sectionTarget == 'optimization_assets') {
+  if (workspaceTarget == 'optimization_registry' ||
+      chain?.sectionTarget == 'optimization_assets') {
     return false;
   }
-  switch (chain.cardTarget) {
+  switch (cardTarget) {
     case 'solver_health':
       return section == 'solver';
     case 'constraint_pressure':
@@ -289,21 +316,11 @@ bool _focusTelemetryCard(AssetChainSummary? chain, String section) {
     case 'optimization_job_panel':
       return section == 'artifact';
   }
-  switch (chain.focusTarget) {
-    case 'optimization_solver':
-      return section == 'solver';
-    case 'optimization_constraint':
-      return section == 'constraint';
-    case 'optimization_explainability':
-      return section == 'explainability';
-    case 'optimization_registry':
-    case 'optimization_job_panel':
-      return section == 'artifact';
-  }
-  if (chain.status == 'incident' || chain.status == 'active') {
+  final status = chain?.status;
+  if (status == 'incident' || status == 'active') {
     return section == 'artifact';
   }
-  if (chain.status == 'watch') {
+  if (status == 'watch') {
     return section == 'constraint';
   }
   return section == 'artifact';

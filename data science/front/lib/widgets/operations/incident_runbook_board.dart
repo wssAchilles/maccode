@@ -6,8 +6,8 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../common/glass_card.dart';
+import 'duty_section_block.dart';
 import 'incident_card_header.dart';
-import 'section_intro.dart';
 import 'workspace_action_lane.dart';
 
 class IncidentRunbookBoard extends StatelessWidget {
@@ -36,44 +36,41 @@ class IncidentRunbookBoard extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionIntro(title: title, subtitle: description),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 1180) {
-              return Column(
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    _RunbookCard(
-                      chain: items[i],
-                      onOpen: () => onOpenChain(items[i]),
-                    ),
-                    if (i < items.length - 1) const SizedBox(height: 12),
-                  ],
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return DutySectionBlock(
+      title: title,
+      subtitle: description,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 1180) {
+            return Column(
               children: [
                 for (var i = 0; i < items.length; i++) ...[
-                  Expanded(
-                    child: _RunbookCard(
-                      chain: items[i],
-                      onOpen: () => onOpenChain(items[i]),
-                    ),
+                  _RunbookCard(
+                    chain: items[i],
+                    onOpen: () => onOpenChain(items[i]),
                   ),
-                  if (i < items.length - 1) const SizedBox(width: 12),
+                  if (i < items.length - 1) const SizedBox(height: 12),
                 ],
               ],
             );
-          },
-        ),
-      ],
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                Expanded(
+                  child: _RunbookCard(
+                    chain: items[i],
+                    onOpen: () => onOpenChain(items[i]),
+                  ),
+                ),
+                if (i < items.length - 1) const SizedBox(width: 12),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 }

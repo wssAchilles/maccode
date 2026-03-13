@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/analysis_result.dart';
 import '../../models/dashboard_summary.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import '../operations/embedded_page_header.dart';
 import '../operations/metric_card.dart';
 import '../operations/workspace_action_lane.dart';
+import '../operations/workspace_digest_card.dart';
 import 'data_analysis_state_views.dart';
 
 class DataAnalysisWorkbenchHeader extends StatelessWidget {
@@ -316,6 +318,7 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
   const DataAnalysisWorkflowActionsCard({
     super.key,
     this.chain,
+    this.continuationContext,
     required this.storagePath,
     required this.savedAsAsset,
     required this.schemaDigest,
@@ -335,6 +338,7 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final String? storagePath;
   final bool savedAsAsset;
   final String schemaDigest;
@@ -355,6 +359,14 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasStoragePath = storagePath != null && storagePath!.isNotEmpty;
+    final workspaceLabel =
+        continuationContext?.workspaceTargetLabel ?? chain?.workspaceTargetLabel;
+    final cardLabel =
+        continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel;
+    final incidentLabel =
+        continuationContext?.incidentTargetLabel ?? chain?.incidentTargetLabel;
+    final workspaceBrief =
+        continuationContext?.workspaceBrief ?? chain?.workspaceBrief;
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -386,19 +398,19 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 WorkspaceStatusChip(
-                  label: chain!.workspaceTargetLabel,
+                  label: workspaceLabel!,
                   icon: Icons.account_tree_rounded,
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
                 ),
                 WorkspaceStatusChip(
-                  label: chain!.cardTargetLabel,
+                  label: cardLabel!,
                   icon: Icons.dashboard_customize_rounded,
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
                 WorkspaceStatusChip(
-                  label: chain!.incidentTargetLabel,
+                  label: incidentLabel!,
                   icon: Icons.priority_high_rounded,
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
@@ -408,10 +420,10 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
             const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: AppColors.primary,
-              workspaceLabel: chain!.workspaceTargetLabel,
-              cardLabel: chain!.cardTargetLabel,
-              incidentLabel: chain!.incidentTargetLabel,
-              summary: chain!.workspaceBrief,
+              workspaceLabel: workspaceLabel,
+              cardLabel: cardLabel,
+              incidentLabel: incidentLabel,
+              summary: workspaceBrief,
             ),
           ],
           const SizedBox(height: 14),
@@ -443,35 +455,35 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
             builder: (context, constraints) {
               final stacked = constraints.maxWidth < 920;
               final cards = [
-                _WorkflowDigestCard(
+                WorkspaceDigestCard(
                   title: 'Schema Digest',
                   value: schemaDigest,
                   icon: Icons.schema_rounded,
                   accent: AppColors.primary,
                   onCopy: onCopySchemaDigest,
                 ),
-                _WorkflowDigestCard(
+                WorkspaceDigestCard(
                   title: '治理摘要',
                   value: governanceDigest,
                   icon: Icons.health_and_safety_rounded,
                   accent: AppColors.cta,
                   onCopy: onCopyGovernanceDigest,
                 ),
-                _WorkflowDigestCard(
+                WorkspaceDigestCard(
                   title: 'Asset Passport',
                   value: assetPassport,
                   icon: Icons.badge_rounded,
                   accent: AppColors.success,
                   onCopy: onCopyAssetPassport,
                 ),
-                _WorkflowDigestCard(
+                WorkspaceDigestCard(
                   title: 'Compare Digest',
                   value: compareDigest,
                   icon: Icons.compare_arrows_rounded,
                   accent: AppColors.warning,
                   onCopy: onCopyCompareDigest,
                 ),
-                _WorkflowDigestCard(
+                WorkspaceDigestCard(
                   title: '协作摘要',
                   value: collaborationBrief,
                   icon: Icons.group_work_rounded,
@@ -508,6 +520,7 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
           const SizedBox(height: 16),
           _WorkflowHandoffBoard(
             chain: chain,
+            continuationContext: continuationContext,
             hasStoragePath: hasStoragePath,
             savedAsAsset: savedAsAsset,
             onOpenHistory: onOpenHistory,
@@ -576,6 +589,7 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
 class _WorkflowHandoffBoard extends StatelessWidget {
   const _WorkflowHandoffBoard({
     this.chain,
+    this.continuationContext,
     required this.hasStoragePath,
     required this.savedAsAsset,
     required this.onOpenHistory,
@@ -588,6 +602,7 @@ class _WorkflowHandoffBoard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final bool hasStoragePath;
   final bool savedAsAsset;
   final VoidCallback onOpenHistory;
@@ -600,6 +615,14 @@ class _WorkflowHandoffBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final workspaceLabel =
+        continuationContext?.workspaceTargetLabel ?? chain?.workspaceTargetLabel;
+    final cardLabel =
+        continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel;
+    final incidentLabel =
+        continuationContext?.incidentTargetLabel ?? chain?.incidentTargetLabel;
+    final workspaceBrief =
+        continuationContext?.workspaceBrief ?? chain?.workspaceBrief;
     final lanes = [
       WorkspaceActionLane(
         title: '训练交接',
@@ -608,10 +631,10 @@ class _WorkflowHandoffBoard extends StatelessWidget {
             : '缺少可复用 Storage Path，当前无法直接进入训练链路。',
         accent: AppColors.cta,
         icon: Icons.model_training_rounded,
-        workspaceLabel: chain?.workspaceTargetLabel,
-        cardLabel: chain?.cardTargetLabel,
-        incidentLabel: chain?.incidentTargetLabel,
-        summary: chain?.workspaceBrief,
+        workspaceLabel: workspaceLabel,
+        cardLabel: cardLabel,
+        incidentLabel: incidentLabel,
+        summary: workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         actions: [
@@ -640,10 +663,10 @@ class _WorkflowHandoffBoard extends StatelessWidget {
             : '当前分析结果尚未沉淀为资产，不能直接进入知识库构建流程。',
         accent: AppColors.primary,
         icon: Icons.auto_awesome_rounded,
-        workspaceLabel: chain?.workspaceTargetLabel,
-        cardLabel: chain?.cardTargetLabel,
-        incidentLabel: chain?.incidentTargetLabel,
-        summary: chain?.workspaceBrief,
+        workspaceLabel: workspaceLabel,
+        cardLabel: cardLabel,
+        incidentLabel: incidentLabel,
+        summary: workspaceBrief,
         statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         actions: [
@@ -672,10 +695,10 @@ class _WorkflowHandoffBoard extends StatelessWidget {
             : '即使未归档，也可以先复制治理摘要供人工审核，但不会进入资产台账。',
         accent: AppColors.success,
         icon: Icons.fact_check_rounded,
-        workspaceLabel: savedAsAsset ? '资产已登记' : chain?.workspaceTargetLabel,
-        cardLabel: chain?.cardTargetLabel,
-        incidentLabel: chain?.incidentTargetLabel,
-        summary: chain?.workspaceBrief,
+        workspaceLabel: savedAsAsset ? (workspaceLabel ?? '资产已登记') : workspaceLabel,
+        cardLabel: cardLabel,
+        incidentLabel: incidentLabel,
+        summary: workspaceBrief,
         statusLabel: savedAsAsset ? 'Tracked' : 'Session Only',
         statusColor: savedAsAsset ? AppColors.success : AppColors.warning,
         actions: [
@@ -699,84 +722,7 @@ class _WorkflowHandoffBoard extends StatelessWidget {
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 980;
-        if (stacked) {
-          return Column(
-            children: [
-              for (var i = 0; i < lanes.length; i++) ...[
-                lanes[i],
-                if (i < lanes.length - 1) const SizedBox(height: 12),
-              ],
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < lanes.length; i++) ...[
-              Expanded(child: lanes[i]),
-              if (i < lanes.length - 1) const SizedBox(width: 12),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _WorkflowDigestCard extends StatelessWidget {
-  const _WorkflowDigestCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.accent,
-    required this.onCopy,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color accent;
-  final VoidCallback onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: accent),
-              const SizedBox(width: 8),
-              Expanded(child: Text(title, style: AppTextStyles.labelLarge)),
-              IconButton(
-                onPressed: onCopy,
-                tooltip: '复制$title',
-                icon: const Icon(Icons.content_copy_rounded, size: 18),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
+    return WorkspaceActionDeck(lanes: lanes);
   }
 }
 

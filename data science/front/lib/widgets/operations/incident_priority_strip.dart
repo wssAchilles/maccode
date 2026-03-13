@@ -4,21 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 
 class IncidentPriorityStrip extends StatelessWidget {
   const IncidentPriorityStrip({
     super.key,
     required this.summary,
     required this.onOpenChain,
+    this.dutySummary,
   });
 
   final AssetSummary summary;
   final ValueChanged<AssetChainSummary> onOpenChain;
+  final DutySummary? dutySummary;
 
   @override
   Widget build(BuildContext context) {
     final chains = [...summary.chainSummaries]
-      ..sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+      ..sort((a, b) => compareChainsByDutyFocus(a, b, dutySummary));
     final items = chains.take(4).toList(growable: false);
     if (items.isEmpty) {
       return const SizedBox.shrink();
@@ -43,6 +46,7 @@ class IncidentPriorityStrip extends StatelessWidget {
               .map(
                 (chain) => _PriorityStripTile(
                   chain: chain,
+                  isDutyFocus: isDutyFocusChain(chain, dutySummary),
                   onTap: () => onOpenChain(chain),
                 ),
               )
@@ -127,10 +131,15 @@ class _StripHeader extends StatelessWidget {
 }
 
 class _PriorityStripTile extends StatelessWidget {
-  const _PriorityStripTile({required this.chain, required this.onTap});
+  const _PriorityStripTile({
+    required this.chain,
+    required this.onTap,
+    required this.isDutyFocus,
+  });
 
   final AssetChainSummary chain;
   final VoidCallback onTap;
+  final bool isDutyFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +189,12 @@ class _PriorityStripTile extends StatelessWidget {
                   label: 'OVERDUE ${chain.overdueMinutes}m',
                   foreground: AppColors.error,
                   background: AppColors.errorLight,
+                )
+              else if (isDutyFocus)
+                _MiniBadge(
+                  label: 'DUTY FOCUS',
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
                 )
               else if (chain.escalationTier > 0)
                 _MiniBadge(

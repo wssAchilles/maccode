@@ -10,6 +10,7 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/deep_learning_config_state.dart';
 import '../models/job_record.dart';
+import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
@@ -27,6 +28,7 @@ import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/operations/workbench_command_strip.dart';
 import '../widgets/operations/workbench_runbook_panel.dart';
 import '../widgets/operations/workbench_section_signal.dart';
+import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/rag/rag_input_area.dart';
 import '../widgets/rag/rag_message_list.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -67,6 +69,8 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   DeepLearningConfigState _config = const DeepLearningConfigState.initial();
   _AiLabTab _currentTab = _AiLabTab.deepLearning;
+  _AiLabTab? _activeLaunchTab;
+  WorkbenchLaunchContext? _activeLaunchContext;
   bool _resetCollection = false;
 
   @override
@@ -209,8 +213,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     return buildChainSourceLabel(
       chain,
       prefix: prefix,
-      includeSection: true,
-      includeFocus: true,
+      includeWorkspaceBrief: true,
     );
   }
 
@@ -499,6 +502,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                 const SizedBox(height: 20),
                 WorkbenchRunbookPanel(
                   chain: activeChain,
+                  continuationContext: _contextForTab(_currentTab),
                   description: _currentTab == _AiLabTab.deepLearning
                       ? '把训练链路的版本、责任和处置步骤直接压到当前工作台，优先完成模型资产回填与版本治理。'
                       : '把知识库链路的处置步骤直接压到当前工作台，优先完成快照回填、集合校验和问答治理。',
@@ -575,8 +579,161 @@ class _AiLabScreenState extends State<AiLabScreen> {
                         ],
                 ),
                 if (activeChain != null) const SizedBox(height: 20),
+                WorkspaceActionDeck(
+                  lanes: [
+                    WorkspaceActionLane(
+                      title: '模型训练车道',
+                      description: '把训练提交、最新模型回填、护照复制和队列刷新收在一条主工作流里，避免训练动作继续散在顶部按钮和资产卡内部。',
+                      accent: AppColors.cta,
+                      icon: Icons.model_training_rounded,
+                      workspaceLabel:
+                          _contextForTab(_AiLabTab.deepLearning)
+                              ?.workspaceTargetLabel ??
+                          modelChain?.workspaceTargetLabel,
+                      cardLabel:
+                          _contextForTab(_AiLabTab.deepLearning)?.cardTargetLabel ??
+                          modelChain?.cardTargetLabel,
+                      incidentLabel:
+                          _contextForTab(_AiLabTab.deepLearning)
+                              ?.incidentTargetLabel ??
+                          modelChain?.incidentTargetLabel,
+                      summary:
+                          _contextForTab(_AiLabTab.deepLearning)?.workspaceBrief ??
+                          modelChain?.workspaceBrief,
+                      statusLabel: _trainingJobsViewModel.isSubmitting
+                          ? 'Submitting'
+                          : (_trainingJobsViewModel.activeJob?.statusMessage ??
+                                (_trainingJobsViewModel.jobs.isEmpty
+                                    ? 'Idle'
+                                    : 'Ready')),
+                      statusColor: _trainingJobsViewModel.isSubmitting
+                          ? AppColors.warning
+                          : (_trainingJobsViewModel.activeJob?.isRunning == true
+                                ? AppColors.warning
+                                : AppColors.success),
+                      actions: [
+                        WorkspaceActionLaneAction(
+                          label: '提交训练任务',
+                          icon: Icons.play_arrow_rounded,
+                          onTap:
+                              (_trainingStorageController.text
+                                          .trim()
+                                          .isNotEmpty &&
+                                      _trainingTargetController.text
+                                          .trim()
+                                          .isNotEmpty &&
+                                      !_trainingJobsViewModel.isSubmitting)
+                              ? _submitTrainingJob
+                              : null,
+                          tone: WorkspaceActionLaneTone.primary,
+                          isLoading: _trainingJobsViewModel.isSubmitting,
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '回填最新模型资产',
+                          icon: Icons.download_done_rounded,
+                          onTap: latestModelAsset == null
+                              ? null
+                              : () => _applyModelAsset(
+                                  latestModelAsset,
+                                  chain: modelChain,
+                                ),
+                          tone: WorkspaceActionLaneTone.tonal,
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '复制模型护照',
+                          icon: Icons.badge_rounded,
+                          onTap: latestModelAsset == null
+                              ? null
+                              : () => _copyModelPassport(
+                                  latestModelAsset,
+                                  chain: modelChain,
+                                ),
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '刷新训练队列',
+                          icon: Icons.refresh_rounded,
+                          onTap: _trainingJobsViewModel.loadJobs,
+                        ),
+                      ],
+                    ),
+                    WorkspaceActionLane(
+                      title: '知识构建车道',
+                      description: '把知识库构建、快照回填、护照复制和会话治理收在同一条知识工作流里，减少在资产区和问答区之间来回切换。',
+                      accent: AppColors.success,
+                      icon: Icons.auto_awesome_rounded,
+                      workspaceLabel:
+                          _contextForTab(_AiLabTab.rag)?.workspaceTargetLabel ??
+                          knowledgeChain?.workspaceTargetLabel,
+                      cardLabel:
+                          _contextForTab(_AiLabTab.rag)?.cardTargetLabel ??
+                          knowledgeChain?.cardTargetLabel,
+                      incidentLabel:
+                          _contextForTab(_AiLabTab.rag)?.incidentTargetLabel ??
+                          knowledgeChain?.incidentTargetLabel,
+                      summary:
+                          _contextForTab(_AiLabTab.rag)?.workspaceBrief ??
+                          knowledgeChain?.workspaceBrief,
+                      statusLabel: _ragJobsViewModel.isSubmitting
+                          ? 'Submitting'
+                          : (_ragJobsViewModel.activeJob?.statusMessage ??
+                                (_ragJobsViewModel.jobs.isEmpty
+                                    ? 'Idle'
+                                    : 'Ready')),
+                      statusColor: _ragJobsViewModel.isSubmitting
+                          ? AppColors.warning
+                          : (_ragJobsViewModel.activeJob?.isRunning == true
+                                ? AppColors.warning
+                                : AppColors.success),
+                      actions: [
+                        WorkspaceActionLaneAction(
+                          label: '构建知识库',
+                          icon: Icons.hub_rounded,
+                          onTap:
+                              (_ragStorageController.text.trim().isNotEmpty &&
+                                      _ragCollectionController.text
+                                          .trim()
+                                          .isNotEmpty &&
+                                      !_ragJobsViewModel.isSubmitting)
+                              ? _submitRagIngestJob
+                              : null,
+                          tone: WorkspaceActionLaneTone.primary,
+                          isLoading: _ragJobsViewModel.isSubmitting,
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '回填最新知识快照',
+                          icon: Icons.library_add_check_rounded,
+                          onTap: latestKnowledgeAsset == null
+                              ? null
+                              : () => _applyKnowledgeAsset(
+                                  latestKnowledgeAsset,
+                                  chain: knowledgeChain,
+                                ),
+                          tone: WorkspaceActionLaneTone.tonal,
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '复制知识护照',
+                          icon: Icons.badge_rounded,
+                          onTap: latestKnowledgeAsset == null
+                              ? null
+                              : () => _copyKnowledgePassport(
+                                  latestKnowledgeAsset,
+                                  chain: knowledgeChain,
+                                ),
+                        ),
+                        WorkspaceActionLaneAction(
+                          label: '清空问答会话',
+                          icon: Icons.cleaning_services_rounded,
+                          onTap: () =>
+                              _clearRagConversation(chain: knowledgeChain),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 WorkbenchSectionSignal(
                   chain: activeChain,
+                  continuationContext: _contextForTab(_currentTab),
                   title: '资产治理区',
                   description: _currentTab == _AiLabTab.deepLearning
                       ? '先看模型注册表、训练产物和版本血缘，再决定是回填模型还是重新提交训练。'
@@ -588,6 +745,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                 if (activeChain != null) const SizedBox(height: 20),
                 AiLabAssetControlBoard(
                   activeChain: activeChain,
+                  continuationContext: _contextForTab(_currentTab),
                   assetSummary: summary?.assetSummary,
                   trainingJobs: _trainingJobsViewModel.jobs,
                   ragJobs: _ragJobsViewModel.jobs,
@@ -628,6 +786,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                 const SizedBox(height: 20),
                 WorkbenchSectionSignal(
                   chain: activeChain,
+                  continuationContext: _contextForTab(_currentTab),
                   title: _currentTab == _AiLabTab.deepLearning
                       ? '训练执行面'
                       : '知识执行面',
@@ -926,13 +1085,29 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
 
+    final nextTab = switch (intent.target) {
+      AiLabLaunchTarget.deepLearning => _AiLabTab.deepLearning,
+      AiLabLaunchTarget.rag => _AiLabTab.rag,
+    };
+
+    if (mounted) {
+      setState(() {
+        _activeLaunchContext = intent.context;
+        _activeLaunchTab = nextTab;
+        _currentTab = nextTab;
+      });
+    } else {
+      _activeLaunchContext = intent.context;
+      _activeLaunchTab = nextTab;
+      _currentTab = nextTab;
+    }
+
     switch (intent.target) {
       case AiLabLaunchTarget.deepLearning:
         _trainingStorageController.text = intent.storagePath;
         if (intent.targetColumn != null && intent.targetColumn!.isNotEmpty) {
           _trainingTargetController.text = intent.targetColumn!;
         }
-        _currentTab = _AiLabTab.deepLearning;
         break;
       case AiLabLaunchTarget.rag:
         _ragStorageController.text = intent.storagePath;
@@ -941,7 +1116,6 @@ class _AiLabScreenState extends State<AiLabScreen> {
           _ragCollectionController.text = intent.collectionName!;
         }
         _resetCollection = intent.resetCollection;
-        _currentTab = _AiLabTab.rag;
         break;
     }
 
@@ -951,13 +1125,24 @@ class _AiLabScreenState extends State<AiLabScreen> {
       }
       final source = intent.sourceLabel;
       if (source != null && source.isNotEmpty) {
-        _showFeedback('$source 已送入 AI Lab');
+        _showFeedback(
+          buildLaunchArrivalMessage(
+            intent.context,
+            fallbackSubject: source,
+            destination: 'AI Lab',
+            verb: '已送入',
+          ),
+        );
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onLaunchIntentHandled?.call();
     });
+  }
+
+  WorkbenchLaunchContext? _contextForTab(_AiLabTab tab) {
+    return _activeLaunchTab == tab ? _activeLaunchContext : null;
   }
 }
 

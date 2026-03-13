@@ -133,6 +133,48 @@ class WorkspaceInlineActionBar extends StatelessWidget {
   }
 }
 
+class WorkspaceActionDeck extends StatelessWidget {
+  const WorkspaceActionDeck({
+    super.key,
+    required this.lanes,
+    this.breakpoint = 980,
+    this.spacing = 12,
+  });
+
+  final List<Widget> lanes;
+  final double breakpoint;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < breakpoint;
+        if (stacked) {
+          return Column(
+            children: [
+              for (var i = 0; i < lanes.length; i++) ...[
+                lanes[i],
+                if (i < lanes.length - 1) SizedBox(height: spacing),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < lanes.length; i++) ...[
+              Expanded(child: lanes[i]),
+              if (i < lanes.length - 1) SizedBox(width: spacing),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 class WorkspaceActionLaneAction {
   const WorkspaceActionLaneAction({
     required this.label,

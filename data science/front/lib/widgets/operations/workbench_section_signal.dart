@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 
 class WorkbenchSectionSignal extends StatelessWidget {
@@ -13,12 +14,14 @@ class WorkbenchSectionSignal extends StatelessWidget {
     required this.title,
     required this.description,
     required this.icon,
+    this.continuationContext,
   });
 
   final AssetChainSummary? chain;
   final String title;
   final String description;
   final IconData icon;
+  final WorkbenchLaunchContext? continuationContext;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +31,16 @@ class WorkbenchSectionSignal extends StatelessWidget {
     }
 
     final tone = _toneFor(activeChain);
+    final workspaceLabel =
+        continuationContext?.workspaceTargetLabel ??
+        activeChain.workspaceTargetLabel;
+    final cardLabel =
+        continuationContext?.cardTargetLabel ?? activeChain.cardTargetLabel;
+    final incidentLabel =
+        continuationContext?.incidentTargetLabel ??
+        activeChain.incidentTargetLabel;
+    final watchSummary =
+        continuationContext?.watchSummary ?? activeChain.incidentBrief;
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
@@ -37,29 +50,32 @@ class WorkbenchSectionSignal extends StatelessWidget {
           final facts = [
             _SignalFact(
               label: 'Current Watch',
-              value:
-                  '${activeChain.incidentTargetLabel} · ${activeChain.incidentBrief}',
-              highlighted: _signalHighlight(activeChain) == _SignalFocus.watch,
+              value: '$incidentLabel · $watchSummary',
+              highlighted:
+                  _signalHighlight(activeChain, continuationContext) ==
+                  _SignalFocus.watch,
               accent: tone,
             ),
             _SignalFact(
               label: 'Section Target',
-              value:
-                  '${activeChain.workspaceTargetLabel} · ${activeChain.cardTargetLabel}',
+              value: '$workspaceLabel · $cardLabel',
               accent: tone,
             ),
             _SignalFact(
               label: '执行态',
-              value: _executionValue(activeChain),
+              value: _executionValue(activeChain, continuationContext),
               highlighted:
-                  _signalHighlight(activeChain) == _SignalFocus.execution,
+                  _signalHighlight(activeChain, continuationContext) ==
+                  _SignalFocus.execution,
               accent: tone,
             ),
             _SignalFact(
               label: '值班状态',
               value:
                   '${activeChain.ownerLabel} · ${activeChain.escalationStateLabel}',
-              highlighted: _signalHighlight(activeChain) == _SignalFocus.duty,
+              highlighted:
+                  _signalHighlight(activeChain, continuationContext) ==
+                  _SignalFocus.duty,
               accent: tone,
             ),
           ];
@@ -97,17 +113,17 @@ class WorkbenchSectionSignal extends StatelessWidget {
                               background: tone.withValues(alpha: 0.12),
                             ),
                             _SignalBadge(
-                              label: activeChain.workspaceTargetLabel,
+                              label: workspaceLabel,
                               foreground: tone,
                               background: tone.withValues(alpha: 0.08),
                             ),
                             _SignalBadge(
-                              label: activeChain.cardTargetLabel,
+                              label: cardLabel,
                               foreground: AppColors.textPrimary,
                               background: AppColors.surfaceVariant,
                             ),
                             _SignalBadge(
-                              label: activeChain.incidentTargetLabel,
+                              label: incidentLabel,
                               foreground: tone,
                               background: tone.withValues(alpha: 0.08),
                             ),
@@ -236,20 +252,28 @@ class _SignalBadge extends StatelessWidget {
   }
 }
 
-String _executionValue(AssetChainSummary chain) {
+String _executionValue(
+  AssetChainSummary chain,
+  WorkbenchLaunchContext? continuationContext,
+) {
   if (chain.jobStatus != '--') {
     return '${chain.jobStatus} · ${chain.jobPhase} · ${chain.jobProgress}%';
   }
   if (chain.failurePhase != '--') {
     return '${chain.failurePhase} · ${chain.failureSource}';
   }
-  return 'latest v${chain.latestVersion} · ${chain.latestLabel} · ${chain.workspaceTargetLabel}';
+  final workspaceLabel =
+      continuationContext?.workspaceTargetLabel ?? chain.workspaceTargetLabel;
+  return 'latest v${chain.latestVersion} · ${chain.latestLabel} · $workspaceLabel';
 }
 
 enum _SignalFocus { watch, execution, duty }
 
-_SignalFocus _signalHighlight(AssetChainSummary chain) {
-  switch (chain.incidentTarget) {
+_SignalFocus _signalHighlight(
+  AssetChainSummary chain,
+  WorkbenchLaunchContext? continuationContext,
+) {
+  switch (continuationContext?.incidentTarget ?? chain.incidentTarget) {
     case 'sla':
       return _SignalFocus.duty;
     case 'runtime':

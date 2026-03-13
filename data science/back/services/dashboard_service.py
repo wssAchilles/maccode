@@ -106,6 +106,41 @@ class DashboardService:
         },
     }
 
+    DUTY_ACTION_DEFAULTS = {
+        'dataset': {
+            'label': '上传并分析数据',
+            'tone': 'primary',
+            'workspace_target': 'data_governance',
+            'card_target': 'current_asset',
+            'incident_target': 'asset',
+            'workspace_brief': '资产治理板 · 复核最新数据资产、漂移报告与治理结论。',
+        },
+        'model': {
+            'label': '开始模型训练',
+            'tone': 'tonal',
+            'workspace_target': 'ai_runtime',
+            'card_target': 'runtime_product',
+            'incident_target': 'runtime',
+            'workspace_brief': 'AI 运行控制区 · 跟进训练任务、产物版本和最新模型资产。',
+        },
+        'knowledge': {
+            'label': '构建知识库',
+            'tone': 'outline',
+            'workspace_target': 'ai_runtime',
+            'card_target': 'runtime_product',
+            'incident_target': 'runtime',
+            'workspace_brief': 'AI 运行控制区 · 跟进知识构建任务、集合快照和问答治理。',
+        },
+        'optimization': {
+            'label': '运行能源优化',
+            'tone': 'tonal',
+            'workspace_target': 'optimization_operations',
+            'card_target': 'solver_health',
+            'incident_target': 'asset',
+            'workspace_brief': '优化运维板 · 复核求解器健康、结果快照与最近优化资产。',
+        },
+    }
+
     @staticmethod
     def _governance_item(
         *,
@@ -883,6 +918,7 @@ class DashboardService:
     @staticmethod
     def _workspace_target_label(target: str) -> str:
         return {
+            'audit_center': '历史与审计',
             'data_job_center': '分析任务中心',
             'data_governance': '资产治理板',
             'data_handoff': '分析交接板',
@@ -893,6 +929,33 @@ class DashboardService:
             'optimization_operations': '优化运维板',
             'workspace': '工作台',
         }.get(target, '工作台')
+
+    @staticmethod
+    def _card_target_label(target: str) -> str:
+        return {
+            'strategy': '执行策略',
+            'job_health': '任务健康',
+            'asset_route': '资产路线',
+            'asset_quality': '资产质量',
+            'schema_topology': 'Schema 拓扑',
+            'field_distribution': '字段分布',
+            'risk_digest': '风险摘要',
+            'next_actions': '下一步动作',
+            'current_asset': '当前资产',
+            'reference_asset': '基线资产',
+            'drift_report': '漂移报告',
+            'governance_decision': '治理结论',
+            'runtime_product': '运行产物',
+            'version_timeline': '版本轨迹',
+            'registry_snapshot': '注册表快照',
+            'solver_health': '求解器健康',
+            'constraint_pressure': '约束压力',
+            'explainability_probe': '解释性前哨',
+            'recent_artifact': '最近产物',
+            'registry_summary': '注册表摘要',
+            'latest_snapshot': '最新快照',
+            'summary': '当前卡片',
+        }.get(target, '当前卡片')
 
     @classmethod
     def _workspace_brief(
@@ -1577,6 +1640,234 @@ class DashboardService:
         }
 
     @classmethod
+    def _build_duty_summary(
+        cls,
+        *,
+        asset_summary: Dict[str, Any],
+        service_statuses: List[Dict[str, Any]],
+        alerts: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        chains = asset_summary.get('chain_summaries') or []
+        ordered_chains = sorted(
+            chains,
+            key=lambda item: int(item.get('priority_score') or 0),
+            reverse=True,
+        )
+        focus_chain = ordered_chains[0] if ordered_chains else {}
+        degraded_systems = len(
+            [status for status in service_statuses if status.get('status') != 'ok']
+        )
+        incident_count = len(
+            [chain for chain in chains if chain.get('status') == 'incident']
+        )
+        active_count = len(
+            [chain for chain in chains if chain.get('status') == 'active']
+        )
+        overdue_count = len(
+            [chain for chain in chains if bool(chain.get('is_overdue'))]
+        )
+        escalated_count = len(
+            [chain for chain in chains if int(chain.get('escalation_tier') or 0) > 0]
+        )
+        watch_count = len(
+            [chain for chain in chains if chain.get('status') in {'watch', 'action'}]
+        )
+        duty_actions = cls._build_duty_actions(
+            focus_chain=focus_chain if focus_chain else None,
+            chains=ordered_chains,
+        )
+
+        return {
+            'incident_count': incident_count,
+            'active_count': active_count,
+            'watch_count': watch_count,
+            'overdue_count': overdue_count,
+            'escalated_count': escalated_count,
+            'alert_count': len(alerts),
+            'degraded_system_count': degraded_systems,
+            'focus_chain_key': focus_chain.get('key') or '',
+            'focus_chain_label': focus_chain.get('label') or '--',
+            'focus_workspace_target': focus_chain.get('workspace_target') or 'workspace',
+            'focus_workspace_target_label': focus_chain.get('workspace_target_label') or '工作台',
+            'focus_card_target': focus_chain.get('card_target') or 'summary',
+            'focus_card_target_label': focus_chain.get('card_target_label') or '当前卡片',
+            'focus_incident_target': focus_chain.get('incident_target') or 'focus',
+            'focus_incident_target_label': focus_chain.get('incident_target_label') or '当前焦点',
+            'focus_watch': focus_chain.get('incident_brief')
+            or focus_chain.get('workspace_brief')
+            or '当前暂无高优先级链路',
+            'focus_owner_label': focus_chain.get('owner_label') or '--',
+            'focus_escalation_state_label': focus_chain.get('escalation_state_label')
+            or '--',
+            'overview_actions': duty_actions['overview_actions'],
+            'audit_actions': duty_actions['audit_actions'],
+        }
+
+    @classmethod
+    def _build_duty_actions(
+        cls,
+        *,
+        focus_chain: Dict[str, Any] | None,
+        chains: List[Dict[str, Any]],
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        chain_map = {
+            str(chain.get('key') or ''): chain
+            for chain in chains
+            if str(chain.get('key') or '')
+        }
+
+        overview_actions: List[Dict[str, Any]] = []
+        audit_actions: List[Dict[str, Any]] = []
+
+        if focus_chain:
+            overview_actions.append(
+                cls._duty_action(
+                    command='open_workspace',
+                    label=focus_chain.get('action_label') or '打开工作台',
+                    tone='primary',
+                    chain_key=focus_chain.get('key') or '',
+                    chain_label=focus_chain.get('label') or '--',
+                    workspace_target=focus_chain.get('workspace_target') or 'workspace',
+                    card_target=focus_chain.get('card_target') or 'summary',
+                    incident_target=focus_chain.get('incident_target') or 'focus',
+                    workspace_brief=focus_chain.get('workspace_brief') or '--',
+                ),
+            )
+            audit_actions.append(
+                cls._duty_action(
+                    command='open_workspace',
+                    label=focus_chain.get('action_label') or '打开工作台',
+                    tone='primary',
+                    chain_key=focus_chain.get('key') or '',
+                    chain_label=focus_chain.get('label') or '--',
+                    workspace_target=focus_chain.get('workspace_target') or 'workspace',
+                    card_target=focus_chain.get('card_target') or 'summary',
+                    incident_target=focus_chain.get('incident_target') or 'focus',
+                    workspace_brief=focus_chain.get('workspace_brief') or '--',
+                ),
+            )
+
+        for key in ('dataset', 'optimization', 'model', 'knowledge'):
+            if focus_chain and key == focus_chain.get('key'):
+                continue
+            overview_actions.append(
+                cls._workspace_action_for_chain(chain_map.get(key), key=key),
+            )
+
+        overview_actions.append(
+            cls._duty_action(
+                command='open_audit',
+                label='查看历史与审计',
+                tone='outline',
+                chain_key=(focus_chain or {}).get('key') or '',
+                chain_label='历史与审计',
+                workspace_target='audit_center',
+                card_target='summary',
+                incident_target='focus',
+                workspace_brief='历史与审计 · 查看统一事件流、资产矩阵和处置 Runbook。',
+            ),
+        )
+
+        if focus_chain:
+            audit_actions.extend(
+                [
+                    cls._duty_action(
+                        command='filter_failed',
+                        label='仅看失败链路',
+                        tone='tonal',
+                        chain_key=focus_chain.get('key') or '',
+                        chain_label=focus_chain.get('label') or '--',
+                        workspace_target='audit_center',
+                        card_target='summary',
+                        incident_target='failure',
+                        workspace_brief='历史与审计 · 过滤失败任务与异常链路。',
+                    ),
+                    cls._duty_action(
+                        command='filter_running',
+                        label='仅看运行中',
+                        tone='outline',
+                        chain_key=focus_chain.get('key') or '',
+                        chain_label=focus_chain.get('label') or '--',
+                        workspace_target='audit_center',
+                        card_target='summary',
+                        incident_target='runtime',
+                        workspace_brief='历史与审计 · 聚焦运行中任务和当前活跃作业。',
+                    ),
+                ]
+            )
+
+        audit_actions.append(
+            cls._duty_action(
+                command='clear_filters',
+                label='清空筛选',
+                tone='outline',
+                chain_key=(focus_chain or {}).get('key') or '',
+                chain_label='历史与审计',
+                workspace_target='audit_center',
+                card_target='summary',
+                incident_target='focus',
+                workspace_brief='历史与审计 · 恢复默认筛选并查看完整事件流。',
+            ),
+        )
+
+        return {
+            'overview_actions': overview_actions[:5],
+            'audit_actions': audit_actions[:4],
+        }
+
+    @classmethod
+    def _workspace_action_for_chain(
+        cls,
+        chain: Dict[str, Any] | None,
+        *,
+        key: str,
+    ) -> Dict[str, Any]:
+        defaults = cls.DUTY_ACTION_DEFAULTS[key]
+        return cls._duty_action(
+            command='open_workspace',
+            label=defaults['label'],
+            tone=defaults['tone'],
+            chain_key=key,
+            chain_label=(chain or {}).get('label') or cls.RUNBOOK_BASE[key]['label'],
+            workspace_target=(chain or {}).get('workspace_target')
+            or defaults['workspace_target'],
+            card_target=(chain or {}).get('card_target') or defaults['card_target'],
+            incident_target=(chain or {}).get('incident_target')
+            or defaults['incident_target'],
+            workspace_brief=(chain or {}).get('workspace_brief')
+            or defaults['workspace_brief'],
+        )
+
+    @classmethod
+    def _duty_action(
+        cls,
+        *,
+        command: str,
+        label: str,
+        tone: str,
+        chain_key: str,
+        chain_label: str,
+        workspace_target: str,
+        card_target: str,
+        incident_target: str,
+        workspace_brief: str,
+    ) -> Dict[str, Any]:
+        return {
+            'command': command,
+            'label': label,
+            'tone': tone,
+            'chain_key': chain_key,
+            'chain_label': chain_label,
+            'workspace_target': workspace_target,
+            'workspace_target_label': cls._workspace_target_label(workspace_target),
+            'card_target': card_target,
+            'card_target_label': cls._card_target_label(card_target),
+            'incident_target': incident_target,
+            'incident_target_label': cls._incident_target_label(incident_target),
+            'workspace_brief': cls._compact_text(workspace_brief, max_length=96),
+        }
+
+    @classmethod
     def build_summary(cls, uid: str) -> Dict[str, Any]:
         activity = HistoryService.get_recent_activity(uid, limit=8)
         jobs = JobService.list_jobs(uid, limit=12)
@@ -1594,8 +1885,9 @@ class DashboardService:
         analysis_count = HistoryService.count_activity(uid, activity_type='analysis', status='success')
         model_count = JobService.count_jobs(uid, job_type='ml_train', status='succeeded')
 
+        service_statuses = cls._service_statuses()
         alerts: List[Dict[str, Any]] = []
-        for status in cls._service_statuses():
+        for status in service_statuses:
             if status['status'] != 'ok':
                 alerts.append(
                     {
@@ -1650,8 +1942,14 @@ class DashboardService:
                 }
             )
 
+        duty_summary = cls._build_duty_summary(
+            asset_summary=asset_summary,
+            service_statuses=service_statuses,
+            alerts=alerts,
+        )
+
         return {
-            'system_status': cls._service_statuses(),
+            'system_status': service_statuses,
             'kpis': {
                 'dataset_count': dataset_count,
                 'analysis_count': analysis_count,
@@ -1659,6 +1957,7 @@ class DashboardService:
                 'jobs_24h': recent_jobs_24h,
                 'failed_jobs': failed_jobs,
             },
+            'duty_summary': duty_summary,
             'recent_jobs': jobs[:6],
             'recent_assets': recent_assets,
             'recent_history': activity,

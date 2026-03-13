@@ -9,6 +9,7 @@ import '../../config/app_theme.dart';
 import '../../models/analysis_result.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
+import '../../models/workbench_launch_context.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
 import '../operations/incident_card_header.dart';
@@ -17,6 +18,7 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
   const DataAnalysisOperationsBoard({
     super.key,
     required this.chain,
+    this.continuationContext,
     required this.currentUser,
     required this.pickedFile,
     required this.analysisResult,
@@ -28,6 +30,7 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
   });
 
   final AssetChainSummary? chain;
+  final WorkbenchLaunchContext? continuationContext;
   final User? currentUser;
   final PlatformFile? pickedFile;
   final AnalysisResult? analysisResult;
@@ -56,7 +59,7 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
     final backgroundRecommended =
         (pickedFile?.size ?? 0) >= 5 * 1024 * 1024 ||
         (analysisResult?.basicInfo.rows ?? 0) >= 50000;
-    final focusArea = _operationsFocusArea(chain);
+    final focusArea = _operationsFocusArea(chain, continuationContext);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,6 +68,7 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
           title: '运营态概览',
           subtitle: '把执行策略、任务健康、资产沉淀和 AI 准备度放到同一视图，减少在分析完成后的额外判断。',
           chain: chain,
+          continuationContext: continuationContext,
           icon: Icons.radar_rounded,
         ),
         const SizedBox(height: 16),
@@ -83,13 +87,20 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     : Icons.bolt_rounded,
                 highlighted: focusArea == 'strategy',
                 workspaceLabel: focusArea == 'strategy'
-                    ? chain?.workspaceTargetLabel
+                    ? continuationContext?.workspaceTargetLabel ??
+                          chain?.workspaceTargetLabel
                     : null,
-                cardLabel: focusArea == 'strategy' ? chain?.cardTargetLabel : null,
+                cardLabel: focusArea == 'strategy'
+                    ? continuationContext?.cardTargetLabel ??
+                          chain?.cardTargetLabel
+                    : null,
                 incidentLabel: focusArea == 'strategy'
-                    ? chain?.incidentTargetLabel
+                    ? continuationContext?.incidentTargetLabel ??
+                          chain?.incidentTargetLabel
                     : null,
-                summary: focusArea == 'strategy' ? chain?.workspaceBrief : null,
+                summary: focusArea == 'strategy'
+                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -151,13 +162,20 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     : Icons.monitor_heart_rounded,
                 highlighted: focusArea == 'task',
                 workspaceLabel: focusArea == 'task'
-                    ? chain?.workspaceTargetLabel
+                    ? continuationContext?.workspaceTargetLabel ??
+                          chain?.workspaceTargetLabel
                     : null,
-                cardLabel: focusArea == 'task' ? chain?.cardTargetLabel : null,
+                cardLabel: focusArea == 'task'
+                    ? continuationContext?.cardTargetLabel ??
+                          chain?.cardTargetLabel
+                    : null,
                 incidentLabel: focusArea == 'task'
-                    ? chain?.incidentTargetLabel
+                    ? continuationContext?.incidentTargetLabel ??
+                          chain?.incidentTargetLabel
                     : null,
-                summary: focusArea == 'task' ? chain?.workspaceBrief : null,
+                summary: focusArea == 'task'
+                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -190,13 +208,20 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                 icon: assetReady ? Icons.route_rounded : Icons.route_outlined,
                 highlighted: focusArea == 'asset',
                 workspaceLabel: focusArea == 'asset'
-                    ? chain?.workspaceTargetLabel
+                    ? continuationContext?.workspaceTargetLabel ??
+                          chain?.workspaceTargetLabel
                     : null,
-                cardLabel: focusArea == 'asset' ? chain?.cardTargetLabel : null,
+                cardLabel: focusArea == 'asset'
+                    ? continuationContext?.cardTargetLabel ??
+                          chain?.cardTargetLabel
+                    : null,
                 incidentLabel: focusArea == 'asset'
-                    ? chain?.incidentTargetLabel
+                    ? continuationContext?.incidentTargetLabel ??
+                          chain?.incidentTargetLabel
                     : null,
-                summary: focusArea == 'asset' ? chain?.workspaceBrief : null,
+                summary: focusArea == 'asset'
+                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -243,13 +268,20 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                     : Icons.fact_check_rounded,
                 highlighted: focusArea == 'quality',
                 workspaceLabel: focusArea == 'quality'
-                    ? chain?.workspaceTargetLabel
+                    ? continuationContext?.workspaceTargetLabel ??
+                          chain?.workspaceTargetLabel
                     : null,
-                cardLabel: focusArea == 'quality' ? chain?.cardTargetLabel : null,
+                cardLabel: focusArea == 'quality'
+                    ? continuationContext?.cardTargetLabel ??
+                          chain?.cardTargetLabel
+                    : null,
                 incidentLabel: focusArea == 'quality'
-                    ? chain?.incidentTargetLabel
+                    ? continuationContext?.incidentTargetLabel ??
+                          chain?.incidentTargetLabel
                     : null,
-                summary: focusArea == 'quality' ? chain?.workspaceBrief : null,
+                summary: focusArea == 'quality'
+                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -514,8 +546,11 @@ class _SchemaMix {
   }
 }
 
-String _operationsFocusArea(AssetChainSummary? chain) {
-  switch (chain?.cardTarget) {
+String _operationsFocusArea(
+  AssetChainSummary? chain,
+  WorkbenchLaunchContext? continuationContext,
+) {
+  switch (continuationContext?.cardTarget ?? chain?.cardTarget) {
     case 'strategy':
       return 'strategy';
     case 'job_health':
@@ -540,28 +575,16 @@ String _operationsFocusArea(AssetChainSummary? chain) {
     case 'data_analysis_results':
       return 'quality';
   }
-  switch (chain?.focusTarget) {
-    case 'dataset_job_panel':
-      return 'task';
-    case 'dataset_current_asset':
-      return 'asset';
-    case 'dataset_reference_asset':
-    case 'dataset_drift_report':
-    case 'dataset_governance_decision':
-    case 'dataset_results':
-      return 'quality';
-    default:
-      if (chain?.status == 'active' || chain?.status == 'incident') {
-        return 'task';
-      }
-      if (chain?.status == 'action') {
-        return 'asset';
-      }
-      if (chain?.status == 'watch') {
-        return 'quality';
-      }
-      return 'strategy';
+  if (chain?.status == 'active' || chain?.status == 'incident') {
+    return 'task';
   }
+  if (chain?.status == 'action') {
+    return 'asset';
+  }
+  if (chain?.status == 'watch') {
+    return 'quality';
+  }
+  return 'strategy';
 }
 
 Widget _highlightShell({

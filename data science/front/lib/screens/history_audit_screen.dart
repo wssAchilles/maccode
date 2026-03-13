@@ -119,7 +119,9 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                   HistoryAuditOverview(
                     kpis: summary?.kpis,
                     jobs: _jobsViewModel.jobs,
+                    dutySummary: summary?.dutySummary,
                     assetSummary: summary?.assetSummary,
+                    dutyActions: summary?.dutySummary.auditActions ?? const [],
                     activityCount: activity.length,
                     recordCount: _historyViewModel.records.length,
                     selectedType: _selectedType,
@@ -133,12 +135,14 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                     onClearFilters: () {
                       _applyFilters(type: null, status: null);
                     },
+                    onDutyAction: _handleDutyAction,
                   ),
                   const SizedBox(height: 20),
                   if ((summary?.assetSummary.governance.isNotEmpty ??
                       false)) ...[
                     HistoryDispositionBoard(
                       assetSummary: summary!.assetSummary,
+                      dutySummary: summary.dutySummary,
                       jobs: _jobsViewModel.jobs,
                       records: _historyViewModel.records,
                       onGovernanceAction: _handleGovernanceAction,
@@ -162,6 +166,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                     jobs: _jobsViewModel.jobs,
                     records: _historyViewModel.records,
                     assetSummary: summary?.assetSummary,
+                    dutySummary: summary?.dutySummary,
                     alerts: summary?.alerts ?? const <DashboardAlert>[],
                     onOpenAiLab: widget.onOpenAiLab,
                     onOpenDataAnalysis: widget.onOpenDataAnalysis,
@@ -305,6 +310,10 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
 
   void _handleGovernanceAction(AssetGovernanceItem item) {
     final sourceLabel = _chainSourceLabel(item.key, prefix: '风险处置中心');
+    final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+        .cast<AssetChainSummary?>()
+        .firstWhere((entry) => entry?.key == item.key, orElse: () => null);
+    final context = buildLaunchContextFromChain(chain, prefix: '风险处置中心');
     switch (item.key) {
       case 'dataset':
         _applyFilters(
@@ -312,7 +321,10 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
           status: item.failedJobs > 0 ? 'failed' : null,
         );
         widget.onOpenDataAnalysis?.call(
-          DataAnalysisLaunchIntent.workspace(sourceLabel: sourceLabel),
+          DataAnalysisLaunchIntent.workspace(
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'model':
@@ -321,7 +333,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
           status: item.failedJobs > 0 ? 'failed' : null,
         );
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.deepLearning('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.deepLearning(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'knowledge':
@@ -330,7 +346,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
           status: item.failedJobs > 0 ? 'failed' : null,
         );
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.rag(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'optimization':
@@ -339,7 +359,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
           status: item.failedJobs > 0 ? 'failed' : null,
         );
         widget.onOpenOptimization?.call(
-          OptimizationLaunchIntent(sourceLabel: sourceLabel),
+          OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
         );
         break;
     }
@@ -362,33 +382,135 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     }
   }
 
+  void _handleDutyAction(DutyAction action) {
+    switch (action.command) {
+      case 'open_workspace':
+        final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+            .cast<AssetChainSummary?>()
+            .firstWhere((item) => item?.key == action.chainKey, orElse: () => null);
+        if (chain != null) {
+          final context = buildLaunchContextFromDutyAction(
+            action,
+            prefix: '值班动作',
+          );
+          final sourceLabel = context.sourceLabel;
+          switch (chain.key) {
+            case 'dataset':
+              widget.onOpenDataAnalysis?.call(
+                DataAnalysisLaunchIntent.workspace(
+                  sourceLabel: sourceLabel,
+                  context: context,
+                ),
+              );
+              return;
+            case 'model':
+              widget.onOpenAiLab?.call(
+                AiLabLaunchIntent.deepLearning(
+                  '',
+                  sourceLabel: sourceLabel,
+                  context: context,
+                ),
+              );
+              return;
+            case 'knowledge':
+              widget.onOpenAiLab?.call(
+                AiLabLaunchIntent.rag(
+                  '',
+                  sourceLabel: sourceLabel,
+                  context: context,
+                ),
+              );
+              return;
+            case 'optimization':
+              widget.onOpenOptimization?.call(
+                OptimizationLaunchIntent(
+                  sourceLabel: sourceLabel,
+                  context: context,
+                ),
+              );
+              return;
+          }
+          return;
+        }
+        _openChainWorkspace(action.chainKey);
+        return;
+      case 'filter_failed':
+        _applyFilterForChain(action.chainKey, 'failed');
+        return;
+      case 'filter_running':
+        _applyFilterForChain(action.chainKey, 'running');
+        return;
+      case 'clear_filters':
+        _applyFilters(type: null, status: null);
+        return;
+    }
+  }
+
+  void _applyFilterForChain(String key, String status) {
+    switch (key) {
+      case 'dataset':
+        _applyFilters(type: 'analysis', status: status);
+        return;
+      case 'model':
+        _applyFilters(type: 'ml_train', status: status);
+        return;
+      case 'knowledge':
+        _applyFilters(type: 'rag_ingest', status: status);
+        return;
+      case 'optimization':
+        _applyFilters(type: 'optimization', status: status);
+        return;
+      default:
+        _applyFilters(type: null, status: status);
+    }
+  }
+
   void _openChainWorkspace(String key) {
     final sourceLabel = _chainSourceLabel(key, prefix: '统一审计事件流');
+    final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+        .cast<AssetChainSummary?>()
+        .firstWhere((item) => item?.key == key, orElse: () => null);
+    final context = buildLaunchContextFromChain(
+      chain,
+      prefix: '统一审计事件流',
+    );
     switch (key) {
       case 'dataset':
         widget.onOpenDataAnalysis?.call(
-          DataAnalysisLaunchIntent.workspace(sourceLabel: sourceLabel),
+          DataAnalysisLaunchIntent.workspace(
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'model':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.deepLearning('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.deepLearning(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'knowledge':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.rag(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'optimization':
         widget.onOpenOptimization?.call(
-          OptimizationLaunchIntent(sourceLabel: sourceLabel),
+          OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
         );
         break;
     }
   }
 
   void _openChainSummary(AssetChainSummary chain, {required String prefix}) {
+    final context = buildLaunchContextFromChain(chain, prefix: prefix);
     final sourceLabel = buildChainSourceLabel(
       chain,
       prefix: prefix,
@@ -397,22 +519,33 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     switch (chain.key) {
       case 'dataset':
         widget.onOpenDataAnalysis?.call(
-          DataAnalysisLaunchIntent.workspace(sourceLabel: sourceLabel),
+          DataAnalysisLaunchIntent.workspace(
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'model':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.deepLearning('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.deepLearning(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'knowledge':
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.rag(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'optimization':
         widget.onOpenOptimization?.call(
-          OptimizationLaunchIntent(sourceLabel: sourceLabel),
+          OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
         );
         break;
     }
@@ -501,29 +634,47 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       chain.key,
       prefix: '${chain.label} ${chain.jobId.substring(0, 8)}',
     );
+    final chainSummary = _dashboardViewModel.summary?.assetSummary.chainSummaries
+        .cast<AssetChainSummary?>()
+        .firstWhere((item) => item?.key == chain.key, orElse: () => null);
+    final context = buildLaunchContextFromChain(
+      chainSummary,
+      prefix: '${chain.label} ${chain.jobId.substring(0, 8)}',
+    );
     switch (chain.key) {
       case 'dataset':
         _applyFilters(type: 'analysis', status: 'failed');
         widget.onOpenDataAnalysis?.call(
-          DataAnalysisLaunchIntent.workspace(sourceLabel: sourceLabel),
+          DataAnalysisLaunchIntent.workspace(
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'model':
         _applyFilters(type: 'ml_train', status: 'failed');
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.deepLearning('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.deepLearning(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'knowledge':
         _applyFilters(type: 'rag_ingest', status: 'failed');
         widget.onOpenAiLab?.call(
-          AiLabLaunchIntent.rag('', sourceLabel: sourceLabel),
+          AiLabLaunchIntent.rag(
+            '',
+            sourceLabel: sourceLabel,
+            context: context,
+          ),
         );
         break;
       case 'optimization':
         _applyFilters(type: 'optimization', status: 'failed');
         widget.onOpenOptimization?.call(
-          OptimizationLaunchIntent(sourceLabel: sourceLabel),
+          OptimizationLaunchIntent(sourceLabel: sourceLabel, context: context),
         );
         break;
     }

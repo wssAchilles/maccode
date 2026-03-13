@@ -4,6 +4,7 @@ library;
 import 'analysis_result.dart';
 import 'history_record.dart';
 import 'job_record.dart';
+import 'workbench_launch_context.dart';
 
 class DataAnalysisLaunchIntent {
   const DataAnalysisLaunchIntent({
@@ -12,6 +13,7 @@ class DataAnalysisLaunchIntent {
     this.filename,
     this.savedAsAsset = false,
     this.sourceLabel,
+    this.context,
   });
 
   final AnalysisResult? analysisResult;
@@ -19,13 +21,18 @@ class DataAnalysisLaunchIntent {
   final String? filename;
   final bool savedAsAsset;
   final String? sourceLabel;
+  final WorkbenchLaunchContext? context;
 
   bool get canHydrate => analysisResult != null;
 
-  factory DataAnalysisLaunchIntent.workspace({String? sourceLabel}) {
+  factory DataAnalysisLaunchIntent.workspace({
+    String? sourceLabel,
+    WorkbenchLaunchContext? context,
+  }) {
     return DataAnalysisLaunchIntent(
       analysisResult: null,
       sourceLabel: sourceLabel,
+      context: context,
     );
   }
 
@@ -36,6 +43,7 @@ class DataAnalysisLaunchIntent {
       filename: record.filename,
       savedAsAsset: (record.storageUrl?.isNotEmpty ?? false),
       sourceLabel: record.filename,
+      context: null,
     );
   }
 
@@ -59,6 +67,7 @@ class DataAnalysisLaunchIntent {
           ? retained
           : (storagePath != null && storagePath.isNotEmpty),
       sourceLabel: '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      context: null,
     );
   }
 
