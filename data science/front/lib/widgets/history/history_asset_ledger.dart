@@ -1167,30 +1167,39 @@ class _DatasetLedgerTile extends StatelessWidget {
         _LedgerMetaRow(label: '存储路径', value: record.storageUrl ?? '未归档'),
         _LedgerMetaRow(label: '来源链路', value: 'CSV -> Analysis -> Asset'),
       ],
+      recommendedActionKey: _recommendedDatasetLedgerAction(
+        chain,
+        canReplayAnalysis: onOpenDataAnalysis != null && record.summary != null,
+        canSendTraining:
+            onOpenAiLab != null && (record.storageUrl?.isNotEmpty ?? false),
+      ),
       actions: [
         if (onOpenDataAnalysis != null && record.summary != null)
-          FilledButton.tonalIcon(
-            onPressed: () => onOpenDataAnalysis!(
+          WorkspaceActionLaneAction(
+            label: '回放分析',
+            icon: Icons.analytics_rounded,
+            semanticKey: 'replay_analysis',
+            onTap: () => onOpenDataAnalysis!(
               DataAnalysisLaunchIntent.fromHistoryRecord(
                 record,
                 sourceLabel: replaySourceLabel,
                 context: replayContext,
               ),
             ),
-            icon: const Icon(Icons.analytics_rounded),
-            label: const Text('回放分析'),
+            tone: WorkspaceActionLaneTone.tonal,
           ),
         if (onOpenAiLab != null && (record.storageUrl?.isNotEmpty ?? false))
-          OutlinedButton.icon(
-            onPressed: () => onOpenAiLab!(
+          WorkspaceActionLaneAction(
+            label: '送入训练',
+            icon: Icons.model_training_rounded,
+            semanticKey: 'send_training',
+            onTap: () => onOpenAiLab!(
               AiLabLaunchIntent.fromHistoryRecordForTraining(
                 record,
                 sourceLabel: trainingSourceLabel,
                 context: trainingContext,
               ),
             ),
-            icon: const Icon(Icons.model_training_rounded),
-            label: const Text('送入训练'),
           ),
       ],
     );
@@ -1243,18 +1252,21 @@ class _ModelLedgerTile extends StatelessWidget {
           value: 'Dataset -> Sequence -> Train -> Artifact',
         ),
       ],
+      recommendedActionKey: 'apply_model_asset',
       actions: [
         if (onOpenAiLab != null)
-          FilledButton.tonalIcon(
-            onPressed: () => onOpenAiLab!(
+          WorkspaceActionLaneAction(
+            label: '回填训练入口',
+            icon: Icons.restart_alt_rounded,
+            semanticKey: 'apply_model_asset',
+            onTap: () => onOpenAiLab!(
               AiLabLaunchIntent.fromTrainingJob(
                 job,
                 sourceLabel: sourceLabel,
                 context: launchContext,
               ),
             ),
-            icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('回填训练入口'),
+            tone: WorkspaceActionLaneTone.tonal,
           ),
       ],
     );
@@ -1312,18 +1324,21 @@ class _KnowledgeLedgerTile extends StatelessWidget {
           value: 'Docs -> Parse -> Embed -> Collection',
         ),
       ],
+      recommendedActionKey: 'apply_knowledge_asset',
       actions: [
         if (onOpenAiLab != null)
-          FilledButton.tonalIcon(
-            onPressed: () => onOpenAiLab!(
+          WorkspaceActionLaneAction(
+            label: '回填知识入口',
+            icon: Icons.hub_rounded,
+            semanticKey: 'apply_knowledge_asset',
+            onTap: () => onOpenAiLab!(
               AiLabLaunchIntent.fromRagJob(
                 job,
                 sourceLabel: sourceLabel,
                 context: launchContext,
               ),
             ),
-            icon: const Icon(Icons.hub_rounded),
-            label: const Text('回填知识入口'),
+            tone: WorkspaceActionLaneTone.tonal,
           ),
       ],
     );
@@ -1383,18 +1398,21 @@ class _OptimizationLedgerTile extends StatelessWidget {
           value: 'Scenario -> Forecast -> Solver -> Strategy',
         ),
       ],
+      recommendedActionKey: 'replay_optimization',
       actions: [
         if (onOpenOptimization != null)
-          FilledButton.tonalIcon(
-            onPressed: () => onOpenOptimization!(
+          WorkspaceActionLaneAction(
+            label: '回放优化',
+            icon: Icons.bolt_rounded,
+            semanticKey: 'replay_optimization',
+            onTap: () => onOpenOptimization!(
               OptimizationLaunchIntent.fromJob(
                 job,
                 sourceLabel: sourceLabel,
                 context: launchContext,
               ),
             ),
-            icon: const Icon(Icons.bolt_rounded),
-            label: const Text('回放优化'),
+            tone: WorkspaceActionLaneTone.tonal,
           ),
       ],
     );
@@ -1407,6 +1425,7 @@ class _LedgerTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.metaRows,
+    this.recommendedActionKey,
     required this.actions,
   });
 
@@ -1414,7 +1433,8 @@ class _LedgerTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final List<_LedgerMetaRow> metaRows;
-  final List<Widget> actions;
+  final String? recommendedActionKey;
+  final List<WorkspaceActionLaneAction> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -1443,12 +1463,46 @@ class _LedgerTile extends StatelessWidget {
           ],
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: actions),
+            WorkspaceInlineActionBar(
+              recommendedActionKey: recommendedActionKey,
+              actions: actions,
+            ),
           ],
         ],
       ),
     );
   }
+}
+
+String? _recommendedDatasetLedgerAction(
+  AssetChainSummary? chain, {
+  required bool canReplayAnalysis,
+  required bool canSendTraining,
+}) {
+  final cardTarget = chain?.cardTarget;
+  if (cardTarget == 'current_asset' ||
+      cardTarget == 'schema_topology' ||
+      cardTarget == 'field_distribution' ||
+      cardTarget == 'risk_digest' ||
+      cardTarget == 'next_actions' ||
+      cardTarget == 'drift_report' ||
+      cardTarget == 'governance_decision') {
+    if (canReplayAnalysis) {
+      return 'replay_analysis';
+    }
+  }
+  if (cardTarget == 'runtime_product' || cardTarget == 'registry_snapshot') {
+    if (canSendTraining) {
+      return 'send_training';
+    }
+  }
+  if (canReplayAnalysis) {
+    return 'replay_analysis';
+  }
+  if (canSendTraining) {
+    return 'send_training';
+  }
+  return null;
 }
 
 class _LedgerMetaRow {

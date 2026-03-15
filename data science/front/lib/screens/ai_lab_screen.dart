@@ -39,12 +39,14 @@ class AiLabScreen extends StatefulWidget {
     required this.dashboardViewModel,
     this.launchIntent,
     this.onLaunchIntentHandled,
+    this.isActive = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
   final DashboardViewModel dashboardViewModel;
   final AiLabLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
+  final bool isActive;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -54,12 +56,10 @@ class AiLabScreen extends StatefulWidget {
 enum _AiLabTab { deepLearning, rag }
 
 class _AiLabScreenState extends State<AiLabScreen> {
-  final _trainingStorageController = TextEditingController(
-    text: 'demo_data.csv',
-  );
-  final _trainingTargetController = TextEditingController(text: 'Load');
-  final _ragStorageController = TextEditingController(text: 'docs/');
-  final _ragCollectionController = TextEditingController(text: 'default');
+  final _trainingStorageController = TextEditingController();
+  final _trainingTargetController = TextEditingController();
+  final _ragStorageController = TextEditingController();
+  final _ragCollectionController = TextEditingController();
   final _ragQuestionController = TextEditingController();
   final _ragScrollController = ScrollController();
 
@@ -72,15 +72,24 @@ class _AiLabScreenState extends State<AiLabScreen> {
   _AiLabTab? _activeLaunchTab;
   WorkbenchLaunchContext? _activeLaunchContext;
   bool _resetCollection = false;
+  bool _didSeedTrainingDefaults = false;
+  bool _didSeedKnowledgeDefaults = false;
+  bool _suppressInputRefresh = false;
 
   @override
   void initState() {
     super.initState();
     widget.dashboardViewModel.initialize();
+    widget.dashboardViewModel.addListener(_handleDashboardSummaryChanged);
+    _trainingStorageController.addListener(_handleInputControllersChanged);
+    _trainingTargetController.addListener(_handleInputControllersChanged);
+    _ragStorageController.addListener(_handleInputControllersChanged);
+    _ragCollectionController.addListener(_handleInputControllersChanged);
     _trainingJobsViewModel = JobViewModel(jobType: 'ml_train', limit: 8);
     _ragJobsViewModel = JobViewModel(jobType: 'rag_ingest', limit: 8);
     _ragViewModel = RagViewModel();
     _applyLaunchIntent(widget.launchIntent);
+    _handleDashboardSummaryChanged();
     _trainingJobsViewModel.loadJobs();
     _ragJobsViewModel.loadJobs();
   }
@@ -91,10 +100,18 @@ class _AiLabScreenState extends State<AiLabScreen> {
     if (widget.launchIntent != oldWidget.launchIntent) {
       _applyLaunchIntent(widget.launchIntent);
     }
+    if (widget.isActive && !oldWidget.isActive) {
+      _handleDashboardSummaryChanged();
+    }
   }
 
   @override
   void dispose() {
+    widget.dashboardViewModel.removeListener(_handleDashboardSummaryChanged);
+    _trainingStorageController.removeListener(_handleInputControllersChanged);
+    _trainingTargetController.removeListener(_handleInputControllersChanged);
+    _ragStorageController.removeListener(_handleInputControllersChanged);
+    _ragCollectionController.removeListener(_handleInputControllersChanged);
     _trainingStorageController.dispose();
     _trainingTargetController.dispose();
     _ragStorageController.dispose();
@@ -109,13 +126,29 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   Future<void> _submitTrainingJob() async {
     final chain = _chainForKey('model');
+    final resolvedStoragePath = _resolvedTrainingStoragePath(
+      widget.dashboardViewModel.summary?.assetSummary,
+    );
+    final resolvedTargetColumn = _resolvedTrainingTargetColumn(
+      widget.dashboardViewModel.summary?.assetSummary,
+    );
+    if (resolvedStoragePath != null &&
+        resolvedStoragePath != _trainingStorageController.text.trim()) {
+      _trainingStorageController.text = resolvedStoragePath;
+    }
+    if (resolvedTargetColumn != null &&
+        resolvedTargetColumn != _trainingTargetController.text.trim()) {
+      _trainingTargetController.text = resolvedTargetColumn;
+    }
     final job = await _trainingJobsViewModel.submitMlTrainJob(
-      storagePath: _trainingStorageController.text.trim(),
+      storagePath:
+          resolvedStoragePath ?? _trainingStorageController.text.trim(),
       modelType: _config.modelTypeValue,
       epochs: _config.epochs,
       batchSize: _config.batchSize,
       windowSize: _config.windowSize,
-      targetColumn: _trainingTargetController.text.trim(),
+      targetColumn:
+          resolvedTargetColumn ?? _trainingTargetController.text.trim(),
     );
 
     if (!mounted) {
@@ -134,11 +167,11 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
 
-    final message = _trainingJobsViewModel.errorMessage;
+    final message = _normalizeJobErrorMessage(
+      _trainingJobsViewModel.errorMessage,
+    );
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      _showFeedback(message, color: AppColors.error);
     }
   }
 
@@ -166,11 +199,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
 
-    final message = _ragJobsViewModel.errorMessage;
+    final message = _normalizeJobErrorMessage(_ragJobsViewModel.errorMessage);
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      _showFeedback(message, color: AppColors.error);
     }
   }
 
@@ -209,20 +240,382 @@ class _AiLabScreenState extends State<AiLabScreen> {
         .firstWhere((item) => item?.key == key, orElse: () => null);
   }
 
-  String _chainSourceLabel(AssetChainSummary? chain, {required String prefix}) {
-    return buildChainSourceLabel(
-      chain,
-      prefix: prefix,
-      includeWorkspaceBrief: true,
-    );
-  }
-
   String _chainFeedbackMessage(
     AssetChainSummary? chain, {
     required String prefix,
     String? detail,
   }) {
     return buildChainFeedbackMessage(chain, prefix: prefix, detail: detail);
+  }
+
+  String _chainAssetActionMessage(
+    AssetChainSummary? chain, {
+    required String prefix,
+    String? detail,
+  }) {
+    return buildChainActionFeedbackMessage(
+      chain,
+      prefix: prefix,
+      detail: detail,
+    );
+  }
+
+  String? _normalizeJobErrorMessage(String? message) {
+    if (message == null || message.trim().isEmpty) {
+      return null;
+    }
+    if (message.contains('HTTP 503') ||
+        message.contains('JOB_BACKEND_UNAVAILABLE')) {
+      return '当前部署环境未启用 Firestore Native 模式，任务中心暂不可用';
+    }
+    if (message.contains('No such object') ||
+        (message.contains('status code') && message.contains('404'))) {
+      return '存储路径不存在，请改用已上传资产的 storage path（例如 uploads/...）';
+    }
+    return message;
+  }
+
+  void _handleDashboardSummaryChanged() {
+    final summary = widget.dashboardViewModel.summary;
+    if (summary == null) {
+      return;
+    }
+    _seedInputDefaultsFromSummary(summary.assetSummary, summary.recentAssets);
+    _normalizeDefaultEntryState(summary.assetSummary);
+  }
+
+  void _handleInputControllersChanged() {
+    if (!mounted || _suppressInputRefresh) {
+      return;
+    }
+    setState(() {});
+  }
+
+  void _seedInputDefaultsFromSummary(
+    AssetSummary assetSummary,
+    List<DatasetAsset> recentAssets,
+  ) {
+    final preferredDatasetPath = _bestDatasetPath(assetSummary.datasets);
+    final latestDatasetPath = _firstNonEmptyString([
+      preferredDatasetPath,
+      ...recentAssets.map((item) => _storagePathFromGsUrl(item.storageUrl)),
+      assetSummary.models.isNotEmpty
+          ? assetSummary.models.first.storagePath
+          : null,
+    ]);
+    final latestModel = assetSummary.models.isEmpty
+        ? null
+        : assetSummary.models.first;
+    final latestKnowledgeAsset = assetSummary.knowledgeBases.isEmpty
+        ? null
+        : assetSummary.knowledgeBases.first;
+    final preferredTrainingPath = _firstNonEmptyString([
+      latestModel?.storagePath,
+      preferredDatasetPath,
+      latestDatasetPath,
+    ]);
+    final currentTrainingPath = _trainingStorageController.text.trim();
+    final shouldPromoteModelTrainingPath =
+        latestModel?.storagePath != null &&
+        latestModel!.storagePath!.isNotEmpty &&
+        currentTrainingPath != latestModel.storagePath &&
+        (currentTrainingPath.isEmpty ||
+            currentTrainingPath == 'demo_data.csv' ||
+            currentTrainingPath.endsWith('optimization_result.csv'));
+
+    if ((!_didSeedTrainingDefaults &&
+            (currentTrainingPath.isEmpty ||
+                currentTrainingPath == 'demo_data.csv')) ||
+        shouldPromoteModelTrainingPath) {
+      var seededTraining = false;
+      if (preferredTrainingPath != null && preferredTrainingPath.isNotEmpty) {
+        _trainingStorageController.text = preferredTrainingPath;
+        seededTraining = true;
+      }
+      if ((_trainingTargetController.text.trim().isEmpty ||
+              _trainingTargetController.text.trim() == 'Load') &&
+          latestModel?.targetColumn != null &&
+          latestModel!.targetColumn!.isNotEmpty) {
+        _trainingTargetController.text = latestModel.targetColumn!;
+        seededTraining = true;
+      }
+      _didSeedTrainingDefaults = seededTraining;
+    }
+
+    if (latestModel != null) {
+      final shouldHydrateTrainingPath =
+          _trainingStorageController.text.trim().isEmpty ||
+          _trainingStorageController.text.trim() == 'demo_data.csv' ||
+          _trainingStorageController.text.trim().endsWith(
+            'optimization_result.csv',
+          );
+      if (shouldHydrateTrainingPath &&
+          latestModel.storagePath != null &&
+          latestModel.storagePath!.isNotEmpty) {
+        _trainingStorageController.text = latestModel.storagePath!;
+        _didSeedTrainingDefaults = true;
+      }
+      if ((_trainingTargetController.text.trim().isEmpty ||
+              shouldHydrateTrainingPath) &&
+          latestModel.targetColumn != null &&
+          latestModel.targetColumn!.isNotEmpty) {
+        _trainingTargetController.text = latestModel.targetColumn!;
+        _didSeedTrainingDefaults = true;
+      }
+    }
+
+    if (!_didSeedKnowledgeDefaults &&
+        (_ragStorageController.text.trim().isEmpty ||
+            _ragStorageController.text.trim() == 'docs/')) {
+      var seededKnowledge = false;
+      final candidateKnowledgePath = _firstNonEmptyString([
+        latestKnowledgeAsset?.storagePath,
+        preferredDatasetPath,
+        latestDatasetPath,
+        latestModel?.storagePath,
+      ]);
+      if (candidateKnowledgePath != null && candidateKnowledgePath.isNotEmpty) {
+        _ragStorageController.text = candidateKnowledgePath;
+        seededKnowledge = true;
+      }
+      if (_ragCollectionController.text.trim().isEmpty ||
+          _ragCollectionController.text.trim() == 'default') {
+        final collection = _firstNonEmptyString([
+          latestKnowledgeAsset?.collection,
+          'default',
+        ]);
+        if (collection != null && collection.isNotEmpty) {
+          _ragCollectionController.text = collection;
+          seededKnowledge = true;
+        }
+      }
+      _didSeedKnowledgeDefaults = seededKnowledge;
+    }
+  }
+
+  void _normalizeDefaultEntryState(AssetSummary assetSummary) {
+    if (widget.launchIntent != null) {
+      return;
+    }
+
+    final resolvedTrainingPath = _resolvedTrainingStoragePath(assetSummary);
+    if (resolvedTrainingPath == null || resolvedTrainingPath.isEmpty) {
+      return;
+    }
+
+    final currentTrainingPath = _trainingStorageController.text.trim();
+    final shouldHydrateTraining = _needsTrainingPathRepair(currentTrainingPath);
+    if (!shouldHydrateTraining) {
+      return;
+    }
+
+    final chain = _chainForKey('model');
+    final context = buildLaunchContextFromChain(chain, prefix: '侧栏进入 AI Lab');
+
+    if (mounted) {
+      setState(() {
+        _currentTab = _AiLabTab.deepLearning;
+        _activeLaunchTab = _AiLabTab.deepLearning;
+        _activeLaunchContext = context;
+        _trainingStorageController.text = resolvedTrainingPath;
+        final resolvedTargetColumn = _resolvedTrainingTargetColumn(
+          assetSummary,
+        );
+        if (resolvedTargetColumn != null && resolvedTargetColumn.isNotEmpty) {
+          _trainingTargetController.text = resolvedTargetColumn;
+        }
+        _didSeedTrainingDefaults = true;
+      });
+      return;
+    }
+
+    _currentTab = _AiLabTab.deepLearning;
+    _activeLaunchTab = _AiLabTab.deepLearning;
+    _activeLaunchContext = context;
+    _trainingStorageController.text = resolvedTrainingPath;
+    final resolvedTargetColumn = _resolvedTrainingTargetColumn(assetSummary);
+    if (resolvedTargetColumn != null && resolvedTargetColumn.isNotEmpty) {
+      _trainingTargetController.text = resolvedTargetColumn;
+    }
+    _didSeedTrainingDefaults = true;
+  }
+
+  String? _resolvedTrainingStoragePath(AssetSummary? assetSummary) {
+    final latestSucceededArtifact = _latestSucceededTrainingArtifact();
+    final latestModel = assetSummary?.models.isNotEmpty == true
+        ? assetSummary!.models.first
+        : null;
+    final currentTrainingPath = _trainingStorageController.text.trim();
+    if (!_needsTrainingPathRepair(currentTrainingPath)) {
+      return currentTrainingPath.isEmpty ? null : currentTrainingPath;
+    }
+    return _firstNonEmptyString([
+      latestSucceededArtifact?.result['storage_path']?.toString(),
+      latestSucceededArtifact?.input['storage_path']?.toString(),
+      latestModel?.storagePath,
+      _bestDatasetPath(assetSummary?.datasets ?? const []),
+    ]);
+  }
+
+  String? _resolvedTrainingTargetColumn(AssetSummary? assetSummary) {
+    final latestSucceededArtifact = _latestSucceededTrainingArtifact();
+    final latestModel = assetSummary?.models.isNotEmpty == true
+        ? assetSummary!.models.first
+        : null;
+    final currentTargetColumn = _trainingTargetController.text.trim();
+    if (currentTargetColumn.isNotEmpty && currentTargetColumn != 'Load') {
+      return currentTargetColumn;
+    }
+    return _firstNonEmptyString([
+      latestSucceededArtifact?.result['target_column']?.toString(),
+      latestSucceededArtifact?.input['target_column']?.toString(),
+      latestModel?.targetColumn,
+    ]);
+  }
+
+  JobRecord? _latestSucceededTrainingArtifact() {
+    for (final job in _trainingJobsViewModel.jobs) {
+      if (job.status == 'succeeded' && _hasModelArtifact(job)) {
+        return job;
+      }
+    }
+    return null;
+  }
+
+  bool _hasModelArtifact(JobRecord job) {
+    final modelPath = job.result['model_path']?.toString();
+    return modelPath != null && modelPath.trim().isNotEmpty;
+  }
+
+  bool _needsTrainingPathRepair(String currentTrainingPath) {
+    return currentTrainingPath.isEmpty ||
+        currentTrainingPath == 'demo_data.csv' ||
+        currentTrainingPath.endsWith('optimization_result.csv');
+  }
+
+  void _queueTrainingPathRepair(AssetSummary? assetSummary) {
+    if (assetSummary == null) {
+      return;
+    }
+    final resolvedPath = _resolvedTrainingStoragePath(assetSummary);
+    if (resolvedPath == null || resolvedPath.isEmpty) {
+      return;
+    }
+    final currentPath = _trainingStorageController.text.trim();
+    if (!_needsTrainingPathRepair(currentPath) || currentPath == resolvedPath) {
+      return;
+    }
+    final resolvedTargetColumn = _resolvedTrainingTargetColumn(assetSummary);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_trainingStorageController.text.trim() != resolvedPath) {
+        _trainingStorageController.text = resolvedPath;
+      }
+      if (resolvedTargetColumn != null &&
+          resolvedTargetColumn.isNotEmpty &&
+          _trainingTargetController.text.trim() != resolvedTargetColumn) {
+        _trainingTargetController.text = resolvedTargetColumn;
+      }
+    });
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) {
+        return;
+      }
+      if (_needsTrainingPathRepair(_trainingStorageController.text.trim())) {
+        _setControllerTextSilently(_trainingStorageController, resolvedPath);
+      }
+      if (resolvedTargetColumn != null &&
+          resolvedTargetColumn.isNotEmpty &&
+          (_trainingTargetController.text.trim().isEmpty ||
+              _trainingTargetController.text.trim() == 'Load')) {
+        _setControllerTextSilently(
+          _trainingTargetController,
+          resolvedTargetColumn,
+        );
+      }
+    });
+  }
+
+  void _syncResolvedTrainingControllers(AssetSummary? assetSummary) {
+    final resolvedPath = _resolvedTrainingStoragePath(assetSummary);
+    if (resolvedPath != null &&
+        resolvedPath.isNotEmpty &&
+        _needsTrainingPathRepair(_trainingStorageController.text.trim())) {
+      _setControllerTextSilently(_trainingStorageController, resolvedPath);
+    }
+
+    final resolvedTargetColumn = _resolvedTrainingTargetColumn(assetSummary);
+    if (resolvedTargetColumn != null &&
+        resolvedTargetColumn.isNotEmpty &&
+        (_trainingTargetController.text.trim().isEmpty ||
+            _trainingTargetController.text.trim() == 'Load')) {
+      _setControllerTextSilently(
+        _trainingTargetController,
+        resolvedTargetColumn,
+      );
+    }
+  }
+
+  void _setControllerTextSilently(
+    TextEditingController controller,
+    String value,
+  ) {
+    if (controller.text == value) {
+      return;
+    }
+    _suppressInputRefresh = true;
+    controller.text = value;
+    _suppressInputRefresh = false;
+  }
+
+  String? _bestDatasetPath(List<AssetDataset> datasets) {
+    final sorted =
+        datasets
+            .where((item) => _storagePathFromGsUrl(item.storageUrl) != null)
+            .toList(growable: false)
+          ..sort((left, right) {
+            final rowCompare = (right.rows ?? 0).compareTo(left.rows ?? 0);
+            if (rowCompare != 0) {
+              return rowCompare;
+            }
+            final timeCompare = (right.createdAt?.millisecondsSinceEpoch ?? 0)
+                .compareTo(left.createdAt?.millisecondsSinceEpoch ?? 0);
+            if (timeCompare != 0) {
+              return timeCompare;
+            }
+            return right.filename.compareTo(left.filename);
+          });
+    if (sorted.isEmpty) {
+      return null;
+    }
+    return _storagePathFromGsUrl(sorted.first.storageUrl);
+  }
+
+  String? _storagePathFromGsUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
+      return null;
+    }
+    final value = rawUrl.trim();
+    if (!value.startsWith('gs://')) {
+      return value;
+    }
+    final withoutScheme = value.substring(5);
+    final slashIndex = withoutScheme.indexOf('/');
+    if (slashIndex == -1 || slashIndex == withoutScheme.length - 1) {
+      return null;
+    }
+    return withoutScheme.substring(slashIndex + 1);
+  }
+
+  String? _firstNonEmptyString(List<String?> candidates) {
+    for (final candidate in candidates) {
+      if (candidate != null && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+    }
+    return null;
   }
 
   void _showFeedback(String message, {Color color = AppColors.success}) {
@@ -256,7 +649,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       _currentTab = _AiLabTab.deepLearning;
     });
 
-    _showFeedback(_chainSourceLabel(chain, prefix: '模型注册表资产已回填到训练入口'));
+    _showFeedback(_chainAssetActionMessage(chain, prefix: '模型注册表资产已回填到训练入口'));
   }
 
   void _applyKnowledgeAsset(KnowledgeAsset asset, {AssetChainSummary? chain}) {
@@ -271,7 +664,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       _currentTab = _AiLabTab.rag;
     });
 
-    _showFeedback(_chainSourceLabel(chain, prefix: '知识注册表资产已回填到知识库入口'));
+    _showFeedback(_chainAssetActionMessage(chain, prefix: '知识注册表资产已回填到知识库入口'));
   }
 
   Future<void> _copyModelPassport(
@@ -280,7 +673,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }) async {
     await _copyText(
       _buildModelPassport(asset),
-      _chainSourceLabel(chain, prefix: '模型护照已复制'),
+      _chainAssetActionMessage(chain, prefix: '模型护照已复制'),
     );
   }
 
@@ -290,7 +683,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }) async {
     await _copyText(
       _buildKnowledgePassport(asset),
-      _chainSourceLabel(chain, prefix: '知识快照护照已复制'),
+      _chainAssetActionMessage(chain, prefix: '知识快照护照已复制'),
     );
   }
 
@@ -356,7 +749,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       _currentTab = _AiLabTab.deepLearning;
     });
 
-    _showFeedback(_chainSourceLabel(chain, prefix: '训练产物已回填到训练入口'));
+    _showFeedback(_chainAssetActionMessage(chain, prefix: '训练产物已回填到训练入口'));
   }
 
   void _applyKnowledgeSnapshot(JobRecord job, {AssetChainSummary? chain}) {
@@ -379,12 +772,12 @@ class _AiLabScreenState extends State<AiLabScreen> {
       _currentTab = _AiLabTab.rag;
     });
 
-    _showFeedback(_chainSourceLabel(chain, prefix: '知识库快照已回填到构建入口'));
+    _showFeedback(_chainAssetActionMessage(chain, prefix: '知识库快照已回填到构建入口'));
   }
 
   void _clearRagConversation({AssetChainSummary? chain}) {
     _ragViewModel.clearMessages();
-    _showFeedback(_chainSourceLabel(chain, prefix: '问答会话已清空'));
+    _showFeedback(_chainAssetActionMessage(chain, prefix: '问答会话已清空'));
   }
 
   @override
@@ -416,6 +809,14 @@ class _AiLabScreenState extends State<AiLabScreen> {
             assetSummary != null && assetSummary.knowledgeBases.isNotEmpty
             ? assetSummary.knowledgeBases.first
             : null;
+        _syncResolvedTrainingControllers(assetSummary);
+        _queueTrainingPathRepair(assetSummary);
+        final trainingError = _normalizeJobErrorMessage(
+          _trainingJobsViewModel.errorMessage,
+        );
+        final ragError = _normalizeJobErrorMessage(
+          _ragJobsViewModel.errorMessage,
+        );
         final tabSwitcher = _buildTabSwitcher();
         final content = ResponsiveWrapper(
           child: SingleChildScrollView(
@@ -433,7 +834,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
                   ragJobs: _ragJobsViewModel.jobs,
                   currentTab: _currentTab.name,
                   launchIntent: widget.launchIntent,
-                  trainingStoragePath: _trainingStorageController.text.trim(),
+                  trainingStoragePath:
+                      _resolvedTrainingStoragePath(assetSummary) ??
+                      _trainingStorageController.text.trim(),
                   ragStoragePath: _ragStorageController.text.trim(),
                 ),
                 const SizedBox(height: 20),
@@ -468,7 +871,6 @@ class _AiLabScreenState extends State<AiLabScreen> {
                       icon: Icons.auto_awesome_rounded,
                       onTap:
                           (_ragStorageController.text.trim().isNotEmpty &&
-                              _ragCollectionController.text.trim().isNotEmpty &&
                               !_ragJobsViewModel.isSubmitting)
                           ? () {
                               _submitRagIngestJob();
@@ -603,28 +1005,35 @@ class _AiLabScreenState extends State<AiLabScreen> {
                           )?.incidentTargetLabel ??
                           modelChain?.incidentTargetLabel,
                       summary:
+                          trainingError ??
                           _contextForTab(
                             _AiLabTab.deepLearning,
                           )?.workspaceBrief ??
                           modelChain?.workspaceBrief,
-                      statusLabel: _trainingJobsViewModel.isSubmitting
+                      statusLabel: trainingError != null
+                          ? '提交失败'
+                          : _trainingJobsViewModel.isSubmitting
                           ? 'Submitting'
                           : (_trainingJobsViewModel.activeJob?.statusMessage ??
                                 (_trainingJobsViewModel.jobs.isEmpty
                                     ? 'Idle'
                                     : 'Ready')),
-                      statusColor: _trainingJobsViewModel.isSubmitting
+                      statusColor: trainingError != null
+                          ? AppColors.error
+                          : _trainingJobsViewModel.isSubmitting
                           ? AppColors.warning
                           : (_trainingJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
                                 : AppColors.success),
-                      recommendedActionKey: _recommendedAiLaneAction(
-                        _contextForTab(_AiLabTab.deepLearning),
-                        hasLatestAsset: latestModelAsset != null,
-                        runtimeActionKey: 'submit_training',
-                        registryActionKey: 'apply_latest_model_asset',
-                        timelineActionKey: 'copy_model_passport',
-                      ),
+                      recommendedActionKey: trainingError != null
+                          ? 'submit_training'
+                          : _recommendedAiLaneAction(
+                              _contextForTab(_AiLabTab.deepLearning),
+                              hasLatestAsset: latestModelAsset != null,
+                              runtimeActionKey: 'submit_training',
+                              registryActionKey: 'apply_latest_model_asset',
+                              timelineActionKey: 'copy_model_passport',
+                            ),
                       actions: [
                         WorkspaceActionLaneAction(
                           label: '提交训练任务',
@@ -690,35 +1099,39 @@ class _AiLabScreenState extends State<AiLabScreen> {
                           _contextForTab(_AiLabTab.rag)?.incidentTargetLabel ??
                           knowledgeChain?.incidentTargetLabel,
                       summary:
+                          ragError ??
                           _contextForTab(_AiLabTab.rag)?.workspaceBrief ??
                           knowledgeChain?.workspaceBrief,
-                      statusLabel: _ragJobsViewModel.isSubmitting
+                      statusLabel: ragError != null
+                          ? '提交失败'
+                          : _ragJobsViewModel.isSubmitting
                           ? 'Submitting'
                           : (_ragJobsViewModel.activeJob?.statusMessage ??
                                 (_ragJobsViewModel.jobs.isEmpty
                                     ? 'Idle'
                                     : 'Ready')),
-                      statusColor: _ragJobsViewModel.isSubmitting
+                      statusColor: ragError != null
+                          ? AppColors.error
+                          : _ragJobsViewModel.isSubmitting
                           ? AppColors.warning
                           : (_ragJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
                                 : AppColors.success),
-                      recommendedActionKey: _recommendedAiLaneAction(
-                        _contextForTab(_AiLabTab.rag),
-                        hasLatestAsset: latestKnowledgeAsset != null,
-                        runtimeActionKey: 'build_knowledge',
-                        registryActionKey: 'apply_latest_knowledge_asset',
-                        timelineActionKey: 'copy_knowledge_passport',
-                      ),
+                      recommendedActionKey: ragError != null
+                          ? 'build_knowledge'
+                          : _recommendedAiLaneAction(
+                              _contextForTab(_AiLabTab.rag),
+                              hasLatestAsset: latestKnowledgeAsset != null,
+                              runtimeActionKey: 'build_knowledge',
+                              registryActionKey: 'apply_latest_knowledge_asset',
+                              timelineActionKey: 'copy_knowledge_passport',
+                            ),
                       actions: [
                         WorkspaceActionLaneAction(
                           label: '构建知识库',
                           icon: Icons.hub_rounded,
                           onTap:
                               (_ragStorageController.text.trim().isNotEmpty &&
-                                  _ragCollectionController.text
-                                      .trim()
-                                      .isNotEmpty &&
                                   !_ragJobsViewModel.isSubmitting)
                               ? _submitRagIngestJob
                               : null,
@@ -785,7 +1198,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                   onCopyModelPath: (path) {
                     _copyText(
                       path,
-                      _chainFeedbackMessage(modelChain, prefix: '模型路径已复制'),
+                      _chainAssetActionMessage(modelChain, prefix: '模型路径已复制'),
                     );
                   },
                   onApplyKnowledgeSnapshot: (job) {
@@ -794,7 +1207,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
                   onCopyCollection: (collection) {
                     _copyText(
                       collection,
-                      _chainFeedbackMessage(knowledgeChain, prefix: '集合名已复制'),
+                      _chainAssetActionMessage(knowledgeChain, prefix: '集合名已复制'),
                     );
                   },
                   onClearConversation: () {
@@ -1102,11 +1515,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
       widget.dashboardViewModel.loadSummary();
       return;
     }
-    final message = viewModel.errorMessage;
+    final message = _normalizeJobErrorMessage(viewModel.errorMessage);
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      _showFeedback(message, color: AppColors.error);
     }
   }
 
@@ -1135,12 +1546,14 @@ class _AiLabScreenState extends State<AiLabScreen> {
     switch (intent.target) {
       case AiLabLaunchTarget.deepLearning:
         _trainingStorageController.text = intent.storagePath;
+        _didSeedTrainingDefaults = true;
         if (intent.targetColumn != null && intent.targetColumn!.isNotEmpty) {
           _trainingTargetController.text = intent.targetColumn!;
         }
         break;
       case AiLabLaunchTarget.rag:
         _ragStorageController.text = intent.storagePath;
+        _didSeedKnowledgeDefaults = true;
         if (intent.collectionName != null &&
             intent.collectionName!.isNotEmpty) {
           _ragCollectionController.text = intent.collectionName!;
@@ -1154,13 +1567,18 @@ class _AiLabScreenState extends State<AiLabScreen> {
         return;
       }
       final source = intent.sourceLabel;
-      if (source != null && source.isNotEmpty) {
+      if (source != null && source.isNotEmpty && !source.startsWith('侧栏进入 ')) {
+        final arrivalContext = normalizeLaunchContextSubject(
+          intent.context,
+          fallbackSubject: source,
+        );
         _showFeedback(
           buildLaunchArrivalMessage(
-            intent.context,
+            arrivalContext,
             fallbackSubject: source,
             destination: 'AI Lab',
-            verb: '已送入',
+            verb: _arrivalVerbForAiLabLaunch(source, intent.context),
+            includeWorkspaceBrief: false,
           ),
         );
       }
@@ -1174,6 +1592,25 @@ class _AiLabScreenState extends State<AiLabScreen> {
   WorkbenchLaunchContext? _contextForTab(_AiLabTab tab) {
     return _activeLaunchTab == tab ? _activeLaunchContext : null;
   }
+}
+
+String _arrivalVerbForAiLabLaunch(
+  String sourceLabel,
+  WorkbenchLaunchContext? context,
+) {
+  final source = sourceLabel.trim();
+  final isGenericDutyAction = source.startsWith('Duty Actions ·');
+  final isWorkbenchOpenTarget =
+      context != null &&
+      context.workspaceTarget == 'ai_runtime' &&
+      context.cardTarget == 'runtime_product' &&
+      (source.contains('开始模型训练') ||
+          source.contains('构建知识库') ||
+          source.contains('打开 AI Lab'));
+  if (isGenericDutyAction || isWorkbenchOpenTarget) {
+    return '已打开';
+  }
+  return '已送入';
 }
 
 String _recommendedAiLaneAction(
@@ -1257,15 +1694,23 @@ class _TrainingDatasetCard extends StatelessWidget {
           Text('训练数据与目标列', style: AppTextStyles.h4),
           const SizedBox(height: 16),
           TextField(
+            key: const ValueKey('ai-lab-training-storage-path'),
             controller: storageController,
+            autofillHints: const <String>[],
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Storage Path',
+              labelText: 'Training Storage Path',
               hintText: '例如: uploads/your-data.csv',
             ),
           ),
           const SizedBox(height: 12),
           TextField(
+            key: const ValueKey('ai-lab-training-target-column'),
             controller: targetController,
+            autofillHints: const <String>[],
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
               labelText: 'Target Column',
               hintText: '例如: Load',
@@ -1304,15 +1749,23 @@ class _RagIngestCard extends StatelessWidget {
           Text('知识库构建入口', style: AppTextStyles.h4),
           const SizedBox(height: 16),
           TextField(
+            key: const ValueKey('ai-lab-knowledge-storage-path'),
             controller: storageController,
+            autofillHints: const <String>[],
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Storage Path',
+              labelText: 'Knowledge Storage Path',
               hintText: '例如: docs/ 或 uploads/manual.pdf',
             ),
           ),
           const SizedBox(height: 12),
           TextField(
+            key: const ValueKey('ai-lab-knowledge-collection'),
             controller: collectionController,
+            autofillHints: const <String>[],
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
               labelText: 'Collection Name',
               hintText: '例如: default',

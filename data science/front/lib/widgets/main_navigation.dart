@@ -10,6 +10,7 @@ import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/optimization_launch_intent.dart';
+import '../models/dashboard_summary.dart';
 import '../repositories/auth_repository.dart';
 import '../screens/ai_lab_screen.dart';
 import '../screens/data_analysis_screen.dart';
@@ -17,6 +18,7 @@ import '../screens/history_audit_screen.dart';
 import '../screens/modeling_screen.dart';
 import '../screens/operations_hub_screen.dart';
 import '../services/auth_gateway.dart';
+import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import 'operations/workbench_page_frame.dart';
@@ -350,9 +352,75 @@ class _MainNavigationState extends State<MainNavigation> {
     if (_currentIndex == index) {
       return;
     }
+    if (index == 3 && _pendingAiLabIntent == null) {
+      final defaultAiIntent = _defaultAiLabIntent();
+      if (defaultAiIntent != null) {
+        setState(() {
+          _pendingAiLabIntent = defaultAiIntent;
+          _currentIndex = index;
+        });
+        return;
+      }
+    }
     setState(() {
       _currentIndex = index;
     });
+  }
+
+  AiLabLaunchIntent? _defaultAiLabIntent() {
+    final assetSummary = _dashboardViewModel.summary?.assetSummary;
+    if (assetSummary == null) {
+      return null;
+    }
+
+    AssetChainSummary? findChain(String key) {
+      return assetSummary.chainSummaries.cast<AssetChainSummary?>().firstWhere(
+        (item) => item?.key == key,
+        orElse: () => null,
+      );
+    }
+
+    final latestModel = assetSummary.models.isNotEmpty
+        ? assetSummary.models.first
+        : null;
+    final latestKnowledge = assetSummary.knowledgeBases.isNotEmpty
+        ? assetSummary.knowledgeBases.first
+        : null;
+
+    if (latestModel?.storagePath != null &&
+        latestModel!.storagePath!.isNotEmpty) {
+      final context = buildLaunchContextFromChain(
+        findChain('model'),
+        prefix: '侧栏进入 AI Lab',
+      );
+      return AiLabLaunchIntent.deepLearning(
+        latestModel.storagePath!,
+        targetColumn: latestModel.targetColumn,
+        sourceLabel: context == null
+            ? '侧栏进入 AI Lab'
+            : buildWorkbenchSourceLabel(context, prefix: '侧栏进入 AI Lab'),
+        context: context,
+      );
+    }
+
+    if (latestKnowledge?.storagePath != null &&
+        latestKnowledge!.storagePath!.isNotEmpty) {
+      final context = buildLaunchContextFromChain(
+        findChain('knowledge'),
+        prefix: '侧栏进入 AI Lab',
+      );
+      return AiLabLaunchIntent.rag(
+        latestKnowledge.storagePath!,
+        collectionName: latestKnowledge.collection,
+        resetCollection: latestKnowledge.reset ?? false,
+        sourceLabel: context == null
+            ? '侧栏进入 AI Lab'
+            : buildWorkbenchSourceLabel(context, prefix: '侧栏进入 AI Lab'),
+        context: context,
+      );
+    }
+
+    return null;
   }
 
   List<Widget> get _pages =>
@@ -385,6 +453,7 @@ class _MainNavigationState extends State<MainNavigation> {
           dashboardViewModel: _dashboardViewModel,
           launchIntent: _pendingAiLabIntent,
           onLaunchIntentHandled: _clearAiLabIntent,
+          isActive: _currentIndex == 3,
           surfaceMode: WorkbenchSurfaceMode.embedded,
         ),
         HistoryAuditScreen(

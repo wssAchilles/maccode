@@ -7,6 +7,10 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from functools import wraps
 from flask import request, jsonify
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class FirebaseService:
@@ -114,13 +118,6 @@ def require_auth(f):
         try:
             # 验证 Token
             decoded_token = FirebaseService.verify_token(id_token)
-            
-            # 将用户信息附加到 request 对象
-            request.user = decoded_token
-            
-            # 调用原始函数
-            return f(*args, **kwargs)
-        
         except ValueError as e:
             return jsonify({
                 'error': {
@@ -129,11 +126,18 @@ def require_auth(f):
                 }
             }), 401
         except Exception as e:
+            logger.error('Unexpected auth verification error: %s', e, exc_info=True)
             return jsonify({
                 'error': {
                     'code': 'INTERNAL_ERROR',
                     'message': 'Token verification failed'
                 }
             }), 500
+
+        # 将用户信息附加到 request 对象
+        request.user = decoded_token
+        
+        # 调用原始函数
+        return f(*args, **kwargs)
     
     return decorated_function

@@ -2,11 +2,13 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
 import '../models/job_record.dart';
 import '../repositories/job_repository.dart';
+import '../services/api_service_exception.dart';
 
 class JobViewModel extends ChangeNotifier {
   JobViewModel({
@@ -72,7 +74,9 @@ class JobViewModel extends ChangeNotifier {
         unawaited(startPolling());
       }
     } catch (e) {
-      _errorMessage = '加载任务失败: $e';
+      if (!(_isPolling && _jobs.isNotEmpty && _isTransientApiError(e))) {
+        _errorMessage = '加载任务失败: ${_readableErrorMessage(e)}';
+      }
     } finally {
       _isLoading = false;
       _notifySafely();
@@ -193,7 +197,10 @@ class JobViewModel extends ChangeNotifier {
       unawaited(startPolling());
       return job;
     } catch (e) {
-      _errorMessage = '$failureLabel: $e';
+      final detail = _readableErrorMessage(e);
+      _errorMessage = detail.startsWith(failureLabel)
+          ? detail
+          : '$failureLabel: $detail';
       _notifySafely();
       return null;
     } finally {
@@ -226,6 +233,67 @@ class JobViewModel extends ChangeNotifier {
     if (!_isDisposed) {
       notifyListeners();
     }
+  }
+
+  String _readableErrorMessage(Object error) {
+    if (error is ApiServiceException) {
+      if (error.statusCode == 503) {
+        final detail =
+            _extractApiErrorMessage(error.body) ??
+            (error.body?.contains('JOB_BACKEND_UNAVAILABLE') == true
+                ? '当前部署环境未启用 Firestore Native 模式，任务中心暂不可用'
+                : null);
+        if (detail != null && detail.isNotEmpty) {
+          return detail;
+        }
+        return '当前部署环境未启用 Firestore Native 模式，任务中心暂不可用';
+      }
+      final detail = _extractApiErrorMessage(error.body);
+      if (detail != null && detail.isNotEmpty) {
+        return detail;
+      }
+      return error.message;
+    }
+    return error.toString();
+  }
+
+  bool _isTransientApiError(Object error) {
+    if (error is! ApiServiceException) {
+      return false;
+    }
+    return error.kind == ApiServiceErrorKind.timeout ||
+        error.kind == ApiServiceErrorKind.server;
+  }
+
+  String? _extractApiErrorMessage(String? body) {
+    if (body == null || body.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) {
+        return null;
+      }
+      final direct = decoded['message'] ?? decoded['detail'];
+      if (direct is String && direct.trim().isNotEmpty) {
+        return direct.trim();
+      }
+      final error = decoded['error'];
+      if (error is String && error.trim().isNotEmpty) {
+        return error.trim();
+      }
+      if (error is Map) {
+        final nested = error['message'];
+        if (nested is String && nested.trim().isNotEmpty) {
+          return nested.trim();
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
   }
 
   @override

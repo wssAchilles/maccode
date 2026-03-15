@@ -38,7 +38,7 @@ abstract interface class ApiClient {
     required List<String> features,
   });
 
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20});
+  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30});
 
   Future<List<Map<String, dynamic>>> getAuditActivity({
     String? type,
@@ -143,7 +143,7 @@ class DefaultApiClient implements ApiClient {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20}) {
+  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) {
     return ApiService.getUserHistory(limit: limit);
   }
 

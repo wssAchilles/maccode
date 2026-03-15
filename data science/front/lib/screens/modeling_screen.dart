@@ -258,7 +258,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   String _optimizationFeedbackMessage(String prefix, {String? detail}) {
-    return buildChainFeedbackMessage(
+    return buildChainActionFeedbackMessage(
       _optimizationChain(),
       prefix: prefix,
       detail: detail,
@@ -392,12 +392,18 @@ class _ModelingScreenState extends State<ModelingScreen> {
       if (!mounted) {
         return;
       }
+      final fallbackSubject = intent.sourceLabel ?? '后台任务';
+      final arrivalContext = normalizeLaunchContextSubject(
+        intent.context,
+        fallbackSubject: fallbackSubject,
+      );
       _showSuccessSnackBar(
         buildLaunchArrivalMessage(
-          intent.context,
-          fallbackSubject: intent.sourceLabel ?? '后台任务',
+          arrivalContext,
+          fallbackSubject: fallbackSubject,
           destination: '优化工作台',
-          verb: '已载入',
+          verb: intent.hasResultPayload ? '已载入' : '已打开',
+          includeWorkspaceBrief: intent.hasResultPayload,
         ),
       );
       widget.onLaunchIntentHandled?.call();

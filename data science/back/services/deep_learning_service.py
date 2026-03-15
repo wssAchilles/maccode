@@ -68,7 +68,9 @@ class DeepLearningService:
         
         return {
             'tensorflow': _TENSORFLOW_AVAILABLE,
-            'pytorch': _PYTORCH_AVAILABLE
+            'pytorch': _PYTORCH_AVAILABLE,
+            'fallback_backend': True,
+            'available': True,
         }
     
     @staticmethod

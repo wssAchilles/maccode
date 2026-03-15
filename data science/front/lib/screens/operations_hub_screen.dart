@@ -132,22 +132,55 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         .firstWhere((chain) => chain?.key == key, orElse: () => null);
   }
 
-  WorkspaceActionLaneAction _chainQuickAction({
+  DutyAction _fallbackDutyAction({
+    required String chainKey,
+    required String label,
+    required String tone,
+    required AssetChainSummary? chain,
+  }) {
+    return DutyAction(
+      command: 'open_workspace',
+      label: label,
+      tone: tone,
+      chainKey: chainKey,
+      chainLabel: chain?.label ?? label,
+      workspaceTarget: 'workspace',
+      workspaceTargetLabel: '工作台',
+      cardTarget: 'summary',
+      cardTargetLabel: '当前卡片',
+      incidentTarget: 'focus',
+      incidentTargetLabel: '当前焦点',
+      workspaceBrief: '',
+    );
+  }
+
+  WorkspaceActionLaneAction _fallbackDutyQuickAction({
+    required DashboardSummary summary,
+    required String chainKey,
     required String label,
     required IconData icon,
     required int fallbackTab,
-    required String source,
     required AssetChainSummary? chain,
     String? semanticKey,
     WorkspaceActionLaneTone tone = WorkspaceActionLaneTone.outline,
   }) {
+    final action = _fallbackDutyAction(
+      chainKey: chainKey,
+      label: label,
+      tone: switch (tone) {
+        WorkspaceActionLaneTone.primary => 'primary',
+        WorkspaceActionLaneTone.tonal => 'tonal',
+        WorkspaceActionLaneTone.outline => 'outline',
+      },
+      chain: chain,
+    );
     return WorkspaceActionLaneAction(
       label: label,
       icon: icon,
       semanticKey: semanticKey,
       onTap: () {
         if (chain != null) {
-          _openChainWorkspace(chain, source: source);
+          _handleDutyAction(action, summary);
         } else {
           widget.onNavigateToTab(fallbackTab);
         }
@@ -307,23 +340,77 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
 
     if (widget.viewModel.errorMessage != null && summary == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 120),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.viewModel.errorMessage!,
-                style: AppTextStyles.bodyMedium,
+      final errorMessage = widget.viewModel.errorMessage!;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DutyContextBoard(
+              title: '值班控制板',
+              description:
+                  '驾驶舱摘要暂时不可用，页面已切换到降级模式。你仍然可以继续进入主工作台排查问题。',
+              icon: Icons.warning_amber_rounded,
+              accent: AppColors.warning,
+              metrics: const [
+                DutyMetric(
+                  label: 'STATE',
+                  value: 'DEGRADED',
+                  color: AppColors.warning,
+                ),
+              ],
+              currentWatch: errorMessage,
+              contextFacts: const [
+                DutyContextFact(
+                  label: 'Workspace',
+                  value: 'Operations Hub',
+                  icon: Icons.space_dashboard_rounded,
+                ),
+                DutyContextFact(
+                  label: 'Mode',
+                  value: 'Fallback',
+                  icon: Icons.health_and_safety_rounded,
+                  foreground: AppColors.warning,
+                  background: AppColors.warningLight,
+                ),
+              ],
+              footerTitle: '恢复动作',
+              footer: WorkspaceInlineActionBar(
+                recommendedActionKey: 'retry_summary',
+                actions: [
+                  WorkspaceActionLaneAction(
+                    label: '重试驾驶舱摘要',
+                    icon: Icons.refresh_rounded,
+                    onTap: widget.viewModel.loadSummary,
+                    semanticKey: 'retry_summary',
+                    tone: WorkspaceActionLaneTone.primary,
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '打开历史与审计',
+                    icon: Icons.fact_check_rounded,
+                    onTap: () => widget.onNavigateToTab(4),
+                    semanticKey: 'open_audit',
+                  ),
+                  WorkspaceActionLaneAction(
+                    label: '打开数据分析工作台',
+                    icon: Icons.analytics_rounded,
+                    onTap: () => widget.onNavigateToTab(2),
+                    semanticKey: 'open_data_analysis',
+                    tone: WorkspaceActionLaneTone.tonal,
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: widget.viewModel.loadSummary,
-                child: const Text('重试'),
+            ),
+            const SizedBox(height: 16),
+            AlertPanel(
+              alert: DashboardAlert(
+                severity: 'warning',
+                title: '驾驶舱已进入恢复模式',
+                message:
+                    '当前无法加载统一摘要，但主工作台和审计入口仍可访问。优先重试摘要，或直接进入具体工作台继续排障。',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -755,38 +842,42 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       )
                       .toList(growable: false)
                 : [
-                    _chainQuickAction(
+                    _fallbackDutyQuickAction(
+                      summary: safeSummary,
+                      chainKey: 'dataset',
                       label: '上传并分析数据',
                       icon: Icons.upload_file_rounded,
                       chain: datasetChain,
                       fallbackTab: 2,
-                      source: 'Duty Actions',
                       semanticKey: 'open_workspace:dataset',
                       tone: WorkspaceActionLaneTone.primary,
                     ),
-                    _chainQuickAction(
+                    _fallbackDutyQuickAction(
+                      summary: safeSummary,
+                      chainKey: 'optimization',
                       label: '运行能源优化',
                       icon: Icons.bolt_rounded,
                       chain: optimizationChain,
                       fallbackTab: 1,
-                      source: 'Duty Actions',
                       semanticKey: 'open_workspace:optimization',
                       tone: WorkspaceActionLaneTone.tonal,
                     ),
-                    _chainQuickAction(
+                    _fallbackDutyQuickAction(
+                      summary: safeSummary,
+                      chainKey: 'model',
                       label: '开始模型训练',
                       icon: Icons.model_training_rounded,
                       chain: modelChain,
                       fallbackTab: 3,
-                      source: 'Duty Actions',
                       semanticKey: 'open_workspace:model',
                     ),
-                    _chainQuickAction(
+                    _fallbackDutyQuickAction(
+                      summary: safeSummary,
+                      chainKey: 'knowledge',
                       label: '构建知识库',
                       icon: Icons.auto_awesome_rounded,
                       chain: knowledgeChain,
                       fallbackTab: 3,
-                      source: 'Duty Actions',
                       semanticKey: 'open_workspace:knowledge',
                     ),
                     WorkspaceActionLaneAction(

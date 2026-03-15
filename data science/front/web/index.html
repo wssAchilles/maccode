@@ -19,24 +19,100 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta
+    name="description"
+    content="Sentinel Ops industrial cockpit for optimization, data analysis, AI workflows, and audit operations."
+  >
   <!-- Fix for verifyAuth popup closed by user error -->
   <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="front">
+  <meta name="apple-mobile-web-app-title" content="Sentinel Ops">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
 
-  <title>front</title>
+  <title>Sentinel Ops</title>
   <link rel="manifest" href="manifest.json">
 </head>
 
 <body>
+  <script>
+    (function registerFormFieldIdentityPatch() {
+      let rafToken = null;
+      let retryCount = 0;
+
+      const normalizeFieldKey = (value, index) => {
+        const base = String(value || `field-${index}`)
+          .split('\n')[0]
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        return base || `field-${index}`;
+      };
+
+      const applyFieldIdentity = () => {
+        try {
+          const seen = new Map();
+          const fields = document.querySelectorAll('input, textarea, select');
+          fields.forEach((field, index) => {
+            const el = /** @type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement} */ (field);
+            const semanticSeed =
+              el.getAttribute('aria-label') ||
+              el.getAttribute('placeholder') ||
+              el.getAttribute('type') ||
+              el.tagName.toLowerCase();
+            const key = normalizeFieldKey(semanticSeed, index);
+            const nextCount = (seen.get(key) || 0) + 1;
+            seen.set(key, nextCount);
+            const stableId = `sentinel-${key}${nextCount > 1 ? `-${nextCount}` : ''}`;
+            if (!el.id) {
+              el.id = stableId;
+            }
+            if (!el.getAttribute('name')) {
+              el.setAttribute('name', stableId);
+            }
+          });
+        } catch (error) {
+          console.debug('Skipping form identity patch tick.', error);
+        }
+      };
+
+      const scheduleApply = () => {
+        if (rafToken !== null) {
+          return;
+        }
+        rafToken = window.requestAnimationFrame(() => {
+          rafToken = null;
+          applyFieldIdentity();
+        });
+      };
+
+      const bootstrap = () => {
+        scheduleApply();
+        const warmupWindow = window.setInterval(() => {
+          scheduleApply();
+          retryCount += 1;
+          if (retryCount >= 10) {
+            window.clearInterval(warmupWindow);
+          }
+        }, 500);
+        window.setInterval(() => {
+          scheduleApply();
+        }, 3000);
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+      } else {
+        bootstrap();
+      }
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 

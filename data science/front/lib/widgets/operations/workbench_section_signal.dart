@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/workbench_launch_context.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 
 class WorkbenchSectionSignal extends StatelessWidget {
@@ -50,7 +51,7 @@ class WorkbenchSectionSignal extends StatelessWidget {
           final facts = [
             _SignalFact(
               label: 'Current Watch',
-              value: '$incidentLabel · $watchSummary',
+              value: buildIncidentWatchValue(incidentLabel, watchSummary),
               highlighted:
                   _signalHighlight(activeChain, continuationContext) ==
                   _SignalFocus.watch,

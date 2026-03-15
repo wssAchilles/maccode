@@ -105,6 +105,25 @@ String buildChainFeedbackMessage(
   ]);
 }
 
+String buildChainActionFeedbackMessage(
+  AssetChainSummary? chain, {
+  required String prefix,
+  String? detail,
+  bool includeChainLabel = false,
+}) {
+  if (chain == null) {
+    return prefix;
+  }
+  return _joinContextParts([
+    prefix,
+    if (includeChainLabel) chain.label,
+    chain.workspaceTargetLabel,
+    chain.cardTargetLabel,
+    detail,
+  ]);
+}
+
+
 String buildDutyActionSourceLabel(
   DutyAction action, {
   required String prefix,
@@ -210,18 +229,25 @@ WorkbenchLaunchContext buildLaunchContextFromDutyAction(
   DutyAction action, {
   required String prefix,
 }) {
+  final fallback = _dutyActionFallback(action.chainKey);
+  final workspaceTarget = fallback?.workspaceTarget ?? action.workspaceTarget;
+  final cardTarget = fallback?.cardTarget ?? action.cardTarget;
+  final incidentTarget = fallback?.incidentTarget ?? action.incidentTarget;
+  final workspaceBrief = fallback?.workspaceBrief ?? action.workspaceBrief;
   return WorkbenchLaunchContext(
-    sourceLabel: _joinContextParts([prefix, action.chainLabel]),
-    workspaceTarget: action.workspaceTarget,
-    workspaceTargetLabel: action.workspaceTargetLabel,
-    cardTarget: action.cardTarget,
-    cardTargetLabel: action.cardTargetLabel,
-    incidentTarget: action.incidentTarget,
-    incidentTargetLabel: action.incidentTargetLabel,
-    workspaceBrief: action.workspaceBrief,
+    sourceLabel: _joinContextParts([prefix, action.label]),
+    workspaceTarget: workspaceTarget,
+    workspaceTargetLabel:
+        _workspaceTargetLabel(workspaceTarget) ?? action.workspaceTargetLabel,
+    cardTarget: cardTarget,
+    cardTargetLabel: _cardTargetLabel(cardTarget) ?? action.cardTargetLabel,
+    incidentTarget: incidentTarget,
+    incidentTargetLabel:
+        _incidentTargetLabel(incidentTarget) ?? action.incidentTargetLabel,
+    workspaceBrief: workspaceBrief,
     watchSummary: _joinContextParts([
-      action.incidentTargetLabel,
-      action.workspaceBrief,
+      _incidentTargetLabel(incidentTarget) ?? action.incidentTargetLabel,
+      workspaceBrief,
     ]),
   );
 }
@@ -231,16 +257,26 @@ String buildLaunchArrivalMessage(
   required String fallbackSubject,
   required String destination,
   String verb = '已打开',
+  bool includeWorkspaceBrief = true,
 }) {
-  final subject = (context?.sourceLabel ?? fallbackSubject).trim();
+  final subject = _compactLaunchSubject(
+    _normalizeLaunchSubject(
+      (context?.sourceLabel ?? fallbackSubject).trim(),
+      context,
+    ),
+    context,
+  );
+  final actionText = verb == '已打开' && subject.contains(destination)
+      ? subject
+      : _joinLaunchPhrase(subject, verb, destination);
   if (context == null) {
-    return '$subject$verb$destination';
+    return actionText;
   }
   return _joinContextParts([
-    '$subject$verb$destination',
+    actionText,
     context.workspaceTargetLabel,
     context.cardTargetLabel,
-    context.workspaceBrief,
+    if (includeWorkspaceBrief) context.workspaceBrief,
   ]);
 }
 
@@ -270,6 +306,144 @@ String buildChainCurrentWatch(
     chain.cardTargetLabel,
     chain.workspaceBrief,
   ]);
+}
+
+String buildIncidentWatchValue(
+  String? incidentLabel,
+  String? watchSummary, {
+  String fallback = '--',
+}) {
+  final segments = <String>[];
+  void addSegment(String? value) {
+    if (value == null) {
+      return;
+    }
+    for (final part in value.split('·')) {
+      final normalized = part.trim();
+      if (normalized.isEmpty || segments.contains(normalized)) {
+        continue;
+      }
+      segments.add(normalized);
+    }
+  }
+
+  addSegment(incidentLabel);
+  addSegment(watchSummary);
+  if (segments.isEmpty) {
+    return fallback;
+  }
+  return segments.join(' · ');
+}
+
+WorkbenchLaunchContext? normalizeLaunchContextSubject(
+  WorkbenchLaunchContext? context, {
+  required String fallbackSubject,
+}) {
+  if (context == null) {
+    return null;
+  }
+  final normalized = _normalizeLaunchSubject(fallbackSubject, context);
+  if (normalized == context.sourceLabel) {
+    return context;
+  }
+  return WorkbenchLaunchContext(
+    sourceLabel: normalized,
+    workspaceTarget: context.workspaceTarget,
+    workspaceTargetLabel: context.workspaceTargetLabel,
+    cardTarget: context.cardTarget,
+    cardTargetLabel: context.cardTargetLabel,
+    incidentTarget: context.incidentTarget,
+    incidentTargetLabel: context.incidentTargetLabel,
+    workspaceBrief: context.workspaceBrief,
+    watchSummary: context.watchSummary,
+  );
+}
+
+
+String _joinLaunchPhrase(String subject, String verb, String destination) {
+  final normalizedSubject = subject.trim();
+  final normalizedDestination = destination.trim();
+  final needsSpacer = normalizedSubject.isNotEmpty &&
+      normalizedDestination.isNotEmpty &&
+      RegExp(r'[A-Za-z]').hasMatch(normalizedDestination[0]) &&
+      RegExp(r'[一-龥]$').hasMatch(normalizedSubject);
+  final spacer = needsSpacer ? ' ' : '';
+  return '$normalizedSubject$verb$spacer$normalizedDestination';
+}
+
+String _compactLaunchSubject(String subject, WorkbenchLaunchContext? context) {
+  if (context == null || !subject.contains('·')) {
+    return subject.trim();
+  }
+  final removableParts = <String>{};
+  void addRemovablePart(String? value) {
+    if (value == null) {
+      return;
+    }
+    for (final part in value.split('·')) {
+      final normalized = part.trim();
+      if (normalized.isNotEmpty) {
+        removableParts.add(normalized);
+      }
+    }
+  }
+
+  addRemovablePart(context.workspaceTargetLabel);
+  addRemovablePart(context.cardTargetLabel);
+  addRemovablePart(context.incidentTargetLabel);
+  addRemovablePart(context.workspaceBrief);
+  if (removableParts.isEmpty) {
+    return subject.trim();
+  }
+  final subjectParts = subject
+      .split('·')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  if (subjectParts.length <= 1) {
+    return subject.trim();
+  }
+  final compactParts = <String>[subjectParts.first];
+  for (final part in subjectParts.skip(1)) {
+    if (!removableParts.contains(part)) {
+      compactParts.add(part);
+    }
+  }
+  return compactParts.join(' · ');
+}
+
+String _normalizeLaunchSubject(
+  String subject,
+  WorkbenchLaunchContext? context,
+) {
+  if (context == null || !subject.startsWith('Duty Actions')) {
+    return subject;
+  }
+  final explicitDutyLabels = [
+    '打开 AI Lab',
+    '上传并分析数据',
+    '运行能源优化',
+    '开始模型训练',
+    '构建知识库',
+    '查看历史与审计',
+  ];
+  if (explicitDutyLabels.any(subject.contains)) {
+    return subject.trim();
+  }
+  if (context.workspaceTarget == 'data_analysis_operations') {
+    return 'Duty Actions · 上传并分析数据';
+  }
+  if (context.workspaceTarget == 'optimization_operations') {
+    return 'Duty Actions · 运行能源优化';
+  }
+  if (context.workspaceTarget == 'ai_runtime' &&
+      context.cardTarget == 'runtime_product') {
+    if (context.workspaceBrief.contains('知识')) {
+      return 'Duty Actions · 构建知识库';
+    }
+    return 'Duty Actions · 开始模型训练';
+  }
+  return subject;
 }
 
 int compareSectionKeysByDutyFocus(
@@ -317,6 +491,7 @@ String _joinContextParts(List<String?> parts) {
 String? _workspaceTargetLabel(String target) {
   return {
     'audit_center': '历史与审计',
+    'data_analysis_operations': '分析执行区',
     'data_job_center': '分析任务中心',
     'data_governance': '资产治理板',
     'data_handoff': '分析交接板',
@@ -364,4 +539,47 @@ String? _incidentTargetLabel(String target) {
     'focus': '当前焦点',
     'summary': '摘要',
   }[target];
+}
+
+_DutyActionFallback? _dutyActionFallback(String chainKey) {
+  return {
+    'dataset': const _DutyActionFallback(
+      workspaceTarget: 'data_analysis_operations',
+      cardTarget: 'strategy',
+      incidentTarget: 'asset',
+      workspaceBrief: '数据分析工作台 · 上传 CSV、审查质量并启动分析任务。',
+    ),
+    'model': const _DutyActionFallback(
+      workspaceTarget: 'ai_runtime',
+      cardTarget: 'runtime_product',
+      incidentTarget: 'runtime',
+      workspaceBrief: 'AI Lab 训练车道 · 提交训练任务并跟进队列、产物与模型资产。',
+    ),
+    'knowledge': const _DutyActionFallback(
+      workspaceTarget: 'ai_runtime',
+      cardTarget: 'runtime_product',
+      incidentTarget: 'runtime',
+      workspaceBrief: 'AI Lab 知识车道 · 提交构建任务并跟进知识快照、问答治理。',
+    ),
+    'optimization': const _DutyActionFallback(
+      workspaceTarget: 'optimization_operations',
+      cardTarget: 'solver_health',
+      incidentTarget: 'asset',
+      workspaceBrief: '优化工作台 · 运行优化任务并复核求解器、约束与结果摘要。',
+    ),
+  }[chainKey];
+}
+
+class _DutyActionFallback {
+  const _DutyActionFallback({
+    required this.workspaceTarget,
+    required this.cardTarget,
+    required this.incidentTarget,
+    required this.workspaceBrief,
+  });
+
+  final String workspaceTarget;
+  final String cardTarget;
+  final String incidentTarget;
+  final String workspaceBrief;
 }

@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, request
 
 from middleware.rate_limit import rate_limit
 from services.firebase_service import require_auth
-from services.job_service import JobService
+from services.job_service import JobBackendUnavailableError, JobService
 from utils.exceptions import ValidationError
 from utils.responses import error_response, success_response
 
@@ -34,9 +34,13 @@ def list_jobs():
     job_type = request.args.get('type')
     status = request.args.get('status')
     limit = request.args.get('limit', default=20, type=int) or 20
-    return success_response(
-        {'jobs': JobService.list_jobs(uid, job_type=job_type, status=status, limit=min(limit, 50))}
-    )
+    try:
+        return success_response(
+            {'jobs': JobService.list_jobs(uid, job_type=job_type, status=status, limit=min(limit, 50))}
+        )
+    except JobBackendUnavailableError as exc:
+        logger.warning('Job backend unavailable while listing jobs for %s: %s', uid, exc)
+        return success_response({'jobs': [], 'unavailable': True, 'message': str(exc)})
 
 
 @jobs_bp.route('/<job_id>', methods=['GET'])
@@ -44,7 +48,11 @@ def list_jobs():
 @rate_limit(max_requests=120, window_seconds=60)
 def get_job(job_id: str):
     uid = request.user.get('uid')
-    job = JobService.get_job(uid, job_id)
+    try:
+        job = JobService.get_job(uid, job_id)
+    except JobBackendUnavailableError as exc:
+        logger.warning('Job backend unavailable while loading job %s: %s', job_id, exc)
+        return error_response('JOB_BACKEND_UNAVAILABLE', str(exc), status_code=503)
     if not job:
         return error_response('JOB_NOT_FOUND', '任务不存在', status_code=404)
     return success_response(job)
@@ -62,6 +70,9 @@ def retry_job(job_id: str):
         app = current_app._get_current_object()
         JobService.dispatch_job(app, job['job_id'], job['type'])
         return success_response(job, status_code=202)
+    except JobBackendUnavailableError as exc:
+        logger.warning('Job backend unavailable while retrying job %s: %s', job_id, exc)
+        return error_response('JOB_BACKEND_UNAVAILABLE', str(exc), status_code=503)
     except ValueError as exc:
         return error_response('JOB_RETRY_INVALID', str(exc), status_code=409)
     except Exception as exc:
@@ -119,6 +130,9 @@ def _create_job(job_type: str):
         app = current_app._get_current_object()
         JobService.dispatch_job(app, job['job_id'], job_type)
         return success_response(job, status_code=202)
+    except JobBackendUnavailableError as exc:
+        logger.warning('Job backend unavailable while creating %s job: %s', job_type, exc)
+        return error_response('JOB_BACKEND_UNAVAILABLE', str(exc), status_code=503)
     except ValidationError as exc:
         return error_response('VALIDATION_ERROR', str(exc), status_code=400)
     except Exception as exc:

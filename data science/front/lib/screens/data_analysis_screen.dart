@@ -778,9 +778,13 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         if (!mounted) {
           return;
         }
+        final arrivalContext = normalizeLaunchContextSubject(
+          intent.context,
+          fallbackSubject: intent.sourceLabel ?? intent.filename ?? '资产',
+        );
         _showSuccessFeedback(
           buildLaunchArrivalMessage(
-            intent.context,
+            arrivalContext,
             fallbackSubject: intent.sourceLabel ?? intent.filename ?? '资产',
             destination: '数据分析工作台',
             verb: '已载入',
@@ -792,11 +796,16 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         if (!mounted) {
           return;
         }
+        final arrivalContext = normalizeLaunchContextSubject(
+          intent.context,
+          fallbackSubject: intent.sourceLabel!,
+        );
         _showSuccessFeedback(
           buildLaunchArrivalMessage(
-            intent.context,
+            arrivalContext,
             fallbackSubject: intent.sourceLabel!,
             destination: '数据分析工作台',
+            includeWorkspaceBrief: false,
           ),
         );
       });
@@ -1101,7 +1110,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   String _datasetFeedbackMessage(String prefix, {String? detail}) {
-    return buildChainFeedbackMessage(
+    return buildChainActionFeedbackMessage(
       _datasetChain(),
       prefix: prefix,
       detail: detail,

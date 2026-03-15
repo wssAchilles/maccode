@@ -26,7 +26,7 @@ class HistoryViewModel extends ChangeNotifier {
 
   Future<void> initialize() => loadHistory();
 
-  Future<void> loadHistory({int limit = 50}) async {
+  Future<void> loadHistory({int limit = 30}) async {
     _isLoading = true;
     _errorMessage = null;
     _notifySafely();

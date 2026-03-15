@@ -5,6 +5,8 @@ Future<List<Map<String, dynamic>>> _getUserHistory({int limit = 20}) async {
     _baseUrl,
     '/api/history',
     queryParameters: <String, Object?>{'limit': limit},
+    timeout: AppConstants.dashboardTimeout,
+    timeoutMessage: '分析记录加载较慢，请稍后重试',
   );
   final data = _decodeResponseMap(
     response,
@@ -68,6 +70,8 @@ Future<List<Map<String, dynamic>>> _getAuditActivity({
       ...?type == null ? null : <String, Object?>{'type': type},
       ...?status == null ? null : <String, Object?>{'status': status},
     },
+    timeout: AppConstants.dashboardTimeout,
+    timeoutMessage: '审计事件流加载较慢，请稍后重试',
   );
   final data = _decodeResponseMap(
     response,

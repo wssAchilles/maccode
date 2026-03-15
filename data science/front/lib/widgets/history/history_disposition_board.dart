@@ -421,17 +421,20 @@ class _DispositionCard extends StatelessWidget {
           ],
           const SizedBox(height: 14),
           WorkspaceInlineActionBar(
+            recommendedActionKey: _recommendedDispositionActionKey(group),
             actions: [
               if (onFilterFailures != null)
                 WorkspaceActionLaneAction(
                   label: '仅看失败',
                   icon: Icons.filter_alt_rounded,
+                  semanticKey: 'filter_failures',
                   onTap: onFilterFailures,
                 ),
               if (onReplayAction != null)
                 WorkspaceActionLaneAction(
                   label: '回放最新',
                   icon: Icons.replay_circle_filled_rounded,
+                  semanticKey: 'replay_latest',
                   onTap: onReplayAction,
                 ),
               WorkspaceActionLaneAction(
@@ -441,6 +444,9 @@ class _DispositionCard extends StatelessWidget {
                 icon: onFailureAction == null
                     ? Icons.arrow_outward_rounded
                     : Icons.build_circle_outlined,
+                semanticKey: onFailureAction == null
+                    ? 'governance_action'
+                    : 'failure_action',
                 onTap: onFailureAction ?? onGovernanceAction,
                 tone: WorkspaceActionLaneTone.tonal,
               ),
@@ -449,6 +455,21 @@ class _DispositionCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String? _recommendedDispositionActionKey(_DispositionGroup group) {
+  final focusArea = _focusAreaForTarget(group.chain);
+  switch (focusArea) {
+    case _DispositionFocusArea.failure:
+      return group.failure == null ? 'filter_failures' : 'failure_action';
+    case _DispositionFocusArea.replay:
+      return group.replayCount > 0 ? 'replay_latest' : 'governance_action';
+    case _DispositionFocusArea.job:
+    case _DispositionFocusArea.sla:
+    case _DispositionFocusArea.focus:
+    case _DispositionFocusArea.governance:
+      return group.failure != null ? 'failure_action' : 'governance_action';
   }
 }
 

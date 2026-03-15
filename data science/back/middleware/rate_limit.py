@@ -93,13 +93,19 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60):
     def decorator(func):
         @wraps(func)
         def decorated_function(*args, **kwargs):
+            # Never rate-limit browser preflight; otherwise web POSTs fail before auth/app logic.
+            if request.method == 'OPTIONS':
+                return func(*args, **kwargs)
+
             if current_app.config.get('TESTING'):
                 return func(*args, **kwargs)
 
+            route_scope = request.endpoint or request.path
+            request_scope = f"{request.method}:{route_scope}"
             if hasattr(request, 'user') and request.user:
-                key = f"user:{request.user.get('uid')}"
+                key = f"user:{request.user.get('uid')}:{request_scope}"
             else:
-                key = f"ip:{request.remote_addr}"
+                key = f"ip:{request.remote_addr}:{request_scope}"
 
             limiter = _get_rate_limiter()
             try:

@@ -12,14 +12,32 @@ Future<http.Response> _requestWithTimeout(
   Future<http.Response> request, {
   Duration? timeout,
   String timeoutMessage = _defaultTimeoutError,
-}) {
-  return request.timeout(
-    timeout ?? AppConstants.apiTimeout,
-    onTimeout: () => throw ApiServiceException(
-      timeoutMessage,
-      kind: ApiServiceErrorKind.timeout,
-    ),
-  );
+}) async {
+  try {
+    return await request.timeout(
+      timeout ?? AppConstants.apiTimeout,
+      onTimeout: () => throw ApiServiceException(
+        timeoutMessage,
+        kind: ApiServiceErrorKind.timeout,
+      ),
+    );
+  } on http.ClientException catch (exc) {
+    throw ApiServiceException(
+      '网络请求失败，请检查浏览器网络、跨域配置或后端服务状态',
+      kind: ApiServiceErrorKind.server,
+      body: exc.message,
+    );
+  } catch (exc) {
+    final message = exc.toString();
+    if (message.contains('Failed to fetch')) {
+      throw ApiServiceException(
+        '网络请求失败，请检查浏览器网络、跨域配置或后端服务状态',
+        kind: ApiServiceErrorKind.server,
+        body: message,
+      );
+    }
+    rethrow;
+  }
 }
 
 Uri _buildUri(
@@ -182,9 +200,20 @@ bool _isSuccessStatus(int statusCode) {
 }
 
 String? _extractPayloadMessage(Map<String, dynamic>? data) {
-  final dynamic message = data?['message'] ?? data?['error'] ?? data?['detail'];
-  if (message is String && message.trim().isNotEmpty) {
-    return message.trim();
+  final dynamic directMessage = data?['message'] ?? data?['detail'];
+  if (directMessage is String && directMessage.trim().isNotEmpty) {
+    return directMessage.trim();
+  }
+
+  final dynamic error = data?['error'];
+  if (error is String && error.trim().isNotEmpty) {
+    return error.trim();
+  }
+  if (error is Map) {
+    final nestedMessage = error['message'];
+    if (nestedMessage is String && nestedMessage.trim().isNotEmpty) {
+      return nestedMessage.trim();
+    }
   }
   return null;
 }

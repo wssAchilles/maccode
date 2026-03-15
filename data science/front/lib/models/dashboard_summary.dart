@@ -128,8 +128,8 @@ class DutySummary {
       degradedSystemCount: _asInt(json['degraded_system_count']) ?? 0,
       focusChainKey: (json['focus_chain_key'] ?? '').toString(),
       focusChainLabel: (json['focus_chain_label'] ?? '--').toString(),
-      focusWorkspaceTarget:
-          (json['focus_workspace_target'] ?? 'workspace').toString(),
+      focusWorkspaceTarget: (json['focus_workspace_target'] ?? 'workspace')
+          .toString(),
       focusWorkspaceTargetLabel:
           (json['focus_workspace_target_label'] ??
                   _defaultWorkspaceTargetLabel(
@@ -143,8 +143,8 @@ class DutySummary {
                     (json['focus_card_target'] ?? 'summary').toString(),
                   ))
               .toString(),
-      focusIncidentTarget:
-          (json['focus_incident_target'] ?? 'focus').toString(),
+      focusIncidentTarget: (json['focus_incident_target'] ?? 'focus')
+          .toString(),
       focusIncidentTargetLabel:
           (json['focus_incident_target_label'] ??
                   _defaultIncidentTargetLabel(
@@ -153,16 +153,10 @@ class DutySummary {
               .toString(),
       focusWatch: (json['focus_watch'] ?? '当前暂无高优先级链路').toString(),
       focusOwnerLabel: (json['focus_owner_label'] ?? '--').toString(),
-      focusEscalationStateLabel:
-          (json['focus_escalation_state_label'] ?? '--').toString(),
-      overviewActions: _mapList(
-        json['overview_actions'],
-        DutyAction.fromJson,
-      ),
-      auditActions: _mapList(
-        json['audit_actions'],
-        DutyAction.fromJson,
-      ),
+      focusEscalationStateLabel: (json['focus_escalation_state_label'] ?? '--')
+          .toString(),
+      overviewActions: _mapList(json['overview_actions'], DutyAction.fromJson),
+      auditActions: _mapList(json['audit_actions'], DutyAction.fromJson),
     );
   }
 }
@@ -197,7 +191,8 @@ class DutyAction {
   final String workspaceBrief;
 
   factory DutyAction.fromJson(Map<String, dynamic> json) {
-    final workspaceTarget = (json['workspace_target'] ?? 'workspace').toString();
+    final workspaceTarget = (json['workspace_target'] ?? 'workspace')
+        .toString();
     final cardTarget = (json['card_target'] ?? 'summary').toString();
     final incidentTarget = (json['incident_target'] ?? 'focus').toString();
     return DutyAction(
@@ -1059,12 +1054,18 @@ class DatasetAsset {
     required this.id,
     required this.filename,
     this.qualityScore,
+    this.rows,
+    this.columns,
+    this.storageUrl,
     this.createdAt,
   });
 
   final String id;
   final String filename;
   final double? qualityScore;
+  final int? rows;
+  final int? columns;
+  final String? storageUrl;
   final DateTime? createdAt;
 
   factory DatasetAsset.fromJson(Map<String, dynamic> json) {
@@ -1072,6 +1073,9 @@ class DatasetAsset {
       id: (json['id'] ?? '').toString(),
       filename: (json['filename'] ?? 'Unknown').toString(),
       qualityScore: _asDouble(json['quality_score']),
+      rows: _asInt(json['rows']),
+      columns: _asInt(json['columns']),
+      storageUrl: json['storage_url']?.toString(),
       createdAt: _parseDateTime(json['created_at']),
     );
   }

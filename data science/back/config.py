@@ -23,7 +23,8 @@ class Config:
     
     # Firebase 配置
     FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', GCP_PROJECT_ID)
-    FIRESTORE_DATABASE = os.getenv('FIRESTORE_DATABASE', 'my-datasci-project-bucket')
+    # Firestore database id defaults to the primary database, not the storage bucket.
+    FIRESTORE_DATABASE = os.getenv('FIRESTORE_DATABASE', '(default)')
     
     # Cloud Storage 配置
     STORAGE_BUCKET_NAME = os.getenv('STORAGE_BUCKET_NAME', 'data-science-44398.firebasestorage.app')

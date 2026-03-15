@@ -89,7 +89,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       _dashboardViewModel.loadSummary(),
       _jobsViewModel.loadJobs(),
       _auditViewModel.loadActivity(),
-      _historyViewModel.loadHistory(limit: 50),
+      _historyViewModel.loadHistory(limit: 30),
     ]);
   }
 
@@ -232,7 +232,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                       ? HistoryErrorState(
                           message: _historyViewModel.errorMessage!,
                           onRetry: () =>
-                              _historyViewModel.loadHistory(limit: 50),
+                              _historyViewModel.loadHistory(limit: 30),
                         )
                       : _historyViewModel.records.isEmpty
                       ? const HistoryEmptyState()
@@ -762,10 +762,6 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleFailureChainAction(AssetFailureChain chain) {
-    final sourceLabel = _chainSourceLabel(
-      chain.key,
-      prefix: '${chain.label} ${chain.jobId.substring(0, 8)}',
-    );
     final chainSummary = _dashboardViewModel
         .summary
         ?.assetSummary
@@ -774,8 +770,12 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
         .firstWhere((item) => item?.key == chain.key, orElse: () => null);
     final context = buildLaunchContextFromChain(
       chainSummary,
-      prefix: '${chain.label} ${chain.jobId.substring(0, 8)}',
+      prefix: chain.label,
     );
+    final sourceLabel =
+        context != null
+        ? buildWorkbenchSourceLabel(context, prefix: chain.label)
+        : chain.label;
     switch (chain.key) {
       case 'dataset':
         _applyFilters(type: 'analysis', status: 'failed');

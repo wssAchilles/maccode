@@ -4,7 +4,7 @@ library;
 import 'api_client.dart';
 
 abstract class HistoryGateway {
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 50});
+  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30});
 
   Future<List<Map<String, dynamic>>> getAuditActivity({
     String? type,
@@ -22,7 +22,7 @@ class ApiHistoryGateway implements HistoryGateway {
   final ApiClient _apiClient;
 
   @override
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 50}) {
+  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) {
     return _apiClient.getUserHistory(limit: limit);
   }
 

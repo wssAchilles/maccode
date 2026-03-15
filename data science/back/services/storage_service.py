@@ -9,6 +9,7 @@ import os
 import pandas as pd
 import tempfile
 from datetime import datetime, timedelta
+from urllib.parse import unquote
 from config import Config
 from typing import Dict, Optional
 
@@ -96,6 +97,24 @@ class StorageService:
             blob.upload_from_file(file_data, content_type=content_type)
         
         return f"gs://{self.bucket_name}/{destination_path}"
+
+    def _normalize_blob_path(self, file_path: str) -> str:
+        if not file_path:
+            return file_path
+        normalized = str(file_path).strip()
+        if normalized.startswith('gs://'):
+            without_scheme = normalized[len('gs://'):]
+            bucket_name, _, blob_name = without_scheme.partition('/')
+            if blob_name:
+                return blob_name
+            return ''
+
+        download_marker = '/o/'
+        if download_marker in normalized and 'storage.googleapis.com' in normalized:
+            encoded_blob = normalized.split(download_marker, 1)[1].split('?', 1)[0]
+            return unquote(encoded_blob)
+
+        return normalized.lstrip('/')
     
     def download_file(self, source_path):
         """
@@ -107,7 +126,7 @@ class StorageService:
         Returns:
             bytes: 文件内容
         """
-        blob = self.bucket.blob(source_path)
+        blob = self.bucket.blob(self._normalize_blob_path(source_path))
         return blob.download_as_bytes()
     
     def delete_file(self, file_path):
@@ -117,7 +136,7 @@ class StorageService:
         Args:
             file_path: 文件路径
         """
-        blob = self.bucket.blob(file_path)
+        blob = self.bucket.blob(self._normalize_blob_path(file_path))
         blob.delete()
     
     def list_files(self, prefix=None):
@@ -130,7 +149,8 @@ class StorageService:
         Returns:
             list: 文件列表
         """
-        blobs = self.bucket.list_blobs(prefix=prefix)
+        normalized_prefix = None if prefix is None else self._normalize_blob_path(prefix)
+        blobs = self.bucket.list_blobs(prefix=normalized_prefix)
         return [blob.name for blob in blobs]
     
     def get_signed_url(self, file_path, expiration_minutes=60):
@@ -144,7 +164,7 @@ class StorageService:
         Returns:
             str: 签名 URL
         """
-        blob = self.bucket.blob(file_path)
+        blob = self.bucket.blob(self._normalize_blob_path(file_path))
         url = blob.generate_signed_url(
             expiration=timedelta(minutes=expiration_minutes),
             method='GET'
@@ -222,7 +242,7 @@ class StorageService:
         Returns:
             bool: 文件是否存在
         """
-        blob = self.bucket.blob(file_path)
+        blob = self.bucket.blob(self._normalize_blob_path(file_path))
         return blob.exists()
     
     def append_and_trim_csv(

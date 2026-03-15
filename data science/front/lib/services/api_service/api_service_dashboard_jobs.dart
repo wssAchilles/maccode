@@ -24,12 +24,22 @@ Map<String, dynamic> _unwrapEnvelopeData(
 }
 
 Future<Map<String, dynamic>> _getDashboardSummary() async {
-  final response = await _authorizedGet(_baseUrl, '/api/dashboard/summary');
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/dashboard/summary',
+    timeout: AppConstants.dashboardTimeout,
+    timeoutMessage: '驾驶舱数据加载较慢，请稍后重试',
+  );
   return _unwrapEnvelopeData(response, fallback: '获取驾驶舱摘要失败');
 }
 
 Future<Map<String, dynamic>> _getDashboardAssets() async {
-  final response = await _authorizedGet(_baseUrl, '/api/dashboard/assets');
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/dashboard/assets',
+    timeout: AppConstants.dashboardTimeout,
+    timeoutMessage: '资产摘要加载较慢，请稍后重试',
+  );
   return _unwrapEnvelopeData(response, fallback: '获取资产摘要失败');
 }
 
@@ -46,13 +56,20 @@ Future<List<Map<String, dynamic>>> _listJobs({
       ...?type == null ? null : <String, Object?>{'type': type},
       ...?status == null ? null : <String, Object?>{'status': status},
     },
+    timeout: AppConstants.jobPollingTimeout,
+    timeoutMessage: '任务队列响应较慢，请稍后刷新查看',
   );
   final data = _unwrapEnvelopeData(response, fallback: '获取任务列表失败');
   return List<Map<String, dynamic>>.from(data['jobs'] ?? const []);
 }
 
 Future<Map<String, dynamic>> _getJob(String jobId) async {
-  final response = await _authorizedGet(_baseUrl, '/api/jobs/$jobId');
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/jobs/$jobId',
+    timeout: AppConstants.jobPollingTimeout,
+    timeoutMessage: '任务详情加载较慢，请稍后刷新查看',
+  );
   return _unwrapEnvelopeData(response, fallback: '获取任务详情失败');
 }
 

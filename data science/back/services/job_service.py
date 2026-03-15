@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from flask import current_app
+from google.api_core import exceptions as google_exceptions
 from google.cloud import firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
@@ -23,8 +24,77 @@ from services.job_workflows import (
 logger = logging.getLogger(__name__)
 
 
+class JobBackendUnavailableError(RuntimeError):
+    """Raised when the configured job storage backend is unavailable."""
+
+
+class JobQueryIndexRequiredError(RuntimeError):
+    """Raised when Firestore query indexes are not yet available."""
+
+
 class JobService:
     TERMINAL_STATUSES = {'succeeded', 'failed', 'cancelled'}
+
+    @staticmethod
+    def _wrap_backend_error(exc: Exception):
+        message = str(exc)
+        lowered = message.lower()
+        if JobService._is_missing_index_error(exc):
+            raise JobQueryIndexRequiredError('任务查询索引尚未就绪，系统已切到降级查询路径') from exc
+        if (
+            'datastore mode' in lowered
+            and 'firestore api is not available' in lowered
+        ):
+            raise JobBackendUnavailableError(
+                '当前部署环境未启用 Firestore Native 模式，任务中心暂不可用'
+            ) from exc
+        raise exc
+
+    @staticmethod
+    def _is_missing_index_error(exc: Exception) -> bool:
+        if not isinstance(exc, google_exceptions.FailedPrecondition):
+            return False
+        message = str(exc).lower()
+        return 'requires an index' in message or 'create it here' in message
+
+    @staticmethod
+    def _coerce_datetime(value: Any) -> Optional[datetime]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        iso_value = HistoryService._as_iso(value)
+        if not iso_value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(str(iso_value))
+        except Exception:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+    @classmethod
+    def _list_jobs_without_index(
+        cls,
+        uid: str,
+        *,
+        job_type: Optional[str],
+        status: Optional[str],
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        snapshots = cls._collection().where('requested_by', '==', uid).stream()
+        items: List[Dict[str, Any]] = []
+        for snapshot in snapshots:
+            record = snapshot.to_dict() or {}
+            if job_type and record.get('type') != job_type:
+                continue
+            if status and record.get('status') != status:
+                continue
+            items.append(cls._serialize_job(record))
+        items.sort(
+            key=lambda record: cls._coerce_datetime(record.get('submitted_at')) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return items[:limit]
 
     @staticmethod
     def _get_firestore_client():
@@ -36,61 +106,70 @@ class JobService:
 
     @classmethod
     def create_job(cls, uid: str, job_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        doc = cls._collection().document()
-        record = {
-            'job_id': doc.id,
-            'type': job_type,
-            'status': 'queued',
-            'progress': 0,
-            'attempt_count': 0,
-            'max_attempts': Config.TASKS_MAX_ATTEMPTS,
-            'submitted_at': SERVER_TIMESTAMP,
-            'started_at': None,
-            'completed_at': None,
-            'requested_by': uid,
-            'input': payload,
-            'result': None,
-            'error': None,
-            'status_message': 'Job queued',
-            'events': [
-                {
-                    'phase': 'queued',
-                    'status': 'queued',
-                    'message': 'Job queued',
-                    'progress': 0,
-                    'timestamp': datetime.utcnow().isoformat(),
-                }
-            ],
-        }
-        doc.set(record)
-        HistoryService.add_history(
-            uid=uid,
-            action='job_submitted',
-            status='queued',
-            source=job_type,
-            resource_type='job',
-            resource_id=doc.id,
-            title=f'提交任务: {job_type}',
-            details={'job_type': job_type},
-        )
-        return cls.get_job(uid, doc.id) or {'job_id': doc.id, **record}
+        try:
+            doc = cls._collection().document()
+            record = {
+                'job_id': doc.id,
+                'type': job_type,
+                'status': 'queued',
+                'progress': 0,
+                'attempt_count': 0,
+                'max_attempts': Config.TASKS_MAX_ATTEMPTS,
+                'submitted_at': SERVER_TIMESTAMP,
+                'started_at': None,
+                'completed_at': None,
+                'requested_by': uid,
+                'input': payload,
+                'result': None,
+                'error': None,
+                'status_message': 'Job queued',
+                'events': [
+                    {
+                        'phase': 'queued',
+                        'status': 'queued',
+                        'message': 'Job queued',
+                        'progress': 0,
+                        'timestamp': datetime.utcnow().isoformat(),
+                    }
+                ],
+            }
+            doc.set(record)
+            HistoryService.add_history(
+                uid=uid,
+                action='job_submitted',
+                status='queued',
+                source=job_type,
+                resource_type='job',
+                resource_id=doc.id,
+                title=f'提交任务: {job_type}',
+                details={'job_type': job_type},
+            )
+            return cls.get_job(uid, doc.id) or {'job_id': doc.id, **record}
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
 
     @classmethod
     def get_job(cls, uid: str, job_id: str) -> Optional[Dict[str, Any]]:
-        snapshot = cls._collection().document(job_id).get()
-        if not snapshot.exists:
-            return None
-        record = snapshot.to_dict() or {}
-        if record.get('requested_by') != uid:
-            return None
-        return cls._serialize_job(record)
+        try:
+            snapshot = cls._collection().document(job_id).get()
+            if not snapshot.exists:
+                return None
+            record = snapshot.to_dict() or {}
+            if record.get('requested_by') != uid:
+                return None
+            return cls._serialize_job(record)
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
 
     @classmethod
     def get_job_for_execution(cls, job_id: str) -> Optional[Dict[str, Any]]:
-        snapshot = cls._collection().document(job_id).get()
-        if not snapshot.exists:
-            return None
-        return snapshot.to_dict() or {}
+        try:
+            snapshot = cls._collection().document(job_id).get()
+            if not snapshot.exists:
+                return None
+            return snapshot.to_dict() or {}
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
 
     @classmethod
     def list_jobs(
@@ -100,75 +179,95 @@ class JobService:
         status: Optional[str] = None,
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
-        snapshots = (
-            cls._collection()
-            .where('requested_by', '==', uid)
-            .order_by('submitted_at', direction=firestore.Query.DESCENDING)
-            .limit(max(limit, 20))
-            .stream()
-        )
-        items: List[Dict[str, Any]] = []
-        for snapshot in snapshots:
-            record = snapshot.to_dict() or {}
-            if job_type and record.get('type') != job_type:
-                continue
-            if status and record.get('status') != status:
-                continue
-            items.append(cls._serialize_job(record))
-            if len(items) >= limit:
-                break
-        return items
+        try:
+            snapshots = (
+                cls._collection()
+                .where('requested_by', '==', uid)
+                .order_by('submitted_at', direction=firestore.Query.DESCENDING)
+                .limit(max(limit, 20))
+                .stream()
+            )
+            items: List[Dict[str, Any]] = []
+            for snapshot in snapshots:
+                record = snapshot.to_dict() or {}
+                if job_type and record.get('type') != job_type:
+                    continue
+                if status and record.get('status') != status:
+                    continue
+                items.append(cls._serialize_job(record))
+                if len(items) >= limit:
+                    break
+            return items
+        except google_exceptions.FailedPrecondition as exc:
+            if cls._is_missing_index_error(exc):
+                logger.warning(
+                    'Firestore composite index missing for jobs query. Falling back to in-memory sort.'
+                )
+                return cls._list_jobs_without_index(
+                    uid,
+                    job_type=job_type,
+                    status=status,
+                    limit=limit,
+                )
+            cls._wrap_backend_error(exc)
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
 
     @classmethod
     def retry_job(cls, uid: str, job_id: str) -> Optional[Dict[str, Any]]:
-        document = cls._collection().document(job_id)
-        snapshot = document.get()
-        if not snapshot.exists:
-            return None
+        try:
+            document = cls._collection().document(job_id)
+            snapshot = document.get()
+            if not snapshot.exists:
+                return None
 
-        record = snapshot.to_dict() or {}
-        if record.get('requested_by') != uid:
-            return None
-        if record.get('status') != 'failed':
-            raise ValueError('只有失败任务支持重试')
+            record = snapshot.to_dict() or {}
+            if record.get('requested_by') != uid:
+                return None
+            if record.get('status') != 'failed':
+                raise ValueError('只有失败任务支持重试')
 
-        attempt_count = int(record.get('attempt_count', 0))
-        max_attempts = int(record.get('max_attempts', Config.TASKS_MAX_ATTEMPTS))
-        if attempt_count >= max_attempts:
-            raise ValueError('任务已达到最大重试次数')
+            attempt_count = int(record.get('attempt_count', 0))
+            max_attempts = int(record.get('max_attempts', Config.TASKS_MAX_ATTEMPTS))
+            if attempt_count >= max_attempts:
+                raise ValueError('任务已达到最大重试次数')
 
-        events = cls._append_event(
-            record,
-            phase='queued',
-            status='queued',
-            message='Job requeued for retry',
-            progress=0,
-        )
-        document.set(
-            {
-                'status': 'queued',
-                'progress': 0,
-                'started_at': None,
-                'completed_at': None,
-                'result': None,
-                'error': None,
-                'status_message': 'Job requeued for retry',
-                'retryable': False,
-                'events': events,
-            },
-            merge=True,
-        )
-        HistoryService.add_history(
-            uid=uid,
-            action='job_retried',
-            status='queued',
-            source=record.get('type', 'job'),
-            resource_type='job',
-            resource_id=job_id,
-            title=f'重试任务: {record.get("type", "job")}',
-            details={'job_type': record.get('type'), 'attempt_count': attempt_count},
-        )
-        return cls.get_job(uid, job_id)
+            events = cls._append_event(
+                record,
+                phase='queued',
+                status='queued',
+                message='Job requeued for retry',
+                progress=0,
+            )
+            document.set(
+                {
+                    'status': 'queued',
+                    'progress': 0,
+                    'started_at': None,
+                    'completed_at': None,
+                    'result': None,
+                    'error': None,
+                    'status_message': 'Job requeued for retry',
+                    'retryable': False,
+                    'events': events,
+                },
+                merge=True,
+            )
+            HistoryService.add_history(
+                uid=uid,
+                action='job_retried',
+                status='queued',
+                source=record.get('type', 'job'),
+                resource_type='job',
+                resource_id=job_id,
+                title=f'重试任务: {record.get("type", "job")}',
+                details={'job_type': record.get('type'), 'attempt_count': attempt_count},
+            )
+            return cls.get_job(uid, job_id)
+        except ValueError:
+            raise
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
 
     @classmethod
     def count_jobs(
@@ -179,6 +278,7 @@ class JobService:
         submitted_after: Optional[datetime] = None,
     ) -> int:
         try:
+            submitted_after_dt = cls._coerce_datetime(submitted_after)
             total = 0
             for snapshot in cls._collection().where('requested_by', '==', uid).stream():
                 record = snapshot.to_dict() or {}
@@ -186,13 +286,9 @@ class JobService:
                     continue
                 if status and record.get('status') != status:
                     continue
-                if submitted_after:
-                    submitted_at = HistoryService._as_iso(record.get('submitted_at'))
-                    try:
-                        submitted_dt = datetime.fromisoformat(submitted_at) if submitted_at else None
-                    except Exception:
-                        submitted_dt = None
-                    if submitted_dt is None or submitted_dt < submitted_after:
+                if submitted_after_dt:
+                    submitted_dt = cls._coerce_datetime(record.get('submitted_at'))
+                    if submitted_dt is None or submitted_dt < submitted_after_dt:
                         continue
                 total += 1
             return total

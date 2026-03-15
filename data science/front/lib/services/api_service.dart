@@ -151,7 +151,7 @@ class ApiService {
     reset: reset,
   );
 
-  static Future<List<Map<String, dynamic>>> getUserHistory({int limit = 20}) =>
+  static Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) =>
       _getUserHistory(limit: limit);
 
   static Future<List<Map<String, dynamic>>> getAuditActivity({

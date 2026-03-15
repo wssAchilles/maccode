@@ -5,12 +5,14 @@ from __future__ import annotations
 import io
 import logging
 import os
+import re
 import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
+import joblib
 import numpy as np
 import pandas as pd
 
@@ -27,6 +29,11 @@ from utils.exceptions import ValidationError
 logger = logging.getLogger(__name__)
 
 _BACK_DIR = Path(__file__).resolve().parent.parent
+_TRAINING_PLACEHOLDER_PATHS = {'', 'demo_data.csv', 'demo.csv', 'sample.csv'}
+_TRAINING_PLACEHOLDER_TARGETS = {'', 'load', 'target', 'label'}
+_RAG_PLACEHOLDER_PATHS = {'', 'docs', 'docs/'}
+_RAG_PLACEHOLDER_COLLECTIONS = {'', 'default', 't_docs', 'project_docs'}
+_RAG_SUPPORTED_SUFFIXES = {'.txt', '.md', '.json', '.py', '.csv', '.xlsx', '.xls'}
 
 
 def _job_progress(
@@ -56,6 +63,120 @@ def _generate_importance_interpretation(importance: dict) -> str:
     top_feature, top_score = sorted_items[0]
     top_name = feature_names.get(top_feature, top_feature)
     return f'{top_name}是影响负载预测的最重要因素 ({top_score * 100:.1f}%)'
+
+
+def _normalize_storage_path(value: Any) -> str:
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    if raw.startswith('gs://'):
+        without_scheme = raw[len('gs://'):]
+        _, _, blob_name = without_scheme.partition('/')
+        return blob_name
+    return raw.lstrip('/')
+
+
+def _history_dataset_candidates(uid: str) -> List[str]:
+    candidates: List[str] = []
+    for record in HistoryService.get_user_history(uid, limit=20):
+        storage_url = _normalize_storage_path(record.get('storage_url'))
+        filename = str(record.get('filename') or '').lower()
+        if storage_url and (storage_url.lower().endswith('.csv') or filename.endswith('.csv')):
+            candidates.append(storage_url)
+    return candidates
+
+
+def _latest_training_storage_path(uid: str, storage: StorageService) -> str:
+    for candidate in _history_dataset_candidates(uid):
+        if storage.file_exists(candidate):
+            return candidate
+
+    for prefix in (f'uploads/{uid}/', 'uploads/'):
+        for item in reversed(storage.list_files(prefix)):
+            if item.lower().endswith('.csv'):
+                return item
+
+    raise ValidationError(
+        '未找到可训练的数据资产，请先在数据分析页上传并完成分析，或填写有效的 CSV storage_path。'
+    )
+
+
+def _resolve_training_storage_path(uid: str, raw_storage_path: Any, storage: StorageService) -> str:
+    normalized = _normalize_storage_path(raw_storage_path)
+    if normalized.lower() not in _TRAINING_PLACEHOLDER_PATHS:
+        return normalized
+    return _latest_training_storage_path(uid, storage)
+
+
+def _resolve_training_target_column(raw_target: Any, df: pd.DataFrame) -> str:
+    requested = str(raw_target or '').strip()
+    if requested and requested in df.columns and requested.lower() not in _TRAINING_PLACEHOLDER_TARGETS:
+        return requested
+
+    preferred_columns = [
+        'Site_Load',
+        'AEP_MW',
+        'Load',
+        'load',
+        'target',
+        'Target',
+        'y',
+        'label',
+    ]
+    for candidate in preferred_columns:
+        if candidate in df.columns:
+            return candidate
+
+    numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    if numeric_columns:
+        return numeric_columns[-1]
+
+    available_columns = ', '.join(map(str, df.columns[:8]))
+    raise ValidationError(
+        f"未能自动识别目标列，请显式填写 target_column。当前可用列包括: {available_columns}"
+    )
+
+
+def _latest_rag_document_path(uid: str, storage: StorageService) -> str:
+    prefixes = (f'docs/{uid}/', f'uploads/{uid}/', 'docs/', 'uploads/')
+    for prefix in prefixes:
+        files = [item for item in storage.list_files(prefix) if Path(item).suffix.lower() in _RAG_SUPPORTED_SUFFIXES]
+        if files:
+            return sorted(files)[-1]
+
+    raise ValidationError(
+        '未找到可构建知识库的文档，请上传 txt/md/json/py/csv/xlsx 文档后再试，或填写有效 storage_path。'
+    )
+
+
+def _resolve_rag_storage_path(uid: str, raw_storage_path: Any, storage: StorageService) -> str:
+    normalized = _normalize_storage_path(raw_storage_path)
+    if normalized.lower() in _RAG_PLACEHOLDER_PATHS:
+        return _latest_rag_document_path(uid, storage)
+
+    if normalized.endswith('/'):
+        supported_files = [
+            item for item in storage.list_files(normalized)
+            if Path(item).suffix.lower() in _RAG_SUPPORTED_SUFFIXES
+        ]
+        if supported_files:
+            return normalized
+        raise ValidationError(
+            '知识文档目录中没有可解析的 txt/md/json/py/csv/xlsx 文件，请补充文档后再试。'
+        )
+
+    if Path(normalized).suffix.lower() not in _RAG_SUPPORTED_SUFFIXES:
+        raise ValidationError('知识库仅支持 txt、md、json、py、csv、xlsx 文档作为构建输入。')
+    return normalized
+
+
+def _resolve_rag_collection_name(uid: str, raw_collection: Any, storage_path: str) -> str:
+    collection_name = str(raw_collection or '').strip()
+    if collection_name.lower() not in _RAG_PLACEHOLDER_COLLECTIONS:
+        return collection_name
+    stem = Path(storage_path.rstrip('/')).stem
+    safe_stem = re.sub(r'[^a-zA-Z0-9_-]+', '_', stem).strip('_')
+    return safe_stem[:48] if safe_stem else f'user_{uid[:12]}'
 
 
 def run_optimization_workflow(
@@ -258,25 +379,23 @@ def run_deep_learning_workflow(
     payload: Dict[str, Any],
     job_id: str | None = None,
 ) -> Dict[str, Any]:
-    storage_path = payload.get('storage_path')
+    requested_storage_path = payload.get('storage_path')
     model_type = (payload.get('model_type') or 'lstm').lower()
-    target_col = payload.get('target_column')
+    requested_target_col = payload.get('target_column')
     window_size = int(payload.get('window_size', payload.get('lookback', 24)))
     horizon = int(payload.get('horizon', 1))
     epochs = int(payload.get('epochs', 10))
     batch_size = int(payload.get('batch_size', 32))
 
-    if not storage_path or not target_col:
-        raise ValidationError('缺少 storage_path 或 target_column')
-
     availability = DeepLearningService.is_available()
-    if not availability.get('tensorflow'):
-        raise RuntimeError('深度学习依赖未安装')
+    use_tensorflow = bool(availability.get('tensorflow'))
 
     _job_progress(job_id, 35, 'Loading training dataset', phase='dataset')
     storage = StorageService()
+    storage_path = _resolve_training_storage_path(uid, requested_storage_path, storage)
     file_bytes = storage.download_file(storage_path)
     df = pd.read_csv(io.BytesIO(file_bytes))
+    target_col = _resolve_training_target_column(requested_target_col, df)
     if target_col not in df.columns:
         raise ValidationError(f"目标列 '{target_col}' 不存在")
 
@@ -303,44 +422,109 @@ def run_deep_learning_workflow(
     if len(X_val) == 0:
         X_val, y_val = None, None
 
+    runtime_backend = 'tensorflow'
+    artifact_suffix = '.keras'
     _job_progress(job_id, 60, 'Initializing model architecture', phase='model_init')
-    if model_type == 'gru':
-        model = DeepLearningService.create_gru_model(
-            input_shape=(X.shape[1], X.shape[2]),
-            output_size=y.shape[1],
+    if use_tensorflow:
+        if model_type == 'gru':
+            model = DeepLearningService.create_gru_model(
+                input_shape=(X.shape[1], X.shape[2]),
+                output_size=y.shape[1],
+            )
+        else:
+            model = DeepLearningService.create_lstm_model(
+                input_shape=(X.shape[1], X.shape[2]),
+                output_size=y.shape[1],
+            )
+            model_type = 'lstm'
+
+        _job_progress(job_id, 68, 'Training neural network weights', phase='training')
+        result = DeepLearningService.train_model(
+            model,
+            X_train,
+            y_train,
+            X_val=X_val,
+            y_val=y_val,
+            epochs=epochs,
+            batch_size=batch_size,
+            verbose=0,
         )
     else:
-        model = DeepLearningService.create_lstm_model(
-            input_shape=(X.shape[1], X.shape[2]),
-            output_size=y.shape[1],
-        )
-        model_type = 'lstm'
+        from sklearn.metrics import mean_absolute_error, mean_squared_error
+        from sklearn.neural_network import MLPRegressor
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
 
-    _job_progress(job_id, 68, 'Training neural network weights', phase='training')
-    result = DeepLearningService.train_model(
-        model,
-        X_train,
-        y_train,
-        X_val=X_val,
-        y_val=y_val,
-        epochs=epochs,
-        batch_size=batch_size,
-        verbose=0,
-    )
+        runtime_backend = 'sklearn_mlp_fallback'
+        artifact_suffix = '.joblib'
+        _job_progress(
+            job_id,
+            64,
+            'TensorFlow unavailable, using lightweight sklearn fallback',
+            phase='fallback_backend',
+        )
+        train_samples = X_train.reshape((X_train.shape[0], -1))
+        val_samples = None if X_val is None else X_val.reshape((X_val.shape[0], -1))
+        train_targets = y_train.ravel() if y_train.ndim == 2 and y_train.shape[1] == 1 else y_train
+        val_targets = None
+        if y_val is not None:
+            val_targets = y_val.ravel() if y_val.ndim == 2 and y_val.shape[1] == 1 else y_val
+        fallback_model = Pipeline(
+            steps=[
+                ('scaler', StandardScaler()),
+                (
+                    'mlp',
+                    MLPRegressor(
+                        hidden_layer_sizes=(128, 64),
+                        max_iter=max(epochs * 20, 200),
+                        learning_rate_init=0.001,
+                        random_state=42,
+                        early_stopping=val_samples is not None and y_val is not None,
+                        validation_fraction=0.1,
+                        n_iter_no_change=10,
+                    ),
+                ),
+            ]
+        )
+        _job_progress(job_id, 70, 'Training fallback neural regressor', phase='training')
+        fallback_model.fit(train_samples, train_targets)
+        train_predictions = np.asarray(fallback_model.predict(train_samples))
+        if train_predictions.ndim == 1:
+            train_predictions = train_predictions.reshape((-1, 1))
+        train_loss = float(mean_squared_error(y_train, train_predictions))
+        train_mae = float(mean_absolute_error(y_train, train_predictions))
+        result = {
+            'success': True,
+            'epochs_trained': int(getattr(fallback_model.named_steps['mlp'], 'n_iter_', 0)),
+            'train_loss': train_loss,
+            'train_mae': train_mae,
+            'history': {},
+        }
+        if val_samples is not None and val_targets is not None and len(val_samples) > 0:
+            val_predictions = np.asarray(fallback_model.predict(val_samples))
+            if val_predictions.ndim == 1:
+                val_predictions = val_predictions.reshape((-1, 1))
+            result['val_loss'] = float(mean_squared_error(y_val, val_predictions))
+            result['val_mae'] = float(mean_absolute_error(y_val, val_predictions))
+        model = fallback_model
 
     timestamp = int(time.time())
     _job_progress(job_id, 86, 'Persisting trained model artifact', phase='artifact_upload')
-    with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as tmp:
-        model.save(tmp.name)
+    with tempfile.NamedTemporaryFile(suffix=artifact_suffix, delete=False) as tmp:
+        if use_tensorflow:
+            model.save(tmp.name)
+        else:
+            joblib.dump(model, tmp.name)
         tmp_path = tmp.name
 
-    remote_path = f'models/{uid}/dl_{model_type}_{timestamp}.keras'
+    remote_path = f'models/{uid}/dl_{model_type}_{timestamp}{artifact_suffix}'
     with open(tmp_path, 'rb') as handle:
         storage.upload_file(handle, remote_path, content_type='application/octet-stream')
     os.remove(tmp_path)
 
     payload_result = {
         'model_path': remote_path,
+        'storage_path': storage_path,
         'metrics': {
             'train_loss': result.get('train_loss'),
             'train_mae': result.get('train_mae'),
@@ -352,6 +536,8 @@ def run_deep_learning_workflow(
         'history': result.get('history', {}),
         'model_type': model_type,
         'target_column': target_col,
+        'runtime_backend': runtime_backend,
+        'artifact_format': artifact_suffix.lstrip('.'),
     }
     _job_progress(job_id, 94, 'Packaging training metrics and artifact metadata', phase='packaging')
 
@@ -365,6 +551,7 @@ def run_deep_learning_workflow(
             'model_path': remote_path,
             'target_column': target_col,
             'epochs_trained': result.get('epochs_trained'),
+            'runtime_backend': runtime_backend,
         },
     )
     return payload_result
@@ -375,19 +562,18 @@ def run_rag_ingest_workflow(
     payload: Dict[str, Any],
     job_id: str | None = None,
 ) -> Dict[str, Any]:
-    storage_path = payload.get('storage_path')
-    collection_name = payload.get('collection_name') or f'user_{uid}'
+    requested_storage_path = payload.get('storage_path')
+    requested_collection_name = payload.get('collection_name')
     reset = bool(payload.get('reset', False))
 
-    if not storage_path:
-        raise ValidationError('缺少参数: storage_path')
-
     availability = RAGService.is_available()
-    if not availability.get('fully_available'):
-        raise RuntimeError('RAG 服务当前不可用 (缺少依赖)')
+    if not availability.get('available'):
+        raise RuntimeError('RAG 服务当前不可用')
 
-    service = RAGService(collection_name=collection_name)
     storage = StorageService()
+    storage_path = _resolve_rag_storage_path(uid, requested_storage_path, storage)
+    collection_name = _resolve_rag_collection_name(uid, requested_collection_name, storage_path)
+    service = RAGService(collection_name=collection_name)
     _job_progress(job_id, 35, 'Fetching source documents', phase='fetch_documents')
     with tempfile.TemporaryDirectory() as temp_dir:
         local_path = os.path.join(temp_dir, 'docs')
@@ -408,15 +594,9 @@ def run_rag_ingest_workflow(
                 with open(os.path.join(local_path, fname), 'wb') as handle:
                     handle.write(file_bytes)
 
-        service._initialize()
-        if reset and service.chroma_client is not None:
-            _job_progress(job_id, 46, 'Resetting existing vector collection', phase='reset_collection')
-            try:
-                service.chroma_client.delete_collection(collection_name)
-            except Exception:
-                pass
-            service.collection = None
-            service._initialize()
+        if reset:
+            _job_progress(job_id, 46, 'Resetting existing knowledge collection', phase='reset_collection')
+            service.reset_collection()
 
         _job_progress(job_id, 58, 'Loading and chunking documents', phase='parsing')
         documents = service.load_documents(local_path)
@@ -429,6 +609,8 @@ def run_rag_ingest_workflow(
         'count': count,
         'stats': stats,
         'reset': reset,
+        'backend': stats.get('backend'),
+        'storage_path': storage_path,
     }
     _job_progress(job_id, 94, 'Packaging knowledge-base statistics', phase='packaging')
     HistoryService.add_history(
@@ -441,6 +623,7 @@ def run_rag_ingest_workflow(
             'collection': collection_name,
             'count': count,
             'storage_path': storage_path,
+            'backend': stats.get('backend'),
         },
     )
     return payload_result

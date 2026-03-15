@@ -46,14 +46,16 @@ def get_status():
         
         service = RAGService()
         available = service.is_available()
-        
+
         stats = {}
-        if available:
+        if available.get('available'):
             stats = service.get_stats()
             
         return jsonify({
             'success': True,
-            'available': available,
+            'available': available.get('available', False),
+            'backend': stats.get('backend'),
+            'dependencies': available,
             'stats': stats
         }), 200
         
@@ -95,8 +97,9 @@ def ingest_documents():
         logger.info(f"[{uid}] 开始 RAG 索引构建: {storage_path}")
         
         service = RAGService()
-        if not service.is_available():
-            raise ValidationError('RAG 服务当前不可用 (缺少依赖)')
+        availability = service.is_available()
+        if not availability.get('available'):
+            raise ValidationError('RAG 服务当前不可用')
 
         # 下载文件到临时目录
         storage = StorageService()
@@ -121,14 +124,18 @@ def ingest_documents():
                     with open(os.path.join(local_path, fname), 'wb') as f:
                         f.write(file_bytes)
             
-            # 构建索引
-            count = service.load_documents(local_path, collection_name=collection_name, reset_collection=reset)
+            if reset:
+                service.reset_collection()
+            documents = service.load_documents(local_path)
+            count = service.create_embeddings(documents)
+            stats = service.get_stats()
             
         return jsonify({
             'success': True,
             'message': f'成功索引 {count} 个文档片段',
             'count': count,
-            'collection': collection_name
+            'collection': collection_name,
+            'stats': stats,
         }), 200
 
     except ValidationError as e:
@@ -165,7 +172,8 @@ def query_rag():
             raise ValidationError('缺少参数: query')
             
         service = RAGService()
-        if not service.is_available():
+        availability = service.is_available()
+        if not availability.get('available'):
             raise ValidationError('RAG 服务不可用')
             
         # 执行查询

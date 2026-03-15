@@ -110,10 +110,10 @@ class DashboardService:
         'dataset': {
             'label': '上传并分析数据',
             'tone': 'primary',
-            'workspace_target': 'data_governance',
-            'card_target': 'current_asset',
+            'workspace_target': 'data_job_center',
+            'card_target': 'strategy',
             'incident_target': 'asset',
-            'workspace_brief': '资产治理板 · 复核最新数据资产、漂移报告与治理结论。',
+            'workspace_brief': '数据分析工作台 · 上传 CSV、审查质量并启动分析任务。',
         },
         'model': {
             'label': '开始模型训练',
@@ -121,7 +121,7 @@ class DashboardService:
             'workspace_target': 'ai_runtime',
             'card_target': 'runtime_product',
             'incident_target': 'runtime',
-            'workspace_brief': 'AI 运行控制区 · 跟进训练任务、产物版本和最新模型资产。',
+            'workspace_brief': 'AI Lab 训练车道 · 提交训练任务并跟进队列、产物与模型资产。',
         },
         'knowledge': {
             'label': '构建知识库',
@@ -129,7 +129,7 @@ class DashboardService:
             'workspace_target': 'ai_runtime',
             'card_target': 'runtime_product',
             'incident_target': 'runtime',
-            'workspace_brief': 'AI 运行控制区 · 跟进知识构建任务、集合快照和问答治理。',
+            'workspace_brief': 'AI Lab 知识车道 · 提交构建任务并跟进知识快照、问答治理。',
         },
         'optimization': {
             'label': '运行能源优化',
@@ -137,9 +137,43 @@ class DashboardService:
             'workspace_target': 'optimization_operations',
             'card_target': 'solver_health',
             'incident_target': 'asset',
-            'workspace_brief': '优化运维板 · 复核求解器健康、结果快照与最近优化资产。',
+            'workspace_brief': '优化工作台 · 运行优化任务并复核求解器、约束与结果摘要。',
         },
     }
+
+    @staticmethod
+    def _safe_dependency(
+        name: str,
+        callback,
+        fallback,
+        degraded_dependencies: List[str] | None = None,
+    ):
+        try:
+            return callback()
+        except Exception as exc:
+            logger.error('Dashboard dependency failed (%s): %s', name, exc, exc_info=True)
+            if degraded_dependencies is not None and name not in degraded_dependencies:
+                degraded_dependencies.append(name)
+            return fallback
+
+    @staticmethod
+    def _empty_asset_summary() -> Dict[str, Any]:
+        return {
+            'inventory': {
+                'dataset_assets': 0,
+                'model_assets': 0,
+                'knowledge_assets': 0,
+                'optimization_assets': 0,
+            },
+            'datasets': [],
+            'models': [],
+            'knowledge_bases': [],
+            'optimizations': [],
+            'failure_chains': [],
+            'governance': [],
+            'chain_summaries': [],
+            'degraded_dependencies': [],
+        }
 
     @staticmethod
     def _governance_item(
@@ -303,8 +337,20 @@ class DashboardService:
 
     @staticmethod
     def _service_statuses() -> List[Dict[str, Any]]:
-        model_ready = EnergyPredictor.get_model_metadata() is not None
-        rag_available = bool(Config.HEAVY_SERVICE_URL) or RAGService.is_available().get('fully_available', False)
+        try:
+            model_ready = EnergyPredictor.get_model_metadata() is not None
+        except Exception as exc:
+            logger.error('Failed to inspect model status: %s', exc, exc_info=True)
+            model_ready = False
+
+        try:
+            rag_status = RAGService.is_available()
+            rag_available = bool(Config.HEAVY_SERVICE_URL) or rag_status.get('available', False)
+        except Exception as exc:
+            logger.error('Failed to inspect RAG status: %s', exc, exc_info=True)
+            rag_status = {}
+            rag_available = False
+
         return [
             {
                 'key': 'api',
@@ -323,7 +369,11 @@ class DashboardService:
                 'key': 'rag',
                 'label': 'RAG',
                 'status': 'ok' if rag_available else 'warning',
-                'message': 'Knowledge service ready' if rag_available else 'Knowledge service not configured',
+                'message': (
+                    'Knowledge service ready'
+                    if rag_status.get('full_backend') or bool(Config.HEAVY_SERVICE_URL)
+                    else 'Knowledge service ready (TF-IDF fallback)'
+                ) if rag_available else 'Knowledge service not configured',
             },
         ]
 
@@ -377,7 +427,9 @@ class DashboardService:
                 input_payload.get('filename') or input_payload.get('storage_path'),
             )
         if job_type == 'ml_train':
-            source = cls._compact_text(input_payload.get('storage_path'))
+            source = cls._compact_text(
+                result_payload.get('storage_path') or input_payload.get('storage_path')
+            )
             target = cls._compact_text(input_payload.get('target_column'))
             return f'{source} -> {target}'
         if job_type == 'rag_ingest':
@@ -402,8 +454,12 @@ class DashboardService:
             )
             return f'{filename} -> {storage_path}'
         if job_type == 'ml_train':
-            storage_path = cls._compact_text(input_payload.get('storage_path'))
-            target = cls._compact_text(input_payload.get('target_column'))
+            storage_path = cls._compact_text(
+                result_payload.get('storage_path') or input_payload.get('storage_path')
+            )
+            target = cls._compact_text(
+                result_payload.get('target_column') or input_payload.get('target_column')
+            )
             model_type = cls._compact_text(
                 result_payload.get('model_type') or input_payload.get('model_type'),
             )
@@ -1412,14 +1468,55 @@ class DashboardService:
         recent_activity: List[Dict[str, Any]] | None = None,
         recent_jobs: List[Dict[str, Any]] | None = None,
     ) -> Dict[str, Any]:
-        history_records = HistoryService.get_user_history(uid, limit=limit)
-        training_jobs = JobService.list_jobs(uid, job_type='ml_train', limit=limit)
-        rag_jobs = JobService.list_jobs(uid, job_type='rag_ingest', limit=limit)
-        optimization_jobs = JobService.list_jobs(uid, job_type='optimization', limit=limit)
-        failed_analysis_jobs = JobService.list_jobs(uid, job_type='analysis', status='failed', limit=2)
-        failed_training_jobs = JobService.list_jobs(uid, job_type='ml_train', status='failed', limit=2)
-        failed_rag_jobs = JobService.list_jobs(uid, job_type='rag_ingest', status='failed', limit=2)
-        failed_optimization_jobs = JobService.list_jobs(uid, job_type='optimization', status='failed', limit=2)
+        degraded_dependencies: List[str] = []
+        history_records = cls._safe_dependency(
+            'history_records',
+            lambda: HistoryService.get_user_history(uid, limit=limit),
+            [],
+            degraded_dependencies,
+        )
+        training_jobs = cls._safe_dependency(
+            'ml_train_jobs',
+            lambda: JobService.list_jobs(uid, job_type='ml_train', limit=limit),
+            [],
+            degraded_dependencies,
+        )
+        rag_jobs = cls._safe_dependency(
+            'rag_jobs',
+            lambda: JobService.list_jobs(uid, job_type='rag_ingest', limit=limit),
+            [],
+            degraded_dependencies,
+        )
+        optimization_jobs = cls._safe_dependency(
+            'optimization_jobs',
+            lambda: JobService.list_jobs(uid, job_type='optimization', limit=limit),
+            [],
+            degraded_dependencies,
+        )
+        failed_analysis_jobs = cls._safe_dependency(
+            'failed_analysis_jobs',
+            lambda: JobService.list_jobs(uid, job_type='analysis', status='failed', limit=2),
+            [],
+            degraded_dependencies,
+        )
+        failed_training_jobs = cls._safe_dependency(
+            'failed_training_jobs',
+            lambda: JobService.list_jobs(uid, job_type='ml_train', status='failed', limit=2),
+            [],
+            degraded_dependencies,
+        )
+        failed_rag_jobs = cls._safe_dependency(
+            'failed_rag_jobs',
+            lambda: JobService.list_jobs(uid, job_type='rag_ingest', status='failed', limit=2),
+            [],
+            degraded_dependencies,
+        )
+        failed_optimization_jobs = cls._safe_dependency(
+            'failed_optimization_jobs',
+            lambda: JobService.list_jobs(uid, job_type='optimization', status='failed', limit=2),
+            [],
+            degraded_dependencies,
+        )
 
         datasets = []
         for record in history_records:
@@ -1450,7 +1547,7 @@ class DashboardService:
                     'model_type': result.get('model_type') or input_payload.get('model_type'),
                     'model_path': result.get('model_path'),
                     'target_column': result.get('target_column') or input_payload.get('target_column'),
-                    'storage_path': input_payload.get('storage_path'),
+                    'storage_path': result.get('storage_path') or input_payload.get('storage_path'),
                     'attempt_count': job.get('attempt_count'),
                     'max_attempts': job.get('max_attempts'),
                     'completed_at': job.get('completed_at'),
@@ -1637,6 +1734,7 @@ class DashboardService:
             'failure_chains': failure_chains[: max(limit, 4)],
             'governance': governance,
             'chain_summaries': chain_summaries,
+            'degraded_dependencies': degraded_dependencies,
         }
 
     @classmethod
@@ -1720,19 +1818,7 @@ class DashboardService:
         audit_actions: List[Dict[str, Any]] = []
 
         if focus_chain:
-            overview_actions.append(
-                cls._duty_action(
-                    command='open_workspace',
-                    label=focus_chain.get('action_label') or '打开工作台',
-                    tone='primary',
-                    chain_key=focus_chain.get('key') or '',
-                    chain_label=focus_chain.get('label') or '--',
-                    workspace_target=focus_chain.get('workspace_target') or 'workspace',
-                    card_target=focus_chain.get('card_target') or 'summary',
-                    incident_target=focus_chain.get('incident_target') or 'focus',
-                    workspace_brief=focus_chain.get('workspace_brief') or '--',
-                ),
-            )
+            overview_actions.append(cls._overview_focus_action(focus_chain))
             audit_actions.append(
                 cls._duty_action(
                     command='open_workspace',
@@ -1829,13 +1915,30 @@ class DashboardService:
             tone=defaults['tone'],
             chain_key=key,
             chain_label=(chain or {}).get('label') or cls.RUNBOOK_BASE[key]['label'],
-            workspace_target=(chain or {}).get('workspace_target')
-            or defaults['workspace_target'],
-            card_target=(chain or {}).get('card_target') or defaults['card_target'],
-            incident_target=(chain or {}).get('incident_target')
-            or defaults['incident_target'],
-            workspace_brief=(chain or {}).get('workspace_brief')
-            or defaults['workspace_brief'],
+            # Generic duty actions should preserve action intent rather than inherit
+            # the latest asset-specific focus from the chain summary.
+            workspace_target=defaults['workspace_target'],
+            card_target=defaults['card_target'],
+            incident_target=defaults['incident_target'],
+            workspace_brief=defaults['workspace_brief'],
+        )
+
+
+    @classmethod
+    def _overview_focus_action(cls, focus_chain: Dict[str, Any]) -> Dict[str, Any]:
+        key = str(focus_chain.get('key') or '')
+        defaults = cls.DUTY_ACTION_DEFAULTS.get(key)
+        label = defaults['label'] if defaults else (focus_chain.get('action_label') or '打开工作台')
+        return cls._duty_action(
+            command='open_workspace',
+            label=label,
+            tone='primary',
+            chain_key=key,
+            chain_label=focus_chain.get('label') or '--',
+            workspace_target=focus_chain.get('workspace_target') or 'workspace',
+            card_target=focus_chain.get('card_target') or 'summary',
+            incident_target=focus_chain.get('incident_target') or 'focus',
+            workspace_brief=focus_chain.get('workspace_brief') or '--',
         )
 
     @classmethod
@@ -1869,14 +1972,30 @@ class DashboardService:
 
     @classmethod
     def build_summary(cls, uid: str) -> Dict[str, Any]:
+        degraded_dependencies: List[str] = []
         activity = HistoryService.get_recent_activity(uid, limit=8)
-        jobs = JobService.list_jobs(uid, limit=12)
-        recent_assets = HistoryService.get_recent_assets(uid, limit=5)
-        asset_summary = cls.build_asset_summary(
-            uid,
-            limit=4,
-            recent_activity=activity,
-            recent_jobs=jobs,
+        jobs = cls._safe_dependency(
+            'recent_jobs',
+            lambda: JobService.list_jobs(uid, limit=12),
+            [],
+            degraded_dependencies,
+        )
+        recent_assets = cls._safe_dependency(
+            'recent_assets',
+            lambda: HistoryService.get_recent_assets(uid, limit=5),
+            [],
+            degraded_dependencies,
+        )
+        asset_summary = cls._safe_dependency(
+            'asset_summary',
+            lambda: cls.build_asset_summary(
+                uid,
+                limit=4,
+                recent_activity=activity,
+                recent_jobs=jobs,
+            ),
+            cls._empty_asset_summary(),
+            degraded_dependencies,
         )
         cutoff = datetime.utcnow() - timedelta(hours=24)
         recent_jobs_24h = JobService.count_jobs(uid, submitted_after=cutoff)
@@ -1885,7 +2004,19 @@ class DashboardService:
         analysis_count = HistoryService.count_activity(uid, activity_type='analysis', status='success')
         model_count = JobService.count_jobs(uid, job_type='ml_train', status='succeeded')
 
-        service_statuses = cls._service_statuses()
+        service_statuses = cls._safe_dependency(
+            'service_statuses',
+            cls._service_statuses,
+            [
+                {
+                    'key': 'api',
+                    'label': 'API',
+                    'status': 'warning',
+                    'message': 'Dashboard dependencies degraded',
+                },
+            ],
+            degraded_dependencies,
+        )
         alerts: List[Dict[str, Any]] = []
         for status in service_statuses:
             if status['status'] != 'ok':
@@ -1939,6 +2070,18 @@ class DashboardService:
                     'title': '暂无优化快照',
                     'message': '当前还没有登记到资产台账的优化快照，可通过后台优化任务沉淀版本。',
                     'asset_key': 'optimization',
+                }
+            )
+        dependency_alerts = list(dict.fromkeys([
+            *degraded_dependencies,
+            *((asset_summary.get('degraded_dependencies') or [])),
+        ]))
+        if dependency_alerts:
+            alerts.append(
+                {
+                    'severity': 'warning',
+                    'title': '驾驶舱已降级显示',
+                    'message': f'以下摘要依赖暂时不可用: {", ".join(dependency_alerts)}。页面已按可用数据继续渲染。',
                 }
             )
 

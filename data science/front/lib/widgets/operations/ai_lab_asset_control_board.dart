@@ -52,8 +52,7 @@ class AiLabAssetControlBoard extends StatelessWidget {
     final trainingArtifacts = trainingJobs
         .where(
           (job) =>
-              job.status == 'succeeded' &&
-              (job.result['model_path']?.toString().isNotEmpty ?? false),
+              job.status == 'succeeded' && _hasText(job.result['model_path']),
         )
         .take(3)
         .toList(growable: false);
@@ -61,9 +60,8 @@ class AiLabAssetControlBoard extends StatelessWidget {
         .where(
           (job) =>
               job.status == 'succeeded' &&
-              ((job.result['collection']?.toString().isNotEmpty ?? false) ||
-                  (job.input['collection_name']?.toString().isNotEmpty ??
-                      false)),
+              (_hasText(job.result['collection']) ||
+                  _hasText(job.input['collection_name'])),
         )
         .take(3)
         .toList(growable: false);
@@ -157,7 +155,8 @@ class AiLabAssetControlBoard extends StatelessWidget {
             description: '最近成功构建的集合、文档规模和来源路径集中在这里，便于回填和问答治理。',
             icon: Icons.account_tree_rounded,
             accent: AppColors.primary,
-            workspaceLabel: runtimeCardFocused && activeChain?.key == 'knowledge'
+            workspaceLabel:
+                runtimeCardFocused && activeChain?.key == 'knowledge'
                 ? continuationContext?.workspaceTargetLabel ??
                       activeChain?.workspaceTargetLabel
                 : null,
@@ -287,7 +286,8 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
             : null,
         highlighted: highlighted && activeChain?.key == 'model',
         cardLabel: activeChain?.key == 'model'
-            ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
+            ? continuationContext?.cardTargetLabel ??
+                  activeChain?.cardTargetLabel
             : null,
         incidentLabel: highlighted && activeChain?.key == 'model'
             ? continuationContext?.incidentTargetLabel ??
@@ -320,7 +320,8 @@ class _AiLabVersionTimelineSection extends StatelessWidget {
             : null,
         highlighted: highlighted && activeChain?.key == 'knowledge',
         cardLabel: activeChain?.key == 'knowledge'
-            ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
+            ? continuationContext?.cardTargetLabel ??
+                  activeChain?.cardTargetLabel
             : null,
         incidentLabel: highlighted && activeChain?.key == 'knowledge'
             ? continuationContext?.incidentTargetLabel ??
@@ -524,14 +525,16 @@ class _RegistrySnapshotSection extends StatelessWidget {
               : null,
           highlighted: highlighted && activeChain?.key == 'model',
           cardLabel: activeChain?.key == 'model'
-              ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
+              ? continuationContext?.cardTargetLabel ??
+                    activeChain?.cardTargetLabel
               : null,
           incidentLabel: highlighted && activeChain?.key == 'model'
               ? continuationContext?.incidentTargetLabel ??
                     activeChain?.incidentTargetLabel
               : null,
           summary: highlighted && activeChain?.key == 'model'
-              ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
+              ? continuationContext?.workspaceBrief ??
+                    activeChain?.workspaceBrief
               : null,
           child: _ModelRegistryTile(
             asset: latestModelAsset!,
@@ -553,14 +556,16 @@ class _RegistrySnapshotSection extends StatelessWidget {
               : null,
           highlighted: highlighted && activeChain?.key == 'knowledge',
           cardLabel: activeChain?.key == 'knowledge'
-              ? continuationContext?.cardTargetLabel ?? activeChain?.cardTargetLabel
+              ? continuationContext?.cardTargetLabel ??
+                    activeChain?.cardTargetLabel
               : null,
           incidentLabel: highlighted && activeChain?.key == 'knowledge'
               ? continuationContext?.incidentTargetLabel ??
                     activeChain?.incidentTargetLabel
               : null,
           summary: highlighted && activeChain?.key == 'knowledge'
-              ? continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief
+              ? continuationContext?.workspaceBrief ??
+                    activeChain?.workspaceBrief
               : null,
           child: _KnowledgeRegistryTile(
             asset: latestKnowledgeAsset!,
@@ -985,7 +990,7 @@ class _TrainingArtifactTile extends StatelessWidget {
                   .map(
                     (entry) => _MetricPill(
                       label: entry.key.toString(),
-                      value: entry.value.toString(),
+                      value: _displayMetricValue(entry.value),
                     ),
                   )
                   .toList(growable: false),
@@ -1239,6 +1244,21 @@ String _collectionForJob(JobRecord job) {
   return job.result['collection']?.toString() ??
       job.input['collection_name']?.toString() ??
       'default';
+}
+
+bool _hasText(Object? value) {
+  if (value == null) {
+    return false;
+  }
+  return value.toString().trim().isNotEmpty;
+}
+
+String _displayMetricValue(Object? value) {
+  if (value == null) {
+    return '--';
+  }
+  final text = value.toString().trim();
+  return text.isEmpty ? '--' : text;
 }
 
 String _versionFor(JobRecord job) {

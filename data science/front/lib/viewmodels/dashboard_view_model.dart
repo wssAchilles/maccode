@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/dashboard_summary.dart';
 import '../repositories/dashboard_repository.dart';
+import '../services/api_service_exception.dart';
 
 class DashboardViewModel extends ChangeNotifier {
   DashboardViewModel({DashboardRepository? repository})
@@ -38,11 +39,28 @@ class DashboardViewModel extends ChangeNotifier {
     try {
       _summary = await _repository.getSummary();
     } catch (e) {
-      _errorMessage = '加载驾驶舱摘要失败: $e';
+      if (!(_summary != null && _isTransientApiError(e))) {
+        _errorMessage = '加载驾驶舱摘要失败: ${_readableErrorMessage(e)}';
+      }
     } finally {
       _isLoading = false;
       _notifySafely();
     }
+  }
+
+  String _readableErrorMessage(Object error) {
+    if (error is ApiServiceException) {
+      return error.message;
+    }
+    return error.toString();
+  }
+
+  bool _isTransientApiError(Object error) {
+    if (error is! ApiServiceException) {
+      return false;
+    }
+    return error.kind == ApiServiceErrorKind.timeout ||
+        error.kind == ApiServiceErrorKind.server;
   }
 
   void _notifySafely() {
