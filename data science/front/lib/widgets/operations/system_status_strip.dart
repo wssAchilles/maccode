@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/system_status_localizer.dart';
 
 class SystemStatusStrip extends StatelessWidget {
   const SystemStatusStrip({
@@ -66,7 +67,7 @@ class SystemStatusStrip extends StatelessWidget {
           Icon(tone.icon, size: 14, color: tone.foreground),
           const SizedBox(width: 8),
           Text(
-            item.label,
+            localizeSystemStatusLabel(item.label),
             style: AppTextStyles.labelMedium.copyWith(
               color: tone.foreground,
               fontWeight: FontWeight.w700,
@@ -74,7 +75,7 @@ class SystemStatusStrip extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            item.message,
+            localizeSystemStatusMessage(item.message),
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
           ),
         ],

@@ -233,12 +233,12 @@ class _AssetInventoryCard extends StatelessWidget {
               workspaceLabel: chain?.workspaceTargetLabel,
               cardLabel: chain?.cardTargetLabel,
               incidentLabel: chain?.incidentTargetLabel,
-              summary: chain?.workspaceBrief,
+              summary: buildChainWorkspaceSummary(chain),
             ),
             if (isDutyFocus) ...[
               const SizedBox(height: 10),
               WorkspaceStatusChip(
-                label: 'Duty Focus',
+                label: '值班焦点',
                 icon: Icons.center_focus_strong_rounded,
                 foreground: accent,
                 background: accent.withValues(alpha: 0.12),

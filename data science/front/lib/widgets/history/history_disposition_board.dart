@@ -322,9 +322,9 @@ class _DispositionCard extends StatelessWidget {
                 : group.accent,
             trailing: WorkspaceStatusChip(
               label: isDutyFocus
-                  ? 'DUTY FOCUS'
+                  ? '值班焦点'
                   : group.failure != null
-                  ? 'FAIL'
+                  ? '故障'
                   : group.governance.riskLevel.toUpperCase(),
               icon: group.failure != null
                   ? Icons.error_outline_rounded
@@ -339,8 +339,14 @@ class _DispositionCard extends StatelessWidget {
                 group.governance.workspaceTargetLabel,
             cardLabel: group.chain?.cardTargetLabel,
             incidentLabel: group.chain?.incidentTargetLabel,
-            summary:
-                group.chain?.workspaceBrief ?? group.governance.workspaceBrief,
+            summary: group.chain == null
+                ? buildWorkspaceSummaryText(
+                    workspaceTarget: group.governance.workspaceTarget,
+                    workspaceTargetLabel: group.governance.workspaceTargetLabel,
+                    workspaceBrief: group.governance.workspaceBrief,
+                    incidentBrief: group.governance.recommendedAction,
+                  )
+                : buildChainWorkspaceSummary(group.chain),
           ),
           const SizedBox(height: 14),
           _DispositionRow(
@@ -373,7 +379,7 @@ class _DispositionCard extends StatelessWidget {
             label: '响应时限',
             value: group.chain == null
                 ? '当前无 SLA 追踪'
-                : '${group.chain!.escalationStateLabel} · ${group.chain!.isOverdue ? 'overdue ${group.chain!.overdueMinutes}m' : 'elapsed ${group.chain!.elapsedMinutes}m'}${group.chain!.slaDeadlineAt == null ? '' : ' · due ${_formatTime(group.chain!.slaDeadlineAt)}'}',
+                : '${group.chain!.escalationStateLabel} · ${group.chain!.isOverdue ? '超时 ${group.chain!.overdueMinutes}m' : '已运行 ${group.chain!.elapsedMinutes}m'}${group.chain!.slaDeadlineAt == null ? '' : ' · 截止 ${_formatTime(group.chain!.slaDeadlineAt)}'}',
             highlighted: focusArea == _DispositionFocusArea.sla,
             accent: group.chain?.isOverdue ?? false
                 ? AppColors.error
@@ -401,7 +407,7 @@ class _DispositionCard extends StatelessWidget {
             label: '回放库存',
             value: group.chain == null
                 ? '${group.replayCount} · ${group.replayLabel}'
-                : '${group.replayCount} · ${group.replayLabel} · ${group.chain!.workspaceBrief}',
+                : '${group.replayCount} · ${group.replayLabel} · ${buildChainWorkspaceSummary(group.chain)}',
             highlighted: focusArea == _DispositionFocusArea.replay,
             accent: AppColors.primary,
           ),

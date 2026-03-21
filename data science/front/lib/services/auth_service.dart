@@ -10,7 +10,9 @@ import '../models/auth_failure.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  GoogleSignIn? _googleSignIn;
+
+  GoogleSignIn get _nativeGoogleSignIn => _googleSignIn ??= GoogleSignIn();
 
   /// 获取当前用户
   User? get currentUser => _auth.currentUser;
@@ -59,7 +61,7 @@ class AuthService {
       }
 
       // 移动 & 桌面平台使用 google_sign_in 插件
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _nativeGoogleSignIn.signIn();
 
       if (googleUser == null) {
         throw const AuthFailureException(
@@ -94,7 +96,7 @@ class AuthService {
 
     if (!kIsWeb) {
       // Web 平台不使用 GoogleSignIn 插件
-      await _googleSignIn.signOut();
+      await _googleSignIn?.signOut();
     }
   }
 

@@ -38,7 +38,7 @@ class DeepLearningTerminalPanel extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(width: 8),
-                Text('Real-time Logs', style: AppTextStyles.labelLarge),
+                Text('实时日志', style: AppTextStyles.labelLarge),
                 const Spacer(),
                 if (isTraining)
                   const SizedBox(
@@ -58,7 +58,7 @@ class DeepLearningTerminalPanel extends StatelessWidget {
             child: SingleChildScrollView(
               reverse: true,
               child: Text(
-                logs.isEmpty ? 'Ready to train...' : logs,
+                logs.isEmpty ? '等待训练任务...' : logs,
                 style: AppTextStyles.codeFont.copyWith(
                   color: const Color(0xFF34D399),
                   fontSize: 13,

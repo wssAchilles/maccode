@@ -100,7 +100,7 @@ class _StripHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Incident Priority Strip', style: AppTextStyles.h4),
+              Text('优先值班链路', style: AppTextStyles.h4),
               const SizedBox(height: 4),
               Text(
                 '把最需要值班关注的资产链路压成同一层，先看超时和升级，再进入具体工作台。',
@@ -119,7 +119,7 @@ class _StripHeader extends StatelessWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: Text(
-            '$count lanes',
+            '$count 条链路',
             style: AppTextStyles.labelMedium.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -145,6 +145,18 @@ class _PriorityStripTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _toneFor(chain);
     final chainTone = _chainColor(chain.key);
+    final cardLabel = buildDutyContextCardValue(chain.cardTargetLabel);
+    final incidentLabel = buildDutyContextIncidentValue(
+      chain.incidentTargetLabel,
+    );
+    final watchSummary = sanitizeWorkspaceSummaryText(
+      chain.incidentBrief,
+      duplicatedLabels: [
+        chain.workspaceTargetLabel,
+        cardLabel,
+        incidentLabel,
+      ],
+    );
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -169,52 +181,58 @@ class _PriorityStripTile extends StatelessWidget {
                 foreground: tone,
                 background: tone.withValues(alpha: 0.12),
               ),
-              _MiniBadge(
-                label: chain.cardTargetLabel,
-                foreground: chainTone,
-                background: chainTone.withValues(alpha: 0.1),
-              ),
+              if (cardLabel != null)
+                _MiniBadge(
+                  label: cardLabel,
+                  foreground: chainTone,
+                  background: chainTone.withValues(alpha: 0.1),
+                ),
               _MiniBadge(
                 label: chain.workspaceTargetLabel,
                 foreground: AppColors.textPrimary,
                 background: AppColors.surfaceVariant,
               ),
-              _MiniBadge(
-                label: chain.incidentTargetLabel,
-                foreground: tone,
-                background: tone.withValues(alpha: 0.08),
-              ),
+              if (incidentLabel != null)
+                _MiniBadge(
+                  label: incidentLabel,
+                  foreground: tone,
+                  background: tone.withValues(alpha: 0.08),
+                ),
               if (chain.isOverdue)
                 _MiniBadge(
-                  label: 'OVERDUE ${chain.overdueMinutes}m',
+                  label: '超时 ${chain.overdueMinutes}m',
                   foreground: AppColors.error,
                   background: AppColors.errorLight,
                 )
               else if (isDutyFocus)
                 _MiniBadge(
-                  label: 'DUTY FOCUS',
+                  label: '值班焦点',
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
                 )
               else if (chain.escalationTier > 0)
                 _MiniBadge(
-                  label: 'DUE SOON',
+                  label: '即将超时',
                   foreground: AppColors.warning,
                   background: AppColors.warningLight,
                 ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(chain.cardTargetLabel, style: AppTextStyles.labelLarge),
+          Text(cardLabel ?? chain.workspaceTargetLabel, style: AppTextStyles.labelLarge),
           const SizedBox(height: 4),
           Text(
-            chain.workspaceBrief,
+            buildChainWorkspaceSummary(chain),
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 10),
-          _PriorityFocusBand(chain: chain, accent: tone),
+          _PriorityFocusBand(
+            incidentLabel: incidentLabel,
+            watchSummary: watchSummary,
+            accent: tone,
+          ),
           const SizedBox(height: 10),
           Text(
             '${chain.ownerLabel} · ${chain.escalationStateLabel}',
@@ -225,7 +243,7 @@ class _PriorityStripTile extends StatelessWidget {
           if (chain.slaDeadlineAt != null) ...[
             const SizedBox(height: 2),
             Text(
-              'due ${DateFormat('MM-dd HH:mm').format(chain.slaDeadlineAt!.toLocal())} · ${chain.escalationLabel}',
+              '截止 ${DateFormat('MM-dd HH:mm').format(chain.slaDeadlineAt!.toLocal())} · ${chain.escalationLabel}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: chain.isOverdue
                     ? AppColors.error
@@ -246,13 +264,19 @@ class _PriorityStripTile extends StatelessWidget {
 }
 
 class _PriorityFocusBand extends StatelessWidget {
-  const _PriorityFocusBand({required this.chain, required this.accent});
+  const _PriorityFocusBand({
+    required this.incidentLabel,
+    required this.watchSummary,
+    required this.accent,
+  });
 
-  final AssetChainSummary chain;
+  final String? incidentLabel;
+  final String? watchSummary;
   final Color accent;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveIncidentLabel = incidentLabel;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -271,22 +295,23 @@ class _PriorityFocusBand extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Current watch',
+                  '当前关注',
                   style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
               ),
-              _MiniBadge(
-                label: chain.incidentTargetLabel,
-                foreground: accent,
-                background: accent.withValues(alpha: 0.1),
-              ),
+              if (effectiveIncidentLabel != null)
+                _MiniBadge(
+                  label: effectiveIncidentLabel,
+                  foreground: accent,
+                  background: accent.withValues(alpha: 0.1),
+                ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            chain.incidentBrief,
+            watchSummary ?? '--',
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textPrimary,
             ),

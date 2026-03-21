@@ -647,7 +647,7 @@ class _WorkflowHandoffBoard extends StatelessWidget {
         cardLabel: cardLabel,
         incidentLabel: incidentLabel,
         summary: workspaceBrief,
-        statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
+        statusLabel: hasStoragePath ? '就绪' : '待完成',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         recommendedActionKey: hasStoragePath
             ? 'send_training'
@@ -685,7 +685,7 @@ class _WorkflowHandoffBoard extends StatelessWidget {
         cardLabel: cardLabel,
         incidentLabel: incidentLabel,
         summary: workspaceBrief,
-        statusLabel: hasStoragePath ? 'Ready' : 'Blocked',
+        statusLabel: hasStoragePath ? '就绪' : '待完成',
         statusColor: hasStoragePath ? AppColors.success : AppColors.warning,
         recommendedActionKey: hasStoragePath
             ? 'send_rag'

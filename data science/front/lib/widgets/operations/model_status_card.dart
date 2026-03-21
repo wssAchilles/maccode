@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/system_status_localizer.dart';
 import '../common/glass_card.dart';
 
 class ModelStatusCard extends StatelessWidget {
@@ -42,7 +43,7 @@ class ModelStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            status.message,
+            localizeSystemStatusMessage(status.message),
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
             ),

@@ -23,7 +23,7 @@ class DutySignalStrip extends StatelessWidget {
       runSpacing: 10,
       children: [
         _SignalChip(
-          label: 'INCIDENT',
+          label: '故障',
           value: '${summary.incidentCount}',
           foreground: summary.incidentCount > 0
               ? AppColors.error
@@ -33,19 +33,19 @@ class DutySignalStrip extends StatelessWidget {
               : AppColors.successLight,
         ),
         _SignalChip(
-          label: 'ACTIVE',
+          label: '激活',
           value: '${summary.activeCount}',
           foreground: AppColors.warning,
           background: AppColors.warningLight,
         ),
         _SignalChip(
-          label: 'WATCH',
+          label: '关注',
           value: '${summary.watchCount}',
           foreground: accent,
           background: accent.withValues(alpha: 0.12),
         ),
         _SignalChip(
-          label: 'OVERDUE',
+          label: '超时',
           value: '${summary.overdueCount}',
           foreground: summary.overdueCount > 0
               ? AppColors.error
@@ -55,7 +55,7 @@ class DutySignalStrip extends StatelessWidget {
               : AppColors.surfaceVariant,
         ),
         _SignalChip(
-          label: 'ESCALATED',
+          label: '升级',
           value: '${summary.escalatedCount}',
           foreground: summary.escalatedCount > 0
               ? AppColors.warning
@@ -65,14 +65,14 @@ class DutySignalStrip extends StatelessWidget {
               : AppColors.surfaceVariant,
         ),
         _SignalChip(
-          label: 'ALERTS',
+          label: '告警',
           value: '${summary.alertCount}',
           foreground: AppColors.textPrimary,
           background: AppColors.surfaceVariant,
         ),
         if (summary.degradedSystemCount > 0)
           _SignalChip(
-            label: 'SYSTEMS',
+            label: '系统',
             value: '${summary.degradedSystemCount}',
             foreground: AppColors.warning,
             background: AppColors.warningLight,

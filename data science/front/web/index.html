@@ -37,9 +37,217 @@
 
   <title>Sentinel Ops</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    #boot-fallback {
+      position: fixed;
+      inset: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      pointer-events: none;
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+      color: #0f172a;
+    }
+
+    #boot-fallback[data-visible="true"] {
+      display: flex;
+    }
+
+    #boot-fallback .boot-card {
+      width: min(560px, calc(100vw - 48px));
+      padding: 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.14);
+      pointer-events: auto;
+    }
+
+    #boot-fallback h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    #boot-fallback p {
+      margin: 0 0 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #475569;
+    }
+
+    #boot-fallback .boot-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    #boot-fallback button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #boot-fallback .primary {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    #boot-fallback .secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    #boot-fallback pre {
+      margin: 0;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow: auto;
+    }
+  </style>
 </head>
 
 <body>
+  <div id="boot-fallback" aria-live="polite">
+    <div class="boot-card">
+      <h1>应用初始化失败</h1>
+      <p>
+        页面资源已经返回，但 Flutter 工作台没有成功挂起。请先尝试重新加载；如果问题持续存在，再清理缓存后重试。
+      </p>
+      <div class="boot-actions">
+        <button class="primary" type="button" onclick="window.location.reload()">
+          重新加载
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('boot-diagnostics')?.innerText || '')"
+        >
+          复制诊断信息
+        </button>
+      </div>
+      <pre id="boot-diagnostics">正在收集启动诊断…</pre>
+    </div>
+  </div>
+  <script>
+    (function registerBootWatchdog() {
+      const fallback = document.getElementById('boot-fallback');
+      const diagnostics = document.getElementById('boot-diagnostics');
+      const startedAt = Date.now();
+      const issues = [];
+      let bootResolved = false;
+      let timeoutReached = false;
+      let timeoutReported = false;
+      let bootProbe = null;
+      const flutterRootSelector =
+        'flt-glass-pane, flt-scene-host, flt-semantics-host, flutter-view, flt-semantics-placeholder, canvas';
+
+      const pushIssue = (label, value) => {
+        const next = `${label}: ${String(value || '').trim()}`.trim();
+        if (!next || issues.includes(next)) {
+          return;
+        }
+        issues.push(next);
+      };
+
+      const renderDiagnostics = (status) => {
+        if (!diagnostics) {
+          return;
+        }
+        const lines = [
+          `status: ${status}`,
+          `url: ${window.location.href}`,
+          `readyState: ${document.readyState}`,
+          `elapsedMs: ${Date.now() - startedAt}`,
+          `bodyChildren: ${document.body ? document.body.children.length : 0}`,
+          `flutterNodes: ${document.querySelectorAll(flutterRootSelector).length}`,
+          ...issues,
+        ];
+        diagnostics.textContent = lines.join('\n');
+      };
+
+      const hasFlutterRoot = () =>
+        !!document.querySelector(flutterRootSelector);
+
+      const markReady = () => {
+        if (bootResolved || !hasFlutterRoot()) {
+          return;
+        }
+        bootResolved = true;
+        if (bootProbe) {
+          window.clearInterval(bootProbe);
+          bootProbe = null;
+        }
+        renderDiagnostics(timeoutReached ? 'boot-timeout-recovered' : 'boot-ready');
+        if (fallback) {
+          fallback.dataset.visible = 'false';
+        }
+      };
+
+      const showFallback = () => {
+        if (bootResolved || hasFlutterRoot()) {
+          markReady();
+          return;
+        }
+        if (timeoutReported) {
+          renderDiagnostics('boot-timeout');
+          return;
+        }
+        timeoutReported = true;
+        renderDiagnostics('boot-timeout');
+        console.error('Sentinel Ops boot watchdog timeout', {
+          issues,
+          url: window.location.href,
+          readyState: document.readyState,
+          bodyChildren: document.body ? document.body.children.length : 0,
+        });
+        if (fallback) {
+          fallback.dataset.visible = 'true';
+        }
+      };
+
+      window.addEventListener('error', (event) => {
+        pushIssue('error', event.message || event.error?.message || 'unknown');
+        renderDiagnostics('boot-error');
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason?.message || event.reason || 'unknown';
+        pushIssue('unhandledrejection', reason);
+        renderDiagnostics('boot-rejection');
+      });
+
+      bootProbe = window.setInterval(() => {
+        if (hasFlutterRoot()) {
+          if (bootProbe) {
+            window.clearInterval(bootProbe);
+            bootProbe = null;
+          }
+          markReady();
+          return;
+        }
+        renderDiagnostics(timeoutReached ? 'boot-timeout' : 'boot-waiting');
+      }, 500);
+
+      window.setTimeout(() => {
+        timeoutReached = true;
+        showFallback();
+      }, 12000);
+    })();
+  </script>
   <script>
     (function registerFormFieldIdentityPatch() {
       let rafToken = null;

@@ -31,7 +31,7 @@ class RagInputArea extends StatelessWidget {
               controller: controller,
               enabled: !isLoading,
               decoration: const InputDecoration(
-                hintText: 'Ask anything about your documents...',
+                hintText: '询问文档摘要、出处定位或关键对比...',
                 border: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 enabledBorder: InputBorder.none,

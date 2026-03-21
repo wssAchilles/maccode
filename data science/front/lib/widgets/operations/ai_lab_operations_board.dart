@@ -8,6 +8,7 @@ import '../../config/app_theme.dart';
 import '../../models/ai_lab_launch_intent.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
+import '../../utils/system_status_localizer.dart';
 import '../common/glass_card.dart';
 import 'metric_card.dart';
 
@@ -66,8 +67,14 @@ class AiLabOperationsBoard extends StatelessWidget {
                 icon: Icons.model_training_rounded,
                 supportingText: latestTrainingJob == null
                     ? '当前没有训练任务在运行'
-                    : latestTrainingJob.statusMessage ??
-                          latestTrainingJob.status,
+                    : _queueSummaryText(
+                        latestTrainingJob,
+                        completedLabel: '最近训练已完成',
+                        runningLabel: '训练任务运行中',
+                        queuedLabel: '训练任务已排队',
+                        failedLabel: '最近训练失败',
+                        cancelledLabel: '最近训练已取消',
+                      ),
                 emphasis: activeTrainingJobs > 0,
               ),
               MetricCard(
@@ -76,7 +83,14 @@ class AiLabOperationsBoard extends StatelessWidget {
                 icon: Icons.auto_awesome_rounded,
                 supportingText: latestRagJob == null
                     ? '当前没有 ingest 任务在运行'
-                    : latestRagJob.statusMessage ?? latestRagJob.status,
+                    : _queueSummaryText(
+                        latestRagJob,
+                        completedLabel: '最近知识库任务已完成',
+                        runningLabel: '知识库任务运行中',
+                        queuedLabel: '知识库任务已排队',
+                        failedLabel: '最近知识库任务失败',
+                        cancelledLabel: '最近知识库任务已取消',
+                      ),
               ),
               MetricCard(
                 label: '模型资产',
@@ -139,6 +153,11 @@ class AiLabOperationsBoard extends StatelessWidget {
                 accent: AppColors.cta,
                 icon: Icons.model_training_rounded,
                 jobs: trainingJobs,
+                completedLabel: '最近训练已完成',
+                runningLabel: '训练任务运行中',
+                queuedLabel: '训练任务已排队',
+                failedLabel: '最近训练失败',
+                cancelledLabel: '最近训练已取消',
               ),
               _AiJobLaneCard(
                 title: '知识库车道',
@@ -147,6 +166,11 @@ class AiLabOperationsBoard extends StatelessWidget {
                 accent: AppColors.primary,
                 icon: Icons.account_tree_rounded,
                 jobs: ragJobs,
+                completedLabel: '最近知识库任务已完成',
+                runningLabel: '知识库任务运行中',
+                queuedLabel: '知识库任务已排队',
+                failedLabel: '最近知识库任务失败',
+                cancelledLabel: '最近知识库任务已取消',
               ),
             ];
 
@@ -264,13 +288,13 @@ class _AiLabContextCard extends StatelessWidget {
               if (modelStatus != null)
                 _ContextPill(
                   label: '训练服务',
-                  value: modelStatus!.message,
+                  value: localizeSystemStatusMessage(modelStatus!.message),
                   accent: _statusColor(modelStatus!.status),
                 ),
               if (ragStatus != null)
                 _ContextPill(
                   label: '知识服务',
-                  value: ragStatus!.message,
+                  value: localizeSystemStatusMessage(ragStatus!.message),
                   accent: _statusColor(ragStatus!.status),
                 ),
             ],
@@ -311,6 +335,11 @@ class _AiJobLaneCard extends StatelessWidget {
     required this.accent,
     required this.icon,
     required this.jobs,
+    required this.completedLabel,
+    required this.runningLabel,
+    required this.queuedLabel,
+    required this.failedLabel,
+    required this.cancelledLabel,
   });
 
   final String title;
@@ -319,6 +348,11 @@ class _AiJobLaneCard extends StatelessWidget {
   final Color accent;
   final IconData icon;
   final List<JobRecord> jobs;
+  final String completedLabel;
+  final String runningLabel;
+  final String queuedLabel;
+  final String failedLabel;
+  final String cancelledLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -382,7 +416,15 @@ class _AiJobLaneCard extends StatelessWidget {
           if (latestJob == null)
             _EmptyLaneState(message: emptyMessage)
           else
-            _LaneJobSnapshot(job: latestJob, accent: accent),
+            _LaneJobSnapshot(
+              job: latestJob,
+              accent: accent,
+              completedLabel: completedLabel,
+              runningLabel: runningLabel,
+              queuedLabel: queuedLabel,
+              failedLabel: failedLabel,
+              cancelledLabel: cancelledLabel,
+            ),
         ],
       ),
     );
@@ -414,10 +456,23 @@ class _LaneMetric extends StatelessWidget {
 }
 
 class _LaneJobSnapshot extends StatelessWidget {
-  const _LaneJobSnapshot({required this.job, required this.accent});
+  const _LaneJobSnapshot({
+    required this.job,
+    required this.accent,
+    required this.completedLabel,
+    required this.runningLabel,
+    required this.queuedLabel,
+    required this.failedLabel,
+    required this.cancelledLabel,
+  });
 
   final JobRecord job;
   final Color accent;
+  final String completedLabel;
+  final String runningLabel;
+  final String queuedLabel;
+  final String failedLabel;
+  final String cancelledLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -433,7 +488,14 @@ class _LaneJobSnapshot extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            job.statusMessage ?? latestEvent?.message ?? job.displayTitle,
+            _queueSummaryText(
+              job,
+              completedLabel: completedLabel,
+              runningLabel: runningLabel,
+              queuedLabel: queuedLabel,
+              failedLabel: failedLabel,
+              cancelledLabel: cancelledLabel,
+            ),
             style: AppTextStyles.labelLarge.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -710,4 +772,46 @@ String _formatTime(DateTime? value) {
     return '时间未知';
   }
   return DateFormat('MM-dd HH:mm').format(value.toLocal());
+}
+
+String _queueSummaryText(
+  JobRecord job, {
+  required String completedLabel,
+  required String runningLabel,
+  required String queuedLabel,
+  required String failedLabel,
+  required String cancelledLabel,
+}) {
+  final statusMessage = job.statusMessage?.trim();
+  final latestEventMessage = job.latestEvent?.message.trim();
+
+  bool isGenericStatusMessage(String? value) {
+    if (value == null || value.isEmpty) {
+      return true;
+    }
+    final normalized = value.toLowerCase();
+    return normalized == job.status.toLowerCase() || normalized == 'job completed';
+  }
+
+  if (!isGenericStatusMessage(statusMessage)) {
+    return statusMessage!;
+  }
+  if (job.status == 'running' && latestEventMessage != null && latestEventMessage.isNotEmpty) {
+    return latestEventMessage;
+  }
+
+  switch (job.status) {
+    case 'queued':
+      return queuedLabel;
+    case 'running':
+      return runningLabel;
+    case 'succeeded':
+      return completedLabel;
+    case 'failed':
+      return job.error?.message ?? failedLabel;
+    case 'cancelled':
+      return cancelledLabel;
+    default:
+      return _statusLabel(job.status);
+  }
 }

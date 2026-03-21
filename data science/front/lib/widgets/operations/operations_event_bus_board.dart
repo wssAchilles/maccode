@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 
 class OperationsEventBusBoard extends StatelessWidget {
@@ -193,6 +194,8 @@ class _FocusQueueTile extends StatelessWidget {
           : 'info',
     );
     final chainTone = _chainColor(chain.key);
+    final cardLabel = buildDutyContextCardValue(chain.cardTargetLabel);
+    final incidentLabel = buildDutyContextIncidentValue(chain.incidentTargetLabel);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -232,40 +235,42 @@ class _FocusQueueTile extends StatelessWidget {
                       foreground: tone,
                       background: tone.withValues(alpha: 0.12),
                     ),
-                    _BusBadge(
-                      label: chain.cardTargetLabel,
-                      foreground: chainTone,
-                      background: chainTone.withValues(alpha: 0.1),
-                    ),
+                    if (cardLabel != null)
+                      _BusBadge(
+                        label: cardLabel,
+                        foreground: chainTone,
+                        background: chainTone.withValues(alpha: 0.1),
+                      ),
                     _BusBadge(
                       label: chain.workspaceTargetLabel,
                       foreground: AppColors.textPrimary,
                       background: AppColors.surface,
                     ),
-                    _BusBadge(
-                      label: chain.incidentTargetLabel,
-                      foreground: tone,
-                      background: tone.withValues(alpha: 0.08),
-                    ),
+                    if (incidentLabel != null)
+                      _BusBadge(
+                        label: incidentLabel,
+                        foreground: tone,
+                        background: tone.withValues(alpha: 0.08),
+                      ),
                     if (chain.isOverdue)
                       _BusBadge(
-                        label: 'OVERDUE ${chain.overdueMinutes}m',
+                        label: '超时 ${chain.overdueMinutes}m',
                         foreground: AppColors.error,
                         background: AppColors.errorLight,
                       )
                     else if (chain.escalationTier > 0)
                       _BusBadge(
-                        label: 'SLA WATCH',
+                        label: 'SLA 关注',
                         foreground: AppColors.warning,
                         background: AppColors.warningLight,
                       ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(chain.cardTargetLabel, style: AppTextStyles.labelLarge),
+                Text(cardLabel ?? chain.workspaceTargetLabel, style: AppTextStyles.labelLarge),
                 const SizedBox(height: 4),
                 Text(
-                  chain.workspaceBrief,
+                  buildChainWorkspaceSummary(chain),
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -350,6 +355,10 @@ class _EventBusTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final chainTone = _chainColor(entry.chain.key);
     final nodeTone = _nodeColor(entry.node.level);
+    final cardLabel = buildDutyContextCardValue(entry.chain.cardTargetLabel);
+    final incidentLabel = buildDutyContextIncidentValue(
+      entry.chain.incidentTargetLabel,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -407,30 +416,32 @@ class _EventBusTile extends StatelessWidget {
                       foreground: nodeTone,
                       background: nodeTone.withValues(alpha: 0.08),
                     ),
-                    _BusBadge(
-                      label: entry.chain.cardTargetLabel,
-                      foreground: chainTone,
-                      background: chainTone.withValues(alpha: 0.1),
-                    ),
+                    if (cardLabel != null)
+                      _BusBadge(
+                        label: cardLabel,
+                        foreground: chainTone,
+                        background: chainTone.withValues(alpha: 0.1),
+                      ),
                     _BusBadge(
                       label: entry.chain.workspaceTargetLabel,
                       foreground: AppColors.textPrimary,
                       background: AppColors.surface,
                     ),
-                    _BusBadge(
-                      label: entry.chain.incidentTargetLabel,
-                      foreground: nodeTone,
-                      background: nodeTone.withValues(alpha: 0.08),
-                    ),
+                    if (incidentLabel != null)
+                      _BusBadge(
+                        label: incidentLabel,
+                        foreground: nodeTone,
+                        background: nodeTone.withValues(alpha: 0.08),
+                      ),
                     if (entry.chain.isOverdue)
                       _BusBadge(
-                        label: 'OVERDUE ${entry.chain.overdueMinutes}m',
+                        label: '超时 ${entry.chain.overdueMinutes}m',
                         foreground: AppColors.error,
                         background: AppColors.errorLight,
                       )
                     else if (entry.chain.escalationTier > 0)
                       _BusBadge(
-                        label: 'SLA WATCH',
+                        label: 'SLA 关注',
                         foreground: AppColors.warning,
                         background: AppColors.warningLight,
                       ),
@@ -448,7 +459,10 @@ class _EventBusTile extends StatelessWidget {
                 Text(entry.node.title, style: AppTextStyles.labelLarge),
                 const SizedBox(height: 4),
                 Text(
-                  '${entry.chain.workspaceTargetLabel} · ${entry.chain.workspaceBrief}',
+                  buildChainWorkspaceSummary(
+                    entry.chain,
+                    includeWorkspaceLabel: true,
+                  ),
                   style: AppTextStyles.bodySmall.copyWith(color: chainTone),
                 ),
                 const SizedBox(height: 8),
@@ -476,7 +490,7 @@ class _EventBusTile extends StatelessWidget {
               if (entry.chain.slaDeadlineAt != null) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'due ${_formatTime(entry.chain.slaDeadlineAt)}',
+                  '截止 ${_formatTime(entry.chain.slaDeadlineAt)}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: entry.chain.isOverdue
                         ? AppColors.error
@@ -506,6 +520,15 @@ class _FocusSignal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final incidentLabel = buildDutyContextIncidentValue(chain.incidentTargetLabel);
+    final watchSummary = sanitizeWorkspaceSummaryText(
+      chain.incidentBrief,
+      duplicatedLabels: [
+        chain.workspaceTargetLabel,
+        chain.cardTargetLabel,
+        incidentLabel,
+      ],
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -521,12 +544,12 @@ class _FocusSignal extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current watch · ${chain.incidentTargetLabel}',
+            incidentLabel == null ? '当前关注' : '当前关注 · $incidentLabel',
             style: AppTextStyles.labelMedium.copyWith(color: accent),
           ),
           const SizedBox(height: 4),
           Text(
-            chain.incidentBrief,
+            watchSummary ?? '--',
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textPrimary,
             ),

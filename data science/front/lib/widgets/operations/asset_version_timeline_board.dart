@@ -15,11 +15,13 @@ class AssetVersionTimelineBoard extends StatelessWidget {
     required this.summary,
     required this.onNavigateToTab,
     this.dutySummary,
+    this.onOpenChain,
   });
 
   final AssetSummary summary;
   final ValueChanged<int> onNavigateToTab;
   final DutySummary? dutySummary;
+  final ValueChanged<AssetChainSummary>? onOpenChain;
 
   @override
   Widget build(BuildContext context) {
@@ -28,12 +30,13 @@ class AssetVersionTimelineBoard extends StatelessWidget {
           _TimelineLane(
             chainKey: 'dataset',
             isDutyFocus: dutySummary?.focusChainKey == 'dataset',
+            chain: _chainFor('dataset'),
             title: '数据资产版本',
             description: '最近分析沉淀到资产链路的数据版本。',
             accent: AppColors.primary,
             icon: Icons.dataset_rounded,
-            actionLabel: '打开数据分析',
-            onTap: () => onNavigateToTab(2),
+            actionLabel: _chainFor('dataset')?.actionLabel ?? '打开数据分析',
+            onTap: () => _openChain('dataset', fallbackTab: 2),
             items: summary.datasets
                 .take(3)
                 .map(
@@ -53,12 +56,13 @@ class AssetVersionTimelineBoard extends StatelessWidget {
           _TimelineLane(
             chainKey: 'model',
             isDutyFocus: dutySummary?.focusChainKey == 'model',
+            chain: _chainFor('model'),
             title: '模型版本轨迹',
             description: '最近训练产物的版本、目标列和来源数据。',
             accent: AppColors.cta,
             icon: Icons.model_training_rounded,
-            actionLabel: '打开 AI Lab',
-            onTap: () => onNavigateToTab(3),
+            actionLabel: _chainFor('model')?.actionLabel ?? '打开 AI Lab',
+            onTap: () => _openChain('model', fallbackTab: 3),
             items: summary.models
                 .take(3)
                 .map(
@@ -75,12 +79,13 @@ class AssetVersionTimelineBoard extends StatelessWidget {
           _TimelineLane(
             chainKey: 'knowledge',
             isDutyFocus: dutySummary?.focusChainKey == 'knowledge',
+            chain: _chainFor('knowledge'),
             title: '知识快照轨迹',
             description: '最近知识库构建的集合版本和来源文档。',
             accent: AppColors.success,
             icon: Icons.account_tree_rounded,
-            actionLabel: '打开 AI Lab',
-            onTap: () => onNavigateToTab(3),
+            actionLabel: _chainFor('knowledge')?.actionLabel ?? '打开 AI Lab',
+            onTap: () => _openChain('knowledge', fallbackTab: 3),
             items: summary.knowledgeBases
                 .take(3)
                 .map(
@@ -96,12 +101,14 @@ class AssetVersionTimelineBoard extends StatelessWidget {
           _TimelineLane(
             chainKey: 'optimization',
             isDutyFocus: dutySummary?.focusChainKey == 'optimization',
+            chain: _chainFor('optimization'),
             title: '优化快照轨迹',
             description: '最近后台优化登记到台账的版本和节省结果。',
             accent: AppColors.warning,
             icon: Icons.bolt_rounded,
-            actionLabel: '打开能源优化',
-            onTap: () => onNavigateToTab(1),
+            actionLabel:
+                _chainFor('optimization')?.actionLabel ?? '打开能源优化',
+            onTap: () => _openChain('optimization', fallbackTab: 1),
             items: summary.optimizations
                 .take(3)
                 .map(
@@ -153,12 +160,29 @@ class AssetVersionTimelineBoard extends StatelessWidget {
       },
     );
   }
+
+  AssetChainSummary? _chainFor(String key) {
+    return summary.chainSummaries.cast<AssetChainSummary?>().firstWhere(
+      (chain) => chain?.key == key,
+      orElse: () => null,
+    );
+  }
+
+  void _openChain(String key, {required int fallbackTab}) {
+    final chain = _chainFor(key);
+    if (chain != null && onOpenChain != null) {
+      onOpenChain!(chain);
+      return;
+    }
+    onNavigateToTab(fallbackTab);
+  }
 }
 
 class _TimelineLane extends StatelessWidget {
   const _TimelineLane({
     required this.chainKey,
     required this.isDutyFocus,
+    required this.chain,
     required this.title,
     required this.description,
     required this.accent,
@@ -170,6 +194,7 @@ class _TimelineLane extends StatelessWidget {
 
   final String chainKey;
   final bool isDutyFocus;
+  final AssetChainSummary? chain;
   final String title;
   final String description;
   final Color accent;
@@ -212,7 +237,7 @@ class _TimelineLane extends StatelessWidget {
                     if (isDutyFocus) ...[
                       const SizedBox(height: 8),
                       const WorkspaceStatusChip(
-                        label: 'DUTY FOCUS',
+                        label: '值班焦点',
                         icon: Icons.center_focus_strong_rounded,
                         foreground: AppColors.primary,
                         background: AppColors.infoLight,

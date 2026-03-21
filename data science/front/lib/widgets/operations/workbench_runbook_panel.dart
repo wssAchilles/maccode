@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/workbench_launch_context.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 import 'workbench_command_strip.dart';
 
@@ -40,8 +41,16 @@ class WorkbenchRunbookPanel extends StatelessWidget {
     final incidentLabel =
         continuationContext?.incidentTargetLabel ??
         activeChain.incidentTargetLabel;
-    final workspaceBrief =
-        continuationContext?.workspaceBrief ?? activeChain.workspaceBrief;
+    final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
+    final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
+    final workspaceBrief = sanitizeWorkspaceSummaryText(
+      continuationContext?.workspaceBrief ?? activeChain.workspaceBrief,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -67,11 +76,12 @@ class WorkbenchRunbookPanel extends StatelessWidget {
                 foreground: accent,
                 background: accent.withValues(alpha: 0.1),
               ),
-              _RunbookBadge(
-                label: incidentLabel,
-                foreground: tone,
-                background: tone.withValues(alpha: 0.08),
-              ),
+              if (effectiveIncidentLabel != null)
+                _RunbookBadge(
+                  label: effectiveIncidentLabel,
+                  foreground: tone,
+                  background: tone.withValues(alpha: 0.08),
+                ),
               if (activeChain.isOverdue)
                 const _RunbookBadge(
                   label: 'SLA 超时',
@@ -129,10 +139,10 @@ class WorkbenchRunbookPanel extends StatelessWidget {
             tone: tone,
             accent: accent,
             continuationContext: continuationContext,
-            cardLabel: cardLabel,
-            incidentLabel: incidentLabel,
+            cardLabel: effectiveCardLabel ?? cardLabel,
+            incidentLabel: effectiveIncidentLabel ?? incidentLabel,
             workspaceLabel: workspaceLabel,
-            workspaceBrief: workspaceBrief,
+            workspaceBrief: workspaceBrief ?? activeChain.workspaceBrief,
           ),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -178,6 +188,24 @@ class _RunbookSignal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
+    final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
+    final effectiveWatchSummary = sanitizeWorkspaceSummaryText(
+      continuationContext?.watchSummary ?? chain.incidentBrief,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
+    final effectiveWorkspaceBrief = sanitizeWorkspaceSummaryText(
+      workspaceBrief,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -196,33 +224,36 @@ class _RunbookSignal extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              Text('Current watch', style: AppTextStyles.labelMedium),
-              _RunbookBadge(
-                label: incidentLabel,
-                foreground: tone,
-                background: tone.withValues(alpha: 0.1),
-              ),
-              _RunbookBadge(
-                label: cardLabel,
-                foreground: accent,
-                background: accent.withValues(alpha: 0.08),
-              ),
+              Text('当前关注', style: AppTextStyles.labelMedium),
+              if (effectiveIncidentLabel != null)
+                _RunbookBadge(
+                  label: effectiveIncidentLabel,
+                  foreground: tone,
+                  background: tone.withValues(alpha: 0.1),
+                ),
+              if (effectiveCardLabel != null)
+                _RunbookBadge(
+                  label: effectiveCardLabel,
+                  foreground: accent,
+                  background: accent.withValues(alpha: 0.08),
+                ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            continuationContext?.watchSummary ?? chain.incidentBrief,
+            effectiveWatchSummary ?? chain.incidentBrief,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            '$workspaceLabel · $workspaceBrief',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+          if (effectiveWorkspaceBrief != null)
+            Text(
+              '$workspaceLabel · $effectiveWorkspaceBrief',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -8,6 +8,7 @@ import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
 import '../../models/optimization_result.dart';
 import '../../models/workbench_launch_context.dart';
+import '../../utils/job_presentation.dart';
 import '../common/glass_card.dart';
 import '../operations/asset_chain_section_header.dart';
 
@@ -66,10 +67,10 @@ class OptimizationOperationsBoard extends StatelessWidget {
             : AppColors.success,
         icon: Icons.rule_folder_rounded,
         badge: totalConstraintHits == 0
-            ? 'LOW'
+            ? '低'
             : totalConstraintHits > 12
-            ? 'HIGH'
-            : 'MEDIUM',
+            ? '高'
+            : '中',
         highlighted: _focusTelemetryCard(
           chain,
           'constraint',
@@ -94,7 +95,7 @@ class OptimizationOperationsBoard extends StatelessWidget {
         accent: AppColors.primary,
         icon: Icons.insights_rounded,
         badge: explainability?.topFeature == null
-            ? 'N/A'
+            ? '无数据'
             : explainability!.topFeaturePercent,
         highlighted: _focusTelemetryCard(
           chain,
@@ -134,9 +135,9 @@ class OptimizationOperationsBoard extends StatelessWidget {
             ? continuationContext?.watchSummary ?? chain?.incidentBrief
             : null,
         lines: [
-          'status=${latestCompletedJob?.statusMessage ?? latestCompletedJob?.status ?? '--'}',
-          'attempt=${latestCompletedJob?.attemptCount ?? '--'}/${latestCompletedJob?.maxAttempts ?? '--'}',
-          'ready=${latestCompletedJob != null ? 'yes' : 'no'}',
+          '状态=${latestCompletedJob == null ? '--' : buildJobPrimaryText(latestCompletedJob!)}',
+          '尝试=${latestCompletedJob?.attemptCount ?? '--'}/${latestCompletedJob?.maxAttempts ?? '--'}',
+          '产物就绪=${latestCompletedJob != null ? '是' : '否'}',
         ],
       ),
     ];
@@ -249,7 +250,7 @@ class _TelemetryCard extends StatelessWidget {
                 children: [
                   if (noteLabel != null)
                     Text(
-                      'Current watch · $noteLabel',
+                      '当前关注 · $noteLabel',
                       style: AppTextStyles.labelMedium.copyWith(color: accent),
                     ),
                   if (noteLabel != null) const SizedBox(height: 4),
@@ -353,14 +354,14 @@ class _SolverHealthState {
 _SolverHealthState _solverHealth(SolverDiagnostics? diagnostics) {
   if (diagnostics == null) {
     return const _SolverHealthState(
-      label: 'UNKNOWN',
+      label: '未知',
       color: AppColors.textSecondary,
     );
   }
   final runtime = diagnostics.runtimeSec;
   final gap = diagnostics.mipGap ?? 0;
   if (runtime > 30 || gap > 0.03) {
-    return const _SolverHealthState(label: 'WATCH', color: AppColors.warning);
+    return const _SolverHealthState(label: '关注', color: AppColors.warning);
   }
-  return const _SolverHealthState(label: 'HEALTHY', color: AppColors.success);
+  return const _SolverHealthState(label: '健康', color: AppColors.success);
 }

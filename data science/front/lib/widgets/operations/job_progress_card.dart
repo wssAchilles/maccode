@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
+import '../../utils/job_presentation.dart';
 import '../common/glass_card.dart';
 
 class JobProgressCard extends StatelessWidget {
@@ -62,7 +63,7 @@ class JobProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            job.statusMessage ?? latestEvent?.message ?? '任务已提交',
+            buildJobPrimaryText(job),
             style: AppTextStyles.h4,
           ),
           if (latestEvent != null) ...[

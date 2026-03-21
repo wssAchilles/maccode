@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/workbench_launch_context.dart';
+import '../../utils/asset_chain_context.dart';
 
 class AssetChainSectionHeader extends StatelessWidget {
   const AssetChainSectionHeader({
@@ -36,8 +37,16 @@ class AssetChainSectionHeader extends StatelessWidget {
     final incidentLabel =
         continuationContext?.incidentTargetLabel ??
         activeChain?.incidentTargetLabel;
-    final watchSummary =
-        continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief;
+    final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
+    final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
+    final watchSummary = sanitizeWorkspaceSummaryText(
+      continuationContext?.workspaceBrief ?? activeChain?.workspaceBrief,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,15 +84,15 @@ class AssetChainSectionHeader extends StatelessWidget {
                       foreground: tone,
                       background: tone.withValues(alpha: 0.08),
                     ),
-                  if ((cardLabel ?? '').isNotEmpty)
+                  if ((effectiveCardLabel ?? '').isNotEmpty)
                     _HeaderBadge(
-                      label: cardLabel!,
+                      label: effectiveCardLabel!,
                       foreground: AppColors.textPrimary,
                       background: AppColors.surfaceVariant,
                     ),
-                  if ((incidentLabel ?? '').isNotEmpty)
+                  if ((effectiveIncidentLabel ?? '').isNotEmpty)
                     _HeaderBadge(
-                      label: incidentLabel!,
+                      label: effectiveIncidentLabel!,
                       foreground: tone,
                       background: tone.withValues(alpha: 0.08),
                     ),

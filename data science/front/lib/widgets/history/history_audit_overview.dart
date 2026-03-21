@@ -50,6 +50,10 @@ class HistoryAuditOverview extends StatelessWidget {
     final completedJobs = jobs.where((job) => job.status == 'succeeded').length;
     final latestJob = jobs.isEmpty ? null : jobs.first;
     final focusChain = selectDutyFocusChain(assetSummary, dutySummary);
+    final cardFactValue = buildDutyContextCardValue(focusChain?.cardTargetLabel);
+    final incidentFactValue = buildDutyContextIncidentValue(
+      focusChain?.incidentTargetLabel,
+    );
 
     return DutyContextBoard(
       title: '值班概览',
@@ -99,16 +103,16 @@ class HistoryAuditOverview extends StatelessWidget {
             foreground: AppColors.primary,
             background: AppColors.infoLight,
           ),
-        if (focusChain != null)
+        if (cardFactValue != null)
           DutyContextFact(
             label: '卡片',
-            value: focusChain.cardTargetLabel,
+            value: cardFactValue,
             icon: Icons.dashboard_customize_rounded,
           ),
-        if (focusChain != null)
+        if (incidentFactValue != null)
           DutyContextFact(
             label: '值班',
-            value: focusChain.incidentTargetLabel,
+            value: incidentFactValue,
             icon: Icons.priority_high_rounded,
             foreground: AppColors.warning,
             background: AppColors.warningLight,

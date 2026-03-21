@@ -15,6 +15,7 @@ import '../models/optimization_result.dart';
 import '../models/optimization_launch_intent.dart';
 import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
+import '../utils/job_presentation.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
@@ -157,23 +158,6 @@ class _ModelingScreenState extends State<ModelingScreen> {
     }
   }
 
-  String _jobStatusLabel(String status) {
-    switch (status) {
-      case 'queued':
-        return '排队';
-      case 'running':
-        return '运行中';
-      case 'succeeded':
-        return '已完成';
-      case 'failed':
-        return '失败';
-      case 'cancelled':
-        return '已取消';
-      default:
-        return status;
-    }
-  }
-
   Color _jobStatusColor(String status) {
     switch (status) {
       case 'queued':
@@ -221,7 +205,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
           label: '后台队列',
           value: latestJob == null
               ? '空闲'
-              : (latestJob.statusMessage ?? _jobStatusLabel(latestJob.status)),
+              : buildJobPrimaryText(latestJob),
           accent: latestJob == null
               ? AppColors.textSecondary
               : _jobStatusColor(latestJob.status),
@@ -689,7 +673,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
           if (latestJob != null) ...[
             const SizedBox(height: 12),
             Text(
-              '最近任务: ${latestJob.displayTitle} · ${latestJob.statusMessage ?? latestJob.status}',
+              '最近任务: ${latestJob.displayTitle} · ${buildJobPrimaryText(latestJob)}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -916,7 +900,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
                 summary:
                     _activeLaunchContext?.workspaceBrief ??
                     chain?.workspaceBrief,
-                statusLabel: hasExportableResult ? 'Ready' : 'Blocked',
+                statusLabel: hasExportableResult ? '就绪' : '待完成',
                 statusColor: hasExportableResult
                     ? AppColors.success
                     : AppColors.warning,
@@ -1039,7 +1023,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
               ),
               child: Text(
                 '最近后台产物: ${latestCompletedJob.completedAt == null ? "--" : DateFormat("MM-dd HH:mm").format(latestCompletedJob.completedAt!.toLocal())} · '
-                '${latestCompletedJob.statusMessage ?? _jobStatusLabel(latestCompletedJob.status)}',
+                '${buildJobPrimaryText(latestCompletedJob)}',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                 ),

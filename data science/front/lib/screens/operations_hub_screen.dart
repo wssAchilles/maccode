@@ -437,6 +437,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final degradedSystems = safeSummary.systemStatus
         .where((item) => item.status != 'healthy')
         .length;
+    final cardFactValue = buildDutyContextCardValue(focusChain?.cardTargetLabel);
+    final incidentFactValue = buildDutyContextIncidentValue(
+      focusChain?.incidentTargetLabel,
+    );
     final orderedSections =
         <MapEntry<String, Widget>>[
           MapEntry(
@@ -480,6 +484,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                 summary: safeSummary.assetSummary,
                 dutySummary: safeSummary.dutySummary,
                 onNavigateToTab: widget.onNavigateToTab,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: 'Asset Version Timeline');
+                },
               ),
             ),
           ),
@@ -769,16 +776,16 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                 foreground: AppColors.primary,
                 background: AppColors.infoLight,
               ),
-            if (focusChain != null)
+            if (cardFactValue != null)
               DutyContextFact(
                 label: '卡片',
-                value: focusChain.cardTargetLabel,
+                value: cardFactValue,
                 icon: Icons.dashboard_customize_rounded,
               ),
-            if (focusChain != null)
+            if (incidentFactValue != null)
               DutyContextFact(
                 label: '值班',
-                value: focusChain.incidentTargetLabel,
+                value: incidentFactValue,
                 icon: Icons.priority_high_rounded,
                 foreground: AppColors.warning,
                 background: AppColors.warningLight,
@@ -894,7 +901,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           summary: safeSummary.assetSummary,
           dutySummary: safeSummary.dutySummary,
           onOpenChain: (chain) {
-            _openChainWorkspace(chain, source: 'Incident Priority Strip');
+            _openChainWorkspace(chain, source: '优先值班链路');
           },
         ),
         const SizedBox(height: 20),
@@ -910,7 +917,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
               ? _dutyFocusChip()
               : null,
           onOpenChain: (chain) {
-            _openChainWorkspace(chain, source: 'Runbook Queue');
+            _openChainWorkspace(chain, source: '处置清单');
           },
         ),
         const SizedBox(height: 20),
@@ -1050,7 +1057,7 @@ bool _isDutyFocusSection(
 
 Widget _dutyFocusChip() {
   return const WorkspaceStatusChip(
-    label: 'DUTY FOCUS',
+    label: '值班焦点',
     icon: Icons.center_focus_strong_rounded,
     foreground: AppColors.primary,
     background: AppColors.infoLight,

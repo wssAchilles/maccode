@@ -35,11 +35,11 @@ class DeepLearningConfigPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Model Configuration', style: AppTextStyles.h4),
+          Text('模型配置', style: AppTextStyles.h4),
           const SizedBox(height: 20),
           _buildDropdown<DeepLearningModelType>(
             key: const ValueKey('deep-learning-model-type'),
-            label: 'Model Architecture',
+            label: '模型结构',
             value: config.modelType,
             items: DeepLearningModelType.values,
             itemLabel: (value) => value.name,
@@ -47,7 +47,7 @@ class DeepLearningConfigPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _buildSlider(
-            label: 'Epochs',
+            label: '训练轮次',
             value: config.epochs.toDouble(),
             min: 10,
             max: 200,
@@ -56,7 +56,7 @@ class DeepLearningConfigPanel extends StatelessWidget {
                 : (value) => onEpochsChanged(value.toInt()),
           ),
           _buildSlider(
-            label: 'Lookback Window',
+            label: '回看窗口',
             value: config.windowSize.toDouble(),
             min: 12,
             max: 168,
@@ -66,7 +66,7 @@ class DeepLearningConfigPanel extends StatelessWidget {
           ),
           _buildDropdown<int>(
             key: const ValueKey('deep-learning-batch-size'),
-            label: 'Batch Size',
+            label: '批大小',
             value: config.batchSize,
             items: batchSizeOptions,
             itemLabel: (value) => value.toString(),
@@ -91,8 +91,8 @@ class DeepLearningConfigPanel extends StatelessWidget {
                   : const Icon(Icons.play_arrow_rounded),
               label: Text(
                 isTraining
-                    ? 'Training in Progress...'
-                    : 'Start Cloud Training',
+                    ? '训练进行中...'
+                    : '启动云端训练',
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),

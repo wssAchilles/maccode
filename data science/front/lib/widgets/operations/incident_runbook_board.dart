@@ -16,8 +16,8 @@ class IncidentRunbookBoard extends StatelessWidget {
     super.key,
     required this.summary,
     required this.onOpenChain,
-    this.title = 'Runbook Queue',
-    this.description = '把最需要处置的链路压成共享 runbook，概览页和值班审计页都消费同一份后端处置说明。',
+    this.title = '处置清单',
+    this.description = '把最需要处置的链路压成统一清单，概览页和值班审计页都消费同一份后端处置说明。',
     this.trailing,
     this.dutySummary,
   });
@@ -125,19 +125,19 @@ class _RunbookCard extends StatelessWidget {
               ),
               if (isDutyFocus)
                 _RunbookBadge(
-                  label: 'DUTY FOCUS',
+                  label: '值班焦点',
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
                 ),
               if (chain.isOverdue)
                 _RunbookBadge(
-                  label: 'OVERDUE ${chain.overdueMinutes}m',
+                  label: '超时 ${chain.overdueMinutes}m',
                   foreground: AppColors.error,
                   background: AppColors.errorLight,
                 )
               else if (chain.escalationTier > 0)
                 _RunbookBadge(
-                  label: 'SLA WATCH',
+                  label: 'SLA 关注',
                   foreground: AppColors.warning,
                   background: AppColors.warningLight,
                 ),
@@ -159,7 +159,7 @@ class _RunbookCard extends StatelessWidget {
             workspaceLabel: chain.workspaceTargetLabel,
             cardLabel: chain.cardTargetLabel,
             incidentLabel: chain.incidentTargetLabel,
-            summary: chain.workspaceBrief,
+            summary: buildChainWorkspaceSummary(chain),
           ),
           const SizedBox(height: 12),
           for (var i = 0; i < chain.runbookSteps.length; i++) ...[

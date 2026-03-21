@@ -433,13 +433,13 @@ class _CompactLedgerRow extends StatelessWidget {
               color: chain.isOverdue ? AppColors.error : AppColors.primary,
             ),
             if (isDutyFocus)
-              const _LedgerTag(label: 'Duty Focus', color: AppColors.primary),
+              const _LedgerTag(label: '值班焦点', color: AppColors.primary),
             _LedgerTag(label: chain.workspaceTargetLabel, color: tone),
             _LedgerTag(label: chain.cardTargetLabel, color: tone),
             _LedgerTag(label: chain.incidentTargetLabel, color: tone),
             if (chain.isOverdue)
               _LedgerTag(
-                label: 'OVERDUE ${chain.overdueMinutes}m',
+                label: '超时 ${chain.overdueMinutes}m',
                 color: AppColors.error,
               ),
           ],
@@ -451,7 +451,7 @@ class _CompactLedgerRow extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '${chain.workspaceTargetLabel} · ${chain.workspaceBrief}',
+          buildChainWorkspaceSummary(chain, includeWorkspaceLabel: true),
           style: AppTextStyles.bodySmall.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -466,9 +466,9 @@ class _CompactLedgerRow extends StatelessWidget {
             SizedBox(
               width: 190,
               child: _MatrixFactCard(
-                label: 'Current Focus',
+                label: '当前焦点',
                 value:
-                    '${chain.dispositionTargetLabel} · ${chain.workspaceBrief}',
+                    '${chain.dispositionTargetLabel} · ${buildChainWorkspaceSummary(chain)}',
                 highlighted: _matrixHighlight(chain) == _MatrixFocusArea.focus,
                 accent: tone,
               ),
@@ -478,7 +478,7 @@ class _CompactLedgerRow extends StatelessWidget {
               child: _MatrixFactCard(
                 label: 'SLA',
                 value:
-                    '${chain.escalationStateLabel} · ${chain.isOverdue ? 'overdue ${chain.overdueMinutes}m' : 'elapsed ${chain.elapsedMinutes}m'}',
+                    '${chain.escalationStateLabel} · ${chain.isOverdue ? '超时 ${chain.overdueMinutes}m' : '已运行 ${chain.elapsedMinutes}m'}',
                 highlighted: _matrixHighlight(chain) == _MatrixFocusArea.sla,
                 accent: tone,
               ),
@@ -486,8 +486,8 @@ class _CompactLedgerRow extends StatelessWidget {
             SizedBox(
               width: 190,
               child: _MatrixFactCard(
-                label: 'Replay',
-                value: '$replayCount ready · ${chain.actionLabel}',
+                label: '回放',
+                value: '$replayCount 条可回放 · ${chain.actionLabel}',
                 highlighted: _matrixHighlight(chain) == _MatrixFocusArea.replay,
                 accent: tone,
               ),
@@ -796,9 +796,9 @@ _MatrixFocusArea _matrixHighlight(AssetChainSummary chain) {
 String _matrixDispositionSummary(AssetChainSummary chain, int replayCount) {
   switch (chain.dispositionTarget) {
     case 'sla':
-      return '${chain.escalationStateLabel} · ${chain.isOverdue ? 'overdue ${chain.overdueMinutes}m' : 'elapsed ${chain.elapsedMinutes}m'}';
+      return '${chain.escalationStateLabel} · ${chain.isOverdue ? '超时 ${chain.overdueMinutes}m' : '已运行 ${chain.elapsedMinutes}m'}';
     case 'replay':
-      return '$replayCount replayable assets · ${chain.workspaceBrief}';
+      return '$replayCount 条可回放资产 · ${buildChainWorkspaceSummary(chain)}';
     case 'failure':
       return _matrixFailureOrLineage(chain);
     case 'job':

@@ -35,51 +35,63 @@ class WorkbenchSectionSignal extends StatelessWidget {
     final workspaceLabel =
         continuationContext?.workspaceTargetLabel ??
         activeChain.workspaceTargetLabel;
-    final cardLabel =
-        continuationContext?.cardTargetLabel ?? activeChain.cardTargetLabel;
-    final incidentLabel =
-        continuationContext?.incidentTargetLabel ??
-        activeChain.incidentTargetLabel;
-    final watchSummary =
-        continuationContext?.watchSummary ?? activeChain.incidentBrief;
+    final cardLabel = buildDutyContextCardValue(
+      continuationContext?.cardTargetLabel ?? activeChain.cardTargetLabel,
+    );
+    final incidentLabel = buildDutyContextIncidentValue(
+      continuationContext?.incidentTargetLabel ??
+          activeChain.incidentTargetLabel,
+    );
+    final watchSummary = _watchValue(
+      activeChain,
+      continuationContext,
+      workspaceLabel: workspaceLabel,
+      cardLabel: cardLabel,
+      incidentLabel: incidentLabel,
+    );
+    final sectionTarget = [workspaceLabel, cardLabel]
+        .whereType<String>()
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .join(' · ');
+
+    final facts = [
+      _SignalFact(
+        label: '当前关注',
+        value: watchSummary,
+        highlighted:
+            _signalHighlight(activeChain, continuationContext) ==
+            _SignalFocus.watch,
+        accent: tone,
+      ),
+      _SignalFact(
+        label: '落点区域',
+        value: sectionTarget.isEmpty ? workspaceLabel : sectionTarget,
+        accent: tone,
+      ),
+      _SignalFact(
+        label: '执行态',
+        value: _executionValue(activeChain, continuationContext),
+        highlighted:
+            _signalHighlight(activeChain, continuationContext) ==
+            _SignalFocus.execution,
+        accent: tone,
+      ),
+      _SignalFact(
+        label: '值班状态',
+        value: _dutyValue(activeChain),
+        highlighted:
+            _signalHighlight(activeChain, continuationContext) ==
+            _SignalFocus.duty,
+        accent: tone,
+      ),
+    ];
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 980;
-          final facts = [
-            _SignalFact(
-              label: 'Current Watch',
-              value: buildIncidentWatchValue(incidentLabel, watchSummary),
-              highlighted:
-                  _signalHighlight(activeChain, continuationContext) ==
-                  _SignalFocus.watch,
-              accent: tone,
-            ),
-            _SignalFact(
-              label: 'Section Target',
-              value: '$workspaceLabel · $cardLabel',
-              accent: tone,
-            ),
-            _SignalFact(
-              label: '执行态',
-              value: _executionValue(activeChain, continuationContext),
-              highlighted:
-                  _signalHighlight(activeChain, continuationContext) ==
-                  _SignalFocus.execution,
-              accent: tone,
-            ),
-            _SignalFact(
-              label: '值班状态',
-              value:
-                  '${activeChain.ownerLabel} · ${activeChain.escalationStateLabel}',
-              highlighted:
-                  _signalHighlight(activeChain, continuationContext) ==
-                  _SignalFocus.duty,
-              accent: tone,
-            ),
-          ];
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,16 +130,18 @@ class WorkbenchSectionSignal extends StatelessWidget {
                               foreground: tone,
                               background: tone.withValues(alpha: 0.08),
                             ),
-                            _SignalBadge(
-                              label: cardLabel,
-                              foreground: AppColors.textPrimary,
-                              background: AppColors.surfaceVariant,
-                            ),
-                            _SignalBadge(
-                              label: incidentLabel,
-                              foreground: tone,
-                              background: tone.withValues(alpha: 0.08),
-                            ),
+                            if (cardLabel != null)
+                              _SignalBadge(
+                                label: cardLabel,
+                                foreground: AppColors.textPrimary,
+                                background: AppColors.surfaceVariant,
+                              ),
+                            if (incidentLabel != null)
+                              _SignalBadge(
+                                label: incidentLabel,
+                                foreground: tone,
+                                background: tone.withValues(alpha: 0.08),
+                              ),
                             if (activeChain.isOverdue)
                               const _SignalBadge(
                                 label: 'SLA 超时',
@@ -257,15 +271,140 @@ String _executionValue(
   AssetChainSummary chain,
   WorkbenchLaunchContext? continuationContext,
 ) {
-  if (chain.jobStatus != '--') {
-    return '${chain.jobStatus} · ${chain.jobPhase} · ${chain.jobProgress}%';
+  final normalizedStatus = _normalizeExecutionToken(chain.jobStatus);
+  final normalizedPhase = _normalizeExecutionToken(chain.jobPhase);
+  final progress = chain.jobProgress;
+  final progressComplete = progress >= 100;
+
+  if (normalizedStatus != null) {
+    if ((normalizedStatus == '已完成' || normalizedStatus == '完成') &&
+        (progressComplete || normalizedPhase == null)) {
+      return '已完成';
+    }
+    if (normalizedStatus == '运行中' && normalizedPhase != null) {
+      return '$normalizedStatus · $normalizedPhase';
+    }
+    if (normalizedStatus == '失败' && normalizedPhase != null) {
+      return '$normalizedStatus · $normalizedPhase';
+    }
+    return normalizedStatus;
   }
+
   if (chain.failurePhase != '--') {
-    return '${chain.failurePhase} · ${chain.failureSource}';
+    final failurePhase = _normalizeExecutionToken(chain.failurePhase);
+    final failureSource = _normalizeExecutionToken(chain.failureSource);
+    return [
+      failurePhase ?? '失败',
+      failureSource,
+    ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
   }
+
   final workspaceLabel =
       continuationContext?.workspaceTargetLabel ?? chain.workspaceTargetLabel;
-  return 'latest v${chain.latestVersion} · ${chain.latestLabel} · $workspaceLabel';
+  final cardLabel = buildDutyContextCardValue(
+    continuationContext?.cardTargetLabel ?? chain.cardTargetLabel,
+  );
+  final incidentLabel = buildDutyContextIncidentValue(
+    continuationContext?.incidentTargetLabel ?? chain.incidentTargetLabel,
+  );
+  final latestVersion = chain.latestVersion.trim();
+  final normalizedLatestVersion =
+      latestVersion.isNotEmpty &&
+          latestVersion != '--' &&
+          !latestVersion.startsWith('v')
+      ? 'v$latestVersion'
+      : latestVersion;
+  final latestLabel = sanitizeWorkspaceSummaryText(
+    chain.latestLabel,
+    duplicatedLabels: [workspaceLabel, cardLabel, incidentLabel],
+  );
+  final parts = <String>[
+    if (normalizedLatestVersion.isNotEmpty && normalizedLatestVersion != '--')
+      '最新版本 $normalizedLatestVersion',
+    if (latestLabel != null && latestLabel.isNotEmpty) latestLabel,
+  ];
+  if (parts.isNotEmpty) {
+    return parts.join(' · ');
+  }
+  return workspaceLabel;
+}
+
+String _dutyValue(AssetChainSummary chain) {
+  final parts = [
+    chain.ownerLabel.trim(),
+    chain.escalationStateLabel.trim(),
+  ].where((value) => value.isNotEmpty && value != '--').toList(growable: false);
+  if (parts.isEmpty) {
+    return '--';
+  }
+  return parts.join(' · ');
+}
+
+String? _normalizeExecutionToken(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty || normalized == '--') {
+    return null;
+  }
+  switch (normalized.toLowerCase()) {
+    case 'succeeded':
+    case 'completed':
+      return '已完成';
+    case 'running':
+    case 'started':
+      return '运行中';
+    case 'queued':
+      return '已排队';
+    case 'failed':
+      return '失败';
+    case 'healthy':
+      return '健康';
+    case 'idle':
+      return '空闲';
+  }
+  switch (normalized) {
+    case '处理中':
+      return null;
+    case '已完成':
+    case '运行中':
+    case '已排队':
+    case '失败':
+      return normalized;
+  }
+  return normalized;
+}
+
+String _watchValue(
+  AssetChainSummary chain,
+  WorkbenchLaunchContext? continuationContext, {
+  required String workspaceLabel,
+  required String? cardLabel,
+  required String? incidentLabel,
+}) {
+  final rawWatchSummary = continuationContext?.watchSummary ?? chain.incidentBrief;
+  final cleanedWatchSummary = sanitizeWorkspaceSummaryText(
+    rawWatchSummary,
+    duplicatedLabels: [workspaceLabel, cardLabel, incidentLabel],
+  );
+
+  final watchSummary =
+      chain.isOverdue || chain.status == 'incident'
+          ? cleanedWatchSummary
+          : buildWorkspaceSummaryText(
+              workspaceTarget:
+                  continuationContext?.workspaceTarget ?? chain.workspaceTarget,
+              workspaceTargetLabel: workspaceLabel,
+              workspaceBrief: chain.workspaceBrief,
+              incidentBrief: cleanedWatchSummary ?? rawWatchSummary,
+              cardTargetLabel: cardLabel,
+              incidentTargetLabel: incidentLabel,
+              sectionTargetLabel: chain.sectionTargetLabel,
+              focusTargetLabel: chain.focusTargetLabel,
+            );
+
+  return buildIncidentWatchValue(
+    incidentLabel,
+    watchSummary == '--' ? null : watchSummary,
+  );
 }
 
 enum _SignalFocus { watch, execution, duty }

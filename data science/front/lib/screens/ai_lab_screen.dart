@@ -12,6 +12,7 @@ import '../models/deep_learning_config_state.dart';
 import '../models/job_record.dart';
 import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
+import '../utils/job_presentation.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
 import '../viewmodels/rag_view_model.dart';
@@ -1013,11 +1014,12 @@ class _AiLabScreenState extends State<AiLabScreen> {
                       statusLabel: trainingError != null
                           ? '提交失败'
                           : _trainingJobsViewModel.isSubmitting
-                          ? 'Submitting'
-                          : (_trainingJobsViewModel.activeJob?.statusMessage ??
-                                (_trainingJobsViewModel.jobs.isEmpty
-                                    ? 'Idle'
-                                    : 'Ready')),
+                          ? '提交中'
+                          : _trainingJobsViewModel.activeJob != null
+                          ? buildJobPrimaryText(_trainingJobsViewModel.activeJob!)
+                          : (_trainingJobsViewModel.jobs.isEmpty
+                                ? '空闲'
+                                : '就绪'),
                       statusColor: trainingError != null
                           ? AppColors.error
                           : _trainingJobsViewModel.isSubmitting
@@ -1105,11 +1107,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
                       statusLabel: ragError != null
                           ? '提交失败'
                           : _ragJobsViewModel.isSubmitting
-                          ? 'Submitting'
-                          : (_ragJobsViewModel.activeJob?.statusMessage ??
-                                (_ragJobsViewModel.jobs.isEmpty
-                                    ? 'Idle'
-                                    : 'Ready')),
+                          ? '提交中'
+                          : _ragJobsViewModel.activeJob != null
+                          ? buildJobPrimaryText(_ragJobsViewModel.activeJob!)
+                          : (_ragJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
                       statusColor: ragError != null
                           ? AppColors.error
                           : _ragJobsViewModel.isSubmitting
@@ -1462,32 +1463,30 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   String _buildTrainingLogOutput(JobRecord? focusJob) {
     if (focusJob == null) {
-      return 'Ready to submit training jobs.\nProvide dataset path and target column to start.';
+      return '等待提交训练任务。\n请先填写训练数据路径和目标列。';
     }
 
     final buffer = StringBuffer();
-    buffer.writeln(
-      '[${focusJob.status.toUpperCase()}] ${focusJob.displayTitle}',
-    );
-    buffer.writeln('job_id: ${focusJob.jobId}');
+    buffer.writeln('[${buildJobPrimaryText(focusJob)}] ${focusJob.displayTitle}');
+    buffer.writeln('任务编号: ${focusJob.jobId}');
     if (focusJob.events.isNotEmpty) {
       for (final event in focusJob.events.take(10)) {
         final timestamp = event.timestamp == null
             ? '--:--:--'
             : DateFormat('HH:mm:ss').format(event.timestamp!.toLocal());
         buffer.writeln(
-          '[$timestamp] (${event.progress}%) [${event.phase}] ${event.message}',
+          '[$timestamp] (${event.progress}%) [${event.phase}] ${buildJobEventMessage(focusJob, event)}',
         );
       }
     } else if (focusJob.statusMessage != null) {
-      buffer.writeln('status: ${focusJob.statusMessage}');
+      buffer.writeln('状态: ${buildJobPrimaryText(focusJob)}');
     }
     if (focusJob.error != null) {
-      buffer.writeln('error: ${focusJob.error!.message}');
+      buffer.writeln('错误: ${focusJob.error!.message}');
     }
     final metrics = focusJob.result['metrics'];
     if (metrics is Map) {
-      buffer.writeln('metrics: ${metrics.toString()}');
+      buffer.writeln('指标: ${metrics.toString()}');
     }
     return buffer.toString().trim();
   }
@@ -1700,7 +1699,7 @@ class _TrainingDatasetCard extends StatelessWidget {
             enableSuggestions: false,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Training Storage Path',
+              labelText: '训练数据路径',
               hintText: '例如: uploads/your-data.csv',
             ),
           ),
@@ -1712,7 +1711,7 @@ class _TrainingDatasetCard extends StatelessWidget {
             enableSuggestions: false,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Target Column',
+              labelText: '目标列',
               hintText: '例如: Load',
             ),
           ),
@@ -1755,7 +1754,7 @@ class _RagIngestCard extends StatelessWidget {
             enableSuggestions: false,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Knowledge Storage Path',
+              labelText: '知识源路径',
               hintText: '例如: docs/ 或 uploads/manual.pdf',
             ),
           ),
@@ -1767,7 +1766,7 @@ class _RagIngestCard extends StatelessWidget {
             enableSuggestions: false,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: 'Collection Name',
+              labelText: '集合名称',
               hintText: '例如: default',
             ),
           ),

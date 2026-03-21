@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 import 'incident_card_header.dart';
@@ -170,6 +171,12 @@ class _GovernanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _GovernanceTone.fromRisk(item.riskLevel);
+    final workspaceSummary = buildWorkspaceSummaryText(
+      workspaceTarget: item.workspaceTarget,
+      workspaceTargetLabel: item.workspaceTargetLabel,
+      workspaceBrief: item.workspaceBrief,
+      incidentBrief: item.recommendedAction,
+    );
     return GlassCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -188,7 +195,7 @@ class _GovernanceCard extends StatelessWidget {
             ),
             workspaceLabel: item.workspaceTargetLabel,
             incidentLabel: item.actionLabel,
-            summary: item.workspaceBrief,
+            summary: workspaceSummary,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -209,7 +216,7 @@ class _GovernanceCard extends StatelessWidget {
               ),
               if (isDutyFocus)
                 const WorkspaceStatusChip(
-                  label: 'DUTY FOCUS',
+                  label: '值班焦点',
                   icon: Icons.center_focus_strong_rounded,
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
@@ -218,7 +225,7 @@ class _GovernanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            item.workspaceBrief,
+            workspaceSummary,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -290,6 +297,12 @@ class _FailureChainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final workspaceSummary = buildWorkspaceSummaryText(
+      workspaceTarget: chain.workspaceTarget,
+      workspaceTargetLabel: chain.workspaceTargetLabel,
+      workspaceBrief: chain.workspaceBrief,
+      incidentBrief: chain.recommendedAction,
+    );
     return GlassCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -308,7 +321,7 @@ class _FailureChainCard extends StatelessWidget {
             ),
             workspaceLabel: chain.workspaceTargetLabel,
             incidentLabel: chain.actionLabel,
-            summary: chain.workspaceBrief,
+            summary: workspaceSummary,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -329,7 +342,7 @@ class _FailureChainCard extends StatelessWidget {
               ),
               if (isDutyFocus)
                 const WorkspaceStatusChip(
-                  label: 'DUTY FOCUS',
+                  label: '值班焦点',
                   icon: Icons.center_focus_strong_rounded,
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
@@ -338,7 +351,7 @@ class _FailureChainCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            chain.workspaceBrief,
+            workspaceSummary,
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),

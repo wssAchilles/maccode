@@ -94,7 +94,7 @@ class DutyContextBoard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Current watch', style: AppTextStyles.labelMedium),
+                Text('当前关注', style: AppTextStyles.labelMedium),
                 const SizedBox(height: 6),
                 Text(
                   currentWatch,

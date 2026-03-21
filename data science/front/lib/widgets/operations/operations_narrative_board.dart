@@ -207,7 +207,7 @@ class _NarrativeCard extends StatelessWidget {
               if (isDutyFocus) ...[
                 const SizedBox(width: 8),
                 const _NarrativeBadge(
-                  label: 'DUTY FOCUS',
+                  label: '值班焦点',
                   foreground: AppColors.primary,
                   background: AppColors.infoLight,
                 ),
@@ -226,8 +226,10 @@ class _NarrativeCard extends StatelessWidget {
             const SizedBox(height: 10),
             _NarrativeBlock(
               title: '目标落点',
-              content:
-                  '${chain!.workspaceTargetLabel} · ${chain!.workspaceBrief}',
+              content: buildChainWorkspaceSummary(
+                chain,
+                includeWorkspaceLabel: true,
+              ),
               accent: config.accent,
               highlighted: focusBlock == _NarrativeFocusBlock.target,
             ),
@@ -245,7 +247,7 @@ class _NarrativeCard extends StatelessWidget {
             _NarrativeBlock(
               title: '响应时限',
               content:
-                  '${chain!.escalationStateLabel} · ${chain!.isOverdue ? 'overdue ${chain!.overdueMinutes}m' : 'elapsed ${chain!.elapsedMinutes}m'}${chain!.slaDeadlineAt == null ? '' : ' · due ${_formatDate(chain!.slaDeadlineAt)}'}',
+                  '${chain!.escalationStateLabel} · ${chain!.isOverdue ? '超时 ${chain!.overdueMinutes}m' : '已运行 ${chain!.elapsedMinutes}m'}${chain!.slaDeadlineAt == null ? '' : ' · 截止 ${_formatDate(chain!.slaDeadlineAt)}'}',
               accent: chain!.isOverdue
                   ? AppColors.error
                   : chain!.escalationTier > 0

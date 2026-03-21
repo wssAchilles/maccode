@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
+import '../../utils/asset_chain_context.dart';
 
 class WorkspaceActionLane extends StatelessWidget {
   const WorkspaceActionLane({
@@ -37,6 +38,16 @@ class WorkspaceActionLane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
+    final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
+    final effectiveSummary = sanitizeWorkspaceSummaryText(
+      summary,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -78,16 +89,16 @@ class WorkspaceActionLane extends StatelessWidget {
             ],
           ),
           if ((workspaceLabel ?? '').isNotEmpty ||
-              (cardLabel ?? '').isNotEmpty ||
-              (incidentLabel ?? '').isNotEmpty ||
-              (summary ?? '').isNotEmpty) ...[
+              (effectiveCardLabel ?? '').isNotEmpty ||
+              (effectiveIncidentLabel ?? '').isNotEmpty ||
+              (effectiveSummary ?? '').isNotEmpty) ...[
             const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: accent,
               workspaceLabel: workspaceLabel,
-              cardLabel: cardLabel,
-              incidentLabel: incidentLabel,
-              summary: summary,
+              cardLabel: effectiveCardLabel,
+              incidentLabel: effectiveIncidentLabel,
+              summary: effectiveSummary,
             ),
           ],
           const SizedBox(height: 10),
@@ -291,11 +302,21 @@ class WorkspaceContextBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
+    final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
+    final effectiveSummary = sanitizeWorkspaceSummaryText(
+      summary,
+      duplicatedLabels: [
+        workspaceLabel,
+        effectiveCardLabel,
+        effectiveIncidentLabel,
+      ],
+    );
     final hasSignal =
         (workspaceLabel ?? '').isNotEmpty ||
-        (cardLabel ?? '').isNotEmpty ||
-        (incidentLabel ?? '').isNotEmpty ||
-        (summary ?? '').isNotEmpty;
+        (effectiveCardLabel ?? '').isNotEmpty ||
+        (effectiveIncidentLabel ?? '').isNotEmpty ||
+        (effectiveSummary ?? '').isNotEmpty;
     if (!hasSignal) {
       return const SizedBox.shrink();
     }
@@ -322,26 +343,26 @@ class WorkspaceContextBanner extends StatelessWidget {
                   foreground: accent,
                   background: accent.withValues(alpha: 0.12),
                 ),
-              if ((cardLabel ?? '').isNotEmpty)
+              if ((effectiveCardLabel ?? '').isNotEmpty)
                 WorkspaceStatusChip(
-                  label: cardLabel!,
+                  label: effectiveCardLabel!,
                   icon: Icons.dashboard_customize_rounded,
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
-              if ((incidentLabel ?? '').isNotEmpty)
+              if ((effectiveIncidentLabel ?? '').isNotEmpty)
                 WorkspaceStatusChip(
-                  label: 'Current watch · $incidentLabel',
+                  label: '当前关注 · $effectiveIncidentLabel',
                   icon: Icons.priority_high_rounded,
                   foreground: accent,
                   background: accent.withValues(alpha: 0.12),
                 ),
             ],
           ),
-          if ((summary ?? '').isNotEmpty) ...[
+          if ((effectiveSummary ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              summary!,
+              effectiveSummary!,
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),

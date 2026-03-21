@@ -34,6 +34,9 @@ class HistoryAuditScreen extends StatefulWidget {
   const HistoryAuditScreen({
     super.key,
     this.dashboardViewModel,
+    this.jobsViewModel,
+    this.auditViewModel,
+    this.historyViewModel,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
@@ -41,6 +44,9 @@ class HistoryAuditScreen extends StatefulWidget {
   });
 
   final DashboardViewModel? dashboardViewModel;
+  final JobViewModel? jobsViewModel;
+  final AuditViewModel? auditViewModel;
+  final HistoryViewModel? historyViewModel;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
@@ -54,8 +60,11 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   late final DashboardViewModel _dashboardViewModel;
   late final bool _ownsDashboardViewModel;
   late final JobViewModel _jobsViewModel;
+  late final bool _ownsJobsViewModel;
   late final AuditViewModel _auditViewModel;
+  late final bool _ownsAuditViewModel;
   late final HistoryViewModel _historyViewModel;
+  late final bool _ownsHistoryViewModel;
   String? _selectedType;
   String? _selectedStatus;
 
@@ -65,9 +74,12 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     _dashboardViewModel = widget.dashboardViewModel ?? DashboardViewModel();
     _ownsDashboardViewModel = widget.dashboardViewModel == null;
     _dashboardViewModel.initialize();
-    _jobsViewModel = JobViewModel(limit: 20);
-    _auditViewModel = AuditViewModel();
-    _historyViewModel = HistoryViewModel();
+    _jobsViewModel = widget.jobsViewModel ?? JobViewModel(limit: 20);
+    _ownsJobsViewModel = widget.jobsViewModel == null;
+    _auditViewModel = widget.auditViewModel ?? AuditViewModel();
+    _ownsAuditViewModel = widget.auditViewModel == null;
+    _historyViewModel = widget.historyViewModel ?? HistoryViewModel();
+    _ownsHistoryViewModel = widget.historyViewModel == null;
     _jobsViewModel.loadJobs();
     _auditViewModel.initialize();
     _historyViewModel.initialize();
@@ -78,9 +90,15 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
     if (_ownsDashboardViewModel) {
       _dashboardViewModel.dispose();
     }
-    _jobsViewModel.dispose();
-    _auditViewModel.dispose();
-    _historyViewModel.dispose();
+    if (_ownsJobsViewModel) {
+      _jobsViewModel.dispose();
+    }
+    if (_ownsAuditViewModel) {
+      _auditViewModel.dispose();
+    }
+    if (_ownsHistoryViewModel) {
+      _historyViewModel.dispose();
+    }
     super.dispose();
   }
 
@@ -133,16 +151,16 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                   'runbook',
                   IncidentRunbookBoard(
                     summary: summary!.assetSummary,
-                    title: '处置 Runbook',
+                    title: '处置清单',
                     description:
-                        '审计页直接复用驾驶舱链路 runbook，把快速回放、失败筛选和值班动作压成统一处置清单。',
+                        '审计页直接复用驾驶舱链路处置清单，把快速回放、失败筛选和值班动作压成统一处置视图。',
                     dutySummary: summary.dutySummary,
                     trailing:
                         _isHistoryFocusSection('runbook', summary.dutySummary)
                         ? _historyDutyFocusChip()
                         : null,
                     onOpenChain: (chain) {
-                      _openChainSummary(chain, prefix: '处置 Runbook');
+                      _openChainSummary(chain, prefix: '处置清单');
                     },
                   ),
                 ),
@@ -891,7 +909,7 @@ bool _isHistoryFocusSection(String key, DutySummary? summary) {
 
 Widget _historyDutyFocusChip() {
   return const WorkspaceStatusChip(
-    label: 'DUTY FOCUS',
+    label: '值班焦点',
     icon: Icons.center_focus_strong_rounded,
     foreground: AppColors.primary,
     background: AppColors.infoLight,

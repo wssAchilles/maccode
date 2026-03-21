@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/dashboard_summary.dart';
 import '../../models/job_record.dart';
+import '../../utils/asset_chain_context.dart';
 import '../common/glass_card.dart';
 import '../operations/duty_section_block.dart';
 
@@ -282,7 +283,7 @@ class _AuditStreamTile extends StatelessWidget {
                       ),
                     if (isDutyFocus)
                       const _AuditStreamBadge(
-                        label: 'DUTY FOCUS',
+                        label: '值班焦点',
                         foreground: AppColors.primary,
                         background: AppColors.infoLight,
                       ),
@@ -293,7 +294,10 @@ class _AuditStreamTile extends StatelessWidget {
                 if (entry.chain != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '${entry.chain!.workspaceTargetLabel} · ${entry.chain!.workspaceBrief}',
+                    buildChainWorkspaceSummary(
+                      entry.chain,
+                      includeWorkspaceLabel: true,
+                    ),
                     style: AppTextStyles.bodySmall.copyWith(color: tone),
                   ),
                   const SizedBox(height: 8),
@@ -369,7 +373,7 @@ class _AuditSignal extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current watch · ${chain.incidentTargetLabel}',
+            '当前关注 · ${chain.incidentTargetLabel}',
             style: AppTextStyles.labelMedium.copyWith(color: tone),
           ),
           const SizedBox(height: 4),

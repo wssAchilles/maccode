@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
+import '../../utils/job_presentation.dart';
 import '../common/glass_card.dart';
 
 class JobEventTimeline extends StatelessWidget {
@@ -101,7 +102,7 @@ class JobEventTimeline extends StatelessWidget {
           const SizedBox(height: 16),
           if (events.isEmpty)
             Text(
-              job.statusMessage ?? emptyMessage,
+              buildJobPrimaryText(job, fallback: emptyMessage),
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -111,6 +112,7 @@ class JobEventTimeline extends StatelessWidget {
               children: [
                 for (var index = 0; index < events.length; index++)
                   _EventRow(
+                    job: job,
                     event: events[index],
                     isLast: index == events.length - 1,
                   ),
@@ -163,8 +165,13 @@ class JobEventTimeline extends StatelessWidget {
 }
 
 class _EventRow extends StatelessWidget {
-  const _EventRow({required this.event, required this.isLast});
+  const _EventRow({
+    required this.job,
+    required this.event,
+    required this.isLast,
+  });
 
+  final JobRecord job;
   final JobEvent event;
   final bool isLast;
 
@@ -239,7 +246,10 @@ class _EventRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(event.message, style: AppTextStyles.bodyMedium),
+                Text(
+                  buildJobEventMessage(job, event),
+                  style: AppTextStyles.bodyMedium,
+                ),
               ],
             ),
           ),

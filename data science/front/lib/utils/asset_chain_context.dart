@@ -79,12 +79,21 @@ String buildChainSourceLabel(
     return prefix;
   }
 
+  final cardLabel = _resolvedCardLabel(
+    cardTarget: chain.cardTarget,
+    cardTargetLabel: chain.cardTargetLabel,
+  );
+  final incidentLabel = _resolvedIncidentLabel(
+    incidentTarget: chain.incidentTarget,
+    incidentTargetLabel: chain.incidentTargetLabel,
+  );
+
   return _joinContextParts([
     prefix,
     if (includeChainLabel) chain.label,
     if (includeWorkspace) chain.workspaceTargetLabel,
-    if (includeCardTarget) chain.cardTargetLabel,
-    if (includeIncident) chain.incidentTargetLabel,
+    if (includeCardTarget) cardLabel,
+    if (includeIncident) incidentLabel,
     if (includeWorkspaceBrief) chain.workspaceBrief,
     if (includeSection) chain.sectionTargetLabel,
     if (includeFocus) chain.focusLabel,
@@ -118,11 +127,117 @@ String buildChainActionFeedbackMessage(
     prefix,
     if (includeChainLabel) chain.label,
     chain.workspaceTargetLabel,
-    chain.cardTargetLabel,
+    _resolvedCardLabel(
+      cardTarget: chain.cardTarget,
+      cardTargetLabel: chain.cardTargetLabel,
+    ),
     detail,
   ]);
 }
 
+String buildChainWorkspaceSummary(
+  AssetChainSummary? chain, {
+  bool includeWorkspaceLabel = false,
+  String fallback = '--',
+}) {
+  if (chain == null) {
+    return fallback;
+  }
+
+  final cleanedSummary = _cleanWorkspaceBrief(chain);
+  final resolvedSummary = cleanedSummary.isNotEmpty
+      ? cleanedSummary
+      : _defaultWorkspaceSummary(chain);
+  if (includeWorkspaceLabel) {
+    return _joinContextParts([chain.workspaceTargetLabel, resolvedSummary]);
+  }
+  return resolvedSummary;
+}
+
+String? buildDutyContextCardValue(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  if (_isGenericDutyCardLabel(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+String? buildDutyContextIncidentValue(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  if (_isGenericDutyIncidentLabel(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+String? sanitizeWorkspaceSummaryText(
+  String? summary, {
+  Iterable<String?> duplicatedLabels = const [],
+}) {
+  final normalized = summary?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final cleaned = _cleanWorkspaceBriefParts(
+    workspaceBrief: normalized,
+    duplicatedLabels: duplicatedLabels,
+  );
+  if (cleaned.isEmpty) {
+    return null;
+  }
+  return cleaned;
+}
+
+String buildWorkspaceSummaryText({
+  required String workspaceTarget,
+  required String workspaceTargetLabel,
+  required String workspaceBrief,
+  String? incidentBrief,
+  String? cardTargetLabel,
+  String? incidentTargetLabel,
+  String? sectionTargetLabel,
+  String? focusTargetLabel,
+  bool includeWorkspaceLabel = false,
+  String fallback = '--',
+}) {
+  final cardLabel = _resolvedCardLabel(
+    cardTarget: '',
+    cardTargetLabel: cardTargetLabel,
+  );
+  final incidentLabel = _resolvedIncidentLabel(
+    incidentTarget: '',
+    incidentTargetLabel: incidentTargetLabel,
+  );
+  final cleanedSummary = _cleanWorkspaceBriefParts(
+    workspaceBrief: workspaceBrief,
+    duplicatedLabels: [
+      workspaceTargetLabel,
+      cardLabel,
+      incidentLabel,
+      sectionTargetLabel,
+      focusTargetLabel,
+    ],
+  );
+  final resolvedSummary = cleanedSummary.isNotEmpty
+      ? cleanedSummary
+      : _defaultWorkspaceSummaryForTarget(
+          workspaceTarget,
+          incidentBrief: incidentBrief,
+        );
+  if (resolvedSummary.isEmpty) {
+    return fallback;
+  }
+  if (includeWorkspaceLabel) {
+    return _joinContextParts([workspaceTargetLabel, resolvedSummary]);
+  }
+  return resolvedSummary;
+}
 
 String buildDutyActionSourceLabel(
   DutyAction action, {
@@ -134,8 +249,14 @@ String buildDutyActionSourceLabel(
     prefix,
     if (includeChainLabel) action.chainLabel,
     action.workspaceTargetLabel,
-    action.cardTargetLabel,
-    action.incidentTargetLabel,
+    _resolvedCardLabel(
+      cardTarget: action.cardTarget,
+      cardTargetLabel: action.cardTargetLabel,
+    ),
+    _resolvedIncidentLabel(
+      incidentTarget: action.incidentTarget,
+      incidentTargetLabel: action.incidentTargetLabel,
+    ),
     if (includeWorkspaceBrief) action.workspaceBrief,
   ]);
 }
@@ -272,11 +393,29 @@ String buildLaunchArrivalMessage(
   if (context == null) {
     return actionText;
   }
+  final cardLabel = _resolvedCardLabel(
+    cardTarget: context.cardTarget,
+    cardTargetLabel: context.cardTargetLabel,
+  );
+  final incidentLabel = _resolvedIncidentLabel(
+    incidentTarget: context.incidentTarget,
+    incidentTargetLabel: context.incidentTargetLabel,
+  );
+  final workspaceSummary = includeWorkspaceBrief
+      ? sanitizeWorkspaceSummaryText(
+          context.workspaceBrief,
+          duplicatedLabels: [
+            context.workspaceTargetLabel,
+            cardLabel,
+            incidentLabel,
+          ],
+        )
+      : null;
   return _joinContextParts([
     actionText,
     context.workspaceTargetLabel,
-    context.cardTargetLabel,
-    if (includeWorkspaceBrief) context.workspaceBrief,
+    cardLabel,
+    if (includeWorkspaceBrief) workspaceSummary,
   ]);
 }
 
@@ -288,8 +427,14 @@ String buildWorkbenchSourceLabel(
   return _joinContextParts([
     prefix,
     context.workspaceTargetLabel,
-    context.cardTargetLabel,
-    context.incidentTargetLabel,
+    _resolvedCardLabel(
+      cardTarget: context.cardTarget,
+      cardTargetLabel: context.cardTargetLabel,
+    ),
+    _resolvedIncidentLabel(
+      incidentTarget: context.incidentTarget,
+      incidentTargetLabel: context.incidentTargetLabel,
+    ),
     if (includeWorkspaceBrief) context.workspaceBrief,
   ]);
 }
@@ -359,11 +504,11 @@ WorkbenchLaunchContext? normalizeLaunchContextSubject(
   );
 }
 
-
 String _joinLaunchPhrase(String subject, String verb, String destination) {
   final normalizedSubject = subject.trim();
   final normalizedDestination = destination.trim();
-  final needsSpacer = normalizedSubject.isNotEmpty &&
+  final needsSpacer =
+      normalizedSubject.isNotEmpty &&
       normalizedDestination.isNotEmpty &&
       RegExp(r'[A-Za-z]').hasMatch(normalizedDestination[0]) &&
       RegExp(r'[一-龥]$').hasMatch(normalizedSubject);
@@ -410,6 +555,225 @@ String _compactLaunchSubject(String subject, WorkbenchLaunchContext? context) {
     }
   }
   return compactParts.join(' · ');
+}
+
+String _cleanWorkspaceBrief(AssetChainSummary chain) {
+  return _cleanWorkspaceBriefParts(
+    workspaceBrief: chain.workspaceBrief,
+    duplicatedLabels: [
+      chain.workspaceTargetLabel,
+      chain.cardTargetLabel,
+      chain.incidentTargetLabel,
+      chain.sectionTargetLabel,
+      chain.focusTargetLabel,
+    ],
+  );
+}
+
+String _cleanWorkspaceBriefParts({
+  required String workspaceBrief,
+  required Iterable<String?> duplicatedLabels,
+}) {
+  final parts = workspaceBrief
+      .split('·')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  if (parts.isEmpty) {
+    return '';
+  }
+
+  final labels = duplicatedLabels.whereType<String>().toSet();
+  final cleanedParts = parts
+      .where((part) => !_isMachineWorkspaceBriefPart(part, labels))
+      .map(_normalizeWorkspaceBriefPart)
+      .toList(growable: false);
+  return cleanedParts.join(' · ');
+}
+
+String _normalizeWorkspaceBriefPart(String part) {
+  final trimmed = part.trim();
+  if (trimmed.isEmpty) {
+    return trimmed;
+  }
+
+  final lower = trimmed.toLowerCase();
+  if (lower == 'current watch') {
+    return '当前关注';
+  }
+  if (lower == 'section target') {
+    return '落点区域';
+  }
+  if (lower == 'duty focus') {
+    return '值班焦点';
+  }
+  if (lower == 'sla watch') {
+    return 'SLA 关注';
+  }
+
+  final overdue = RegExp(r'^overdue\s+(.+)$', caseSensitive: false).firstMatch(trimmed);
+  if (overdue != null) {
+    return '超时 ${overdue.group(1)!}';
+  }
+  final elapsed = RegExp(r'^elapsed\s+(.+)$', caseSensitive: false).firstMatch(trimmed);
+  if (elapsed != null) {
+    return '已运行 ${elapsed.group(1)!}';
+  }
+  final due = RegExp(r'^due\s+(.+)$', caseSensitive: false).firstMatch(trimmed);
+  if (due != null) {
+    return '截止 ${due.group(1)!}';
+  }
+  return trimmed;
+}
+
+bool _isMachineWorkspaceBriefPart(String part, Set<String> duplicatedLabels) {
+  final lower = part.toLowerCase();
+  if (duplicatedLabels.contains(part)) {
+    return true;
+  }
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(part)) {
+    return true;
+  }
+  if (RegExp(r'^\d{2}-\d{2}\s+\d{2}:\d{2}$').hasMatch(part)) {
+    return true;
+  }
+  if (RegExp(r'^\d+%$').hasMatch(part)) {
+    return true;
+  }
+  if (RegExp(r'^\d+/\d+$').hasMatch(part)) {
+    return true;
+  }
+  if ({
+    'queued',
+    'running',
+    'started',
+    'completed',
+    'succeeded',
+    'failed',
+    'healthy',
+    'idle',
+    'ready',
+    'watch',
+    'incident',
+    'active',
+    'warning',
+    'success',
+    'job completed',
+  }.contains(lower)) {
+    return true;
+  }
+  if ({
+    '已完成',
+    '运行中',
+    '已排队',
+    '处理中',
+    '链路健康',
+    '需要关注',
+    '故障待处置',
+    '当前焦点',
+    '当前卡片',
+    '值班时限',
+    '活跃作业',
+    '运行控制区',
+  }.contains(part)) {
+    return true;
+  }
+  return false;
+}
+
+bool _isGenericDutyCardLabel(String label) {
+  return {
+    '当前卡片',
+    '摘要卡',
+    'summary',
+  }.contains(label);
+}
+
+bool _isGenericDutyIncidentLabel(String label) {
+  return {
+    '值班时限',
+    '当前焦点',
+    'focus',
+  }.contains(label);
+}
+
+String? _resolvedCardLabel({
+  required String cardTarget,
+  required String? cardTargetLabel,
+}) {
+  return buildDutyContextCardValue(
+    _cardTargetLabel(cardTarget) ?? cardTargetLabel,
+  );
+}
+
+String? _resolvedIncidentLabel({
+  required String incidentTarget,
+  required String? incidentTargetLabel,
+}) {
+  return buildDutyContextIncidentValue(
+    _incidentTargetLabel(incidentTarget) ?? incidentTargetLabel,
+  );
+}
+
+String _defaultWorkspaceSummaryForTarget(
+  String workspaceTarget, {
+  String? incidentBrief,
+}) {
+  switch (workspaceTarget) {
+    case 'data_analysis_operations':
+      return '上传 CSV、审查质量并启动分析任务。';
+    case 'data_job_center':
+      return '优先跟进分析任务、进度和失败重试。';
+    case 'data_governance':
+      return '优先核对当前资产、质量和治理结论。';
+    case 'data_handoff':
+      return '优先查看结果摘要并决定后续交接。';
+    case 'ai_runtime':
+      return '优先跟进 AI 运行队列、产物与资产状态。';
+    case 'ai_assets':
+      return '优先核对 AI 版本、注册表和回填入口。';
+    case 'optimization_job_center':
+      return '优先跟进后台优化任务和求解进度。';
+    case 'optimization_registry':
+      return '优先核对最新快照与结果摘要。';
+    case 'optimization_operations':
+      return '优先确认求解器健康、约束压力和解释性摘要。';
+    case 'audit_center':
+      return '优先查看统一事件流、资产矩阵和处置 Runbook。';
+    default:
+      return incidentBrief ?? '--';
+  }
+}
+
+String _defaultWorkspaceSummary(AssetChainSummary chain) {
+  switch (chain.workspaceTarget) {
+    case 'data_analysis_operations':
+      return '上传 CSV、审查质量并启动分析任务。';
+    case 'data_job_center':
+      return '优先跟进分析任务、进度和失败重试。';
+    case 'data_governance':
+      return '优先核对当前资产、质量和治理结论。';
+    case 'data_handoff':
+      return '优先查看结果摘要并决定后续交接。';
+    case 'ai_runtime':
+      return chain.key == 'knowledge'
+          ? '优先跟进知识构建、快照与问答治理。'
+          : '优先跟进训练队列、产物与模型资产。';
+    case 'ai_assets':
+      return chain.key == 'knowledge'
+          ? '优先核对知识快照、集合和回填入口。'
+          : '优先核对模型版本、注册表和回填入口。';
+    case 'optimization_job_center':
+      return '优先跟进后台优化任务和求解进度。';
+    case 'optimization_registry':
+      return '优先核对最新快照与结果摘要。';
+    case 'optimization_operations':
+      return '优先确认求解器健康、约束压力和解释性摘要。';
+    case 'audit_center':
+      return '优先查看统一事件流、资产矩阵和处置 Runbook。';
+    default:
+      return chain.incidentBrief;
+  }
 }
 
 String _normalizeLaunchSubject(

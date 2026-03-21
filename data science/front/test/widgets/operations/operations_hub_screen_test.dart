@@ -7,7 +7,12 @@ import 'package:front/models/data_analysis_launch_intent.dart';
 import 'package:front/models/optimization_launch_intent.dart';
 import 'package:front/repositories/dashboard_repository.dart';
 import 'package:front/screens/operations_hub_screen.dart';
+import 'package:front/widgets/operations/asset_governance_queue.dart';
+import 'package:front/widgets/operations/asset_inventory_board.dart';
+import 'package:front/widgets/operations/asset_version_timeline_board.dart';
 import 'package:front/widgets/operations/duty_context_board.dart';
+import 'package:front/widgets/operations/incident_priority_strip.dart';
+import 'package:front/widgets/operations/operations_event_bus_board.dart';
 import 'package:front/viewmodels/dashboard_view_model.dart';
 import 'package:front/widgets/operations/workbench_page_frame.dart';
 
@@ -20,7 +25,13 @@ class _FakeDashboardRepository implements DashboardRepository {
   Future<DashboardSummary> getSummary() async => summary;
 }
 
-DashboardSummary _buildSummary({List<Map<String, Object?>> overviewActions = const []}) {
+DashboardSummary _buildSummary({
+  List<Map<String, Object?>> overviewActions = const [],
+  String modelCardTargetLabel = '运行产物',
+  String modelIncidentTargetLabel = '活跃作业',
+  List<Map<String, Object?>> governance = const [],
+  List<Map<String, Object?>> failureChains = const [],
+}) {
   return DashboardSummary.fromJson({
     'system_status': [
       {
@@ -65,8 +76,8 @@ DashboardSummary _buildSummary({List<Map<String, Object?>> overviewActions = con
       'models': const [],
       'knowledge_bases': const [],
       'optimizations': const [],
-      'failure_chains': const [],
-      'governance': const [],
+      'failure_chains': failureChains,
+      'governance': governance,
       'chain_summaries': [
         {
           'key': 'dataset',
@@ -145,9 +156,9 @@ DashboardSummary _buildSummary({List<Map<String, Object?>> overviewActions = con
           'workspace_target_label': 'AI 运行控制区',
           'workspace_brief': 'AI Lab 训练车道 · 提交训练任务并跟进队列、产物与模型资产。',
           'card_target': 'runtime_product',
-          'card_target_label': '运行产物',
+          'card_target_label': modelCardTargetLabel,
           'incident_target': 'runtime',
-          'incident_target_label': '活跃作业',
+          'incident_target_label': modelIncidentTargetLabel,
           'incident_brief': '训练链路待处理',
           'narrative_target': 'job',
           'narrative_target_label': '活跃作业',
@@ -156,6 +167,55 @@ DashboardSummary _buildSummary({List<Map<String, Object?>> overviewActions = con
           'runbook_title': '模型训练 Runbook',
           'runbook_steps': const ['提交训练'],
           'activity_title': '最近训练',
+          'activity_status': 'idle',
+          'activity_source': 'dashboard',
+          'failure_phase': '--',
+          'failure_source': '--',
+          'job_status': '--',
+          'job_progress': 0,
+          'job_phase': '--',
+          'action_label': '打开 AI Lab',
+          'timeline': const [],
+        },
+        {
+          'key': 'knowledge',
+          'label': '知识快照',
+          'status': 'incident',
+          'status_label': '故障待处置',
+          'priority_score': 80,
+          'owner_label': 'AI 知识平台主管',
+          'sla_minutes': 15,
+          'escalation_label': '升级到 AI 知识平台主管',
+          'elapsed_minutes': 12,
+          'overdue_minutes': 3,
+          'is_overdue': true,
+          'escalation_tier': 2,
+          'escalation_state_label': 'SLA 已超时',
+          'latest_version': 'v0314-0702',
+          'latest_label': '20251209_130622_AEP_hourly',
+          'lineage_summary': 'uploads/demo.csv -> ops-knowledge',
+          'failure_summary': '--',
+          'focus_label': '知识快照',
+          'focus_detail': '回填知识入口',
+          'focus_target': 'knowledge_runtime',
+          'focus_target_label': '知识运行态',
+          'section_target': 'ai_lab_runtime',
+          'section_target_label': '运行控制区',
+          'workspace_target': 'ai_runtime',
+          'workspace_target_label': 'AI 运行控制区',
+          'workspace_brief': 'AI Lab 知识车道 · 提交构建任务并跟进知识快照、问答治理。',
+          'card_target': 'runtime_product',
+          'card_target_label': '运行产物',
+          'incident_target': 'runtime',
+          'incident_target_label': '运行态',
+          'incident_brief': '优先核对集合配置和最新知识快照。',
+          'narrative_target': 'job',
+          'narrative_target_label': '活跃作业',
+          'disposition_target': 'job',
+          'disposition_target_label': '活跃作业',
+          'runbook_title': '知识库构建 Runbook',
+          'runbook_steps': const ['回填知识入口'],
+          'activity_title': '最近知识库任务',
           'activity_status': 'idle',
           'activity_source': 'dashboard',
           'failure_phase': '--',
@@ -299,5 +359,202 @@ void main() {
     expect(receivedIntent!.context?.workspaceTargetLabel, '分析执行区');
     expect(receivedIntent!.context?.cardTargetLabel, '执行策略');
     expect(receivedIntent!.sourceLabel, contains('Duty Actions'));
+  });
+
+  testWidgets('OperationsHubScreen hides generic duty fact chips', (
+    WidgetTester tester,
+  ) async {
+    final summary = _buildSummary(
+      modelCardTargetLabel: '当前卡片',
+      modelIncidentTargetLabel: '值班时限',
+    );
+
+    await tester.pumpWidget(_buildHarness(summary: summary));
+    await tester.pumpAndSettle();
+
+    final board = find.byType(DutyContextBoard);
+    expect(
+      find.descendant(of: board, matching: find.text('卡片 · 当前卡片')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: board, matching: find.text('值班 · 值班时限')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: board, matching: find.text('工作台 · AI 运行控制区')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('OperationsHubScreen dispatches incident priority strip action to AI Lab', (
+    WidgetTester tester,
+  ) async {
+    AiLabLaunchIntent? receivedIntent;
+
+    await tester.pumpWidget(
+      _buildHarness(
+        summary: _buildSummary(),
+        onOpenAiLab: (intent) => receivedIntent = intent,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionFinder = find.descendant(
+      of: find.byType(IncidentPriorityStrip),
+      matching: find.widgetWithText(FilledButton, '打开 AI Lab'),
+    ).first;
+
+    final button = tester.widget<FilledButton>(actionFinder);
+    button.onPressed!.call();
+    await tester.pumpAndSettle();
+
+    expect(receivedIntent, isNotNull);
+    expect(receivedIntent!.target, AiLabLaunchTarget.deepLearning);
+    expect(receivedIntent!.context?.workspaceTargetLabel, 'AI 运行控制区');
+    expect(receivedIntent!.context?.cardTargetLabel, '运行产物');
+    expect(receivedIntent!.sourceLabel, contains('优先值班链路'));
+  });
+
+  testWidgets('OperationsHubScreen dispatches asset inventory action to AI Lab', (
+    WidgetTester tester,
+  ) async {
+    AiLabLaunchIntent? receivedIntent;
+
+    await tester.pumpWidget(
+      _buildHarness(
+        summary: _buildSummary(),
+        onOpenAiLab: (intent) => receivedIntent = intent,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionFinder = find.descendant(
+      of: find.byType(AssetInventoryBoard),
+      matching: find.widgetWithText(FilledButton, '打开 AI Lab'),
+    ).first;
+
+    final button = tester.widget<FilledButton>(actionFinder);
+    button.onPressed!.call();
+    await tester.pumpAndSettle();
+
+    expect(receivedIntent, isNotNull);
+    expect(receivedIntent!.target, AiLabLaunchTarget.deepLearning);
+    expect(receivedIntent!.context?.workspaceTargetLabel, 'AI 运行控制区');
+    expect(receivedIntent!.context?.cardTargetLabel, '运行产物');
+    expect(receivedIntent!.sourceLabel, contains('Asset Inventory'));
+  });
+
+  testWidgets('OperationsHubScreen dispatches governance queue action to AI Lab', (
+    WidgetTester tester,
+  ) async {
+    AiLabLaunchIntent? receivedIntent;
+
+    await tester.pumpWidget(
+      _buildHarness(
+        summary: _buildSummary(
+          governance: const [
+            {
+              'key': 'knowledge',
+              'label': '知识快照',
+              'risk_level': 'action',
+              'owner_label': 'AI 知识平台主管',
+              'sla_minutes': 15,
+              'asset_count': 1,
+              'failed_jobs': 2,
+              'latest_version': 'v0314-0702',
+              'latest_label': '20251209_130622_AEP_hourly',
+              'lineage_summary': 'uploads/demo.csv -> ops-knowledge',
+              'failure_summary': 'docs/ -> default',
+              'recommended_action': '最近有 2 个知识库任务失败，建议排查文档路径和集合模式。',
+              'action_label': '打开 AI Lab',
+              'workspace_target': 'ai_runtime',
+              'workspace_target_label': 'AI 运行控制区',
+              'workspace_brief': 'completed · 100% · 当前卡片',
+            },
+          ],
+        ),
+        onOpenAiLab: (intent) => receivedIntent = intent,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionFinder = find.descendant(
+      of: find.byType(AssetGovernanceQueue),
+      matching: find.widgetWithText(FilledButton, '打开 AI Lab'),
+    );
+    expect(actionFinder, findsOneWidget);
+
+    final button = tester.widget<FilledButton>(actionFinder);
+    button.onPressed!.call();
+    await tester.pumpAndSettle();
+
+    expect(receivedIntent, isNotNull);
+    expect(receivedIntent!.target, AiLabLaunchTarget.rag);
+    expect(receivedIntent!.context?.workspaceTargetLabel, 'AI 运行控制区');
+    expect(receivedIntent!.context?.cardTargetLabel, '运行产物');
+    expect(receivedIntent!.sourceLabel, contains('Asset Governance Queue'));
+    expect(receivedIntent!.sourceLabel, isNot(contains('当前卡片')));
+  });
+
+  testWidgets('OperationsHubScreen dispatches event bus action to AI Lab', (
+    WidgetTester tester,
+  ) async {
+    AiLabLaunchIntent? receivedIntent;
+
+    await tester.pumpWidget(
+      _buildHarness(
+        summary: _buildSummary(
+          modelIncidentTargetLabel: '值班时限',
+        ),
+        onOpenAiLab: (intent) => receivedIntent = intent,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionFinder = find.descendant(
+      of: find.byType(OperationsEventBusBoard),
+      matching: find.widgetWithText(FilledButton, '打开 AI Lab'),
+    ).first;
+
+    final button = tester.widget<FilledButton>(actionFinder);
+    button.onPressed!.call();
+    await tester.pumpAndSettle();
+
+    expect(receivedIntent, isNotNull);
+    expect(receivedIntent!.target, AiLabLaunchTarget.deepLearning);
+    expect(receivedIntent!.context?.workspaceTargetLabel, 'AI 运行控制区');
+    expect(receivedIntent!.context?.cardTargetLabel, '运行产物');
+    expect(receivedIntent!.sourceLabel, contains('Unified Event Bus'));
+    expect(receivedIntent!.sourceLabel, isNot(contains('值班时限')));
+  });
+
+  testWidgets('OperationsHubScreen dispatches version timeline action to AI Lab', (
+    WidgetTester tester,
+  ) async {
+    AiLabLaunchIntent? receivedIntent;
+
+    await tester.pumpWidget(
+      _buildHarness(
+        summary: _buildSummary(),
+        onOpenAiLab: (intent) => receivedIntent = intent,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionFinder = find.descendant(
+      of: find.byType(AssetVersionTimelineBoard),
+      matching: find.widgetWithText(FilledButton, '打开 AI Lab'),
+    ).first;
+
+    final button = tester.widget<FilledButton>(actionFinder);
+    button.onPressed!.call();
+    await tester.pumpAndSettle();
+
+    expect(receivedIntent, isNotNull);
+    expect(receivedIntent!.target, AiLabLaunchTarget.deepLearning);
+    expect(receivedIntent!.context?.workspaceTargetLabel, 'AI 运行控制区');
+    expect(receivedIntent!.context?.cardTargetLabel, '运行产物');
+    expect(receivedIntent!.sourceLabel, contains('Asset Version Timeline'));
   });
 }
