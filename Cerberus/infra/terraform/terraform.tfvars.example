@@ -1,0 +1,25 @@
+project_id  = "cerberus-9d94f"
+region      = "asia-east2"
+environment = "dev"
+
+# Replace with valid values via secure channel, then keep terraform.tfvars out of Git.
+gurobi_licenseid  = ""
+gurobi_wlsaccessid = ""
+gurobi_wlssecret   = ""
+
+firebase_project_id = "cerberus-9d94f"
+firebase_enabled    = false
+
+firebase_web_config = {
+  api_key             = ""
+  auth_domain         = ""
+  storage_bucket      = ""
+  messaging_sender_id = ""
+  app_id              = ""
+}
+
+container_images = {
+  frontend = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/frontend:latest"
+  gateway  = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/gateway:latest"
+  strategy = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/strategy:latest"
+}

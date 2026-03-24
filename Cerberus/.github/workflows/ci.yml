@@ -1,0 +1,91 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Buf lint
+        run: cd proto && buf lint
+      - name: Buf breaking
+        if: github.event_name == 'pull_request'
+        run: cd proto && buf breaking --against '.git#branch=origin/main'
+      - name: Buf generate
+        run: cd proto && buf generate
+
+  strategy-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v3
+      - name: Sync dependencies
+        run: uv sync --project services/strategy-py --all-groups
+      - name: Run tests
+        run: uv run --project services/strategy-py pytest
+
+  gateway-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cargo check
+        run: cd services/gateway-rs && cargo check
+
+  matching-cpp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure and build
+        run: |
+          cd services/matching-cpp
+          cmake -S . -B build
+          cmake --build build
+      - name: Run tests
+        run: cd services/matching-cpp && ctest --test-dir build --output-on-failure
+
+  frontend:
+    runs-on: ubuntu-latest
+    env:
+      VITE_DISABLE_LIVE_STREAM: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Install dependencies
+        run: cd apps/frontend && npm ci
+      - name: Unit tests
+        run: cd apps/frontend && npm run test
+      - name: Install Playwright browser
+        run: cd apps/frontend && npx playwright install --with-deps chromium
+      - name: E2E tests (desktop + mobile)
+        run: cd apps/frontend && npm run test:e2e
+      - name: Build
+        run: cd apps/frontend && npm run build
+      - name: Lighthouse assertions
+        run: cd apps/frontend && npm run lighthouse
+
+  smoke-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Contract smoke test
+        run: ./scripts/smoke_local.sh

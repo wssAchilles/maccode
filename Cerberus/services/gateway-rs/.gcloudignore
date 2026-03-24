@@ -1,0 +1,14 @@
+# Keep Cloud Build submit context minimal for fast incremental deploys.
+target/
+.git/
+.gitignore
+*.log
+*.tmp
+tmp/
+dist/
+build/
+node_modules/
+.DS_Store
+coverage/
+*.swp
+*.swo

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "auditRan",
+    "expected": 1,
+    "actual": 0,
+    "values": [
+      0,
+      0
+    ],
+    "operator": ">=",
+    "passed": false,
+    "auditId": "interaction-to-next-paint",
+    "level": "warn",
+    "url": "http://127.0.0.1:4173/"
+  }
+]

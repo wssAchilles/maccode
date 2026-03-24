@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Frontend read-only; backend writes via Admin SDK bypass rules.
+    match /strategy_signals/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Keep other collections read-only by default in v1.
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

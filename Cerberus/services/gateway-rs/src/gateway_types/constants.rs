@@ -1,0 +1,11 @@
+pub(crate) const DEFAULT_KLINE_API: &str = "https://api.binance.com/api/v3/klines";
+pub(crate) const DEFAULT_BINANCE_API_BASE: &str = "https://api.binance.com";
+pub(crate) const DEFAULT_ALPACA_TRADING_BASE: &str = "https://paper-api.alpaca.markets/v2";
+pub(crate) const DEFAULT_BINANCE_STREAM_BASE: &str = "wss://stream.binance.com:9443/stream";
+pub(crate) const DEFAULT_MARKET_SYMBOLS: &str = "BTCUSDT,ETHUSDT";
+pub(crate) const DEFAULT_BINANCE_ORDER_TEST_PATH: &str = "/api/v3/order/test";
+pub(crate) const REQUEST_ID_HEADER: &str = "x-request-id";
+pub(crate) const SERVICE_NAME: &str = "gateway-rs";
+pub(crate) const SERVICE_VERSION: &str = "0.1.0";
+pub(crate) const MAX_RECENT_ORDER_EVENTS: usize = 1_000;
+pub(crate) const BINANCE_RULE_TTL_MS: u64 = 5 * 60 * 1_000;

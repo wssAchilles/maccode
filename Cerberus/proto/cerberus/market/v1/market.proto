@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package cerberus.market.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service MarketDataService {
+  rpc PublishTick(PublishTickRequest) returns (PublishTickResponse);
+  rpc StreamOrderBook(StreamOrderBookRequest) returns (stream StreamOrderBookResponse);
+  rpc GetCandles(GetCandlesRequest) returns (GetCandlesResponse);
+}
+
+message PublishTickRequest {
+  string symbol = 1;
+  double price = 2;
+  double quantity = 3;
+  google.protobuf.Timestamp event_time = 4;
+}
+
+message PublishTickResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message Level {
+  double price = 1;
+  double quantity = 2;
+}
+
+message StreamOrderBookResponse {
+  string symbol = 1;
+  repeated Level bids = 2;
+  repeated Level asks = 3;
+  google.protobuf.Timestamp event_time = 4;
+}
+
+message StreamOrderBookRequest {
+  string symbol = 1;
+}
+
+message GetCandlesRequest {
+  string symbol = 1;
+  string interval = 2;
+  int32 limit = 3;
+}
+
+message Candle {
+  int64 open_time = 1;
+  double open = 2;
+  double high = 3;
+  double low = 4;
+  double close = 5;
+  double volume = 6;
+  int64 close_time = 7;
+}
+
+message GetCandlesResponse {
+  repeated Candle candles = 1;
+}

@@ -1,0 +1,143 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cerberus
+      POSTGRES_PASSWORD: cerberus
+      POSTGRES_DB: cerberus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  timescaledb:
+    image: timescale/timescaledb:2.19.3-pg16
+    environment:
+      POSTGRES_USER: cerberus
+      POSTGRES_PASSWORD: cerberus
+      POSTGRES_DB: market
+    ports:
+      - "5433:5432"
+    volumes:
+      - ts_data:/var/lib/postgresql/data
+
+  gateway:
+    build:
+      context: services/gateway-rs
+    environment:
+      PORT: 8080
+      REDIS_URL: redis://redis:6379/0
+      REDIS_ORDERBOOK_CHANNEL: md.orderbook.BTCUSDT
+      REDIS_ORDERBOOK_CHANNEL_PREFIX: md.orderbook
+      REDIS_TICK_CHANNEL_PREFIX: md.ticks
+      REDIS_ORDER_EVENTS_CHANNELS: strategy.signals.default,trade.executions.default
+      MARKET_SYMBOLS: ${MARKET_SYMBOLS:-BTCUSDT,ETHUSDT}
+      BINANCE_API_BASE: ${BINANCE_API_BASE:-https://demo-fapi.binance.com}
+      BINANCE_ORDER_TEST_PATH: ${BINANCE_ORDER_TEST_PATH:-/fapi/v1/order/test}
+      MARKET_WS_URL: ${MARKET_WS_URL:-wss://fstream.binance.com/stream?streams=btcusdt@bookTicker/ethusdt@bookTicker}
+      KLINE_API_URL: ${KLINE_API_URL:-https://demo-fapi.binance.com/fapi/v1/klines}
+      TRADING_POLICY_ENFORCED: ${TRADING_POLICY_ENFORCED:-true}
+      BINANCE_ALLOWED_SYMBOLS: ${BINANCE_ALLOWED_SYMBOLS:-BTCUSDT,ETHUSDT}
+      ALPACA_ALLOWED_SYMBOLS: ${ALPACA_ALLOWED_SYMBOLS:-AAPL,TSLA,NVDA}
+      MAX_BINANCE_ORDER_QTY: ${MAX_BINANCE_ORDER_QTY:-0.05}
+      MAX_BINANCE_ORDER_NOTIONAL_USD: ${MAX_BINANCE_ORDER_NOTIONAL_USD:-5000}
+      MAX_ALPACA_ORDER_QTY: ${MAX_ALPACA_ORDER_QTY:-100}
+      MAX_ALPACA_LIMIT_NOTIONAL_USD: ${MAX_ALPACA_LIMIT_NOTIONAL_USD:-20000}
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+      ALPACA_TRADING_BASE_URL: ${ALPACA_TRADING_BASE_URL:-https://paper-api.alpaca.markets/v2}
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_API_SECRET: ${ALPACA_API_SECRET:-}
+      STRATEGY_BASE_URL: ${STRATEGY_BASE_URL:-http://strategy:8001}
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  strategy:
+    build:
+      context: services/strategy-py
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+      MARKET_CHANNEL: md.orderbook.BTCUSDT
+      MARKET_CHANNELS: ${MARKET_CHANNELS:-md.orderbook.BTCUSDT,md.orderbook.ETHUSDT}
+      SIGNAL_CHANNEL: strategy.signals.default
+      GRB_LICENSEID: ${GRB_LICENSEID:-}
+      GRB_WLSACCESSID: ${GRB_WLSACCESSID:-}
+      GRB_WLSSECRET: ${GRB_WLSSECRET:-}
+      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-cerberus-9d94f}
+      FIREBASE_SIGNAL_COLLECTION: ${FIREBASE_SIGNAL_COLLECTION:-strategy_signals}
+      SUPABASE_ENABLED: ${SUPABASE_ENABLED:-false}
+      SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_SIGNAL_TABLE: ${SUPABASE_SIGNAL_TABLE:-strategy_signals}
+      MATCHING_ENABLED: ${MATCHING_ENABLED:-true}
+      MATCHING_GRPC_TARGET: ${MATCHING_GRPC_TARGET:-matching:50051}
+      MATCHING_GRPC_TIMEOUT_SECONDS: ${MATCHING_GRPC_TIMEOUT_SECONDS:-2}
+      STRATEGY_ACCOUNT_ID: ${STRATEGY_ACCOUNT_ID:-default}
+      STRATEGY_ORDER_QUANTITY: ${STRATEGY_ORDER_QUANTITY:-0.001}
+      TRADE_EXECUTION_CHANNEL_PREFIX: ${TRADE_EXECUTION_CHANNEL_PREFIX:-trade.executions}
+      EXECUTION_RELAY_INTERVAL_SECONDS: ${EXECUTION_RELAY_INTERVAL_SECONDS:-1}
+      EXECUTION_RELAY_BATCH_LIMIT: ${EXECUTION_RELAY_BATCH_LIMIT:-100}
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+      matching:
+        condition: service_started
+
+  matching:
+    build:
+      context: services/matching-cpp
+    ports:
+      - "50051:50051"
+
+  frontend:
+    build:
+      context: apps/frontend
+    environment:
+      VITE_GATEWAY_BASE: http://localhost:8080
+      VITE_STRATEGY_BASE: http://localhost:8001
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-cerberus-9d94f}
+      VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+      VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+    ports:
+      - "5173:8080"
+    depends_on:
+      - gateway
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./deploy/compose/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - gateway
+      - strategy
+
+volumes:
+  pg_data:
+  ts_data:
+  prometheus_data:

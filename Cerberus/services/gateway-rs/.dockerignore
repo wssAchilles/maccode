@@ -1,0 +1,14 @@
+# Keep docker build context minimal.
+target/
+.git/
+.gitignore
+*.log
+*.tmp
+tmp/
+dist/
+build/
+node_modules/
+.DS_Store
+coverage/
+*.swp
+*.swo

@@ -1,0 +1,63 @@
+name: deploy-dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+env:
+  PROJECT_ID: cerberus-9d94f
+  REGION: asia-east2
+  REGISTRY: asia-east2-docker.pkg.dev
+  REPOSITORY: cerberus
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Docker auth
+        run: gcloud auth configure-docker $REGISTRY --quiet
+
+      - name: Build and push images
+        run: |
+          docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/frontend:${GITHUB_SHA} apps/frontend
+          docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA} services/gateway-rs
+          docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA} services/strategy-py
+          docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/frontend:${GITHUB_SHA}
+          docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA}
+          docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA}
+
+      - name: Terraform apply
+        env:
+          TF_VAR_project_id: ${{ env.PROJECT_ID }}
+          TF_VAR_region: ${{ env.REGION }}
+          TF_VAR_gurobi_licenseid: ${{ secrets.GRB_LICENSEID }}
+          TF_VAR_gurobi_wlsaccessid: ${{ secrets.GRB_WLSACCESSID }}
+          TF_VAR_gurobi_wlssecret: ${{ secrets.GRB_WLSSECRET }}
+          TF_VAR_firebase_project_id: cerberus-9d94f
+          TF_VAR_firebase_enabled: "true"
+          TF_VAR_firebase_web_config: >-
+            {"api_key":"${{ secrets.FIREBASE_API_KEY }}","auth_domain":"${{ secrets.FIREBASE_AUTH_DOMAIN }}","storage_bucket":"${{ secrets.FIREBASE_STORAGE_BUCKET }}","messaging_sender_id":"${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}","app_id":"${{ secrets.FIREBASE_APP_ID }}"}
+          TF_VAR_container_images: >-
+            {"frontend":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/frontend:${{ github.sha }}","gateway":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gateway:${{ github.sha }}","strategy":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/strategy:${{ github.sha }}"}
+        run: |
+          cd infra/terraform
+          terraform init
+          terraform apply -auto-approve
