@@ -43,6 +43,29 @@ def error_response(
     )
 
 
+def _http_error_code_from_status(status_code: int) -> str:
+    if status_code >= 500:
+        return "internal_error"
+    if status_code == 422:
+        return "validation_error"
+    if status_code >= 400:
+        return "request_error"
+    return "http_error"
+
+
+def _extract_http_exception_detail(detail: Any, status_code: int) -> tuple[str, Any]:
+    if isinstance(detail, dict):
+        code = detail.get("code")
+        message = detail.get("message", detail)
+        normalized_code = (
+            str(code).strip()
+            if isinstance(code, str) and str(code).strip()
+            else _http_error_code_from_status(status_code)
+        )
+        return normalized_code, message
+    return _http_error_code_from_status(status_code), detail
+
+
 def prometheus_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
 
@@ -50,11 +73,12 @@ def prometheus_escape(value: str) -> str:
 def register_error_handlers(app: FastAPI, logger: logging.Logger) -> None:
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):  # type: ignore[override]
+        code, detail = _extract_http_exception_detail(exc.detail, exc.status_code)
         return error_response(
             request,
             status_code=exc.status_code,
-            code="http_error",
-            message=exc.detail,
+            code=code,
+            message=detail,
         )
 
     @app.exception_handler(RequestValidationError)

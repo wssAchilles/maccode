@@ -1,6 +1,7 @@
 import type { PrecheckResult } from '../../domain/trading/precheck'
 import type { TranslationKey } from '../../i18n/messages'
 import type { BinanceRule, TradingPolicy } from '../../types/contracts'
+import { AppErrorNotice } from '../common/AppErrorNotice'
 
 import { STAGE_KEY_MAP, type GatewayResponse, type Stage } from './types'
 
@@ -147,6 +148,7 @@ export function BinanceTestPanel({
       ) : null}
 
       <h3 className="mt-3 text-xs text-slate-400">{t('execution.response')}</h3>
+      {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
       <pre
         className="mt-1 max-h-56 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-2 text-[11px] text-slate-300"
         data-testid="binance-response"

@@ -1,6 +1,7 @@
 #include "grpc_order_service.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <vector>
 
 #include "grpc_request_logging.hpp"
@@ -9,6 +10,17 @@ namespace {
 
 constexpr std::size_t kExecutionStreamLimit = 500;
 
+void FillTimestampFromMillis(std::uint64_t epoch_ms, google::protobuf::Timestamp* ts) {
+  if (ts == nullptr) {
+    return;
+  }
+  const auto millis = std::chrono::milliseconds(epoch_ms);
+  const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(millis);
+  const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(millis - seconds);
+  ts->set_seconds(seconds.count());
+  ts->set_nanos(static_cast<int>(nanos.count()));
+}
+
 }  // namespace
 
 grpc::Status GrpcOrderService::StreamExecutions(
@@ -16,6 +28,7 @@ grpc::Status GrpcOrderService::StreamExecutions(
     const cerberus::order::v1::StreamExecutionsRequest* request,
     grpc::ServerWriter<cerberus::order::v1::StreamExecutionsResponse>* writer) {
   LogRequestStart("StreamExecutions", context);
+  EchoRequestId(context);
   if (request->account_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "account_id is required");
   }
@@ -38,7 +51,7 @@ grpc::Status GrpcOrderService::StreamExecutions(
     message.set_symbol(execution.trade.symbol);
     message.set_price(execution.trade.price);
     message.set_quantity(execution.trade.quantity);
-    FillNowTimestamp(message.mutable_event_time());
+    FillTimestampFromMillis(execution.event_time_ms, message.mutable_event_time());
 
     if (!writer->Write(message)) {
       break;

@@ -16,7 +16,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
   - gRPC build path enabled when `gRPC + Protobuf` dependencies are present.
 - Infra:
   - Local: Docker Compose (`redis`, `postgres`, `timescaledb`, all app services).
-  - Cloud: Terraform templates under `infra/terraform`.
+  - Cloud: Firebase Hosting (frontend) + Cloud Run (gateway/strategy) + Upstash Redis + Supabase Postgres, provisioned by Terraform under `infra/terraform`.
 
 ## APIs (v1)
 
@@ -26,7 +26,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
   - `GET /api/v1/klines`
   - `GET /api/v1/orderbook/snapshot?symbol=BTCUSDT`
   - `GET /api/v1/metrics`
-  - `GET /api/v1/orders/events/recent`
+  - `GET /api/v1/orders/events/recent` (supports `limit`,`channel`,`account_id`,`symbol`,`order_id`,`status`,`request_id`)
   - `GET /api/v1/external/status`
   - `GET /api/v1/strategy/summary`
   - `GET /api/v1/trading/policy`
@@ -40,6 +40,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
     - streams structured order events from Redis channels (default: `strategy.signals.default`, `trade.executions.default`)
     - also emits gateway-generated execution events for Binance test order / Alpaca submit / Alpaca cancel
     - each message includes `channel`, `payload`, `received_at`
+    - execution payloads use canonical keys: `event`, `provider`, `account_id`, `order_id`, `symbol`, `status`, `request_id`
 - Strategy endpoint:
   - `GET /ready`
   - `GET /metrics` (Prometheus)
@@ -51,7 +52,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
   - `POST /api/v1/matching/orders`
   - `POST /api/v1/matching/orders/{order_id}/cancel`
   - `GET /api/v1/matching/orders/{order_id}`
-  - `GET /api/v1/matching/executions` (supports `account_id`, optional `symbol`)
+  - `GET /api/v1/matching/executions` (supports `account_id`, optional `symbol`,`order_id`,`request_id`)
   - `GET /api/v1/matching/health`
   - `GET /api/v1/matching/stats`
   - `GET /api/v1/matching/orderbook?symbol=BTCUSDT&depth=10`
@@ -61,6 +62,7 @@ Request tracing and error model:
 - Gateway and Strategy both support `x-request-id` propagation (echoed in response headers).
 - Gateway upstream probe (`/api/v1/external/status`) forwards `x-request-id` to Strategy health checks.
 - Error payloads follow `{ "error": { "code", "message", "request_id" } }` on wrapped endpoints.
+- Trading success payloads on core execution APIs also include `request_id` for frontend flow traceability.
 
 Local contract smoke:
 
@@ -70,7 +72,21 @@ Frontend runtime envs:
 
 - `VITE_GATEWAY_BASE`
 - `VITE_STRATEGY_BASE`
+- `VITE_AUTH_REQUIRED`
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
 - `VITE_DISABLE_LIVE_STREAM` (`true` for deterministic test/e2e mode)
+
+Firebase Authentication behavior:
+
+- Login page only provides email and Google sign-in.
+- No explicit register button.
+- Email sign-in runs `login -> auto-register fallback` for first-time accounts.
+- Google sign-in uses Firebase onboarding (first login auto-creates account).
 
 ## Quickstart
 
@@ -103,6 +119,14 @@ npm run test
 npm run build
 npm run test:e2e
 npm run lighthouse
+```
+
+Deployed release gate (against online URL):
+
+```bash
+cd apps/frontend
+E2E_BASE_URL="https://<your-hosting-url>" E2E_GATE_MODE=true E2E_USE_DEPLOYED=true E2E_AUTH_EMAIL="gate-user@example.com" E2E_AUTH_PASSWORD="replace_me" npm run test:e2e:gate
+LHCI_COLLECT_URL="https://<your-hosting-url>" npm run lighthouse:gate
 ```
 
 3. Start local stack:
@@ -166,16 +190,21 @@ Important: if any Gurobi WLS credential has been exposed in chat/screenshots, ro
 
 ## Cloud Secret Mapping (GCP)
 
-- `cerberus-upstash-redis-url` -> `REDIS_URL` (`rediss://...`, TLS required)
-- `cerberus-upstash-redis-rest-url` -> `UPSTASH_REDIS_REST_URL`
-- `cerberus-upstash-redis-rest-token` -> `UPSTASH_REDIS_REST_TOKEN`
-- `cerberus-supabase-project-url` -> `SUPABASE_PROJECT_URL`
-- `cerberus-supabase-anon-key` -> `SUPABASE_ANON_KEY`
-- `cerberus-supabase-service-role-key` -> `SUPABASE_SERVICE_ROLE_KEY`
-- `cerberus-supabase-db-url` -> `SUPABASE_DB_URL`
-- `cerberus-grb-licenseid` -> `GRB_LICENSEID`
-- `cerberus-grb-wlsaccessid` -> `GRB_WLSACCESSID`
-- `cerberus-grb-wlssecret` -> `GRB_WLSSECRET`
+- `cerberus-dev-upstash-redis-url` -> `REDIS_URL` (`rediss://...`, TLS required)
+- `cerberus-dev-upstash-redis-rest-url` -> `UPSTASH_REDIS_REST_URL`
+- `cerberus-dev-upstash-redis-rest-token` -> `UPSTASH_REDIS_REST_TOKEN`
+- `cerberus-dev-supabase-project-url` -> `SUPABASE_PROJECT_URL`
+- `cerberus-dev-supabase-anon-key` -> `SUPABASE_ANON_KEY`
+- `cerberus-dev-supabase-service-role-key` -> `SUPABASE_SERVICE_ROLE_KEY`
+- `cerberus-dev-supabase-db-url` -> `SUPABASE_DB_URL`
+- `cerberus-dev-gurobi-licenseid` -> `GRB_LICENSEID`
+- `cerberus-dev-gurobi-wlsaccessid` -> `GRB_WLSACCESSID`
+- `cerberus-dev-gurobi-wlssecret` -> `GRB_WLSSECRET`
+- `cerberus-dev-firebase-web-api-key` -> `FIREBASE_WEB_API_KEY`
+- `cerberus-dev-binance-api-key` -> `BINANCE_API_KEY`
+- `cerberus-dev-binance-api-secret` -> `BINANCE_API_SECRET`
+- `cerberus-dev-alpaca-api-key` -> `ALPACA_API_KEY`
+- `cerberus-dev-alpaca-api-secret` -> `ALPACA_API_SECRET`
 
 Gateway stream envs:
 
@@ -249,6 +278,14 @@ GitHub Actions workflow at `.github/workflows/ci.yml` runs:
 - C++ build and tests (matching)
 - Frontend unit tests + Playwright e2e + build + Lighthouse assertions
 - Optional Buf checks (when `buf` is available in runner)
+
+Cloud deployment workflow is `.github/workflows/deploy.yml`:
+
+- Builds and deploys `gateway-rs` + `strategy-py` to Cloud Run.
+- Builds frontend and deploys to Firebase Hosting.
+- Runs deployed e2e/lighthouse gate against the live Firebase URL.
+- Requires GitHub secrets `FIREBASE_E2E_EMAIL` and `FIREBASE_E2E_PASSWORD` for auth-enabled gate runs.
+- Requires exchange secrets `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `ALPACA_API_KEY`, `ALPACA_API_SECRET` for trading endpoints.
 
 ## Post-Deploy Chrome DevTools MCP Gate (Manual Release Blocker)
 

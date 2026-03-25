@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { runBinancePrecheck, type PrecheckResult } from '../../domain/trading/precheck'
+import { formatAppError, toAppError } from '../../lib/http'
 import type { BinanceRule, TradingPolicy } from '../../types/contracts'
 import { callGateway } from './gateway'
-import { type GatewayResponse, type Stage, parsePositiveNumber } from './types'
+import { type GatewayResponse, type Stage, parsePositiveNumber, readGatewayRequestId } from './types'
+
+type FlowEvent = {
+  step: 'precheck' | 'submit'
+  state: 'active' | 'success' | 'error'
+  reason?: string
+  requestId?: string
+}
 
 type Params = {
   selectedSymbol: string
@@ -12,6 +20,7 @@ type Params = {
   gatewayBase: string
   rule: BinanceRule | null
   policy: TradingPolicy | null
+  onFlowEvent?: (event: FlowEvent) => void
 }
 
 export type BinanceOrderTestModel = {
@@ -38,6 +47,7 @@ export function useBinanceOrderTest({
   gatewayBase,
   rule,
   policy,
+  onFlowEvent,
 }: Params): BinanceOrderTestModel {
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
   const [quantity, setQuantity] = useState('0.002')
@@ -79,6 +89,11 @@ export function useBinanceOrderTest({
     })
     setPrecheck(checked)
     setStage(checked.ok ? 'prechecked' : 'rejected')
+    onFlowEvent?.({
+      step: 'precheck',
+      state: checked.ok ? 'success' : 'error',
+      reason: checked.checks.find((item) => item.status === 'fail')?.message ?? 'precheck evaluated',
+    })
   }
 
   const submit = async () => {
@@ -93,11 +108,21 @@ export function useBinanceOrderTest({
 
     if (!checked.ok) {
       setStage('rejected')
+      onFlowEvent?.({
+        step: 'submit',
+        state: 'error',
+        reason: checked.checks.find((item) => item.status === 'fail')?.message ?? 'precheck blocked submit',
+      })
       return
     }
 
     setSubmitting(true)
     setStage('submitting')
+    onFlowEvent?.({
+      step: 'submit',
+      state: 'active',
+      reason: 'submitting order to gateway',
+    })
     try {
       const payload = await callGateway('/api/v1/binance/order/test', gatewayBase, {
         method: 'POST',
@@ -112,6 +137,22 @@ export function useBinanceOrderTest({
       })
       setResult(payload)
       setStage(payload.status < 400 ? 'submitted' : 'rejected')
+      if (payload.status < 400) {
+        onFlowEvent?.({
+          step: 'submit',
+          state: 'success',
+          reason: 'order submit accepted',
+          requestId: readGatewayRequestId(payload.body),
+        })
+      } else {
+        const error = toAppError(payload.error ?? payload.body, 'submit_failed')
+        onFlowEvent?.({
+          step: 'submit',
+          state: 'error',
+          reason: formatAppError(error),
+          requestId: error.request_id,
+        })
+      }
     } finally {
       setSubmitting(false)
     }

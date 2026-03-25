@@ -20,6 +20,7 @@ export function ExecutionConsole({ selectedSymbol, latestBid, latestAsk }: Props
   const loadBinanceRule = useCerberusStore((state) => state.executionTradingActions.loadBinanceRule)
   const tradingPolicy = useCerberusStore((state) => state.executionTrading.trading_policy)
   const binanceRule = useCerberusStore((state) => state.executionTrading.binance_rule)
+  const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
   const binanceModel = useBinanceOrderTest({
     selectedSymbol,
@@ -28,11 +29,25 @@ export function ExecutionConsole({ selectedSymbol, latestBid, latestAsk }: Props
     gatewayBase,
     rule: binanceRule ?? null,
     policy: tradingPolicy ?? null,
+    onFlowEvent: (event) => {
+      setCoreFlowStep(event.step, {
+        state: event.state,
+        reason: event.reason,
+        request_id: event.requestId,
+      })
+    },
   })
 
   const alpacaModel = useAlpacaPaperTrading({
     gatewayBase,
     tradingPolicy: tradingPolicy ?? null,
+    onFlowEvent: (event) => {
+      setCoreFlowStep(event.step, {
+        state: event.state,
+        reason: event.reason,
+        request_id: event.requestId,
+      })
+    },
   })
 
   useEffect(() => {

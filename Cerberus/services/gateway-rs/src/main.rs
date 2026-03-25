@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::Context;
 use axum::{
+    http::HeaderValue,
     middleware,
     routing::{get, post},
     Router,
@@ -14,7 +15,7 @@ use axum::{
 use reqwest::Client;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::cors::{Any, CorsLayer};
-use tracing::info;
+use tracing::{info, warn};
 
 mod event_bus;
 mod gateway_types;
@@ -24,7 +25,7 @@ mod ingest;
 mod ws;
 
 use gateway_types::*;
-use gateway_utils::{current_millis, non_empty_env};
+use gateway_utils::{current_millis, env_flag, non_empty_env};
 use handlers::{
     market::{get_klines, get_recent_order_events, get_snapshot},
     system::{get_metrics, get_metrics_json, health, ready, request_context_middleware},
@@ -76,6 +77,17 @@ async fn main() -> anyhow::Result<()> {
     let trading_policy = TradingPolicy::from_env(&market_symbols);
     let strategy_base_url =
         non_empty_env("STRATEGY_BASE_URL").map(|raw| raw.trim_end_matches('/').to_string());
+    let firebase_auth = FirebaseAuthConfig {
+        required: env_flag("FIREBASE_AUTH_REQUIRED", false),
+        project_id: non_empty_env("FIREBASE_PROJECT_ID"),
+        web_api_key: non_empty_env("FIREBASE_WEB_API_KEY"),
+    };
+    if firebase_auth.required && firebase_auth.project_id.is_none() {
+        warn!(
+            "FIREBASE_AUTH_REQUIRED=true but FIREBASE_PROJECT_ID is empty; token audience checks rely on web API key only"
+        );
+    }
+    let cors_allow_origins = env::var("CORS_ALLOW_ORIGINS").unwrap_or_else(|_| "*".to_string());
 
     let (market_tx, _) = broadcast::channel::<MarketEvent>(1024);
     let (orders_tx, _) = broadcast::channel::<OrderEvent>(1024);
@@ -97,12 +109,32 @@ async fn main() -> anyhow::Result<()> {
         trading_policy,
         metrics: Arc::new(RwLock::new(GatewayMetrics::default())),
         exchange,
+        firebase_auth,
         strategy_base_url,
         started_at_unix: current_millis() / 1_000,
     };
 
     spawn_market_ingest(state.clone());
     spawn_order_events_ingest(state.clone());
+
+    let protected_api = Router::new()
+        .route("/api/v1/orders/events/recent", get(get_recent_order_events))
+        .route("/api/v1/strategy/summary", get(get_strategy_summary))
+        .route("/api/v1/trading/policy", get(get_trading_policy))
+        .route("/api/v1/binance/symbol-rules", get(get_binance_symbol_rules))
+        .route("/api/v1/binance/order/test", post(binance_order_test))
+        .route("/api/v1/alpaca/account", get(get_alpaca_account))
+        .route("/api/v1/alpaca/orders", post(create_alpaca_order))
+        .route(
+            "/api/v1/alpaca/orders/{order_id}/cancel",
+            post(cancel_alpaca_order),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            handlers::system::require_firebase_auth,
+        ));
+
+    let cors_layer = build_cors_layer(&cors_allow_origins);
 
     let app = Router::new()
         .route("/health", get(health))
@@ -111,29 +143,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/metrics", get(get_metrics_json))
         .route("/api/v1/klines", get(get_klines))
         .route("/api/v1/orderbook/snapshot", get(get_snapshot))
-        .route("/api/v1/orders/events/recent", get(get_recent_order_events))
         .route("/api/v1/external/status", get(get_external_status))
-        .route("/api/v1/strategy/summary", get(get_strategy_summary))
-        .route("/api/v1/trading/policy", get(get_trading_policy))
-        .route(
-            "/api/v1/binance/symbol-rules",
-            get(get_binance_symbol_rules),
-        )
-        .route("/api/v1/binance/order/test", post(binance_order_test))
-        .route("/api/v1/alpaca/account", get(get_alpaca_account))
-        .route("/api/v1/alpaca/orders", post(create_alpaca_order))
-        .route(
-            "/api/v1/alpaca/orders/{order_id}/cancel",
-            post(cancel_alpaca_order),
-        )
         .route("/ws/market", get(ws_market))
         .route("/ws/orders", get(ws_orders))
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_headers(Any)
-                .allow_methods(Any),
-        )
+        .merge(protected_api)
+        .layer(cors_layer)
         .layer(middleware::from_fn(request_context_middleware))
         .with_state(state);
 
@@ -146,4 +160,33 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+fn build_cors_layer(raw_origins: &str) -> CorsLayer {
+    let trimmed = raw_origins.trim();
+    if trimmed == "*" || trimmed.is_empty() {
+        return CorsLayer::new()
+            .allow_origin(Any)
+            .allow_headers(Any)
+            .allow_methods(Any);
+    }
+
+    let origins = trimmed
+        .split(',')
+        .map(str::trim)
+        .filter(|origin| !origin.is_empty())
+        .filter_map(|origin| HeaderValue::from_str(origin).ok())
+        .collect::<Vec<_>>();
+
+    if origins.is_empty() {
+        return CorsLayer::new()
+            .allow_origin(Any)
+            .allow_headers(Any)
+            .allow_methods(Any);
+    }
+
+    CorsLayer::new()
+        .allow_origin(origins)
+        .allow_headers(Any)
+        .allow_methods(Any)
 }

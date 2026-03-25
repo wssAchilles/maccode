@@ -23,6 +23,8 @@ from app.schemas import (
     MatchingSubmitRequest,
     MatchingSubmitResponse,
 )
+
+
 def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
     router = APIRouter()
 
@@ -47,6 +49,7 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
             accepted=bool(result.get("accepted", False)),
             order_id=str(result.get("order_id", "")),
             reason=str(result.get("reason", "")),
+            request_id=str(result.get("request_id") or rid),
         )
 
     @router.post(
@@ -66,6 +69,7 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         return MatchingCancelResponse(
             canceled=bool(result.get("canceled", False)),
             reason=str(result.get("reason", "")),
+            request_id=str(result.get("request_id") or rid),
         )
 
     @router.get("/api/v1/matching/orders/{order_id}", response_model=MatchingOrderView)
@@ -75,32 +79,47 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         account_id: str = Query(default=settings.strategy_account_id),
     ) -> MatchingOrderView:
         ensure_matching_enabled(worker)
+        rid = request_id_from(request)
         try:
             result = await worker.matching_client.get_order(
                 account_id=account_id,
                 order_id=order_id,
-                request_id=request_id_from(request),
+                request_id=rid,
             )
         except grpc.aio.AioRpcError as exc:
             raise_get_order_error(exc)
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"matching get_order error: {exc}") from exc
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "matching_get_order_internal_error",
+                    "message": f"matching get_order error: {exc}",
+                },
+            ) from exc
 
-        return MatchingOrderView(**result)
+        return MatchingOrderView(
+            **{
+                **result,
+                "request_id": result.get("request_id") or rid,
+            }
+        )
 
     @router.get("/api/v1/matching/executions", response_model=list[MatchingExecutionView])
     async def list_matching_executions(
         request: Request,
         account_id: str = Query(default=settings.strategy_account_id),
         symbol: str | None = Query(default=None),
+        order_id: str | None = Query(default=None),
+        request_id: str | None = Query(default=None),
         limit: int = Query(default=20, ge=1, le=200),
     ) -> list[MatchingExecutionView]:
         ensure_matching_enabled(worker)
+        rid = request_id_from(request)
         try:
             items = await worker.matching_client.list_recent_executions(
                 account_id=account_id,
                 limit=limit,
-                request_id=request_id_from(request),
+                request_id=rid,
             )
             if symbol:
                 normalized_symbol = symbol.strip().upper()
@@ -109,7 +128,31 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
                     for item in items
                     if str(item.get("symbol", "")).upper() == normalized_symbol
                 ]
-            return [MatchingExecutionView(**item) for item in items]
+            if order_id:
+                normalized_order_id = order_id.strip()
+                if normalized_order_id:
+                    items = [
+                        item
+                        for item in items
+                        if str(item.get("order_id", "")) == normalized_order_id
+                    ]
+            if request_id:
+                normalized_request_id = request_id.strip()
+                if normalized_request_id:
+                    items = [
+                        item
+                        for item in items
+                        if str(item.get("request_id", "")) == normalized_request_id
+                    ]
+            return [
+                MatchingExecutionView(
+                    **{
+                        **item,
+                        "request_id": item.get("request_id") or rid,
+                    }
+                )
+                for item in items
+            ]
         except grpc.aio.AioRpcError as exc:
             raise_gateway_grpc_error("matching stream failed", exc)
 
@@ -120,7 +163,13 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         reachable = bool(payload.get("reachable", False))
         if not reachable:
             reason = str(payload.get("reason", payload.get("status", "matching unavailable")))
-            raise HTTPException(status_code=502, detail=reason)
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "code": "matching_unavailable",
+                    "message": reason,
+                },
+            )
         return MatchingHealthView(**payload)
 
     @router.get("/api/v1/matching/stats", response_model=MatchingStatsView)
@@ -133,7 +182,13 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         except grpc.aio.AioRpcError as exc:
             raise_gateway_grpc_error("matching stats failed", exc)
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"matching stats error: {exc}") from exc
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "matching_stats_internal_error",
+                    "message": f"matching stats error: {exc}",
+                },
+            ) from exc
         return MatchingStatsView(**payload)
 
     @router.get("/api/v1/matching/orderbook", response_model=MatchingOrderBookView)
@@ -152,7 +207,13 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         except grpc.aio.AioRpcError as exc:
             raise_orderbook_error(exc)
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"matching orderbook error: {exc}") from exc
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "matching_orderbook_internal_error",
+                    "message": f"matching orderbook error: {exc}",
+                },
+            ) from exc
         return cast(MatchingOrderBookView, MatchingOrderBookView(**payload))
 
     return router

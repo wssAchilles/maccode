@@ -1,5 +1,6 @@
 import type { Locale } from '../../i18n/messages'
 import type {
+  AppError,
   BinanceRule,
   Candle,
   MarketMessage,
@@ -15,6 +16,19 @@ import type {
 export type DomainName = 'market-stream' | 'strategy-summary' | 'execution-trading'
 
 export type DomainStatusMap = Record<DomainName, UIState>
+
+export type CoreFlowStepId = 'bootstrap' | 'market' | 'precheck' | 'submit' | 'feedback' | 'cancel'
+
+export type CoreFlowStepState = 'idle' | 'active' | 'success' | 'degraded' | 'error'
+
+export type CoreFlowStep = {
+  state: CoreFlowStepState
+  last_update_ms: number | null
+  reason?: string
+  request_id?: string
+}
+
+export type CoreFlowMap = Record<CoreFlowStepId, CoreFlowStep>
 
 export type RuntimeEnv = {
   gateway_base: string
@@ -43,7 +57,7 @@ export type StrategySummarySlice = {
     recent_signals: SignalRecord[]
     persistence_status?: PersistenceStatus
     matching_orderbook?: MatchingOrderBook
-    last_error?: string
+    last_error?: AppError
   }
   strategySummaryActions: {
     refreshSummary: () => Promise<void>
@@ -57,15 +71,22 @@ export type ExecutionTradingSlice = {
     heartbeat?: string
     filter_symbol: string
     filter_account_id: string
+    filter_status: string
     trading_policy?: TradingPolicy
     binance_rule?: BinanceRule
   }
   executionTradingActions: {
     connectOrdersSocket: () => void
-    loadRecentOrderEvents: () => Promise<void>
+    loadRecentOrderEvents: (filters?: {
+      symbol?: string
+      account_id?: string
+      order_id?: string
+      status?: string
+      request_id?: string
+    }) => Promise<void>
     loadTradingPolicy: () => Promise<void>
     loadBinanceRule: (symbol: string) => Promise<void>
-    setFilters: (filters: { symbol?: string; account_id?: string }) => void
+    setFilters: (filters: { symbol?: string; account_id?: string; status?: string }) => void
   }
 }
 
@@ -75,6 +96,7 @@ export type UIStateSlice = {
     locale: Locale
     domain_status: DomainStatusMap
     live_announcement: string
+    core_flow: CoreFlowMap
   }
   uiActions: {
     setLocale: (locale: Locale) => void
@@ -84,6 +106,10 @@ export type UIStateSlice = {
     ) => void
     recomputeStaleFlags: (nowMs?: number) => void
     announce: (message: string) => void
+    setCoreFlowStep: (
+      step: CoreFlowStepId,
+      patch: Partial<CoreFlowStep> & { state?: CoreFlowStepState },
+    ) => void
   }
 }
 

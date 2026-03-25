@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '../i18n/I18nProvider'
+import { useCerberusStore } from '../store'
 import { ExecutionConsole } from './ExecutionConsole'
 
 function makeResponse(body: unknown, status = 200): Response {
@@ -51,7 +52,11 @@ describe('ExecutionConsole', () => {
       }
 
       if (url.includes('/api/v1/binance/order/test') && init?.method === 'POST') {
-        return makeResponse({ accepted: true, order_id: 'binance-test-001' })
+        return makeResponse({
+          accepted: true,
+          order_id: 'binance-test-001',
+          request_id: 'rid-binance-001',
+        })
       }
 
       if (url.includes('/api/v1/alpaca/orders') && init?.method === 'POST') {
@@ -87,5 +92,9 @@ describe('ExecutionConsole', () => {
     await waitFor(() => {
       expect(screen.getByTestId('binance-response').textContent).toContain('accepted')
     })
+
+    const submitFlow = useCerberusStore.getState().uiState.core_flow.submit
+    expect(submitFlow.state).toBe('success')
+    expect(submitFlow.request_id).toBe('rid-binance-001')
   })
 })

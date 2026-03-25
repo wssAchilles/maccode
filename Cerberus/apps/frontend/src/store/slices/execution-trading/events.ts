@@ -35,6 +35,19 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     asString(nestedExecution?.account_id) ??
     undefined
 
+  const orderId =
+    asString(payload.order_id) ??
+    asString(payload.orderId) ??
+    asString(nestedOrder?.order_id) ??
+    asString(nestedExecution?.order_id) ??
+    undefined
+
+  const requestId =
+    asString(payload.request_id) ??
+    asString(payload.requestId) ??
+    asString((asObject(payload.error) ?? {}).request_id) ??
+    undefined
+
   const eventType =
     asString(payload.event) ??
     asString(payload.type) ??
@@ -47,6 +60,12 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     asString(nestedOrder?.status) ??
     asString(nestedExecution?.status) ??
     undefined
+  const eventTime =
+    asString(payload.event_time) ??
+    asString(payload.eventTime) ??
+    asString(nestedExecution?.event_time) ??
+    asString(nestedExecution?.eventTime) ??
+    undefined
 
   eventCounter += 1
   return {
@@ -54,10 +73,13 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     channel: raw.channel,
     payload,
     received_at: raw.received_at,
+    event_time: eventTime,
     event_type: eventType,
     symbol,
     account_id: accountId,
+    order_id: orderId,
     status,
+    request_id: requestId,
   }
 }
 

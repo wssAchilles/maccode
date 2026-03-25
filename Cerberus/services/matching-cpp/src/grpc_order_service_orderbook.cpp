@@ -9,6 +9,7 @@ grpc::Status GrpcOrderService::GetOrderBook(
     grpc::ServerContext* context, const cerberus::order::v1::GetOrderBookRequest* request,
     cerberus::order::v1::GetOrderBookResponse* response) {
   LogRequestStart("GetOrderBook", context);
+  EchoRequestId(context);
   if (request->symbol().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "symbol is required");
   }

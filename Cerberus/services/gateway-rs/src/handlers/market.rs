@@ -12,6 +12,7 @@ use crate::handlers::common::internal_err_json;
 
 pub(crate) async fn get_snapshot(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Query(query): Query<SnapshotQuery>,
 ) -> impl axum::response::IntoResponse {
     let symbol = query
@@ -29,17 +30,37 @@ pub(crate) async fn get_snapshot(
     Json(serde_json::json!({
         "symbol": symbol,
         "symbols_tracked": symbols_tracked,
-        "data": snapshot
+        "data": snapshot,
+        "request_id": ctx.request_id,
     }))
 }
 
 pub(crate) async fn get_recent_order_events(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Query(query): Query<RecentOrdersQuery>,
 ) -> impl axum::response::IntoResponse {
     let limit = query.limit.unwrap_or(50).clamp(1, 500);
     let channel_filter = query.channel.as_deref().filter(|v| !v.is_empty());
     let account_filter = query.account_id.as_deref().filter(|v| !v.is_empty());
+    let symbol_filter = query
+        .symbol
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_ascii_uppercase);
+    let order_id_filter = query.order_id.as_deref().map(str::trim).filter(|v| !v.is_empty());
+    let status_filter = query
+        .status
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_ascii_uppercase);
+    let request_id_filter = query
+        .request_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
 
     let events = {
         let guard = state.recent_order_events.read().await;
@@ -54,6 +75,24 @@ pub(crate) async fn get_recent_order_events(
                 Some(account_id) => event_matches_account(event, account_id),
                 None => true,
             })
+            .filter(|event| match symbol_filter.as_deref() {
+                Some(symbol) => payload_matches_ci(&event.payload, &["symbol"], symbol),
+                None => true,
+            })
+            .filter(|event| match order_id_filter {
+                Some(order_id) => payload_matches(&event.payload, &["order_id", "orderId"], order_id),
+                None => true,
+            })
+            .filter(|event| match status_filter.as_deref() {
+                Some(status) => payload_matches_ci(&event.payload, &["status"], status),
+                None => true,
+            })
+            .filter(|event| match request_id_filter {
+                Some(request_id) => {
+                    payload_matches(&event.payload, &["request_id", "requestId"], request_id)
+                }
+                None => true,
+            })
             .take(limit)
             .cloned()
             .collect::<Vec<_>>()
@@ -61,8 +100,75 @@ pub(crate) async fn get_recent_order_events(
 
     Json(serde_json::json!({
         "count": events.len(),
-        "events": events
+        "events": events,
+        "request_id": ctx.request_id,
     }))
+}
+
+fn payload_matches(payload: &serde_json::Value, keys: &[&str], expected: &str) -> bool {
+    payload_text(payload, keys).is_some_and(|value| value == expected)
+}
+
+fn payload_matches_ci(payload: &serde_json::Value, keys: &[&str], expected: &str) -> bool {
+    payload_text(payload, keys).is_some_and(|value| value.eq_ignore_ascii_case(expected))
+}
+
+fn payload_text(payload: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    if let Some(value) = payload_lookup(payload, keys) {
+        return Some(value);
+    }
+
+    for nested in ["order", "execution", "error"] {
+        if let Some(value) = payload
+            .get(nested)
+            .and_then(|child| payload_lookup(child, keys))
+        {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+fn payload_lookup(payload: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| payload.get(*key).and_then(|value| value.as_str()))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{payload_matches, payload_matches_ci, payload_text};
+
+    #[test]
+    fn payload_text_reads_nested_execution_fields() {
+        let payload = serde_json::json!({
+            "execution": {
+                "order_id": "ord-1",
+                "symbol": "BTCUSDT"
+            }
+        });
+        assert_eq!(
+            payload_text(&payload, &["order_id"]).as_deref(),
+            Some("ord-1")
+        );
+        assert_eq!(
+            payload_text(&payload, &["symbol"]).as_deref(),
+            Some("BTCUSDT")
+        );
+    }
+
+    #[test]
+    fn payload_matches_supports_case_insensitive_status() {
+        let payload = serde_json::json!({
+            "status": "submitted",
+            "request_id": "rid-1"
+        });
+        assert!(payload_matches_ci(&payload, &["status"], "SUBMITTED"));
+        assert!(payload_matches(&payload, &["request_id"], "rid-1"));
+    }
 }
 
 pub(crate) async fn get_klines(
@@ -88,5 +194,8 @@ pub(crate) async fn get_klines(
         .await
         .map_err(|err| internal_err_json(request_id, "upstream_decode_failed", err))?;
 
-    Ok(Json(serde_json::json!({ "candles": resp })))
+    Ok(Json(serde_json::json!({
+        "candles": resp,
+        "request_id": request_id,
+    })))
 }

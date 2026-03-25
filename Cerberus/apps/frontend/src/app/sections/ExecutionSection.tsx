@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 
+import { AppErrorNotice } from '../../components/common/AppErrorNotice'
 import {
+  LazyCoreFlowPanel,
   LazyExecutionTimelinePanel,
   LazyMatchingOrderBookPanel,
   PanelSkeleton,
@@ -20,6 +22,12 @@ export function ExecutionSection({
     <section className="mt-6" aria-label={t('section.execution')}>
       <h2 className="section-title">{t('section.execution')}</h2>
       <div className="mt-3 grid gap-4 lg:grid-cols-3">
+        <div className="min-h-[180px] lg:col-span-3">
+          <Suspense fallback={<PanelSkeleton height="h-[180px]" />}>
+            <LazyCoreFlowPanel />
+          </Suspense>
+        </div>
+
         <article className="panel-card">
           <h3 className="panel-title">{t('strategy.signal')}</h3>
           <p className="mt-2 text-lg font-semibold text-cyan-300">
@@ -36,7 +44,7 @@ export function ExecutionSection({
             {t('strategy.persistence')}: supabase[{String(persistenceStatus?.stores.supabase_enabled)}] firestore[
             {String(persistenceStatus?.stores.firebase_enabled)}]
           </p>
-          {summaryError ? <p className="mt-2 text-xs text-loss">{summaryError}</p> : null}
+          {summaryError ? <AppErrorNotice error={summaryError} className="mt-2" /> : null}
 
           <h4 className="mt-4 text-xs text-slate-400">{t('strategy.recent')}</h4>
           <div className="mt-1 max-h-56 space-y-2 overflow-auto">

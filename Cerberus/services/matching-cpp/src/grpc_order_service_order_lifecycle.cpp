@@ -7,6 +7,7 @@ grpc::Status GrpcOrderService::CancelOrder(
     const cerberus::order::v1::CancelOrderRequest* request,
     cerberus::order::v1::CancelOrderResponse* response) {
   LogRequestStart("CancelOrder", context);
+  EchoRequestId(context);
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
   }
@@ -38,6 +39,7 @@ grpc::Status GrpcOrderService::GetOrder(grpc::ServerContext* context,
                                         const cerberus::order::v1::GetOrderRequest* request,
                                         cerberus::order::v1::GetOrderResponse* response) {
   LogRequestStart("GetOrder", context);
+  EchoRequestId(context);
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
   }

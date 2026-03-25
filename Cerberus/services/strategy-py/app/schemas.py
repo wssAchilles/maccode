@@ -48,11 +48,13 @@ class MatchingSubmitResponse(BaseModel):
     accepted: bool
     order_id: str
     reason: str
+    request_id: str | None = None
 
 
 class MatchingCancelResponse(BaseModel):
     canceled: bool
     reason: str
+    request_id: str | None = None
 
 
 class MatchingOrderView(BaseModel):
@@ -66,6 +68,7 @@ class MatchingOrderView(BaseModel):
     filled_quantity: float
     status: str
     updated_at: str | None = None
+    request_id: str | None = None
 
 
 class MatchingExecutionView(BaseModel):
@@ -76,6 +79,7 @@ class MatchingExecutionView(BaseModel):
     price: float
     quantity: float
     event_time: str | None = None
+    request_id: str | None = None
 
 
 class MatchingHealthView(BaseModel):

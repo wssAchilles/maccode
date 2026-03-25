@@ -12,6 +12,7 @@
 
 struct ExecutionEvent {
   std::uint64_t event_id;
+  std::uint64_t event_time_ms;
   Trade trade;
 };
 

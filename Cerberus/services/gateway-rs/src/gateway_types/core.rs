@@ -28,6 +28,7 @@ pub(crate) struct AppState {
     pub(crate) trading_policy: TradingPolicy,
     pub(crate) metrics: Arc<RwLock<GatewayMetrics>>,
     pub(crate) exchange: ExchangeConfig,
+    pub(crate) firebase_auth: FirebaseAuthConfig,
     pub(crate) strategy_base_url: Option<String>,
     pub(crate) started_at_unix: u64,
 }
@@ -35,6 +36,19 @@ pub(crate) struct AppState {
 #[derive(Clone, Debug)]
 pub(crate) struct RequestContext {
     pub(crate) request_id: String,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct FirebaseAuthConfig {
+    pub(crate) required: bool,
+    pub(crate) project_id: Option<String>,
+    pub(crate) web_api_key: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AuthenticatedUser {
+    pub(crate) uid: String,
+    pub(crate) email: Option<String>,
 }
 
 #[derive(Clone, Default)]

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import {
   AppHeader,
@@ -7,14 +7,17 @@ import {
   MarketSection,
   TradingSection,
 } from './app/sections'
+import { useFirebaseAuth } from './auth/useFirebaseAuth'
+import { AuthLoginPanel } from './components/auth/AuthLoginPanel'
 import { useI18n } from './i18n/I18nProvider'
+import { formatAppError } from './lib/http'
 import { useCerberusStore } from './store'
 
 function toOrderSummary(event: {
   event_type: string
   symbol?: string
   status?: string
-} | null): string {
+} | null | undefined): string {
   if (!event) {
     return ''
   }
@@ -23,6 +26,7 @@ function toOrderSummary(event: {
 
 export default function App() {
   const { locale, setLocale: setI18nLocale, t } = useI18n()
+  const auth = useFirebaseAuth()
 
   const env = useCerberusStore((state) => state.env)
   const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
@@ -44,6 +48,7 @@ export default function App() {
   const announce = useCerberusStore((state) => state.uiActions.announce)
   const setStoreLocale = useCerberusStore((state) => state.uiActions.setLocale)
   const recomputeStaleFlags = useCerberusStore((state) => state.uiActions.recomputeStaleFlags)
+  const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const connectMarketSocket = useCerberusStore((state) => state.marketStreamActions.connectMarketSocket)
@@ -58,6 +63,14 @@ export default function App() {
 
   const displayQuote = latestBySymbol[selectedSymbol] ?? latest
   const orderSummary = latestEvent ? toOrderSummary(latestEvent) : heartbeat ?? t('common.heartbeat')
+  const isAuthenticated = !auth.required || Boolean(auth.user)
+  const authUserLabel = useMemo(() => {
+    if (!auth.user) {
+      return undefined
+    }
+    const account = auth.user.email ?? auth.user.displayName ?? auth.user.uid
+    return `${t('auth.userPrefix')}: ${account}`
+  }, [auth.user, t])
 
   useEffect(() => {
     if (storeLocale !== locale) {
@@ -66,6 +79,16 @@ export default function App() {
   }, [locale, setI18nLocale, storeLocale])
 
   useEffect(() => {
+    setCoreFlowStep('bootstrap', {
+      state: 'active',
+      reason: 'initializing runtime',
+    })
+  }, [setCoreFlowStep])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
     void import('./lib/firebase').then((module) => {
       module.initFirebase()
     })
@@ -99,19 +122,27 @@ export default function App() {
     recomputeStaleFlags,
     refreshSummary,
     selectedSymbol,
+    isAuthenticated,
   ])
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
     void loadCandles()
     void loadBinanceRule(selectedSymbol)
     void refreshSummary()
-  }, [loadBinanceRule, loadCandles, refreshSummary, selectedSymbol])
+  }, [loadBinanceRule, loadCandles, refreshSummary, selectedSymbol, isAuthenticated])
 
   useEffect(() => {
     if (summaryError) {
-      announce(summaryError)
+      announce(formatAppError(summaryError))
     }
   }, [announce, summaryError])
+
+  if (auth.required && (auth.status === 'loading' || !auth.user)) {
+    return <AuthLoginPanel t={t} auth={auth} />
+  }
 
   return (
     <main className="mx-auto max-w-7xl p-4 text-white md:p-6" data-testid="app-shell">
@@ -120,6 +151,14 @@ export default function App() {
         env={env}
         locale={storeLocale}
         liveAnnouncement={liveAnnouncement}
+        authUserLabel={authUserLabel}
+        onSignOut={
+          auth.required
+            ? () => {
+                void auth.signOutCurrentUser()
+              }
+            : undefined
+        }
         onLocaleChange={setStoreLocale}
       />
 

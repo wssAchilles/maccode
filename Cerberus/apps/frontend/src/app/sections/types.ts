@@ -1,6 +1,7 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { DomainStatusMap } from '../../store/slices/shared'
 import type {
+  AppError,
   MarketMessage,
   MatchingOrderBook,
   OrderTimelineEvent,
@@ -21,6 +22,8 @@ export type HeaderProps = {
   env: HeaderEnv
   locale: 'zh-CN' | 'en-US'
   liveAnnouncement: string
+  authUserLabel?: string
+  onSignOut?: () => void
   onLocaleChange: (locale: 'zh-CN' | 'en-US') => void
 }
 
@@ -47,7 +50,7 @@ export type ExecutionSectionProps = {
   strategySignal?: StrategySignal
   recentSignals: SignalRecord[]
   persistenceStatus?: PersistenceStatus
-  summaryError?: string
+  summaryError?: AppError
   matchingOrderBook?: MatchingOrderBook
 }
 

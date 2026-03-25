@@ -40,7 +40,8 @@ pub(crate) async fn get_binance_symbol_rules(
                 "symbol": symbol,
                 "cached": true,
                 "cache_age_ms": age,
-                "rule": cached.rule
+                "rule": cached.rule,
+                "request_id": request_id
             })));
         }
     }
@@ -89,6 +90,7 @@ pub(crate) async fn get_binance_symbol_rules(
         "symbol": symbol,
         "cached": false,
         "cache_age_ms": 0,
-        "rule": rule
+        "rule": rule,
+        "request_id": request_id
     })))
 }

@@ -96,7 +96,7 @@ def test_matching_submit_returns_503_when_disabled() -> None:
     )
     assert response.status_code == 503
     payload = response.json()
-    assert payload["error"]["code"] == "http_error"
+    assert payload["error"]["code"] == "matching_disabled"
     assert payload["error"]["request_id"]
 
 
@@ -142,6 +142,7 @@ def test_matching_submit_endpoint_uses_client() -> None:
     payload = response.json()
     assert payload["accepted"] is True
     assert payload["order_id"] == "oid-1"
+    assert payload["request_id"]
 
 
 def test_matching_health_endpoint_uses_client() -> None:
@@ -238,7 +239,7 @@ def test_matching_orderbook_endpoint_uses_client() -> None:
     assert payload["asks"][0]["order_count"] == 1
 
 
-def test_matching_executions_endpoint_filters_by_symbol() -> None:
+def test_matching_executions_endpoint_filters_by_symbol_order_and_request_id() -> None:
     async def fake_executions(
         *, account_id: str, limit: int = 20, request_id: str | None = None
     ) -> list[dict[str, object]]:
@@ -254,6 +255,7 @@ def test_matching_executions_endpoint_filters_by_symbol() -> None:
                 "price": 100.0,
                 "quantity": 1.0,
                 "event_time": "2025-01-01T00:00:00+00:00",
+                "request_id": "rid-e1",
             },
             {
                 "execution_id": "e2",
@@ -263,6 +265,7 @@ def test_matching_executions_endpoint_filters_by_symbol() -> None:
                 "price": 2000.0,
                 "quantity": 2.0,
                 "event_time": "2025-01-01T00:01:00+00:00",
+                "request_id": "rid-e2",
             },
         ]
 
@@ -270,9 +273,14 @@ def test_matching_executions_endpoint_filters_by_symbol() -> None:
     main_module.worker.matching_client.list_recent_executions = fake_executions  # type: ignore[method-assign]
 
     client = TestClient(app)
-    response = client.get("/api/v1/matching/executions?account_id=acc-1&symbol=BTCUSDT")
+    response = client.get(
+        "/api/v1/matching/executions"
+        "?account_id=acc-1&symbol=BTCUSDT&order_id=o1&request_id=rid-e1"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert len(payload) == 1
+    assert payload[0]["order_id"] == "o1"
     assert payload[0]["symbol"] == "BTCUSDT"
     assert payload[0]["account_id"] == "acc-1"
+    assert payload[0]["request_id"] == "rid-e1"

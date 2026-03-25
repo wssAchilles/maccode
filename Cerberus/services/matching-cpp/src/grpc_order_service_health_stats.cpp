@@ -9,6 +9,7 @@ grpc::Status GrpcOrderService::Health(grpc::ServerContext* context,
                                       const cerberus::order::v1::HealthRequest* /*request*/,
                                       cerberus::order::v1::HealthResponse* response) {
   LogRequestStart("Health", context);
+  EchoRequestId(context);
   const auto uptime =
       std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - started_at_)
           .count();
@@ -23,6 +24,7 @@ grpc::Status GrpcOrderService::GetServiceStats(
     grpc::ServerContext* context, const cerberus::order::v1::GetServiceStatsRequest* /*request*/,
     cerberus::order::v1::GetServiceStatsResponse* response) {
   LogRequestStart("GetServiceStats", context);
+  EchoRequestId(context);
   ServiceStats stats;
   {
     std::scoped_lock<std::mutex> lock(mu_);

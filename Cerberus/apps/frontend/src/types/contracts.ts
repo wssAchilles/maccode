@@ -5,6 +5,7 @@ export type UIState = {
   last_update_ms: number | null
   stale: boolean
   reason?: string
+  request_id?: string
 }
 
 export type AppError = {
@@ -39,10 +40,13 @@ export type OrderTimelineEvent = {
   channel: string
   payload: Record<string, unknown>
   received_at: number
+  event_time?: string
   event_type: string
   symbol?: string
   account_id?: string
+  order_id?: string
   status?: string
+  request_id?: string
 }
 
 export type Candle = [number, string, string, string, string, string]

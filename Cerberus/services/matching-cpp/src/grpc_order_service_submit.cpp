@@ -6,6 +6,7 @@ grpc::Status GrpcOrderService::SubmitOrder(grpc::ServerContext* context,
                                            const cerberus::order::v1::SubmitOrderRequest* request,
                                            cerberus::order::v1::SubmitOrderResponse* response) {
   LogRequestStart("SubmitOrder", context);
+  EchoRequestId(context);
   if (request->account_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "account_id is required");
   }

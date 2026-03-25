@@ -9,7 +9,7 @@ use axum::{
 
 use crate::event_bus::publish_order_event;
 use crate::gateway_types::{AppState, BinanceTestOrderRequest, RequestContext};
-use crate::handlers::common::error_body;
+use crate::handlers::common::{error_body, with_request_id};
 
 use upstream::submit_order_test_upstream;
 use validation::validate_order_test_input;
@@ -51,5 +51,5 @@ pub(crate) async fn binance_order_test(
     )
     .await;
 
-    Ok(Json(payload))
+    Ok(Json(with_request_id(payload, request_id)))
 }

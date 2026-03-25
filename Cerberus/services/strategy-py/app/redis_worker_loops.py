@@ -6,6 +6,10 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.config import settings
+from app.execution_event_payloads import (
+    build_matching_execution_payload,
+    build_matching_submission_payload,
+)
 from app.execution_relay import filter_new_executions
 from app.market_payloads import market_channels_from_settings, parse_tick_payload
 
@@ -58,11 +62,11 @@ async def publish_matching_submission(worker: RedisMarketWorker, signal: Signal,
         if order_event is None:
             return
         channel = f"{settings.trade_execution_channel_prefix}.{settings.strategy_account_id}"
-        payload = {
-            "event": "order_submitted",
-            "strategy_id": signal.strategy_id,
-            **order_event,
-        }
+        payload = build_matching_submission_payload(
+            strategy_id=signal.strategy_id,
+            account_id=settings.strategy_account_id,
+            order_event=order_event,
+        )
         await worker._redis.publish(channel, json.dumps(payload))
     except Exception as exc:
         logger.warning("matching submit flow failed: %s", exc)
@@ -80,11 +84,10 @@ async def run_execution_relay_loop(worker: RedisMarketWorker) -> None:
                 limit=max(settings.execution_relay_batch_limit, 1),
             )
             for execution_id, item in filter_new_executions(items, worker.last_execution_id):
-                payload = {
-                    "event": "execution_report",
-                    "account_id": settings.strategy_account_id,
-                    **item,
-                }
+                payload = build_matching_execution_payload(
+                    account_id=settings.strategy_account_id,
+                    execution=item,
+                )
                 await worker._redis.publish(channel, json.dumps(payload))
                 worker.last_execution_id = execution_id
                 worker.forwarded_executions += 1

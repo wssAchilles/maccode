@@ -54,6 +54,10 @@ pub(crate) struct RecentOrdersQuery {
     pub(crate) limit: Option<usize>,
     pub(crate) channel: Option<String>,
     pub(crate) account_id: Option<String>,
+    pub(crate) symbol: Option<String>,
+    pub(crate) order_id: Option<String>,
+    pub(crate) status: Option<String>,
+    pub(crate) request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

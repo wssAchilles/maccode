@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 
-import { requestEnvelope, toErrorMessage } from '../../lib/http'
+import { formatAppError, requestEnvelope, toAppError } from '../../lib/http'
 import type { Candle, MarketMessage } from '../../types/contracts'
 import type { MarketStreamSlice, RootStore } from './shared'
 
@@ -49,6 +49,7 @@ function scheduleBatchFlush(set: Parameters<StateCreator<RootStore>>[0], get: ()
       state: 'ready',
       stale: false,
       reason: undefined,
+      request_id: undefined,
     })
   })
 }
@@ -83,6 +84,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
         state: 'loading',
         stale: true,
         reason: undefined,
+        request_id: undefined,
       })
 
       marketSocket = new WebSocket(`${env.ws_base}/ws/market`)
@@ -103,6 +105,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
             state: 'degraded',
             stale: true,
             reason: 'invalid market payload',
+            request_id: undefined,
           })
         }
       }
@@ -112,6 +115,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
           state: 'degraded',
           stale: true,
           reason: 'market websocket error',
+          request_id: undefined,
         })
       }
 
@@ -121,6 +125,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
           state: 'degraded',
           stale: true,
           reason: 'market websocket closed',
+          request_id: undefined,
         })
       }
     },
@@ -132,6 +137,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
         state: 'loading',
         stale: false,
         reason: undefined,
+        request_id: undefined,
       })
 
       const response = await requestEnvelope<{ candles: Candle[] }>(
@@ -139,10 +145,12 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
       )
 
       if (!response.ok || !response.payload) {
+        const error = toAppError(response.error, 'market_candles_failed')
         get().uiActions.setDomainStatus('market-stream', {
           state: 'error',
           stale: true,
-          reason: toErrorMessage(response.error),
+          reason: formatAppError(error),
+          request_id: error.request_id,
         })
         return
       }
@@ -158,6 +166,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
         state: 'ready',
         stale: false,
         reason: undefined,
+        request_id: undefined,
       })
     },
   },

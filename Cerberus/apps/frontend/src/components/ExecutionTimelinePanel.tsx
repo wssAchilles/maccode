@@ -3,11 +3,22 @@ import { useMemo, useState } from 'react'
 import { useI18n } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
 
-const ROW_HEIGHT = 76
+const ROW_HEIGHT = 98
 const VIEWPORT_HEIGHT = 320
 
 function formatTimestamp(timestamp: number): string {
   return new Date(timestamp).toLocaleString()
+}
+
+function formatOptionalIso(iso: string | undefined): string {
+  if (!iso) {
+    return '-'
+  }
+  const parsed = Date.parse(iso)
+  if (Number.isNaN(parsed)) {
+    return iso
+  }
+  return new Date(parsed).toLocaleString()
 }
 
 export function ExecutionTimelinePanel() {
@@ -15,6 +26,7 @@ export function ExecutionTimelinePanel() {
   const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
   const filterSymbol = useCerberusStore((state) => state.executionTrading.filter_symbol)
   const filterAccountId = useCerberusStore((state) => state.executionTrading.filter_account_id)
+  const filterStatus = useCerberusStore((state) => state.executionTrading.filter_status)
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
   const [scrollTop, setScrollTop] = useState(0)
 
@@ -38,13 +50,24 @@ export function ExecutionTimelinePanel() {
     return ['ALL', ...Array.from(values).sort()]
   }, [orderEvents])
 
+  const statusOptions = useMemo(() => {
+    const values = new Set<string>()
+    for (const item of orderEvents) {
+      if (item.status) {
+        values.add(item.status)
+      }
+    }
+    return ['ALL', ...Array.from(values).sort()]
+  }, [orderEvents])
+
   const filteredEvents = useMemo(() => {
     return orderEvents.filter((item) => {
       const symbolMatched = filterSymbol === 'ALL' || item.symbol === filterSymbol
       const accountMatched = filterAccountId === 'ALL' || item.account_id === filterAccountId
-      return symbolMatched && accountMatched
+      const statusMatched = filterStatus === 'ALL' || item.status === filterStatus
+      return symbolMatched && accountMatched && statusMatched
     })
-  }, [filterAccountId, filterSymbol, orderEvents])
+  }, [filterAccountId, filterStatus, filterSymbol, orderEvents])
 
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 4)
   const visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 8
@@ -57,7 +80,7 @@ export function ExecutionTimelinePanel() {
     <article className="panel-card" data-testid="execution-timeline-panel">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="panel-title">{t('execution.timeline')}</h2>
-        <div className="grid gap-2 text-xs sm:grid-cols-2">
+        <div className="grid gap-2 text-xs sm:grid-cols-3">
           <label className="field-label">
             {t('execution.filterSymbol')}
             <select
@@ -80,6 +103,20 @@ export function ExecutionTimelinePanel() {
               onChange={(event) => setFilters({ account_id: event.target.value })}
             >
               {accountOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-label">
+            {t('execution.filterStatus')}
+            <select
+              className="field-input"
+              value={filterStatus}
+              onChange={(event) => setFilters({ status: event.target.value })}
+            >
+              {statusOptions.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -110,10 +147,21 @@ export function ExecutionTimelinePanel() {
                 <div>
                   <p className="text-slate-300">{event.symbol ?? '-'}</p>
                   <p className="text-[11px] text-slate-500">{event.account_id ?? '-'}</p>
+                  <p className="truncate text-[11px] text-slate-500">
+                    {t('execution.orderId')}: {event.order_id ?? '-'}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-slate-300">{event.status ?? '-'}</p>
-                  <p className="text-[11px] text-slate-500">{formatTimestamp(event.received_at)}</p>
+                  <p className="truncate text-[11px] text-slate-500">
+                    {t('execution.requestId')}: {event.request_id ?? '-'}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    {t('execution.receivedAt')}: {formatTimestamp(event.received_at)}
+                  </p>
                 </div>
               </div>
             ))}

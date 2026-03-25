@@ -156,7 +156,59 @@
 <a name='L91'></a><a href='#L91'>91</a>
 <a name='L92'></a><a href='#L92'>92</a>
 <a name='L93'></a><a href='#L93'>93</a>
-<a name='L94'></a><a href='#L94'>94</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -251,6 +303,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { Locale } from '../../i18n/messages'
 import type {
+  AppError,
   BinanceRule,
   Candle,
   MarketMessage,
@@ -266,6 +319,19 @@ import type {
 export type DomainName = 'market-stream' | 'strategy-summary' | 'execution-trading'
 &nbsp;
 export type DomainStatusMap = Record&lt;DomainName, UIState&gt;
+&nbsp;
+export type CoreFlowStepId = 'bootstrap' | 'market' | 'precheck' | 'submit' | 'feedback' | 'cancel'
+&nbsp;
+export type CoreFlowStepState = 'idle' | 'active' | 'success' | 'degraded' | 'error'
+&nbsp;
+export type CoreFlowStep = {
+  state: CoreFlowStepState
+  last_update_ms: number | null
+  reason?: string
+  request_id?: string
+}
+&nbsp;
+export type CoreFlowMap = Record&lt;CoreFlowStepId, CoreFlowStep&gt;
 &nbsp;
 export type RuntimeEnv = {
   gateway_base: string
@@ -294,7 +360,7 @@ export type StrategySummarySlice = {
     recent_signals: SignalRecord[]
     persistence_status?: PersistenceStatus
     matching_orderbook?: MatchingOrderBook
-    last_error?: string
+    last_error?: AppError
   }
   strategySummaryActions: {
     refreshSummary: () =&gt; Promise&lt;void&gt;
@@ -308,15 +374,22 @@ export type ExecutionTradingSlice = {
     heartbeat?: string
     filter_symbol: string
     filter_account_id: string
+    filter_status: string
     trading_policy?: TradingPolicy
     binance_rule?: BinanceRule
   }
   executionTradingActions: {
     connectOrdersSocket: () =&gt; void
-    loadRecentOrderEvents: () =&gt; Promise&lt;void&gt;
+    loadRecentOrderEvents: (filters?: {
+      symbol?: string
+      account_id?: string
+      order_id?: string
+      status?: string
+      request_id?: string
+    }) =&gt; Promise&lt;void&gt;
     loadTradingPolicy: () =&gt; Promise&lt;void&gt;
     loadBinanceRule: (symbol: string) =&gt; Promise&lt;void&gt;
-    setFilters: (filters: { symbol?: string; account_id?: string }) =&gt; void
+    setFilters: (filters: { symbol?: string; account_id?: string; status?: string }) =&gt; void
   }
 }
 &nbsp;
@@ -326,6 +399,7 @@ export type UIStateSlice = {
     locale: Locale
     domain_status: DomainStatusMap
     live_announcement: string
+    core_flow: CoreFlowMap
   }
   uiActions: {
     setLocale: (locale: Locale) =&gt; void
@@ -335,6 +409,10 @@ export type UIStateSlice = {
     ) =&gt; void
     recomputeStaleFlags: (nowMs?: number) =&gt; void
     announce: (message: string) =&gt; void
+    setCoreFlowStep: (
+      step: CoreFlowStepId,
+      patch: Partial&lt;CoreFlowStep&gt; &amp; { state?: CoreFlowStepState },
+    ) =&gt; void
   }
 }
 &nbsp;
@@ -349,7 +427,7 @@ export type RootStore = MarketStreamSlice &amp;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-24T13:13:50.231Z
+                at 2026-03-25T05:58:35.436Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

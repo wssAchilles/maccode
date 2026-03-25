@@ -1,9 +1,11 @@
 import type { TranslationKey } from '../../i18n/messages'
+import type { AppError } from '../../types/contracts'
 
 export type GatewayResponse = {
   status: number
   at: string
   body: unknown
+  error?: AppError
 }
 
 export type Stage = 'idle' | 'prechecked' | 'submitting' | 'submitted' | 'rejected'
@@ -22,4 +24,21 @@ export function parsePositiveNumber(input: string): number | null {
     return null
   }
   return value
+}
+
+export function readGatewayRequestId(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') {
+    return undefined
+  }
+  const direct = (body as { request_id?: unknown }).request_id
+  if (typeof direct === 'string' && direct.trim().length > 0) {
+    return direct
+  }
+
+  const nested = (body as { error?: { request_id?: unknown } }).error?.request_id
+  if (typeof nested === 'string' && nested.trim().length > 0) {
+    return nested
+  }
+
+  return undefined
 }

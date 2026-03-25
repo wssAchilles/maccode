@@ -1,18 +1,39 @@
 import type { StateCreator } from 'zustand'
 
-import { requestEnvelope, toErrorMessage } from '../../lib/http'
-import type { StrategySummaryResponse } from '../../types/contracts'
+import { formatAppError, requestEnvelope, toAppError } from '../../lib/http'
+import type { AppError, Envelope, StrategySummaryResponse } from '../../types/contracts'
 import type { RootStore, StrategySummarySlice } from './shared'
 
-function resolveSummaryErrors(summary: StrategySummaryResponse): string[] {
+function envelopeError<T>(scope: string, envelope: Envelope<T>): AppError | null {
+  if (envelope.ok) {
+    return null
+  }
+  const normalized = toAppError(envelope.error, `${scope}_error`)
+  return {
+    ...normalized,
+    code: `${scope}.${normalized.code}`,
+    message: `[${envelope.status_code}] ${normalized.message}`,
+  }
+}
+
+function resolveSummaryErrors(summary: StrategySummaryResponse): AppError[] {
   return [
-    summary.signal.ok ? null : `signal(${summary.signal.status_code})`,
-    summary.recent_signals.ok ? null : `recent_signals(${summary.recent_signals.status_code})`,
-    summary.persistence.ok ? null : `persistence(${summary.persistence.status_code})`,
-    summary.matching_orderbook.ok
-      ? null
-      : `matching_orderbook(${summary.matching_orderbook.status_code})`,
-  ].filter((value): value is string => Boolean(value))
+    envelopeError('signal', summary.signal),
+    envelopeError('recent_signals', summary.recent_signals),
+    envelopeError('persistence', summary.persistence),
+    envelopeError('matching_orderbook', summary.matching_orderbook),
+  ].filter((value): value is AppError => Boolean(value))
+}
+
+function aggregateSummaryError(errors: AppError[]): AppError | undefined {
+  if (errors.length === 0) {
+    return undefined
+  }
+  return {
+    code: 'partial_upstream_failure',
+    message: errors.map((error) => formatAppError(error)).join(' | '),
+    request_id: errors.find((error) => Boolean(error.request_id))?.request_id,
+  }
 }
 
 export const createStrategySummarySlice: StateCreator<RootStore, [], [], StrategySummarySlice> = (
@@ -35,6 +56,7 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
         state: 'loading',
         stale: false,
         reason: undefined,
+        request_id: undefined,
       })
 
       const response = await requestEnvelope<StrategySummaryResponse>(
@@ -44,23 +66,25 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
       )
 
       if (!response.ok || !response.payload) {
-        const message = toErrorMessage(response.error)
+        const error = toAppError(response.error, 'strategy_summary_failed')
         set((state) => ({
           strategySummary: {
             ...state.strategySummary,
-            last_error: message,
+            last_error: error,
           },
         }))
         get().uiActions.setDomainStatus('strategy-summary', {
           state: 'error',
           stale: true,
-          reason: message,
+          reason: formatAppError(error),
+          request_id: error.request_id,
         })
         return
       }
 
       const summary = response.payload
       const errors = resolveSummaryErrors(summary)
+      const mergedError = aggregateSummaryError(errors)
       const status = errors.length > 0 ? 'degraded' : 'ready'
 
       set((state) => ({
@@ -74,14 +98,15 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
           matching_orderbook: summary.matching_orderbook.ok
             ? summary.matching_orderbook.payload
             : undefined,
-          last_error: errors.length > 0 ? `partial upstream failure: ${errors.join(', ')}` : undefined,
+          last_error: mergedError,
         },
       }))
 
       get().uiActions.setDomainStatus('strategy-summary', {
         state: status,
         stale: false,
-        reason: errors.length > 0 ? errors.join(', ') : undefined,
+        reason: mergedError ? formatAppError(mergedError) : undefined,
+        request_id: mergedError?.request_id ?? summary.request_id,
       })
     },
   },

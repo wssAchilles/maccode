@@ -14,6 +14,10 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      cloud_run_gateway_url: ${{ steps.tf_outputs.outputs.cloud_run_gateway_url }}
+      cloud_run_strategy_url: ${{ steps.tf_outputs.outputs.cloud_run_strategy_url }}
+      frontend_url: ${{ steps.frontend_outputs.outputs.frontend_url }}
     permissions:
       contents: read
       id-token: write
@@ -37,10 +41,8 @@ jobs:
 
       - name: Build and push images
         run: |
-          docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/frontend:${GITHUB_SHA} apps/frontend
           docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA} services/gateway-rs
           docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA} services/strategy-py
-          docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/frontend:${GITHUB_SHA}
           docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA}
           docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA}
 
@@ -51,13 +53,112 @@ jobs:
           TF_VAR_gurobi_licenseid: ${{ secrets.GRB_LICENSEID }}
           TF_VAR_gurobi_wlsaccessid: ${{ secrets.GRB_WLSACCESSID }}
           TF_VAR_gurobi_wlssecret: ${{ secrets.GRB_WLSSECRET }}
+          TF_VAR_upstash_redis_url: ${{ secrets.UPSTASH_REDIS_URL }}
+          TF_VAR_upstash_redis_rest_url: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          TF_VAR_upstash_redis_rest_token: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          TF_VAR_supabase_project_url: ${{ secrets.SUPABASE_PROJECT_URL }}
+          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
+          TF_VAR_supabase_service_role_key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TF_VAR_supabase_db_url: ${{ secrets.SUPABASE_DB_URL }}
+          TF_VAR_firebase_web_api_key: ${{ secrets.FIREBASE_API_KEY }}
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_api_secret: ${{ secrets.BINANCE_API_SECRET }}
+          TF_VAR_alpaca_api_key: ${{ secrets.ALPACA_API_KEY }}
+          TF_VAR_alpaca_api_secret: ${{ secrets.ALPACA_API_SECRET }}
           TF_VAR_firebase_project_id: cerberus-9d94f
           TF_VAR_firebase_enabled: "true"
-          TF_VAR_firebase_web_config: >-
-            {"api_key":"${{ secrets.FIREBASE_API_KEY }}","auth_domain":"${{ secrets.FIREBASE_AUTH_DOMAIN }}","storage_bucket":"${{ secrets.FIREBASE_STORAGE_BUCKET }}","messaging_sender_id":"${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}","app_id":"${{ secrets.FIREBASE_APP_ID }}"}
+          TF_VAR_supabase_enabled: "true"
+          TF_VAR_firebase_auth_required: "true"
+          TF_VAR_matching_enabled: "false"
+          TF_VAR_cors_allow_origins: "https://cerberus-9d94f.web.app,https://cerberus-9d94f.firebaseapp.com"
           TF_VAR_container_images: >-
-            {"frontend":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/frontend:${{ github.sha }}","gateway":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gateway:${{ github.sha }}","strategy":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/strategy:${{ github.sha }}"}
+            {"gateway":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gateway:${{ github.sha }}","strategy":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/strategy:${{ github.sha }}"}
         run: |
           cd infra/terraform
           terraform init
           terraform apply -auto-approve
+
+      - name: Export Terraform outputs
+        id: tf_outputs
+        run: |
+          CLOUD_RUN_GATEWAY_URL="$(cd infra/terraform && terraform output -raw cloud_run_gateway_url)"
+          CLOUD_RUN_STRATEGY_URL="$(cd infra/terraform && terraform output -raw cloud_run_strategy_url)"
+          echo "cloud_run_gateway_url=$CLOUD_RUN_GATEWAY_URL" >> "$GITHUB_OUTPUT"
+          echo "cloud_run_strategy_url=$CLOUD_RUN_STRATEGY_URL" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd apps/frontend && npm ci
+
+      - name: Build frontend for Firebase Hosting
+        env:
+          VITE_GATEWAY_BASE: ${{ steps.tf_outputs.outputs.cloud_run_gateway_url }}
+          VITE_STRATEGY_BASE: ${{ steps.tf_outputs.outputs.cloud_run_strategy_url }}
+          VITE_AUTH_REQUIRED: "true"
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: cerberus-9d94f
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: cd apps/frontend && npm run build
+
+      - name: Deploy Firebase Hosting (live)
+        run: npx firebase-tools deploy --project $PROJECT_ID --only hosting --non-interactive
+
+      - name: Export frontend URL
+        id: frontend_outputs
+        run: |
+          FRONTEND_URL="${{ secrets.FIREBASE_HOSTING_URL }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL="https://${PROJECT_ID}.web.app"
+          fi
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+  frontend-deploy-gate:
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Resolve deployed frontend URL
+        id: resolve_url
+        run: |
+          FRONTEND_URL="${{ needs.deploy.outputs.frontend_url }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "frontend URL is empty" >&2
+            exit 1
+          fi
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Install frontend dependencies
+        run: cd apps/frontend && npm ci
+
+      - name: Install Playwright browser
+        run: cd apps/frontend && npx playwright install --with-deps chromium
+
+      - name: Deploy gate e2e (desktop + mobile)
+        env:
+          E2E_BASE_URL: ${{ steps.resolve_url.outputs.frontend_url }}
+          E2E_GATE_MODE: "true"
+          E2E_USE_DEPLOYED: "true"
+          E2E_AUTH_EMAIL: ${{ secrets.FIREBASE_E2E_EMAIL }}
+          E2E_AUTH_PASSWORD: ${{ secrets.FIREBASE_E2E_PASSWORD }}
+        run: cd apps/frontend && npm run test:e2e:gate
+
+      - name: Deploy gate lighthouse SLO
+        env:
+          LHCI_COLLECT_URL: ${{ steps.resolve_url.outputs.frontend_url }}
+        run: cd apps/frontend && npm run lighthouse:gate

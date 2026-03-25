@@ -77,4 +77,14 @@ mod tests {
             "gateway\\\"x\\\\y\\nz".to_string()
         );
     }
+
+    #[test]
+    fn test_env_flag() {
+        std::env::set_var("CERBERUS_TEST_FLAG", "true");
+        assert!(env_flag("CERBERUS_TEST_FLAG", false));
+        std::env::set_var("CERBERUS_TEST_FLAG", "0");
+        assert!(!env_flag("CERBERUS_TEST_FLAG", true));
+        std::env::remove_var("CERBERUS_TEST_FLAG");
+        assert!(env_flag("CERBERUS_TEST_FLAG", true));
+    }
 }

@@ -75,6 +75,11 @@ export function ServiceHealthPanel({ domainStatus, persistence }: Props) {
                 {t('common.updatedAt')}:{' '}
                 {item.last_update_ms ? new Date(item.last_update_ms).toLocaleTimeString() : t('common.na')}
               </p>
+              {item.request_id ? (
+                <p className="mt-1 truncate text-[11px] text-slate-500">
+                  {t('health.requestId')}: {item.request_id}
+                </p>
+              ) : null}
               {item.reason ? <p className="mt-1 text-[11px] text-amber-200">{item.reason}</p> : null}
             </article>
           )

@@ -8,8 +8,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:gate": "E2E_GATE_MODE=true E2E_USE_DEPLOYED=true playwright test e2e/deploy-gate.spec.ts",
     "test:e2e:headed": "playwright test --headed",
     "lighthouse": "lhci autorun --config=.lighthouserc.json",
+    "lighthouse:gate": "lhci autorun --config=.lighthouserc.gate.cjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

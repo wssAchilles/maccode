@@ -19,6 +19,8 @@ terraform apply
 ## Notes
 
 - `terraform.tfvars` contains secrets and must not be committed.
-- The generated GKE cluster is intended for matching engine and TimescaleDB workloads.
+- This stack targets `Cloud Run (gateway/strategy) + external Upstash/Supabase`.
+- Frontend is hosted on Firebase Hosting (not provisioned by this Terraform module).
 - Cloud Run services use image URIs from `container_images`.
-
+- Terraform creates dedicated runtime service accounts and grants `roles/secretmanager.secretAccessor` for secret-backed env vars.
+- Gateway exchange credentials (`BINANCE_API_KEY/BINANCE_API_SECRET/ALPACA_API_KEY/ALPACA_API_SECRET`) are managed via Secret Manager and injected at runtime.

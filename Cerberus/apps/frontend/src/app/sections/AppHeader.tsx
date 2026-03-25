@@ -1,6 +1,14 @@
 import type { HeaderProps } from './types'
 
-export function AppHeader({ t, env, locale, liveAnnouncement, onLocaleChange }: HeaderProps) {
+export function AppHeader({
+  t,
+  env,
+  locale,
+  liveAnnouncement,
+  authUserLabel,
+  onSignOut,
+  onLocaleChange,
+}: HeaderProps) {
   return (
     <header className="panel-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -15,6 +23,16 @@ export function AppHeader({ t, env, locale, liveAnnouncement, onLocaleChange }: 
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
+          {authUserLabel ? (
+            <span className="rounded-lg border border-slate-600 bg-slate-900/50 px-2 py-1 text-slate-200">
+              {authUserLabel}
+            </span>
+          ) : null}
+          {onSignOut ? (
+            <button type="button" className="lang-button" onClick={onSignOut}>
+              {t('auth.signOut')}
+            </button>
+          ) : null}
           <button
             type="button"
             className={`lang-button ${locale === 'zh-CN' ? 'lang-button-active' : ''}`}

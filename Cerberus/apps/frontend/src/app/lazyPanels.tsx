@@ -12,6 +12,12 @@ export const LazyExecutionConsole = lazy(() =>
   })),
 )
 
+export const LazyCoreFlowPanel = lazy(() =>
+  import('../components/CoreFlowPanel').then((module) => ({
+    default: module.CoreFlowPanel,
+  })),
+)
+
 export const LazyExecutionTimelinePanel = lazy(() =>
   import('../components/ExecutionTimelinePanel').then((module) => ({
     default: module.ExecutionTimelinePanel,

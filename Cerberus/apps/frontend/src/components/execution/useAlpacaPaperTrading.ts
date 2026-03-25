@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { formatAppError, toAppError } from '../../lib/http'
 import type { TradingPolicy } from '../../types/contracts'
 import { callGateway } from './gateway'
-import { type GatewayResponse, parsePositiveNumber } from './types'
+import { type GatewayResponse, parsePositiveNumber, readGatewayRequestId } from './types'
+
+type FlowEvent = {
+  step: 'submit' | 'cancel'
+  state: 'active' | 'success' | 'error'
+  reason?: string
+  requestId?: string
+}
 
 type Params = {
   gatewayBase: string
   tradingPolicy: TradingPolicy | null
+  onFlowEvent?: (event: FlowEvent) => void
 }
 
 export type AlpacaPaperTradingModel = {
@@ -43,6 +52,7 @@ function readLastOrderId(result: GatewayResponse | null): string | null {
 export function useAlpacaPaperTrading({
   gatewayBase,
   tradingPolicy,
+  onFlowEvent,
 }: Params): AlpacaPaperTradingModel {
   const [symbol, setSymbol] = useState('AAPL')
   const [quantity, setQuantity] = useState('1')
@@ -68,10 +78,19 @@ export function useAlpacaPaperTrading({
   const submit = async () => {
     const qty = parsePositiveNumber(quantity)
     if (qty === null) {
+      onFlowEvent?.({
+        step: 'submit',
+        state: 'error',
+        reason: 'qty must be a positive number',
+      })
       setResult({
         status: 400,
         at: new Date().toISOString(),
         body: { error: 'qty must be a positive number' },
+        error: {
+          code: 'validation_error',
+          message: 'qty must be a positive number',
+        },
       })
       return
     }
@@ -82,15 +101,29 @@ export function useAlpacaPaperTrading({
       parsePositiveNumber(limitPrice) !== null &&
       qty * Number(limitPrice) > tradingPolicy.max_alpaca_limit_notional_usd
     ) {
+      onFlowEvent?.({
+        step: 'submit',
+        state: 'error',
+        reason: `notional above policy max ${tradingPolicy.max_alpaca_limit_notional_usd}`,
+      })
       setResult({
         status: 400,
         at: new Date().toISOString(),
         body: { error: `notional above policy max ${tradingPolicy.max_alpaca_limit_notional_usd}` },
+        error: {
+          code: 'policy_rejected',
+          message: `notional above policy max ${tradingPolicy.max_alpaca_limit_notional_usd}`,
+        },
       })
       return
     }
 
     setSubmitting(true)
+    onFlowEvent?.({
+      step: 'submit',
+      state: 'active',
+      reason: 'submitting order to gateway',
+    })
     try {
       const payload = await callGateway('/api/v1/alpaca/orders', gatewayBase, {
         method: 'POST',
@@ -104,6 +137,22 @@ export function useAlpacaPaperTrading({
         }),
       })
       setResult(payload)
+      if (payload.status < 400) {
+        onFlowEvent?.({
+          step: 'submit',
+          state: 'success',
+          reason: 'order submit accepted',
+          requestId: readGatewayRequestId(payload.body),
+        })
+      } else {
+        const error = toAppError(payload.error ?? payload.body, 'submit_failed')
+        onFlowEvent?.({
+          step: 'submit',
+          state: 'error',
+          reason: formatAppError(error),
+          requestId: error.request_id,
+        })
+      }
     } finally {
       setSubmitting(false)
     }
@@ -115,6 +164,11 @@ export function useAlpacaPaperTrading({
       return
     }
     setCanceling(true)
+    onFlowEvent?.({
+      step: 'cancel',
+      state: 'active',
+      reason: 'canceling order via gateway',
+    })
     try {
       const payload = await callGateway(
         `/api/v1/alpaca/orders/${encodeURIComponent(orderId)}/cancel`,
@@ -122,6 +176,22 @@ export function useAlpacaPaperTrading({
         { method: 'POST' },
       )
       setResult(payload)
+      if (payload.status < 400) {
+        onFlowEvent?.({
+          step: 'cancel',
+          state: 'success',
+          reason: 'cancel accepted',
+          requestId: readGatewayRequestId(payload.body),
+        })
+      } else {
+        const error = toAppError(payload.error ?? payload.body, 'cancel_failed')
+        onFlowEvent?.({
+          step: 'cancel',
+          state: 'error',
+          reason: formatAppError(error),
+          requestId: error.request_id,
+        })
+      }
     } finally {
       setCanceling(false)
     }

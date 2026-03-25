@@ -25,3 +25,14 @@ inline void LogRequestStart(const char* method, const grpc::ServerContext* conte
   }
   std::clog << "[matching-grpc] method=" << method << " request_id=" << request_id << std::endl;
 }
+
+inline void EchoRequestId(grpc::ServerContext* context) {
+  if (context == nullptr) {
+    return;
+  }
+  const std::string request_id = ExtractRequestId(context);
+  if (request_id.empty()) {
+    return;
+  }
+  context->AddInitialMetadata("x-request-id", request_id);
+}

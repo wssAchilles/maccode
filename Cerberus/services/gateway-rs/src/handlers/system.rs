@@ -1,3 +1,4 @@
+mod auth;
 mod metrics;
 mod readiness;
 
@@ -55,3 +56,5 @@ pub(crate) async fn get_metrics(State(state): State<AppState>) -> impl IntoRespo
     );
     (headers, body)
 }
+
+pub(crate) use auth::require_firebase_auth;
