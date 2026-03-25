@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">68.36% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>62/93</span>
+                <span class='fraction'>67/98</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">26.82% </span>
+                <span class="strong">29.54% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/41</span>
+                <span class='fraction'>13/44</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">68.36% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>62/93</span>
+                <span class='fraction'>67/98</span>
             </div>
         
             
@@ -186,22 +186,27 @@
 <a name='L121'></a><a href='#L121'>121</a>
 <a name='L122'></a><a href='#L122'>122</a>
 <a name='L123'></a><a href='#L123'>123</a>
-<a name='L124'></a><a href='#L124'>124</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -209,6 +214,8 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -235,7 +242,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -314,9 +324,9 @@
 let eventCounter = 0
 &nbsp;
 function asString(value: unknown): string | undefined {
-  if (typeof value !== 'string') <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >    return undefined</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
+  if (typeof value !== 'string') {
+    return undefined
+  }
   const trimmed = value.trim()
   return trimmed.length &gt; 0 ? <span class="branch-0 cbranch-no" title="branch not covered" >trimmed : undefined</span>
 }
@@ -329,7 +339,9 @@ function asObject(value: unknown): Record&lt;string, unknown&gt; | null {
 }
 &nbsp;
 export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
-  const payload = asObject(raw.payload<span class="branch-0 cbranch-no" title="branch not covered" >) ?? {}</span>
+  const envelope = asObject(raw.payload)
+  const envelopePayload = asObject(envelope?.payload)
+  const payload = envelopePayload ?? <span class="branch-0 cbranch-no" title="branch not covered" >envelope ?? {}</span>
   const nestedOrder = asObject(payload.order)
   const nestedExecution = asObject(payload.execution)
 &nbsp;
@@ -356,10 +368,13 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
   const requestId =
     asString(payload.request_id<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span>
 <span class="cstat-no" title="statement not covered" >    asString(payload.requestId<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
+<span class="cstat-no" title="statement not covered" >    asString(envelope?.request_id<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
+<span class="cstat-no" title="statement not covered" >    asString(envelope?.correlation_id<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
 <span class="cstat-no" title="statement not covered" >    asString((asObject(payload.error) ?? {}).request_id<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
 <span class="cstat-no" title="statement not covered" >    undefined</span>
 &nbsp;
   const eventType =
+    asString(envelope?.event_type) ??
     asString(payload.event<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span>
 <span class="cstat-no" title="statement not covered" >    asString(payload.type<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
 <span class="cstat-no" title="statement not covered" >    asString(payload.signal<span class="branch-0 cbranch-no" title="branch not covered" >) ??</span></span>
@@ -439,7 +454,7 @@ export function parseOrdersSocketMessage(data: string): ParsedOrdersSocketMessag
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-25T09:21:59.149Z
+                at 2026-03-25T12:56:18.698Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

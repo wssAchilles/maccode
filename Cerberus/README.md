@@ -6,7 +6,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
 
 - External: `React -> Rust Gateway` via REST + WebSocket.
 - Internal: service contracts in `proto/` with gRPC + Protobuf.
-- Async market bus: Redis Pub/Sub.
+- Async event bus: Redis Streams (consumer group primary) + Redis Pub/Sub (legacy fallback).
 - Services:
   - `apps/frontend`: React + TypeScript + Zustand + Lightweight Charts + Firebase SDK bootstrap.
   - `services/gateway-rs`: Rust Axum gateway, Binance stream ingestion, Redis publishing, REST/WS APIs.
@@ -17,6 +17,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
 - Infra:
   - Local: Docker Compose (`redis`, `postgres`, `timescaledb`, all app services).
   - Cloud: Firebase Hosting (frontend) + Cloud Run (gateway/strategy) + Upstash Redis + Supabase Postgres, provisioned by Terraform under `infra/terraform`.
+  - Cloud Run runtime capacity profiles are Terraform-managed per service (`cloud_run_gateway`, `cloud_run_strategy`, `cloud_run_matching`).
 
 ## APIs (v1)
 
@@ -60,8 +61,9 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
 Request tracing and error model:
 
 - Gateway and Strategy both support `x-request-id` propagation (echoed in response headers).
+- Gateway supports `idempotency-key` / `x-idempotency-key` on mutating APIs and echoes normalized value.
 - Gateway upstream probe (`/api/v1/external/status`) forwards `x-request-id` to Strategy health checks.
-- Error payloads follow `{ "error": { "code", "message", "request_id" } }` on wrapped endpoints.
+- Gateway REST payloads are unified as `{ "request_id", "data", "error" }` where `error` is `null` on success.
 - Trading success payloads on core execution APIs also include `request_id` for frontend flow traceability.
 
 Local contract smoke:
@@ -205,6 +207,7 @@ Important: if any Gurobi WLS credential has been exposed in chat/screenshots, ro
 - `cerberus-dev-gurobi-wlsaccessid` -> `GRB_WLSACCESSID`
 - `cerberus-dev-gurobi-wlssecret` -> `GRB_WLSSECRET`
 - `cerberus-dev-firebase-web-api-key` -> `FIREBASE_WEB_API_KEY`
+- `cerberus-dev-jwt-hs256-secret` -> `JWT_HS256_SECRET`
 - `cerberus-dev-binance-api-key` -> `BINANCE_API_KEY`
 - `cerberus-dev-binance-api-secret` -> `BINANCE_API_SECRET`
 - `cerberus-dev-alpaca-api-key` -> `ALPACA_API_KEY`
@@ -215,18 +218,31 @@ Gateway stream envs:
 - `REDIS_ORDERBOOK_CHANNEL` (market fanout channel)
 - `REDIS_ORDERBOOK_CHANNEL_PREFIX` (per-symbol market channel prefix, default `md.orderbook`)
 - `REDIS_TICK_CHANNEL_PREFIX` (per-symbol tick channel prefix, default `md.ticks`)
+- `REDIS_MARKET_EVENTS_STREAM_ENABLED` / `REDIS_MARKET_EVENTS_STREAM_KEY` / `REDIS_MARKET_EVENTS_STREAM_MAXLEN`
+- `REDIS_MARKET_EVENTS_PUBLISH_LEGACY_PUBSUB` (stream-only or dual-write with legacy pubsub)
 - `MARKET_SYMBOLS` (comma-separated Binance symbols, e.g. `BTCUSDT,ETHUSDT`)
 - `MARKET_WS_URL` (optional explicit market WS URL; for Binance Futures stream use `wss://fstream.binance.com/stream?streams=btcusdt@bookTicker/ethusdt@bookTicker`)
 - `KLINE_API_URL` (optional explicit kline URL; for Binance Futures test path use `https://demo-fapi.binance.com/fapi/v1/klines`)
 - `REDIS_ORDER_EVENTS_CHANNELS` (comma-separated order-event channels for `/ws/orders`)
+- `REDIS_ORDER_EVENTS_STREAM_ENABLED` / `REDIS_ORDER_EVENTS_STREAM_KEY` / `REDIS_ORDER_EVENTS_CONSUMER_GROUP` / `REDIS_ORDER_EVENTS_CONSUMER_NAME`
+- `REDIS_ORDER_EVENTS_READ_BATCH_SIZE` / `REDIS_ORDER_EVENTS_READ_BLOCK_MS` / `REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT` / `REDIS_ORDER_EVENTS_BATCH_WINDOW_MS`
+- `REDIS_ORDER_EVENTS_MAX_RETRIES_BEFORE_FALLBACK` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MS` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MAX_MS`
+- `STRATEGY_SUMMARY_CACHE_TTL_MS` (gateway side short-lived cache for `/api/v1/strategy/summary`)
+- `READY_MAX_MARKET_STALENESS_MS` (optional ready gate; `0` disables market freshness checks)
+- `UNIT_REQUEST_COST_USD` (cost baseline used by gateway `/metrics` + `/api/v1/metrics`)
+- `JWT_AUTH_ENABLED` / `JWT_AUTH_REQUIRE_IN_PRODUCTION` / `JWT_HS256_SECRET` / `JWT_ISSUER` / `JWT_AUDIENCE`
 - `BINANCE_API_KEY` / `BINANCE_API_SECRET` (signed Binance REST)
 - `BINANCE_ORDER_TEST_PATH` (defaults to `/api/v3/order/test`; use `/fapi/v1/order/test` for Futures API)
 - `ALPACA_API_KEY` / `ALPACA_API_SECRET` / `ALPACA_TRADING_BASE_URL`
 - `STRATEGY_BASE_URL` (optional strategy upstream probe for gateway `/api/v1/external/status`)
+- `STRATEGY_INTERNAL_AUTH_ENABLED` / `STRATEGY_INTERNAL_AUTH_AUDIENCE` / `STRATEGY_INTERNAL_AUTH_TOKEN_TTL_SECONDS`
+- `GCP_METADATA_IDENTITY_URL` (override metadata identity endpoint when needed)
 - `TRADING_POLICY_ENFORCED` (server-side risk gate)
 - `BINANCE_ALLOWED_SYMBOLS` / `ALPACA_ALLOWED_SYMBOLS`
 - `MAX_BINANCE_ORDER_QTY` / `MAX_BINANCE_ORDER_NOTIONAL_USD`
 - `MAX_ALPACA_ORDER_QTY` / `MAX_ALPACA_LIMIT_NOTIONAL_USD`
+- `MATCHING_SUBMIT_LATENCY_WINDOW_SIZE` (rolling sample size for matching submit P95)
+- `MATCHING_GRPC_MAX_POLLERS` / `MATCHING_GRPC_MIN_POLLERS` / `MATCHING_GRPC_NUM_CQS`
 
 Gateway external trading endpoints:
 
@@ -238,6 +254,14 @@ Signal persistence path:
 
 - Ingest (Gateway/Manual) -> Strategy -> Firestore + Supabase `strategy_signals`
 - Matching execution relay (Strategy) -> Redis `trade.executions.<account_id>` -> Gateway `/ws/orders`
+- Strategy emits canonical stream events to `EVENT_STREAM_KEY` with envelope:
+  - `event_type`, `event_id`, `created_at`, `schema_version`, `payload` (+ optional `correlation_id`)
+- Strategy idempotency can use Redis-backed claims:
+  - `IDEMPOTENCY_STORE_REDIS_ENABLED`, `IDEMPOTENCY_REDIS_KEY_PREFIX`, `SIGNAL_IDEMPOTENCY_TTL_SECONDS`
+- Strategy market ingest can use Redis Stream consumer group:
+  - `MARKET_STREAM_ENABLED`, `MARKET_STREAM_KEY`, `MARKET_STREAM_CONSUMER_GROUP`, `MARKET_STREAM_LEGACY_PUBSUB_FALLBACK`
+- Matching gRPC schema fallback can be pinned with:
+  - `CERBERUS_EVENT_SCHEMA_VERSION` (default `v1`)
 
 Matching service runtime capabilities:
 
@@ -246,6 +270,12 @@ Matching service runtime capabilities:
 - Execution journal with per-account query helpers
 - gRPC `OrderService` implementation (submit/cancel/get/stream) when built with gRPC deps
 - gRPC health/stats endpoints for service observability (`Health`, `GetServiceStats`)
+- Matching degraded signals are explicit:
+  - `Health.status=degraded:*`
+  - gRPC trailing metadata `x-cerberus-degraded` / `x-cerberus-degraded-reason`
+- Matching `GetServiceStats` now includes capacity baselines:
+  - `submit_order_requests_total`, `submit_order_errors_total`, `submit_order_rejections_total`
+  - `submit_order_latency_p95_ms`, `submit_order_throughput_rps`, `trade_throughput_rps`
 - Local gRPC build command: `cmake -S services/matching-cpp -B services/matching-cpp/build-grpc -DENABLE_GRPC_SERVICE=ON`
 
 OrderService RPC set:
@@ -277,6 +307,7 @@ Proto workflow:
 
 GitHub Actions workflow at `.github/workflows/ci.yml` runs:
 
+- Terraform infra checks (`fmt`, `init -backend=false`, `validate`)
 - Python tests (strategy)
 - Rust `cargo check` (gateway)
 - C++ build and tests (matching)
@@ -290,6 +321,7 @@ Cloud deployment workflow is `.github/workflows/deploy.yml`:
 - Runs deployed e2e/lighthouse gate against the live Firebase URL.
 - Requires GitHub secrets `FIREBASE_E2E_EMAIL` and `FIREBASE_E2E_PASSWORD` for auth-enabled gate runs.
 - Requires exchange secrets `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `ALPACA_API_KEY`, `ALPACA_API_SECRET` for trading endpoints.
+- Requires `JWT_HS256_SECRET` and runs `scripts/validate_deploy_policy.sh` as deploy gate.
 
 ## Post-Deploy Chrome DevTools MCP Gate (Manual Release Blocker)
 

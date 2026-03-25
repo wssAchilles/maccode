@@ -9,7 +9,7 @@ use axum::{
 
 use crate::event_bus::publish_order_event;
 use crate::gateway_types::{AlpacaOrderRequest, AppState, RequestContext};
-use crate::handlers::common::{error_body, with_request_id};
+use crate::handlers::common::{error_body, with_request_context};
 
 use upstream::submit_alpaca_upstream;
 use validation::validate_alpaca_create;
@@ -64,5 +64,9 @@ pub(crate) async fn create_alpaca_order(
     )
     .await;
 
-    Ok(Json(with_request_id(payload, request_id)))
+    Ok(Json(with_request_context(
+        payload,
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

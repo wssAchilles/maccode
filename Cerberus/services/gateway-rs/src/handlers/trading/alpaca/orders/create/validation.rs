@@ -23,8 +23,9 @@ pub(super) fn validate_alpaca_create(
     }
 
     let qty_raw = req.qty.trim();
-    let qty = parse_positive_number("qty", qty_raw)
-        .map_err(|(status, message)| (status, error_body("validation_error", message, request_id)))?;
+    let qty = parse_positive_number("qty", qty_raw).map_err(|(status, message)| {
+        (status, error_body("validation_error", message, request_id))
+    })?;
 
     let side = req.side.trim().to_ascii_lowercase();
     if side != "buy" && side != "sell" {
@@ -38,7 +39,11 @@ pub(super) fn validate_alpaca_create(
     if order_type != "market" && order_type != "limit" {
         return Err((
             StatusCode::BAD_REQUEST,
-            error_body("validation_error", "type must be market or limit", request_id),
+            error_body(
+                "validation_error",
+                "type must be market or limit",
+                request_id,
+            ),
         ));
     }
 
@@ -84,8 +89,9 @@ pub(super) fn validate_alpaca_create(
             ),
         ))?;
         let limit_price_raw = limit_price.trim().to_string();
-        let limit_price_num = parse_positive_number("limit_price", &limit_price_raw)
-            .map_err(|(status, message)| (status, error_body("validation_error", message, request_id)))?;
+        let limit_price_num = parse_positive_number("limit_price", &limit_price_raw).map_err(
+            |(status, message)| (status, error_body("validation_error", message, request_id)),
+        )?;
 
         if state.trading_policy.enforced {
             if let Some(max_notional) = state.trading_policy.max_alpaca_limit_notional_usd {

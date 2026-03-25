@@ -35,6 +35,12 @@ inline constexpr StreamOrderBookRequest::Impl_::Impl_(
       : _cached_size_{0},
         symbol_(
             &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
 template <typename>
@@ -62,6 +68,12 @@ inline constexpr PublishTickResponse::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
         message_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         ok_{false} {}
@@ -121,6 +133,12 @@ inline constexpr GetCandlesRequest::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         interval_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         limit_{0} {}
@@ -202,6 +220,12 @@ inline constexpr StreamOrderBookResponse::Impl_::Impl_(
         symbol_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         event_time_{nullptr} {}
 
 template <typename>
@@ -229,6 +253,12 @@ inline constexpr PublishTickRequest::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
         symbol_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         event_time_{nullptr},
@@ -267,7 +297,13 @@ inline constexpr GetCandlesResponse::Impl_::Impl_(
         #else  // !PROTOBUF_INTERNAL_REMOVE_ARENA_PTRS_REPEATED_PTR_FIELD
         candles_ {}
         #endif
-     {}
+        ,
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()) {}
 
 template <typename>
 constexpr GetCandlesResponse::GetCandlesResponse(::_pbi::ConstantInitialized)
@@ -300,22 +336,30 @@ const ::uint32_t
         protodesc_cold) = {
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_._has_bits_),
-        7, // hasbit index offset
+        9, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.price_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.quantity_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.event_time_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickRequest, _impl_.correlation_id_),
         0,
-        2,
+        4,
+        5,
         3,
         1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickResponse, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickResponse, _impl_.ok_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickResponse, _impl_.message_),
-        1,
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::PublishTickResponse, _impl_.correlation_id_),
+        3,
         0,
+        1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::Level, _impl_._has_bits_),
         5, // hasbit index offset
@@ -325,29 +369,41 @@ const ::uint32_t
         1,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_._has_bits_),
-        7, // hasbit index offset
+        9, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.bids_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.asks_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.event_time_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookResponse, _impl_.correlation_id_),
         2,
         0,
         1,
+        5,
         3,
+        4,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookRequest, _impl_._has_bits_),
-        4, // hasbit index offset
+        6, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookRequest, _impl_.symbol_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::StreamOrderBookRequest, _impl_.correlation_id_),
         0,
+        1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_._has_bits_),
-        6, // hasbit index offset
+        8, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_.interval_),
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_.limit_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesRequest, _impl_.correlation_id_),
         0,
         1,
+        4,
         2,
+        3,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::Candle, _impl_._has_bits_),
         10, // hasbit index offset
@@ -367,21 +423,25 @@ const ::uint32_t
         6,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesResponse, _impl_._has_bits_),
-        4, // hasbit index offset
+        6, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesResponse, _impl_.candles_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::market::v1::GetCandlesResponse, _impl_.correlation_id_),
         0,
+        1,
+        2,
 };
 
 static const ::_pbi::MigrationSchema
     schemas[] ABSL_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
         {0, sizeof(::cerberus::market::v1::PublishTickRequest)},
-        {11, sizeof(::cerberus::market::v1::PublishTickResponse)},
-        {18, sizeof(::cerberus::market::v1::Level)},
-        {25, sizeof(::cerberus::market::v1::StreamOrderBookResponse)},
-        {36, sizeof(::cerberus::market::v1::StreamOrderBookRequest)},
-        {41, sizeof(::cerberus::market::v1::GetCandlesRequest)},
-        {50, sizeof(::cerberus::market::v1::Candle)},
-        {67, sizeof(::cerberus::market::v1::GetCandlesResponse)},
+        {15, sizeof(::cerberus::market::v1::PublishTickResponse)},
+        {26, sizeof(::cerberus::market::v1::Level)},
+        {33, sizeof(::cerberus::market::v1::StreamOrderBookResponse)},
+        {48, sizeof(::cerberus::market::v1::StreamOrderBookRequest)},
+        {57, sizeof(::cerberus::market::v1::GetCandlesRequest)},
+        {70, sizeof(::cerberus::market::v1::Candle)},
+        {87, sizeof(::cerberus::market::v1::GetCandlesResponse)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::cerberus::market::v1::_PublishTickRequest_default_instance_._instance,
@@ -397,41 +457,52 @@ const char descriptor_table_protodef_cerberus_2fmarket_2fv1_2fmarket_2eproto[] A
     protodesc_cold) = {
     "\n\037cerberus/market/v1/market.proto\022\022cerbe"
     "rus.market.v1\032\037google/protobuf/timestamp"
-    ".proto\"\231\001\n\022PublishTickRequest\022\026\n\006symbol\030"
+    ".proto\"\347\001\n\022PublishTickRequest\022\026\n\006symbol\030"
     "\001 \001(\tR\006symbol\022\024\n\005price\030\002 \001(\001R\005price\022\032\n\010q"
     "uantity\030\003 \001(\001R\010quantity\0229\n\nevent_time\030\004 "
     "\001(\0132\032.google.protobuf.TimestampR\teventTi"
-    "me\"\?\n\023PublishTickResponse\022\016\n\002ok\030\001 \001(\010R\002o"
-    "k\022\030\n\007message\030\002 \001(\tR\007message\"9\n\005Level\022\024\n\005"
-    "price\030\001 \001(\001R\005price\022\032\n\010quantity\030\002 \001(\001R\010qu"
-    "antity\"\312\001\n\027StreamOrderBookResponse\022\026\n\006sy"
-    "mbol\030\001 \001(\tR\006symbol\022-\n\004bids\030\002 \003(\0132\031.cerbe"
-    "rus.market.v1.LevelR\004bids\022-\n\004asks\030\003 \003(\0132"
-    "\031.cerberus.market.v1.LevelR\004asks\0229\n\neven"
-    "t_time\030\004 \001(\0132\032.google.protobuf.Timestamp"
-    "R\teventTime\"0\n\026StreamOrderBookRequest\022\026\n"
-    "\006symbol\030\001 \001(\tR\006symbol\"]\n\021GetCandlesReque"
-    "st\022\026\n\006symbol\030\001 \001(\tR\006symbol\022\032\n\010interval\030\002"
-    " \001(\tR\010interval\022\024\n\005limit\030\003 \001(\005R\005limit\"\254\001\n"
-    "\006Candle\022\033\n\topen_time\030\001 \001(\003R\010openTime\022\022\n\004"
-    "open\030\002 \001(\001R\004open\022\022\n\004high\030\003 \001(\001R\004high\022\020\n\003"
-    "low\030\004 \001(\001R\003low\022\024\n\005close\030\005 \001(\001R\005close\022\026\n\006"
-    "volume\030\006 \001(\001R\006volume\022\035\n\nclose_time\030\007 \001(\003"
-    "R\tcloseTime\"J\n\022GetCandlesResponse\0224\n\007can"
-    "dles\030\001 \003(\0132\032.cerberus.market.v1.CandleR\007"
-    "candles2\276\002\n\021MarketDataService\022^\n\013Publish"
-    "Tick\022&.cerberus.market.v1.PublishTickReq"
-    "uest\032\'.cerberus.market.v1.PublishTickRes"
-    "ponse\022l\n\017StreamOrderBook\022*.cerberus.mark"
-    "et.v1.StreamOrderBookRequest\032+.cerberus."
-    "market.v1.StreamOrderBookResponse0\001\022[\n\nG"
-    "etCandles\022%.cerberus.market.v1.GetCandle"
-    "sRequest\032&.cerberus.market.v1.GetCandles"
-    "ResponseB\217\001\n\026com.cerberus.market.v1B\013Mar"
-    "ketProtoP\001\242\002\003CMX\252\002\022Cerberus.Market.V1\312\002\022"
-    "Cerberus\\Market\\V1\342\002\036Cerberus\\Market\\V1\\"
-    "GPBMetadata\352\002\024Cerberus::Market::V1b\006prot"
-    "o3"
+    "me\022%\n\016schema_version\030\005 \001(\tR\rschemaVersio"
+    "n\022%\n\016correlation_id\030\006 \001(\tR\rcorrelationId"
+    "\"\215\001\n\023PublishTickResponse\022\016\n\002ok\030\001 \001(\010R\002ok"
+    "\022\030\n\007message\030\002 \001(\tR\007message\022%\n\016schema_ver"
+    "sion\030\003 \001(\tR\rschemaVersion\022%\n\016correlation"
+    "_id\030\004 \001(\tR\rcorrelationId\"9\n\005Level\022\024\n\005pri"
+    "ce\030\001 \001(\001R\005price\022\032\n\010quantity\030\002 \001(\001R\010quant"
+    "ity\"\230\002\n\027StreamOrderBookResponse\022\026\n\006symbo"
+    "l\030\001 \001(\tR\006symbol\022-\n\004bids\030\002 \003(\0132\031.cerberus"
+    ".market.v1.LevelR\004bids\022-\n\004asks\030\003 \003(\0132\031.c"
+    "erberus.market.v1.LevelR\004asks\0229\n\nevent_t"
+    "ime\030\004 \001(\0132\032.google.protobuf.TimestampR\te"
+    "ventTime\022%\n\016schema_version\030\005 \001(\tR\rschema"
+    "Version\022%\n\016correlation_id\030\006 \001(\tR\rcorrela"
+    "tionId\"~\n\026StreamOrderBookRequest\022\026\n\006symb"
+    "ol\030\001 \001(\tR\006symbol\022%\n\016schema_version\030\002 \001(\t"
+    "R\rschemaVersion\022%\n\016correlation_id\030\003 \001(\tR"
+    "\rcorrelationId\"\253\001\n\021GetCandlesRequest\022\026\n\006"
+    "symbol\030\001 \001(\tR\006symbol\022\032\n\010interval\030\002 \001(\tR\010"
+    "interval\022\024\n\005limit\030\003 \001(\005R\005limit\022%\n\016schema"
+    "_version\030\004 \001(\tR\rschemaVersion\022%\n\016correla"
+    "tion_id\030\005 \001(\tR\rcorrelationId\"\254\001\n\006Candle\022"
+    "\033\n\topen_time\030\001 \001(\003R\010openTime\022\022\n\004open\030\002 \001"
+    "(\001R\004open\022\022\n\004high\030\003 \001(\001R\004high\022\020\n\003low\030\004 \001("
+    "\001R\003low\022\024\n\005close\030\005 \001(\001R\005close\022\026\n\006volume\030\006"
+    " \001(\001R\006volume\022\035\n\nclose_time\030\007 \001(\003R\tcloseT"
+    "ime\"\230\001\n\022GetCandlesResponse\0224\n\007candles\030\001 "
+    "\003(\0132\032.cerberus.market.v1.CandleR\007candles"
+    "\022%\n\016schema_version\030\002 \001(\tR\rschemaVersion\022"
+    "%\n\016correlation_id\030\003 \001(\tR\rcorrelationId2\276"
+    "\002\n\021MarketDataService\022^\n\013PublishTick\022&.ce"
+    "rberus.market.v1.PublishTickRequest\032\'.ce"
+    "rberus.market.v1.PublishTickResponse\022l\n\017"
+    "StreamOrderBook\022*.cerberus.market.v1.Str"
+    "eamOrderBookRequest\032+.cerberus.market.v1"
+    ".StreamOrderBookResponse0\001\022[\n\nGetCandles"
+    "\022%.cerberus.market.v1.GetCandlesRequest\032"
+    "&.cerberus.market.v1.GetCandlesResponseB"
+    "\217\001\n\026com.cerberus.market.v1B\013MarketProtoP"
+    "\001\242\002\003CMX\252\002\022Cerberus.Market.V1\312\002\022Cerberus\\"
+    "Market\\V1\342\002\036Cerberus\\Market\\V1\\GPBMetada"
+    "ta\352\002\024Cerberus::Market::V1b\006proto3"
 };
 static const ::_pbi::DescriptorTable* PROTOBUF_NONNULL const
     descriptor_table_cerberus_2fmarket_2fv1_2fmarket_2eproto_deps[1] = {
@@ -441,7 +512,7 @@ static ::absl::once_flag descriptor_table_cerberus_2fmarket_2fv1_2fmarket_2eprot
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_cerberus_2fmarket_2fv1_2fmarket_2eproto = {
     false,
     false,
-    1442,
+    1913,
     descriptor_table_protodef_cerberus_2fmarket_2fv1_2fmarket_2eproto,
     "cerberus/market/v1/market.proto",
     &descriptor_table_cerberus_2fmarket_2fv1_2fmarket_2eproto_once,
@@ -471,7 +542,7 @@ void PublishTickRequest::clear_event_time() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   if (_impl_.event_time_ != nullptr) _impl_.event_time_->Clear();
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000002U);
+                  0x00000008U);
 }
 PublishTickRequest::PublishTickRequest(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
@@ -488,7 +559,9 @@ PROTOBUF_NDEBUG_INLINE PublishTickRequest::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::market::v1::PublishTickRequest& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 PublishTickRequest::PublishTickRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -504,7 +577,7 @@ PublishTickRequest::PublishTickRequest(
       from._internal_metadata_);
   new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
   ::uint32_t cached_has_bits = _impl_._has_bits_[0];
-  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000002U))
+  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000008U))
                 ? ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_)
                 : nullptr;
   ::memcpy(reinterpret_cast<char*>(&_impl_) +
@@ -521,7 +594,9 @@ PROTOBUF_NDEBUG_INLINE PublishTickRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void PublishTickRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -544,6 +619,8 @@ inline void PublishTickRequest::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   delete this_._impl_.event_time_;
   this_._impl_.~Impl_();
 }
@@ -590,16 +667,16 @@ PublishTickRequest::GetClassData() const {
   return PublishTickRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 1, 52, 2>
+const ::_pbi::TcParseTable<3, 6, 1, 80, 2>
 PublishTickRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    6, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967232,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    6,  // num_field_entries
     1,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     PublishTickRequest_class_data_.base(),
@@ -609,41 +686,57 @@ PublishTickRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::market::v1::PublishTickRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-    {::_pbi::TcParser::FastMtS1,
-     {34, 1, 0,
-      PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.event_time_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string symbol = 1 [json_name = "symbol"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.symbol_)}},
     // double price = 2 [json_name = "price"];
     {::_pbi::TcParser::FastF64S1,
-     {17, 2, 0,
+     {17, 4, 0,
       PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.price_)}},
     // double quantity = 3 [json_name = "quantity"];
     {::_pbi::TcParser::FastF64S1,
-     {25, 3, 0,
+     {25, 5, 0,
       PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.quantity_)}},
+    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    {::_pbi::TcParser::FastMtS1,
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.event_time_)}},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 1, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.schema_version_)}},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {50, 2, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
     // string symbol = 1 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.symbol_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // double price = 2 [json_name = "price"];
-    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.price_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.price_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double quantity = 3 [json_name = "quantity"];
-    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.quantity_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.quantity_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.event_time_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.event_time_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::google::protobuf::Timestamp>()},
   }},
   {{
-    "\45\6\0\0\0\0\0\0"
+    "\45\6\0\0\0\16\16\0"
     "cerberus.market.v1.PublishTickRequest"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
@@ -654,16 +747,22 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.symbol_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       ABSL_DCHECK(_impl_.event_time_ != nullptr);
       _impl_.event_time_->Clear();
     }
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000cU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000030U)) {
     ::memset(&_impl_.price_, 0, static_cast<::size_t>(
         reinterpret_cast<char*>(&_impl_.quantity_) -
         reinterpret_cast<char*>(&_impl_.price_)) + sizeof(_impl_.quantity_));
@@ -702,7 +801,7 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
   }
 
   // double price = 2 [json_name = "price"];
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -711,7 +810,7 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
   }
 
   // double quantity = 3 [json_name = "quantity"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -720,10 +819,30 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
   }
 
   // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
         4, *this_._impl_.event_time_, this_._impl_.event_time_->GetCachedSize(), target,
         stream);
+  }
+
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.PublishTickRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  // string correlation_id = 6 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.PublishTickRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(6, _s, target);
+    }
   }
 
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
@@ -751,7 +870,7 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     // string symbol = 1 [json_name = "symbol"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_symbol().empty()) {
@@ -759,19 +878,33 @@ PROTOBUF_NOINLINE void PublishTickRequest::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    // string schema_version = 5 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 6 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       total_size += 1 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.event_time_);
     }
     // double price = 2 [json_name = "price"];
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
         total_size += 9;
       }
     }
     // double quantity = 3 [json_name = "quantity"];
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
         total_size += 9;
       }
@@ -796,7 +929,7 @@ void PublishTickRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_symbol().empty()) {
         _this->_internal_set_symbol(from._internal_symbol());
@@ -807,6 +940,24 @@ void PublishTickRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       ABSL_DCHECK(from._impl_.event_time_ != nullptr);
       if (_this->_impl_.event_time_ == nullptr) {
         _this->_impl_.event_time_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_);
@@ -814,12 +965,12 @@ void PublishTickRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
         _this->_impl_.event_time_->MergeFrom(*from._impl_.event_time_);
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_price()) != 0) {
         _this->_impl_.price_ = from._impl_.price_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_quantity()) != 0) {
         _this->_impl_.quantity_ = from._impl_.quantity_;
       }
@@ -845,6 +996,8 @@ void PublishTickRequest::InternalSwap(PublishTickRequest* PROTOBUF_RESTRICT PROT
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   ::google::protobuf::internal::memswap<
       PROTOBUF_FIELD_OFFSET(PublishTickRequest, _impl_.quantity_)
       + sizeof(PublishTickRequest::_impl_.quantity_)
@@ -881,7 +1034,9 @@ PROTOBUF_NDEBUG_INLINE PublishTickResponse::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::market::v1::PublishTickResponse& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        message_(arena, from.message_) {}
+        message_(arena, from.message_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 PublishTickResponse::PublishTickResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -904,7 +1059,9 @@ PROTOBUF_NDEBUG_INLINE PublishTickResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        message_(arena) {}
+        message_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void PublishTickResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -922,6 +1079,8 @@ inline void PublishTickResponse::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.message_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -967,16 +1126,16 @@ PublishTickResponse::GetClassData() const {
   return PublishTickResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 54, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 82, 2>
 PublishTickResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     PublishTickResponse_class_data_.base(),
@@ -986,27 +1145,41 @@ PublishTickResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::market::v1::PublishTickResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.correlation_id_)}},
+    // bool ok = 1 [json_name = "ok"];
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(PublishTickResponse, _impl_.ok_), 3>(),
+     {8, 3, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.ok_)}},
     // string message = 2 [json_name = "message"];
     {::_pbi::TcParser::FastUS1,
      {18, 0, 0,
       PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.message_)}},
-    // bool ok = 1 [json_name = "ok"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(PublishTickResponse, _impl_.ok_), 1>(),
-     {8, 1, 0,
-      PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.ok_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 1, 0,
+      PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
     // bool ok = 1 [json_name = "ok"];
-    {PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.ok_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.ok_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // string message = 2 [json_name = "message"];
     {PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.message_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(PublishTickResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\46\0\7\0\0\0\0\0"
+    "\46\0\7\16\16\0\0\0"
     "cerberus.market.v1.PublishTickResponse"
     "message"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
@@ -1017,8 +1190,16 @@ PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.message_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.message_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.ok_ = false;
   _impl_._has_bits_.Clear();
@@ -1045,7 +1226,7 @@ PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // bool ok = 1 [json_name = "ok"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_ok() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -1060,6 +1241,26 @@ PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.PublishTickResponse.message");
       target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.PublishTickResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.PublishTickResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
     }
   }
 
@@ -1088,7 +1289,7 @@ PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string message = 2 [json_name = "message"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_message().empty()) {
@@ -1096,8 +1297,22 @@ PROTOBUF_NOINLINE void PublishTickResponse::Clear() {
                                         this_._internal_message());
       }
     }
-    // bool ok = 1 [json_name = "ok"];
+    // string schema_version = 3 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // bool ok = 1 [json_name = "ok"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_ok() != 0) {
         total_size += 2;
       }
@@ -1121,7 +1336,7 @@ void PublishTickResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_message().empty()) {
         _this->_internal_set_message(from._internal_message());
@@ -1132,6 +1347,24 @@ void PublishTickResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_ok() != 0) {
         _this->_impl_.ok_ = from._impl_.ok_;
       }
@@ -1157,6 +1390,8 @@ void PublishTickResponse::InternalSwap(PublishTickResponse* PROTOBUF_RESTRICT PR
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.message_, &other->_impl_.message_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.ok_, other->_impl_.ok_);
 }
 
@@ -1467,7 +1702,7 @@ void StreamOrderBookResponse::clear_event_time() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   if (_impl_.event_time_ != nullptr) _impl_.event_time_->Clear();
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 StreamOrderBookResponse::StreamOrderBookResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
@@ -1502,7 +1737,9 @@ PROTOBUF_NDEBUG_INLINE StreamOrderBookResponse::Impl_::Impl_(
         asks_ { visibility, arena, from.asks_ }
         #endif
         ,
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 StreamOrderBookResponse::StreamOrderBookResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1518,7 +1755,7 @@ StreamOrderBookResponse::StreamOrderBookResponse(
       from._internal_metadata_);
   new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
   ::uint32_t cached_has_bits = _impl_._has_bits_[0];
-  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000008U))
+  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000020U))
                 ? ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_)
                 : nullptr;
 
@@ -1546,7 +1783,9 @@ PROTOBUF_NDEBUG_INLINE StreamOrderBookResponse::Impl_::Impl_(
         asks_ { visibility, arena }
         #endif
         ,
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void StreamOrderBookResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1564,6 +1803,8 @@ inline void StreamOrderBookResponse::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   delete this_._impl_.event_time_;
   this_._impl_.~Impl_();
 }
@@ -1633,16 +1874,16 @@ StreamOrderBookResponse::GetClassData() const {
   return StreamOrderBookResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 3, 57, 2>
+const ::_pbi::TcParseTable<3, 6, 3, 85, 2>
 StreamOrderBookResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    6, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967232,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    6,  // num_field_entries
     3,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     StreamOrderBookResponse_class_data_.base(),
@@ -1652,10 +1893,7 @@ StreamOrderBookResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::market::v1::StreamOrderBookResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-    {::_pbi::TcParser::FastMtS1,
-     {34, 3, 2,
-      PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.event_time_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string symbol = 1 [json_name = "symbol"];
     {::_pbi::TcParser::FastUS1,
      {10, 2, 0,
@@ -1668,6 +1906,19 @@ StreamOrderBookResponse::_table_ = {
     {::_pbi::TcParser::FastMtR1,
      {26, 1, 1,
       PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.asks_)}},
+    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    {::_pbi::TcParser::FastMtS1,
+     {34, 5, 2,
+      PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.event_time_)}},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.schema_version_)}},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {50, 4, 0,
+      PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -1678,7 +1929,11 @@ StreamOrderBookResponse::_table_ = {
     // repeated .cerberus.market.v1.Level asks = 3 [json_name = "asks"];
     {PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.asks_), _Internal::kHasBitsOffset + 1, 1, (0 | ::_fl::kFcRepeated | ::_fl::kMessage | ::_fl::kTvTable)},
     // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-    {PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.event_time_), _Internal::kHasBitsOffset + 3, 2, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.event_time_), _Internal::kHasBitsOffset + 5, 2, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(StreamOrderBookResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::cerberus::market::v1::Level>()},
@@ -1686,9 +1941,11 @@ StreamOrderBookResponse::_table_ = {
       {::_pbi::TcParser::GetTable<::google::protobuf::Timestamp>()},
   }},
   {{
-    "\52\6\0\0\0\0\0\0"
+    "\52\6\0\0\0\16\16\0"
     "cerberus.market.v1.StreamOrderBookResponse"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
@@ -1699,7 +1956,7 @@ PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _impl_.bids_.Clear();
     }
@@ -1710,6 +1967,12 @@ PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
       _impl_.symbol_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(_impl_.event_time_ != nullptr);
       _impl_.event_time_->Clear();
     }
@@ -1774,10 +2037,30 @@ PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
   }
 
   // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
         4, *this_._impl_.event_time_, this_._impl_.event_time_->GetCachedSize(), target,
         stream);
+  }
+
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.StreamOrderBookResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  // string correlation_id = 6 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.StreamOrderBookResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(6, _s, target);
+    }
   }
 
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
@@ -1805,7 +2088,7 @@ PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     // repeated .cerberus.market.v1.Level bids = 2 [json_name = "bids"];
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       total_size += 1UL * this_._internal_bids_size();
@@ -1827,8 +2110,22 @@ PROTOBUF_NOINLINE void StreamOrderBookResponse::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    // string schema_version = 5 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 6 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // .google.protobuf.Timestamp event_time = 4 [json_name = "eventTime"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       total_size += 1 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.event_time_);
     }
@@ -1852,7 +2149,7 @@ void StreamOrderBookResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _this->_internal_mutable_bids()->InternalMergeFromWithArena(
           ::google::protobuf::MessageLite::internal_visibility(), arena,
@@ -1873,6 +2170,24 @@ void StreamOrderBookResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(from._impl_.event_time_ != nullptr);
       if (_this->_impl_.event_time_ == nullptr) {
         _this->_impl_.event_time_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_);
@@ -1903,6 +2218,8 @@ void StreamOrderBookResponse::InternalSwap(StreamOrderBookResponse* PROTOBUF_RES
   _impl_.bids_.InternalSwap(&other->_impl_.bids_);
   _impl_.asks_.InternalSwap(&other->_impl_.asks_);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.event_time_, other->_impl_.event_time_);
 }
 
@@ -1934,7 +2251,9 @@ PROTOBUF_NDEBUG_INLINE StreamOrderBookRequest::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::market::v1::StreamOrderBookRequest& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 StreamOrderBookRequest::StreamOrderBookRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1956,7 +2275,9 @@ PROTOBUF_NDEBUG_INLINE StreamOrderBookRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void StreamOrderBookRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1973,6 +2294,8 @@ inline void StreamOrderBookRequest::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -2018,16 +2341,16 @@ StreamOrderBookRequest::GetClassData() const {
   return StreamOrderBookRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 1, 0, 56, 2>
+const ::_pbi::TcParseTable<2, 3, 0, 84, 2>
 StreamOrderBookRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_._has_bits_),
     0, // no _extensions_
-    1, 0,  // max_field_number, fast_idx_mask
+    3, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967294,  // skipmap
+    4294967288,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    1,  // num_field_entries
+    3,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     StreamOrderBookRequest_class_data_.base(),
@@ -2037,21 +2360,36 @@ StreamOrderBookRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::market::v1::StreamOrderBookRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    {::_pbi::TcParser::MiniParse, {}},
     // string symbol = 1 [json_name = "symbol"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.symbol_)}},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.schema_version_)}},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.correlation_id_)}},
   }}, {{
     65535, 65535
   }}, {{
     // string symbol = 1 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.symbol_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(StreamOrderBookRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\51\6\0\0\0\0\0\0"
+    "\51\6\16\16\0\0\0\0"
     "cerberus.market.v1.StreamOrderBookRequest"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void StreamOrderBookRequest::Clear() {
@@ -2062,8 +2400,16 @@ PROTOBUF_NOINLINE void StreamOrderBookRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.symbol_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.symbol_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -2098,6 +2444,26 @@ PROTOBUF_NOINLINE void StreamOrderBookRequest::Clear() {
     }
   }
 
+  // string schema_version = 2 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.StreamOrderBookRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string correlation_id = 3 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.StreamOrderBookRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -2121,13 +2487,28 @@ PROTOBUF_NOINLINE void StreamOrderBookRequest::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void)cached_has_bits;
 
-   {
+  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     // string symbol = 1 [json_name = "symbol"];
-    cached_has_bits = this_._impl_._has_bits_[0];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_symbol().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_symbol());
+      }
+    }
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 3 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -2149,12 +2530,32 @@ void StreamOrderBookRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!from._internal_symbol().empty()) {
-      _this->_internal_set_symbol(from._internal_symbol());
-    } else {
-      if (_this->_impl_.symbol_.IsDefault()) {
-        _this->_internal_set_symbol("");
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_symbol().empty()) {
+        _this->_internal_set_symbol(from._internal_symbol());
+      } else {
+        if (_this->_impl_.symbol_.IsDefault()) {
+          _this->_internal_set_symbol("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
       }
     }
   }
@@ -2178,6 +2579,8 @@ void StreamOrderBookRequest::InternalSwap(StreamOrderBookRequest* PROTOBUF_RESTR
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata StreamOrderBookRequest::GetMetadata() const {
@@ -2209,7 +2612,9 @@ PROTOBUF_NDEBUG_INLINE GetCandlesRequest::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         symbol_(arena, from.symbol_),
-        interval_(arena, from.interval_) {}
+        interval_(arena, from.interval_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetCandlesRequest::GetCandlesRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -2233,7 +2638,9 @@ PROTOBUF_NDEBUG_INLINE GetCandlesRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         symbol_(arena),
-        interval_(arena) {}
+        interval_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetCandlesRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -2252,6 +2659,8 @@ inline void GetCandlesRequest::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
   this_._impl_.interval_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -2297,16 +2706,16 @@ GetCandlesRequest::GetClassData() const {
   return GetCandlesRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 3, 0, 59, 2>
+const ::_pbi::TcParseTable<3, 5, 0, 87, 2>
 GetCandlesRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_._has_bits_),
     0, // no _extensions_
-    3, 24,  // max_field_number, fast_idx_mask
+    5, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967288,  // skipmap
+    4294967264,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    3,  // num_field_entries
+    5,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     GetCandlesRequest_class_data_.base(),
@@ -2326,9 +2735,19 @@ GetCandlesRequest::_table_ = {
      {18, 1, 0,
       PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.interval_)}},
     // int32 limit = 3 [json_name = "limit"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetCandlesRequest, _impl_.limit_), 2>(),
-     {24, 2, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetCandlesRequest, _impl_.limit_), 4>(),
+     {24, 4, 0,
       PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.limit_)}},
+    // string schema_version = 4 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.schema_version_)}},
+    // string correlation_id = 5 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -2337,14 +2756,20 @@ GetCandlesRequest::_table_ = {
     // string interval = 2 [json_name = "interval"];
     {PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.interval_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // int32 limit = 3 [json_name = "limit"];
-    {PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.limit_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kInt32)},
+    {PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.limit_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kInt32)},
+    // string schema_version = 4 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 5 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetCandlesRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\44\6\10\0\0\0\0\0"
+    "\44\6\10\0\16\16\0\0"
     "cerberus.market.v1.GetCandlesRequest"
     "symbol"
     "interval"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetCandlesRequest::Clear() {
@@ -2355,12 +2780,18 @@ PROTOBUF_NOINLINE void GetCandlesRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.symbol_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.interval_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.limit_ = 0;
@@ -2408,11 +2839,31 @@ PROTOBUF_NOINLINE void GetCandlesRequest::Clear() {
   }
 
   // int32 limit = 3 [json_name = "limit"];
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (this_._internal_limit() != 0) {
       target =
           ::google::protobuf::internal::WireFormatLite::WriteInt32ToArrayWithField<3>(
               stream, this_._internal_limit(), target);
+    }
+  }
+
+  // string schema_version = 4 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.GetCandlesRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
+  // string correlation_id = 5 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.GetCandlesRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
     }
   }
 
@@ -2441,7 +2892,7 @@ PROTOBUF_NOINLINE void GetCandlesRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     // string symbol = 1 [json_name = "symbol"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_symbol().empty()) {
@@ -2456,8 +2907,22 @@ PROTOBUF_NOINLINE void GetCandlesRequest::Clear() {
                                         this_._internal_interval());
       }
     }
-    // int32 limit = 3 [json_name = "limit"];
+    // string schema_version = 4 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 5 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // int32 limit = 3 [json_name = "limit"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (this_._internal_limit() != 0) {
         total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(
             this_._internal_limit());
@@ -2482,7 +2947,7 @@ void GetCandlesRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_symbol().empty()) {
         _this->_internal_set_symbol(from._internal_symbol());
@@ -2502,6 +2967,24 @@ void GetCandlesRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (from._internal_limit() != 0) {
         _this->_impl_.limit_ = from._impl_.limit_;
       }
@@ -2528,6 +3011,8 @@ void GetCandlesRequest::InternalSwap(GetCandlesRequest* PROTOBUF_RESTRICT PROTOB
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.interval_, &other->_impl_.interval_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.limit_, other->_impl_.limit_);
 }
 
@@ -2990,7 +3475,9 @@ PROTOBUF_NDEBUG_INLINE GetCandlesResponse::Impl_::Impl_(
         #else
         candles_ { visibility, arena, from.candles_ }
         #endif
-     {}
+        ,
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetCandlesResponse::GetCandlesResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -3020,7 +3507,9 @@ PROTOBUF_NDEBUG_INLINE GetCandlesResponse::Impl_::Impl_(
         #else
         candles_ { visibility, arena }
         #endif
-     {}
+        ,
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetCandlesResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -3036,6 +3525,8 @@ inline void GetCandlesResponse::SharedDtor(MessageLite& self) {
   }
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -3058,7 +3549,7 @@ constexpr auto GetCandlesResponse::InternalNewImpl_() {
                   ::google::protobuf::Message::internal_visibility()),
   });
   if (arena_bits.has_value()) {
-    return ::google::protobuf::internal::MessageCreator::ZeroInit(
+    return ::google::protobuf::internal::MessageCreator::CopyInit(
         sizeof(GetCandlesResponse), alignof(GetCandlesResponse), *arena_bits);
   } else {
     return ::google::protobuf::internal::MessageCreator(&GetCandlesResponse::PlacementNew_,
@@ -3100,16 +3591,16 @@ GetCandlesResponse::GetClassData() const {
   return GetCandlesResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 1, 1, 0, 2>
+const ::_pbi::TcParseTable<2, 3, 1, 74, 2>
 GetCandlesResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_._has_bits_),
     0, // no _extensions_
-    1, 0,  // max_field_number, fast_idx_mask
+    3, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967294,  // skipmap
+    4294967288,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    1,  // num_field_entries
+    3,  // num_field_entries
     1,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     GetCandlesResponse_class_data_.base(),
@@ -3119,20 +3610,37 @@ GetCandlesResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::market::v1::GetCandlesResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    {::_pbi::TcParser::MiniParse, {}},
     // repeated .cerberus.market.v1.Candle candles = 1 [json_name = "candles"];
     {::_pbi::TcParser::FastMtR1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.candles_)}},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.schema_version_)}},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.correlation_id_)}},
   }}, {{
     65535, 65535
   }}, {{
     // repeated .cerberus.market.v1.Candle candles = 1 [json_name = "candles"];
     {PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.candles_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcRepeated | ::_fl::kMessage | ::_fl::kTvTable)},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetCandlesResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::cerberus::market::v1::Candle>()},
   }},
   {{
+    "\45\0\16\16\0\0\0\0"
+    "cerberus.market.v1.GetCandlesResponse"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetCandlesResponse::Clear() {
@@ -3143,8 +3651,16 @@ PROTOBUF_NOINLINE void GetCandlesResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
-    _impl_.candles_.Clear();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
+      _impl_.candles_.Clear();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -3182,6 +3698,26 @@ PROTOBUF_NOINLINE void GetCandlesResponse::Clear() {
     }
   }
 
+  // string schema_version = 2 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.GetCandlesResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string correlation_id = 3 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.market.v1.GetCandlesResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -3206,13 +3742,27 @@ PROTOBUF_NOINLINE void GetCandlesResponse::Clear() {
   (void)cached_has_bits;
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
-   {
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     // repeated .cerberus.market.v1.Candle candles = 1 [json_name = "candles"];
-    cached_has_bits = this_._impl_._has_bits_[0];
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       total_size += 1UL * this_._internal_candles_size();
       for (const auto& msg : this_._internal_candles()) {
         total_size += ::google::protobuf::internal::WireFormatLite::MessageSize(msg);
+      }
+    }
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 3 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -3235,10 +3785,30 @@ void GetCandlesResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
-    _this->_internal_mutable_candles()->InternalMergeFromWithArena(
-        ::google::protobuf::MessageLite::internal_visibility(), arena,
-        from._internal_candles());
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
+      _this->_internal_mutable_candles()->InternalMergeFromWithArena(
+          ::google::protobuf::MessageLite::internal_visibility(), arena,
+          from._internal_candles());
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
   }
   _this->_impl_._has_bits_[0] |= cached_has_bits;
   _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
@@ -3255,9 +3825,13 @@ void GetCandlesResponse::CopyFrom(const GetCandlesResponse& from) {
 
 void GetCandlesResponse::InternalSwap(GetCandlesResponse* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
   using ::std::swap;
+  auto* arena = GetArena();
+  ABSL_DCHECK_EQ(arena, other->GetArena());
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   _impl_.candles_.InternalSwap(&other->_impl_.candles_);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata GetCandlesResponse::GetMetadata() const {

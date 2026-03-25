@@ -39,6 +39,12 @@ inline constexpr SubmitOrderResponse::Impl_::Impl_(
         reason_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         accepted_{false} {}
 
 template <typename>
@@ -74,6 +80,15 @@ inline constexpr SubmitOrderRequest::Impl_::Impl_(
         client_order_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        idempotency_key_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         side_{static_cast< ::cerberus::order::v1::Side >(0)},
         order_type_{static_cast< ::cerberus::order::v1::OrderType >(0)},
         price_{0},
@@ -104,6 +119,12 @@ inline constexpr StreamExecutionsRequest::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
         account_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -168,6 +189,12 @@ inline constexpr HealthResponse::Impl_::Impl_(
         version_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         uptime_seconds_{::uint64_t{0u}} {}
 
 template <typename>
@@ -212,6 +239,12 @@ inline constexpr GetServiceStatsResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         live_orders_{::uint64_t{0u}},
         trade_count_{::uint64_t{0u}},
         tracked_orders_{::uint64_t{0u}},
@@ -219,6 +252,12 @@ inline constexpr GetServiceStatsResponse::Impl_::Impl_(
         symbols_{::uint64_t{0u}},
         best_bid_{0},
         best_ask_{0},
+        submit_order_requests_total_{::uint64_t{0u}},
+        submit_order_errors_total_{::uint64_t{0u}},
+        submit_order_rejections_total_{::uint64_t{0u}},
+        submit_order_latency_p95_ms_{0},
+        submit_order_throughput_rps_{0},
+        trade_throughput_rps_{0},
         has_best_bid_{false},
         has_best_ask_{false} {}
 
@@ -269,6 +308,12 @@ inline constexpr GetOrderRequest::Impl_::Impl_(
             ::_pbi::ConstantInitialized()),
         order_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
 template <typename>
@@ -298,6 +343,12 @@ inline constexpr GetOrderBookRequest::Impl_::Impl_(
         symbol_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         depth_{0u} {}
 
 template <typename>
@@ -325,6 +376,12 @@ inline constexpr CancelOrderResponse::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
         reason_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         canceled_{false} {}
@@ -357,6 +414,12 @@ inline constexpr CancelOrderRequest::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         order_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -391,6 +454,12 @@ inline constexpr StreamExecutionsResponse::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         symbol_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         event_time_{nullptr},
@@ -428,6 +497,12 @@ inline constexpr GetOrderResponse::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         symbol_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         updated_at_{nullptr},
@@ -483,6 +558,12 @@ inline constexpr GetOrderBookResponse::Impl_::Impl_(
         symbol_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         generated_at_ms_{::uint64_t{0u}} {}
 
 template <typename>
@@ -516,7 +597,7 @@ const ::uint32_t
         protodesc_cold) = {
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_._has_bits_),
-        10, // hasbit index offset
+        13, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.account_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.side_),
@@ -524,46 +605,68 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.price_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.quantity_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.client_order_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.idempotency_key_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderRequest, _impl_.correlation_id_),
         0,
         1,
+        6,
+        7,
+        8,
+        9,
+        2,
         3,
         4,
         5,
-        6,
-        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_._has_bits_),
-        6, // hasbit index offset
+        8, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_.accepted_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_.order_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_.reason_),
-        2,
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::SubmitOrderResponse, _impl_.correlation_id_),
+        4,
         0,
         1,
+        2,
+        3,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderRequest, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderRequest, _impl_.account_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderRequest, _impl_.order_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderRequest, _impl_.correlation_id_),
         0,
         1,
+        2,
+        3,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderResponse, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderResponse, _impl_.canceled_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderResponse, _impl_.reason_),
-        1,
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::CancelOrderResponse, _impl_.correlation_id_),
+        3,
         0,
+        1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderRequest, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderRequest, _impl_.account_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderRequest, _impl_.order_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderRequest, _impl_.correlation_id_),
         0,
         1,
+        2,
+        3,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_._has_bits_),
-        13, // hasbit index offset
+        15, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.order_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.account_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.symbol_),
@@ -574,23 +677,31 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.filled_quantity_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.status_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.updated_at_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderResponse, _impl_.correlation_id_),
         0,
         1,
         2,
-        4,
-        5,
         6,
         7,
         8,
         9,
+        10,
+        11,
+        5,
         3,
+        4,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookRequest, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookRequest, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookRequest, _impl_.depth_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookRequest, _impl_.correlation_id_),
         0,
+        3,
         1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::OrderBookLevel, _impl_._has_bits_),
         6, // hasbit index offset
@@ -602,51 +713,67 @@ const ::uint32_t
         2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_._has_bits_),
-        7, // hasbit index offset
+        9, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.bids_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.asks_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.generated_at_ms_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetOrderBookResponse, _impl_.correlation_id_),
         2,
         0,
         1,
+        5,
         3,
+        4,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsRequest, _impl_._has_bits_),
-        4, // hasbit index offset
+        6, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsRequest, _impl_.account_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsRequest, _impl_.correlation_id_),
         0,
+        1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_._has_bits_),
-        9, // hasbit index offset
+        11, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.execution_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.order_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.symbol_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.price_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.quantity_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.event_time_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::StreamExecutionsResponse, _impl_.correlation_id_),
         0,
         1,
         2,
-        4,
+        6,
+        7,
         5,
         3,
+        4,
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_._has_bits_),
-        7, // hasbit index offset
+        9, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.status_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.service_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.version_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.uptime_seconds_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.correlation_id_),
         0,
         1,
         2,
+        5,
         3,
+        4,
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_._has_bits_),
-        12, // hasbit index offset
+        20, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.live_orders_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.trade_count_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.tracked_orders_),
@@ -656,34 +783,50 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.best_bid_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.has_best_ask_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.best_ask_),
-        0,
-        1,
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.correlation_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_requests_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_errors_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_rejections_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_throughput_rps_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.trade_throughput_rps_),
         2,
         3,
         4,
-        7,
         5,
-        8,
         6,
+        15,
+        7,
+        16,
+        8,
+        0,
+        1,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
 };
 
 static const ::_pbi::MigrationSchema
     schemas[] ABSL_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
         {0, sizeof(::cerberus::order::v1::SubmitOrderRequest)},
-        {17, sizeof(::cerberus::order::v1::SubmitOrderResponse)},
-        {26, sizeof(::cerberus::order::v1::CancelOrderRequest)},
-        {33, sizeof(::cerberus::order::v1::CancelOrderResponse)},
-        {40, sizeof(::cerberus::order::v1::GetOrderRequest)},
-        {47, sizeof(::cerberus::order::v1::GetOrderResponse)},
-        {70, sizeof(::cerberus::order::v1::GetOrderBookRequest)},
-        {77, sizeof(::cerberus::order::v1::OrderBookLevel)},
-        {86, sizeof(::cerberus::order::v1::GetOrderBookResponse)},
-        {97, sizeof(::cerberus::order::v1::StreamExecutionsRequest)},
-        {102, sizeof(::cerberus::order::v1::StreamExecutionsResponse)},
-        {117, sizeof(::cerberus::order::v1::HealthRequest)},
-        {118, sizeof(::cerberus::order::v1::HealthResponse)},
-        {129, sizeof(::cerberus::order::v1::GetServiceStatsRequest)},
-        {130, sizeof(::cerberus::order::v1::GetServiceStatsResponse)},
+        {23, sizeof(::cerberus::order::v1::SubmitOrderResponse)},
+        {36, sizeof(::cerberus::order::v1::CancelOrderRequest)},
+        {47, sizeof(::cerberus::order::v1::CancelOrderResponse)},
+        {58, sizeof(::cerberus::order::v1::GetOrderRequest)},
+        {69, sizeof(::cerberus::order::v1::GetOrderResponse)},
+        {96, sizeof(::cerberus::order::v1::GetOrderBookRequest)},
+        {107, sizeof(::cerberus::order::v1::OrderBookLevel)},
+        {116, sizeof(::cerberus::order::v1::GetOrderBookResponse)},
+        {131, sizeof(::cerberus::order::v1::StreamExecutionsRequest)},
+        {140, sizeof(::cerberus::order::v1::StreamExecutionsResponse)},
+        {159, sizeof(::cerberus::order::v1::HealthRequest)},
+        {160, sizeof(::cerberus::order::v1::HealthResponse)},
+        {175, sizeof(::cerberus::order::v1::GetServiceStatsRequest)},
+        {176, sizeof(::cerberus::order::v1::GetServiceStatsResponse)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::cerberus::order::v1::_SubmitOrderRequest_default_instance_._instance,
@@ -706,90 +849,124 @@ const char descriptor_table_protodef_cerberus_2forder_2fv1_2forder_2eproto[] ABS
     protodesc_cold) = {
     "\n\035cerberus/order/v1/order.proto\022\021cerberu"
     "s.order.v1\032\037google/protobuf/timestamp.pr"
-    "oto\"\217\002\n\022SubmitOrderRequest\022\035\n\naccount_id"
+    "oto\"\206\003\n\022SubmitOrderRequest\022\035\n\naccount_id"
     "\030\001 \001(\tR\taccountId\022\026\n\006symbol\030\002 \001(\tR\006symbo"
     "l\022+\n\004side\030\003 \001(\0162\027.cerberus.order.v1.Side"
     "R\004side\022;\n\norder_type\030\004 \001(\0162\034.cerberus.or"
     "der.v1.OrderTypeR\torderType\022\024\n\005price\030\005 \001"
     "(\001R\005price\022\032\n\010quantity\030\006 \001(\001R\010quantity\022&\n"
-    "\017client_order_id\030\007 \001(\tR\rclientOrderId\"d\n"
+    "\017client_order_id\030\007 \001(\tR\rclientOrderId\022\'\n"
+    "\017idempotency_key\030\010 \001(\tR\016idempotencyKey\022%"
+    "\n\016schema_version\030\t \001(\tR\rschemaVersion\022%\n"
+    "\016correlation_id\030\n \001(\tR\rcorrelationId\"\262\001\n"
     "\023SubmitOrderResponse\022\032\n\010accepted\030\001 \001(\010R\010"
     "accepted\022\031\n\010order_id\030\002 \001(\tR\007orderId\022\026\n\006r"
-    "eason\030\003 \001(\tR\006reason\"N\n\022CancelOrderReques"
-    "t\022\035\n\naccount_id\030\001 \001(\tR\taccountId\022\031\n\010orde"
-    "r_id\030\002 \001(\tR\007orderId\"I\n\023CancelOrderRespon"
-    "se\022\032\n\010canceled\030\001 \001(\010R\010canceled\022\026\n\006reason"
-    "\030\002 \001(\tR\006reason\"K\n\017GetOrderRequest\022\035\n\nacc"
-    "ount_id\030\001 \001(\tR\taccountId\022\031\n\010order_id\030\002 \001"
-    "(\tR\007orderId\"\234\003\n\020GetOrderResponse\022\031\n\010orde"
-    "r_id\030\001 \001(\tR\007orderId\022\035\n\naccount_id\030\002 \001(\tR"
-    "\taccountId\022\026\n\006symbol\030\003 \001(\tR\006symbol\022+\n\004si"
-    "de\030\004 \001(\0162\027.cerberus.order.v1.SideR\004side\022"
-    ";\n\norder_type\030\005 \001(\0162\034.cerberus.order.v1."
-    "OrderTypeR\torderType\022\024\n\005price\030\006 \001(\001R\005pri"
-    "ce\022\032\n\010quantity\030\007 \001(\001R\010quantity\022\'\n\017filled"
-    "_quantity\030\010 \001(\001R\016filledQuantity\0226\n\006statu"
-    "s\030\t \001(\0162\036.cerberus.order.v1.OrderStatusR"
-    "\006status\0229\n\nupdated_at\030\n \001(\0132\032.google.pro"
-    "tobuf.TimestampR\tupdatedAt\"C\n\023GetOrderBo"
-    "okRequest\022\026\n\006symbol\030\001 \001(\tR\006symbol\022\024\n\005dep"
-    "th\030\002 \001(\rR\005depth\"n\n\016OrderBookLevel\022\024\n\005pri"
-    "ce\030\001 \001(\001R\005price\022%\n\016total_quantity\030\002 \001(\001R"
-    "\rtotalQuantity\022\037\n\013order_count\030\003 \001(\004R\nord"
-    "erCount\"\304\001\n\024GetOrderBookResponse\022\026\n\006symb"
-    "ol\030\001 \001(\tR\006symbol\0225\n\004bids\030\002 \003(\0132!.cerberu"
-    "s.order.v1.OrderBookLevelR\004bids\0225\n\004asks\030"
-    "\003 \003(\0132!.cerberus.order.v1.OrderBookLevel"
-    "R\004asks\022&\n\017generated_at_ms\030\004 \001(\004R\rgenerat"
-    "edAtMs\"8\n\027StreamExecutionsRequest\022\035\n\nacc"
-    "ount_id\030\001 \001(\tR\taccountId\"\335\001\n\030StreamExecu"
-    "tionsResponse\022!\n\014execution_id\030\001 \001(\tR\013exe"
-    "cutionId\022\031\n\010order_id\030\002 \001(\tR\007orderId\022\026\n\006s"
-    "ymbol\030\003 \001(\tR\006symbol\022\024\n\005price\030\004 \001(\001R\005pric"
-    "e\022\032\n\010quantity\030\005 \001(\001R\010quantity\0229\n\nevent_t"
-    "ime\030\006 \001(\0132\032.google.protobuf.TimestampR\te"
-    "ventTime\"\017\n\rHealthRequest\"\203\001\n\016HealthResp"
-    "onse\022\026\n\006status\030\001 \001(\tR\006status\022\030\n\007service\030"
-    "\002 \001(\tR\007service\022\030\n\007version\030\003 \001(\tR\007version"
-    "\022%\n\016uptime_seconds\030\004 \001(\004R\ruptimeSeconds\""
-    "\030\n\026GetServiceStatsRequest\"\277\002\n\027GetService"
-    "StatsResponse\022\037\n\013live_orders\030\001 \001(\004R\nlive"
-    "Orders\022\037\n\013trade_count\030\002 \001(\004R\ntradeCount\022"
-    "%\n\016tracked_orders\030\003 \001(\004R\rtrackedOrders\022\'"
-    "\n\017rejected_orders\030\004 \001(\004R\016rejectedOrders\022"
-    "\030\n\007symbols\030\005 \001(\004R\007symbols\022 \n\014has_best_bi"
-    "d\030\006 \001(\010R\nhasBestBid\022\031\n\010best_bid\030\007 \001(\001R\007b"
-    "estBid\022 \n\014has_best_ask\030\010 \001(\010R\nhasBestAsk"
-    "\022\031\n\010best_ask\030\t \001(\001R\007bestAsk*9\n\004Side\022\024\n\020S"
-    "IDE_UNSPECIFIED\020\000\022\014\n\010SIDE_BUY\020\001\022\r\n\tSIDE_"
-    "SELL\020\002*T\n\tOrderType\022\032\n\026ORDER_TYPE_UNSPEC"
-    "IFIED\020\000\022\024\n\020ORDER_TYPE_LIMIT\020\001\022\025\n\021ORDER_T"
-    "YPE_MARKET\020\002*\263\001\n\013OrderStatus\022\034\n\030ORDER_ST"
-    "ATUS_UNSPECIFIED\020\000\022\024\n\020ORDER_STATUS_NEW\020\001"
-    "\022!\n\035ORDER_STATUS_PARTIALLY_FILLED\020\002\022\027\n\023O"
-    "RDER_STATUS_FILLED\020\003\022\031\n\025ORDER_STATUS_CAN"
-    "CELED\020\004\022\031\n\025ORDER_STATUS_REJECTED\020\0052\250\005\n\014O"
-    "rderService\022\\\n\013SubmitOrder\022%.cerberus.or"
-    "der.v1.SubmitOrderRequest\032&.cerberus.ord"
-    "er.v1.SubmitOrderResponse\022\\\n\013CancelOrder"
-    "\022%.cerberus.order.v1.CancelOrderRequest\032"
-    "&.cerberus.order.v1.CancelOrderResponse\022"
-    "S\n\010GetOrder\022\".cerberus.order.v1.GetOrder"
-    "Request\032#.cerberus.order.v1.GetOrderResp"
-    "onse\022_\n\014GetOrderBook\022&.cerberus.order.v1"
-    ".GetOrderBookRequest\032\'.cerberus.order.v1"
-    ".GetOrderBookResponse\022m\n\020StreamExecution"
-    "s\022*.cerberus.order.v1.StreamExecutionsRe"
-    "quest\032+.cerberus.order.v1.StreamExecutio"
-    "nsResponse0\001\022M\n\006Health\022 .cerberus.order."
-    "v1.HealthRequest\032!.cerberus.order.v1.Hea"
-    "lthResponse\022h\n\017GetServiceStats\022).cerberu"
-    "s.order.v1.GetServiceStatsRequest\032*.cerb"
-    "erus.order.v1.GetServiceStatsResponseB\211\001"
-    "\n\025com.cerberus.order.v1B\nOrderProtoP\001\242\002\003"
-    "COX\252\002\021Cerberus.Order.V1\312\002\021Cerberus\\Order"
-    "\\V1\342\002\035Cerberus\\Order\\V1\\GPBMetadata\352\002\023Ce"
-    "rberus::Order::V1b\006proto3"
+    "eason\030\003 \001(\tR\006reason\022%\n\016schema_version\030\004 "
+    "\001(\tR\rschemaVersion\022%\n\016correlation_id\030\005 \001"
+    "(\tR\rcorrelationId\"\234\001\n\022CancelOrderRequest"
+    "\022\035\n\naccount_id\030\001 \001(\tR\taccountId\022\031\n\010order"
+    "_id\030\002 \001(\tR\007orderId\022%\n\016schema_version\030\003 \001"
+    "(\tR\rschemaVersion\022%\n\016correlation_id\030\004 \001("
+    "\tR\rcorrelationId\"\227\001\n\023CancelOrderResponse"
+    "\022\032\n\010canceled\030\001 \001(\010R\010canceled\022\026\n\006reason\030\002"
+    " \001(\tR\006reason\022%\n\016schema_version\030\003 \001(\tR\rsc"
+    "hemaVersion\022%\n\016correlation_id\030\004 \001(\tR\rcor"
+    "relationId\"\231\001\n\017GetOrderRequest\022\035\n\naccoun"
+    "t_id\030\001 \001(\tR\taccountId\022\031\n\010order_id\030\002 \001(\tR"
+    "\007orderId\022%\n\016schema_version\030\003 \001(\tR\rschema"
+    "Version\022%\n\016correlation_id\030\004 \001(\tR\rcorrela"
+    "tionId\"\352\003\n\020GetOrderResponse\022\031\n\010order_id\030"
+    "\001 \001(\tR\007orderId\022\035\n\naccount_id\030\002 \001(\tR\tacco"
+    "untId\022\026\n\006symbol\030\003 \001(\tR\006symbol\022+\n\004side\030\004 "
+    "\001(\0162\027.cerberus.order.v1.SideR\004side\022;\n\nor"
+    "der_type\030\005 \001(\0162\034.cerberus.order.v1.Order"
+    "TypeR\torderType\022\024\n\005price\030\006 \001(\001R\005price\022\032\n"
+    "\010quantity\030\007 \001(\001R\010quantity\022\'\n\017filled_quan"
+    "tity\030\010 \001(\001R\016filledQuantity\0226\n\006status\030\t \001"
+    "(\0162\036.cerberus.order.v1.OrderStatusR\006stat"
+    "us\0229\n\nupdated_at\030\n \001(\0132\032.google.protobuf"
+    ".TimestampR\tupdatedAt\022%\n\016schema_version\030"
+    "\013 \001(\tR\rschemaVersion\022%\n\016correlation_id\030\014"
+    " \001(\tR\rcorrelationId\"\221\001\n\023GetOrderBookRequ"
+    "est\022\026\n\006symbol\030\001 \001(\tR\006symbol\022\024\n\005depth\030\002 \001"
+    "(\rR\005depth\022%\n\016schema_version\030\003 \001(\tR\rschem"
+    "aVersion\022%\n\016correlation_id\030\004 \001(\tR\rcorrel"
+    "ationId\"n\n\016OrderBookLevel\022\024\n\005price\030\001 \001(\001"
+    "R\005price\022%\n\016total_quantity\030\002 \001(\001R\rtotalQu"
+    "antity\022\037\n\013order_count\030\003 \001(\004R\norderCount\""
+    "\222\002\n\024GetOrderBookResponse\022\026\n\006symbol\030\001 \001(\t"
+    "R\006symbol\0225\n\004bids\030\002 \003(\0132!.cerberus.order."
+    "v1.OrderBookLevelR\004bids\0225\n\004asks\030\003 \003(\0132!."
+    "cerberus.order.v1.OrderBookLevelR\004asks\022&"
+    "\n\017generated_at_ms\030\004 \001(\004R\rgeneratedAtMs\022%"
+    "\n\016schema_version\030\005 \001(\tR\rschemaVersion\022%\n"
+    "\016correlation_id\030\006 \001(\tR\rcorrelationId\"\206\001\n"
+    "\027StreamExecutionsRequest\022\035\n\naccount_id\030\001"
+    " \001(\tR\taccountId\022%\n\016schema_version\030\002 \001(\tR"
+    "\rschemaVersion\022%\n\016correlation_id\030\003 \001(\tR\r"
+    "correlationId\"\253\002\n\030StreamExecutionsRespon"
+    "se\022!\n\014execution_id\030\001 \001(\tR\013executionId\022\031\n"
+    "\010order_id\030\002 \001(\tR\007orderId\022\026\n\006symbol\030\003 \001(\t"
+    "R\006symbol\022\024\n\005price\030\004 \001(\001R\005price\022\032\n\010quanti"
+    "ty\030\005 \001(\001R\010quantity\0229\n\nevent_time\030\006 \001(\0132\032"
+    ".google.protobuf.TimestampR\teventTime\022%\n"
+    "\016schema_version\030\007 \001(\tR\rschemaVersion\022%\n\016"
+    "correlation_id\030\010 \001(\tR\rcorrelationId\"\017\n\rH"
+    "ealthRequest\"\321\001\n\016HealthResponse\022\026\n\006statu"
+    "s\030\001 \001(\tR\006status\022\030\n\007service\030\002 \001(\tR\007servic"
+    "e\022\030\n\007version\030\003 \001(\tR\007version\022%\n\016uptime_se"
+    "conds\030\004 \001(\004R\ruptimeSeconds\022%\n\016schema_ver"
+    "sion\030\005 \001(\tR\rschemaVersion\022%\n\016correlation"
+    "_id\030\006 \001(\tR\rcorrelationId\"\030\n\026GetServiceSt"
+    "atsRequest\"\371\005\n\027GetServiceStatsResponse\022\037"
+    "\n\013live_orders\030\001 \001(\004R\nliveOrders\022\037\n\013trade"
+    "_count\030\002 \001(\004R\ntradeCount\022%\n\016tracked_orde"
+    "rs\030\003 \001(\004R\rtrackedOrders\022\'\n\017rejected_orde"
+    "rs\030\004 \001(\004R\016rejectedOrders\022\030\n\007symbols\030\005 \001("
+    "\004R\007symbols\022 \n\014has_best_bid\030\006 \001(\010R\nhasBes"
+    "tBid\022\031\n\010best_bid\030\007 \001(\001R\007bestBid\022 \n\014has_b"
+    "est_ask\030\010 \001(\010R\nhasBestAsk\022\031\n\010best_ask\030\t "
+    "\001(\001R\007bestAsk\022%\n\016schema_version\030\n \001(\tR\rsc"
+    "hemaVersion\022%\n\016correlation_id\030\013 \001(\tR\rcor"
+    "relationId\022=\n\033submit_order_requests_tota"
+    "l\030\014 \001(\004R\030submitOrderRequestsTotal\0229\n\031sub"
+    "mit_order_errors_total\030\r \001(\004R\026submitOrde"
+    "rErrorsTotal\022A\n\035submit_order_rejections_"
+    "total\030\016 \001(\004R\032submitOrderRejectionsTotal\022"
+    "<\n\033submit_order_latency_p95_ms\030\017 \001(\001R\027su"
+    "bmitOrderLatencyP95Ms\022=\n\033submit_order_th"
+    "roughput_rps\030\020 \001(\001R\030submitOrderThroughpu"
+    "tRps\0220\n\024trade_throughput_rps\030\021 \001(\001R\022trad"
+    "eThroughputRps*9\n\004Side\022\024\n\020SIDE_UNSPECIFI"
+    "ED\020\000\022\014\n\010SIDE_BUY\020\001\022\r\n\tSIDE_SELL\020\002*T\n\tOrd"
+    "erType\022\032\n\026ORDER_TYPE_UNSPECIFIED\020\000\022\024\n\020OR"
+    "DER_TYPE_LIMIT\020\001\022\025\n\021ORDER_TYPE_MARKET\020\002*"
+    "\263\001\n\013OrderStatus\022\034\n\030ORDER_STATUS_UNSPECIF"
+    "IED\020\000\022\024\n\020ORDER_STATUS_NEW\020\001\022!\n\035ORDER_STA"
+    "TUS_PARTIALLY_FILLED\020\002\022\027\n\023ORDER_STATUS_F"
+    "ILLED\020\003\022\031\n\025ORDER_STATUS_CANCELED\020\004\022\031\n\025OR"
+    "DER_STATUS_REJECTED\020\0052\250\005\n\014OrderService\022\\"
+    "\n\013SubmitOrder\022%.cerberus.order.v1.Submit"
+    "OrderRequest\032&.cerberus.order.v1.SubmitO"
+    "rderResponse\022\\\n\013CancelOrder\022%.cerberus.o"
+    "rder.v1.CancelOrderRequest\032&.cerberus.or"
+    "der.v1.CancelOrderResponse\022S\n\010GetOrder\022\""
+    ".cerberus.order.v1.GetOrderRequest\032#.cer"
+    "berus.order.v1.GetOrderResponse\022_\n\014GetOr"
+    "derBook\022&.cerberus.order.v1.GetOrderBook"
+    "Request\032\'.cerberus.order.v1.GetOrderBook"
+    "Response\022m\n\020StreamExecutions\022*.cerberus."
+    "order.v1.StreamExecutionsRequest\032+.cerbe"
+    "rus.order.v1.StreamExecutionsResponse0\001\022"
+    "M\n\006Health\022 .cerberus.order.v1.HealthRequ"
+    "est\032!.cerberus.order.v1.HealthResponse\022h"
+    "\n\017GetServiceStats\022).cerberus.order.v1.Ge"
+    "tServiceStatsRequest\032*.cerberus.order.v1"
+    ".GetServiceStatsResponseB\211\001\n\025com.cerberu"
+    "s.order.v1B\nOrderProtoP\001\242\002\003COX\252\002\021Cerberu"
+    "s.Order.V1\312\002\021Cerberus\\Order\\V1\342\002\035Cerberu"
+    "s\\Order\\V1\\GPBMetadata\352\002\023Cerberus::Order"
+    "::V1b\006proto3"
 };
 static const ::_pbi::DescriptorTable* PROTOBUF_NONNULL const
     descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_deps[1] = {
@@ -799,7 +976,7 @@ static ::absl::once_flag descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_cerberus_2forder_2fv1_2forder_2eproto = {
     false,
     false,
-    3425,
+    4772,
     descriptor_table_protodef_cerberus_2forder_2fv1_2forder_2eproto,
     "cerberus/order/v1/order.proto",
     &descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_once,
@@ -863,7 +1040,10 @@ PROTOBUF_NDEBUG_INLINE SubmitOrderRequest::Impl_::Impl_(
         _cached_size_{0},
         account_id_(arena, from.account_id_),
         symbol_(arena, from.symbol_),
-        client_order_id_(arena, from.client_order_id_) {}
+        client_order_id_(arena, from.client_order_id_),
+        idempotency_key_(arena, from.idempotency_key_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 SubmitOrderRequest::SubmitOrderRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -894,7 +1074,10 @@ PROTOBUF_NDEBUG_INLINE SubmitOrderRequest::Impl_::Impl_(
       : _cached_size_{0},
         account_id_(arena),
         symbol_(arena),
-        client_order_id_(arena) {}
+        client_order_id_(arena),
+        idempotency_key_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void SubmitOrderRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -919,6 +1102,9 @@ inline void SubmitOrderRequest::SharedDtor(MessageLite& self) {
   this_._impl_.account_id_.Destroy();
   this_._impl_.symbol_.Destroy();
   this_._impl_.client_order_id_.Destroy();
+  this_._impl_.idempotency_key_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -964,16 +1150,16 @@ SubmitOrderRequest::GetClassData() const {
   return SubmitOrderRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<3, 7, 0, 76, 2>
+const ::_pbi::TcParseTable<4, 10, 0, 127, 2>
 SubmitOrderRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_._has_bits_),
     0, // no _extensions_
-    7, 56,  // max_field_number, fast_idx_mask
+    10, 120,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967168,  // skipmap
+    4294966272,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    7,  // num_field_entries
+    10,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     SubmitOrderRequest_class_data_.base(),
@@ -993,25 +1179,42 @@ SubmitOrderRequest::_table_ = {
      {18, 1, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.symbol_)}},
     // .cerberus.order.v1.Side side = 3 [json_name = "side"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(SubmitOrderRequest, _impl_.side_), 3>(),
-     {24, 3, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(SubmitOrderRequest, _impl_.side_), 6>(),
+     {24, 6, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.side_)}},
     // .cerberus.order.v1.OrderType order_type = 4 [json_name = "orderType"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(SubmitOrderRequest, _impl_.order_type_), 4>(),
-     {32, 4, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(SubmitOrderRequest, _impl_.order_type_), 7>(),
+     {32, 7, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.order_type_)}},
     // double price = 5 [json_name = "price"];
     {::_pbi::TcParser::FastF64S1,
-     {41, 5, 0,
+     {41, 8, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.price_)}},
     // double quantity = 6 [json_name = "quantity"];
     {::_pbi::TcParser::FastF64S1,
-     {49, 6, 0,
+     {49, 9, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.quantity_)}},
     // string client_order_id = 7 [json_name = "clientOrderId"];
     {::_pbi::TcParser::FastUS1,
      {58, 2, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.client_order_id_)}},
+    // string idempotency_key = 8 [json_name = "idempotencyKey"];
+    {::_pbi::TcParser::FastUS1,
+     {66, 3, 0,
+      PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.idempotency_key_)}},
+    // string schema_version = 9 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {74, 4, 0,
+      PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.schema_version_)}},
+    // string correlation_id = 10 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {82, 5, 0,
+      PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -1020,23 +1223,32 @@ SubmitOrderRequest::_table_ = {
     // string symbol = 2 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.symbol_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // .cerberus.order.v1.Side side = 3 [json_name = "side"];
-    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.side_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.side_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
     // .cerberus.order.v1.OrderType order_type = 4 [json_name = "orderType"];
-    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.order_type_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.order_type_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
     // double price = 5 [json_name = "price"];
-    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.price_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.price_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double quantity = 6 [json_name = "quantity"];
-    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.quantity_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.quantity_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // string client_order_id = 7 [json_name = "clientOrderId"];
     {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.client_order_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string idempotency_key = 8 [json_name = "idempotencyKey"];
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.idempotency_key_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 9 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 10 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\44\12\6\0\0\0\0\17"
+    "\44\12\6\0\0\0\0\17\17\16\16\0\0\0\0\0"
     "cerberus.order.v1.SubmitOrderRequest"
     "account_id"
     "symbol"
     "client_order_id"
+    "idempotency_key"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
@@ -1047,7 +1259,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.account_id_.ClearNonDefaultToEmpty();
     }
@@ -1057,11 +1269,25 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       _impl_.client_order_id_.ClearNonDefaultToEmpty();
     }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.idempotency_key_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x00000078U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000c0U)) {
     ::memset(&_impl_.side_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.order_type_) -
+        reinterpret_cast<char*>(&_impl_.side_)) + sizeof(_impl_.order_type_));
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
+    ::memset(&_impl_.price_, 0, static_cast<::size_t>(
         reinterpret_cast<char*>(&_impl_.quantity_) -
-        reinterpret_cast<char*>(&_impl_.side_)) + sizeof(_impl_.quantity_));
+        reinterpret_cast<char*>(&_impl_.price_)) + sizeof(_impl_.quantity_));
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -1107,7 +1333,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
   }
 
   // .cerberus.order.v1.Side side = 3 [json_name = "side"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (this_._internal_side() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -1116,7 +1342,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
   }
 
   // .cerberus.order.v1.OrderType order_type = 4 [json_name = "orderType"];
-  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
     if (this_._internal_order_type() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -1125,7 +1351,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
   }
 
   // double price = 5 [json_name = "price"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -1134,7 +1360,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
   }
 
   // double quantity = 6 [json_name = "quantity"];
-  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -1149,6 +1375,36 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderRequest.client_order_id");
       target = stream->WriteStringMaybeAliased(7, _s, target);
+    }
+  }
+
+  // string idempotency_key = 8 [json_name = "idempotencyKey"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_idempotency_key().empty()) {
+      const ::std::string& _s = this_._internal_idempotency_key();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderRequest.idempotency_key");
+      target = stream->WriteStringMaybeAliased(8, _s, target);
+    }
+  }
+
+  // string schema_version = 9 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(9, _s, target);
+    }
+  }
+
+  // string correlation_id = 10 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(10, _s, target);
     }
   }
 
@@ -1177,7 +1433,7 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000007fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     // string account_id = 1 [json_name = "accountId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_account_id().empty()) {
@@ -1199,28 +1455,51 @@ PROTOBUF_NOINLINE void SubmitOrderRequest::Clear() {
                                         this_._internal_client_order_id());
       }
     }
-    // .cerberus.order.v1.Side side = 3 [json_name = "side"];
+    // string idempotency_key = 8 [json_name = "idempotencyKey"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_idempotency_key().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_idempotency_key());
+      }
+    }
+    // string schema_version = 9 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 10 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // .cerberus.order.v1.Side side = 3 [json_name = "side"];
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (this_._internal_side() != 0) {
         total_size += 1 +
                       ::_pbi::WireFormatLite::EnumSize(this_._internal_side());
       }
     }
     // .cerberus.order.v1.OrderType order_type = 4 [json_name = "orderType"];
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (this_._internal_order_type() != 0) {
         total_size += 1 +
                       ::_pbi::WireFormatLite::EnumSize(this_._internal_order_type());
       }
     }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
     // double price = 5 [json_name = "price"];
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
         total_size += 9;
       }
     }
     // double quantity = 6 [json_name = "quantity"];
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
         total_size += 9;
       }
@@ -1244,7 +1523,7 @@ void SubmitOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000007fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_account_id().empty()) {
         _this->_internal_set_account_id(from._internal_account_id());
@@ -1273,21 +1552,50 @@ void SubmitOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_idempotency_key().empty()) {
+        _this->_internal_set_idempotency_key(from._internal_idempotency_key());
+      } else {
+        if (_this->_impl_.idempotency_key_.IsDefault()) {
+          _this->_internal_set_idempotency_key("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (from._internal_side() != 0) {
         _this->_impl_.side_ = from._impl_.side_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (from._internal_order_type() != 0) {
         _this->_impl_.order_type_ = from._impl_.order_type_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_price()) != 0) {
         _this->_impl_.price_ = from._impl_.price_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_quantity()) != 0) {
         _this->_impl_.quantity_ = from._impl_.quantity_;
       }
@@ -1315,6 +1623,9 @@ void SubmitOrderRequest::InternalSwap(SubmitOrderRequest* PROTOBUF_RESTRICT PROT
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.account_id_, &other->_impl_.account_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.client_order_id_, &other->_impl_.client_order_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.idempotency_key_, &other->_impl_.idempotency_key_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   ::google::protobuf::internal::memswap<
       PROTOBUF_FIELD_OFFSET(SubmitOrderRequest, _impl_.quantity_)
       + sizeof(SubmitOrderRequest::_impl_.quantity_)
@@ -1352,7 +1663,9 @@ PROTOBUF_NDEBUG_INLINE SubmitOrderResponse::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         order_id_(arena, from.order_id_),
-        reason_(arena, from.reason_) {}
+        reason_(arena, from.reason_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 SubmitOrderResponse::SubmitOrderResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1376,7 +1689,9 @@ PROTOBUF_NDEBUG_INLINE SubmitOrderResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         order_id_(arena),
-        reason_(arena) {}
+        reason_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void SubmitOrderResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1395,6 +1710,8 @@ inline void SubmitOrderResponse::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.order_id_.Destroy();
   this_._impl_.reason_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -1440,16 +1757,16 @@ SubmitOrderResponse::GetClassData() const {
   return SubmitOrderResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 3, 0, 60, 2>
+const ::_pbi::TcParseTable<3, 5, 0, 88, 2>
 SubmitOrderResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_._has_bits_),
     0, // no _extensions_
-    3, 24,  // max_field_number, fast_idx_mask
+    5, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967288,  // skipmap
+    4294967264,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    3,  // num_field_entries
+    5,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     SubmitOrderResponse_class_data_.base(),
@@ -1461,8 +1778,8 @@ SubmitOrderResponse::_table_ = {
   }, {{
     {::_pbi::TcParser::MiniParse, {}},
     // bool accepted = 1 [json_name = "accepted"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(SubmitOrderResponse, _impl_.accepted_), 2>(),
-     {8, 2, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(SubmitOrderResponse, _impl_.accepted_), 4>(),
+     {8, 4, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.accepted_)}},
     // string order_id = 2 [json_name = "orderId"];
     {::_pbi::TcParser::FastUS1,
@@ -1472,22 +1789,38 @@ SubmitOrderResponse::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {26, 1, 0,
       PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.reason_)}},
+    // string schema_version = 4 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.schema_version_)}},
+    // string correlation_id = 5 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
     // bool accepted = 1 [json_name = "accepted"];
-    {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.accepted_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.accepted_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // string order_id = 2 [json_name = "orderId"];
     {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.order_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string reason = 3 [json_name = "reason"];
     {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.reason_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 4 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 5 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(SubmitOrderResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\45\0\10\6\0\0\0\0"
+    "\45\0\10\6\16\16\0\0"
     "cerberus.order.v1.SubmitOrderResponse"
     "order_id"
     "reason"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
@@ -1498,12 +1831,18 @@ PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.order_id_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.reason_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.accepted_ = false;
@@ -1531,7 +1870,7 @@ PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // bool accepted = 1 [json_name = "accepted"];
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (this_._internal_accepted() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -1556,6 +1895,26 @@ PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderResponse.reason");
       target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string schema_version = 4 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
+  // string correlation_id = 5 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.SubmitOrderResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
     }
   }
 
@@ -1584,7 +1943,7 @@ PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     // string order_id = 2 [json_name = "orderId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_order_id().empty()) {
@@ -1599,8 +1958,22 @@ PROTOBUF_NOINLINE void SubmitOrderResponse::Clear() {
                                         this_._internal_reason());
       }
     }
-    // bool accepted = 1 [json_name = "accepted"];
+    // string schema_version = 4 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 5 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // bool accepted = 1 [json_name = "accepted"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (this_._internal_accepted() != 0) {
         total_size += 2;
       }
@@ -1624,7 +1997,7 @@ void SubmitOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_order_id().empty()) {
         _this->_internal_set_order_id(from._internal_order_id());
@@ -1644,6 +2017,24 @@ void SubmitOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (from._internal_accepted() != 0) {
         _this->_impl_.accepted_ = from._impl_.accepted_;
       }
@@ -1670,6 +2061,8 @@ void SubmitOrderResponse::InternalSwap(SubmitOrderResponse* PROTOBUF_RESTRICT PR
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.order_id_, &other->_impl_.order_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.reason_, &other->_impl_.reason_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.accepted_, other->_impl_.accepted_);
 }
 
@@ -1702,7 +2095,9 @@ PROTOBUF_NDEBUG_INLINE CancelOrderRequest::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         account_id_(arena, from.account_id_),
-        order_id_(arena, from.order_id_) {}
+        order_id_(arena, from.order_id_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 CancelOrderRequest::CancelOrderRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1725,7 +2120,9 @@ PROTOBUF_NDEBUG_INLINE CancelOrderRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         account_id_(arena),
-        order_id_(arena) {}
+        order_id_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void CancelOrderRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1743,6 +2140,8 @@ inline void CancelOrderRequest::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.account_id_.Destroy();
   this_._impl_.order_id_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -1788,16 +2187,16 @@ CancelOrderRequest::GetClassData() const {
   return CancelOrderRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 63, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 91, 2>
 CancelOrderRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     CancelOrderRequest_class_data_.base(),
@@ -1807,14 +2206,22 @@ CancelOrderRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::CancelOrderRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // string order_id = 2 [json_name = "orderId"];
+    // string correlation_id = 4 [json_name = "correlationId"];
     {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.order_id_)}},
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.correlation_id_)}},
     // string account_id = 1 [json_name = "accountId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.account_id_)}},
+    // string order_id = 2 [json_name = "orderId"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.order_id_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -1822,13 +2229,19 @@ CancelOrderRequest::_table_ = {
     {PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.account_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string order_id = 2 [json_name = "orderId"];
     {PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.order_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(CancelOrderRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\44\12\10\0\0\0\0\0"
+    "\44\12\10\16\16\0\0\0"
     "cerberus.order.v1.CancelOrderRequest"
     "account_id"
     "order_id"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void CancelOrderRequest::Clear() {
@@ -1839,12 +2252,18 @@ PROTOBUF_NOINLINE void CancelOrderRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.account_id_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.order_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -1890,6 +2309,26 @@ PROTOBUF_NOINLINE void CancelOrderRequest::Clear() {
     }
   }
 
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.CancelOrderRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.CancelOrderRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -1915,7 +2354,7 @@ PROTOBUF_NOINLINE void CancelOrderRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string account_id = 1 [json_name = "accountId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_account_id().empty()) {
@@ -1928,6 +2367,20 @@ PROTOBUF_NOINLINE void CancelOrderRequest::Clear() {
       if (!this_._internal_order_id().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_order_id());
+      }
+    }
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -1949,7 +2402,7 @@ void CancelOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_account_id().empty()) {
         _this->_internal_set_account_id(from._internal_account_id());
@@ -1965,6 +2418,24 @@ void CancelOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       } else {
         if (_this->_impl_.order_id_.IsDefault()) {
           _this->_internal_set_order_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
         }
       }
     }
@@ -1990,6 +2461,8 @@ void CancelOrderRequest::InternalSwap(CancelOrderRequest* PROTOBUF_RESTRICT PROT
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.account_id_, &other->_impl_.account_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.order_id_, &other->_impl_.order_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata CancelOrderRequest::GetMetadata() const {
@@ -2020,7 +2493,9 @@ PROTOBUF_NDEBUG_INLINE CancelOrderResponse::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::order::v1::CancelOrderResponse& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        reason_(arena, from.reason_) {}
+        reason_(arena, from.reason_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 CancelOrderResponse::CancelOrderResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -2043,7 +2518,9 @@ PROTOBUF_NDEBUG_INLINE CancelOrderResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        reason_(arena) {}
+        reason_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void CancelOrderResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -2061,6 +2538,8 @@ inline void CancelOrderResponse::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.reason_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -2106,16 +2585,16 @@ CancelOrderResponse::GetClassData() const {
   return CancelOrderResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 52, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 80, 2>
 CancelOrderResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     CancelOrderResponse_class_data_.base(),
@@ -2125,27 +2604,41 @@ CancelOrderResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::CancelOrderResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.correlation_id_)}},
+    // bool canceled = 1 [json_name = "canceled"];
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(CancelOrderResponse, _impl_.canceled_), 3>(),
+     {8, 3, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.canceled_)}},
     // string reason = 2 [json_name = "reason"];
     {::_pbi::TcParser::FastUS1,
      {18, 0, 0,
       PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.reason_)}},
-    // bool canceled = 1 [json_name = "canceled"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(CancelOrderResponse, _impl_.canceled_), 1>(),
-     {8, 1, 0,
-      PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.canceled_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 1, 0,
+      PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
     // bool canceled = 1 [json_name = "canceled"];
-    {PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.canceled_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.canceled_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // string reason = 2 [json_name = "reason"];
     {PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.reason_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(CancelOrderResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\45\0\6\0\0\0\0\0"
+    "\45\0\6\16\16\0\0\0"
     "cerberus.order.v1.CancelOrderResponse"
     "reason"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
@@ -2156,8 +2649,16 @@ PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.reason_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.reason_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.canceled_ = false;
   _impl_._has_bits_.Clear();
@@ -2184,7 +2685,7 @@ PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // bool canceled = 1 [json_name = "canceled"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_canceled() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -2199,6 +2700,26 @@ PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.CancelOrderResponse.reason");
       target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.CancelOrderResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.CancelOrderResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
     }
   }
 
@@ -2227,7 +2748,7 @@ PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string reason = 2 [json_name = "reason"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_reason().empty()) {
@@ -2235,8 +2756,22 @@ PROTOBUF_NOINLINE void CancelOrderResponse::Clear() {
                                         this_._internal_reason());
       }
     }
-    // bool canceled = 1 [json_name = "canceled"];
+    // string schema_version = 3 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // bool canceled = 1 [json_name = "canceled"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_canceled() != 0) {
         total_size += 2;
       }
@@ -2260,7 +2795,7 @@ void CancelOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_reason().empty()) {
         _this->_internal_set_reason(from._internal_reason());
@@ -2271,6 +2806,24 @@ void CancelOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_canceled() != 0) {
         _this->_impl_.canceled_ = from._impl_.canceled_;
       }
@@ -2296,6 +2849,8 @@ void CancelOrderResponse::InternalSwap(CancelOrderResponse* PROTOBUF_RESTRICT PR
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.reason_, &other->_impl_.reason_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.canceled_, other->_impl_.canceled_);
 }
 
@@ -2328,7 +2883,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderRequest::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         account_id_(arena, from.account_id_),
-        order_id_(arena, from.order_id_) {}
+        order_id_(arena, from.order_id_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetOrderRequest::GetOrderRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -2351,7 +2908,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         account_id_(arena),
-        order_id_(arena) {}
+        order_id_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetOrderRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -2369,6 +2928,8 @@ inline void GetOrderRequest::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.account_id_.Destroy();
   this_._impl_.order_id_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -2414,16 +2975,16 @@ GetOrderRequest::GetClassData() const {
   return GetOrderRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 60, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 88, 2>
 GetOrderRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     GetOrderRequest_class_data_.base(),
@@ -2433,14 +2994,22 @@ GetOrderRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::GetOrderRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // string order_id = 2 [json_name = "orderId"];
+    // string correlation_id = 4 [json_name = "correlationId"];
     {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.order_id_)}},
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.correlation_id_)}},
     // string account_id = 1 [json_name = "accountId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.account_id_)}},
+    // string order_id = 2 [json_name = "orderId"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.order_id_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -2448,13 +3017,19 @@ GetOrderRequest::_table_ = {
     {PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.account_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string order_id = 2 [json_name = "orderId"];
     {PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.order_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\41\12\10\0\0\0\0\0"
+    "\41\12\10\16\16\0\0\0"
     "cerberus.order.v1.GetOrderRequest"
     "account_id"
     "order_id"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetOrderRequest::Clear() {
@@ -2465,12 +3040,18 @@ PROTOBUF_NOINLINE void GetOrderRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.account_id_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.order_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -2516,6 +3097,26 @@ PROTOBUF_NOINLINE void GetOrderRequest::Clear() {
     }
   }
 
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -2541,7 +3142,7 @@ PROTOBUF_NOINLINE void GetOrderRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string account_id = 1 [json_name = "accountId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_account_id().empty()) {
@@ -2554,6 +3155,20 @@ PROTOBUF_NOINLINE void GetOrderRequest::Clear() {
       if (!this_._internal_order_id().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_order_id());
+      }
+    }
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -2575,7 +3190,7 @@ void GetOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_account_id().empty()) {
         _this->_internal_set_account_id(from._internal_account_id());
@@ -2591,6 +3206,24 @@ void GetOrderRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       } else {
         if (_this->_impl_.order_id_.IsDefault()) {
           _this->_internal_set_order_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
         }
       }
     }
@@ -2616,6 +3249,8 @@ void GetOrderRequest::InternalSwap(GetOrderRequest* PROTOBUF_RESTRICT PROTOBUF_N
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.account_id_, &other->_impl_.account_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.order_id_, &other->_impl_.order_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata GetOrderRequest::GetMetadata() const {
@@ -2635,7 +3270,7 @@ void GetOrderResponse::clear_updated_at() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   if (_impl_.updated_at_ != nullptr) _impl_.updated_at_->Clear();
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 GetOrderResponse::GetOrderResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
@@ -2654,7 +3289,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderResponse::Impl_::Impl_(
         _cached_size_{0},
         order_id_(arena, from.order_id_),
         account_id_(arena, from.account_id_),
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetOrderResponse::GetOrderResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -2670,7 +3307,7 @@ GetOrderResponse::GetOrderResponse(
       from._internal_metadata_);
   new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
   ::uint32_t cached_has_bits = _impl_._has_bits_[0];
-  _impl_.updated_at_ = (CheckHasBit(cached_has_bits, 0x00000008U))
+  _impl_.updated_at_ = (CheckHasBit(cached_has_bits, 0x00000020U))
                 ? ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.updated_at_)
                 : nullptr;
   ::memcpy(reinterpret_cast<char*>(&_impl_) +
@@ -2689,7 +3326,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderResponse::Impl_::Impl_(
       : _cached_size_{0},
         order_id_(arena),
         account_id_(arena),
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetOrderResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -2714,6 +3353,8 @@ inline void GetOrderResponse::SharedDtor(MessageLite& self) {
   this_._impl_.order_id_.Destroy();
   this_._impl_.account_id_.Destroy();
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   delete this_._impl_.updated_at_;
   this_._impl_.~Impl_();
 }
@@ -2760,16 +3401,16 @@ GetOrderResponse::GetClassData() const {
   return GetOrderResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<4, 10, 1, 75, 2>
+const ::_pbi::TcParseTable<4, 12, 1, 103, 2>
 GetOrderResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_._has_bits_),
     0, // no _extensions_
-    10, 120,  // max_field_number, fast_idx_mask
+    12, 120,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294966272,  // skipmap
+    4294963200,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    10,  // num_field_entries
+    12,  // num_field_entries
     1,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     GetOrderResponse_class_data_.base(),
@@ -2793,35 +3434,41 @@ GetOrderResponse::_table_ = {
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.symbol_)}},
     // .cerberus.order.v1.Side side = 4 [json_name = "side"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.side_), 4>(),
-     {32, 4, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.side_), 6>(),
+     {32, 6, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.side_)}},
     // .cerberus.order.v1.OrderType order_type = 5 [json_name = "orderType"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.order_type_), 5>(),
-     {40, 5, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.order_type_), 7>(),
+     {40, 7, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.order_type_)}},
     // double price = 6 [json_name = "price"];
     {::_pbi::TcParser::FastF64S1,
-     {49, 6, 0,
+     {49, 8, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.price_)}},
     // double quantity = 7 [json_name = "quantity"];
     {::_pbi::TcParser::FastF64S1,
-     {57, 7, 0,
+     {57, 9, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.quantity_)}},
     // double filled_quantity = 8 [json_name = "filledQuantity"];
     {::_pbi::TcParser::FastF64S1,
-     {65, 8, 0,
+     {65, 10, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.filled_quantity_)}},
     // .cerberus.order.v1.OrderStatus status = 9 [json_name = "status"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.status_), 9>(),
-     {72, 9, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderResponse, _impl_.status_), 11>(),
+     {72, 11, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.status_)}},
     // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
     {::_pbi::TcParser::FastMtS1,
-     {82, 3, 0,
+     {82, 5, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.updated_at_)}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
+    // string schema_version = 11 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {90, 3, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.schema_version_)}},
+    // string correlation_id = 12 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {98, 4, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.correlation_id_)}},
     {::_pbi::TcParser::MiniParse, {}},
     {::_pbi::TcParser::MiniParse, {}},
     {::_pbi::TcParser::MiniParse, {}},
@@ -2835,29 +3482,35 @@ GetOrderResponse::_table_ = {
     // string symbol = 3 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.symbol_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // .cerberus.order.v1.Side side = 4 [json_name = "side"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.side_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.side_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
     // .cerberus.order.v1.OrderType order_type = 5 [json_name = "orderType"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.order_type_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.order_type_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
     // double price = 6 [json_name = "price"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.price_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.price_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double quantity = 7 [json_name = "quantity"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.quantity_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.quantity_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double filled_quantity = 8 [json_name = "filledQuantity"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.filled_quantity_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.filled_quantity_), _Internal::kHasBitsOffset + 10, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // .cerberus.order.v1.OrderStatus status = 9 [json_name = "status"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.status_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.status_), _Internal::kHasBitsOffset + 11, 0, (0 | ::_fl::kFcOptional | ::_fl::kOpenEnum)},
     // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.updated_at_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.updated_at_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    // string schema_version = 11 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 12 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::google::protobuf::Timestamp>()},
   }},
   {{
-    "\42\10\12\6\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\42\10\12\6\0\0\0\0\0\0\0\16\16\0\0\0"
     "cerberus.order.v1.GetOrderResponse"
     "order_id"
     "account_id"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
@@ -2868,7 +3521,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.order_id_.ClearNonDefaultToEmpty();
     }
@@ -2879,19 +3532,25 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
       _impl_.symbol_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(_impl_.updated_at_ != nullptr);
       _impl_.updated_at_->Clear();
     }
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x000000f0U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000c0U)) {
     ::memset(&_impl_.side_, 0, static_cast<::size_t>(
-        reinterpret_cast<char*>(&_impl_.quantity_) -
-        reinterpret_cast<char*>(&_impl_.side_)) + sizeof(_impl_.quantity_));
+        reinterpret_cast<char*>(&_impl_.order_type_) -
+        reinterpret_cast<char*>(&_impl_.side_)) + sizeof(_impl_.order_type_));
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
-    ::memset(&_impl_.filled_quantity_, 0, static_cast<::size_t>(
+  if (BatchCheckHasBit(cached_has_bits, 0x00000f00U)) {
+    ::memset(&_impl_.price_, 0, static_cast<::size_t>(
         reinterpret_cast<char*>(&_impl_.status_) -
-        reinterpret_cast<char*>(&_impl_.filled_quantity_)) + sizeof(_impl_.status_));
+        reinterpret_cast<char*>(&_impl_.price_)) + sizeof(_impl_.status_));
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -2947,7 +3606,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // .cerberus.order.v1.Side side = 4 [json_name = "side"];
-  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (this_._internal_side() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -2956,7 +3615,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // .cerberus.order.v1.OrderType order_type = 5 [json_name = "orderType"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
     if (this_._internal_order_type() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -2965,7 +3624,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // double price = 6 [json_name = "price"];
-  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -2974,7 +3633,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // double quantity = 7 [json_name = "quantity"];
-  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -2983,7 +3642,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // double filled_quantity = 8 [json_name = "filledQuantity"];
-  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000400U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_filled_quantity()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -2992,7 +3651,7 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // .cerberus.order.v1.OrderStatus status = 9 [json_name = "status"];
-  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000800U)) {
     if (this_._internal_status() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteEnumToArray(
@@ -3001,10 +3660,30 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
   }
 
   // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
         10, *this_._impl_.updated_at_, this_._impl_.updated_at_->GetCachedSize(), target,
         stream);
+  }
+
+  // string schema_version = 11 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(11, _s, target);
+    }
+  }
+
+  // string correlation_id = 12 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(12, _s, target);
+    }
   }
 
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
@@ -3054,47 +3733,61 @@ PROTOBUF_NOINLINE void GetOrderResponse::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
+    // string schema_version = 11 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 12 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       total_size += 1 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.updated_at_);
     }
     // .cerberus.order.v1.Side side = 4 [json_name = "side"];
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (this_._internal_side() != 0) {
         total_size += 1 +
                       ::_pbi::WireFormatLite::EnumSize(this_._internal_side());
       }
     }
     // .cerberus.order.v1.OrderType order_type = 5 [json_name = "orderType"];
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (this_._internal_order_type() != 0) {
         total_size += 1 +
                       ::_pbi::WireFormatLite::EnumSize(this_._internal_order_type());
       }
     }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00000f00U)) {
     // double price = 6 [json_name = "price"];
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
         total_size += 9;
       }
     }
     // double quantity = 7 [json_name = "quantity"];
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
         total_size += 9;
       }
     }
-  }
-  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
     // double filled_quantity = 8 [json_name = "filledQuantity"];
-    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_filled_quantity()) != 0) {
         total_size += 9;
       }
     }
     // .cerberus.order.v1.OrderStatus status = 9 [json_name = "status"];
-    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
       if (this_._internal_status() != 0) {
         total_size += 1 +
                       ::_pbi::WireFormatLite::EnumSize(this_._internal_status());
@@ -3149,6 +3842,24 @@ void GetOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(from._impl_.updated_at_ != nullptr);
       if (_this->_impl_.updated_at_ == nullptr) {
         _this->_impl_.updated_at_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.updated_at_);
@@ -3156,34 +3867,34 @@ void GetOrderResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
         _this->_impl_.updated_at_->MergeFrom(*from._impl_.updated_at_);
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (from._internal_side() != 0) {
         _this->_impl_.side_ = from._impl_.side_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (from._internal_order_type() != 0) {
         _this->_impl_.order_type_ = from._impl_.order_type_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00000f00U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_price()) != 0) {
         _this->_impl_.price_ = from._impl_.price_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_quantity()) != 0) {
         _this->_impl_.quantity_ = from._impl_.quantity_;
       }
     }
-  }
-  if (BatchCheckHasBit(cached_has_bits, 0x00000300U)) {
-    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_filled_quantity()) != 0) {
         _this->_impl_.filled_quantity_ = from._impl_.filled_quantity_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
       if (from._internal_status() != 0) {
         _this->_impl_.status_ = from._impl_.status_;
       }
@@ -3211,6 +3922,8 @@ void GetOrderResponse::InternalSwap(GetOrderResponse* PROTOBUF_RESTRICT PROTOBUF
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.order_id_, &other->_impl_.order_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.account_id_, &other->_impl_.account_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   ::google::protobuf::internal::memswap<
       PROTOBUF_FIELD_OFFSET(GetOrderResponse, _impl_.status_)
       + sizeof(GetOrderResponse::_impl_.status_)
@@ -3247,7 +3960,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderBookRequest::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::order::v1::GetOrderBookRequest& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetOrderBookRequest::GetOrderBookRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -3270,7 +3985,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderBookRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetOrderBookRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -3288,6 +4005,8 @@ inline void GetOrderBookRequest::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -3333,16 +4052,16 @@ GetOrderBookRequest::GetClassData() const {
   return GetOrderBookRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 52, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 80, 2>
 GetOrderBookRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     GetOrderBookRequest_class_data_.base(),
@@ -3352,27 +4071,41 @@ GetOrderBookRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::GetOrderBookRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // uint32 depth = 2 [json_name = "depth"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderBookRequest, _impl_.depth_), 1>(),
-     {16, 1, 0,
-      PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.depth_)}},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.correlation_id_)}},
     // string symbol = 1 [json_name = "symbol"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.symbol_)}},
+    // uint32 depth = 2 [json_name = "depth"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint32_t, offsetof(GetOrderBookRequest, _impl_.depth_), 3>(),
+     {16, 3, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.depth_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 1, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
     // string symbol = 1 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.symbol_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // uint32 depth = 2 [json_name = "depth"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.depth_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt32)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.depth_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt32)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\45\6\0\0\0\0\0\0"
+    "\45\6\0\16\16\0\0\0"
     "cerberus.order.v1.GetOrderBookRequest"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetOrderBookRequest::Clear() {
@@ -3383,8 +4116,16 @@ PROTOBUF_NOINLINE void GetOrderBookRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.symbol_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.symbol_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.depth_ = 0u;
   _impl_._has_bits_.Clear();
@@ -3421,11 +4162,31 @@ PROTOBUF_NOINLINE void GetOrderBookRequest::Clear() {
   }
 
   // uint32 depth = 2 [json_name = "depth"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_depth() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt32ToArray(
           2, this_._internal_depth(), target);
+    }
+  }
+
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderBookRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderBookRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
     }
   }
 
@@ -3454,7 +4215,7 @@ PROTOBUF_NOINLINE void GetOrderBookRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string symbol = 1 [json_name = "symbol"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_symbol().empty()) {
@@ -3462,8 +4223,22 @@ PROTOBUF_NOINLINE void GetOrderBookRequest::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // uint32 depth = 2 [json_name = "depth"];
+    // string schema_version = 3 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // uint32 depth = 2 [json_name = "depth"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_depth() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(
             this_._internal_depth());
@@ -3488,7 +4263,7 @@ void GetOrderBookRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_symbol().empty()) {
         _this->_internal_set_symbol(from._internal_symbol());
@@ -3499,6 +4274,24 @@ void GetOrderBookRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_depth() != 0) {
         _this->_impl_.depth_ = from._impl_.depth_;
       }
@@ -3524,6 +4317,8 @@ void GetOrderBookRequest::InternalSwap(GetOrderBookRequest* PROTOBUF_RESTRICT PR
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.depth_, other->_impl_.depth_);
 }
 
@@ -3891,7 +4686,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderBookResponse::Impl_::Impl_(
         asks_ { visibility, arena, from.asks_ }
         #endif
         ,
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 GetOrderBookResponse::GetOrderBookResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -3932,7 +4729,9 @@ PROTOBUF_NDEBUG_INLINE GetOrderBookResponse::Impl_::Impl_(
         asks_ { visibility, arena }
         #endif
         ,
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetOrderBookResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -3950,6 +4749,8 @@ inline void GetOrderBookResponse::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -4018,16 +4819,16 @@ GetOrderBookResponse::GetClassData() const {
   return GetOrderBookResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 2, 53, 2>
+const ::_pbi::TcParseTable<3, 6, 2, 81, 2>
 GetOrderBookResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    6, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967232,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    6,  // num_field_entries
     2,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     GetOrderBookResponse_class_data_.base(),
@@ -4037,10 +4838,7 @@ GetOrderBookResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::GetOrderBookResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetOrderBookResponse, _impl_.generated_at_ms_), 3>(),
-     {32, 3, 0,
-      PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.generated_at_ms_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string symbol = 1 [json_name = "symbol"];
     {::_pbi::TcParser::FastUS1,
      {10, 2, 0,
@@ -4053,6 +4851,19 @@ GetOrderBookResponse::_table_ = {
     {::_pbi::TcParser::FastMtR1,
      {26, 1, 1,
       PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.asks_)}},
+    // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetOrderBookResponse, _impl_.generated_at_ms_), 5>(),
+     {32, 5, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.generated_at_ms_)}},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.schema_version_)}},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {50, 4, 0,
+      PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -4063,16 +4874,22 @@ GetOrderBookResponse::_table_ = {
     // repeated .cerberus.order.v1.OrderBookLevel asks = 3 [json_name = "asks"];
     {PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.asks_), _Internal::kHasBitsOffset + 1, 1, (0 | ::_fl::kFcRepeated | ::_fl::kMessage | ::_fl::kTvTable)},
     // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
-    {PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.generated_at_ms_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.generated_at_ms_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetOrderBookResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::cerberus::order::v1::OrderBookLevel>()},
       {::_pbi::TcParser::GetTable<::cerberus::order::v1::OrderBookLevel>()},
   }},
   {{
-    "\46\6\0\0\0\0\0\0"
+    "\46\6\0\0\0\16\16\0"
     "cerberus.order.v1.GetOrderBookResponse"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
@@ -4083,7 +4900,7 @@ PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _impl_.bids_.Clear();
     }
@@ -4092,6 +4909,12 @@ PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       _impl_.symbol_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.generated_at_ms_ = ::uint64_t{0u};
@@ -4155,11 +4978,31 @@ PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
   }
 
   // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (this_._internal_generated_at_ms() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
           4, this_._internal_generated_at_ms(), target);
+    }
+  }
+
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderBookResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  // string correlation_id = 6 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetOrderBookResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(6, _s, target);
     }
   }
 
@@ -4188,7 +5031,7 @@ PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     // repeated .cerberus.order.v1.OrderBookLevel bids = 2 [json_name = "bids"];
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       total_size += 1UL * this_._internal_bids_size();
@@ -4210,8 +5053,22 @@ PROTOBUF_NOINLINE void GetOrderBookResponse::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
+    // string schema_version = 5 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 6 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (this_._internal_generated_at_ms() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_generated_at_ms());
@@ -4237,7 +5094,7 @@ void GetOrderBookResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _this->_internal_mutable_bids()->InternalMergeFromWithArena(
           ::google::protobuf::MessageLite::internal_visibility(), arena,
@@ -4258,6 +5115,24 @@ void GetOrderBookResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (from._internal_generated_at_ms() != 0) {
         _this->_impl_.generated_at_ms_ = from._impl_.generated_at_ms_;
       }
@@ -4285,6 +5160,8 @@ void GetOrderBookResponse::InternalSwap(GetOrderBookResponse* PROTOBUF_RESTRICT 
   _impl_.bids_.InternalSwap(&other->_impl_.bids_);
   _impl_.asks_.InternalSwap(&other->_impl_.asks_);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.generated_at_ms_, other->_impl_.generated_at_ms_);
 }
 
@@ -4316,7 +5193,9 @@ PROTOBUF_NDEBUG_INLINE StreamExecutionsRequest::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::order::v1::StreamExecutionsRequest& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        account_id_(arena, from.account_id_) {}
+        account_id_(arena, from.account_id_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 StreamExecutionsRequest::StreamExecutionsRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -4338,7 +5217,9 @@ PROTOBUF_NDEBUG_INLINE StreamExecutionsRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        account_id_(arena) {}
+        account_id_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void StreamExecutionsRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -4355,6 +5236,8 @@ inline void StreamExecutionsRequest::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.account_id_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -4400,16 +5283,16 @@ StreamExecutionsRequest::GetClassData() const {
   return StreamExecutionsRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 1, 0, 60, 2>
+const ::_pbi::TcParseTable<2, 3, 0, 88, 2>
 StreamExecutionsRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_._has_bits_),
     0, // no _extensions_
-    1, 0,  // max_field_number, fast_idx_mask
+    3, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967294,  // skipmap
+    4294967288,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    1,  // num_field_entries
+    3,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     StreamExecutionsRequest_class_data_.base(),
@@ -4419,21 +5302,36 @@ StreamExecutionsRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::StreamExecutionsRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    {::_pbi::TcParser::MiniParse, {}},
     // string account_id = 1 [json_name = "accountId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.account_id_)}},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.schema_version_)}},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.correlation_id_)}},
   }}, {{
     65535, 65535
   }}, {{
     // string account_id = 1 [json_name = "accountId"];
     {PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.account_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\51\12\0\0\0\0\0\0"
+    "\51\12\16\16\0\0\0\0"
     "cerberus.order.v1.StreamExecutionsRequest"
     "account_id"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void StreamExecutionsRequest::Clear() {
@@ -4444,8 +5342,16 @@ PROTOBUF_NOINLINE void StreamExecutionsRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.account_id_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.account_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -4480,6 +5386,26 @@ PROTOBUF_NOINLINE void StreamExecutionsRequest::Clear() {
     }
   }
 
+  // string schema_version = 2 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.StreamExecutionsRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string correlation_id = 3 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.StreamExecutionsRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -4503,13 +5429,28 @@ PROTOBUF_NOINLINE void StreamExecutionsRequest::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void)cached_has_bits;
 
-   {
+  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     // string account_id = 1 [json_name = "accountId"];
-    cached_has_bits = this_._impl_._has_bits_[0];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_account_id().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_account_id());
+      }
+    }
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 3 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -4531,12 +5472,32 @@ void StreamExecutionsRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!from._internal_account_id().empty()) {
-      _this->_internal_set_account_id(from._internal_account_id());
-    } else {
-      if (_this->_impl_.account_id_.IsDefault()) {
-        _this->_internal_set_account_id("");
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_account_id().empty()) {
+        _this->_internal_set_account_id(from._internal_account_id());
+      } else {
+        if (_this->_impl_.account_id_.IsDefault()) {
+          _this->_internal_set_account_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
       }
     }
   }
@@ -4560,6 +5521,8 @@ void StreamExecutionsRequest::InternalSwap(StreamExecutionsRequest* PROTOBUF_RES
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.account_id_, &other->_impl_.account_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata StreamExecutionsRequest::GetMetadata() const {
@@ -4579,7 +5542,7 @@ void StreamExecutionsResponse::clear_event_time() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   if (_impl_.event_time_ != nullptr) _impl_.event_time_->Clear();
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 StreamExecutionsResponse::StreamExecutionsResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
@@ -4598,7 +5561,9 @@ PROTOBUF_NDEBUG_INLINE StreamExecutionsResponse::Impl_::Impl_(
         _cached_size_{0},
         execution_id_(arena, from.execution_id_),
         order_id_(arena, from.order_id_),
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 StreamExecutionsResponse::StreamExecutionsResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -4614,7 +5579,7 @@ StreamExecutionsResponse::StreamExecutionsResponse(
       from._internal_metadata_);
   new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
   ::uint32_t cached_has_bits = _impl_._has_bits_[0];
-  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000008U))
+  _impl_.event_time_ = (CheckHasBit(cached_has_bits, 0x00000020U))
                 ? ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_)
                 : nullptr;
   ::memcpy(reinterpret_cast<char*>(&_impl_) +
@@ -4633,7 +5598,9 @@ PROTOBUF_NDEBUG_INLINE StreamExecutionsResponse::Impl_::Impl_(
       : _cached_size_{0},
         execution_id_(arena),
         order_id_(arena),
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void StreamExecutionsResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -4658,6 +5625,8 @@ inline void StreamExecutionsResponse::SharedDtor(MessageLite& self) {
   this_._impl_.execution_id_.Destroy();
   this_._impl_.order_id_.Destroy();
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   delete this_._impl_.event_time_;
   this_._impl_.~Impl_();
 }
@@ -4704,16 +5673,16 @@ StreamExecutionsResponse::GetClassData() const {
   return StreamExecutionsResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<3, 6, 1, 77, 2>
+const ::_pbi::TcParseTable<3, 8, 1, 113, 2>
 StreamExecutionsResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_._has_bits_),
     0, // no _extensions_
-    6, 56,  // max_field_number, fast_idx_mask
+    8, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967232,  // skipmap
+    4294967040,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    6,  // num_field_entries
+    8,  // num_field_entries
     1,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     StreamExecutionsResponse_class_data_.base(),
@@ -4723,7 +5692,10 @@ StreamExecutionsResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::StreamExecutionsResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    {::_pbi::TcParser::MiniParse, {}},
+    // string correlation_id = 8 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {66, 4, 0,
+      PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.correlation_id_)}},
     // string execution_id = 1 [json_name = "executionId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -4738,17 +5710,20 @@ StreamExecutionsResponse::_table_ = {
       PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.symbol_)}},
     // double price = 4 [json_name = "price"];
     {::_pbi::TcParser::FastF64S1,
-     {33, 4, 0,
+     {33, 6, 0,
       PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.price_)}},
     // double quantity = 5 [json_name = "quantity"];
     {::_pbi::TcParser::FastF64S1,
-     {41, 5, 0,
+     {41, 7, 0,
       PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.quantity_)}},
     // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
     {::_pbi::TcParser::FastMtS1,
-     {50, 3, 0,
+     {50, 5, 0,
       PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.event_time_)}},
-    {::_pbi::TcParser::MiniParse, {}},
+    // string schema_version = 7 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {58, 3, 0,
+      PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -4759,21 +5734,27 @@ StreamExecutionsResponse::_table_ = {
     // string symbol = 3 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.symbol_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // double price = 4 [json_name = "price"];
-    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.price_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.price_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double quantity = 5 [json_name = "quantity"];
-    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.quantity_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.quantity_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
-    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.event_time_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.event_time_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kMessage | ::_fl::kTvTable)},
+    // string schema_version = 7 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 8 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::google::protobuf::Timestamp>()},
   }},
   {{
-    "\52\14\10\6\0\0\0\0"
+    "\52\14\10\6\0\0\0\16\16\0\0\0\0\0\0\0"
     "cerberus.order.v1.StreamExecutionsResponse"
     "execution_id"
     "order_id"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
@@ -4784,7 +5765,7 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.execution_id_.ClearNonDefaultToEmpty();
     }
@@ -4795,11 +5776,17 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
       _impl_.symbol_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(_impl_.event_time_ != nullptr);
       _impl_.event_time_->Clear();
     }
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x00000030U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000c0U)) {
     ::memset(&_impl_.price_, 0, static_cast<::size_t>(
         reinterpret_cast<char*>(&_impl_.quantity_) -
         reinterpret_cast<char*>(&_impl_.price_)) + sizeof(_impl_.quantity_));
@@ -4858,7 +5845,7 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
   }
 
   // double price = 4 [json_name = "price"];
-  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -4867,7 +5854,7 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
   }
 
   // double quantity = 5 [json_name = "quantity"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -4876,10 +5863,30 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
   }
 
   // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
         6, *this_._impl_.event_time_, this_._impl_.event_time_->GetCachedSize(), target,
         stream);
+  }
+
+  // string schema_version = 7 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.StreamExecutionsResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(7, _s, target);
+    }
+  }
+
+  // string correlation_id = 8 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.StreamExecutionsResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(8, _s, target);
+    }
   }
 
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
@@ -4907,7 +5914,7 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     // string execution_id = 1 [json_name = "executionId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_execution_id().empty()) {
@@ -4929,19 +5936,33 @@ PROTOBUF_NOINLINE void StreamExecutionsResponse::Clear() {
                                         this_._internal_symbol());
       }
     }
-    // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
+    // string schema_version = 7 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 8 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       total_size += 1 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.event_time_);
     }
     // double price = 4 [json_name = "price"];
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_price()) != 0) {
         total_size += 9;
       }
     }
     // double quantity = 5 [json_name = "quantity"];
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_quantity()) != 0) {
         total_size += 9;
       }
@@ -4966,7 +5987,7 @@ void StreamExecutionsResponse::MergeImpl(::google::protobuf::MessageLite& to_msg
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_execution_id().empty()) {
         _this->_internal_set_execution_id(from._internal_execution_id());
@@ -4995,6 +6016,24 @@ void StreamExecutionsResponse::MergeImpl(::google::protobuf::MessageLite& to_msg
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       ABSL_DCHECK(from._impl_.event_time_ != nullptr);
       if (_this->_impl_.event_time_ == nullptr) {
         _this->_impl_.event_time_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.event_time_);
@@ -5002,12 +6041,12 @@ void StreamExecutionsResponse::MergeImpl(::google::protobuf::MessageLite& to_msg
         _this->_impl_.event_time_->MergeFrom(*from._impl_.event_time_);
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_price()) != 0) {
         _this->_impl_.price_ = from._impl_.price_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_quantity()) != 0) {
         _this->_impl_.quantity_ = from._impl_.quantity_;
       }
@@ -5035,6 +6074,8 @@ void StreamExecutionsResponse::InternalSwap(StreamExecutionsResponse* PROTOBUF_R
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.execution_id_, &other->_impl_.execution_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.order_id_, &other->_impl_.order_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   ::google::protobuf::internal::memswap<
       PROTOBUF_FIELD_OFFSET(StreamExecutionsResponse, _impl_.quantity_)
       + sizeof(StreamExecutionsResponse::_impl_.quantity_)
@@ -5182,7 +6223,9 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
         _cached_size_{0},
         status_(arena, from.status_),
         service_(arena, from.service_),
-        version_(arena, from.version_) {}
+        version_(arena, from.version_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 HealthResponse::HealthResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -5207,7 +6250,9 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
       : _cached_size_{0},
         status_(arena),
         service_(arena),
-        version_(arena) {}
+        version_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void HealthResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -5227,6 +6272,8 @@ inline void HealthResponse::SharedDtor(MessageLite& self) {
   this_._impl_.status_.Destroy();
   this_._impl_.service_.Destroy();
   this_._impl_.version_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -5272,16 +6319,16 @@ HealthResponse::GetClassData() const {
   return HealthResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 0, 61, 2>
+const ::_pbi::TcParseTable<3, 6, 0, 89, 2>
 HealthResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    6, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967232,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    6,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     HealthResponse_class_data_.base(),
@@ -5291,10 +6338,7 @@ HealthResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::HealthResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(HealthResponse, _impl_.uptime_seconds_), 3>(),
-     {32, 3, 0,
-      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string status = 1 [json_name = "status"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -5307,6 +6351,19 @@ HealthResponse::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_)}},
+    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(HealthResponse, _impl_.uptime_seconds_), 5>(),
+     {32, 5, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_)}},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.schema_version_)}},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {50, 4, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -5317,15 +6374,21 @@ HealthResponse::_table_ = {
     // string version = 3 [json_name = "version"];
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\40\6\7\7\0\0\0\0"
+    "\40\6\7\7\0\16\16\0"
     "cerberus.order.v1.HealthResponse"
     "status"
     "service"
     "version"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void HealthResponse::Clear() {
@@ -5336,7 +6399,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.status_.ClearNonDefaultToEmpty();
     }
@@ -5345,6 +6408,12 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       _impl_.version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.uptime_seconds_ = ::uint64_t{0u};
@@ -5402,11 +6471,31 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
   }
 
   // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (this_._internal_uptime_seconds() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
           4, this_._internal_uptime_seconds(), target);
+    }
+  }
+
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.HealthResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  // string correlation_id = 6 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.HealthResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(6, _s, target);
     }
   }
 
@@ -5435,7 +6524,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     // string status = 1 [json_name = "status"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_status().empty()) {
@@ -5457,8 +6546,22 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
                                         this_._internal_version());
       }
     }
-    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
+    // string schema_version = 5 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 6 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (this_._internal_uptime_seconds() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_uptime_seconds());
@@ -5483,7 +6586,7 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_status().empty()) {
         _this->_internal_set_status(from._internal_status());
@@ -5512,6 +6615,24 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (from._internal_uptime_seconds() != 0) {
         _this->_impl_.uptime_seconds_ = from._impl_.uptime_seconds_;
       }
@@ -5539,6 +6660,8 @@ void HealthResponse::InternalSwap(HealthResponse* PROTOBUF_RESTRICT PROTOBUF_NON
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.status_, &other->_impl_.status_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.service_, &other->_impl_.service_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.version_, &other->_impl_.version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.uptime_seconds_, other->_impl_.uptime_seconds_);
 }
 
@@ -5673,21 +6796,44 @@ GetServiceStatsResponse::GetServiceStatsResponse(::google::protobuf::Arena* PROT
   SharedCtor(arena);
   // @@protoc_insertion_point(arena_constructor:cerberus.order.v1.GetServiceStatsResponse)
 }
+PROTOBUF_NDEBUG_INLINE GetServiceStatsResponse::Impl_::Impl_(
+    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
+    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+    [[maybe_unused]] const ::cerberus::order::v1::GetServiceStatsResponse& from_msg)
+      : _has_bits_{from._has_bits_},
+        _cached_size_{0},
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
+
 GetServiceStatsResponse::GetServiceStatsResponse(
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const GetServiceStatsResponse& from)
+    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
+    const GetServiceStatsResponse& from)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, GetServiceStatsResponse_class_data_.base()),
+    : ::google::protobuf::Message(arena, GetServiceStatsResponse_class_data_.base()) {
 #else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena),
+    : ::google::protobuf::Message(arena) {
 #endif  // PROTOBUF_CUSTOM_VTABLE
-      _impl_(from._impl_) {
+  GetServiceStatsResponse* const _this = this;
+  (void)_this;
   _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
       from._internal_metadata_);
+  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
+  ::memcpy(reinterpret_cast<char*>(&_impl_) +
+               offsetof(Impl_, live_orders_),
+           reinterpret_cast<const char*>(&from._impl_) +
+               offsetof(Impl_, live_orders_),
+           offsetof(Impl_, has_best_ask_) -
+               offsetof(Impl_, live_orders_) +
+               sizeof(Impl_::has_best_ask_));
+
+  // @@protoc_insertion_point(copy_constructor:cerberus.order.v1.GetServiceStatsResponse)
 }
 PROTOBUF_NDEBUG_INLINE GetServiceStatsResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-      : _cached_size_{0} {}
+      : _cached_size_{0},
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void GetServiceStatsResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -5709,6 +6855,8 @@ inline void GetServiceStatsResponse::SharedDtor(MessageLite& self) {
   }
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -5718,7 +6866,7 @@ inline void* PROTOBUF_NONNULL GetServiceStatsResponse::PlacementNew_(
   return ::new (mem) GetServiceStatsResponse(arena);
 }
 constexpr auto GetServiceStatsResponse::InternalNewImpl_() {
-  return ::google::protobuf::internal::MessageCreator::ZeroInit(sizeof(GetServiceStatsResponse),
+  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(GetServiceStatsResponse),
                                             alignof(GetServiceStatsResponse));
 }
 constexpr auto GetServiceStatsResponse::InternalGenerateClassData_() {
@@ -5754,16 +6902,16 @@ GetServiceStatsResponse::GetClassData() const {
   return GetServiceStatsResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<4, 9, 0, 0, 2>
+const ::_pbi::TcParseTable<5, 17, 0, 94, 2>
 GetServiceStatsResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_._has_bits_),
     0, // no _extensions_
-    9, 120,  // max_field_number, fast_idx_mask
+    17, 248,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294966784,  // skipmap
+    4294836224,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    9,  // num_field_entries
+    17,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     GetServiceStatsResponse_class_data_.base(),
@@ -5775,41 +6923,81 @@ GetServiceStatsResponse::_table_ = {
   }, {{
     {::_pbi::TcParser::MiniParse, {}},
     // uint64 live_orders = 1 [json_name = "liveOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.live_orders_), 0>(),
-     {8, 0, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.live_orders_), 2>(),
+     {8, 2, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_)}},
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.trade_count_), 1>(),
-     {16, 1, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.trade_count_), 3>(),
+     {16, 3, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_)}},
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.tracked_orders_), 2>(),
-     {24, 2, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.tracked_orders_), 4>(),
+     {24, 4, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_)}},
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.rejected_orders_), 3>(),
-     {32, 3, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.rejected_orders_), 5>(),
+     {32, 5, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_)}},
     // uint64 symbols = 5 [json_name = "symbols"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.symbols_), 4>(),
-     {40, 4, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.symbols_), 6>(),
+     {40, 6, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_)}},
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_bid_), 7>(),
-     {48, 7, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_bid_), 15>(),
+     {48, 15, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_)}},
     // double best_bid = 7 [json_name = "bestBid"];
     {::_pbi::TcParser::FastF64S1,
-     {57, 5, 0,
+     {57, 7, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_)}},
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_ask_), 8>(),
-     {64, 8, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_ask_), 16>(),
+     {64, 16, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_)}},
     // double best_ask = 9 [json_name = "bestAsk"];
     {::_pbi::TcParser::FastF64S1,
-     {73, 6, 0,
+     {73, 8, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_)}},
+    // string schema_version = 10 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {82, 0, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.schema_version_)}},
+    // string correlation_id = 11 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {90, 1, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.correlation_id_)}},
+    // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_requests_total_), 9>(),
+     {96, 9, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_requests_total_)}},
+    // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_errors_total_), 10>(),
+     {104, 10, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_errors_total_)}},
+    // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), 11>(),
+     {112, 11, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_rejections_total_)}},
+    // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+    {::_pbi::TcParser::FastF64S1,
+     {121, 12, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_)}},
+    // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+    {::_pbi::TcParser::FastF64S2,
+     {385, 13, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_throughput_rps_)}},
+    // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+    {::_pbi::TcParser::FastF64S2,
+     {393, 14, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_throughput_rps_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
     {::_pbi::TcParser::MiniParse, {}},
     {::_pbi::TcParser::MiniParse, {}},
     {::_pbi::TcParser::MiniParse, {}},
@@ -5820,26 +7008,46 @@ GetServiceStatsResponse::_table_ = {
     65535, 65535
   }}, {{
     // uint64 live_orders = 1 [json_name = "liveOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 symbols = 5 [json_name = "symbols"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_), _Internal::kHasBitsOffset + 15, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // double best_bid = 7 [json_name = "bestBid"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_), _Internal::kHasBitsOffset + 16, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // double best_ask = 9 [json_name = "bestAsk"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    // string schema_version = 10 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 11 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_requests_total_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_errors_total_), _Internal::kHasBitsOffset + 10, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), _Internal::kHasBitsOffset + 11, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_), _Internal::kHasBitsOffset + 12, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_throughput_rps_), _Internal::kHasBitsOffset + 13, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_throughput_rps_), _Internal::kHasBitsOffset + 14, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
   }},
   // no aux_entries
   {{
+    "\51\0\0\0\0\0\0\0\0\0\16\16\0\0\0\0\0\0\0\0\0\0\0\0"
+    "cerberus.order.v1.GetServiceStatsResponse"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
@@ -5850,10 +7058,23 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x000000fcU)) {
     ::memset(&_impl_.live_orders_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.best_bid_) -
+        reinterpret_cast<char*>(&_impl_.live_orders_)) + sizeof(_impl_.best_bid_));
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
+    ::memset(&_impl_.best_ask_, 0, static_cast<::size_t>(
         reinterpret_cast<char*>(&_impl_.has_best_bid_) -
-        reinterpret_cast<char*>(&_impl_.live_orders_)) + sizeof(_impl_.has_best_bid_));
+        reinterpret_cast<char*>(&_impl_.best_ask_)) + sizeof(_impl_.has_best_bid_));
   }
   _impl_.has_best_ask_ = false;
   _impl_._has_bits_.Clear();
@@ -5880,7 +7101,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // uint64 live_orders = 1 [json_name = "liveOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
     if (this_._internal_live_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -5889,7 +7110,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 trade_count = 2 [json_name = "tradeCount"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_trade_count() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -5898,7 +7119,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (this_._internal_tracked_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -5907,7 +7128,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (this_._internal_rejected_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -5916,7 +7137,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 symbols = 5 [json_name = "symbols"];
-  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (this_._internal_symbols() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -5925,7 +7146,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // bool has_best_bid = 6 [json_name = "hasBestBid"];
-  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+  if (CheckHasBit(cached_has_bits, 0x00008000U)) {
     if (this_._internal_has_best_bid() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -5934,7 +7155,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double best_bid = 7 [json_name = "bestBid"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_best_bid()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -5943,7 +7164,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+  if (CheckHasBit(cached_has_bits, 0x00010000U)) {
     if (this_._internal_has_best_ask() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -5952,11 +7173,85 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double best_ask = 9 [json_name = "bestAsk"];
-  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_best_ask()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
           9, this_._internal_best_ask(), target);
+    }
+  }
+
+  // string schema_version = 10 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetServiceStatsResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(10, _s, target);
+    }
+  }
+
+  // string correlation_id = 11 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetServiceStatsResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(11, _s, target);
+    }
+  }
+
+  // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+    if (this_._internal_submit_order_requests_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          12, this_._internal_submit_order_requests_total(), target);
+    }
+  }
+
+  // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+    if (this_._internal_submit_order_errors_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          13, this_._internal_submit_order_errors_total(), target);
+    }
+  }
+
+  // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+    if (this_._internal_submit_order_rejections_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          14, this_._internal_submit_order_rejections_total(), target);
+    }
+  }
+
+  // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+  if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+    if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_latency_p95_ms()) != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteDoubleToArray(
+          15, this_._internal_submit_order_latency_p95_ms(), target);
+    }
+  }
+
+  // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+  if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+    if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_throughput_rps()) != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteDoubleToArray(
+          16, this_._internal_submit_order_throughput_rps(), target);
+    }
+  }
+
+  // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+  if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+    if (::absl::bit_cast<::uint64_t>(this_._internal_trade_throughput_rps()) != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteDoubleToArray(
+          17, this_._internal_trade_throughput_rps(), target);
     }
   }
 
@@ -5986,55 +7281,110 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
   if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
-    // uint64 live_orders = 1 [json_name = "liveOrders"];
+    // string schema_version = 10 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 11 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // uint64 live_orders = 1 [json_name = "liveOrders"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       if (this_._internal_live_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_live_orders());
       }
     }
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_trade_count() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_trade_count());
       }
     }
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (this_._internal_tracked_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_tracked_orders());
       }
     }
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (this_._internal_rejected_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_rejected_orders());
       }
     }
     // uint64 symbols = 5 [json_name = "symbols"];
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (this_._internal_symbols() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_symbols());
       }
     }
     // double best_bid = 7 [json_name = "bestBid"];
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_best_bid()) != 0) {
         total_size += 9;
       }
     }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
     // double best_ask = 9 [json_name = "bestAsk"];
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_best_ask()) != 0) {
         total_size += 9;
       }
     }
+    // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+      if (this_._internal_submit_order_requests_total() != 0) {
+        total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
+            this_._internal_submit_order_requests_total());
+      }
+    }
+    // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+      if (this_._internal_submit_order_errors_total() != 0) {
+        total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
+            this_._internal_submit_order_errors_total());
+      }
+    }
+    // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+      if (this_._internal_submit_order_rejections_total() != 0) {
+        total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
+            this_._internal_submit_order_rejections_total());
+      }
+    }
+    // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+      if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_latency_p95_ms()) != 0) {
+        total_size += 9;
+      }
+    }
+    // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+      if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_throughput_rps()) != 0) {
+        total_size += 10;
+      }
+    }
+    // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+      if (::absl::bit_cast<::uint64_t>(this_._internal_trade_throughput_rps()) != 0) {
+        total_size += 10;
+      }
+    }
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
       if (this_._internal_has_best_bid() != 0) {
         total_size += 2;
       }
@@ -6042,7 +7392,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
    {
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+    if (CheckHasBit(cached_has_bits, 0x00010000U)) {
       if (this_._internal_has_best_ask() != 0) {
         total_size += 2;
       }
@@ -6068,47 +7418,97 @@ void GetServiceStatsResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   cached_has_bits = from._impl_._has_bits_[0];
   if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       if (from._internal_live_orders() != 0) {
         _this->_impl_.live_orders_ = from._impl_.live_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_trade_count() != 0) {
         _this->_impl_.trade_count_ = from._impl_.trade_count_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (from._internal_tracked_orders() != 0) {
         _this->_impl_.tracked_orders_ = from._impl_.tracked_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (from._internal_rejected_orders() != 0) {
         _this->_impl_.rejected_orders_ = from._impl_.rejected_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (from._internal_symbols() != 0) {
         _this->_impl_.symbols_ = from._impl_.symbols_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_best_bid()) != 0) {
         _this->_impl_.best_bid_ = from._impl_.best_bid_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_best_ask()) != 0) {
         _this->_impl_.best_ask_ = from._impl_.best_ask_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+      if (from._internal_submit_order_requests_total() != 0) {
+        _this->_impl_.submit_order_requests_total_ = from._impl_.submit_order_requests_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+      if (from._internal_submit_order_errors_total() != 0) {
+        _this->_impl_.submit_order_errors_total_ = from._impl_.submit_order_errors_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+      if (from._internal_submit_order_rejections_total() != 0) {
+        _this->_impl_.submit_order_rejections_total_ = from._impl_.submit_order_rejections_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+      if (::absl::bit_cast<::uint64_t>(from._internal_submit_order_latency_p95_ms()) != 0) {
+        _this->_impl_.submit_order_latency_p95_ms_ = from._impl_.submit_order_latency_p95_ms_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+      if (::absl::bit_cast<::uint64_t>(from._internal_submit_order_throughput_rps()) != 0) {
+        _this->_impl_.submit_order_throughput_rps_ = from._impl_.submit_order_throughput_rps_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+      if (::absl::bit_cast<::uint64_t>(from._internal_trade_throughput_rps()) != 0) {
+        _this->_impl_.trade_throughput_rps_ = from._impl_.trade_throughput_rps_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
       if (from._internal_has_best_bid() != 0) {
         _this->_impl_.has_best_bid_ = from._impl_.has_best_bid_;
       }
     }
   }
-  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+  if (CheckHasBit(cached_has_bits, 0x00010000U)) {
     if (from._internal_has_best_ask() != 0) {
       _this->_impl_.has_best_ask_ = from._impl_.has_best_ask_;
     }
@@ -6128,8 +7528,12 @@ void GetServiceStatsResponse::CopyFrom(const GetServiceStatsResponse& from) {
 
 void GetServiceStatsResponse::InternalSwap(GetServiceStatsResponse* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
   using ::std::swap;
+  auto* arena = GetArena();
+  ABSL_DCHECK_EQ(arena, other->GetArena());
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   ::google::protobuf::internal::memswap<
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_)
       + sizeof(GetServiceStatsResponse::_impl_.has_best_ask_)

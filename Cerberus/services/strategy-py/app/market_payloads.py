@@ -30,13 +30,30 @@ def parse_tick_payload(raw: str, channel: str | None) -> TickEvent | None:
         logger.debug("invalid market payload json")
         return None
 
+    return _parse_tick_dict(payload, channel)
+
+
+def _parse_tick_dict(payload: object, channel: str | None) -> TickEvent | None:
     if not isinstance(payload, dict):
         return None
+
+    if "payload" in payload:
+        nested = payload.get("payload")
+        envelope_channel = _coerce_channel(payload.get("channel")) or channel
+        if isinstance(nested, str):
+            return parse_tick_payload(nested, envelope_channel)
+        return _parse_tick_dict(nested, envelope_channel)
 
     if "price" in payload:
         return _parse_normalized_tick(payload, channel)
     if "bid_price" in payload and "ask_price" in payload:
         return _parse_orderbook_tick(payload, channel)
+    return None
+
+
+def _coerce_channel(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value
     return None
 
 

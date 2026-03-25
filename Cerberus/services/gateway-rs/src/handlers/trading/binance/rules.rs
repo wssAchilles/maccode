@@ -10,7 +10,7 @@ use crate::gateway_types::{
 use crate::gateway_utils::{
     binance_exchange_info_path, current_millis, parse_binance_symbol_rule, to_axum_status,
 };
-use crate::handlers::common::{error_body, internal_err_json};
+use crate::handlers::common::{error_body, internal_err_json, with_request_context};
 
 pub(crate) async fn get_binance_symbol_rules(
     State(state): State<AppState>,
@@ -36,13 +36,16 @@ pub(crate) async fn get_binance_symbol_rules(
     } {
         let age = current_millis().saturating_sub(cached.cached_at);
         if age <= BINANCE_RULE_TTL_MS {
-            return Ok(Json(serde_json::json!({
-                "symbol": symbol,
-                "cached": true,
-                "cache_age_ms": age,
-                "rule": cached.rule,
-                "request_id": request_id
-            })));
+            return Ok(Json(with_request_context(
+                serde_json::json!({
+                    "symbol": symbol,
+                    "cached": true,
+                    "cache_age_ms": age,
+                    "rule": cached.rule,
+                }),
+                request_id,
+                ctx.idempotency_key.as_deref(),
+            )));
         }
     }
 
@@ -86,11 +89,14 @@ pub(crate) async fn get_binance_symbol_rules(
         );
     }
 
-    Ok(Json(serde_json::json!({
-        "symbol": symbol,
-        "cached": false,
-        "cache_age_ms": 0,
-        "rule": rule,
-        "request_id": request_id
-    })))
+    Ok(Json(with_request_context(
+        serde_json::json!({
+            "symbol": symbol,
+            "cached": false,
+            "cache_age_ms": 0,
+            "rule": rule,
+        }),
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

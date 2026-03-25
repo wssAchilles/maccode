@@ -2,6 +2,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <deque>
 #include <mutex>
 #include <string>
 
@@ -48,6 +50,23 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   static cerberus::order::v1::OrderStatus ToProtoStatus(OrderStatus status);
   static void FillNowTimestamp(google::protobuf::Timestamp* ts);
   std::string NextGeneratedOrderId(const std::string& account_id);
+  bool IsDegraded() const;
+  std::string DegradedStatusText() const;
+  std::string EffectiveSchemaVersion(const std::string& requested_schema) const;
+  std::string EffectiveCorrelationId(
+      grpc::ServerContext* context, const std::string& requested_correlation_id) const;
+  void FillResponseContext(grpc::ServerContext* context, const std::string& requested_schema,
+                           const std::string& requested_correlation_id,
+                           std::string* response_schema,
+                           std::string* response_correlation) const;
+  void MarkDegraded(grpc::ServerContext* context, const std::string& reason) const;
+  grpc::Status FinalizeSubmitStatus(
+      grpc::Status status, bool accepted,
+      const std::chrono::steady_clock::time_point& started_at);
+  void RecordSubmitLatencyMs(std::uint64_t latency_ms);
+  double SubmitOrderLatencyP95Ms() const;
+  double SubmitOrderThroughputRps() const;
+  std::uint64_t UptimeSeconds() const;
 
   OrderService& service_;
   std::mutex mu_;
@@ -55,4 +74,14 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   std::atomic_uint64_t next_generated_order_id_{1};
   std::chrono::steady_clock::time_point started_at_;
   std::string service_version_;
+  bool force_degraded_{false};
+  std::string degraded_reason_;
+  std::string schema_version_;
+  std::size_t execution_stream_limit_{500};
+  std::size_t submit_latency_window_size_{1024};
+  std::atomic_uint64_t submit_order_requests_total_{0};
+  std::atomic_uint64_t submit_order_errors_total_{0};
+  std::atomic_uint64_t submit_order_rejections_total_{0};
+  mutable std::mutex submit_latency_mu_;
+  std::deque<std::uint64_t> submit_latency_samples_ms_;
 };

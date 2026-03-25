@@ -22,6 +22,36 @@ from app.order_client_proto import order_pb2
 from app.order_client_rpc import MatchingRpcTransport
 
 
+def _metadata_to_dict(metadata: grpc.aio.Metadata | None) -> dict[str, str]:
+    if metadata is None:
+        return {}
+    normalized: dict[str, str] = {}
+    for key, value in metadata:
+        key_text = str(key).strip().lower()
+        if not key_text:
+            continue
+        if isinstance(value, bytes):
+            value_text = value.decode("utf-8", errors="ignore").strip()
+        else:
+            value_text = str(value).strip()
+        if value_text:
+            normalized[key_text] = value_text
+    return normalized
+
+
+def _degraded_hint(metadata: dict[str, str]) -> tuple[bool, str | None]:
+    raw = metadata.get("x-cerberus-degraded", "")
+    degraded = raw.lower() in {"1", "true", "yes", "on"}
+    reason = metadata.get("x-cerberus-degraded-reason")
+    return degraded, reason
+
+
+async def _await_unary_with_metadata(call: Any) -> tuple[Any, dict[str, str]]:
+    response = await call
+    trailing = await call.trailing_metadata()
+    return response, _metadata_to_dict(trailing)
+
+
 async def get_order(
     *,
     enabled: bool,
@@ -35,7 +65,12 @@ async def get_order(
 
     stub = await transport.ensure_stub()
     metadata, request_token = transport.build_metadata(request_id)
-    request = order_pb2.GetOrderRequest(account_id=account_id, order_id=order_id)
+    request = order_pb2.GetOrderRequest(
+        account_id=account_id,
+        order_id=order_id,
+        schema_version=settings.event_schema_version,
+        correlation_id=request_token,
+    )
     response = await stub.GetOrder(
         request,
         timeout=settings.matching_grpc_timeout_seconds,
@@ -58,7 +93,11 @@ async def list_recent_executions(
     stub = await transport.ensure_stub()
     metadata, request_token = transport.build_metadata(request_id)
     call = stub.StreamExecutions(
-        order_pb2.StreamExecutionsRequest(account_id=account_id),
+        order_pb2.StreamExecutionsRequest(
+            account_id=account_id,
+            schema_version=settings.event_schema_version,
+            correlation_id=request_token,
+        ),
         timeout=settings.matching_grpc_timeout_seconds,
         metadata=metadata,
     )
@@ -86,16 +125,25 @@ async def get_order_book(
     bounded_depth = max(1, min(depth, 200))
     stub = await transport.ensure_stub()
     metadata, request_token = transport.build_metadata(request_id)
-    response = await stub.GetOrderBook(
-        order_pb2.GetOrderBookRequest(symbol=clean_symbol, depth=bounded_depth),
+    call = stub.GetOrderBook(
+        order_pb2.GetOrderBookRequest(
+            symbol=clean_symbol,
+            depth=bounded_depth,
+            schema_version=settings.event_schema_version,
+            correlation_id=request_token,
+        ),
         timeout=settings.matching_grpc_timeout_seconds,
         metadata=metadata,
     )
+    response, trailing = await _await_unary_with_metadata(call)
+    degraded, reason = _degraded_hint(trailing)
     return order_book_payload(
         response=response,
         fallback_symbol=clean_symbol,
         depth=bounded_depth,
         request_id=request_token,
+        degraded=degraded,
+        degraded_reason=reason,
     )
 
 
@@ -112,12 +160,24 @@ async def health(
     metadata, request_token = transport.build_metadata(request_id)
     try:
         await transport.wait_ready(settings.matching_grpc_timeout_seconds)
-        response = await stub.Health(
+        call = stub.Health(
             order_pb2.HealthRequest(),
             timeout=settings.matching_grpc_timeout_seconds,
             metadata=metadata,
         )
-        return health_ok_payload(response, request_token)
+        response, trailing = await _await_unary_with_metadata(call)
+        degraded, reason = _degraded_hint(trailing)
+        response_status = str(getattr(response, "status", "")).strip()
+        if response_status.lower().startswith("degraded"):
+            degraded = True
+            if not reason:
+                reason = response_status
+        return health_ok_payload(
+            response,
+            request_token,
+            degraded=degraded,
+            degraded_reason=reason,
+        )
     except asyncio.TimeoutError:
         return health_timeout_payload(request_token)
     except grpc.aio.AioRpcError as exc:
@@ -135,9 +195,11 @@ async def get_service_stats(
 
     stub = await transport.ensure_stub()
     metadata, request_token = transport.build_metadata(request_id)
-    response = await stub.GetServiceStats(
+    call = stub.GetServiceStats(
         order_pb2.GetServiceStatsRequest(),
         timeout=settings.matching_grpc_timeout_seconds,
         metadata=metadata,
     )
-    return stats_payload(response, request_token)
+    response, trailing = await _await_unary_with_metadata(call)
+    degraded, reason = _degraded_hint(trailing)
+    return stats_payload(response, request_token, degraded=degraded, degraded_reason=reason)

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cerberus/order/v1/order.proto.
  */
 export const file_cerberus_order_v1_order: GenFile = /*@__PURE__*/
-  fileDesc("Ch1jZXJiZXJ1cy9vcmRlci92MS9vcmRlci5wcm90bxIRY2VyYmVydXMub3JkZXIudjEiywEKElN1Ym1pdE9yZGVyUmVxdWVzdBISCgphY2NvdW50X2lkGAEgASgJEg4KBnN5bWJvbBgCIAEoCRIlCgRzaWRlGAMgASgOMhcuY2VyYmVydXMub3JkZXIudjEuU2lkZRIwCgpvcmRlcl90eXBlGAQgASgOMhwuY2VyYmVydXMub3JkZXIudjEuT3JkZXJUeXBlEg0KBXByaWNlGAUgASgBEhAKCHF1YW50aXR5GAYgASgBEhcKD2NsaWVudF9vcmRlcl9pZBgHIAEoCSJJChNTdWJtaXRPcmRlclJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEhAKCG9yZGVyX2lkGAIgASgJEg4KBnJlYXNvbhgDIAEoCSI6ChJDYW5jZWxPcmRlclJlcXVlc3QSEgoKYWNjb3VudF9pZBgBIAEoCRIQCghvcmRlcl9pZBgCIAEoCSI3ChNDYW5jZWxPcmRlclJlc3BvbnNlEhAKCGNhbmNlbGVkGAEgASgIEg4KBnJlYXNvbhgCIAEoCSI3Cg9HZXRPcmRlclJlcXVlc3QSEgoKYWNjb3VudF9pZBgBIAEoCRIQCghvcmRlcl9pZBgCIAEoCSK7AgoQR2V0T3JkZXJSZXNwb25zZRIQCghvcmRlcl9pZBgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEg4KBnN5bWJvbBgDIAEoCRIlCgRzaWRlGAQgASgOMhcuY2VyYmVydXMub3JkZXIudjEuU2lkZRIwCgpvcmRlcl90eXBlGAUgASgOMhwuY2VyYmVydXMub3JkZXIudjEuT3JkZXJUeXBlEg0KBXByaWNlGAYgASgBEhAKCHF1YW50aXR5GAcgASgBEhcKD2ZpbGxlZF9xdWFudGl0eRgIIAEoARIuCgZzdGF0dXMYCSABKA4yHi5jZXJiZXJ1cy5vcmRlci52MS5PcmRlclN0YXR1cxIuCgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI0ChNHZXRPcmRlckJvb2tSZXF1ZXN0Eg4KBnN5bWJvbBgBIAEoCRINCgVkZXB0aBgCIAEoDSJMCg5PcmRlckJvb2tMZXZlbBINCgVwcmljZRgBIAEoARIWCg50b3RhbF9xdWFudGl0eRgCIAEoARITCgtvcmRlcl9jb3VudBgDIAEoBCKhAQoUR2V0T3JkZXJCb29rUmVzcG9uc2USDgoGc3ltYm9sGAEgASgJEi8KBGJpZHMYAiADKAsyIS5jZXJiZXJ1cy5vcmRlci52MS5PcmRlckJvb2tMZXZlbBIvCgRhc2tzGAMgAygLMiEuY2VyYmVydXMub3JkZXIudjEuT3JkZXJCb29rTGV2ZWwSFwoPZ2VuZXJhdGVkX2F0X21zGAQgASgEIi0KF1N0cmVhbUV4ZWN1dGlvbnNSZXF1ZXN0EhIKCmFjY291bnRfaWQYASABKAkiowEKGFN0cmVhbUV4ZWN1dGlvbnNSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSEAoIb3JkZXJfaWQYAiABKAkSDgoGc3ltYm9sGAMgASgJEg0KBXByaWNlGAQgASgBEhAKCHF1YW50aXR5GAUgASgBEi4KCmV2ZW50X3RpbWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDUhlYWx0aFJlcXVlc3QiWgoOSGVhbHRoUmVzcG9uc2USDgoGc3RhdHVzGAEgASgJEg8KB3NlcnZpY2UYAiABKAkSDwoHdmVyc2lvbhgDIAEoCRIWCg51cHRpbWVfc2Vjb25kcxgEIAEoBCIYChZHZXRTZXJ2aWNlU3RhdHNSZXF1ZXN0ItUBChdHZXRTZXJ2aWNlU3RhdHNSZXNwb25zZRITCgtsaXZlX29yZGVycxgBIAEoBBITCgt0cmFkZV9jb3VudBgCIAEoBBIWCg50cmFja2VkX29yZGVycxgDIAEoBBIXCg9yZWplY3RlZF9vcmRlcnMYBCABKAQSDwoHc3ltYm9scxgFIAEoBBIUCgxoYXNfYmVzdF9iaWQYBiABKAgSEAoIYmVzdF9iaWQYByABKAESFAoMaGFzX2Jlc3RfYXNrGAggASgIEhAKCGJlc3RfYXNrGAkgASgBKjkKBFNpZGUSFAoQU0lERV9VTlNQRUNJRklFRBAAEgwKCFNJREVfQlVZEAESDQoJU0lERV9TRUxMEAIqVAoJT3JkZXJUeXBlEhoKFk9SREVSX1RZUEVfVU5TUEVDSUZJRUQQABIUChBPUkRFUl9UWVBFX0xJTUlUEAESFQoRT1JERVJfVFlQRV9NQVJLRVQQAiqzAQoLT3JkZXJTdGF0dXMSHAoYT1JERVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFAoQT1JERVJfU1RBVFVTX05FVxABEiEKHU9SREVSX1NUQVRVU19QQVJUSUFMTFlfRklMTEVEEAISFwoTT1JERVJfU1RBVFVTX0ZJTExFRBADEhkKFU9SREVSX1NUQVRVU19DQU5DRUxFRBAEEhkKFU9SREVSX1NUQVRVU19SRUpFQ1RFRBAFMqgFCgxPcmRlclNlcnZpY2USXAoLU3VibWl0T3JkZXISJS5jZXJiZXJ1cy5vcmRlci52MS5TdWJtaXRPcmRlclJlcXVlc3QaJi5jZXJiZXJ1cy5vcmRlci52MS5TdWJtaXRPcmRlclJlc3BvbnNlElwKC0NhbmNlbE9yZGVyEiUuY2VyYmVydXMub3JkZXIudjEuQ2FuY2VsT3JkZXJSZXF1ZXN0GiYuY2VyYmVydXMub3JkZXIudjEuQ2FuY2VsT3JkZXJSZXNwb25zZRJTCghHZXRPcmRlchIiLmNlcmJlcnVzLm9yZGVyLnYxLkdldE9yZGVyUmVxdWVzdBojLmNlcmJlcnVzLm9yZGVyLnYxLkdldE9yZGVyUmVzcG9uc2USXwoMR2V0T3JkZXJCb29rEiYuY2VyYmVydXMub3JkZXIudjEuR2V0T3JkZXJCb29rUmVxdWVzdBonLmNlcmJlcnVzLm9yZGVyLnYxLkdldE9yZGVyQm9va1Jlc3BvbnNlEm0KEFN0cmVhbUV4ZWN1dGlvbnMSKi5jZXJiZXJ1cy5vcmRlci52MS5TdHJlYW1FeGVjdXRpb25zUmVxdWVzdBorLmNlcmJlcnVzLm9yZGVyLnYxLlN0cmVhbUV4ZWN1dGlvbnNSZXNwb25zZTABEk0KBkhlYWx0aBIgLmNlcmJlcnVzLm9yZGVyLnYxLkhlYWx0aFJlcXVlc3QaIS5jZXJiZXJ1cy5vcmRlci52MS5IZWFsdGhSZXNwb25zZRJoCg9HZXRTZXJ2aWNlU3RhdHMSKS5jZXJiZXJ1cy5vcmRlci52MS5HZXRTZXJ2aWNlU3RhdHNSZXF1ZXN0GiouY2VyYmVydXMub3JkZXIudjEuR2V0U2VydmljZVN0YXRzUmVzcG9uc2VCiQEKFWNvbS5jZXJiZXJ1cy5vcmRlci52MUIKT3JkZXJQcm90b1ABogIDQ09YqgIRQ2VyYmVydXMuT3JkZXIuVjHKAhFDZXJiZXJ1c1xPcmRlclxWMeICHUNlcmJlcnVzXE9yZGVyXFYxXEdQQk1ldGFkYXRh6gITQ2VyYmVydXM6Ok9yZGVyOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("Ch1jZXJiZXJ1cy9vcmRlci92MS9vcmRlci5wcm90bxIRY2VyYmVydXMub3JkZXIudjEilAIKElN1Ym1pdE9yZGVyUmVxdWVzdBISCgphY2NvdW50X2lkGAEgASgJEg4KBnN5bWJvbBgCIAEoCRIlCgRzaWRlGAMgASgOMhcuY2VyYmVydXMub3JkZXIudjEuU2lkZRIwCgpvcmRlcl90eXBlGAQgASgOMhwuY2VyYmVydXMub3JkZXIudjEuT3JkZXJUeXBlEg0KBXByaWNlGAUgASgBEhAKCHF1YW50aXR5GAYgASgBEhcKD2NsaWVudF9vcmRlcl9pZBgHIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkSFgoOc2NoZW1hX3ZlcnNpb24YCSABKAkSFgoOY29ycmVsYXRpb25faWQYCiABKAkieQoTU3VibWl0T3JkZXJSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBIQCghvcmRlcl9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkSFgoOc2NoZW1hX3ZlcnNpb24YBCABKAkSFgoOY29ycmVsYXRpb25faWQYBSABKAkiagoSQ2FuY2VsT3JkZXJSZXF1ZXN0EhIKCmFjY291bnRfaWQYASABKAkSEAoIb3JkZXJfaWQYAiABKAkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSFgoOY29ycmVsYXRpb25faWQYBCABKAkiZwoTQ2FuY2VsT3JkZXJSZXNwb25zZRIQCghjYW5jZWxlZBgBIAEoCBIOCgZyZWFzb24YAiABKAkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSFgoOY29ycmVsYXRpb25faWQYBCABKAkiZwoPR2V0T3JkZXJSZXF1ZXN0EhIKCmFjY291bnRfaWQYASABKAkSEAoIb3JkZXJfaWQYAiABKAkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSFgoOY29ycmVsYXRpb25faWQYBCABKAki6wIKEEdldE9yZGVyUmVzcG9uc2USEAoIb3JkZXJfaWQYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRIOCgZzeW1ib2wYAyABKAkSJQoEc2lkZRgEIAEoDjIXLmNlcmJlcnVzLm9yZGVyLnYxLlNpZGUSMAoKb3JkZXJfdHlwZRgFIAEoDjIcLmNlcmJlcnVzLm9yZGVyLnYxLk9yZGVyVHlwZRINCgVwcmljZRgGIAEoARIQCghxdWFudGl0eRgHIAEoARIXCg9maWxsZWRfcXVhbnRpdHkYCCABKAESLgoGc3RhdHVzGAkgASgOMh4uY2VyYmVydXMub3JkZXIudjEuT3JkZXJTdGF0dXMSLgoKdXBkYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFgoOc2NoZW1hX3ZlcnNpb24YCyABKAkSFgoOY29ycmVsYXRpb25faWQYDCABKAkiZAoTR2V0T3JkZXJCb29rUmVxdWVzdBIOCgZzeW1ib2wYASABKAkSDQoFZGVwdGgYAiABKA0SFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSFgoOY29ycmVsYXRpb25faWQYBCABKAkiTAoOT3JkZXJCb29rTGV2ZWwSDQoFcHJpY2UYASABKAESFgoOdG90YWxfcXVhbnRpdHkYAiABKAESEwoLb3JkZXJfY291bnQYAyABKAQi0QEKFEdldE9yZGVyQm9va1Jlc3BvbnNlEg4KBnN5bWJvbBgBIAEoCRIvCgRiaWRzGAIgAygLMiEuY2VyYmVydXMub3JkZXIudjEuT3JkZXJCb29rTGV2ZWwSLwoEYXNrcxgDIAMoCzIhLmNlcmJlcnVzLm9yZGVyLnYxLk9yZGVyQm9va0xldmVsEhcKD2dlbmVyYXRlZF9hdF9tcxgEIAEoBBIWCg5zY2hlbWFfdmVyc2lvbhgFIAEoCRIWCg5jb3JyZWxhdGlvbl9pZBgGIAEoCSJdChdTdHJlYW1FeGVjdXRpb25zUmVxdWVzdBISCgphY2NvdW50X2lkGAEgASgJEhYKDnNjaGVtYV92ZXJzaW9uGAIgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAMgASgJItMBChhTdHJlYW1FeGVjdXRpb25zUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEhAKCG9yZGVyX2lkGAIgASgJEg4KBnN5bWJvbBgDIAEoCRINCgVwcmljZRgEIAEoARIQCghxdWFudGl0eRgFIAEoARIuCgpldmVudF90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIWCg5zY2hlbWFfdmVyc2lvbhgHIAEoCRIWCg5jb3JyZWxhdGlvbl9pZBgIIAEoCSIPCg1IZWFsdGhSZXF1ZXN0IooBCg5IZWFsdGhSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSDwoHc2VydmljZRgCIAEoCRIPCgd2ZXJzaW9uGAMgASgJEhYKDnVwdGltZV9zZWNvbmRzGAQgASgEEhYKDnNjaGVtYV92ZXJzaW9uGAUgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAYgASgJIhgKFkdldFNlcnZpY2VTdGF0c1JlcXVlc3Qi3AMKF0dldFNlcnZpY2VTdGF0c1Jlc3BvbnNlEhMKC2xpdmVfb3JkZXJzGAEgASgEEhMKC3RyYWRlX2NvdW50GAIgASgEEhYKDnRyYWNrZWRfb3JkZXJzGAMgASgEEhcKD3JlamVjdGVkX29yZGVycxgEIAEoBBIPCgdzeW1ib2xzGAUgASgEEhQKDGhhc19iZXN0X2JpZBgGIAEoCBIQCghiZXN0X2JpZBgHIAEoARIUCgxoYXNfYmVzdF9hc2sYCCABKAgSEAoIYmVzdF9hc2sYCSABKAESFgoOc2NoZW1hX3ZlcnNpb24YCiABKAkSFgoOY29ycmVsYXRpb25faWQYCyABKAkSIwobc3VibWl0X29yZGVyX3JlcXVlc3RzX3RvdGFsGAwgASgEEiEKGXN1Ym1pdF9vcmRlcl9lcnJvcnNfdG90YWwYDSABKAQSJQodc3VibWl0X29yZGVyX3JlamVjdGlvbnNfdG90YWwYDiABKAQSIwobc3VibWl0X29yZGVyX2xhdGVuY3lfcDk1X21zGA8gASgBEiMKG3N1Ym1pdF9vcmRlcl90aHJvdWdocHV0X3JwcxgQIAEoARIcChR0cmFkZV90aHJvdWdocHV0X3JwcxgRIAEoASo5CgRTaWRlEhQKEFNJREVfVU5TUEVDSUZJRUQQABIMCghTSURFX0JVWRABEg0KCVNJREVfU0VMTBACKlQKCU9yZGVyVHlwZRIaChZPUkRFUl9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQT1JERVJfVFlQRV9MSU1JVBABEhUKEU9SREVSX1RZUEVfTUFSS0VUEAIqswEKC09yZGVyU3RhdHVzEhwKGE9SREVSX1NUQVRVU19VTlNQRUNJRklFRBAAEhQKEE9SREVSX1NUQVRVU19ORVcQARIhCh1PUkRFUl9TVEFUVVNfUEFSVElBTExZX0ZJTExFRBACEhcKE09SREVSX1NUQVRVU19GSUxMRUQQAxIZChVPUkRFUl9TVEFUVVNfQ0FOQ0VMRUQQBBIZChVPUkRFUl9TVEFUVVNfUkVKRUNURUQQBTKoBQoMT3JkZXJTZXJ2aWNlElwKC1N1Ym1pdE9yZGVyEiUuY2VyYmVydXMub3JkZXIudjEuU3VibWl0T3JkZXJSZXF1ZXN0GiYuY2VyYmVydXMub3JkZXIudjEuU3VibWl0T3JkZXJSZXNwb25zZRJcCgtDYW5jZWxPcmRlchIlLmNlcmJlcnVzLm9yZGVyLnYxLkNhbmNlbE9yZGVyUmVxdWVzdBomLmNlcmJlcnVzLm9yZGVyLnYxLkNhbmNlbE9yZGVyUmVzcG9uc2USUwoIR2V0T3JkZXISIi5jZXJiZXJ1cy5vcmRlci52MS5HZXRPcmRlclJlcXVlc3QaIy5jZXJiZXJ1cy5vcmRlci52MS5HZXRPcmRlclJlc3BvbnNlEl8KDEdldE9yZGVyQm9vaxImLmNlcmJlcnVzLm9yZGVyLnYxLkdldE9yZGVyQm9va1JlcXVlc3QaJy5jZXJiZXJ1cy5vcmRlci52MS5HZXRPcmRlckJvb2tSZXNwb25zZRJtChBTdHJlYW1FeGVjdXRpb25zEiouY2VyYmVydXMub3JkZXIudjEuU3RyZWFtRXhlY3V0aW9uc1JlcXVlc3QaKy5jZXJiZXJ1cy5vcmRlci52MS5TdHJlYW1FeGVjdXRpb25zUmVzcG9uc2UwARJNCgZIZWFsdGgSIC5jZXJiZXJ1cy5vcmRlci52MS5IZWFsdGhSZXF1ZXN0GiEuY2VyYmVydXMub3JkZXIudjEuSGVhbHRoUmVzcG9uc2USaAoPR2V0U2VydmljZVN0YXRzEikuY2VyYmVydXMub3JkZXIudjEuR2V0U2VydmljZVN0YXRzUmVxdWVzdBoqLmNlcmJlcnVzLm9yZGVyLnYxLkdldFNlcnZpY2VTdGF0c1Jlc3BvbnNlQokBChVjb20uY2VyYmVydXMub3JkZXIudjFCCk9yZGVyUHJvdG9QAaICA0NPWKoCEUNlcmJlcnVzLk9yZGVyLlYxygIRQ2VyYmVydXNcT3JkZXJcVjHiAh1DZXJiZXJ1c1xPcmRlclxWMVxHUEJNZXRhZGF0YeoCE0NlcmJlcnVzOjpPcmRlcjo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message cerberus.order.v1.SubmitOrderRequest
@@ -52,6 +52,21 @@ export type SubmitOrderRequest = Message<"cerberus.order.v1.SubmitOrderRequest">
    * @generated from field: string client_order_id = 7;
    */
   clientOrderId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 8;
+   */
+  idempotencyKey: string;
+
+  /**
+   * @generated from field: string schema_version = 9;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 10;
+   */
+  correlationId: string;
 };
 
 /**
@@ -79,6 +94,16 @@ export type SubmitOrderResponse = Message<"cerberus.order.v1.SubmitOrderResponse
    * @generated from field: string reason = 3;
    */
   reason: string;
+
+  /**
+   * @generated from field: string schema_version = 4;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 5;
+   */
+  correlationId: string;
 };
 
 /**
@@ -101,6 +126,16 @@ export type CancelOrderRequest = Message<"cerberus.order.v1.CancelOrderRequest">
    * @generated from field: string order_id = 2;
    */
   orderId: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -123,6 +158,16 @@ export type CancelOrderResponse = Message<"cerberus.order.v1.CancelOrderResponse
    * @generated from field: string reason = 2;
    */
   reason: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -145,6 +190,16 @@ export type GetOrderRequest = Message<"cerberus.order.v1.GetOrderRequest"> & {
    * @generated from field: string order_id = 2;
    */
   orderId: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -207,6 +262,16 @@ export type GetOrderResponse = Message<"cerberus.order.v1.GetOrderResponse"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 10;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: string schema_version = 11;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 12;
+   */
+  correlationId: string;
 };
 
 /**
@@ -229,6 +294,16 @@ export type GetOrderBookRequest = Message<"cerberus.order.v1.GetOrderBookRequest
    * @generated from field: uint32 depth = 2;
    */
   depth: number;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -288,6 +363,16 @@ export type GetOrderBookResponse = Message<"cerberus.order.v1.GetOrderBookRespon
    * @generated from field: uint64 generated_at_ms = 4;
    */
   generatedAtMs: bigint;
+
+  /**
+   * @generated from field: string schema_version = 5;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 6;
+   */
+  correlationId: string;
 };
 
 /**
@@ -305,6 +390,16 @@ export type StreamExecutionsRequest = Message<"cerberus.order.v1.StreamExecution
    * @generated from field: string account_id = 1;
    */
   accountId: string;
+
+  /**
+   * @generated from field: string schema_version = 2;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 3;
+   */
+  correlationId: string;
 };
 
 /**
@@ -347,6 +442,16 @@ export type StreamExecutionsResponse = Message<"cerberus.order.v1.StreamExecutio
    * @generated from field: google.protobuf.Timestamp event_time = 6;
    */
   eventTime?: Timestamp;
+
+  /**
+   * @generated from field: string schema_version = 7;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 8;
+   */
+  correlationId: string;
 };
 
 /**
@@ -392,6 +497,16 @@ export type HealthResponse = Message<"cerberus.order.v1.HealthResponse"> & {
    * @generated from field: uint64 uptime_seconds = 4;
    */
   uptimeSeconds: bigint;
+
+  /**
+   * @generated from field: string schema_version = 5;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 6;
+   */
+  correlationId: string;
 };
 
 /**
@@ -462,6 +577,46 @@ export type GetServiceStatsResponse = Message<"cerberus.order.v1.GetServiceStats
    * @generated from field: double best_ask = 9;
    */
   bestAsk: number;
+
+  /**
+   * @generated from field: string schema_version = 10;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 11;
+   */
+  correlationId: string;
+
+  /**
+   * @generated from field: uint64 submit_order_requests_total = 12;
+   */
+  submitOrderRequestsTotal: bigint;
+
+  /**
+   * @generated from field: uint64 submit_order_errors_total = 13;
+   */
+  submitOrderErrorsTotal: bigint;
+
+  /**
+   * @generated from field: uint64 submit_order_rejections_total = 14;
+   */
+  submitOrderRejectionsTotal: bigint;
+
+  /**
+   * @generated from field: double submit_order_latency_p95_ms = 15;
+   */
+  submitOrderLatencyP95Ms: number;
+
+  /**
+   * @generated from field: double submit_order_throughput_rps = 16;
+   */
+  submitOrderThroughputRps: number;
+
+  /**
+   * @generated from field: double trade_throughput_rps = 17;
+   */
+  tradeThroughputRps: number;
 };
 
 /**

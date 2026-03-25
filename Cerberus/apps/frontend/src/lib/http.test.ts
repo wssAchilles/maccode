@@ -20,4 +20,17 @@ describe('normalizeError', () => {
     expect(error.code).toBe('upstream_internal_error')
     expect(error.message).toContain('request failed')
   })
+
+  it('reads gateway envelope request_id from top-level shell', () => {
+    const error = normalizeError('https://api.example.com', 400, {
+      request_id: 'rid-shell-1',
+      data: null,
+      error: {
+        code: 'validation_error',
+        message: 'bad input',
+      },
+    })
+    expect(error.code).toBe('validation_error')
+    expect(error.request_id).toBe('rid-shell-1')
+  })
 })

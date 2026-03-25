@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cerberus/market/v1/market.proto.
  */
 export const file_cerberus_market_v1_market: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jZXJiZXJ1cy9tYXJrZXQvdjEvbWFya2V0LnByb3RvEhJjZXJiZXJ1cy5tYXJrZXQudjEidQoSUHVibGlzaFRpY2tSZXF1ZXN0Eg4KBnN5bWJvbBgBIAEoCRINCgVwcmljZRgCIAEoARIQCghxdWFudGl0eRgDIAEoARIuCgpldmVudF90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIyChNQdWJsaXNoVGlja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiKAoFTGV2ZWwSDQoFcHJpY2UYASABKAESEAoIcXVhbnRpdHkYAiABKAEiqwEKF1N0cmVhbU9yZGVyQm9va1Jlc3BvbnNlEg4KBnN5bWJvbBgBIAEoCRInCgRiaWRzGAIgAygLMhkuY2VyYmVydXMubWFya2V0LnYxLkxldmVsEicKBGFza3MYAyADKAsyGS5jZXJiZXJ1cy5tYXJrZXQudjEuTGV2ZWwSLgoKZXZlbnRfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiKAoWU3RyZWFtT3JkZXJCb29rUmVxdWVzdBIOCgZzeW1ib2wYASABKAkiRAoRR2V0Q2FuZGxlc1JlcXVlc3QSDgoGc3ltYm9sGAEgASgJEhAKCGludGVydmFsGAIgASgJEg0KBWxpbWl0GAMgASgFIncKBkNhbmRsZRIRCglvcGVuX3RpbWUYASABKAMSDAoEb3BlbhgCIAEoARIMCgRoaWdoGAMgASgBEgsKA2xvdxgEIAEoARINCgVjbG9zZRgFIAEoARIOCgZ2b2x1bWUYBiABKAESEgoKY2xvc2VfdGltZRgHIAEoAyJBChJHZXRDYW5kbGVzUmVzcG9uc2USKwoHY2FuZGxlcxgBIAMoCzIaLmNlcmJlcnVzLm1hcmtldC52MS5DYW5kbGUyvgIKEU1hcmtldERhdGFTZXJ2aWNlEl4KC1B1Ymxpc2hUaWNrEiYuY2VyYmVydXMubWFya2V0LnYxLlB1Ymxpc2hUaWNrUmVxdWVzdBonLmNlcmJlcnVzLm1hcmtldC52MS5QdWJsaXNoVGlja1Jlc3BvbnNlEmwKD1N0cmVhbU9yZGVyQm9vaxIqLmNlcmJlcnVzLm1hcmtldC52MS5TdHJlYW1PcmRlckJvb2tSZXF1ZXN0GisuY2VyYmVydXMubWFya2V0LnYxLlN0cmVhbU9yZGVyQm9va1Jlc3BvbnNlMAESWwoKR2V0Q2FuZGxlcxIlLmNlcmJlcnVzLm1hcmtldC52MS5HZXRDYW5kbGVzUmVxdWVzdBomLmNlcmJlcnVzLm1hcmtldC52MS5HZXRDYW5kbGVzUmVzcG9uc2VCjwEKFmNvbS5jZXJiZXJ1cy5tYXJrZXQudjFCC01hcmtldFByb3RvUAGiAgNDTViqAhJDZXJiZXJ1cy5NYXJrZXQuVjHKAhJDZXJiZXJ1c1xNYXJrZXRcVjHiAh5DZXJiZXJ1c1xNYXJrZXRcVjFcR1BCTWV0YWRhdGHqAhRDZXJiZXJ1czo6TWFya2V0OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("Ch9jZXJiZXJ1cy9tYXJrZXQvdjEvbWFya2V0LnByb3RvEhJjZXJiZXJ1cy5tYXJrZXQudjEipQEKElB1Ymxpc2hUaWNrUmVxdWVzdBIOCgZzeW1ib2wYASABKAkSDQoFcHJpY2UYAiABKAESEAoIcXVhbnRpdHkYAyABKAESLgoKZXZlbnRfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFgoOc2NoZW1hX3ZlcnNpb24YBSABKAkSFgoOY29ycmVsYXRpb25faWQYBiABKAkiYgoTUHVibGlzaFRpY2tSZXNwb25zZRIKCgJvaxgBIAEoCBIPCgdtZXNzYWdlGAIgASgJEhYKDnNjaGVtYV92ZXJzaW9uGAMgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAQgASgJIigKBUxldmVsEg0KBXByaWNlGAEgASgBEhAKCHF1YW50aXR5GAIgASgBItsBChdTdHJlYW1PcmRlckJvb2tSZXNwb25zZRIOCgZzeW1ib2wYASABKAkSJwoEYmlkcxgCIAMoCzIZLmNlcmJlcnVzLm1hcmtldC52MS5MZXZlbBInCgRhc2tzGAMgAygLMhkuY2VyYmVydXMubWFya2V0LnYxLkxldmVsEi4KCmV2ZW50X3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhYKDnNjaGVtYV92ZXJzaW9uGAUgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAYgASgJIlgKFlN0cmVhbU9yZGVyQm9va1JlcXVlc3QSDgoGc3ltYm9sGAEgASgJEhYKDnNjaGVtYV92ZXJzaW9uGAIgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAMgASgJInQKEUdldENhbmRsZXNSZXF1ZXN0Eg4KBnN5bWJvbBgBIAEoCRIQCghpbnRlcnZhbBgCIAEoCRINCgVsaW1pdBgDIAEoBRIWCg5zY2hlbWFfdmVyc2lvbhgEIAEoCRIWCg5jb3JyZWxhdGlvbl9pZBgFIAEoCSJ3CgZDYW5kbGUSEQoJb3Blbl90aW1lGAEgASgDEgwKBG9wZW4YAiABKAESDAoEaGlnaBgDIAEoARILCgNsb3cYBCABKAESDQoFY2xvc2UYBSABKAESDgoGdm9sdW1lGAYgASgBEhIKCmNsb3NlX3RpbWUYByABKAMicQoSR2V0Q2FuZGxlc1Jlc3BvbnNlEisKB2NhbmRsZXMYASADKAsyGi5jZXJiZXJ1cy5tYXJrZXQudjEuQ2FuZGxlEhYKDnNjaGVtYV92ZXJzaW9uGAIgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAMgASgJMr4CChFNYXJrZXREYXRhU2VydmljZRJeCgtQdWJsaXNoVGljaxImLmNlcmJlcnVzLm1hcmtldC52MS5QdWJsaXNoVGlja1JlcXVlc3QaJy5jZXJiZXJ1cy5tYXJrZXQudjEuUHVibGlzaFRpY2tSZXNwb25zZRJsCg9TdHJlYW1PcmRlckJvb2sSKi5jZXJiZXJ1cy5tYXJrZXQudjEuU3RyZWFtT3JkZXJCb29rUmVxdWVzdBorLmNlcmJlcnVzLm1hcmtldC52MS5TdHJlYW1PcmRlckJvb2tSZXNwb25zZTABElsKCkdldENhbmRsZXMSJS5jZXJiZXJ1cy5tYXJrZXQudjEuR2V0Q2FuZGxlc1JlcXVlc3QaJi5jZXJiZXJ1cy5tYXJrZXQudjEuR2V0Q2FuZGxlc1Jlc3BvbnNlQo8BChZjb20uY2VyYmVydXMubWFya2V0LnYxQgtNYXJrZXRQcm90b1ABogIDQ01YqgISQ2VyYmVydXMuTWFya2V0LlYxygISQ2VyYmVydXNcTWFya2V0XFYx4gIeQ2VyYmVydXNcTWFya2V0XFYxXEdQQk1ldGFkYXRh6gIUQ2VyYmVydXM6Ok1hcmtldDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message cerberus.market.v1.PublishTickRequest
@@ -37,6 +37,16 @@ export type PublishTickRequest = Message<"cerberus.market.v1.PublishTickRequest"
    * @generated from field: google.protobuf.Timestamp event_time = 4;
    */
   eventTime?: Timestamp;
+
+  /**
+   * @generated from field: string schema_version = 5;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 6;
+   */
+  correlationId: string;
 };
 
 /**
@@ -59,6 +69,16 @@ export type PublishTickResponse = Message<"cerberus.market.v1.PublishTickRespons
    * @generated from field: string message = 2;
    */
   message: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -113,6 +133,16 @@ export type StreamOrderBookResponse = Message<"cerberus.market.v1.StreamOrderBoo
    * @generated from field: google.protobuf.Timestamp event_time = 4;
    */
   eventTime?: Timestamp;
+
+  /**
+   * @generated from field: string schema_version = 5;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 6;
+   */
+  correlationId: string;
 };
 
 /**
@@ -130,6 +160,16 @@ export type StreamOrderBookRequest = Message<"cerberus.market.v1.StreamOrderBook
    * @generated from field: string symbol = 1;
    */
   symbol: string;
+
+  /**
+   * @generated from field: string schema_version = 2;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 3;
+   */
+  correlationId: string;
 };
 
 /**
@@ -157,6 +197,16 @@ export type GetCandlesRequest = Message<"cerberus.market.v1.GetCandlesRequest"> 
    * @generated from field: int32 limit = 3;
    */
   limit: number;
+
+  /**
+   * @generated from field: string schema_version = 4;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 5;
+   */
+  correlationId: string;
 };
 
 /**
@@ -221,6 +271,16 @@ export type GetCandlesResponse = Message<"cerberus.market.v1.GetCandlesResponse"
    * @generated from field: repeated cerberus.market.v1.Candle candles = 1;
    */
   candles: Candle[];
+
+  /**
+   * @generated from field: string schema_version = 2;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 3;
+   */
+  correlationId: string;
 };
 
 /**

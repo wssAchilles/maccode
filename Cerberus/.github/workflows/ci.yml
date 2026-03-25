@@ -6,6 +6,20 @@ on:
   pull_request:
 
 jobs:
+  infra-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.8"
+      - name: Terraform fmt
+        run: cd infra/terraform && terraform fmt -check -recursive
+      - name: Terraform init (no backend)
+        run: cd infra/terraform && terraform init -backend=false
+      - name: Terraform validate
+        run: cd infra/terraform && terraform validate
+
   proto:
     runs-on: ubuntu-latest
     steps:

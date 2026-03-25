@@ -110,6 +110,7 @@ def test_matching_submit_endpoint_uses_client() -> None:
         quantity: float,
         client_order_id: str = "",
         request_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, object]:
         assert account_id == "default"
         assert symbol == "BTCUSDT"
@@ -118,6 +119,7 @@ def test_matching_submit_endpoint_uses_client() -> None:
         assert quantity == 0.01
         assert client_order_id == "cid-1"
         assert request_id
+        assert idempotency_key is None
         return {
             "accepted": True,
             "order_id": "oid-1",

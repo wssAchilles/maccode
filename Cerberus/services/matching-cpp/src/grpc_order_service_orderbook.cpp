@@ -13,20 +13,27 @@ grpc::Status GrpcOrderService::GetOrderBook(
   if (request->symbol().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "symbol is required");
   }
+  FillResponseContext(context, request->schema_version(), request->correlation_id(),
+                      response->mutable_schema_version(), response->mutable_correlation_id());
 
   const std::string symbol = request->symbol();
   const std::size_t depth =
       request->depth() == 0 ? static_cast<std::size_t>(20) : static_cast<std::size_t>(request->depth());
+  response->set_symbol(symbol);
+  const auto now = std::chrono::system_clock::now().time_since_epoch();
+  const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+  response->set_generated_at_ms(static_cast<std::uint64_t>(std::max<std::int64_t>(millis, 0)));
+
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+    return grpc::Status::OK;
+  }
+
   OrderBookSnapshot snapshot;
   {
     std::scoped_lock<std::mutex> lock(mu_);
     snapshot = service_.SnapshotForSymbol(symbol, depth);
   }
-
-  response->set_symbol(symbol);
-  const auto now = std::chrono::system_clock::now().time_since_epoch();
-  const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-  response->set_generated_at_ms(static_cast<std::uint64_t>(std::max<std::int64_t>(millis, 0)));
 
   for (const auto& level : snapshot.bids) {
     auto* out = response->add_bids();
@@ -39,6 +46,9 @@ grpc::Status GrpcOrderService::GetOrderBook(
     out->set_price(level.price);
     out->set_total_quantity(level.total_quantity);
     out->set_order_count(static_cast<std::uint64_t>(level.order_count));
+  }
+  if (snapshot.bids.empty() && snapshot.asks.empty()) {
+    MarkDegraded(context, "degraded:orderbook_empty");
   }
 
   return grpc::Status::OK;

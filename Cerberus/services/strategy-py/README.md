@@ -40,11 +40,20 @@ Optional matching gRPC submit path (signal -> order):
 - `TRADE_EXECUTION_CHANNEL_PREFIX=trade.executions`
 - `EXECUTION_RELAY_INTERVAL_SECONDS=1`
 - `EXECUTION_RELAY_BATCH_LIMIT=100`
+- `EVENT_SCHEMA_VERSION=v1`
+- `IDEMPOTENCY_STORE_REDIS_ENABLED=true`
+- `IDEMPOTENCY_REDIS_KEY_PREFIX=cerberus:idempotency`
+- `SIGNAL_IDEMPOTENCY_TTL_SECONDS=900`
 
 Market subscriptions:
 
 - `MARKET_CHANNEL=md.orderbook.BTCUSDT` (single channel fallback)
 - `MARKET_CHANNELS=md.orderbook.BTCUSDT,md.orderbook.ETHUSDT` (preferred multi-channel mode)
+- `MARKET_STREAM_ENABLED=true` (primary market ingest mode)
+- `MARKET_STREAM_KEY=cerberus.market.events`
+- `MARKET_STREAM_CONSUMER_GROUP=strategy-market`
+- `MARKET_STREAM_CONSUMER_NAME=` (optional override; auto-generated when empty)
+- `MARKET_STREAM_LEGACY_PUBSUB_FALLBACK=true`
 
 Signal smoke endpoint (works without Redis):
 
@@ -70,7 +79,13 @@ Matching control endpoints:
 Observability notes:
 
 - Strategy gRPC client attaches `x-request-id` metadata to matching RPC calls.
+- Strategy order submit forwards `idempotency_key` (HTTP `idempotency-key` or signal-derived key).
 - Strategy HTTP middleware preserves incoming `x-request-id` (or generates one) and echoes it in response headers.
 - HTTP errors are wrapped as `{ "error": { "code", "message", "request_id" } }`.
 - `/api/v1/status/persistence` now includes `matching.health` and `matching.stats`.
-- `/metrics` exposes Prometheus counters/gauges for worker loops, signal throughput, storage toggles, and matching reachability.
+- `/metrics` exposes Prometheus counters/gauges for worker loops, signal throughput, storage toggles, matching reachability, and matching degraded state.
+- `/metrics` also exposes market stream consumer-group health (`market_stream_events`, ack/read failures, retry/fallback counters, ingest mode).
+- `matching.stats` includes matching capacity baselines from gRPC:
+  - submit request/error/rejection counters
+  - `submit_order_latency_p95_ms`
+  - `submit_order_throughput_rps` and `trade_throughput_rps`

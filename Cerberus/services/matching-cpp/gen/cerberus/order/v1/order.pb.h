@@ -425,6 +425,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderResponse final : public 
   enum : int {
     kOrderIdFieldNumber = 2,
     kReasonFieldNumber = 3,
+    kSchemaVersionFieldNumber = 4,
+    kCorrelationIdFieldNumber = 5,
     kAcceptedFieldNumber = 1,
   };
   // string order_id = 2 [json_name = "orderId"];
@@ -457,6 +459,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderResponse final : public 
   ::std::string* PROTOBUF_NONNULL _internal_mutable_reason();
 
   public:
+  // string schema_version = 4 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 5 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // bool accepted = 1 [json_name = "accepted"];
   void clear_accepted() ;
   [[nodiscard]] bool accepted() const;
@@ -471,8 +503,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderResponse final : public 
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 3,
-                                   0, 60,
+  static const ::google::protobuf::internal::TcParseTable<3, 5,
+                                   0, 88,
                                    2>
       _table_;
 
@@ -497,6 +529,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderResponse final : public 
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr order_id_;
     ::google::protobuf::internal::ArenaStringPtr reason_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     bool accepted_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -656,6 +690,9 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderRequest final : public :
     kAccountIdFieldNumber = 1,
     kSymbolFieldNumber = 2,
     kClientOrderIdFieldNumber = 7,
+    kIdempotencyKeyFieldNumber = 8,
+    kSchemaVersionFieldNumber = 9,
+    kCorrelationIdFieldNumber = 10,
     kSideFieldNumber = 3,
     kOrderTypeFieldNumber = 4,
     kPriceFieldNumber = 5,
@@ -706,6 +743,51 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderRequest final : public :
   ::std::string* PROTOBUF_NONNULL _internal_mutable_client_order_id();
 
   public:
+  // string idempotency_key = 8 [json_name = "idempotencyKey"];
+  void clear_idempotency_key() ;
+  [[nodiscard]] const ::std::string& idempotency_key() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_idempotency_key(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_idempotency_key();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_idempotency_key();
+  void set_allocated_idempotency_key(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_idempotency_key() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_idempotency_key(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_idempotency_key();
+
+  public:
+  // string schema_version = 9 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 10 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // .cerberus.order.v1.Side side = 3 [json_name = "side"];
   void clear_side() ;
   [[nodiscard]] ::cerberus::order::v1::Side side() const;
@@ -750,8 +832,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderRequest final : public :
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<3, 7,
-                                   0, 76,
+  static const ::google::protobuf::internal::TcParseTable<4, 10,
+                                   0, 127,
                                    2>
       _table_;
 
@@ -777,6 +859,9 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED SubmitOrderRequest final : public :
     ::google::protobuf::internal::ArenaStringPtr account_id_;
     ::google::protobuf::internal::ArenaStringPtr symbol_;
     ::google::protobuf::internal::ArenaStringPtr client_order_id_;
+    ::google::protobuf::internal::ArenaStringPtr idempotency_key_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     int side_;
     int order_type_;
     double price_;
@@ -937,6 +1022,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsRequest final : pub
   // accessors -------------------------------------------------------
   enum : int {
     kAccountIdFieldNumber = 1,
+    kSchemaVersionFieldNumber = 2,
+    kCorrelationIdFieldNumber = 3,
   };
   // string account_id = 1 [json_name = "accountId"];
   void clear_account_id() ;
@@ -953,12 +1040,42 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsRequest final : pub
   ::std::string* PROTOBUF_NONNULL _internal_mutable_account_id();
 
   public:
+  // string schema_version = 2 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 3 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // @@protoc_insertion_point(class_scope:cerberus.order.v1.StreamExecutionsRequest)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<0, 1,
-                                   0, 60,
+  static const ::google::protobuf::internal::TcParseTable<2, 3,
+                                   0, 88,
                                    2>
       _table_;
 
@@ -982,6 +1099,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsRequest final : pub
     ::google::protobuf::internal::HasBits<1> _has_bits_;
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr account_id_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -1360,6 +1479,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
     kStatusFieldNumber = 1,
     kServiceFieldNumber = 2,
     kVersionFieldNumber = 3,
+    kSchemaVersionFieldNumber = 5,
+    kCorrelationIdFieldNumber = 6,
     kUptimeSecondsFieldNumber = 4,
   };
   // string status = 1 [json_name = "status"];
@@ -1407,6 +1528,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
   ::std::string* PROTOBUF_NONNULL _internal_mutable_version();
 
   public:
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 6 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
   void clear_uptime_seconds() ;
   [[nodiscard]] ::uint64_t uptime_seconds() const;
@@ -1421,8 +1572,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 4,
-                                   0, 61,
+  static const ::google::protobuf::internal::TcParseTable<3, 6,
+                                   0, 89,
                                    2>
       _table_;
 
@@ -1448,6 +1599,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
     ::google::protobuf::internal::ArenaStringPtr status_;
     ::google::protobuf::internal::ArenaStringPtr service_;
     ::google::protobuf::internal::ArenaStringPtr version_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::uint64_t uptime_seconds_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -1741,6 +1894,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
 
   // accessors -------------------------------------------------------
   enum : int {
+    kSchemaVersionFieldNumber = 10,
+    kCorrelationIdFieldNumber = 11,
     kLiveOrdersFieldNumber = 1,
     kTradeCountFieldNumber = 2,
     kTrackedOrdersFieldNumber = 3,
@@ -1748,9 +1903,45 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
     kSymbolsFieldNumber = 5,
     kBestBidFieldNumber = 7,
     kBestAskFieldNumber = 9,
+    kSubmitOrderRequestsTotalFieldNumber = 12,
+    kSubmitOrderErrorsTotalFieldNumber = 13,
+    kSubmitOrderRejectionsTotalFieldNumber = 14,
+    kSubmitOrderLatencyP95MsFieldNumber = 15,
+    kSubmitOrderThroughputRpsFieldNumber = 16,
+    kTradeThroughputRpsFieldNumber = 17,
     kHasBestBidFieldNumber = 6,
     kHasBestAskFieldNumber = 8,
   };
+  // string schema_version = 10 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 11 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // uint64 live_orders = 1 [json_name = "liveOrders"];
   void clear_live_orders() ;
   [[nodiscard]] ::uint64_t live_orders() const;
@@ -1821,6 +2012,66 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
   void _internal_set_best_ask(double value);
 
   public:
+  // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+  void clear_submit_order_requests_total() ;
+  [[nodiscard]] ::uint64_t submit_order_requests_total() const;
+  void set_submit_order_requests_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_submit_order_requests_total() const;
+  void _internal_set_submit_order_requests_total(::uint64_t value);
+
+  public:
+  // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+  void clear_submit_order_errors_total() ;
+  [[nodiscard]] ::uint64_t submit_order_errors_total() const;
+  void set_submit_order_errors_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_submit_order_errors_total() const;
+  void _internal_set_submit_order_errors_total(::uint64_t value);
+
+  public:
+  // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+  void clear_submit_order_rejections_total() ;
+  [[nodiscard]] ::uint64_t submit_order_rejections_total() const;
+  void set_submit_order_rejections_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_submit_order_rejections_total() const;
+  void _internal_set_submit_order_rejections_total(::uint64_t value);
+
+  public:
+  // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+  void clear_submit_order_latency_p95_ms() ;
+  [[nodiscard]] double submit_order_latency_p95_ms() const;
+  void set_submit_order_latency_p95_ms(double value);
+
+  private:
+  double _internal_submit_order_latency_p95_ms() const;
+  void _internal_set_submit_order_latency_p95_ms(double value);
+
+  public:
+  // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+  void clear_submit_order_throughput_rps() ;
+  [[nodiscard]] double submit_order_throughput_rps() const;
+  void set_submit_order_throughput_rps(double value);
+
+  private:
+  double _internal_submit_order_throughput_rps() const;
+  void _internal_set_submit_order_throughput_rps(double value);
+
+  public:
+  // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+  void clear_trade_throughput_rps() ;
+  [[nodiscard]] double trade_throughput_rps() const;
+  void set_trade_throughput_rps(double value);
+
+  private:
+  double _internal_trade_throughput_rps() const;
+  void _internal_set_trade_throughput_rps(double value);
+
+  public:
   // bool has_best_bid = 6 [json_name = "hasBestBid"];
   void clear_has_best_bid() ;
   [[nodiscard]] bool has_best_bid() const;
@@ -1845,8 +2096,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<4, 9,
-                                   0, 0,
+  static const ::google::protobuf::internal::TcParseTable<5, 17,
+                                   0, 94,
                                    2>
       _table_;
 
@@ -1869,6 +2120,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
         const GetServiceStatsResponse& from_msg);
     ::google::protobuf::internal::HasBits<1> _has_bits_;
     ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::uint64_t live_orders_;
     ::uint64_t trade_count_;
     ::uint64_t tracked_orders_;
@@ -1876,6 +2129,12 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
     ::uint64_t symbols_;
     double best_bid_;
     double best_ask_;
+    ::uint64_t submit_order_requests_total_;
+    ::uint64_t submit_order_errors_total_;
+    ::uint64_t submit_order_rejections_total_;
+    double submit_order_latency_p95_ms_;
+    double submit_order_throughput_rps_;
+    double trade_throughput_rps_;
     bool has_best_bid_;
     bool has_best_ask_;
     PROTOBUF_TSAN_DECLARE_MEMBER
@@ -2172,6 +2431,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderRequest final : public ::go
   enum : int {
     kAccountIdFieldNumber = 1,
     kOrderIdFieldNumber = 2,
+    kSchemaVersionFieldNumber = 3,
+    kCorrelationIdFieldNumber = 4,
   };
   // string account_id = 1 [json_name = "accountId"];
   void clear_account_id() ;
@@ -2203,12 +2464,42 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderRequest final : public ::go
   ::std::string* PROTOBUF_NONNULL _internal_mutable_order_id();
 
   public:
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 4 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // @@protoc_insertion_point(class_scope:cerberus.order.v1.GetOrderRequest)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<1, 2,
-                                   0, 60,
+  static const ::google::protobuf::internal::TcParseTable<2, 4,
+                                   0, 88,
                                    2>
       _table_;
 
@@ -2233,6 +2524,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderRequest final : public ::go
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr account_id_;
     ::google::protobuf::internal::ArenaStringPtr order_id_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -2389,6 +2682,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookRequest final : public 
   // accessors -------------------------------------------------------
   enum : int {
     kSymbolFieldNumber = 1,
+    kSchemaVersionFieldNumber = 3,
+    kCorrelationIdFieldNumber = 4,
     kDepthFieldNumber = 2,
   };
   // string symbol = 1 [json_name = "symbol"];
@@ -2406,6 +2701,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookRequest final : public 
   ::std::string* PROTOBUF_NONNULL _internal_mutable_symbol();
 
   public:
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 4 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // uint32 depth = 2 [json_name = "depth"];
   void clear_depth() ;
   [[nodiscard]] ::uint32_t depth() const;
@@ -2420,8 +2745,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookRequest final : public 
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<1, 2,
-                                   0, 52,
+  static const ::google::protobuf::internal::TcParseTable<2, 4,
+                                   0, 80,
                                    2>
       _table_;
 
@@ -2445,6 +2770,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookRequest final : public 
     ::google::protobuf::internal::HasBits<1> _has_bits_;
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr symbol_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::uint32_t depth_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -2602,6 +2929,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderResponse final : public 
   // accessors -------------------------------------------------------
   enum : int {
     kReasonFieldNumber = 2,
+    kSchemaVersionFieldNumber = 3,
+    kCorrelationIdFieldNumber = 4,
     kCanceledFieldNumber = 1,
   };
   // string reason = 2 [json_name = "reason"];
@@ -2619,6 +2948,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderResponse final : public 
   ::std::string* PROTOBUF_NONNULL _internal_mutable_reason();
 
   public:
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 4 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // bool canceled = 1 [json_name = "canceled"];
   void clear_canceled() ;
   [[nodiscard]] bool canceled() const;
@@ -2633,8 +2992,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderResponse final : public 
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<1, 2,
-                                   0, 52,
+  static const ::google::protobuf::internal::TcParseTable<2, 4,
+                                   0, 80,
                                    2>
       _table_;
 
@@ -2658,6 +3017,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderResponse final : public 
     ::google::protobuf::internal::HasBits<1> _has_bits_;
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr reason_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     bool canceled_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -2816,6 +3177,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderRequest final : public :
   enum : int {
     kAccountIdFieldNumber = 1,
     kOrderIdFieldNumber = 2,
+    kSchemaVersionFieldNumber = 3,
+    kCorrelationIdFieldNumber = 4,
   };
   // string account_id = 1 [json_name = "accountId"];
   void clear_account_id() ;
@@ -2847,12 +3210,42 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderRequest final : public :
   ::std::string* PROTOBUF_NONNULL _internal_mutable_order_id();
 
   public:
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 4 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // @@protoc_insertion_point(class_scope:cerberus.order.v1.CancelOrderRequest)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<1, 2,
-                                   0, 63,
+  static const ::google::protobuf::internal::TcParseTable<2, 4,
+                                   0, 91,
                                    2>
       _table_;
 
@@ -2877,6 +3270,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED CancelOrderRequest final : public :
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr account_id_;
     ::google::protobuf::internal::ArenaStringPtr order_id_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -3035,6 +3430,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsResponse final : pu
     kExecutionIdFieldNumber = 1,
     kOrderIdFieldNumber = 2,
     kSymbolFieldNumber = 3,
+    kSchemaVersionFieldNumber = 7,
+    kCorrelationIdFieldNumber = 8,
     kEventTimeFieldNumber = 6,
     kPriceFieldNumber = 4,
     kQuantityFieldNumber = 5,
@@ -3084,6 +3481,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsResponse final : pu
   ::std::string* PROTOBUF_NONNULL _internal_mutable_symbol();
 
   public:
+  // string schema_version = 7 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 8 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
   [[nodiscard]] bool has_event_time()
       const;
@@ -3124,8 +3551,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsResponse final : pu
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<3, 6,
-                                   1, 77,
+  static const ::google::protobuf::internal::TcParseTable<3, 8,
+                                   1, 113,
                                    2>
       _table_;
 
@@ -3151,6 +3578,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED StreamExecutionsResponse final : pu
     ::google::protobuf::internal::ArenaStringPtr execution_id_;
     ::google::protobuf::internal::ArenaStringPtr order_id_;
     ::google::protobuf::internal::ArenaStringPtr symbol_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::google::protobuf::Timestamp* PROTOBUF_NULLABLE event_time_;
     double price_;
     double quantity_;
@@ -3312,6 +3741,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderResponse final : public ::g
     kOrderIdFieldNumber = 1,
     kAccountIdFieldNumber = 2,
     kSymbolFieldNumber = 3,
+    kSchemaVersionFieldNumber = 11,
+    kCorrelationIdFieldNumber = 12,
     kUpdatedAtFieldNumber = 10,
     kSideFieldNumber = 4,
     kOrderTypeFieldNumber = 5,
@@ -3363,6 +3794,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderResponse final : public ::g
   const ::std::string& _internal_symbol() const;
   PROTOBUF_ALWAYS_INLINE void _internal_set_symbol(const ::std::string& value);
   ::std::string* PROTOBUF_NONNULL _internal_mutable_symbol();
+
+  public:
+  // string schema_version = 11 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 12 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
 
   public:
   // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
@@ -3445,8 +3906,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderResponse final : public ::g
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<4, 10,
-                                   1, 75,
+  static const ::google::protobuf::internal::TcParseTable<4, 12,
+                                   1, 103,
                                    2>
       _table_;
 
@@ -3472,6 +3933,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderResponse final : public ::g
     ::google::protobuf::internal::ArenaStringPtr order_id_;
     ::google::protobuf::internal::ArenaStringPtr account_id_;
     ::google::protobuf::internal::ArenaStringPtr symbol_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::google::protobuf::Timestamp* PROTOBUF_NULLABLE updated_at_;
     int side_;
     int order_type_;
@@ -3637,6 +4100,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookResponse final : public
     kBidsFieldNumber = 2,
     kAsksFieldNumber = 3,
     kSymbolFieldNumber = 1,
+    kSchemaVersionFieldNumber = 5,
+    kCorrelationIdFieldNumber = 6,
     kGeneratedAtMsFieldNumber = 4,
   };
   // repeated .cerberus.order.v1.OrderBookLevel bids = 2 [json_name = "bids"];
@@ -3694,6 +4159,36 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookResponse final : public
   ::std::string* PROTOBUF_NONNULL _internal_mutable_symbol();
 
   public:
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  void clear_schema_version() ;
+  [[nodiscard]] const ::std::string& schema_version() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_schema_version(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_schema_version();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_schema_version();
+  void set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_schema_version() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_schema_version(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_schema_version();
+
+  public:
+  // string correlation_id = 6 [json_name = "correlationId"];
+  void clear_correlation_id() ;
+  [[nodiscard]] const ::std::string& correlation_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_correlation_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_correlation_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_correlation_id();
+  void set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_correlation_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
   // uint64 generated_at_ms = 4 [json_name = "generatedAtMs"];
   void clear_generated_at_ms() ;
   [[nodiscard]] ::uint64_t generated_at_ms() const;
@@ -3708,8 +4203,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookResponse final : public
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 4,
-                                   2, 53,
+  static const ::google::protobuf::internal::TcParseTable<3, 6,
+                                   2, 81,
                                    2>
       _table_;
 
@@ -3735,6 +4230,8 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetOrderBookResponse final : public
     ::google::protobuf::RepeatedPtrField< ::cerberus::order::v1::OrderBookLevel > bids_;
     ::google::protobuf::RepeatedPtrField< ::cerberus::order::v1::OrderBookLevel > asks_;
     ::google::protobuf::internal::ArenaStringPtr symbol_;
+    ::google::protobuf::internal::ArenaStringPtr schema_version_;
+    ::google::protobuf::internal::ArenaStringPtr correlation_id_;
     ::uint64_t generated_at_ms_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -3895,7 +4392,7 @@ inline void SubmitOrderRequest::clear_side() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.side_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000040U);
 }
 inline ::cerberus::order::v1::Side SubmitOrderRequest::side() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.side)
@@ -3903,7 +4400,7 @@ inline ::cerberus::order::v1::Side SubmitOrderRequest::side() const {
 }
 inline void SubmitOrderRequest::set_side(::cerberus::order::v1::Side value) {
   _internal_set_side(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.side)
 }
 inline ::cerberus::order::v1::Side SubmitOrderRequest::_internal_side() const {
@@ -3920,7 +4417,7 @@ inline void SubmitOrderRequest::clear_order_type() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.order_type_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000010U);
+                  0x00000080U);
 }
 inline ::cerberus::order::v1::OrderType SubmitOrderRequest::order_type() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.order_type)
@@ -3928,7 +4425,7 @@ inline ::cerberus::order::v1::OrderType SubmitOrderRequest::order_type() const {
 }
 inline void SubmitOrderRequest::set_order_type(::cerberus::order::v1::OrderType value) {
   _internal_set_order_type(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.order_type)
 }
 inline ::cerberus::order::v1::OrderType SubmitOrderRequest::_internal_order_type() const {
@@ -3945,7 +4442,7 @@ inline void SubmitOrderRequest::clear_price() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.price_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000100U);
 }
 inline double SubmitOrderRequest::price() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.price)
@@ -3953,7 +4450,7 @@ inline double SubmitOrderRequest::price() const {
 }
 inline void SubmitOrderRequest::set_price(double value) {
   _internal_set_price(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.price)
 }
 inline double SubmitOrderRequest::_internal_price() const {
@@ -3970,7 +4467,7 @@ inline void SubmitOrderRequest::clear_quantity() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.quantity_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000040U);
+                  0x00000200U);
 }
 inline double SubmitOrderRequest::quantity() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.quantity)
@@ -3978,7 +4475,7 @@ inline double SubmitOrderRequest::quantity() const {
 }
 inline void SubmitOrderRequest::set_quantity(double value) {
   _internal_set_quantity(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.quantity)
 }
 inline double SubmitOrderRequest::_internal_quantity() const {
@@ -4055,6 +4552,201 @@ inline void SubmitOrderRequest::set_allocated_client_order_id(::std::string* PRO
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderRequest.client_order_id)
 }
 
+// string idempotency_key = 8 [json_name = "idempotencyKey"];
+inline void SubmitOrderRequest::clear_idempotency_key() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.idempotency_key_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& SubmitOrderRequest::idempotency_key() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.idempotency_key)
+  return _internal_idempotency_key();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void SubmitOrderRequest::set_idempotency_key(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.idempotency_key_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.idempotency_key)
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::mutable_idempotency_key()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_idempotency_key();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.SubmitOrderRequest.idempotency_key)
+  return _s;
+}
+inline const ::std::string& SubmitOrderRequest::_internal_idempotency_key() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.idempotency_key_.Get();
+}
+inline void SubmitOrderRequest::_internal_set_idempotency_key(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.idempotency_key_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::_internal_mutable_idempotency_key() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.idempotency_key_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE SubmitOrderRequest::release_idempotency_key() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.SubmitOrderRequest.idempotency_key)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.idempotency_key_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.idempotency_key_.Set("", GetArena());
+  }
+  return released;
+}
+inline void SubmitOrderRequest::set_allocated_idempotency_key(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.idempotency_key_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.idempotency_key_.IsDefault()) {
+    _impl_.idempotency_key_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderRequest.idempotency_key)
+}
+
+// string schema_version = 9 [json_name = "schemaVersion"];
+inline void SubmitOrderRequest::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& SubmitOrderRequest::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void SubmitOrderRequest::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.SubmitOrderRequest.schema_version)
+  return _s;
+}
+inline const ::std::string& SubmitOrderRequest::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void SubmitOrderRequest::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE SubmitOrderRequest::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.SubmitOrderRequest.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void SubmitOrderRequest::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderRequest.schema_version)
+}
+
+// string correlation_id = 10 [json_name = "correlationId"];
+inline void SubmitOrderRequest::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000020U);
+}
+inline const ::std::string& SubmitOrderRequest::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderRequest.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void SubmitOrderRequest::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderRequest.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.SubmitOrderRequest.correlation_id)
+  return _s;
+}
+inline const ::std::string& SubmitOrderRequest::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void SubmitOrderRequest::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderRequest::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE SubmitOrderRequest::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.SubmitOrderRequest.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000020U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void SubmitOrderRequest::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderRequest.correlation_id)
+}
+
 // -------------------------------------------------------------------
 
 // SubmitOrderResponse
@@ -4064,7 +4756,7 @@ inline void SubmitOrderResponse::clear_accepted() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.accepted_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000004U);
+                  0x00000010U);
 }
 inline bool SubmitOrderResponse::accepted() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderResponse.accepted)
@@ -4072,7 +4764,7 @@ inline bool SubmitOrderResponse::accepted() const {
 }
 inline void SubmitOrderResponse::set_accepted(bool value) {
   _internal_set_accepted(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderResponse.accepted)
 }
 inline bool SubmitOrderResponse::_internal_accepted() const {
@@ -4214,6 +4906,136 @@ inline void SubmitOrderResponse::set_allocated_reason(::std::string* PROTOBUF_NU
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderResponse.reason)
 }
 
+// string schema_version = 4 [json_name = "schemaVersion"];
+inline void SubmitOrderResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& SubmitOrderResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void SubmitOrderResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.SubmitOrderResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& SubmitOrderResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void SubmitOrderResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE SubmitOrderResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.SubmitOrderResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void SubmitOrderResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderResponse.schema_version)
+}
+
+// string correlation_id = 5 [json_name = "correlationId"];
+inline void SubmitOrderResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& SubmitOrderResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.SubmitOrderResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void SubmitOrderResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.SubmitOrderResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.SubmitOrderResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& SubmitOrderResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void SubmitOrderResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL SubmitOrderResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE SubmitOrderResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.SubmitOrderResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void SubmitOrderResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.SubmitOrderResponse.correlation_id)
+}
+
 // -------------------------------------------------------------------
 
 // CancelOrderRequest
@@ -4348,6 +5170,136 @@ inline void CancelOrderRequest::set_allocated_order_id(::std::string* PROTOBUF_N
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderRequest.order_id)
 }
 
+// string schema_version = 3 [json_name = "schemaVersion"];
+inline void CancelOrderRequest::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& CancelOrderRequest::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.CancelOrderRequest.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void CancelOrderRequest::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.CancelOrderRequest.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderRequest::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.CancelOrderRequest.schema_version)
+  return _s;
+}
+inline const ::std::string& CancelOrderRequest::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void CancelOrderRequest::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderRequest::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE CancelOrderRequest::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.CancelOrderRequest.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void CancelOrderRequest::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderRequest.schema_version)
+}
+
+// string correlation_id = 4 [json_name = "correlationId"];
+inline void CancelOrderRequest::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& CancelOrderRequest::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.CancelOrderRequest.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void CancelOrderRequest::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.CancelOrderRequest.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderRequest::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.CancelOrderRequest.correlation_id)
+  return _s;
+}
+inline const ::std::string& CancelOrderRequest::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void CancelOrderRequest::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderRequest::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE CancelOrderRequest::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.CancelOrderRequest.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void CancelOrderRequest::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderRequest.correlation_id)
+}
+
 // -------------------------------------------------------------------
 
 // CancelOrderResponse
@@ -4357,7 +5309,7 @@ inline void CancelOrderResponse::clear_canceled() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.canceled_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000002U);
+                  0x00000008U);
 }
 inline bool CancelOrderResponse::canceled() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.CancelOrderResponse.canceled)
@@ -4365,7 +5317,7 @@ inline bool CancelOrderResponse::canceled() const {
 }
 inline void CancelOrderResponse::set_canceled(bool value) {
   _internal_set_canceled(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.CancelOrderResponse.canceled)
 }
 inline bool CancelOrderResponse::_internal_canceled() const {
@@ -4440,6 +5392,136 @@ inline void CancelOrderResponse::set_allocated_reason(::std::string* PROTOBUF_NU
     _impl_.reason_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderResponse.reason)
+}
+
+// string schema_version = 3 [json_name = "schemaVersion"];
+inline void CancelOrderResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& CancelOrderResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.CancelOrderResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void CancelOrderResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.CancelOrderResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.CancelOrderResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& CancelOrderResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void CancelOrderResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE CancelOrderResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.CancelOrderResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void CancelOrderResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderResponse.schema_version)
+}
+
+// string correlation_id = 4 [json_name = "correlationId"];
+inline void CancelOrderResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& CancelOrderResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.CancelOrderResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void CancelOrderResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.CancelOrderResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.CancelOrderResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& CancelOrderResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void CancelOrderResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL CancelOrderResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE CancelOrderResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.CancelOrderResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void CancelOrderResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.CancelOrderResponse.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -4574,6 +5656,136 @@ inline void GetOrderRequest::set_allocated_order_id(::std::string* PROTOBUF_NULL
     _impl_.order_id_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderRequest.order_id)
+}
+
+// string schema_version = 3 [json_name = "schemaVersion"];
+inline void GetOrderRequest::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& GetOrderRequest::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderRequest.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderRequest::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderRequest.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderRequest::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderRequest.schema_version)
+  return _s;
+}
+inline const ::std::string& GetOrderRequest::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void GetOrderRequest::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderRequest::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderRequest::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderRequest.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderRequest::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderRequest.schema_version)
+}
+
+// string correlation_id = 4 [json_name = "correlationId"];
+inline void GetOrderRequest::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& GetOrderRequest::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderRequest.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderRequest::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderRequest.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderRequest::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderRequest.correlation_id)
+  return _s;
+}
+inline const ::std::string& GetOrderRequest::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void GetOrderRequest::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderRequest::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderRequest::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderRequest.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderRequest::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderRequest.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -4780,7 +5992,7 @@ inline void GetOrderResponse::clear_side() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.side_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000010U);
+                  0x00000040U);
 }
 inline ::cerberus::order::v1::Side GetOrderResponse::side() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.side)
@@ -4788,7 +6000,7 @@ inline ::cerberus::order::v1::Side GetOrderResponse::side() const {
 }
 inline void GetOrderResponse::set_side(::cerberus::order::v1::Side value) {
   _internal_set_side(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.side)
 }
 inline ::cerberus::order::v1::Side GetOrderResponse::_internal_side() const {
@@ -4805,7 +6017,7 @@ inline void GetOrderResponse::clear_order_type() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.order_type_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000080U);
 }
 inline ::cerberus::order::v1::OrderType GetOrderResponse::order_type() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.order_type)
@@ -4813,7 +6025,7 @@ inline ::cerberus::order::v1::OrderType GetOrderResponse::order_type() const {
 }
 inline void GetOrderResponse::set_order_type(::cerberus::order::v1::OrderType value) {
   _internal_set_order_type(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.order_type)
 }
 inline ::cerberus::order::v1::OrderType GetOrderResponse::_internal_order_type() const {
@@ -4830,7 +6042,7 @@ inline void GetOrderResponse::clear_price() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.price_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000040U);
+                  0x00000100U);
 }
 inline double GetOrderResponse::price() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.price)
@@ -4838,7 +6050,7 @@ inline double GetOrderResponse::price() const {
 }
 inline void GetOrderResponse::set_price(double value) {
   _internal_set_price(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.price)
 }
 inline double GetOrderResponse::_internal_price() const {
@@ -4855,7 +6067,7 @@ inline void GetOrderResponse::clear_quantity() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.quantity_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000080U);
+                  0x00000200U);
 }
 inline double GetOrderResponse::quantity() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.quantity)
@@ -4863,7 +6075,7 @@ inline double GetOrderResponse::quantity() const {
 }
 inline void GetOrderResponse::set_quantity(double value) {
   _internal_set_quantity(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.quantity)
 }
 inline double GetOrderResponse::_internal_quantity() const {
@@ -4880,7 +6092,7 @@ inline void GetOrderResponse::clear_filled_quantity() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.filled_quantity_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000100U);
+                  0x00000400U);
 }
 inline double GetOrderResponse::filled_quantity() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.filled_quantity)
@@ -4888,7 +6100,7 @@ inline double GetOrderResponse::filled_quantity() const {
 }
 inline void GetOrderResponse::set_filled_quantity(double value) {
   _internal_set_filled_quantity(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000400U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.filled_quantity)
 }
 inline double GetOrderResponse::_internal_filled_quantity() const {
@@ -4905,7 +6117,7 @@ inline void GetOrderResponse::clear_status() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.status_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000200U);
+                  0x00000800U);
 }
 inline ::cerberus::order::v1::OrderStatus GetOrderResponse::status() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.status)
@@ -4913,7 +6125,7 @@ inline ::cerberus::order::v1::OrderStatus GetOrderResponse::status() const {
 }
 inline void GetOrderResponse::set_status(::cerberus::order::v1::OrderStatus value) {
   _internal_set_status(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000800U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.status)
 }
 inline ::cerberus::order::v1::OrderStatus GetOrderResponse::_internal_status() const {
@@ -4927,7 +6139,7 @@ inline void GetOrderResponse::_internal_set_status(::cerberus::order::v1::OrderS
 
 // .google.protobuf.Timestamp updated_at = 10 [json_name = "updatedAt"];
 inline bool GetOrderResponse::has_updated_at() const {
-  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000008U);
+  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000020U);
   PROTOBUF_ASSUME(!value || _impl_.updated_at_ != nullptr);
   return value;
 }
@@ -4948,16 +6160,16 @@ inline void GetOrderResponse::unsafe_arena_set_allocated_updated_at(
   }
   _impl_.updated_at_ = reinterpret_cast<::google::protobuf::Timestamp*>(value);
   if (value != nullptr) {
-    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   } else {
-    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   }
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:cerberus.order.v1.GetOrderResponse.updated_at)
 }
 inline ::google::protobuf::Timestamp* PROTOBUF_NULLABLE GetOrderResponse::release_updated_at() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
 
-  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* released = _impl_.updated_at_;
   _impl_.updated_at_ = nullptr;
   if (::google::protobuf::internal::DebugHardenForceCopyInRelease()) {
@@ -4977,7 +6189,7 @@ inline ::google::protobuf::Timestamp* PROTOBUF_NULLABLE GetOrderResponse::unsafe
   ::google::protobuf::internal::TSanWrite(&_impl_);
   // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderResponse.updated_at)
 
-  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* temp = _impl_.updated_at_;
   _impl_.updated_at_ = nullptr;
   return temp;
@@ -4992,7 +6204,7 @@ inline ::google::protobuf::Timestamp* PROTOBUF_NONNULL GetOrderResponse::_intern
 }
 inline ::google::protobuf::Timestamp* PROTOBUF_NONNULL GetOrderResponse::mutable_updated_at()
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* _msg = _internal_mutable_updated_at();
   // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderResponse.updated_at)
   return _msg;
@@ -5009,13 +6221,143 @@ inline void GetOrderResponse::set_allocated_updated_at(::google::protobuf::Times
     if (message_arena != submessage_arena) {
       value = ::google::protobuf::internal::GetOwnedMessage(message_arena, value, submessage_arena);
     }
-    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   } else {
-    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   }
 
   _impl_.updated_at_ = reinterpret_cast<::google::protobuf::Timestamp*>(value);
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderResponse.updated_at)
+}
+
+// string schema_version = 11 [json_name = "schemaVersion"];
+inline void GetOrderResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& GetOrderResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& GetOrderResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void GetOrderResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderResponse.schema_version)
+}
+
+// string correlation_id = 12 [json_name = "correlationId"];
+inline void GetOrderResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& GetOrderResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& GetOrderResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void GetOrderResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderResponse.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -5092,7 +6434,7 @@ inline void GetOrderBookRequest::clear_depth() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.depth_ = 0u;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000002U);
+                  0x00000008U);
 }
 inline ::uint32_t GetOrderBookRequest::depth() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookRequest.depth)
@@ -5100,7 +6442,7 @@ inline ::uint32_t GetOrderBookRequest::depth() const {
 }
 inline void GetOrderBookRequest::set_depth(::uint32_t value) {
   _internal_set_depth(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookRequest.depth)
 }
 inline ::uint32_t GetOrderBookRequest::_internal_depth() const {
@@ -5110,6 +6452,136 @@ inline ::uint32_t GetOrderBookRequest::_internal_depth() const {
 inline void GetOrderBookRequest::_internal_set_depth(::uint32_t value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.depth_ = value;
+}
+
+// string schema_version = 3 [json_name = "schemaVersion"];
+inline void GetOrderBookRequest::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& GetOrderBookRequest::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookRequest.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderBookRequest::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookRequest.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookRequest::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderBookRequest.schema_version)
+  return _s;
+}
+inline const ::std::string& GetOrderBookRequest::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void GetOrderBookRequest::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookRequest::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderBookRequest::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderBookRequest.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderBookRequest::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderBookRequest.schema_version)
+}
+
+// string correlation_id = 4 [json_name = "correlationId"];
+inline void GetOrderBookRequest::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& GetOrderBookRequest::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookRequest.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderBookRequest::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookRequest.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookRequest::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderBookRequest.correlation_id)
+  return _s;
+}
+inline const ::std::string& GetOrderBookRequest::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void GetOrderBookRequest::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookRequest::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderBookRequest::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderBookRequest.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderBookRequest::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderBookRequest.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -5377,7 +6849,7 @@ inline void GetOrderBookResponse::clear_generated_at_ms() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.generated_at_ms_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 inline ::uint64_t GetOrderBookResponse::generated_at_ms() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookResponse.generated_at_ms)
@@ -5385,7 +6857,7 @@ inline ::uint64_t GetOrderBookResponse::generated_at_ms() const {
 }
 inline void GetOrderBookResponse::set_generated_at_ms(::uint64_t value) {
   _internal_set_generated_at_ms(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookResponse.generated_at_ms)
 }
 inline ::uint64_t GetOrderBookResponse::_internal_generated_at_ms() const {
@@ -5395,6 +6867,136 @@ inline ::uint64_t GetOrderBookResponse::_internal_generated_at_ms() const {
 inline void GetOrderBookResponse::_internal_set_generated_at_ms(::uint64_t value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.generated_at_ms_ = value;
+}
+
+// string schema_version = 5 [json_name = "schemaVersion"];
+inline void GetOrderBookResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& GetOrderBookResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderBookResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderBookResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& GetOrderBookResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void GetOrderBookResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderBookResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderBookResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderBookResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderBookResponse.schema_version)
+}
+
+// string correlation_id = 6 [json_name = "correlationId"];
+inline void GetOrderBookResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& GetOrderBookResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetOrderBookResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetOrderBookResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetOrderBookResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetOrderBookResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& GetOrderBookResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void GetOrderBookResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetOrderBookResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetOrderBookResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetOrderBookResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetOrderBookResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetOrderBookResponse.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -5464,6 +7066,136 @@ inline void StreamExecutionsRequest::set_allocated_account_id(::std::string* PRO
     _impl_.account_id_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsRequest.account_id)
+}
+
+// string schema_version = 2 [json_name = "schemaVersion"];
+inline void StreamExecutionsRequest::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& StreamExecutionsRequest::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsRequest.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void StreamExecutionsRequest::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsRequest.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsRequest::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.StreamExecutionsRequest.schema_version)
+  return _s;
+}
+inline const ::std::string& StreamExecutionsRequest::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void StreamExecutionsRequest::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsRequest::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE StreamExecutionsRequest::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.StreamExecutionsRequest.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void StreamExecutionsRequest::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsRequest.schema_version)
+}
+
+// string correlation_id = 3 [json_name = "correlationId"];
+inline void StreamExecutionsRequest::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& StreamExecutionsRequest::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsRequest.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void StreamExecutionsRequest::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsRequest.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsRequest::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.StreamExecutionsRequest.correlation_id)
+  return _s;
+}
+inline const ::std::string& StreamExecutionsRequest::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void StreamExecutionsRequest::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsRequest::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE StreamExecutionsRequest::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.StreamExecutionsRequest.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void StreamExecutionsRequest::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsRequest.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -5670,7 +7402,7 @@ inline void StreamExecutionsResponse::clear_price() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.price_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000010U);
+                  0x00000040U);
 }
 inline double StreamExecutionsResponse::price() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsResponse.price)
@@ -5678,7 +7410,7 @@ inline double StreamExecutionsResponse::price() const {
 }
 inline void StreamExecutionsResponse::set_price(double value) {
   _internal_set_price(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsResponse.price)
 }
 inline double StreamExecutionsResponse::_internal_price() const {
@@ -5695,7 +7427,7 @@ inline void StreamExecutionsResponse::clear_quantity() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.quantity_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000080U);
 }
 inline double StreamExecutionsResponse::quantity() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsResponse.quantity)
@@ -5703,7 +7435,7 @@ inline double StreamExecutionsResponse::quantity() const {
 }
 inline void StreamExecutionsResponse::set_quantity(double value) {
   _internal_set_quantity(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsResponse.quantity)
 }
 inline double StreamExecutionsResponse::_internal_quantity() const {
@@ -5717,7 +7449,7 @@ inline void StreamExecutionsResponse::_internal_set_quantity(double value) {
 
 // .google.protobuf.Timestamp event_time = 6 [json_name = "eventTime"];
 inline bool StreamExecutionsResponse::has_event_time() const {
-  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000008U);
+  bool value = CheckHasBit(_impl_._has_bits_[0], 0x00000020U);
   PROTOBUF_ASSUME(!value || _impl_.event_time_ != nullptr);
   return value;
 }
@@ -5738,16 +7470,16 @@ inline void StreamExecutionsResponse::unsafe_arena_set_allocated_event_time(
   }
   _impl_.event_time_ = reinterpret_cast<::google::protobuf::Timestamp*>(value);
   if (value != nullptr) {
-    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   } else {
-    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   }
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:cerberus.order.v1.StreamExecutionsResponse.event_time)
 }
 inline ::google::protobuf::Timestamp* PROTOBUF_NULLABLE StreamExecutionsResponse::release_event_time() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
 
-  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* released = _impl_.event_time_;
   _impl_.event_time_ = nullptr;
   if (::google::protobuf::internal::DebugHardenForceCopyInRelease()) {
@@ -5767,7 +7499,7 @@ inline ::google::protobuf::Timestamp* PROTOBUF_NULLABLE StreamExecutionsResponse
   ::google::protobuf::internal::TSanWrite(&_impl_);
   // @@protoc_insertion_point(field_release:cerberus.order.v1.StreamExecutionsResponse.event_time)
 
-  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* temp = _impl_.event_time_;
   _impl_.event_time_ = nullptr;
   return temp;
@@ -5782,7 +7514,7 @@ inline ::google::protobuf::Timestamp* PROTOBUF_NONNULL StreamExecutionsResponse:
 }
 inline ::google::protobuf::Timestamp* PROTOBUF_NONNULL StreamExecutionsResponse::mutable_event_time()
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   ::google::protobuf::Timestamp* _msg = _internal_mutable_event_time();
   // @@protoc_insertion_point(field_mutable:cerberus.order.v1.StreamExecutionsResponse.event_time)
   return _msg;
@@ -5799,13 +7531,143 @@ inline void StreamExecutionsResponse::set_allocated_event_time(::google::protobu
     if (message_arena != submessage_arena) {
       value = ::google::protobuf::internal::GetOwnedMessage(message_arena, value, submessage_arena);
     }
-    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   } else {
-    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
   }
 
   _impl_.event_time_ = reinterpret_cast<::google::protobuf::Timestamp*>(value);
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsResponse.event_time)
+}
+
+// string schema_version = 7 [json_name = "schemaVersion"];
+inline void StreamExecutionsResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& StreamExecutionsResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void StreamExecutionsResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.StreamExecutionsResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& StreamExecutionsResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void StreamExecutionsResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE StreamExecutionsResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.StreamExecutionsResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void StreamExecutionsResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsResponse.schema_version)
+}
+
+// string correlation_id = 8 [json_name = "correlationId"];
+inline void StreamExecutionsResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& StreamExecutionsResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.StreamExecutionsResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void StreamExecutionsResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.StreamExecutionsResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.StreamExecutionsResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& StreamExecutionsResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void StreamExecutionsResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL StreamExecutionsResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE StreamExecutionsResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.StreamExecutionsResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void StreamExecutionsResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.StreamExecutionsResponse.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -6016,7 +7878,7 @@ inline void HealthResponse::clear_uptime_seconds() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.uptime_seconds_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 inline ::uint64_t HealthResponse::uptime_seconds() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.uptime_seconds)
@@ -6024,7 +7886,7 @@ inline ::uint64_t HealthResponse::uptime_seconds() const {
 }
 inline void HealthResponse::set_uptime_seconds(::uint64_t value) {
   _internal_set_uptime_seconds(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.uptime_seconds)
 }
 inline ::uint64_t HealthResponse::_internal_uptime_seconds() const {
@@ -6034,6 +7896,136 @@ inline ::uint64_t HealthResponse::_internal_uptime_seconds() const {
 inline void HealthResponse::_internal_set_uptime_seconds(::uint64_t value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.uptime_seconds_ = value;
+}
+
+// string schema_version = 5 [json_name = "schemaVersion"];
+inline void HealthResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& HealthResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void HealthResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.HealthResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& HealthResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void HealthResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE HealthResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.HealthResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void HealthResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.HealthResponse.schema_version)
+}
+
+// string correlation_id = 6 [json_name = "correlationId"];
+inline void HealthResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& HealthResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void HealthResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.HealthResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& HealthResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void HealthResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE HealthResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.HealthResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void HealthResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.HealthResponse.correlation_id)
 }
 
 // -------------------------------------------------------------------
@@ -6049,7 +8041,7 @@ inline void GetServiceStatsResponse::clear_live_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.live_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000001U);
+                  0x00000004U);
 }
 inline ::uint64_t GetServiceStatsResponse::live_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.live_orders)
@@ -6057,7 +8049,7 @@ inline ::uint64_t GetServiceStatsResponse::live_orders() const {
 }
 inline void GetServiceStatsResponse::set_live_orders(::uint64_t value) {
   _internal_set_live_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.live_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_live_orders() const {
@@ -6074,7 +8066,7 @@ inline void GetServiceStatsResponse::clear_trade_count() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.trade_count_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000002U);
+                  0x00000008U);
 }
 inline ::uint64_t GetServiceStatsResponse::trade_count() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.trade_count)
@@ -6082,7 +8074,7 @@ inline ::uint64_t GetServiceStatsResponse::trade_count() const {
 }
 inline void GetServiceStatsResponse::set_trade_count(::uint64_t value) {
   _internal_set_trade_count(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.trade_count)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_trade_count() const {
@@ -6099,7 +8091,7 @@ inline void GetServiceStatsResponse::clear_tracked_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.tracked_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000004U);
+                  0x00000010U);
 }
 inline ::uint64_t GetServiceStatsResponse::tracked_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.tracked_orders)
@@ -6107,7 +8099,7 @@ inline ::uint64_t GetServiceStatsResponse::tracked_orders() const {
 }
 inline void GetServiceStatsResponse::set_tracked_orders(::uint64_t value) {
   _internal_set_tracked_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.tracked_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_tracked_orders() const {
@@ -6124,7 +8116,7 @@ inline void GetServiceStatsResponse::clear_rejected_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.rejected_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000020U);
 }
 inline ::uint64_t GetServiceStatsResponse::rejected_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.rejected_orders)
@@ -6132,7 +8124,7 @@ inline ::uint64_t GetServiceStatsResponse::rejected_orders() const {
 }
 inline void GetServiceStatsResponse::set_rejected_orders(::uint64_t value) {
   _internal_set_rejected_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.rejected_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_rejected_orders() const {
@@ -6149,7 +8141,7 @@ inline void GetServiceStatsResponse::clear_symbols() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.symbols_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000010U);
+                  0x00000040U);
 }
 inline ::uint64_t GetServiceStatsResponse::symbols() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.symbols)
@@ -6157,7 +8149,7 @@ inline ::uint64_t GetServiceStatsResponse::symbols() const {
 }
 inline void GetServiceStatsResponse::set_symbols(::uint64_t value) {
   _internal_set_symbols(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.symbols)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_symbols() const {
@@ -6174,7 +8166,7 @@ inline void GetServiceStatsResponse::clear_has_best_bid() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.has_best_bid_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000080U);
+                  0x00008000U);
 }
 inline bool GetServiceStatsResponse::has_best_bid() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.has_best_bid)
@@ -6182,7 +8174,7 @@ inline bool GetServiceStatsResponse::has_best_bid() const {
 }
 inline void GetServiceStatsResponse::set_has_best_bid(bool value) {
   _internal_set_has_best_bid(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
+  SetHasBit(_impl_._has_bits_[0], 0x00008000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.has_best_bid)
 }
 inline bool GetServiceStatsResponse::_internal_has_best_bid() const {
@@ -6199,7 +8191,7 @@ inline void GetServiceStatsResponse::clear_best_bid() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.best_bid_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000080U);
 }
 inline double GetServiceStatsResponse::best_bid() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.best_bid)
@@ -6207,7 +8199,7 @@ inline double GetServiceStatsResponse::best_bid() const {
 }
 inline void GetServiceStatsResponse::set_best_bid(double value) {
   _internal_set_best_bid(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.best_bid)
 }
 inline double GetServiceStatsResponse::_internal_best_bid() const {
@@ -6224,7 +8216,7 @@ inline void GetServiceStatsResponse::clear_has_best_ask() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.has_best_ask_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000100U);
+                  0x00010000U);
 }
 inline bool GetServiceStatsResponse::has_best_ask() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.has_best_ask)
@@ -6232,7 +8224,7 @@ inline bool GetServiceStatsResponse::has_best_ask() const {
 }
 inline void GetServiceStatsResponse::set_has_best_ask(bool value) {
   _internal_set_has_best_ask(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
+  SetHasBit(_impl_._has_bits_[0], 0x00010000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.has_best_ask)
 }
 inline bool GetServiceStatsResponse::_internal_has_best_ask() const {
@@ -6249,7 +8241,7 @@ inline void GetServiceStatsResponse::clear_best_ask() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.best_ask_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000040U);
+                  0x00000100U);
 }
 inline double GetServiceStatsResponse::best_ask() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.best_ask)
@@ -6257,7 +8249,7 @@ inline double GetServiceStatsResponse::best_ask() const {
 }
 inline void GetServiceStatsResponse::set_best_ask(double value) {
   _internal_set_best_ask(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.best_ask)
 }
 inline double GetServiceStatsResponse::_internal_best_ask() const {
@@ -6267,6 +8259,286 @@ inline double GetServiceStatsResponse::_internal_best_ask() const {
 inline void GetServiceStatsResponse::_internal_set_best_ask(double value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.best_ask_ = value;
+}
+
+// string schema_version = 10 [json_name = "schemaVersion"];
+inline void GetServiceStatsResponse::clear_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& GetServiceStatsResponse::schema_version() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.schema_version)
+  return _internal_schema_version();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetServiceStatsResponse::set_schema_version(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.schema_version_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.schema_version)
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::mutable_schema_version()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_schema_version();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetServiceStatsResponse.schema_version)
+  return _s;
+}
+inline const ::std::string& GetServiceStatsResponse::_internal_schema_version() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.schema_version_.Get();
+}
+inline void GetServiceStatsResponse::_internal_set_schema_version(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.schema_version_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::_internal_mutable_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.schema_version_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetServiceStatsResponse::release_schema_version() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetServiceStatsResponse.schema_version)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.schema_version_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetServiceStatsResponse::set_allocated_schema_version(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.schema_version_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.schema_version_.IsDefault()) {
+    _impl_.schema_version_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetServiceStatsResponse.schema_version)
+}
+
+// string correlation_id = 11 [json_name = "correlationId"];
+inline void GetServiceStatsResponse::clear_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& GetServiceStatsResponse::correlation_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.correlation_id)
+  return _internal_correlation_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetServiceStatsResponse::set_correlation_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.correlation_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.correlation_id)
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::mutable_correlation_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_correlation_id();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetServiceStatsResponse.correlation_id)
+  return _s;
+}
+inline const ::std::string& GetServiceStatsResponse::_internal_correlation_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.correlation_id_.Get();
+}
+inline void GetServiceStatsResponse::_internal_set_correlation_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.correlation_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::_internal_mutable_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.correlation_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetServiceStatsResponse::release_correlation_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetServiceStatsResponse.correlation_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.correlation_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetServiceStatsResponse::set_allocated_correlation_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.correlation_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.correlation_id_.IsDefault()) {
+    _impl_.correlation_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetServiceStatsResponse.correlation_id)
+}
+
+// uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
+inline void GetServiceStatsResponse::clear_submit_order_requests_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_requests_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000200U);
+}
+inline ::uint64_t GetServiceStatsResponse::submit_order_requests_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_requests_total)
+  return _internal_submit_order_requests_total();
+}
+inline void GetServiceStatsResponse::set_submit_order_requests_total(::uint64_t value) {
+  _internal_set_submit_order_requests_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_requests_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_requests_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_order_requests_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_order_requests_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_requests_total_ = value;
+}
+
+// uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
+inline void GetServiceStatsResponse::clear_submit_order_errors_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_errors_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000400U);
+}
+inline ::uint64_t GetServiceStatsResponse::submit_order_errors_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_errors_total)
+  return _internal_submit_order_errors_total();
+}
+inline void GetServiceStatsResponse::set_submit_order_errors_total(::uint64_t value) {
+  _internal_set_submit_order_errors_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000400U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_errors_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_errors_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_order_errors_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_order_errors_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_errors_total_ = value;
+}
+
+// uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
+inline void GetServiceStatsResponse::clear_submit_order_rejections_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_rejections_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000800U);
+}
+inline ::uint64_t GetServiceStatsResponse::submit_order_rejections_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_rejections_total)
+  return _internal_submit_order_rejections_total();
+}
+inline void GetServiceStatsResponse::set_submit_order_rejections_total(::uint64_t value) {
+  _internal_set_submit_order_rejections_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000800U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_rejections_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_rejections_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_order_rejections_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_order_rejections_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_rejections_total_ = value;
+}
+
+// double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
+inline void GetServiceStatsResponse::clear_submit_order_latency_p95_ms() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_latency_p95_ms_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00001000U);
+}
+inline double GetServiceStatsResponse::submit_order_latency_p95_ms() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_latency_p95_ms)
+  return _internal_submit_order_latency_p95_ms();
+}
+inline void GetServiceStatsResponse::set_submit_order_latency_p95_ms(double value) {
+  _internal_set_submit_order_latency_p95_ms(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00001000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_latency_p95_ms)
+}
+inline double GetServiceStatsResponse::_internal_submit_order_latency_p95_ms() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_order_latency_p95_ms_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_order_latency_p95_ms(double value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_latency_p95_ms_ = value;
+}
+
+// double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
+inline void GetServiceStatsResponse::clear_submit_order_throughput_rps() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_throughput_rps_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00002000U);
+}
+inline double GetServiceStatsResponse::submit_order_throughput_rps() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_throughput_rps)
+  return _internal_submit_order_throughput_rps();
+}
+inline void GetServiceStatsResponse::set_submit_order_throughput_rps(double value) {
+  _internal_set_submit_order_throughput_rps(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00002000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_throughput_rps)
+}
+inline double GetServiceStatsResponse::_internal_submit_order_throughput_rps() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_order_throughput_rps_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_order_throughput_rps(double value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_order_throughput_rps_ = value;
+}
+
+// double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
+inline void GetServiceStatsResponse::clear_trade_throughput_rps() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.trade_throughput_rps_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00004000U);
+}
+inline double GetServiceStatsResponse::trade_throughput_rps() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.trade_throughput_rps)
+  return _internal_trade_throughput_rps();
+}
+inline void GetServiceStatsResponse::set_trade_throughput_rps(double value) {
+  _internal_set_trade_throughput_rps(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00004000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.trade_throughput_rps)
+}
+inline double GetServiceStatsResponse::_internal_trade_throughput_rps() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.trade_throughput_rps_;
+}
+inline void GetServiceStatsResponse::_internal_set_trade_throughput_rps(double value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.trade_throughput_rps_ = value;
 }
 
 #ifdef __GNUC__

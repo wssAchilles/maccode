@@ -11,6 +11,8 @@ service StrategyService {
 message EvaluateSignalRequest {
   string strategy_id = 1;
   string symbol = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message EvaluateSignalResponse {
@@ -18,15 +20,21 @@ message EvaluateSignalResponse {
   string symbol = 2;
   string signal = 3;
   double confidence = 4;
+  string schema_version = 5;
+  string correlation_id = 6;
 }
 
 message RebalanceRequest {
   string strategy_id = 1;
+  string schema_version = 2;
+  string correlation_id = 3;
 }
 
 message RebalanceResponse {
   bool accepted = 1;
   string message = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message HealthRequest {}
@@ -34,4 +42,6 @@ message HealthRequest {}
 message HealthResponse {
   string status = 1;
   string version = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }

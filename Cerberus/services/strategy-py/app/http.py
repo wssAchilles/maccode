@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 REQUEST_ID_HEADER = "x-request-id"
+IDEMPOTENCY_KEY_HEADER = "idempotency-key"
+IDEMPOTENCY_KEY_ALT_HEADER = "x-idempotency-key"
 PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 
 
@@ -26,6 +28,28 @@ def request_id_from(request: Request) -> str:
     if isinstance(request_id, str) and request_id:
         return request_id
     return "unknown"
+
+
+def sanitize_idempotency_key(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    trimmed = raw.strip()
+    if not trimmed or len(trimmed) > 256:
+        return None
+    if all(ch.isalnum() or ch in "-_:.#" for ch in trimmed):
+        return trimmed
+    return None
+
+
+def idempotency_key_from(request: Request) -> str | None:
+    state_key = getattr(request.state, "idempotency_key", None)
+    if isinstance(state_key, str) and state_key:
+        return state_key
+
+    return (
+        sanitize_idempotency_key(request.headers.get(IDEMPOTENCY_KEY_HEADER))
+        or sanitize_idempotency_key(request.headers.get(IDEMPOTENCY_KEY_ALT_HEADER))
+    )
 
 
 def error_response(
@@ -109,8 +133,15 @@ def register_request_id_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):  # type: ignore[override]
         incoming = sanitize_request_id(request.headers.get(REQUEST_ID_HEADER))
+        idempotency_key = (
+            sanitize_idempotency_key(request.headers.get(IDEMPOTENCY_KEY_HEADER))
+            or sanitize_idempotency_key(request.headers.get(IDEMPOTENCY_KEY_ALT_HEADER))
+        )
         request_id = incoming or uuid4().hex
         request.state.request_id = request_id
+        request.state.idempotency_key = idempotency_key
         response = await call_next(request)
         response.headers[REQUEST_ID_HEADER] = request_id
+        if idempotency_key:
+            response.headers[IDEMPOTENCY_KEY_HEADER] = idempotency_key
         return response

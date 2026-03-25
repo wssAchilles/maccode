@@ -7,10 +7,9 @@ from app.api.matching_helpers import (
     ensure_matching_enabled,
     raise_gateway_grpc_error,
     raise_get_order_error,
-    raise_orderbook_error,
 )
 from app.config import settings
-from app.http import request_id_from
+from app.http import idempotency_key_from, request_id_from
 from app.redis_worker import RedisMarketWorker
 from app.schemas import (
     MatchingCancelRequest,
@@ -44,12 +43,15 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
             quantity=payload.quantity,
             client_order_id=payload.client_order_id or "",
             request_id=rid,
+            idempotency_key=idempotency_key_from(request),
         )
         return MatchingSubmitResponse(
             accepted=bool(result.get("accepted", False)),
             order_id=str(result.get("order_id", "")),
             reason=str(result.get("reason", "")),
             request_id=str(result.get("request_id") or rid),
+            schema_version=result.get("schema_version"),
+            correlation_id=result.get("correlation_id"),
         )
 
     @router.post(
@@ -70,6 +72,8 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
             canceled=bool(result.get("canceled", False)),
             reason=str(result.get("reason", "")),
             request_id=str(result.get("request_id") or rid),
+            schema_version=result.get("schema_version"),
+            correlation_id=result.get("correlation_id"),
         )
 
     @router.get("/api/v1/matching/orders/{order_id}", response_model=MatchingOrderView)
@@ -101,6 +105,8 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
             **{
                 **result,
                 "request_id": result.get("request_id") or rid,
+                "schema_version": result.get("schema_version"),
+                "correlation_id": result.get("correlation_id"),
             }
         )
 
@@ -149,6 +155,8 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
                     **{
                         **item,
                         "request_id": item.get("request_id") or rid,
+                        "schema_version": item.get("schema_version"),
+                        "correlation_id": item.get("correlation_id"),
                     }
                 )
                 for item in items
@@ -159,36 +167,58 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
     @router.get("/api/v1/matching/health", response_model=MatchingHealthView)
     async def matching_health(request: Request) -> MatchingHealthView:
         ensure_matching_enabled(worker)
+        rid = request_id_from(request)
         payload = await worker.matching_client.health(request_id=request_id_from(request))
         reachable = bool(payload.get("reachable", False))
         if not reachable:
-            reason = str(payload.get("reason", payload.get("status", "matching unavailable")))
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "matching_unavailable",
-                    "message": reason,
-                },
+            reason = str(payload.get("reason") or payload.get("status") or "matching unavailable")
+            return MatchingHealthView(
+                **{
+                    **payload,
+                    "degraded": True,
+                    "reachable": False,
+                    "reason": reason,
+                    "request_id": payload.get("request_id") or rid,
+                }
             )
         return MatchingHealthView(**payload)
 
     @router.get("/api/v1/matching/stats", response_model=MatchingStatsView)
     async def matching_stats(request: Request) -> MatchingStatsView:
         ensure_matching_enabled(worker)
+        rid = request_id_from(request)
         try:
             payload = await worker.matching_client.get_service_stats(
-                request_id=request_id_from(request)
+                request_id=rid
             )
         except grpc.aio.AioRpcError as exc:
-            raise_gateway_grpc_error("matching stats failed", exc)
+            return MatchingStatsView(
+                enabled=True,
+                degraded=True,
+                live_orders=0,
+                trade_count=0,
+                tracked_orders=0,
+                rejected_orders=0,
+                symbols=0,
+                best_bid=None,
+                best_ask=None,
+                request_id=rid,
+                reason=f"{exc.code().name}: {exc.details()}",
+            )
         except Exception as exc:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "matching_stats_internal_error",
-                    "message": f"matching stats error: {exc}",
-                },
-            ) from exc
+            return MatchingStatsView(
+                enabled=True,
+                degraded=True,
+                live_orders=0,
+                trade_count=0,
+                tracked_orders=0,
+                rejected_orders=0,
+                symbols=0,
+                best_bid=None,
+                best_ask=None,
+                request_id=rid,
+                reason=f"matching stats error: {exc}",
+            )
         return MatchingStatsView(**payload)
 
     @router.get("/api/v1/matching/orderbook", response_model=MatchingOrderBookView)
@@ -198,22 +228,45 @@ def build_matching_router(worker: RedisMarketWorker) -> APIRouter:
         depth: int = Query(default=20, ge=1, le=200),
     ) -> MatchingOrderBookView:
         ensure_matching_enabled(worker)
+        rid = request_id_from(request)
+        normalized_symbol = symbol.strip().upper()
+        bounded_depth = max(1, min(depth, 200))
         try:
             payload = await worker.matching_client.get_order_book(
-                symbol=symbol,
-                depth=depth,
-                request_id=request_id_from(request),
+                symbol=normalized_symbol,
+                depth=bounded_depth,
+                request_id=rid,
             )
         except grpc.aio.AioRpcError as exc:
-            raise_orderbook_error(exc)
+            return MatchingOrderBookView(
+                enabled=True,
+                degraded=True,
+                symbol=normalized_symbol,
+                depth=bounded_depth,
+                bids=[],
+                asks=[],
+                generated_at_ms=0,
+                request_id=rid,
+                reason=f"{exc.code().name}: {exc.details()}",
+            )
         except Exception as exc:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "matching_orderbook_internal_error",
-                    "message": f"matching orderbook error: {exc}",
-                },
-            ) from exc
+            return MatchingOrderBookView(
+                enabled=True,
+                degraded=True,
+                symbol=normalized_symbol,
+                depth=bounded_depth,
+                bids=[],
+                asks=[],
+                generated_at_ms=0,
+                request_id=rid,
+                reason=f"matching orderbook error: {exc}",
+            )
+        if not payload.get("bids") and not payload.get("asks"):
+            payload = {
+                **payload,
+                "degraded": payload.get("degraded", True),
+                "reason": payload.get("reason") or "orderbook empty",
+            }
         return cast(MatchingOrderBookView, MatchingOrderBookView(**payload))
 
     return router

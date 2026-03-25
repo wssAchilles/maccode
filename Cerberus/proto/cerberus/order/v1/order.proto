@@ -43,27 +43,38 @@ message SubmitOrderRequest {
   double price = 5;
   double quantity = 6;
   string client_order_id = 7;
+  string idempotency_key = 8;
+  string schema_version = 9;
+  string correlation_id = 10;
 }
 
 message SubmitOrderResponse {
   bool accepted = 1;
   string order_id = 2;
   string reason = 3;
+  string schema_version = 4;
+  string correlation_id = 5;
 }
 
 message CancelOrderRequest {
   string account_id = 1;
   string order_id = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message CancelOrderResponse {
   bool canceled = 1;
   string reason = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message GetOrderRequest {
   string account_id = 1;
   string order_id = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message GetOrderResponse {
@@ -77,11 +88,15 @@ message GetOrderResponse {
   double filled_quantity = 8;
   OrderStatus status = 9;
   google.protobuf.Timestamp updated_at = 10;
+  string schema_version = 11;
+  string correlation_id = 12;
 }
 
 message GetOrderBookRequest {
   string symbol = 1;
   uint32 depth = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message OrderBookLevel {
@@ -95,10 +110,14 @@ message GetOrderBookResponse {
   repeated OrderBookLevel bids = 2;
   repeated OrderBookLevel asks = 3;
   uint64 generated_at_ms = 4;
+  string schema_version = 5;
+  string correlation_id = 6;
 }
 
 message StreamExecutionsRequest {
   string account_id = 1;
+  string schema_version = 2;
+  string correlation_id = 3;
 }
 
 message StreamExecutionsResponse {
@@ -108,6 +127,8 @@ message StreamExecutionsResponse {
   double price = 4;
   double quantity = 5;
   google.protobuf.Timestamp event_time = 6;
+  string schema_version = 7;
+  string correlation_id = 8;
 }
 
 message HealthRequest {}
@@ -117,6 +138,8 @@ message HealthResponse {
   string service = 2;
   string version = 3;
   uint64 uptime_seconds = 4;
+  string schema_version = 5;
+  string correlation_id = 6;
 }
 
 message GetServiceStatsRequest {}
@@ -131,4 +154,12 @@ message GetServiceStatsResponse {
   double best_bid = 7;
   bool has_best_ask = 8;
   double best_ask = 9;
+  string schema_version = 10;
+  string correlation_id = 11;
+  uint64 submit_order_requests_total = 12;
+  uint64 submit_order_errors_total = 13;
+  uint64 submit_order_rejections_total = 14;
+  double submit_order_latency_p95_ms = 15;
+  double submit_order_throughput_rps = 16;
+  double trade_throughput_rps = 17;
 }

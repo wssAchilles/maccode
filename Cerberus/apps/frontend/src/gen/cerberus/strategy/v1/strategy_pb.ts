@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cerberus/strategy/v1/strategy.proto.
  */
 export const file_cerberus_strategy_v1_strategy: GenFile = /*@__PURE__*/
-  fileDesc("CiNjZXJiZXJ1cy9zdHJhdGVneS92MS9zdHJhdGVneS5wcm90bxIUY2VyYmVydXMuc3RyYXRlZ3kudjEiPAoVRXZhbHVhdGVTaWduYWxSZXF1ZXN0EhMKC3N0cmF0ZWd5X2lkGAEgASgJEg4KBnN5bWJvbBgCIAEoCSJhChZFdmFsdWF0ZVNpZ25hbFJlc3BvbnNlEhMKC3N0cmF0ZWd5X2lkGAEgASgJEg4KBnN5bWJvbBgCIAEoCRIOCgZzaWduYWwYAyABKAkSEgoKY29uZmlkZW5jZRgEIAEoASInChBSZWJhbGFuY2VSZXF1ZXN0EhMKC3N0cmF0ZWd5X2lkGAEgASgJIjYKEVJlYmFsYW5jZVJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiDwoNSGVhbHRoUmVxdWVzdCIxCg5IZWFsdGhSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSDwoHdmVyc2lvbhgCIAEoCTKxAgoPU3RyYXRlZ3lTZXJ2aWNlEmsKDkV2YWx1YXRlU2lnbmFsEisuY2VyYmVydXMuc3RyYXRlZ3kudjEuRXZhbHVhdGVTaWduYWxSZXF1ZXN0GiwuY2VyYmVydXMuc3RyYXRlZ3kudjEuRXZhbHVhdGVTaWduYWxSZXNwb25zZRJcCglSZWJhbGFuY2USJi5jZXJiZXJ1cy5zdHJhdGVneS52MS5SZWJhbGFuY2VSZXF1ZXN0GicuY2VyYmVydXMuc3RyYXRlZ3kudjEuUmViYWxhbmNlUmVzcG9uc2USUwoGSGVhbHRoEiMuY2VyYmVydXMuc3RyYXRlZ3kudjEuSGVhbHRoUmVxdWVzdBokLmNlcmJlcnVzLnN0cmF0ZWd5LnYxLkhlYWx0aFJlc3BvbnNlQpsBChhjb20uY2VyYmVydXMuc3RyYXRlZ3kudjFCDVN0cmF0ZWd5UHJvdG9QAaICA0NTWKoCFENlcmJlcnVzLlN0cmF0ZWd5LlYxygIUQ2VyYmVydXNcU3RyYXRlZ3lcVjHiAiBDZXJiZXJ1c1xTdHJhdGVneVxWMVxHUEJNZXRhZGF0YeoCFkNlcmJlcnVzOjpTdHJhdGVneTo6VjFiBnByb3RvMw");
+  fileDesc("CiNjZXJiZXJ1cy9zdHJhdGVneS92MS9zdHJhdGVneS5wcm90bxIUY2VyYmVydXMuc3RyYXRlZ3kudjEibAoVRXZhbHVhdGVTaWduYWxSZXF1ZXN0EhMKC3N0cmF0ZWd5X2lkGAEgASgJEg4KBnN5bWJvbBgCIAEoCRIWCg5zY2hlbWFfdmVyc2lvbhgDIAEoCRIWCg5jb3JyZWxhdGlvbl9pZBgEIAEoCSKRAQoWRXZhbHVhdGVTaWduYWxSZXNwb25zZRITCgtzdHJhdGVneV9pZBgBIAEoCRIOCgZzeW1ib2wYAiABKAkSDgoGc2lnbmFsGAMgASgJEhIKCmNvbmZpZGVuY2UYBCABKAESFgoOc2NoZW1hX3ZlcnNpb24YBSABKAkSFgoOY29ycmVsYXRpb25faWQYBiABKAkiVwoQUmViYWxhbmNlUmVxdWVzdBITCgtzdHJhdGVneV9pZBgBIAEoCRIWCg5zY2hlbWFfdmVyc2lvbhgCIAEoCRIWCg5jb3JyZWxhdGlvbl9pZBgDIAEoCSJmChFSZWJhbGFuY2VSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBIPCgdtZXNzYWdlGAIgASgJEhYKDnNjaGVtYV92ZXJzaW9uGAMgASgJEhYKDmNvcnJlbGF0aW9uX2lkGAQgASgJIg8KDUhlYWx0aFJlcXVlc3QiYQoOSGVhbHRoUmVzcG9uc2USDgoGc3RhdHVzGAEgASgJEg8KB3ZlcnNpb24YAiABKAkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSFgoOY29ycmVsYXRpb25faWQYBCABKAkysQIKD1N0cmF0ZWd5U2VydmljZRJrCg5FdmFsdWF0ZVNpZ25hbBIrLmNlcmJlcnVzLnN0cmF0ZWd5LnYxLkV2YWx1YXRlU2lnbmFsUmVxdWVzdBosLmNlcmJlcnVzLnN0cmF0ZWd5LnYxLkV2YWx1YXRlU2lnbmFsUmVzcG9uc2USXAoJUmViYWxhbmNlEiYuY2VyYmVydXMuc3RyYXRlZ3kudjEuUmViYWxhbmNlUmVxdWVzdBonLmNlcmJlcnVzLnN0cmF0ZWd5LnYxLlJlYmFsYW5jZVJlc3BvbnNlElMKBkhlYWx0aBIjLmNlcmJlcnVzLnN0cmF0ZWd5LnYxLkhlYWx0aFJlcXVlc3QaJC5jZXJiZXJ1cy5zdHJhdGVneS52MS5IZWFsdGhSZXNwb25zZUKbAQoYY29tLmNlcmJlcnVzLnN0cmF0ZWd5LnYxQg1TdHJhdGVneVByb3RvUAGiAgNDU1iqAhRDZXJiZXJ1cy5TdHJhdGVneS5WMcoCFENlcmJlcnVzXFN0cmF0ZWd5XFYx4gIgQ2VyYmVydXNcU3RyYXRlZ3lcVjFcR1BCTWV0YWRhdGHqAhZDZXJiZXJ1czo6U3RyYXRlZ3k6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message cerberus.strategy.v1.EvaluateSignalRequest
@@ -25,6 +25,16 @@ export type EvaluateSignalRequest = Message<"cerberus.strategy.v1.EvaluateSignal
    * @generated from field: string symbol = 2;
    */
   symbol: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -57,6 +67,16 @@ export type EvaluateSignalResponse = Message<"cerberus.strategy.v1.EvaluateSigna
    * @generated from field: double confidence = 4;
    */
   confidence: number;
+
+  /**
+   * @generated from field: string schema_version = 5;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 6;
+   */
+  correlationId: string;
 };
 
 /**
@@ -74,6 +94,16 @@ export type RebalanceRequest = Message<"cerberus.strategy.v1.RebalanceRequest"> 
    * @generated from field: string strategy_id = 1;
    */
   strategyId: string;
+
+  /**
+   * @generated from field: string schema_version = 2;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 3;
+   */
+  correlationId: string;
 };
 
 /**
@@ -96,6 +126,16 @@ export type RebalanceResponse = Message<"cerberus.strategy.v1.RebalanceResponse"
    * @generated from field: string message = 2;
    */
   message: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**
@@ -131,6 +171,16 @@ export type HealthResponse = Message<"cerberus.strategy.v1.HealthResponse"> & {
    * @generated from field: string version = 2;
    */
   version: string;
+
+  /**
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+
+  /**
+   * @generated from field: string correlation_id = 4;
+   */
+  correlationId: string;
 };
 
 /**

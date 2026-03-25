@@ -8,6 +8,14 @@ grpc::Status GrpcOrderService::CancelOrder(
     cerberus::order::v1::CancelOrderResponse* response) {
   LogRequestStart("CancelOrder", context);
   EchoRequestId(context);
+  FillResponseContext(context, request->schema_version(), request->correlation_id(),
+                      response->mutable_schema_version(), response->mutable_correlation_id());
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+    response->set_canceled(false);
+    response->set_reason(DegradedStatusText());
+    return grpc::Status::OK;
+  }
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
   }
@@ -40,6 +48,12 @@ grpc::Status GrpcOrderService::GetOrder(grpc::ServerContext* context,
                                         cerberus::order::v1::GetOrderResponse* response) {
   LogRequestStart("GetOrder", context);
   EchoRequestId(context);
+  FillResponseContext(context, request->schema_version(), request->correlation_id(),
+                      response->mutable_schema_version(), response->mutable_correlation_id());
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+    return grpc::Status(grpc::StatusCode::UNAVAILABLE, DegradedStatusText());
+  }
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
   }

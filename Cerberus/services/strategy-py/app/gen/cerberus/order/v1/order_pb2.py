@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63\x65rberus/order/v1/order.proto\x12\x11\x63\x65rberus.order.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8f\x02\n\x12SubmitOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\x12+\n\x04side\x18\x03 \x01(\x0e\x32\x17.cerberus.order.v1.SideR\x04side\x12;\n\norder_type\x18\x04 \x01(\x0e\x32\x1c.cerberus.order.v1.OrderTypeR\torderType\x12\x14\n\x05price\x18\x05 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x06 \x01(\x01R\x08quantity\x12&\n\x0f\x63lient_order_id\x18\x07 \x01(\tR\rclientOrderId\"d\n\x13SubmitOrderResponse\x12\x1a\n\x08\x61\x63\x63\x65pted\x18\x01 \x01(\x08R\x08\x61\x63\x63\x65pted\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12\x16\n\x06reason\x18\x03 \x01(\tR\x06reason\"N\n\x12\x43\x61ncelOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\"I\n\x13\x43\x61ncelOrderResponse\x12\x1a\n\x08\x63\x61nceled\x18\x01 \x01(\x08R\x08\x63\x61nceled\x12\x16\n\x06reason\x18\x02 \x01(\tR\x06reason\"K\n\x0fGetOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\"\x9c\x03\n\x10GetOrderResponse\x12\x19\n\x08order_id\x18\x01 \x01(\tR\x07orderId\x12\x1d\n\naccount_id\x18\x02 \x01(\tR\taccountId\x12\x16\n\x06symbol\x18\x03 \x01(\tR\x06symbol\x12+\n\x04side\x18\x04 \x01(\x0e\x32\x17.cerberus.order.v1.SideR\x04side\x12;\n\norder_type\x18\x05 \x01(\x0e\x32\x1c.cerberus.order.v1.OrderTypeR\torderType\x12\x14\n\x05price\x18\x06 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x07 \x01(\x01R\x08quantity\x12\'\n\x0f\x66illed_quantity\x18\x08 \x01(\x01R\x0e\x66illedQuantity\x12\x36\n\x06status\x18\t \x01(\x0e\x32\x1e.cerberus.order.v1.OrderStatusR\x06status\x12\x39\n\nupdated_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tupdatedAt\"C\n\x13GetOrderBookRequest\x12\x16\n\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x14\n\x05\x64\x65pth\x18\x02 \x01(\rR\x05\x64\x65pth\"n\n\x0eOrderBookLevel\x12\x14\n\x05price\x18\x01 \x01(\x01R\x05price\x12%\n\x0etotal_quantity\x18\x02 \x01(\x01R\rtotalQuantity\x12\x1f\n\x0border_count\x18\x03 \x01(\x04R\norderCount\"\xc4\x01\n\x14GetOrderBookResponse\x12\x16\n\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x35\n\x04\x62ids\x18\x02 \x03(\x0b\x32!.cerberus.order.v1.OrderBookLevelR\x04\x62ids\x12\x35\n\x04\x61sks\x18\x03 \x03(\x0b\x32!.cerberus.order.v1.OrderBookLevelR\x04\x61sks\x12&\n\x0fgenerated_at_ms\x18\x04 \x01(\x04R\rgeneratedAtMs\"8\n\x17StreamExecutionsRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\"\xdd\x01\n\x18StreamExecutionsResponse\x12!\n\x0c\x65xecution_id\x18\x01 \x01(\tR\x0b\x65xecutionId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12\x16\n\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x14\n\x05price\x18\x04 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x05 \x01(\x01R\x08quantity\x12\x39\n\nevent_time\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\teventTime\"\x0f\n\rHealthRequest\"\x83\x01\n\x0eHealthResponse\x12\x16\n\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n\x07service\x18\x02 \x01(\tR\x07service\x12\x18\n\x07version\x18\x03 \x01(\tR\x07version\x12%\n\x0euptime_seconds\x18\x04 \x01(\x04R\ruptimeSeconds\"\x18\n\x16GetServiceStatsRequest\"\xbf\x02\n\x17GetServiceStatsResponse\x12\x1f\n\x0blive_orders\x18\x01 \x01(\x04R\nliveOrders\x12\x1f\n\x0btrade_count\x18\x02 \x01(\x04R\ntradeCount\x12%\n\x0etracked_orders\x18\x03 \x01(\x04R\rtrackedOrders\x12\'\n\x0frejected_orders\x18\x04 \x01(\x04R\x0erejectedOrders\x12\x18\n\x07symbols\x18\x05 \x01(\x04R\x07symbols\x12 \n\x0chas_best_bid\x18\x06 \x01(\x08R\nhasBestBid\x12\x19\n\x08\x62\x65st_bid\x18\x07 \x01(\x01R\x07\x62\x65stBid\x12 \n\x0chas_best_ask\x18\x08 \x01(\x08R\nhasBestAsk\x12\x19\n\x08\x62\x65st_ask\x18\t \x01(\x01R\x07\x62\x65stAsk*9\n\x04Side\x12\x14\n\x10SIDE_UNSPECIFIED\x10\x00\x12\x0c\n\x08SIDE_BUY\x10\x01\x12\r\n\tSIDE_SELL\x10\x02*T\n\tOrderType\x12\x1a\n\x16ORDER_TYPE_UNSPECIFIED\x10\x00\x12\x14\n\x10ORDER_TYPE_LIMIT\x10\x01\x12\x15\n\x11ORDER_TYPE_MARKET\x10\x02*\xb3\x01\n\x0bOrderStatus\x12\x1c\n\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x14\n\x10ORDER_STATUS_NEW\x10\x01\x12!\n\x1dORDER_STATUS_PARTIALLY_FILLED\x10\x02\x12\x17\n\x13ORDER_STATUS_FILLED\x10\x03\x12\x19\n\x15ORDER_STATUS_CANCELED\x10\x04\x12\x19\n\x15ORDER_STATUS_REJECTED\x10\x05\x32\xa8\x05\n\x0cOrderService\x12\\\n\x0bSubmitOrder\x12%.cerberus.order.v1.SubmitOrderRequest\x1a&.cerberus.order.v1.SubmitOrderResponse\x12\\\n\x0b\x43\x61ncelOrder\x12%.cerberus.order.v1.CancelOrderRequest\x1a&.cerberus.order.v1.CancelOrderResponse\x12S\n\x08GetOrder\x12\".cerberus.order.v1.GetOrderRequest\x1a#.cerberus.order.v1.GetOrderResponse\x12_\n\x0cGetOrderBook\x12&.cerberus.order.v1.GetOrderBookRequest\x1a\'.cerberus.order.v1.GetOrderBookResponse\x12m\n\x10StreamExecutions\x12*.cerberus.order.v1.StreamExecutionsRequest\x1a+.cerberus.order.v1.StreamExecutionsResponse0\x01\x12M\n\x06Health\x12 .cerberus.order.v1.HealthRequest\x1a!.cerberus.order.v1.HealthResponse\x12h\n\x0fGetServiceStats\x12).cerberus.order.v1.GetServiceStatsRequest\x1a*.cerberus.order.v1.GetServiceStatsResponseB\x89\x01\n\x15\x63om.cerberus.order.v1B\nOrderProtoP\x01\xa2\x02\x03\x43OX\xaa\x02\x11\x43\x65rberus.Order.V1\xca\x02\x11\x43\x65rberus\\Order\\V1\xe2\x02\x1d\x43\x65rberus\\Order\\V1\\GPBMetadata\xea\x02\x13\x43\x65rberus::Order::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63\x65rberus/order/v1/order.proto\x12\x11\x63\x65rberus.order.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x86\x03\n\x12SubmitOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\x12+\n\x04side\x18\x03 \x01(\x0e\x32\x17.cerberus.order.v1.SideR\x04side\x12;\n\norder_type\x18\x04 \x01(\x0e\x32\x1c.cerberus.order.v1.OrderTypeR\torderType\x12\x14\n\x05price\x18\x05 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x06 \x01(\x01R\x08quantity\x12&\n\x0f\x63lient_order_id\x18\x07 \x01(\tR\rclientOrderId\x12\'\n\x0fidempotency_key\x18\x08 \x01(\tR\x0eidempotencyKey\x12%\n\x0eschema_version\x18\t \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\n \x01(\tR\rcorrelationId\"\xb2\x01\n\x13SubmitOrderResponse\x12\x1a\n\x08\x61\x63\x63\x65pted\x18\x01 \x01(\x08R\x08\x61\x63\x63\x65pted\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12\x16\n\x06reason\x18\x03 \x01(\tR\x06reason\x12%\n\x0eschema_version\x18\x04 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x05 \x01(\tR\rcorrelationId\"\x9c\x01\n\x12\x43\x61ncelOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"\x97\x01\n\x13\x43\x61ncelOrderResponse\x12\x1a\n\x08\x63\x61nceled\x18\x01 \x01(\x08R\x08\x63\x61nceled\x12\x16\n\x06reason\x18\x02 \x01(\tR\x06reason\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"\x99\x01\n\x0fGetOrderRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"\xea\x03\n\x10GetOrderResponse\x12\x19\n\x08order_id\x18\x01 \x01(\tR\x07orderId\x12\x1d\n\naccount_id\x18\x02 \x01(\tR\taccountId\x12\x16\n\x06symbol\x18\x03 \x01(\tR\x06symbol\x12+\n\x04side\x18\x04 \x01(\x0e\x32\x17.cerberus.order.v1.SideR\x04side\x12;\n\norder_type\x18\x05 \x01(\x0e\x32\x1c.cerberus.order.v1.OrderTypeR\torderType\x12\x14\n\x05price\x18\x06 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x07 \x01(\x01R\x08quantity\x12\'\n\x0f\x66illed_quantity\x18\x08 \x01(\x01R\x0e\x66illedQuantity\x12\x36\n\x06status\x18\t \x01(\x0e\x32\x1e.cerberus.order.v1.OrderStatusR\x06status\x12\x39\n\nupdated_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tupdatedAt\x12%\n\x0eschema_version\x18\x0b \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x0c \x01(\tR\rcorrelationId\"\x91\x01\n\x13GetOrderBookRequest\x12\x16\n\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x14\n\x05\x64\x65pth\x18\x02 \x01(\rR\x05\x64\x65pth\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"n\n\x0eOrderBookLevel\x12\x14\n\x05price\x18\x01 \x01(\x01R\x05price\x12%\n\x0etotal_quantity\x18\x02 \x01(\x01R\rtotalQuantity\x12\x1f\n\x0border_count\x18\x03 \x01(\x04R\norderCount\"\x92\x02\n\x14GetOrderBookResponse\x12\x16\n\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x35\n\x04\x62ids\x18\x02 \x03(\x0b\x32!.cerberus.order.v1.OrderBookLevelR\x04\x62ids\x12\x35\n\x04\x61sks\x18\x03 \x03(\x0b\x32!.cerberus.order.v1.OrderBookLevelR\x04\x61sks\x12&\n\x0fgenerated_at_ms\x18\x04 \x01(\x04R\rgeneratedAtMs\x12%\n\x0eschema_version\x18\x05 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x06 \x01(\tR\rcorrelationId\"\x86\x01\n\x17StreamExecutionsRequest\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12%\n\x0eschema_version\x18\x02 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x03 \x01(\tR\rcorrelationId\"\xab\x02\n\x18StreamExecutionsResponse\x12!\n\x0c\x65xecution_id\x18\x01 \x01(\tR\x0b\x65xecutionId\x12\x19\n\x08order_id\x18\x02 \x01(\tR\x07orderId\x12\x16\n\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x14\n\x05price\x18\x04 \x01(\x01R\x05price\x12\x1a\n\x08quantity\x18\x05 \x01(\x01R\x08quantity\x12\x39\n\nevent_time\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\teventTime\x12%\n\x0eschema_version\x18\x07 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x08 \x01(\tR\rcorrelationId\"\x0f\n\rHealthRequest\"\xd1\x01\n\x0eHealthResponse\x12\x16\n\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n\x07service\x18\x02 \x01(\tR\x07service\x12\x18\n\x07version\x18\x03 \x01(\tR\x07version\x12%\n\x0euptime_seconds\x18\x04 \x01(\x04R\ruptimeSeconds\x12%\n\x0eschema_version\x18\x05 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x06 \x01(\tR\rcorrelationId\"\x18\n\x16GetServiceStatsRequest\"\xf9\x05\n\x17GetServiceStatsResponse\x12\x1f\n\x0blive_orders\x18\x01 \x01(\x04R\nliveOrders\x12\x1f\n\x0btrade_count\x18\x02 \x01(\x04R\ntradeCount\x12%\n\x0etracked_orders\x18\x03 \x01(\x04R\rtrackedOrders\x12\'\n\x0frejected_orders\x18\x04 \x01(\x04R\x0erejectedOrders\x12\x18\n\x07symbols\x18\x05 \x01(\x04R\x07symbols\x12 \n\x0chas_best_bid\x18\x06 \x01(\x08R\nhasBestBid\x12\x19\n\x08\x62\x65st_bid\x18\x07 \x01(\x01R\x07\x62\x65stBid\x12 \n\x0chas_best_ask\x18\x08 \x01(\x08R\nhasBestAsk\x12\x19\n\x08\x62\x65st_ask\x18\t \x01(\x01R\x07\x62\x65stAsk\x12%\n\x0eschema_version\x18\n \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x0b \x01(\tR\rcorrelationId\x12=\n\x1bsubmit_order_requests_total\x18\x0c \x01(\x04R\x18submitOrderRequestsTotal\x12\x39\n\x19submit_order_errors_total\x18\r \x01(\x04R\x16submitOrderErrorsTotal\x12\x41\n\x1dsubmit_order_rejections_total\x18\x0e \x01(\x04R\x1asubmitOrderRejectionsTotal\x12<\n\x1bsubmit_order_latency_p95_ms\x18\x0f \x01(\x01R\x17submitOrderLatencyP95Ms\x12=\n\x1bsubmit_order_throughput_rps\x18\x10 \x01(\x01R\x18submitOrderThroughputRps\x12\x30\n\x14trade_throughput_rps\x18\x11 \x01(\x01R\x12tradeThroughputRps*9\n\x04Side\x12\x14\n\x10SIDE_UNSPECIFIED\x10\x00\x12\x0c\n\x08SIDE_BUY\x10\x01\x12\r\n\tSIDE_SELL\x10\x02*T\n\tOrderType\x12\x1a\n\x16ORDER_TYPE_UNSPECIFIED\x10\x00\x12\x14\n\x10ORDER_TYPE_LIMIT\x10\x01\x12\x15\n\x11ORDER_TYPE_MARKET\x10\x02*\xb3\x01\n\x0bOrderStatus\x12\x1c\n\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x14\n\x10ORDER_STATUS_NEW\x10\x01\x12!\n\x1dORDER_STATUS_PARTIALLY_FILLED\x10\x02\x12\x17\n\x13ORDER_STATUS_FILLED\x10\x03\x12\x19\n\x15ORDER_STATUS_CANCELED\x10\x04\x12\x19\n\x15ORDER_STATUS_REJECTED\x10\x05\x32\xa8\x05\n\x0cOrderService\x12\\\n\x0bSubmitOrder\x12%.cerberus.order.v1.SubmitOrderRequest\x1a&.cerberus.order.v1.SubmitOrderResponse\x12\\\n\x0b\x43\x61ncelOrder\x12%.cerberus.order.v1.CancelOrderRequest\x1a&.cerberus.order.v1.CancelOrderResponse\x12S\n\x08GetOrder\x12\".cerberus.order.v1.GetOrderRequest\x1a#.cerberus.order.v1.GetOrderResponse\x12_\n\x0cGetOrderBook\x12&.cerberus.order.v1.GetOrderBookRequest\x1a\'.cerberus.order.v1.GetOrderBookResponse\x12m\n\x10StreamExecutions\x12*.cerberus.order.v1.StreamExecutionsRequest\x1a+.cerberus.order.v1.StreamExecutionsResponse0\x01\x12M\n\x06Health\x12 .cerberus.order.v1.HealthRequest\x1a!.cerberus.order.v1.HealthResponse\x12h\n\x0fGetServiceStats\x12).cerberus.order.v1.GetServiceStatsRequest\x1a*.cerberus.order.v1.GetServiceStatsResponseB\x89\x01\n\x15\x63om.cerberus.order.v1B\nOrderProtoP\x01\xa2\x02\x03\x43OX\xaa\x02\x11\x43\x65rberus.Order.V1\xca\x02\x11\x43\x65rberus\\Order\\V1\xe2\x02\x1d\x43\x65rberus\\Order\\V1\\GPBMetadata\xea\x02\x13\x43\x65rberus::Order::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,42 +33,42 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'cerberus.order.v1.order_pb2
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\025com.cerberus.order.v1B\nOrderProtoP\001\242\002\003COX\252\002\021Cerberus.Order.V1\312\002\021Cerberus\\Order\\V1\342\002\035Cerberus\\Order\\V1\\GPBMetadata\352\002\023Cerberus::Order::V1'
-  _globals['_SIDE']._serialized_start=2269
-  _globals['_SIDE']._serialized_end=2326
-  _globals['_ORDERTYPE']._serialized_start=2328
-  _globals['_ORDERTYPE']._serialized_end=2412
-  _globals['_ORDERSTATUS']._serialized_start=2415
-  _globals['_ORDERSTATUS']._serialized_end=2594
+  _globals['_SIDE']._serialized_start=3616
+  _globals['_SIDE']._serialized_end=3673
+  _globals['_ORDERTYPE']._serialized_start=3675
+  _globals['_ORDERTYPE']._serialized_end=3759
+  _globals['_ORDERSTATUS']._serialized_start=3762
+  _globals['_ORDERSTATUS']._serialized_end=3941
   _globals['_SUBMITORDERREQUEST']._serialized_start=86
-  _globals['_SUBMITORDERREQUEST']._serialized_end=357
-  _globals['_SUBMITORDERRESPONSE']._serialized_start=359
-  _globals['_SUBMITORDERRESPONSE']._serialized_end=459
-  _globals['_CANCELORDERREQUEST']._serialized_start=461
-  _globals['_CANCELORDERREQUEST']._serialized_end=539
-  _globals['_CANCELORDERRESPONSE']._serialized_start=541
-  _globals['_CANCELORDERRESPONSE']._serialized_end=614
-  _globals['_GETORDERREQUEST']._serialized_start=616
-  _globals['_GETORDERREQUEST']._serialized_end=691
-  _globals['_GETORDERRESPONSE']._serialized_start=694
-  _globals['_GETORDERRESPONSE']._serialized_end=1106
-  _globals['_GETORDERBOOKREQUEST']._serialized_start=1108
-  _globals['_GETORDERBOOKREQUEST']._serialized_end=1175
-  _globals['_ORDERBOOKLEVEL']._serialized_start=1177
-  _globals['_ORDERBOOKLEVEL']._serialized_end=1287
-  _globals['_GETORDERBOOKRESPONSE']._serialized_start=1290
-  _globals['_GETORDERBOOKRESPONSE']._serialized_end=1486
-  _globals['_STREAMEXECUTIONSREQUEST']._serialized_start=1488
-  _globals['_STREAMEXECUTIONSREQUEST']._serialized_end=1544
-  _globals['_STREAMEXECUTIONSRESPONSE']._serialized_start=1547
-  _globals['_STREAMEXECUTIONSRESPONSE']._serialized_end=1768
-  _globals['_HEALTHREQUEST']._serialized_start=1770
-  _globals['_HEALTHREQUEST']._serialized_end=1785
-  _globals['_HEALTHRESPONSE']._serialized_start=1788
-  _globals['_HEALTHRESPONSE']._serialized_end=1919
-  _globals['_GETSERVICESTATSREQUEST']._serialized_start=1921
-  _globals['_GETSERVICESTATSREQUEST']._serialized_end=1945
-  _globals['_GETSERVICESTATSRESPONSE']._serialized_start=1948
-  _globals['_GETSERVICESTATSRESPONSE']._serialized_end=2267
-  _globals['_ORDERSERVICE']._serialized_start=2597
-  _globals['_ORDERSERVICE']._serialized_end=3277
+  _globals['_SUBMITORDERREQUEST']._serialized_end=476
+  _globals['_SUBMITORDERRESPONSE']._serialized_start=479
+  _globals['_SUBMITORDERRESPONSE']._serialized_end=657
+  _globals['_CANCELORDERREQUEST']._serialized_start=660
+  _globals['_CANCELORDERREQUEST']._serialized_end=816
+  _globals['_CANCELORDERRESPONSE']._serialized_start=819
+  _globals['_CANCELORDERRESPONSE']._serialized_end=970
+  _globals['_GETORDERREQUEST']._serialized_start=973
+  _globals['_GETORDERREQUEST']._serialized_end=1126
+  _globals['_GETORDERRESPONSE']._serialized_start=1129
+  _globals['_GETORDERRESPONSE']._serialized_end=1619
+  _globals['_GETORDERBOOKREQUEST']._serialized_start=1622
+  _globals['_GETORDERBOOKREQUEST']._serialized_end=1767
+  _globals['_ORDERBOOKLEVEL']._serialized_start=1769
+  _globals['_ORDERBOOKLEVEL']._serialized_end=1879
+  _globals['_GETORDERBOOKRESPONSE']._serialized_start=1882
+  _globals['_GETORDERBOOKRESPONSE']._serialized_end=2156
+  _globals['_STREAMEXECUTIONSREQUEST']._serialized_start=2159
+  _globals['_STREAMEXECUTIONSREQUEST']._serialized_end=2293
+  _globals['_STREAMEXECUTIONSRESPONSE']._serialized_start=2296
+  _globals['_STREAMEXECUTIONSRESPONSE']._serialized_end=2595
+  _globals['_HEALTHREQUEST']._serialized_start=2597
+  _globals['_HEALTHREQUEST']._serialized_end=2612
+  _globals['_HEALTHRESPONSE']._serialized_start=2615
+  _globals['_HEALTHRESPONSE']._serialized_end=2824
+  _globals['_GETSERVICESTATSREQUEST']._serialized_start=2826
+  _globals['_GETSERVICESTATSREQUEST']._serialized_end=2850
+  _globals['_GETSERVICESTATSRESPONSE']._serialized_start=2853
+  _globals['_GETSERVICESTATSRESPONSE']._serialized_end=3614
+  _globals['_ORDERSERVICE']._serialized_start=3944
+  _globals['_ORDERSERVICE']._serialized_end=4624
 # @@protoc_insertion_point(module_scope)

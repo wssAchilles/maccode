@@ -7,7 +7,7 @@ use axum::{
 use crate::event_bus::publish_order_event;
 use crate::gateway_types::{AppState, RequestContext};
 use crate::gateway_utils::to_axum_status;
-use crate::handlers::common::{error_body, internal_err_json, with_request_id};
+use crate::handlers::common::{error_body, internal_err_json, with_request_context};
 
 pub(crate) async fn cancel_alpaca_order(
     State(state): State<AppState>,
@@ -86,5 +86,9 @@ pub(crate) async fn cancel_alpaca_order(
     )
     .await;
 
-    Ok(Json(with_request_id(payload, request_id)))
+    Ok(Json(with_request_context(
+        payload,
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

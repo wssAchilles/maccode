@@ -27,6 +27,51 @@ firebase_auth_required  = true
 firebase_signal_collection = "strategy_signals"
 supabase_enabled        = true
 matching_enabled        = true
+strategy_internal_auth_enabled = true
+strategy_internal_auth_token_ttl_seconds = 300
+strategy_internal_auth_metadata_identity_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
+redis_market_events_stream_enabled = true
+redis_market_events_stream_key = "cerberus.market.events"
+redis_market_events_stream_maxlen = 50000
+redis_market_events_publish_legacy_pubsub = true
+market_stream_enabled = true
+market_stream_consumer_group = "strategy-market"
+market_stream_legacy_pubsub_fallback = true
+matching_grpc_max_pollers = 16
+matching_grpc_min_pollers = 4
+matching_grpc_num_cqs = 4
+matching_execution_stream_limit = 500
+matching_submit_latency_window_size = 1024
+cloud_run_gateway = {
+  min_instance_count               = 1
+  max_instance_count               = 30
+  max_instance_request_concurrency = 80
+  timeout_seconds                  = 900
+  cpu                              = "1"
+  memory                           = "1Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}
+cloud_run_strategy = {
+  min_instance_count               = 1
+  max_instance_count               = 20
+  max_instance_request_concurrency = 20
+  timeout_seconds                  = 300
+  cpu                              = "2"
+  memory                           = "2Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}
+cloud_run_matching = {
+  min_instance_count               = 1
+  max_instance_count               = 20
+  max_instance_request_concurrency = 16
+  timeout_seconds                  = 120
+  cpu                              = "2"
+  memory                           = "2Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}
 
 cors_allow_origins = "https://cerberus-9d94f.web.app,https://cerberus-9d94f.firebaseapp.com"
 

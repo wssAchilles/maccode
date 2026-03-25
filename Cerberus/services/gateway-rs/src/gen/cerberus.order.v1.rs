@@ -17,6 +17,12 @@ pub struct SubmitOrderRequest {
     pub quantity: f64,
     #[prost(string, tag="7")]
     pub client_order_id: ::prost::alloc::string::String,
+    #[prost(string, tag="8")]
+    pub idempotency_key: ::prost::alloc::string::String,
+    #[prost(string, tag="9")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="10")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -27,6 +33,10 @@ pub struct SubmitOrderResponse {
     pub order_id: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub reason: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="5")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -35,6 +45,10 @@ pub struct CancelOrderRequest {
     pub account_id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub order_id: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -43,6 +57,10 @@ pub struct CancelOrderResponse {
     pub canceled: bool,
     #[prost(string, tag="2")]
     pub reason: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -51,6 +69,10 @@ pub struct GetOrderRequest {
     pub account_id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub order_id: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -75,6 +97,10 @@ pub struct GetOrderResponse {
     pub status: i32,
     #[prost(message, optional, tag="10")]
     pub updated_at: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag="11")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="12")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -83,6 +109,10 @@ pub struct GetOrderBookRequest {
     pub symbol: ::prost::alloc::string::String,
     #[prost(uint32, tag="2")]
     pub depth: u32,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -105,12 +135,20 @@ pub struct GetOrderBookResponse {
     pub asks: ::prost::alloc::vec::Vec<OrderBookLevel>,
     #[prost(uint64, tag="4")]
     pub generated_at_ms: u64,
+    #[prost(string, tag="5")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="6")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamExecutionsRequest {
     #[prost(string, tag="1")]
     pub account_id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -127,6 +165,10 @@ pub struct StreamExecutionsResponse {
     pub quantity: f64,
     #[prost(message, optional, tag="6")]
     pub event_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag="7")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="8")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -143,13 +185,17 @@ pub struct HealthResponse {
     pub version: ::prost::alloc::string::String,
     #[prost(uint64, tag="4")]
     pub uptime_seconds: u64,
+    #[prost(string, tag="5")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="6")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetServiceStatsRequest {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetServiceStatsResponse {
     #[prost(uint64, tag="1")]
     pub live_orders: u64,
@@ -169,6 +215,22 @@ pub struct GetServiceStatsResponse {
     pub has_best_ask: bool,
     #[prost(double, tag="9")]
     pub best_ask: f64,
+    #[prost(string, tag="10")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="11")]
+    pub correlation_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag="12")]
+    pub submit_order_requests_total: u64,
+    #[prost(uint64, tag="13")]
+    pub submit_order_errors_total: u64,
+    #[prost(uint64, tag="14")]
+    pub submit_order_rejections_total: u64,
+    #[prost(double, tag="15")]
+    pub submit_order_latency_p95_ms: f64,
+    #[prost(double, tag="16")]
+    pub submit_order_throughput_rps: f64,
+    #[prost(double, tag="17")]
+    pub trade_throughput_rps: f64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

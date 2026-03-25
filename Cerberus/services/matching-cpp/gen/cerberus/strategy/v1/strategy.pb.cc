@@ -36,6 +36,12 @@ inline constexpr RebalanceResponse::Impl_::Impl_(
         message_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         accepted_{false} {}
 
 template <typename>
@@ -63,6 +69,12 @@ inline constexpr RebalanceRequest::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
         strategy_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -94,6 +106,12 @@ inline constexpr HealthResponse::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -148,6 +166,12 @@ inline constexpr EvaluateSignalResponse::Impl_::Impl_(
         signal_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         confidence_{0} {}
 
 template <typename>
@@ -178,6 +202,12 @@ inline constexpr EvaluateSignalRequest::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         symbol_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        schema_version_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -212,52 +242,72 @@ const ::uint32_t
         protodesc_cold) = {
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalRequest, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalRequest, _impl_.strategy_id_),
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalRequest, _impl_.symbol_),
-        0,
-        1,
-        0x081, // bitmap
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_._has_bits_),
-        7, // hasbit index offset
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.strategy_id_),
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.symbol_),
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.signal_),
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.confidence_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalRequest, _impl_.correlation_id_),
         0,
         1,
         2,
         3,
         0x081, // bitmap
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_._has_bits_),
-        4, // hasbit index offset
-        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_.strategy_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_._has_bits_),
+        9, // hasbit index offset
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.strategy_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.symbol_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.signal_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.confidence_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::EvaluateSignalResponse, _impl_.correlation_id_),
         0,
+        1,
+        2,
+        5,
+        3,
+        4,
+        0x081, // bitmap
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_._has_bits_),
+        6, // hasbit index offset
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_.strategy_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceRequest, _impl_.correlation_id_),
+        0,
+        1,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceResponse, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceResponse, _impl_.accepted_),
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceResponse, _impl_.message_),
-        1,
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::RebalanceResponse, _impl_.correlation_id_),
+        3,
         0,
+        1,
+        2,
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::HealthResponse, _impl_._has_bits_),
-        5, // hasbit index offset
+        7, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::HealthResponse, _impl_.status_),
         PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::HealthResponse, _impl_.version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::HealthResponse, _impl_.schema_version_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::strategy::v1::HealthResponse, _impl_.correlation_id_),
         0,
         1,
+        2,
+        3,
 };
 
 static const ::_pbi::MigrationSchema
     schemas[] ABSL_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
         {0, sizeof(::cerberus::strategy::v1::EvaluateSignalRequest)},
-        {7, sizeof(::cerberus::strategy::v1::EvaluateSignalResponse)},
-        {18, sizeof(::cerberus::strategy::v1::RebalanceRequest)},
-        {23, sizeof(::cerberus::strategy::v1::RebalanceResponse)},
-        {30, sizeof(::cerberus::strategy::v1::HealthRequest)},
-        {31, sizeof(::cerberus::strategy::v1::HealthResponse)},
+        {11, sizeof(::cerberus::strategy::v1::EvaluateSignalResponse)},
+        {26, sizeof(::cerberus::strategy::v1::RebalanceRequest)},
+        {35, sizeof(::cerberus::strategy::v1::RebalanceResponse)},
+        {46, sizeof(::cerberus::strategy::v1::HealthRequest)},
+        {47, sizeof(::cerberus::strategy::v1::HealthResponse)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::cerberus::strategy::v1::_EvaluateSignalRequest_default_instance_._instance,
@@ -270,36 +320,46 @@ static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
 const char descriptor_table_protodef_cerberus_2fstrategy_2fv1_2fstrategy_2eproto[] ABSL_ATTRIBUTE_SECTION_VARIABLE(
     protodesc_cold) = {
     "\n#cerberus/strategy/v1/strategy.proto\022\024c"
-    "erberus.strategy.v1\"P\n\025EvaluateSignalReq"
-    "uest\022\037\n\013strategy_id\030\001 \001(\tR\nstrategyId\022\026\n"
-    "\006symbol\030\002 \001(\tR\006symbol\"\211\001\n\026EvaluateSignal"
-    "Response\022\037\n\013strategy_id\030\001 \001(\tR\nstrategyI"
-    "d\022\026\n\006symbol\030\002 \001(\tR\006symbol\022\026\n\006signal\030\003 \001("
-    "\tR\006signal\022\036\n\nconfidence\030\004 \001(\001R\nconfidenc"
-    "e\"3\n\020RebalanceRequest\022\037\n\013strategy_id\030\001 \001"
-    "(\tR\nstrategyId\"I\n\021RebalanceResponse\022\032\n\010a"
-    "ccepted\030\001 \001(\010R\010accepted\022\030\n\007message\030\002 \001(\t"
-    "R\007message\"\017\n\rHealthRequest\"B\n\016HealthResp"
-    "onse\022\026\n\006status\030\001 \001(\tR\006status\022\030\n\007version\030"
-    "\002 \001(\tR\007version2\261\002\n\017StrategyService\022k\n\016Ev"
-    "aluateSignal\022+.cerberus.strategy.v1.Eval"
-    "uateSignalRequest\032,.cerberus.strategy.v1"
-    ".EvaluateSignalResponse\022\\\n\tRebalance\022&.c"
-    "erberus.strategy.v1.RebalanceRequest\032\'.c"
-    "erberus.strategy.v1.RebalanceResponse\022S\n"
-    "\006Health\022#.cerberus.strategy.v1.HealthReq"
-    "uest\032$.cerberus.strategy.v1.HealthRespon"
-    "seB\233\001\n\030com.cerberus.strategy.v1B\rStrateg"
-    "yProtoP\001\242\002\003CSX\252\002\024Cerberus.Strategy.V1\312\002\024"
-    "Cerberus\\Strategy\\V1\342\002 Cerberus\\Strategy"
-    "\\V1\\GPBMetadata\352\002\026Cerberus::Strategy::V1"
-    "b\006proto3"
+    "erberus.strategy.v1\"\236\001\n\025EvaluateSignalRe"
+    "quest\022\037\n\013strategy_id\030\001 \001(\tR\nstrategyId\022\026"
+    "\n\006symbol\030\002 \001(\tR\006symbol\022%\n\016schema_version"
+    "\030\003 \001(\tR\rschemaVersion\022%\n\016correlation_id\030"
+    "\004 \001(\tR\rcorrelationId\"\327\001\n\026EvaluateSignalR"
+    "esponse\022\037\n\013strategy_id\030\001 \001(\tR\nstrategyId"
+    "\022\026\n\006symbol\030\002 \001(\tR\006symbol\022\026\n\006signal\030\003 \001(\t"
+    "R\006signal\022\036\n\nconfidence\030\004 \001(\001R\nconfidence"
+    "\022%\n\016schema_version\030\005 \001(\tR\rschemaVersion\022"
+    "%\n\016correlation_id\030\006 \001(\tR\rcorrelationId\"\201"
+    "\001\n\020RebalanceRequest\022\037\n\013strategy_id\030\001 \001(\t"
+    "R\nstrategyId\022%\n\016schema_version\030\002 \001(\tR\rsc"
+    "hemaVersion\022%\n\016correlation_id\030\003 \001(\tR\rcor"
+    "relationId\"\227\001\n\021RebalanceResponse\022\032\n\010acce"
+    "pted\030\001 \001(\010R\010accepted\022\030\n\007message\030\002 \001(\tR\007m"
+    "essage\022%\n\016schema_version\030\003 \001(\tR\rschemaVe"
+    "rsion\022%\n\016correlation_id\030\004 \001(\tR\rcorrelati"
+    "onId\"\017\n\rHealthRequest\"\220\001\n\016HealthResponse"
+    "\022\026\n\006status\030\001 \001(\tR\006status\022\030\n\007version\030\002 \001("
+    "\tR\007version\022%\n\016schema_version\030\003 \001(\tR\rsche"
+    "maVersion\022%\n\016correlation_id\030\004 \001(\tR\rcorre"
+    "lationId2\261\002\n\017StrategyService\022k\n\016Evaluate"
+    "Signal\022+.cerberus.strategy.v1.EvaluateSi"
+    "gnalRequest\032,.cerberus.strategy.v1.Evalu"
+    "ateSignalResponse\022\\\n\tRebalance\022&.cerberu"
+    "s.strategy.v1.RebalanceRequest\032\'.cerberu"
+    "s.strategy.v1.RebalanceResponse\022S\n\006Healt"
+    "h\022#.cerberus.strategy.v1.HealthRequest\032$"
+    ".cerberus.strategy.v1.HealthResponseB\233\001\n"
+    "\030com.cerberus.strategy.v1B\rStrategyProto"
+    "P\001\242\002\003CSX\252\002\024Cerberus.Strategy.V1\312\002\024Cerber"
+    "us\\Strategy\\V1\342\002 Cerberus\\Strategy\\V1\\GP"
+    "BMetadata\352\002\026Cerberus::Strategy::V1b\006prot"
+    "o3"
 };
 static ::absl::once_flag descriptor_table_cerberus_2fstrategy_2fv1_2fstrategy_2eproto_once;
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_cerberus_2fstrategy_2fv1_2fstrategy_2eproto = {
     false,
     false,
-    968,
+    1362,
     descriptor_table_protodef_cerberus_2fstrategy_2fv1_2fstrategy_2eproto,
     "cerberus/strategy/v1/strategy.proto",
     &descriptor_table_cerberus_2fstrategy_2fv1_2fstrategy_2eproto_once,
@@ -341,7 +401,9 @@ PROTOBUF_NDEBUG_INLINE EvaluateSignalRequest::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         strategy_id_(arena, from.strategy_id_),
-        symbol_(arena, from.symbol_) {}
+        symbol_(arena, from.symbol_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 EvaluateSignalRequest::EvaluateSignalRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -364,7 +426,9 @@ PROTOBUF_NDEBUG_INLINE EvaluateSignalRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         strategy_id_(arena),
-        symbol_(arena) {}
+        symbol_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void EvaluateSignalRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -382,6 +446,8 @@ inline void EvaluateSignalRequest::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.strategy_id_.Destroy();
   this_._impl_.symbol_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -427,16 +493,16 @@ EvaluateSignalRequest::GetClassData() const {
   return EvaluateSignalRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 68, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 96, 2>
 EvaluateSignalRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     EvaluateSignalRequest_class_data_.base(),
@@ -446,14 +512,22 @@ EvaluateSignalRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::strategy::v1::EvaluateSignalRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // string symbol = 2 [json_name = "symbol"];
+    // string correlation_id = 4 [json_name = "correlationId"];
     {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.symbol_)}},
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.correlation_id_)}},
     // string strategy_id = 1 [json_name = "strategyId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.strategy_id_)}},
+    // string symbol = 2 [json_name = "symbol"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.symbol_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -461,13 +535,19 @@ EvaluateSignalRequest::_table_ = {
     {PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.strategy_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string symbol = 2 [json_name = "symbol"];
     {PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.symbol_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(EvaluateSignalRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\52\13\6\0\0\0\0\0"
+    "\52\13\6\16\16\0\0\0"
     "cerberus.strategy.v1.EvaluateSignalRequest"
     "strategy_id"
     "symbol"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void EvaluateSignalRequest::Clear() {
@@ -478,12 +558,18 @@ PROTOBUF_NOINLINE void EvaluateSignalRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.strategy_id_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.symbol_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -529,6 +615,26 @@ PROTOBUF_NOINLINE void EvaluateSignalRequest::Clear() {
     }
   }
 
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.EvaluateSignalRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.EvaluateSignalRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -554,7 +660,7 @@ PROTOBUF_NOINLINE void EvaluateSignalRequest::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string strategy_id = 1 [json_name = "strategyId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_strategy_id().empty()) {
@@ -567,6 +673,20 @@ PROTOBUF_NOINLINE void EvaluateSignalRequest::Clear() {
       if (!this_._internal_symbol().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_symbol());
+      }
+    }
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -588,7 +708,7 @@ void EvaluateSignalRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_strategy_id().empty()) {
         _this->_internal_set_strategy_id(from._internal_strategy_id());
@@ -604,6 +724,24 @@ void EvaluateSignalRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
       } else {
         if (_this->_impl_.symbol_.IsDefault()) {
           _this->_internal_set_symbol("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
         }
       }
     }
@@ -629,6 +767,8 @@ void EvaluateSignalRequest::InternalSwap(EvaluateSignalRequest* PROTOBUF_RESTRIC
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.strategy_id_, &other->_impl_.strategy_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata EvaluateSignalRequest::GetMetadata() const {
@@ -661,7 +801,9 @@ PROTOBUF_NDEBUG_INLINE EvaluateSignalResponse::Impl_::Impl_(
         _cached_size_{0},
         strategy_id_(arena, from.strategy_id_),
         symbol_(arena, from.symbol_),
-        signal_(arena, from.signal_) {}
+        signal_(arena, from.signal_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 EvaluateSignalResponse::EvaluateSignalResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -686,7 +828,9 @@ PROTOBUF_NDEBUG_INLINE EvaluateSignalResponse::Impl_::Impl_(
       : _cached_size_{0},
         strategy_id_(arena),
         symbol_(arena),
-        signal_(arena) {}
+        signal_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void EvaluateSignalResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -706,6 +850,8 @@ inline void EvaluateSignalResponse::SharedDtor(MessageLite& self) {
   this_._impl_.strategy_id_.Destroy();
   this_._impl_.symbol_.Destroy();
   this_._impl_.signal_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -751,16 +897,16 @@ EvaluateSignalResponse::GetClassData() const {
   return EvaluateSignalResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 0, 75, 2>
+const ::_pbi::TcParseTable<3, 6, 0, 103, 2>
 EvaluateSignalResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    6, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967232,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    6,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     EvaluateSignalResponse_class_data_.base(),
@@ -770,10 +916,7 @@ EvaluateSignalResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::strategy::v1::EvaluateSignalResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // double confidence = 4 [json_name = "confidence"];
-    {::_pbi::TcParser::FastF64S1,
-     {33, 3, 0,
-      PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.confidence_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string strategy_id = 1 [json_name = "strategyId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -786,6 +929,19 @@ EvaluateSignalResponse::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.signal_)}},
+    // double confidence = 4 [json_name = "confidence"];
+    {::_pbi::TcParser::FastF64S1,
+     {33, 5, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.confidence_)}},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.schema_version_)}},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {50, 4, 0,
+      PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.correlation_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -796,15 +952,21 @@ EvaluateSignalResponse::_table_ = {
     // string signal = 3 [json_name = "signal"];
     {PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.signal_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // double confidence = 4 [json_name = "confidence"];
-    {PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.confidence_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.confidence_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    // string schema_version = 5 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 6 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(EvaluateSignalResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\53\13\6\6\0\0\0\0"
+    "\53\13\6\6\0\16\16\0"
     "cerberus.strategy.v1.EvaluateSignalResponse"
     "strategy_id"
     "symbol"
     "signal"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
@@ -815,7 +977,7 @@ PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.strategy_id_.ClearNonDefaultToEmpty();
     }
@@ -824,6 +986,12 @@ PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       _impl_.signal_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.confidence_ = 0;
@@ -881,11 +1049,31 @@ PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
   }
 
   // double confidence = 4 [json_name = "confidence"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_confidence()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
           4, this_._internal_confidence(), target);
+    }
+  }
+
+  // string schema_version = 5 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.EvaluateSignalResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  // string correlation_id = 6 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.EvaluateSignalResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(6, _s, target);
     }
   }
 
@@ -914,7 +1102,7 @@ PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     // string strategy_id = 1 [json_name = "strategyId"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_strategy_id().empty()) {
@@ -936,8 +1124,22 @@ PROTOBUF_NOINLINE void EvaluateSignalResponse::Clear() {
                                         this_._internal_signal());
       }
     }
-    // double confidence = 4 [json_name = "confidence"];
+    // string schema_version = 5 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 6 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // double confidence = 4 [json_name = "confidence"];
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_confidence()) != 0) {
         total_size += 9;
       }
@@ -961,7 +1163,7 @@ void EvaluateSignalResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_strategy_id().empty()) {
         _this->_internal_set_strategy_id(from._internal_strategy_id());
@@ -990,6 +1192,24 @@ void EvaluateSignalResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_confidence()) != 0) {
         _this->_impl_.confidence_ = from._impl_.confidence_;
       }
@@ -1017,6 +1237,8 @@ void EvaluateSignalResponse::InternalSwap(EvaluateSignalResponse* PROTOBUF_RESTR
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.strategy_id_, &other->_impl_.strategy_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.symbol_, &other->_impl_.symbol_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.signal_, &other->_impl_.signal_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.confidence_, other->_impl_.confidence_);
 }
 
@@ -1048,7 +1270,9 @@ PROTOBUF_NDEBUG_INLINE RebalanceRequest::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::strategy::v1::RebalanceRequest& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        strategy_id_(arena, from.strategy_id_) {}
+        strategy_id_(arena, from.strategy_id_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 RebalanceRequest::RebalanceRequest(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1070,7 +1294,9 @@ PROTOBUF_NDEBUG_INLINE RebalanceRequest::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        strategy_id_(arena) {}
+        strategy_id_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void RebalanceRequest::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1087,6 +1313,8 @@ inline void RebalanceRequest::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.strategy_id_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -1132,16 +1360,16 @@ RebalanceRequest::GetClassData() const {
   return RebalanceRequest_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 1, 0, 57, 2>
+const ::_pbi::TcParseTable<2, 3, 0, 85, 2>
 RebalanceRequest::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_._has_bits_),
     0, // no _extensions_
-    1, 0,  // max_field_number, fast_idx_mask
+    3, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967294,  // skipmap
+    4294967288,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    1,  // num_field_entries
+    3,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     RebalanceRequest_class_data_.base(),
@@ -1151,21 +1379,36 @@ RebalanceRequest::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::strategy::v1::RebalanceRequest>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    {::_pbi::TcParser::MiniParse, {}},
     // string strategy_id = 1 [json_name = "strategyId"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.strategy_id_)}},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.schema_version_)}},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.correlation_id_)}},
   }}, {{
     65535, 65535
   }}, {{
     // string strategy_id = 1 [json_name = "strategyId"];
     {PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.strategy_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 3 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(RebalanceRequest, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\45\13\0\0\0\0\0\0"
+    "\45\13\16\16\0\0\0\0"
     "cerberus.strategy.v1.RebalanceRequest"
     "strategy_id"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void RebalanceRequest::Clear() {
@@ -1176,8 +1419,16 @@ PROTOBUF_NOINLINE void RebalanceRequest::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.strategy_id_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.strategy_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
@@ -1212,6 +1463,26 @@ PROTOBUF_NOINLINE void RebalanceRequest::Clear() {
     }
   }
 
+  // string schema_version = 2 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.RebalanceRequest.schema_version");
+      target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string correlation_id = 3 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.RebalanceRequest.correlation_id");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -1235,13 +1506,28 @@ PROTOBUF_NOINLINE void RebalanceRequest::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void)cached_has_bits;
 
-   {
+  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     // string strategy_id = 1 [json_name = "strategyId"];
-    cached_has_bits = this_._impl_._has_bits_[0];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_strategy_id().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_strategy_id());
+      }
+    }
+    // string schema_version = 2 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 3 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -1263,12 +1549,32 @@ void RebalanceRequest::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!from._internal_strategy_id().empty()) {
-      _this->_internal_set_strategy_id(from._internal_strategy_id());
-    } else {
-      if (_this->_impl_.strategy_id_.IsDefault()) {
-        _this->_internal_set_strategy_id("");
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_strategy_id().empty()) {
+        _this->_internal_set_strategy_id(from._internal_strategy_id());
+      } else {
+        if (_this->_impl_.strategy_id_.IsDefault()) {
+          _this->_internal_set_strategy_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
       }
     }
   }
@@ -1292,6 +1598,8 @@ void RebalanceRequest::InternalSwap(RebalanceRequest* PROTOBUF_RESTRICT PROTOBUF
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.strategy_id_, &other->_impl_.strategy_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata RebalanceRequest::GetMetadata() const {
@@ -1322,7 +1630,9 @@ PROTOBUF_NDEBUG_INLINE RebalanceResponse::Impl_::Impl_(
     [[maybe_unused]] const ::cerberus::strategy::v1::RebalanceResponse& from_msg)
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
-        message_(arena, from.message_) {}
+        message_(arena, from.message_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 RebalanceResponse::RebalanceResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1345,7 +1655,9 @@ PROTOBUF_NDEBUG_INLINE RebalanceResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
-        message_(arena) {}
+        message_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void RebalanceResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1363,6 +1675,8 @@ inline void RebalanceResponse::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.message_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -1408,16 +1722,16 @@ RebalanceResponse::GetClassData() const {
   return RebalanceResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 54, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 82, 2>
 RebalanceResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     RebalanceResponse_class_data_.base(),
@@ -1427,27 +1741,41 @@ RebalanceResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::strategy::v1::RebalanceResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.correlation_id_)}},
+    // bool accepted = 1 [json_name = "accepted"];
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(RebalanceResponse, _impl_.accepted_), 3>(),
+     {8, 3, 0,
+      PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.accepted_)}},
     // string message = 2 [json_name = "message"];
     {::_pbi::TcParser::FastUS1,
      {18, 0, 0,
       PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.message_)}},
-    // bool accepted = 1 [json_name = "accepted"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(RebalanceResponse, _impl_.accepted_), 1>(),
-     {8, 1, 0,
-      PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.accepted_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 1, 0,
+      PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
     // bool accepted = 1 [json_name = "accepted"];
-    {PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.accepted_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.accepted_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // string message = 2 [json_name = "message"];
     {PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.message_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(RebalanceResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\46\0\7\0\0\0\0\0"
+    "\46\0\7\16\16\0\0\0"
     "cerberus.strategy.v1.RebalanceResponse"
     "message"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
@@ -1458,8 +1786,16 @@ PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.message_.ClearNonDefaultToEmpty();
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.message_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.accepted_ = false;
   _impl_._has_bits_.Clear();
@@ -1486,7 +1822,7 @@ PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // bool accepted = 1 [json_name = "accepted"];
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_accepted() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -1501,6 +1837,26 @@ PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.RebalanceResponse.message");
       target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.RebalanceResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.RebalanceResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
     }
   }
 
@@ -1529,7 +1885,7 @@ PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string message = 2 [json_name = "message"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_message().empty()) {
@@ -1537,8 +1893,22 @@ PROTOBUF_NOINLINE void RebalanceResponse::Clear() {
                                         this_._internal_message());
       }
     }
-    // bool accepted = 1 [json_name = "accepted"];
+    // string schema_version = 3 [json_name = "schemaVersion"];
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
+      }
+    }
+    // bool accepted = 1 [json_name = "accepted"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_accepted() != 0) {
         total_size += 2;
       }
@@ -1562,7 +1932,7 @@ void RebalanceResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_message().empty()) {
         _this->_internal_set_message(from._internal_message());
@@ -1573,6 +1943,24 @@ void RebalanceResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_accepted() != 0) {
         _this->_impl_.accepted_ = from._impl_.accepted_;
       }
@@ -1598,6 +1986,8 @@ void RebalanceResponse::InternalSwap(RebalanceResponse* PROTOBUF_RESTRICT PROTOB
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.message_, &other->_impl_.message_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
   swap(_impl_.accepted_, other->_impl_.accepted_);
 }
 
@@ -1739,7 +2129,9 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         status_(arena, from.status_),
-        version_(arena, from.version_) {}
+        version_(arena, from.version_),
+        schema_version_(arena, from.schema_version_),
+        correlation_id_(arena, from.correlation_id_) {}
 
 HealthResponse::HealthResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -1762,7 +2154,9 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         status_(arena),
-        version_(arena) {}
+        version_(arena),
+        schema_version_(arena),
+        correlation_id_(arena) {}
 
 inline void HealthResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -1780,6 +2174,8 @@ inline void HealthResponse::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.status_.Destroy();
   this_._impl_.version_.Destroy();
+  this_._impl_.schema_version_.Destroy();
+  this_._impl_.correlation_id_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -1825,16 +2221,16 @@ HealthResponse::GetClassData() const {
   return HealthResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 57, 2>
+const ::_pbi::TcParseTable<2, 4, 0, 85, 2>
 HealthResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    4, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967280,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    4,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     HealthResponse_class_data_.base(),
@@ -1844,14 +2240,22 @@ HealthResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::strategy::v1::HealthResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // string version = 2 [json_name = "version"];
+    // string correlation_id = 4 [json_name = "correlationId"];
     {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_)}},
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_)}},
     // string status = 1 [json_name = "status"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
       PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.status_)}},
+    // string version = 2 [json_name = "version"];
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_)}},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.schema_version_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -1859,13 +2263,19 @@ HealthResponse::_table_ = {
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.status_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string version = 2 [json_name = "version"];
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string correlation_id = 4 [json_name = "correlationId"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\43\6\7\0\0\0\0\0"
+    "\43\6\7\16\16\0\0\0"
     "cerberus.strategy.v1.HealthResponse"
     "status"
     "version"
+    "schema_version"
+    "correlation_id"
   }},
 };
 PROTOBUF_NOINLINE void HealthResponse::Clear() {
@@ -1876,12 +2286,18 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.status_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.schema_version_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -1927,6 +2343,26 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
     }
   }
 
+  // string schema_version = 3 [json_name = "schemaVersion"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_schema_version().empty()) {
+      const ::std::string& _s = this_._internal_schema_version();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.HealthResponse.schema_version");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string correlation_id = 4 [json_name = "correlationId"];
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_correlation_id().empty()) {
+      const ::std::string& _s = this_._internal_correlation_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.strategy.v1.HealthResponse.correlation_id");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -1952,7 +2388,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     // string status = 1 [json_name = "status"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_status().empty()) {
@@ -1965,6 +2401,20 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
       if (!this_._internal_version().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_version());
+      }
+    }
+    // string schema_version = 3 [json_name = "schemaVersion"];
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_schema_version().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_schema_version());
+      }
+    }
+    // string correlation_id = 4 [json_name = "correlationId"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_correlation_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_correlation_id());
       }
     }
   }
@@ -1986,7 +2436,7 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_status().empty()) {
         _this->_internal_set_status(from._internal_status());
@@ -2002,6 +2452,24 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       } else {
         if (_this->_impl_.version_.IsDefault()) {
           _this->_internal_set_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_schema_version().empty()) {
+        _this->_internal_set_schema_version(from._internal_schema_version());
+      } else {
+        if (_this->_impl_.schema_version_.IsDefault()) {
+          _this->_internal_set_schema_version("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_correlation_id().empty()) {
+        _this->_internal_set_correlation_id(from._internal_correlation_id());
+      } else {
+        if (_this->_impl_.correlation_id_.IsDefault()) {
+          _this->_internal_set_correlation_id("");
         }
       }
     }
@@ -2027,6 +2495,8 @@ void HealthResponse::InternalSwap(HealthResponse* PROTOBUF_RESTRICT PROTOBUF_NON
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.status_, &other->_impl_.status_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.version_, &other->_impl_.version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
 }
 
 ::google::protobuf::Metadata HealthResponse::GetMetadata() const {

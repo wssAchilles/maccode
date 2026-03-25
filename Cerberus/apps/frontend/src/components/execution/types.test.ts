@@ -11,6 +11,10 @@ describe('readGatewayRequestId', () => {
     expect(readGatewayRequestId({ error: { request_id: 'rid-nested' } })).toBe('rid-nested')
   })
 
+  it('returns envelope request_id when response shell is used', () => {
+    expect(readGatewayRequestId({ request_id: 'rid-shell', data: {}, error: null })).toBe('rid-shell')
+  })
+
   it('returns undefined for unsupported payloads', () => {
     expect(readGatewayRequestId('not-json')).toBeUndefined()
     expect(readGatewayRequestId({})).toBeUndefined()

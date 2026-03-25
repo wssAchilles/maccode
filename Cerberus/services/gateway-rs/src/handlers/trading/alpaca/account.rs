@@ -6,7 +6,7 @@ use axum::{
 
 use crate::gateway_types::{AppState, RequestContext};
 use crate::gateway_utils::to_axum_status;
-use crate::handlers::common::{error_body, internal_err_json, with_request_id};
+use crate::handlers::common::{error_body, internal_err_json, with_request_context};
 
 pub(crate) async fn get_alpaca_account(
     State(state): State<AppState>,
@@ -52,5 +52,9 @@ pub(crate) async fn get_alpaca_account(
     }
     let payload = serde_json::from_str::<serde_json::Value>(&text)
         .unwrap_or_else(|_| serde_json::json!({ "raw": text }));
-    Ok(Json(with_request_id(payload, request_id)))
+    Ok(Json(with_request_context(
+        payload,
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

@@ -7,6 +7,10 @@ pub struct EvaluateSignalRequest {
     pub strategy_id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -19,12 +23,20 @@ pub struct EvaluateSignalResponse {
     pub signal: ::prost::alloc::string::String,
     #[prost(double, tag="4")]
     pub confidence: f64,
+    #[prost(string, tag="5")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="6")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RebalanceRequest {
     #[prost(string, tag="1")]
     pub strategy_id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -33,6 +45,10 @@ pub struct RebalanceResponse {
     pub accepted: bool,
     #[prost(string, tag="2")]
     pub message: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -45,5 +61,9 @@ pub struct HealthResponse {
     pub status: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub version: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 // @@protoc_insertion_point(module)

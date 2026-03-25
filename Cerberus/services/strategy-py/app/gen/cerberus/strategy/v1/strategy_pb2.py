@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n#cerberus/strategy/v1/strategy.proto\x12\x14\x63\x65rberus.strategy.v1\"P\n\x15\x45valuateSignalRequest\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\"\x89\x01\n\x16\x45valuateSignalResponse\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\x12\x16\n\x06signal\x18\x03 \x01(\tR\x06signal\x12\x1e\n\nconfidence\x18\x04 \x01(\x01R\nconfidence\"3\n\x10RebalanceRequest\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\"I\n\x11RebalanceResponse\x12\x1a\n\x08\x61\x63\x63\x65pted\x18\x01 \x01(\x08R\x08\x61\x63\x63\x65pted\x12\x18\n\x07message\x18\x02 \x01(\tR\x07message\"\x0f\n\rHealthRequest\"B\n\x0eHealthResponse\x12\x16\n\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version2\xb1\x02\n\x0fStrategyService\x12k\n\x0e\x45valuateSignal\x12+.cerberus.strategy.v1.EvaluateSignalRequest\x1a,.cerberus.strategy.v1.EvaluateSignalResponse\x12\\\n\tRebalance\x12&.cerberus.strategy.v1.RebalanceRequest\x1a\'.cerberus.strategy.v1.RebalanceResponse\x12S\n\x06Health\x12#.cerberus.strategy.v1.HealthRequest\x1a$.cerberus.strategy.v1.HealthResponseB\x9b\x01\n\x18\x63om.cerberus.strategy.v1B\rStrategyProtoP\x01\xa2\x02\x03\x43SX\xaa\x02\x14\x43\x65rberus.Strategy.V1\xca\x02\x14\x43\x65rberus\\Strategy\\V1\xe2\x02 Cerberus\\Strategy\\V1\\GPBMetadata\xea\x02\x16\x43\x65rberus::Strategy::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n#cerberus/strategy/v1/strategy.proto\x12\x14\x63\x65rberus.strategy.v1\"\x9e\x01\n\x15\x45valuateSignalRequest\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"\xd7\x01\n\x16\x45valuateSignalResponse\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\x12\x16\n\x06symbol\x18\x02 \x01(\tR\x06symbol\x12\x16\n\x06signal\x18\x03 \x01(\tR\x06signal\x12\x1e\n\nconfidence\x18\x04 \x01(\x01R\nconfidence\x12%\n\x0eschema_version\x18\x05 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x06 \x01(\tR\rcorrelationId\"\x81\x01\n\x10RebalanceRequest\x12\x1f\n\x0bstrategy_id\x18\x01 \x01(\tR\nstrategyId\x12%\n\x0eschema_version\x18\x02 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x03 \x01(\tR\rcorrelationId\"\x97\x01\n\x11RebalanceResponse\x12\x1a\n\x08\x61\x63\x63\x65pted\x18\x01 \x01(\x08R\x08\x61\x63\x63\x65pted\x12\x18\n\x07message\x18\x02 \x01(\tR\x07message\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId\"\x0f\n\rHealthRequest\"\x90\x01\n\x0eHealthResponse\x12\x16\n\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12%\n\x0e\x63orrelation_id\x18\x04 \x01(\tR\rcorrelationId2\xb1\x02\n\x0fStrategyService\x12k\n\x0e\x45valuateSignal\x12+.cerberus.strategy.v1.EvaluateSignalRequest\x1a,.cerberus.strategy.v1.EvaluateSignalResponse\x12\\\n\tRebalance\x12&.cerberus.strategy.v1.RebalanceRequest\x1a\'.cerberus.strategy.v1.RebalanceResponse\x12S\n\x06Health\x12#.cerberus.strategy.v1.HealthRequest\x1a$.cerberus.strategy.v1.HealthResponseB\x9b\x01\n\x18\x63om.cerberus.strategy.v1B\rStrategyProtoP\x01\xa2\x02\x03\x43SX\xaa\x02\x14\x43\x65rberus.Strategy.V1\xca\x02\x14\x43\x65rberus\\Strategy\\V1\xe2\x02 Cerberus\\Strategy\\V1\\GPBMetadata\xea\x02\x16\x43\x65rberus::Strategy::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,18 +32,18 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'cerberus.strategy.v1.strate
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.cerberus.strategy.v1B\rStrategyProtoP\001\242\002\003CSX\252\002\024Cerberus.Strategy.V1\312\002\024Cerberus\\Strategy\\V1\342\002 Cerberus\\Strategy\\V1\\GPBMetadata\352\002\026Cerberus::Strategy::V1'
-  _globals['_EVALUATESIGNALREQUEST']._serialized_start=61
-  _globals['_EVALUATESIGNALREQUEST']._serialized_end=141
-  _globals['_EVALUATESIGNALRESPONSE']._serialized_start=144
-  _globals['_EVALUATESIGNALRESPONSE']._serialized_end=281
-  _globals['_REBALANCEREQUEST']._serialized_start=283
-  _globals['_REBALANCEREQUEST']._serialized_end=334
-  _globals['_REBALANCERESPONSE']._serialized_start=336
-  _globals['_REBALANCERESPONSE']._serialized_end=409
-  _globals['_HEALTHREQUEST']._serialized_start=411
-  _globals['_HEALTHREQUEST']._serialized_end=426
-  _globals['_HEALTHRESPONSE']._serialized_start=428
-  _globals['_HEALTHRESPONSE']._serialized_end=494
-  _globals['_STRATEGYSERVICE']._serialized_start=497
-  _globals['_STRATEGYSERVICE']._serialized_end=802
+  _globals['_EVALUATESIGNALREQUEST']._serialized_start=62
+  _globals['_EVALUATESIGNALREQUEST']._serialized_end=220
+  _globals['_EVALUATESIGNALRESPONSE']._serialized_start=223
+  _globals['_EVALUATESIGNALRESPONSE']._serialized_end=438
+  _globals['_REBALANCEREQUEST']._serialized_start=441
+  _globals['_REBALANCEREQUEST']._serialized_end=570
+  _globals['_REBALANCERESPONSE']._serialized_start=573
+  _globals['_REBALANCERESPONSE']._serialized_end=724
+  _globals['_HEALTHREQUEST']._serialized_start=726
+  _globals['_HEALTHREQUEST']._serialized_end=741
+  _globals['_HEALTHRESPONSE']._serialized_start=744
+  _globals['_HEALTHRESPONSE']._serialized_end=888
+  _globals['_STRATEGYSERVICE']._serialized_start=891
+  _globals['_STRATEGYSERVICE']._serialized_end=1196
 # @@protoc_insertion_point(module_scope)

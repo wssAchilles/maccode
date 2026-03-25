@@ -10,8 +10,7 @@ use tokio_tungstenite::connect_async;
 use tracing::{error, info};
 
 use crate::gateway_types::{
-    parse_market_symbols, AppState,
-    DEFAULT_BINANCE_STREAM_BASE, DEFAULT_MARKET_SYMBOLS,
+    parse_market_symbols, AppState, DEFAULT_BINANCE_STREAM_BASE, DEFAULT_MARKET_SYMBOLS,
 };
 use crate::gateway_utils::current_millis;
 

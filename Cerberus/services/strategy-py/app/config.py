@@ -10,6 +10,18 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     market_channel: str = "md.orderbook.BTCUSDT"
     market_channels: str = ""
+    market_stream_enabled: bool = True
+    market_stream_key: str = "cerberus.market.events"
+    market_stream_consumer_group: str = "strategy-market"
+    market_stream_consumer_name: str = ""
+    market_stream_read_batch_size: int = 64
+    market_stream_read_block_ms: int = 3000
+    market_stream_pending_replay_count: int = 128
+    market_stream_batch_window_ms: int = 100
+    market_stream_max_retries_before_fallback: int = 6
+    market_stream_retry_backoff_ms: int = 200
+    market_stream_retry_backoff_max_ms: int = 5000
+    market_stream_legacy_pubsub_fallback: bool = True
     signal_channel: str = "strategy.signals.default"
     fast_window: int = 5
     slow_window: int = 20
@@ -34,6 +46,17 @@ class Settings(BaseSettings):
     trade_execution_channel_prefix: str = "trade.executions"
     execution_relay_interval_seconds: float = 1.0
     execution_relay_batch_limit: int = 100
+    event_stream_enabled: bool = True
+    event_stream_key: str = "cerberus.order.events"
+    event_stream_maxlen: int = 10_000
+    event_stream_publish_legacy_pubsub: bool = True
+    event_schema_version: str = "v1"
+    idempotency_store_redis_enabled: bool = True
+    idempotency_redis_key_prefix: str = "cerberus:idempotency"
+    signal_idempotency_ttl_seconds: int = 900
+    idempotency_max_entries: int = 20_000
+    retriable_base_backoff_seconds: float = 0.2
+    retriable_max_backoff_seconds: float = 5.0
 
 
 settings = Settings()

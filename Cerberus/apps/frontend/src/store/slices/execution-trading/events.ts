@@ -18,7 +18,9 @@ function asObject(value: unknown): Record<string, unknown> | null {
 }
 
 export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
-  const payload = asObject(raw.payload) ?? {}
+  const envelope = asObject(raw.payload)
+  const envelopePayload = asObject(envelope?.payload)
+  const payload = envelopePayload ?? envelope ?? {}
   const nestedOrder = asObject(payload.order)
   const nestedExecution = asObject(payload.execution)
 
@@ -45,10 +47,13 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
   const requestId =
     asString(payload.request_id) ??
     asString(payload.requestId) ??
+    asString(envelope?.request_id) ??
+    asString(envelope?.correlation_id) ??
     asString((asObject(payload.error) ?? {}).request_id) ??
     undefined
 
   const eventType =
+    asString(envelope?.event_type) ??
     asString(payload.event) ??
     asString(payload.type) ??
     asString(payload.signal) ??

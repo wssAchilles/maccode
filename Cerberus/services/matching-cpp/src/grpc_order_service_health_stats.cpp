@@ -10,13 +10,16 @@ grpc::Status GrpcOrderService::Health(grpc::ServerContext* context,
                                       cerberus::order::v1::HealthResponse* response) {
   LogRequestStart("Health", context);
   EchoRequestId(context);
-  const auto uptime =
-      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - started_at_)
-          .count();
-  response->set_status("ok");
+  FillResponseContext(context, "", "", response->mutable_schema_version(),
+                      response->mutable_correlation_id());
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+  }
+  const auto uptime = UptimeSeconds();
+  response->set_status(IsDegraded() ? DegradedStatusText() : "ok");
   response->set_service("matching-cpp");
   response->set_version(service_version_);
-  response->set_uptime_seconds(static_cast<std::uint64_t>(std::max<std::int64_t>(uptime, 0)));
+  response->set_uptime_seconds(uptime);
   return grpc::Status::OK;
 }
 
@@ -25,6 +28,11 @@ grpc::Status GrpcOrderService::GetServiceStats(
     cerberus::order::v1::GetServiceStatsResponse* response) {
   LogRequestStart("GetServiceStats", context);
   EchoRequestId(context);
+  FillResponseContext(context, "", "", response->mutable_schema_version(),
+                      response->mutable_correlation_id());
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+  }
   ServiceStats stats;
   {
     std::scoped_lock<std::mutex> lock(mu_);
@@ -49,6 +57,14 @@ grpc::Status GrpcOrderService::GetServiceStats(
   } else {
     response->set_has_best_ask(false);
   }
+  response->set_submit_order_requests_total(submit_order_requests_total_.load());
+  response->set_submit_order_errors_total(submit_order_errors_total_.load());
+  response->set_submit_order_rejections_total(submit_order_rejections_total_.load());
+  response->set_submit_order_latency_p95_ms(SubmitOrderLatencyP95Ms());
+  response->set_submit_order_throughput_rps(SubmitOrderThroughputRps());
+  const auto uptime_seconds = static_cast<double>(UptimeSeconds());
+  response->set_trade_throughput_rps(
+      uptime_seconds > 0.0 ? static_cast<double>(stats.trade_count) / uptime_seconds : 0.0);
 
   return grpc::Status::OK;
 }

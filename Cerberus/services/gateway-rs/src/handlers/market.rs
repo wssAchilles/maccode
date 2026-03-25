@@ -8,7 +8,7 @@ use crate::event_bus::event_matches_account;
 use crate::gateway_types::{
     AppState, KlineQuery, RecentOrdersQuery, RequestContext, SnapshotQuery,
 };
-use crate::handlers::common::internal_err_json;
+use crate::handlers::common::{internal_err_json, with_request_context};
 
 pub(crate) async fn get_snapshot(
     State(state): State<AppState>,
@@ -27,12 +27,15 @@ pub(crate) async fn get_snapshot(
     };
 
     let symbols_tracked = state.latest_by_symbol.read().await.len();
-    Json(serde_json::json!({
-        "symbol": symbol,
-        "symbols_tracked": symbols_tracked,
-        "data": snapshot,
-        "request_id": ctx.request_id,
-    }))
+    Json(with_request_context(
+        serde_json::json!({
+            "symbol": symbol,
+            "symbols_tracked": symbols_tracked,
+            "data": snapshot,
+        }),
+        ctx.request_id.as_str(),
+        ctx.idempotency_key.as_deref(),
+    ))
 }
 
 pub(crate) async fn get_recent_order_events(
@@ -49,7 +52,11 @@ pub(crate) async fn get_recent_order_events(
         .map(str::trim)
         .filter(|v| !v.is_empty())
         .map(str::to_ascii_uppercase);
-    let order_id_filter = query.order_id.as_deref().map(str::trim).filter(|v| !v.is_empty());
+    let order_id_filter = query
+        .order_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
     let status_filter = query
         .status
         .as_deref()
@@ -80,7 +87,9 @@ pub(crate) async fn get_recent_order_events(
                 None => true,
             })
             .filter(|event| match order_id_filter {
-                Some(order_id) => payload_matches(&event.payload, &["order_id", "orderId"], order_id),
+                Some(order_id) => {
+                    payload_matches(&event.payload, &["order_id", "orderId"], order_id)
+                }
                 None => true,
             })
             .filter(|event| match status_filter.as_deref() {
@@ -98,11 +107,14 @@ pub(crate) async fn get_recent_order_events(
             .collect::<Vec<_>>()
     };
 
-    Json(serde_json::json!({
-        "count": events.len(),
-        "events": events,
-        "request_id": ctx.request_id,
-    }))
+    Json(with_request_context(
+        serde_json::json!({
+            "count": events.len(),
+            "events": events,
+        }),
+        ctx.request_id.as_str(),
+        ctx.idempotency_key.as_deref(),
+    ))
 }
 
 fn payload_matches(payload: &serde_json::Value, keys: &[&str], expected: &str) -> bool {
@@ -118,7 +130,7 @@ fn payload_text(payload: &serde_json::Value, keys: &[&str]) -> Option<String> {
         return Some(value);
     }
 
-    for nested in ["order", "execution", "error"] {
+    for nested in ["payload", "order", "execution", "error"] {
         if let Some(value) = payload
             .get(nested)
             .and_then(|child| payload_lookup(child, keys))
@@ -194,8 +206,11 @@ pub(crate) async fn get_klines(
         .await
         .map_err(|err| internal_err_json(request_id, "upstream_decode_failed", err))?;
 
-    Ok(Json(serde_json::json!({
-        "candles": resp,
-        "request_id": request_id,
-    })))
+    Ok(Json(with_request_context(
+        serde_json::json!({
+            "candles": resp,
+        }),
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

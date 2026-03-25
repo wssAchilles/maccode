@@ -1,11 +1,64 @@
 locals {
-  name_prefix = "cerberus-${var.environment}"
+  name_prefix   = "cerberus-${var.environment}"
+  is_production = lower(var.environment) == "production"
   required_apis = toset([
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
     "iam.googleapis.com",
   ])
+}
+
+resource "terraform_data" "policy_guardrails" {
+  input = true
+
+  lifecycle {
+    precondition {
+      condition     = length(trimspace(var.jwt_hs256_secret)) > 0
+      error_message = "jwt_hs256_secret must be non-empty."
+    }
+    precondition {
+      condition     = !local.is_production || var.jwt_auth_require_in_production
+      error_message = "jwt_auth_require_in_production must be true when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.cors_allow_origins != "*"
+      error_message = "cors_allow_origins cannot be '*' when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.internal_services_ingress
+      error_message = "internal_services_ingress must be true when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || (!var.strategy_public_access && !var.matching_public_access)
+      error_message = "strategy_public_access and matching_public_access must be false when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.strategy_internal_auth_enabled
+      error_message = "strategy_internal_auth_enabled must be true when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.cloud_run_gateway.min_instance_count >= 1
+      error_message = "cloud_run_gateway.min_instance_count must be >= 1 when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.cloud_run_strategy.min_instance_count >= 1
+      error_message = "cloud_run_strategy.min_instance_count must be >= 1 when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || var.cloud_run_matching.min_instance_count >= 1
+      error_message = "cloud_run_matching.min_instance_count must be >= 1 when environment=production."
+    }
+    precondition {
+      condition = (
+        var.matching_grpc_min_pollers >= 1 &&
+        var.matching_grpc_max_pollers >= var.matching_grpc_min_pollers &&
+        var.matching_grpc_num_cqs >= 1 &&
+        var.matching_grpc_num_cqs <= var.matching_grpc_max_pollers
+      )
+      error_message = "matching_grpc_* must satisfy: min>=1, max>=min, 1<=num_cqs<=max."
+    }
+  }
 }
 
 resource "google_project_service" "required" {
@@ -183,6 +236,18 @@ resource "google_secret_manager_secret_version" "firebase_web_api_key_v1" {
   secret_data = var.firebase_web_api_key
 }
 
+resource "google_secret_manager_secret" "jwt_hs256_secret" {
+  secret_id = "${local.name_prefix}-jwt-hs256-secret"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "jwt_hs256_secret_v1" {
+  secret      = google_secret_manager_secret.jwt_hs256_secret.id
+  secret_data = var.jwt_hs256_secret
+}
+
 resource "google_secret_manager_secret" "binance_api_key" {
   secret_id = "${local.name_prefix}-binance-api-key"
   replication {
@@ -234,15 +299,51 @@ resource "google_secret_manager_secret_version" "alpaca_api_secret_v1" {
 resource "google_cloud_run_v2_service" "matching" {
   name     = "${local.name_prefix}-matching"
   location = var.region
+  ingress  = var.internal_services_ingress ? "INGRESS_TRAFFIC_INTERNAL_ONLY" : "INGRESS_TRAFFIC_ALL"
 
   template {
-    service_account = google_service_account.matching.email
+    service_account                  = google_service_account.matching.email
+    timeout                          = "${var.cloud_run_matching.timeout_seconds}s"
+    max_instance_request_concurrency = var.cloud_run_matching.max_instance_request_concurrency
+
+    scaling {
+      min_instance_count = var.cloud_run_matching.min_instance_count
+      max_instance_count = var.cloud_run_matching.max_instance_count
+    }
 
     containers {
       image = coalesce(var.container_images.matching, "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/matching:latest")
 
       ports {
         container_port = 8080
+      }
+      resources {
+        limits = {
+          cpu    = var.cloud_run_matching.cpu
+          memory = var.cloud_run_matching.memory
+        }
+        cpu_idle          = var.cloud_run_matching.cpu_idle
+        startup_cpu_boost = var.cloud_run_matching.startup_cpu_boost
+      }
+      env {
+        name  = "MATCHING_GRPC_MAX_POLLERS"
+        value = tostring(var.matching_grpc_max_pollers)
+      }
+      env {
+        name  = "MATCHING_GRPC_MIN_POLLERS"
+        value = tostring(var.matching_grpc_min_pollers)
+      }
+      env {
+        name  = "MATCHING_GRPC_NUM_CQS"
+        value = tostring(var.matching_grpc_num_cqs)
+      }
+      env {
+        name  = "MATCHING_EXECUTION_STREAM_LIMIT"
+        value = tostring(var.matching_execution_stream_limit)
+      }
+      env {
+        name  = "MATCHING_SUBMIT_LATENCY_WINDOW_SIZE"
+        value = tostring(var.matching_submit_latency_window_size)
       }
     }
   }
@@ -251,15 +352,31 @@ resource "google_cloud_run_v2_service" "matching" {
 resource "google_cloud_run_v2_service" "strategy" {
   name     = "${local.name_prefix}-strategy"
   location = var.region
+  ingress  = var.internal_services_ingress ? "INGRESS_TRAFFIC_INTERNAL_ONLY" : "INGRESS_TRAFFIC_ALL"
   depends_on = [
     google_project_iam_member.strategy_secret_accessor,
   ]
 
   template {
-    service_account = google_service_account.strategy.email
+    service_account                  = google_service_account.strategy.email
+    timeout                          = "${var.cloud_run_strategy.timeout_seconds}s"
+    max_instance_request_concurrency = var.cloud_run_strategy.max_instance_request_concurrency
+
+    scaling {
+      min_instance_count = var.cloud_run_strategy.min_instance_count
+      max_instance_count = var.cloud_run_strategy.max_instance_count
+    }
 
     containers {
       image = var.container_images.strategy
+      resources {
+        limits = {
+          cpu    = var.cloud_run_strategy.cpu
+          memory = var.cloud_run_strategy.memory
+        }
+        cpu_idle          = var.cloud_run_strategy.cpu_idle
+        startup_cpu_boost = var.cloud_run_strategy.startup_cpu_boost
+      }
 
       env {
         name = "REDIS_URL"
@@ -352,6 +469,22 @@ resource "google_cloud_run_v2_service" "strategy" {
         name  = "MATCHING_GRPC_TARGET"
         value = google_cloud_run_v2_service.matching.uri
       }
+      env {
+        name  = "MARKET_STREAM_ENABLED"
+        value = tostring(var.market_stream_enabled)
+      }
+      env {
+        name  = "MARKET_STREAM_KEY"
+        value = var.redis_market_events_stream_key
+      }
+      env {
+        name  = "MARKET_STREAM_CONSUMER_GROUP"
+        value = var.market_stream_consumer_group
+      }
+      env {
+        name  = "MARKET_STREAM_LEGACY_PUBSUB_FALLBACK"
+        value = tostring(var.market_stream_legacy_pubsub_fallback)
+      }
 
       env {
         name = "GRB_LICENSEID"
@@ -392,10 +525,25 @@ resource "google_cloud_run_v2_service" "gateway" {
   ]
 
   template {
-    service_account = google_service_account.gateway.email
+    service_account                  = google_service_account.gateway.email
+    timeout                          = "${var.cloud_run_gateway.timeout_seconds}s"
+    max_instance_request_concurrency = var.cloud_run_gateway.max_instance_request_concurrency
+
+    scaling {
+      min_instance_count = var.cloud_run_gateway.min_instance_count
+      max_instance_count = var.cloud_run_gateway.max_instance_count
+    }
 
     containers {
       image = var.container_images.gateway
+      resources {
+        limits = {
+          cpu    = var.cloud_run_gateway.cpu
+          memory = var.cloud_run_gateway.memory
+        }
+        cpu_idle          = var.cloud_run_gateway.cpu_idle
+        startup_cpu_boost = var.cloud_run_gateway.startup_cpu_boost
+      }
 
       env {
         name = "REDIS_URL"
@@ -411,6 +559,26 @@ resource "google_cloud_run_v2_service" "gateway" {
         value = google_cloud_run_v2_service.strategy.uri
       }
       env {
+        name  = "STRATEGY_INTERNAL_AUTH_ENABLED"
+        value = tostring(var.strategy_internal_auth_enabled)
+      }
+      env {
+        name  = "STRATEGY_INTERNAL_AUTH_AUDIENCE"
+        value = google_cloud_run_v2_service.strategy.uri
+      }
+      env {
+        name  = "STRATEGY_INTERNAL_AUTH_TOKEN_TTL_SECONDS"
+        value = tostring(var.strategy_internal_auth_token_ttl_seconds)
+      }
+      env {
+        name  = "GCP_METADATA_IDENTITY_URL"
+        value = var.strategy_internal_auth_metadata_identity_url
+      }
+      env {
+        name  = "APP_ENV"
+        value = var.environment
+      }
+      env {
         name  = "CORS_ALLOW_ORIGINS"
         value = var.cors_allow_origins
       }
@@ -421,6 +589,31 @@ resource "google_cloud_run_v2_service" "gateway" {
       env {
         name  = "FIREBASE_PROJECT_ID"
         value = var.firebase_project_id
+      }
+      env {
+        name  = "JWT_AUTH_ENABLED"
+        value = tostring(var.jwt_auth_enabled)
+      }
+      env {
+        name  = "JWT_AUTH_REQUIRE_IN_PRODUCTION"
+        value = tostring(var.jwt_auth_require_in_production)
+      }
+      env {
+        name  = "JWT_ISSUER"
+        value = var.jwt_issuer
+      }
+      env {
+        name  = "JWT_AUDIENCE"
+        value = var.jwt_audience
+      }
+      env {
+        name = "JWT_HS256_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.jwt_hs256_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "FIREBASE_WEB_API_KEY"
@@ -531,18 +724,54 @@ resource "google_cloud_run_v2_service" "gateway" {
         name  = "REDIS_TICK_CHANNEL_PREFIX"
         value = var.redis_tick_channel_prefix
       }
+      env {
+        name  = "REDIS_MARKET_EVENTS_STREAM_ENABLED"
+        value = tostring(var.redis_market_events_stream_enabled)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_STREAM_KEY"
+        value = var.redis_market_events_stream_key
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_STREAM_MAXLEN"
+        value = tostring(var.redis_market_events_stream_maxlen)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_PUBLISH_LEGACY_PUBSUB"
+        value = tostring(var.redis_market_events_publish_legacy_pubsub)
+      }
+      env {
+        name  = "CERBERUS_EVENT_SCHEMA_VERSION"
+        value = "v1"
+      }
     }
   }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "gateway_public" {
+  count    = var.gateway_public_access ? 1 : 0
   name     = google_cloud_run_v2_service.gateway.name
   location = google_cloud_run_v2_service.gateway.location
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "strategy_invoked_by_gateway" {
+  name     = google_cloud_run_v2_service.strategy.name
+  location = google_cloud_run_v2_service.strategy.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.gateway.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "matching_invoked_by_strategy" {
+  name     = google_cloud_run_v2_service.matching.name
+  location = google_cloud_run_v2_service.matching.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.strategy.email}"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "strategy_public" {
+  count    = var.strategy_public_access ? 1 : 0
   name     = google_cloud_run_v2_service.strategy.name
   location = google_cloud_run_v2_service.strategy.location
   role     = "roles/run.invoker"
@@ -550,6 +779,7 @@ resource "google_cloud_run_v2_service_iam_member" "strategy_public" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "matching_public" {
+  count    = var.matching_public_access ? 1 : 0
   name     = google_cloud_run_v2_service.matching.name
   location = google_cloud_run_v2_service.matching.location
   role     = "roles/run.invoker"

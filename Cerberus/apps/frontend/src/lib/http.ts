@@ -1,6 +1,13 @@
 import type { AppError, Envelope } from '../types/contracts'
 import { buildRequestHeaders } from './auth-session'
 
+type ApiEnvelopeBody = {
+  request_id?: unknown
+  idempotency_key?: unknown
+  data?: unknown
+  error?: unknown
+}
+
 function parseBody(text: string): unknown {
   if (text.trim().length === 0) {
     return null
@@ -13,9 +20,46 @@ function parseBody(text: string): unknown {
   }
 }
 
+function asApiEnvelope(value: unknown): ApiEnvelopeBody | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  const maybe = value as ApiEnvelopeBody
+  if (!('request_id' in maybe) || !('data' in maybe) || !('error' in maybe)) {
+    return null
+  }
+  return maybe
+}
+
+function unwrapSuccessBody<T>(body: unknown): { payload: T; requestId?: string } {
+  const envelope = asApiEnvelope(body)
+  if (!envelope) {
+    return { payload: body as T, requestId: resolveRequestId(body) }
+  }
+  const requestId =
+    typeof envelope.request_id === 'string' && envelope.request_id.length > 0
+      ? envelope.request_id
+      : undefined
+  const data = envelope.data as T
+  if (data && typeof data === 'object' && !Array.isArray(data) && requestId) {
+    const payloadObject = data as Record<string, unknown>
+    if (!('request_id' in payloadObject)) {
+      payloadObject.request_id = requestId
+    }
+  }
+  return { payload: data, requestId }
+}
+
 function resolveRequestId(value: unknown, fallback?: string): string | undefined {
   if (!value || typeof value !== 'object') {
     return fallback
+  }
+  const envelope = asApiEnvelope(value)
+  if (envelope) {
+    const requestId = envelope.request_id
+    if (typeof requestId === 'string' && requestId.length > 0) {
+      return requestId
+    }
   }
   const direct = (value as { request_id?: unknown }).request_id
   if (typeof direct === 'string' && direct.length > 0) {
@@ -29,6 +73,10 @@ function resolveRequestId(value: unknown, fallback?: string): string | undefined
 }
 
 function resolveErrorCode(status: number, body: unknown): string {
+  const envelope = asApiEnvelope(body)
+  if (envelope?.error) {
+    return resolveErrorCode(status, envelope.error)
+  }
   if (body && typeof body === 'object') {
     const code = (body as { code?: unknown; error?: { code?: unknown } }).code
     if (typeof code === 'string' && code.length > 0) {
@@ -50,6 +98,10 @@ function resolveErrorCode(status: number, body: unknown): string {
 }
 
 function resolveErrorMessage(status: number, body: unknown): string {
+  const envelope = asApiEnvelope(body)
+  if (envelope?.error) {
+    return resolveErrorMessage(status, envelope.error)
+  }
   if (typeof body === 'string' && body.trim().length > 0) {
     return body
   }
@@ -78,14 +130,32 @@ export function normalizeError(
   body: unknown,
   fallbackRequestId?: string,
 ): AppError {
+  const envelope = asApiEnvelope(body)
+  const errorBody = envelope?.error ?? body
+  const requestId =
+    typeof envelope?.request_id === 'string' && envelope.request_id.length > 0
+      ? envelope.request_id
+      : fallbackRequestId
   return {
-    code: resolveErrorCode(status, body),
-    message: resolveErrorMessage(status, body),
-    request_id: resolveRequestId(body, fallbackRequestId),
+    code: resolveErrorCode(status, errorBody),
+    message: resolveErrorMessage(status, errorBody),
+    request_id: resolveRequestId(errorBody, requestId),
   }
 }
 
 export function toAppError(error: unknown, fallbackCode = 'unknown_error'): AppError {
+  const envelope = asApiEnvelope(error)
+  if (envelope?.error) {
+    const nested = toAppError(envelope.error, fallbackCode)
+    if (
+      !nested.request_id &&
+      typeof envelope.request_id === 'string' &&
+      envelope.request_id.trim().length > 0
+    ) {
+      nested.request_id = envelope.request_id
+    }
+    return nested
+  }
   if (!error) {
     return { code: fallbackCode, message: 'unknown error' }
   }
@@ -141,13 +211,15 @@ export async function requestEnvelope<T>(
 
     const text = await response.text()
     const body = parseBody(text)
+    const responseRequestId = response.headers.get('x-request-id') ?? undefined
 
     if (response.ok) {
+      const { payload } = unwrapSuccessBody<T>(body)
       return {
         ok: true,
         status_code: response.status,
         url,
-        payload: body as T,
+        payload,
       }
     }
 
@@ -155,7 +227,7 @@ export async function requestEnvelope<T>(
       ok: false,
       status_code: response.status,
       url,
-      error: normalizeError(url, response.status, body, response.headers.get('x-request-id') ?? undefined),
+      error: normalizeError(url, response.status, body, responseRequestId),
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'network error'

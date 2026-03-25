@@ -9,7 +9,7 @@ use axum::{
 
 use crate::event_bus::publish_order_event;
 use crate::gateway_types::{AppState, BinanceTestOrderRequest, RequestContext};
-use crate::handlers::common::{error_body, with_request_id};
+use crate::handlers::common::{error_body, with_request_context};
 
 use upstream::submit_order_test_upstream;
 use validation::validate_order_test_input;
@@ -34,7 +34,8 @@ pub(crate) async fn binance_order_test(
     ))?;
 
     let prepared = validate_order_test_input(&state, &req, request_id)?;
-    let payload = submit_order_test_upstream(&state, &prepared, api_key, api_secret, request_id).await?;
+    let payload =
+        submit_order_test_upstream(&state, &prepared, api_key, api_secret, request_id).await?;
 
     publish_order_event(
         &state,
@@ -51,5 +52,9 @@ pub(crate) async fn binance_order_test(
     )
     .await;
 
-    Ok(Json(with_request_id(payload, request_id)))
+    Ok(Json(with_request_context(
+        payload,
+        request_id,
+        ctx.idempotency_key.as_deref(),
+    )))
 }

@@ -20,7 +20,9 @@ class MatchingOrderClient:
     async def aclose(self) -> None:
         await self._transport.close()
 
-    async def submit_from_signal(self, signal: Signal, price: float) -> dict[str, Any] | None:
+    async def submit_from_signal(
+        self, signal: Signal, price: float, idempotency_key: str | None = None
+    ) -> dict[str, Any] | None:
         if not self._enabled:
             return None
         if signal.signal not in ("BUY", "SELL"):
@@ -35,6 +37,7 @@ class MatchingOrderClient:
             price=price,
             quantity=settings.strategy_order_quantity,
             client_order_id="",
+            idempotency_key=idempotency_key,
         )
         result["signal"] = signal.signal
         return result
@@ -49,6 +52,7 @@ class MatchingOrderClient:
         quantity: float,
         client_order_id: str = "",
         request_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         return await order_client_ops.submit_limit_order(
             enabled=self._enabled,
@@ -60,6 +64,7 @@ class MatchingOrderClient:
             quantity=quantity,
             client_order_id=client_order_id,
             request_id=request_id,
+            idempotency_key=idempotency_key,
         )
 
     async def cancel_order(

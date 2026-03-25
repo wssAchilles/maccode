@@ -11,6 +11,10 @@ pub struct PublishTickRequest {
     pub quantity: f64,
     #[prost(message, optional, tag="4")]
     pub event_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag="5")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="6")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -19,6 +23,10 @@ pub struct PublishTickResponse {
     pub ok: bool,
     #[prost(string, tag="2")]
     pub message: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -39,12 +47,20 @@ pub struct StreamOrderBookResponse {
     pub asks: ::prost::alloc::vec::Vec<Level>,
     #[prost(message, optional, tag="4")]
     pub event_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag="5")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="6")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamOrderBookRequest {
     #[prost(string, tag="1")]
     pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -55,6 +71,10 @@ pub struct GetCandlesRequest {
     pub interval: ::prost::alloc::string::String,
     #[prost(int32, tag="3")]
     pub limit: i32,
+    #[prost(string, tag="4")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="5")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -79,5 +99,9 @@ pub struct Candle {
 pub struct GetCandlesResponse {
     #[prost(message, repeated, tag="1")]
     pub candles: ::prost::alloc::vec::Vec<Candle>,
+    #[prost(string, tag="2")]
+    pub schema_version: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub correlation_id: ::prost::alloc::string::String,
 }
 // @@protoc_insertion_point(module)

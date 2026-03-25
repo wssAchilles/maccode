@@ -110,7 +110,7 @@ curl -fsS -D /tmp/gateway-ready-h -o /tmp/gateway-ready-b -H "x-request-id: ${RI
 assert_header_equals /tmp/strategy-ready-h x-request-id "${RID}"
 assert_header_equals /tmp/gateway-ready-h x-request-id "${RID}"
 assert_json_expr /tmp/strategy-ready-b "data.get('ready') is True"
-assert_json_expr /tmp/gateway-ready-b "data.get('ready') is True"
+assert_json_expr /tmp/gateway-ready-b "data.get('data', {}).get('ready') is True"
 
 echo "Checking request-id propagation..."
 curl -fsS -D /tmp/strategy-health-h -o /tmp/strategy-health-b -H "x-request-id: ${RID}" \
@@ -138,7 +138,7 @@ curl -sS -D /tmp/gateway-err-h -o /tmp/gateway-err-b \
   -X POST http://127.0.0.1:8080/api/v1/binance/order/test \
   --data '{"symbol":"BTCUSDT","side":"BUY","order_type":"LIMIT","quantity":"0.001","price":"10000"}' >/dev/null
 assert_header_equals /tmp/gateway-err-h x-request-id "${RID}"
-assert_json_expr /tmp/gateway-err-b "isinstance(data.get('error'), dict) and data['error'].get('request_id') == 'smoke-rid-001'"
+assert_json_expr /tmp/gateway-err-b "isinstance(data.get('error'), dict) and data.get('request_id') == 'smoke-rid-001'"
 
 echo "Checking Prometheus /metrics endpoints..."
 curl -fsS -D /tmp/strategy-metrics-h -o /tmp/strategy-metrics-b -H "x-request-id: ${RID}" \

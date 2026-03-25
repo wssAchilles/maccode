@@ -31,6 +31,7 @@ async def submit_limit_order(
     quantity: float,
     client_order_id: str = "",
     request_id: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     if not enabled:
         return disabled_submit_result("matching disabled", settings.strategy_account_id)
@@ -46,8 +47,13 @@ async def submit_limit_order(
         price=price,
         quantity=quantity,
         client_order_id=client_order_id,
+        idempotency_key=(idempotency_key or "").strip(),
+        schema_version=settings.event_schema_version,
+        correlation_id=(request_id or "").strip(),
     )
     metadata, request_token = transport.build_metadata(request_id)
+    if not request.correlation_id:
+        request.correlation_id = request_token
 
     try:
         response = await stub.SubmitOrder(
@@ -93,6 +99,8 @@ async def cancel_order(
     stub = await transport.ensure_stub()
     metadata, request_token = transport.build_metadata(request_id)
     request = order_pb2.CancelOrderRequest(account_id=account_id, order_id=order_id)
+    request.schema_version = settings.event_schema_version
+    request.correlation_id = request_token
     try:
         response = await stub.CancelOrder(
             request,

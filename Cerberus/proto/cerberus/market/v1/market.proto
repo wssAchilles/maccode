@@ -15,11 +15,15 @@ message PublishTickRequest {
   double price = 2;
   double quantity = 3;
   google.protobuf.Timestamp event_time = 4;
+  string schema_version = 5;
+  string correlation_id = 6;
 }
 
 message PublishTickResponse {
   bool ok = 1;
   string message = 2;
+  string schema_version = 3;
+  string correlation_id = 4;
 }
 
 message Level {
@@ -32,16 +36,22 @@ message StreamOrderBookResponse {
   repeated Level bids = 2;
   repeated Level asks = 3;
   google.protobuf.Timestamp event_time = 4;
+  string schema_version = 5;
+  string correlation_id = 6;
 }
 
 message StreamOrderBookRequest {
   string symbol = 1;
+  string schema_version = 2;
+  string correlation_id = 3;
 }
 
 message GetCandlesRequest {
   string symbol = 1;
   string interval = 2;
   int32 limit = 3;
+  string schema_version = 4;
+  string correlation_id = 5;
 }
 
 message Candle {
@@ -56,4 +66,6 @@ message Candle {
 
 message GetCandlesResponse {
   repeated Candle candles = 1;
+  string schema_version = 2;
+  string correlation_id = 3;
 }

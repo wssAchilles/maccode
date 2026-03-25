@@ -49,12 +49,16 @@ class MatchingSubmitResponse(BaseModel):
     order_id: str
     reason: str
     request_id: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingCancelResponse(BaseModel):
     canceled: bool
     reason: str
     request_id: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingOrderView(BaseModel):
@@ -69,6 +73,8 @@ class MatchingOrderView(BaseModel):
     status: str
     updated_at: str | None = None
     request_id: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingExecutionView(BaseModel):
@@ -80,21 +86,27 @@ class MatchingExecutionView(BaseModel):
     quantity: float
     event_time: str | None = None
     request_id: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingHealthView(BaseModel):
     enabled: bool = True
     reachable: bool = True
+    degraded: bool = False
     status: str
     service: str
     version: str
     uptime_seconds: int
     request_id: str | None = None
     reason: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingStatsView(BaseModel):
     enabled: bool = True
+    degraded: bool = False
     live_orders: int
     trade_count: int
     tracked_orders: int
@@ -102,7 +114,16 @@ class MatchingStatsView(BaseModel):
     symbols: int
     best_bid: float | None = None
     best_ask: float | None = None
+    submit_order_requests_total: int = 0
+    submit_order_errors_total: int = 0
+    submit_order_rejections_total: int = 0
+    submit_order_latency_p95_ms: float = 0.0
+    submit_order_throughput_rps: float = 0.0
+    trade_throughput_rps: float = 0.0
     request_id: str | None = None
+    reason: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None
 
 
 class MatchingOrderBookLevelView(BaseModel):
@@ -113,9 +134,13 @@ class MatchingOrderBookLevelView(BaseModel):
 
 class MatchingOrderBookView(BaseModel):
     enabled: bool = True
+    degraded: bool = False
     symbol: str
     depth: int
     bids: list[MatchingOrderBookLevelView]
     asks: list[MatchingOrderBookLevelView]
     generated_at_ms: int
     request_id: str | None = None
+    reason: str | None = None
+    schema_version: str | None = None
+    correlation_id: str | None = None

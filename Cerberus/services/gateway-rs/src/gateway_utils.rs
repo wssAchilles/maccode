@@ -4,6 +4,7 @@ mod http;
 mod misc;
 mod parsing;
 mod request_id;
+mod service_auth;
 
 pub(crate) use channel::*;
 pub(crate) use crypto::*;
@@ -11,6 +12,7 @@ pub(crate) use http::*;
 pub(crate) use misc::*;
 pub(crate) use parsing::*;
 pub(crate) use request_id::*;
+pub(crate) use service_auth::*;
 
 #[cfg(test)]
 mod tests {

@@ -15,8 +15,9 @@ pub(super) async fn submit_order_test_upstream(
 ) -> Result<serde_json::Value, (StatusCode, Json<serde_json::Value>)> {
     let query = serde_urlencoded::to_string(&prepared.params)
         .map_err(|err| internal_err_json(request_id, "serialization_error", err))?;
-    let signature = sign_binance_query(api_secret, &query)
-        .map_err(|(status, message)| (status, error_body("signature_error", message, request_id)))?;
+    let signature = sign_binance_query(api_secret, &query).map_err(|(status, message)| {
+        (status, error_body("signature_error", message, request_id))
+    })?;
     let body = format!("{query}&signature={signature}");
     let path = normalize_http_path(&state.exchange.binance_order_test_path);
     let url = format!(

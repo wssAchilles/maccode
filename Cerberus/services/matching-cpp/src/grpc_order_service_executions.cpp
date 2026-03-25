@@ -8,8 +8,6 @@
 
 namespace {
 
-constexpr std::size_t kExecutionStreamLimit = 500;
-
 void FillTimestampFromMillis(std::uint64_t epoch_ms, google::protobuf::Timestamp* ts) {
   if (ts == nullptr) {
     return;
@@ -29,6 +27,10 @@ grpc::Status GrpcOrderService::StreamExecutions(
     grpc::ServerWriter<cerberus::order::v1::StreamExecutionsResponse>* writer) {
   LogRequestStart("StreamExecutions", context);
   EchoRequestId(context);
+  if (IsDegraded()) {
+    MarkDegraded(context, DegradedStatusText());
+    return grpc::Status::OK;
+  }
   if (request->account_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "account_id is required");
   }
@@ -36,7 +38,7 @@ grpc::Status GrpcOrderService::StreamExecutions(
   std::vector<ExecutionEvent> executions;
   {
     std::scoped_lock<std::mutex> lock(mu_);
-    executions = service_.RecentExecutionsForAccount(request->account_id(), kExecutionStreamLimit);
+    executions = service_.RecentExecutionsForAccount(request->account_id(), execution_stream_limit_);
   }
 
   std::reverse(executions.begin(), executions.end());
@@ -52,6 +54,8 @@ grpc::Status GrpcOrderService::StreamExecutions(
     message.set_price(execution.trade.price);
     message.set_quantity(execution.trade.quantity);
     FillTimestampFromMillis(execution.event_time_ms, message.mutable_event_time());
+    FillResponseContext(context, request->schema_version(), request->correlation_id(),
+                        message.mutable_schema_version(), message.mutable_correlation_id());
 
     if (!writer->Write(message)) {
       break;

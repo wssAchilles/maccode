@@ -1,17 +1,67 @@
 use axum::{http::StatusCode, Json};
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum GatewayErrorCode {
+    ValidationError,
+    ConfigError,
+    UpstreamError,
+    UpstreamRequestFailed,
+    UpstreamDecodeFailed,
+    UpstreamStatusError,
+    InternalError,
+    AuthRequired,
+    AuthVerifyFailed,
+    SignatureError,
+}
+
+impl GatewayErrorCode {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::ValidationError => "validation_error",
+            Self::ConfigError => "config_error",
+            Self::UpstreamError => "upstream_error",
+            Self::UpstreamRequestFailed => "upstream_request_failed",
+            Self::UpstreamDecodeFailed => "upstream_decode_failed",
+            Self::UpstreamStatusError => "upstream_status_error",
+            Self::InternalError => "internal_error",
+            Self::AuthRequired => "auth_required",
+            Self::AuthVerifyFailed => "auth_verify_failed",
+            Self::SignatureError => "signature_error",
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn success_body(
+    data: serde_json::Value,
+    request_id: &str,
+    idempotency_key: Option<&str>,
+) -> Json<serde_json::Value> {
+    Json(api_envelope(request_id, Some(data), None, idempotency_key))
+}
+
 pub(crate) fn error_body(
     code: &str,
     message: impl Into<String>,
     request_id: &str,
 ) -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "error": {
+    Json(api_envelope(
+        request_id,
+        None,
+        Some(serde_json::json!({
             "code": code,
             "message": message.into(),
-            "request_id": request_id
-        }
-    }))
+        })),
+        None,
+    ))
+}
+
+pub(crate) fn error_body_code(
+    code: GatewayErrorCode,
+    message: impl Into<String>,
+    request_id: &str,
+) -> Json<serde_json::Value> {
+    error_body(code.as_str(), message, request_id)
 }
 
 pub(crate) fn internal_err_json(
@@ -25,38 +75,73 @@ pub(crate) fn internal_err_json(
     )
 }
 
-pub(crate) fn with_request_id(
-    mut payload: serde_json::Value,
+#[allow(dead_code)]
+pub(crate) fn with_request_id(payload: serde_json::Value, request_id: &str) -> serde_json::Value {
+    api_envelope(request_id, Some(payload), None, None)
+}
+
+pub(crate) fn with_request_context(
+    payload: serde_json::Value,
     request_id: &str,
+    idempotency_key: Option<&str>,
 ) -> serde_json::Value {
-    if let Some(object) = payload.as_object_mut() {
-        object
-            .entry("request_id".to_string())
-            .or_insert_with(|| serde_json::Value::String(request_id.to_string()));
+    api_envelope(request_id, Some(payload), None, idempotency_key)
+}
+
+fn api_envelope(
+    request_id: &str,
+    data: Option<serde_json::Value>,
+    error: Option<serde_json::Value>,
+    idempotency_key: Option<&str>,
+) -> serde_json::Value {
+    let mut envelope = serde_json::json!({
+        "request_id": request_id,
+        "data": data.unwrap_or(serde_json::Value::Null),
+        "error": error.unwrap_or(serde_json::Value::Null),
+    });
+    if let Some(key) = idempotency_key {
+        if let Some(object) = envelope.as_object_mut() {
+            object.insert(
+                "idempotency_key".to_string(),
+                serde_json::Value::String(key.to_string()),
+            );
+        }
     }
-    payload
+    envelope
 }
 
 #[cfg(test)]
 mod tests {
-    use super::with_request_id;
+    use super::{with_request_context, with_request_id};
 
     #[test]
-    fn injects_request_id_into_json_object() {
+    fn wraps_payload_into_api_envelope() {
         let payload = serde_json::json!({
             "status": "ok"
         });
         let updated = with_request_id(payload, "rid-123");
         assert_eq!(updated["request_id"], serde_json::json!("rid-123"));
-        assert_eq!(updated["status"], serde_json::json!("ok"));
+        assert_eq!(updated["error"], serde_json::Value::Null);
+        assert_eq!(updated["data"]["status"], serde_json::json!("ok"));
     }
 
     #[test]
-    fn keeps_existing_request_id() {
+    fn preserves_payload_request_id_inside_data() {
         let payload = serde_json::json!({
             "request_id": "rid-existing"
         });
         let updated = with_request_id(payload, "rid-new");
-        assert_eq!(updated["request_id"], serde_json::json!("rid-existing"));
+        assert_eq!(updated["request_id"], serde_json::json!("rid-new"));
+        assert_eq!(
+            updated["data"]["request_id"],
+            serde_json::json!("rid-existing")
+        );
+    }
+
+    #[test]
+    fn includes_idempotency_key_when_present() {
+        let payload = serde_json::json!({ "ok": true });
+        let updated = with_request_context(payload, "rid-9", Some("idem-1"));
+        assert_eq!(updated["idempotency_key"], serde_json::json!("idem-1"));
     }
 }

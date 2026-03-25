@@ -32,8 +32,10 @@ pub(super) fn validate_order_test_input(
 
     let order_type = req.order_type.trim().to_ascii_uppercase();
     let quantity_raw = req.quantity.trim();
-    let quantity = parse_positive_number("quantity", quantity_raw)
-        .map_err(|(status, message)| (status, error_body("validation_error", message, request_id)))?;
+    let quantity =
+        parse_positive_number("quantity", quantity_raw).map_err(|(status, message)| {
+            (status, error_body("validation_error", message, request_id))
+        })?;
 
     if state.trading_policy.enforced {
         if !symbol_allowed(&symbol, &state.trading_policy.binance_allowed_symbols) {
@@ -53,7 +55,9 @@ pub(super) fn validate_order_test_input(
                     StatusCode::BAD_REQUEST,
                     error_body(
                         "policy_rejected",
-                        format!("quantity {quantity} exceeds policy max_binance_order_qty {max_qty}"),
+                        format!(
+                            "quantity {quantity} exceeds policy max_binance_order_qty {max_qty}"
+                        ),
                         request_id,
                     ),
                 ));
@@ -82,8 +86,10 @@ pub(super) fn validate_order_test_input(
                 request_id,
             ),
         ))?;
-        let price = parse_positive_number("price", price_raw.trim())
-            .map_err(|(status, message)| (status, error_body("validation_error", message, request_id)))?;
+        let price =
+            parse_positive_number("price", price_raw.trim()).map_err(|(status, message)| {
+                (status, error_body("validation_error", message, request_id))
+            })?;
 
         if state.trading_policy.enforced {
             if let Some(max_notional) = state.trading_policy.max_binance_order_notional_usd {

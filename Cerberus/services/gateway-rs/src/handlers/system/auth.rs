@@ -5,13 +5,14 @@ use axum::{
     response::Response,
     Json,
 };
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 use tracing::debug;
 
 use crate::{
-    gateway_types::{AppState, AuthenticatedUser, CachedAuthUser, RequestContext},
+    gateway_types::{AppState, AuthenticatedUser, CachedAuthUser, JwtAuthConfig, RequestContext},
     gateway_utils::current_millis,
-    handlers::common::error_body,
+    handlers::common::{error_body, error_body_code, GatewayErrorCode},
 };
 
 const AUTH_CACHE_TTL_MS: u64 = 60_000;
@@ -27,6 +28,51 @@ struct AccountsLookupUser {
     #[serde(rename = "localId")]
     local_id: String,
     email: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GatewayJwtClaims {
+    sub: Option<String>,
+    iss: Option<String>,
+    aud: Option<serde_json::Value>,
+    exp: usize,
+}
+
+pub(crate) async fn require_gateway_jwt(
+    State(state): State<AppState>,
+    request: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    if !state.jwt_auth.effective_required() {
+        return Ok(next.run(request).await);
+    }
+
+    let request_id = request
+        .extensions()
+        .get::<RequestContext>()
+        .map(|ctx| ctx.request_id.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let token = extract_bearer_token(&request).ok_or_else(|| {
+        auth_err(
+            StatusCode::UNAUTHORIZED,
+            GatewayErrorCode::AuthRequired.as_str(),
+            "missing bearer token",
+            &request_id,
+        )
+    })?;
+
+    validate_gateway_jwt(token, &state.jwt_auth).map_err(|reason| {
+        auth_err(
+            StatusCode::UNAUTHORIZED,
+            GatewayErrorCode::AuthVerifyFailed.as_str(),
+            reason,
+            &request_id,
+        )
+    })?;
+
+    Ok(next.run(request).await)
 }
 
 pub(crate) async fn require_firebase_auth(
@@ -45,8 +91,14 @@ pub(crate) async fn require_firebase_auth(
         .unwrap_or("unknown")
         .to_string();
 
-    let token = extract_bearer_token(&request)
-        .ok_or_else(|| auth_err(StatusCode::UNAUTHORIZED, "auth_required", "missing bearer token", &request_id))?;
+    let token = extract_bearer_token(&request).ok_or_else(|| {
+        auth_err(
+            StatusCode::UNAUTHORIZED,
+            GatewayErrorCode::AuthRequired.as_str(),
+            "missing bearer token",
+            &request_id,
+        )
+    })?;
 
     let api_key = state
         .firebase_auth
@@ -56,7 +108,7 @@ pub(crate) async fn require_firebase_auth(
         .ok_or_else(|| {
             auth_err(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "config_error",
+                GatewayErrorCode::ConfigError.as_str(),
                 "FIREBASE_WEB_API_KEY not configured",
                 &request_id,
             )
@@ -115,9 +167,65 @@ fn extract_bearer_token(request: &Request) -> Option<&str> {
         .get("authorization")
         .and_then(|value| value.to_str().ok())
         .map(str::trim)
-        .and_then(|raw| raw.strip_prefix("Bearer ").or_else(|| raw.strip_prefix("bearer ")))
+        .and_then(|raw| {
+            raw.strip_prefix("Bearer ")
+                .or_else(|| raw.strip_prefix("bearer "))
+        })
         .map(str::trim)
         .filter(|token| !token.is_empty())
+}
+
+fn validate_gateway_jwt(token: &str, cfg: &JwtAuthConfig) -> Result<(), String> {
+    let secret = cfg
+        .hs256_secret
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "JWT_HS256_SECRET not configured".to_string())?;
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.validate_exp = true;
+    let token_data = decode::<GatewayJwtClaims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &validation,
+    )
+    .map_err(|err| format!("jwt decode failed: {err}"))?;
+    validate_claims(token_data.claims, cfg)
+}
+
+fn validate_claims(claims: GatewayJwtClaims, cfg: &JwtAuthConfig) -> Result<(), String> {
+    if claims.sub.as_deref().is_none() {
+        return Err("jwt subject missing".to_string());
+    }
+    if claims.exp == 0 {
+        return Err("jwt expiration missing".to_string());
+    }
+    if let Some(expected_iss) = cfg.issuer.as_deref() {
+        if claims.iss.as_deref() != Some(expected_iss) {
+            return Err("jwt issuer mismatch".to_string());
+        }
+    }
+    if let Some(expected_aud) = cfg.audience.as_deref() {
+        if !audience_matches(claims.aud.as_ref(), expected_aud) {
+            return Err("jwt audience mismatch".to_string());
+        }
+    }
+    Ok(())
+}
+
+fn audience_matches(raw: Option<&serde_json::Value>, expected: &str) -> bool {
+    let Some(aud) = raw else {
+        return false;
+    };
+    if let Some(single) = aud.as_str() {
+        return single == expected;
+    }
+    if let Some(list) = aud.as_array() {
+        return list
+            .iter()
+            .filter_map(|value| value.as_str())
+            .any(|item| item == expected);
+    }
+    false
 }
 
 async fn verify_firebase_token(
@@ -137,7 +245,7 @@ async fn verify_firebase_token(
         .map_err(|err| {
             auth_err(
                 StatusCode::UNAUTHORIZED,
-                "auth_verify_failed",
+                GatewayErrorCode::AuthVerifyFailed.as_str(),
                 format!("token verify request failed: {err}"),
                 request_id,
             )
@@ -151,7 +259,7 @@ async fn verify_firebase_token(
             .unwrap_or_else(|_| "failed to decode auth error body".to_string());
         return Err(auth_err(
             StatusCode::UNAUTHORIZED,
-            "auth_verify_failed",
+            GatewayErrorCode::AuthVerifyFailed.as_str(),
             format!("token rejected [{status}]: {body}"),
             request_id,
         ));
@@ -163,7 +271,7 @@ async fn verify_firebase_token(
         .map_err(|err| {
             auth_err(
                 StatusCode::UNAUTHORIZED,
-                "auth_verify_failed",
+                GatewayErrorCode::AuthVerifyFailed.as_str(),
                 format!("token verify decode failed: {err}"),
                 request_id,
             )
@@ -176,7 +284,7 @@ async fn verify_firebase_token(
         .ok_or_else(|| {
             auth_err(
                 StatusCode::UNAUTHORIZED,
-                "auth_verify_failed",
+                GatewayErrorCode::AuthVerifyFailed.as_str(),
                 "token lookup returned empty user",
                 request_id,
             )
@@ -194,5 +302,25 @@ fn auth_err(
     message: impl Into<String>,
     request_id: &str,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    (status, error_body(code, message.into(), request_id))
+    if let Some(known) = to_known_code(code) {
+        (status, error_body_code(known, message.into(), request_id))
+    } else {
+        (status, error_body(code, message.into(), request_id))
+    }
+}
+
+fn to_known_code(code: &str) -> Option<GatewayErrorCode> {
+    match code {
+        "validation_error" => Some(GatewayErrorCode::ValidationError),
+        "config_error" => Some(GatewayErrorCode::ConfigError),
+        "upstream_error" => Some(GatewayErrorCode::UpstreamError),
+        "upstream_request_failed" => Some(GatewayErrorCode::UpstreamRequestFailed),
+        "upstream_decode_failed" => Some(GatewayErrorCode::UpstreamDecodeFailed),
+        "upstream_status_error" => Some(GatewayErrorCode::UpstreamStatusError),
+        "internal_error" => Some(GatewayErrorCode::InternalError),
+        "auth_required" => Some(GatewayErrorCode::AuthRequired),
+        "auth_verify_failed" => Some(GatewayErrorCode::AuthVerifyFailed),
+        "signature_error" => Some(GatewayErrorCode::SignatureError),
+        _ => None,
+    }
 }
