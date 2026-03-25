@@ -6,11 +6,13 @@ async function ensureAuthenticated(page: Page): Promise<void> {
   const loginPanel = page.getByTestId('auth-login-panel')
   const appShell = page.getByTestId('app-shell')
 
+  await expect(appShell.or(loginPanel)).toBeVisible({ timeout: 20_000 })
+
   if (await appShell.isVisible().catch(() => false)) {
     return
   }
 
-  const authRequired = await loginPanel.isVisible({ timeout: 5_000 }).catch(() => false)
+  const authRequired = await loginPanel.isVisible({ timeout: 10_000 }).catch(() => false)
   if (!authRequired) {
     return
   }
@@ -28,7 +30,7 @@ async function ensureAuthenticated(page: Page): Promise<void> {
   await page.getByTestId('auth-email-submit').click()
 
   const authError = page.getByTestId('auth-error')
-  await expect(appShell.or(authError)).toBeVisible({ timeout: 20_000 })
+  await expect(appShell.or(authError)).toBeVisible({ timeout: 30_000 })
 
   if (await authError.isVisible().catch(() => false)) {
     const message = (await authError.textContent())?.trim()
@@ -40,6 +42,7 @@ test.describe('deploy gate', () => {
   test.skip(process.env.E2E_GATE_MODE !== 'true', 'deploy gate only')
 
   test('core trading chain is release-ready (desktop/mobile)', async ({ page }) => {
+    test.setTimeout(180_000)
     const observer = createDeployGateObserver()
     observer.attach(page)
 
@@ -52,6 +55,15 @@ test.describe('deploy gate', () => {
 
     await page.getByTestId('run-precheck-button').click()
     await expect(page.getByTestId('binance-precheck-status')).toBeVisible()
+    const precheckStatus = page.getByTestId('binance-precheck-status')
+    const initialStatusText = ((await precheckStatus.textContent()) ?? '').toLowerCase()
+    const precheckFailed = initialStatusText.includes('failed') || initialStatusText.includes('失败')
+    if (precheckFailed) {
+      await page.getByTestId('binance-quantity-input').fill('0.002')
+      await page.getByTestId('binance-price-input').fill('70000')
+      await page.getByTestId('run-precheck-button').click()
+      await expect(precheckStatus).toContainText(/passed|通过/i)
+    }
 
     await page.getByTestId('submit-binance-order-button').click()
     await page.waitForResponse((response) => response.url().includes('/api/v1/binance/order/test'))

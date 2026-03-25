@@ -1,5 +1,21 @@
 [
   {
+    "name": "maxNumericValue",
+    "expected": 2000,
+    "actual": 7577.345,
+    "values": [
+      7757.636,
+      7577.345
+    ],
+    "operator": "<=",
+    "passed": false,
+    "auditId": "largest-contentful-paint",
+    "level": "error",
+    "url": "https://cerberus-9d94f.web.app/",
+    "auditTitle": "Largest Contentful Paint",
+    "auditDocumentationLink": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/"
+  },
+  {
     "name": "auditRan",
     "expected": 1,
     "actual": 0,
@@ -10,7 +26,7 @@
     "operator": ">=",
     "passed": false,
     "auditId": "interaction-to-next-paint",
-    "level": "warn",
-    "url": "http://127.0.0.1:4173/"
+    "level": "error",
+    "url": "https://cerberus-9d94f.web.app/"
   }
 ]

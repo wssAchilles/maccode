@@ -73,11 +73,17 @@ export function BinanceTestPanel({
         </label>
         <label className="field-label">
           Quantity
-          <input className="field-input" value={quantity} onChange={(event) => onQuantityChange(event.target.value)} />
+          <input
+            data-testid="binance-quantity-input"
+            className="field-input"
+            value={quantity}
+            onChange={(event) => onQuantityChange(event.target.value)}
+          />
         </label>
         <label className="field-label">
           Price
           <input
+            data-testid="binance-price-input"
             className="field-input"
             value={price}
             onChange={(event) => onPriceChange(event.target.value)}

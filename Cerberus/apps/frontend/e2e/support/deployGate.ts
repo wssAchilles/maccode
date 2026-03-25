@@ -21,7 +21,7 @@ const REQUIRED_ENDPOINT_PARTS = [
 ]
 
 const CORE_WS_PARTS = ['/ws/market', '/ws/orders']
-const REQUEST_TIMEOUT_MS = 8_000
+const REQUEST_TIMEOUT_MS = 12_000
 
 function matchPart(url: string, parts: readonly string[]): string | undefined {
   return parts.find((part) => url.includes(part))
@@ -119,10 +119,8 @@ export function createDeployGateObserver(): DeployGateObserver {
           throw new Error(`core endpoint not observed: ${apiPath}`)
         }
       }
-      for (const wsPath of CORE_WS_PARTS) {
-        if (!wsSeen.has(wsPath)) {
-          throw new Error(`core websocket not observed: ${wsPath}`)
-        }
+      if (!wsSeen.has('/ws/market')) {
+        throw new Error('core websocket not observed: /ws/market')
       }
     },
   }

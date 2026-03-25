@@ -9,9 +9,13 @@ use serde::Deserialize;
 use tracing::debug;
 
 use crate::{
-    gateway_types::{AppState, AuthenticatedUser, RequestContext},
+    gateway_types::{AppState, AuthenticatedUser, CachedAuthUser, RequestContext},
+    gateway_utils::current_millis,
     handlers::common::error_body,
 };
+
+const AUTH_CACHE_TTL_MS: u64 = 60_000;
+const AUTH_CACHE_MAX_ENTRIES: usize = 1024;
 
 #[derive(Deserialize)]
 struct AccountsLookupResponse {
@@ -58,7 +62,13 @@ pub(crate) async fn require_firebase_auth(
             )
         })?;
 
-    let user = verify_firebase_token(&state, api_key, token, &request_id).await?;
+    let user = if let Some(cached) = auth_cache_lookup(&state, token).await {
+        cached
+    } else {
+        let verified = verify_firebase_token(&state, api_key, token, &request_id).await?;
+        auth_cache_store(&state, token, verified.clone()).await;
+        verified
+    };
     debug!(
         request_id = %request_id,
         uid = %user.uid,
@@ -69,6 +79,34 @@ pub(crate) async fn require_firebase_auth(
     let mut request = request;
     request.extensions_mut().insert(user);
     Ok(next.run(request).await)
+}
+
+async fn auth_cache_lookup(state: &AppState, token: &str) -> Option<AuthenticatedUser> {
+    let now = current_millis();
+    let cache = state.auth_cache.read().await;
+    cache.get(token).and_then(|entry| {
+        if entry.expires_at_ms > now {
+            Some(entry.user.clone())
+        } else {
+            None
+        }
+    })
+}
+
+async fn auth_cache_store(state: &AppState, token: &str, user: AuthenticatedUser) {
+    let now = current_millis();
+    let mut cache = state.auth_cache.write().await;
+    cache.retain(|_, entry| entry.expires_at_ms > now);
+    if cache.len() >= AUTH_CACHE_MAX_ENTRIES {
+        cache.clear();
+    }
+    cache.insert(
+        token.to_string(),
+        CachedAuthUser {
+            user,
+            expires_at_ms: now + AUTH_CACHE_TTL_MS,
+        },
+    );
 }
 
 fn extract_bearer_token(request: &Request) -> Option<&str> {

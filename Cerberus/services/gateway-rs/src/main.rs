@@ -110,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
         metrics: Arc::new(RwLock::new(GatewayMetrics::default())),
         exchange,
         firebase_auth,
+        auth_cache: Arc::new(RwLock::new(HashMap::new())),
         strategy_base_url,
         started_at_unix: current_millis() / 1_000,
     };

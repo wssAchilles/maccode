@@ -29,6 +29,7 @@ pub(crate) struct AppState {
     pub(crate) metrics: Arc<RwLock<GatewayMetrics>>,
     pub(crate) exchange: ExchangeConfig,
     pub(crate) firebase_auth: FirebaseAuthConfig,
+    pub(crate) auth_cache: Arc<RwLock<HashMap<String, CachedAuthUser>>>,
     pub(crate) strategy_base_url: Option<String>,
     pub(crate) started_at_unix: u64,
 }
@@ -49,6 +50,12 @@ pub(crate) struct FirebaseAuthConfig {
 pub(crate) struct AuthenticatedUser {
     pub(crate) uid: String,
     pub(crate) email: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct CachedAuthUser {
+    pub(crate) user: AuthenticatedUser,
+    pub(crate) expires_at_ms: u64,
 }
 
 #[derive(Clone, Default)]
