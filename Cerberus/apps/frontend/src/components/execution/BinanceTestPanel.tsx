@@ -58,11 +58,13 @@ export function BinanceTestPanel({
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="field-label">
           Symbol
-          <input className="field-input" value={selectedSymbol} disabled />
+          <input id="binance-symbol" name="binance_symbol" className="field-input" value={selectedSymbol} disabled />
         </label>
         <label className="field-label">
           Side
           <select
+            id="binance-side"
+            name="binance_side"
             className="field-input"
             value={side}
             onChange={(event) => onSideChange(event.target.value === 'SELL' ? 'SELL' : 'BUY')}
@@ -74,6 +76,8 @@ export function BinanceTestPanel({
         <label className="field-label">
           Quantity
           <input
+            id="binance-quantity"
+            name="binance_quantity"
             data-testid="binance-quantity-input"
             className="field-input"
             value={quantity}
@@ -83,6 +87,8 @@ export function BinanceTestPanel({
         <label className="field-label">
           Price
           <input
+            id="binance-price"
+            name="binance_price"
             data-testid="binance-price-input"
             className="field-input"
             value={price}

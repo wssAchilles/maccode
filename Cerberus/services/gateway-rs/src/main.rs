@@ -7,7 +7,10 @@ use std::{
 
 use anyhow::Context;
 use axum::{
-    http::HeaderValue,
+    http::{
+        header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN},
+        HeaderValue,
+    },
     middleware,
     routing::{get, post},
     Router,
@@ -164,11 +167,12 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn build_cors_layer(raw_origins: &str) -> CorsLayer {
+    let allow_headers = [AUTHORIZATION, CONTENT_TYPE, ACCEPT, ORIGIN];
     let trimmed = raw_origins.trim();
     if trimmed == "*" || trimmed.is_empty() {
         return CorsLayer::new()
             .allow_origin(Any)
-            .allow_headers(Any)
+            .allow_headers(allow_headers)
             .allow_methods(Any);
     }
 
@@ -182,12 +186,12 @@ fn build_cors_layer(raw_origins: &str) -> CorsLayer {
     if origins.is_empty() {
         return CorsLayer::new()
             .allow_origin(Any)
-            .allow_headers(Any)
+            .allow_headers(allow_headers)
             .allow_methods(Any);
     }
 
     CorsLayer::new()
         .allow_origin(origins)
-        .allow_headers(Any)
+        .allow_headers(allow_headers)
         .allow_methods(Any)
 }

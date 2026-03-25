@@ -58,15 +58,29 @@ export function AlpacaPaperPanel({
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="field-label">
           Symbol
-          <input className="field-input" value={symbol} onChange={(event) => onSymbolChange(event.target.value)} />
+          <input
+            id="alpaca-symbol"
+            name="alpaca_symbol"
+            className="field-input"
+            value={symbol}
+            onChange={(event) => onSymbolChange(event.target.value)}
+          />
         </label>
         <label className="field-label">
           Qty
-          <input className="field-input" value={quantity} onChange={(event) => onQuantityChange(event.target.value)} />
+          <input
+            id="alpaca-quantity"
+            name="alpaca_quantity"
+            className="field-input"
+            value={quantity}
+            onChange={(event) => onQuantityChange(event.target.value)}
+          />
         </label>
         <label className="field-label">
           Side
           <select
+            id="alpaca-side"
+            name="alpaca_side"
             className="field-input"
             value={side}
             onChange={(event) => onSideChange(event.target.value === 'sell' ? 'sell' : 'buy')}
@@ -78,6 +92,8 @@ export function AlpacaPaperPanel({
         <label className="field-label">
           Type
           <select
+            id="alpaca-type"
+            name="alpaca_type"
             className="field-input"
             value={orderType}
             onChange={(event) => onTypeChange(event.target.value === 'limit' ? 'limit' : 'market')}
@@ -89,6 +105,8 @@ export function AlpacaPaperPanel({
         <label className="field-label">
           Time in force
           <select
+            id="alpaca-tif"
+            name="alpaca_time_in_force"
             className="field-input"
             value={timeInForce}
             onChange={(event) =>
@@ -105,7 +123,13 @@ export function AlpacaPaperPanel({
         {orderType === 'limit' ? (
           <label className="field-label">
             Limit price
-            <input className="field-input" value={limitPrice} onChange={(event) => onLimitPriceChange(event.target.value)} />
+            <input
+              id="alpaca-limit-price"
+              name="alpaca_limit_price"
+              className="field-input"
+              value={limitPrice}
+              onChange={(event) => onLimitPriceChange(event.target.value)}
+            />
           </label>
         ) : null}
       </div>

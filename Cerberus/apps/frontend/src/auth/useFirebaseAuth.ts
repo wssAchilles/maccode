@@ -1,4 +1,12 @@
-import { type User, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth'
+import {
+  type User,
+  createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { getFirebaseServices } from '../lib/firebase-services'
@@ -20,8 +28,6 @@ export type FirebaseAuthState = {
   signInWithGoogle: () => Promise<void>
   signOutCurrentUser: () => Promise<void>
 }
-
-const USER_NOT_FOUND_CODES = new Set(['auth/user-not-found', 'auth/invalid-credential'])
 
 function normalizeAuthError(error: unknown): string {
   const code = (error as { code?: unknown }).code
@@ -104,18 +110,14 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
-      await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
-    } catch (error) {
-      const code = (error as { code?: unknown }).code
-      if (typeof code === 'string' && USER_NOT_FOUND_CODES.has(code)) {
-        try {
-          await createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
-        } catch (createError) {
-          setError(normalizeAuthError(createError))
-        }
+      const signInMethods = await fetchSignInMethodsForEmail(services.auth, normalizedEmail)
+      if (signInMethods.length === 0) {
+        await createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
       } else {
-        setError(normalizeAuthError(error))
+        await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
       }
+    } catch (error) {
+      setError(normalizeAuthError(error))
     } finally {
       setSigningIn(false)
     }

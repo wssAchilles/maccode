@@ -47,6 +47,8 @@ export function AuthLoginPanel({ t, auth }: Props) {
           <label className="field-label">
             {t('auth.email')}
             <input
+              id="auth-email"
+              name="email"
               data-testid="auth-email-input"
               className="field-input"
               autoComplete="email"
@@ -60,6 +62,8 @@ export function AuthLoginPanel({ t, auth }: Props) {
           <label className="field-label">
             {t('auth.password')}
             <input
+              id="auth-password"
+              name="password"
               data-testid="auth-password-input"
               className="field-input"
               autoComplete="current-password"

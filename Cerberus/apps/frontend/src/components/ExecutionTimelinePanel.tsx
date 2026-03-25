@@ -84,6 +84,8 @@ export function ExecutionTimelinePanel() {
           <label className="field-label">
             {t('execution.filterSymbol')}
             <select
+              id="timeline-filter-symbol"
+              name="timeline_filter_symbol"
               className="field-input"
               value={filterSymbol}
               onChange={(event) => setFilters({ symbol: event.target.value })}
@@ -98,6 +100,8 @@ export function ExecutionTimelinePanel() {
           <label className="field-label">
             {t('execution.filterAccount')}
             <select
+              id="timeline-filter-account"
+              name="timeline_filter_account"
               className="field-input"
               value={filterAccountId}
               onChange={(event) => setFilters({ account_id: event.target.value })}
@@ -112,6 +116,8 @@ export function ExecutionTimelinePanel() {
           <label className="field-label">
             {t('execution.filterStatus')}
             <select
+              id="timeline-filter-status"
+              name="timeline_filter_status"
               className="field-input"
               value={filterStatus}
               onChange={(event) => setFilters({ status: event.target.value })}
