@@ -7,6 +7,10 @@ import type { MarketStreamSlice, RootStore } from './shared'
 let marketSocket: WebSocket | null = null
 let pendingMessages: MarketMessage[] = []
 let flushHandle: number | null = null
+let marketReconnectHandle: number | null = null
+let marketReconnectAttempt = 0
+
+const MAX_MARKET_RECONNECT_DELAY_MS = 30_000
 
 function normalizeSymbol(input: string): string {
   return input.trim().toUpperCase()
@@ -54,6 +58,37 @@ function scheduleBatchFlush(set: Parameters<StateCreator<RootStore>>[0], get: ()
   })
 }
 
+function clearMarketReconnectHandle(): void {
+  if (marketReconnectHandle !== null) {
+    window.clearTimeout(marketReconnectHandle)
+    marketReconnectHandle = null
+  }
+}
+
+function scheduleMarketReconnect(get: () => RootStore): void {
+  if (marketSocket || marketReconnectHandle !== null) {
+    return
+  }
+  const { env } = get()
+  if (!env.live_stream_enabled) {
+    return
+  }
+
+  const delayMs = Math.min(MAX_MARKET_RECONNECT_DELAY_MS, 1_000 * 2 ** Math.min(marketReconnectAttempt, 5))
+  marketReconnectAttempt += 1
+  marketReconnectHandle = window.setTimeout(() => {
+    marketReconnectHandle = null
+    get().marketStreamActions.connectMarketSocket()
+  }, delayMs)
+
+  get().uiActions.setDomainStatus('market-stream', {
+    state: 'degraded',
+    stale: true,
+    reason: `market websocket closed, reconnect in ${Math.round(delayMs / 1_000)}s`,
+    request_id: undefined,
+  })
+}
+
 export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStreamSlice> = (
   set,
   get,
@@ -79,6 +114,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
       if (!env.live_stream_enabled || marketSocket) {
         return
       }
+      clearMarketReconnectHandle()
 
       get().uiActions.setDomainStatus('market-stream', {
         state: 'loading',
@@ -88,6 +124,16 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
       })
 
       marketSocket = new WebSocket(`${env.ws_base}/ws/market`)
+
+      marketSocket.onopen = () => {
+        marketReconnectAttempt = 0
+        get().uiActions.setDomainStatus('market-stream', {
+          state: 'ready',
+          stale: false,
+          reason: undefined,
+          request_id: undefined,
+        })
+      }
 
       marketSocket.onmessage = (event) => {
         try {
@@ -121,12 +167,7 @@ export const createMarketStreamSlice: StateCreator<RootStore, [], [], MarketStre
 
       marketSocket.onclose = () => {
         marketSocket = null
-        get().uiActions.setDomainStatus('market-stream', {
-          state: 'degraded',
-          stale: true,
-          reason: 'market websocket closed',
-          request_id: undefined,
-        })
+        scheduleMarketReconnect(get)
       }
     },
     loadCandles: async () => {

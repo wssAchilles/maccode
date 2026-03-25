@@ -74,6 +74,8 @@ jobs:
         run: cd apps/frontend && npm run test:e2e
       - name: Build
         run: cd apps/frontend && npm run build
+      - name: Bundle budget gate
+        run: cd apps/frontend && npm run check:bundle-budget
       - name: Lighthouse assertions
         run: cd apps/frontend && npm run lighthouse
 

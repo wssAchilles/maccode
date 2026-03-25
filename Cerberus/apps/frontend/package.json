@@ -11,7 +11,10 @@
     "test:e2e:gate": "E2E_GATE_MODE=true E2E_USE_DEPLOYED=true playwright test e2e/deploy-gate.spec.ts",
     "test:e2e:headed": "playwright test --headed",
     "lighthouse": "lhci autorun --config=.lighthouserc.json",
-    "lighthouse:gate": "lhci autorun --config=.lighthouserc.gate.cjs",
+    "lighthouse:gate:desktop": "lhci autorun --config=.lighthouserc.gate.desktop.cjs",
+    "lighthouse:gate:mobile": "lhci autorun --config=.lighthouserc.gate.mobile.cjs",
+    "lighthouse:gate": "npm run lighthouse:gate:desktop && npm run lighthouse:gate:mobile",
+    "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

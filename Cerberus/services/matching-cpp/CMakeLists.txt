@@ -20,6 +20,7 @@ target_include_directories(matching_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sr
 
 set(MATCHING_SERVICE_SOURCES src/main.cpp)
 set(MATCHING_SERVICE_LIBRARIES matching_engine)
+set(CERBERUS_PROTO_INCLUDE_DIR "")
 
 if(ENABLE_GRPC_SERVICE)
   find_package(gRPC QUIET)
@@ -38,15 +39,51 @@ if(ENABLE_GRPC_SERVICE)
   endif()
 
   if(gRPC_FOUND AND NOT PROTOBUF_LIB_TARGET STREQUAL "")
-    add_library(cerberus_proto STATIC
-      gen/cerberus/order/v1/order.pb.cc
-      gen/cerberus/order/v1/order.grpc.pb.cc
-      gen/cerberus/market/v1/market.pb.cc
-      gen/cerberus/market/v1/market.grpc.pb.cc
-      gen/cerberus/strategy/v1/strategy.pb.cc
-      gen/cerberus/strategy/v1/strategy.grpc.pb.cc
+    set(CERBERUS_PROTO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+    set(CERBERUS_PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+    set(CERBERUS_ORDER_PROTO ${CERBERUS_PROTO_ROOT}/cerberus/order/v1/order.proto)
+    set(CERBERUS_PROTO_INCLUDE_DIR ${CERBERUS_PROTO_GEN_DIR})
+    file(MAKE_DIRECTORY ${CERBERUS_PROTO_GEN_DIR})
+
+    set(CERBERUS_PROTOC_EXECUTABLE "")
+    if(TARGET protobuf::protoc)
+      set(CERBERUS_PROTOC_EXECUTABLE $<TARGET_FILE:protobuf::protoc>)
+    elseif(TARGET Protobuf::protoc)
+      set(CERBERUS_PROTOC_EXECUTABLE $<TARGET_FILE:Protobuf::protoc>)
+    elseif(DEFINED Protobuf_PROTOC_EXECUTABLE AND NOT Protobuf_PROTOC_EXECUTABLE STREQUAL "")
+      set(CERBERUS_PROTOC_EXECUTABLE ${Protobuf_PROTOC_EXECUTABLE})
+    else()
+      find_program(CERBERUS_PROTOC_EXECUTABLE protoc REQUIRED)
+    endif()
+
+    get_target_property(GRPC_CPP_PLUGIN_EXECUTABLE gRPC::grpc_cpp_plugin IMPORTED_LOCATION)
+    if(NOT GRPC_CPP_PLUGIN_EXECUTABLE)
+      find_program(GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin REQUIRED)
+    endif()
+
+    add_custom_command(
+      OUTPUT
+        ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.pb.cc
+        ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.pb.h
+        ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.grpc.pb.cc
+        ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.grpc.pb.h
+      COMMAND ${CERBERUS_PROTOC_EXECUTABLE}
+      ARGS
+        --proto_path=${CERBERUS_PROTO_ROOT}
+        --cpp_out=${CERBERUS_PROTO_GEN_DIR}
+        --grpc_out=${CERBERUS_PROTO_GEN_DIR}
+        --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN_EXECUTABLE}
+        ${CERBERUS_ORDER_PROTO}
+      DEPENDS ${CERBERUS_ORDER_PROTO}
+      COMMENT "Generating C++ protobuf/grpc sources for order.proto"
+      VERBATIM
     )
-    target_include_directories(cerberus_proto PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/gen)
+
+    add_library(cerberus_proto STATIC
+      ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.pb.cc
+      ${CERBERUS_PROTO_GEN_DIR}/cerberus/order/v1/order.grpc.pb.cc
+    )
+    target_include_directories(cerberus_proto PUBLIC ${CERBERUS_PROTO_INCLUDE_DIR})
     target_link_libraries(cerberus_proto PUBLIC ${PROTOBUF_LIB_TARGET} gRPC::grpc++ gRPC::grpc)
 
     add_library(grpc_order_service
@@ -59,7 +96,7 @@ if(ENABLE_GRPC_SERVICE)
     )
     target_include_directories(grpc_order_service PUBLIC
       ${CMAKE_CURRENT_SOURCE_DIR}/src
-      ${CMAKE_CURRENT_SOURCE_DIR}/gen
+      ${CERBERUS_PROTO_INCLUDE_DIR}
     )
     target_link_libraries(grpc_order_service PUBLIC matching_engine cerberus_proto)
 

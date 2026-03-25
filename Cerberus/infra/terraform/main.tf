@@ -34,6 +34,11 @@ resource "google_service_account" "strategy" {
   display_name = "Cerberus Strategy Runtime"
 }
 
+resource "google_service_account" "matching" {
+  account_id   = "${local.name_prefix}-matching-sa"
+  display_name = "Cerberus Matching Runtime"
+}
+
 resource "google_project_iam_member" "gateway_secret_accessor" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
@@ -226,6 +231,23 @@ resource "google_secret_manager_secret_version" "alpaca_api_secret_v1" {
   secret_data = var.alpaca_api_secret
 }
 
+resource "google_cloud_run_v2_service" "matching" {
+  name     = "${local.name_prefix}-matching"
+  location = var.region
+
+  template {
+    service_account = google_service_account.matching.email
+
+    containers {
+      image = coalesce(var.container_images.matching, "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/matching:latest")
+
+      ports {
+        container_port = 8080
+      }
+    }
+  }
+}
+
 resource "google_cloud_run_v2_service" "strategy" {
   name     = "${local.name_prefix}-strategy"
   location = var.region
@@ -325,6 +347,10 @@ resource "google_cloud_run_v2_service" "strategy" {
       env {
         name  = "MATCHING_ENABLED"
         value = tostring(var.matching_enabled)
+      }
+      env {
+        name  = "MATCHING_GRPC_TARGET"
+        value = google_cloud_run_v2_service.matching.uri
       }
 
       env {
@@ -519,6 +545,13 @@ resource "google_cloud_run_v2_service_iam_member" "gateway_public" {
 resource "google_cloud_run_v2_service_iam_member" "strategy_public" {
   name     = google_cloud_run_v2_service.strategy.name
   location = google_cloud_run_v2_service.strategy.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "matching_public" {
+  name     = google_cloud_run_v2_service.matching.name
+  location = google_cloud_run_v2_service.matching.location
   role     = "roles/run.invoker"
   member   = "allUsers"
 }

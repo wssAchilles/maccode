@@ -11,6 +11,7 @@ import type { ExecutionSectionProps } from './types'
 
 export function ExecutionSection({
   t,
+  className,
   selectedSymbol,
   strategySignal,
   recentSignals,
@@ -18,8 +19,10 @@ export function ExecutionSection({
   summaryError,
   matchingOrderBook,
 }: ExecutionSectionProps) {
+  const sectionClassName = className ?? 'mt-6'
+
   return (
-    <section className="mt-6" aria-label={t('section.execution')}>
+    <section className={sectionClassName} aria-label={t('section.execution')}>
       <h2 className="section-title">{t('section.execution')}</h2>
       <div className="mt-3 grid gap-4 lg:grid-cols-3">
         <div className="min-h-[180px] lg:col-span-3">

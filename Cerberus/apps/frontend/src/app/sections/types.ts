@@ -29,6 +29,7 @@ export type HeaderProps = {
 
 export type MarketSectionProps = {
   t: Translate
+  className?: string
   selectedSymbol: string
   displayQuote?: MarketMessage
   latestEvent?: OrderTimelineEvent
@@ -39,6 +40,7 @@ export type MarketSectionProps = {
 
 export type TradingSectionProps = {
   t: Translate
+  className?: string
   selectedSymbol: string
   latestBid?: string
   latestAsk?: string
@@ -46,6 +48,7 @@ export type TradingSectionProps = {
 
 export type ExecutionSectionProps = {
   t: Translate
+  className?: string
   selectedSymbol: string
   strategySignal?: StrategySignal
   recentSignals: SignalRecord[]
@@ -55,6 +58,7 @@ export type ExecutionSectionProps = {
 }
 
 export type HealthSectionProps = {
+  className?: string
   domainStatus: DomainStatusMap
   persistenceStatus?: PersistenceStatus
 }

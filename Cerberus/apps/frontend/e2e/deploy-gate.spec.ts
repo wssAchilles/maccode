@@ -38,10 +38,45 @@ async function ensureAuthenticated(page: Page): Promise<void> {
   }
 }
 
+async function assertWorkbenchLayout(page: Page, projectName: string): Promise<void> {
+  const leftColumn = page.getByTestId('workbench-left-column')
+  const rightColumn = page.getByTestId('workbench-right-column')
+  await expect(leftColumn).toBeVisible()
+  await expect(rightColumn).toBeVisible()
+
+  const leftBox = await leftColumn.boundingBox()
+  const rightBox = await rightColumn.boundingBox()
+  if (!leftBox || !rightBox) {
+    throw new Error('failed to measure workbench layout')
+  }
+
+  const isMobile = projectName.toLowerCase().includes('mobile')
+  if (isMobile) {
+    if (rightBox.y <= leftBox.y + leftBox.height * 0.6) {
+      throw new Error('mobile layout gate failed: right column is not stacked below left column')
+    }
+    return
+  }
+
+  if (rightBox.x <= leftBox.x + leftBox.width * 0.65) {
+    throw new Error('desktop layout gate failed: right column is not rendered as a separate column')
+  }
+}
+
+async function assertCoreFlowHealthy(page: Page): Promise<void> {
+  const criticalSteps = ['market', 'submit', 'feedback', 'cancel']
+  for (const step of criticalSteps) {
+    const text = (await page.getByTestId(`core-flow-step-${step}`).innerText()).toLowerCase()
+    if (/(error|错误|degraded|降级)/.test(text)) {
+      throw new Error(`core flow step entered degraded/error state: ${step}`)
+    }
+  }
+}
+
 test.describe('deploy gate', () => {
   test.skip(process.env.E2E_GATE_MODE !== 'true', 'deploy gate only')
 
-  test('core trading chain is release-ready (desktop/mobile)', async ({ page }) => {
+  test('core trading chain is release-ready (desktop/mobile)', async ({ page }, testInfo) => {
     test.setTimeout(180_000)
     const observer = createDeployGateObserver()
     observer.attach(page)
@@ -49,6 +84,7 @@ test.describe('deploy gate', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await ensureAuthenticated(page)
     await expect(page.getByTestId('app-shell')).toBeVisible()
+    await assertWorkbenchLayout(page, testInfo.project.name)
     await expect(page.getByTestId('core-flow-panel')).toBeVisible()
     await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
     await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
@@ -84,11 +120,7 @@ test.describe('deploy gate', () => {
       (response) => response.url().includes('/api/v1/alpaca/orders/') && response.url().includes('/cancel'),
     )
 
-    await expect(page.getByTestId('core-flow-step-submit')).toContainText(/Ready|就绪|Error|错误|Degraded|降级/)
-    await expect(page.getByTestId('core-flow-step-feedback')).toContainText(
-      /Ready|就绪|Active|加载中|Degraded|降级/,
-    )
-
+    await assertCoreFlowHealthy(page)
     observer.assertNoFailures()
   })
 })

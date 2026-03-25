@@ -10,18 +10,23 @@ const CORE_ENDPOINT_PARTS = [
   '/api/v1/orders/events/recent',
 ]
 
-const REQUIRED_ENDPOINT_PARTS = [
-  '/api/v1/strategy/summary',
-  '/api/v1/klines',
-  '/api/v1/binance/symbol-rules',
-  '/api/v1/trading/policy',
-  '/api/v1/binance/order/test',
-  '/api/v1/alpaca/orders',
-  '/api/v1/orders/events/recent',
-]
-
-const CORE_WS_PARTS = ['/ws/market', '/ws/orders']
-const REQUEST_TIMEOUT_MS = 12_000
+const DEPLOY_GATE_BUDGET = {
+  requiredEndpointParts: [
+    '/api/v1/strategy/summary',
+    '/api/v1/klines',
+    '/api/v1/binance/symbol-rules',
+    '/api/v1/trading/policy',
+    '/api/v1/binance/order/test',
+    '/api/v1/alpaca/orders',
+    '/api/v1/orders/events/recent',
+  ],
+  coreWebSocketParts: ['/ws/market', '/ws/orders'],
+  requestTimeoutMs: 12_000,
+  maxConsoleErrors: 0,
+  maxFailedRequests: 0,
+  maxBadResponses: 0,
+  maxSlowResponses: 0,
+} as const
 
 function matchPart(url: string, parts: readonly string[]): string | undefined {
   return parts.find((part) => url.includes(part))
@@ -29,7 +34,10 @@ function matchPart(url: string, parts: readonly string[]): string | undefined {
 
 function shouldTrackRequest(request: Request): boolean {
   const url = request.url()
-  return Boolean(matchPart(url, CORE_ENDPOINT_PARTS)) || Boolean(matchPart(url, CORE_WS_PARTS))
+  return (
+    Boolean(matchPart(url, CORE_ENDPOINT_PARTS)) ||
+    Boolean(matchPart(url, DEPLOY_GATE_BUDGET.coreWebSocketParts))
+  )
 }
 
 export type DeployGateObserver = {
@@ -64,7 +72,7 @@ export function createDeployGateObserver(): DeployGateObserver {
     const startedAt = requestStartAt.get(request)
     if (startedAt) {
       const latencyMs = Date.now() - startedAt
-      if (latencyMs > REQUEST_TIMEOUT_MS) {
+      if (latencyMs > DEPLOY_GATE_BUDGET.requestTimeoutMs) {
         slowResponses.push(`[${latencyMs}ms] ${apiPart} -> ${url}`)
       }
       requestStartAt.delete(request)
@@ -93,34 +101,36 @@ export function createDeployGateObserver(): DeployGateObserver {
       page.on('response', handleResponse)
       page.on('requestfailed', handleRequestFailed)
       page.on('websocket', (socket) => {
-        const part = matchPart(socket.url(), CORE_WS_PARTS)
+        const part = matchPart(socket.url(), DEPLOY_GATE_BUDGET.coreWebSocketParts)
         if (part) {
           wsSeen.add(part)
         }
       })
     },
     assertNoFailures: () => {
-      if (consoleErrors.length > 0) {
+      if (consoleErrors.length > DEPLOY_GATE_BUDGET.maxConsoleErrors) {
         throw new Error(`console errors detected:\n${consoleErrors.join('\n')}`)
       }
-      if (failedRequests.length > 0) {
+      if (failedRequests.length > DEPLOY_GATE_BUDGET.maxFailedRequests) {
         throw new Error(`core request failures detected:\n${failedRequests.join('\n')}`)
       }
-      if (badResponses.length > 0) {
+      if (badResponses.length > DEPLOY_GATE_BUDGET.maxBadResponses) {
         throw new Error(`core endpoint 4xx/5xx detected:\n${badResponses.join('\n')}`)
       }
-      if (slowResponses.length > 0) {
+      if (slowResponses.length > DEPLOY_GATE_BUDGET.maxSlowResponses) {
         throw new Error(
-          `core endpoint timeout threshold exceeded (> ${REQUEST_TIMEOUT_MS}ms):\n${slowResponses.join('\n')}`,
+          `core endpoint timeout threshold exceeded (> ${DEPLOY_GATE_BUDGET.requestTimeoutMs}ms):\n${slowResponses.join('\n')}`,
         )
       }
-      for (const apiPath of REQUIRED_ENDPOINT_PARTS) {
+      for (const apiPath of DEPLOY_GATE_BUDGET.requiredEndpointParts) {
         if (!apiSeen.has(apiPath)) {
           throw new Error(`core endpoint not observed: ${apiPath}`)
         }
       }
-      if (!wsSeen.has('/ws/market')) {
-        throw new Error('core websocket not observed: /ws/market')
+      for (const wsPath of DEPLOY_GATE_BUDGET.coreWebSocketParts) {
+        if (!wsSeen.has(wsPath)) {
+          throw new Error(`core websocket not observed: ${wsPath}`)
+        }
       }
     },
   }

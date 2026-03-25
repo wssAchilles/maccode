@@ -17,6 +17,7 @@ jobs:
     outputs:
       cloud_run_gateway_url: ${{ steps.tf_outputs.outputs.cloud_run_gateway_url }}
       cloud_run_strategy_url: ${{ steps.tf_outputs.outputs.cloud_run_strategy_url }}
+      cloud_run_matching_url: ${{ steps.tf_outputs.outputs.cloud_run_matching_url }}
       frontend_url: ${{ steps.frontend_outputs.outputs.frontend_url }}
     permissions:
       contents: read
@@ -43,8 +44,10 @@ jobs:
         run: |
           docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA} services/gateway-rs
           docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA} services/strategy-py
+          docker build -t $REGISTRY/$PROJECT_ID/$REPOSITORY/matching:${GITHUB_SHA} services/matching-cpp
           docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/gateway:${GITHUB_SHA}
           docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/strategy:${GITHUB_SHA}
+          docker push $REGISTRY/$PROJECT_ID/$REPOSITORY/matching:${GITHUB_SHA}
 
       - name: Terraform apply
         env:
@@ -69,10 +72,10 @@ jobs:
           TF_VAR_firebase_enabled: "true"
           TF_VAR_supabase_enabled: "true"
           TF_VAR_firebase_auth_required: "true"
-          TF_VAR_matching_enabled: "false"
+          TF_VAR_matching_enabled: "true"
           TF_VAR_cors_allow_origins: "https://cerberus-9d94f.web.app,https://cerberus-9d94f.firebaseapp.com"
           TF_VAR_container_images: >-
-            {"gateway":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gateway:${{ github.sha }}","strategy":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/strategy:${{ github.sha }}"}
+            {"gateway":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gateway:${{ github.sha }}","strategy":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/strategy:${{ github.sha }}","matching":"${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/matching:${{ github.sha }}"}
         run: |
           cd infra/terraform
           terraform init
@@ -83,8 +86,10 @@ jobs:
         run: |
           CLOUD_RUN_GATEWAY_URL="$(cd infra/terraform && terraform output -raw cloud_run_gateway_url)"
           CLOUD_RUN_STRATEGY_URL="$(cd infra/terraform && terraform output -raw cloud_run_strategy_url)"
+          CLOUD_RUN_MATCHING_URL="$(cd infra/terraform && terraform output -raw cloud_run_matching_url)"
           echo "cloud_run_gateway_url=$CLOUD_RUN_GATEWAY_URL" >> "$GITHUB_OUTPUT"
           echo "cloud_run_strategy_url=$CLOUD_RUN_STRATEGY_URL" >> "$GITHUB_OUTPUT"
+          echo "cloud_run_matching_url=$CLOUD_RUN_MATCHING_URL" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -107,6 +112,9 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: cd apps/frontend && npm run build
+
+      - name: Frontend bundle budget gate
+        run: cd apps/frontend && npm run check:bundle-budget
 
       - name: Deploy Firebase Hosting (live)
         run: npx firebase-tools deploy --project $PROJECT_ID --only hosting --non-interactive
@@ -162,3 +170,21 @@ jobs:
         env:
           LHCI_COLLECT_URL: ${{ steps.resolve_url.outputs.frontend_url }}
         run: cd apps/frontend && npm run lighthouse:gate
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-deploy-gate-playwright
+          path: |
+            apps/frontend/test-results
+            apps/frontend/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Lighthouse artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-deploy-gate-lighthouse
+          path: apps/frontend/.lighthouseci
+          if-no-files-found: ignore

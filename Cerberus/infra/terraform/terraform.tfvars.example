@@ -26,11 +26,12 @@ firebase_enabled        = true
 firebase_auth_required  = true
 firebase_signal_collection = "strategy_signals"
 supabase_enabled        = true
-matching_enabled        = false
+matching_enabled        = true
 
 cors_allow_origins = "https://cerberus-9d94f.web.app,https://cerberus-9d94f.firebaseapp.com"
 
 container_images = {
   gateway  = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/gateway:latest"
   strategy = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/strategy:latest"
+  matching = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/matching:latest"
 }

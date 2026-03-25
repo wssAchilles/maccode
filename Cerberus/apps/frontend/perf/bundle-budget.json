@@ -1,0 +1,11 @@
+{
+  "max_growth_ratio": 0.1,
+  "absolute_limits": {
+    "total_js_bytes": 760000,
+    "total_css_bytes": 22000,
+    "largest_js_bytes": 270000,
+    "largest_css_bytes": 22000,
+    "js_file_count": 14,
+    "css_file_count": 2
+  }
+}

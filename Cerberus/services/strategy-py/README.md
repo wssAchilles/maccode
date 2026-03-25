@@ -34,6 +34,7 @@ Optional matching gRPC submit path (signal -> order):
 
 - `MATCHING_ENABLED=true`
 - `MATCHING_GRPC_TARGET=matching:50051`
+- `MATCHING_GRPC_TARGET=https://<cloud-run-matching-url>` (Cloud Run TLS target supported)
 - `STRATEGY_ACCOUNT_ID=default`
 - `STRATEGY_ORDER_QUANTITY=0.001`
 - `TRADE_EXECUTION_CHANNEL_PREFIX=trade.executions`

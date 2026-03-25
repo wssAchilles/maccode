@@ -145,7 +145,10 @@ export default function App() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl p-4 text-white md:p-6" data-testid="app-shell">
+    <main
+      className="mx-auto w-full max-w-[1680px] px-4 pb-8 pt-4 text-white md:px-6 md:pb-10"
+      data-testid="app-shell"
+    >
       <AppHeader
         t={t}
         env={env}
@@ -162,34 +165,42 @@ export default function App() {
         onLocaleChange={setStoreLocale}
       />
 
-      <MarketSection
-        t={t}
-        selectedSymbol={selectedSymbol}
-        displayQuote={displayQuote}
-        latestEvent={latestEvent}
-        orderSummary={orderSummary}
-        candles={candles}
-        onSymbolSelect={setSelectedSymbol}
-      />
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-6" data-testid="workbench-left-column">
+          <MarketSection
+            t={t}
+            className="mt-0"
+            selectedSymbol={selectedSymbol}
+            displayQuote={displayQuote}
+            latestEvent={latestEvent}
+            orderSummary={orderSummary}
+            candles={candles}
+            onSymbolSelect={setSelectedSymbol}
+          />
 
-      <TradingSection
-        t={t}
-        selectedSymbol={selectedSymbol}
-        latestBid={displayQuote?.bid_price}
-        latestAsk={displayQuote?.ask_price}
-      />
+          <ExecutionSection
+            t={t}
+            className="mt-0"
+            selectedSymbol={selectedSymbol}
+            strategySignal={strategySignal}
+            recentSignals={recentSignals}
+            persistenceStatus={persistenceStatus}
+            summaryError={summaryError}
+            matchingOrderBook={matchingOrderBook}
+          />
+        </div>
 
-      <ExecutionSection
-        t={t}
-        selectedSymbol={selectedSymbol}
-        strategySignal={strategySignal}
-        recentSignals={recentSignals}
-        persistenceStatus={persistenceStatus}
-        summaryError={summaryError}
-        matchingOrderBook={matchingOrderBook}
-      />
-
-      <HealthSection domainStatus={domainStatus} persistenceStatus={persistenceStatus} />
+        <aside className="min-w-0 space-y-6" data-testid="workbench-right-column">
+          <TradingSection
+            t={t}
+            className="mt-0"
+            selectedSymbol={selectedSymbol}
+            latestBid={displayQuote?.bid_price}
+            latestAsk={displayQuote?.ask_price}
+          />
+          <HealthSection className="mt-0" domainStatus={domainStatus} persistenceStatus={persistenceStatus} />
+        </aside>
+      </div>
     </main>
   )
 }

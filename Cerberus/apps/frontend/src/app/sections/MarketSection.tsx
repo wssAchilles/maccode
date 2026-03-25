@@ -5,6 +5,7 @@ import type { MarketSectionProps } from './types'
 
 export function MarketSection({
   t,
+  className,
   selectedSymbol,
   displayQuote,
   latestEvent,
@@ -12,8 +13,10 @@ export function MarketSection({
   candles,
   onSymbolSelect,
 }: MarketSectionProps) {
+  const sectionClassName = className ?? 'mt-6'
+
   return (
-    <section className="mt-6" aria-label={t('section.market')}>
+    <section className={sectionClassName} aria-label={t('section.market')}>
       <h2 className="section-title">{t('section.market')}</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <article className="metric-card">

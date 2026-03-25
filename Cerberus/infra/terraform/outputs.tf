@@ -9,3 +9,7 @@ output "cloud_run_gateway_url" {
 output "cloud_run_strategy_url" {
   value = google_cloud_run_v2_service.strategy.uri
 }
+
+output "cloud_run_matching_url" {
+  value = google_cloud_run_v2_service.matching.uri
+}

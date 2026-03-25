@@ -21,10 +21,12 @@ variable "container_images" {
   type = object({
     gateway  = string
     strategy = string
+    matching = optional(string)
   })
   default = {
     gateway  = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/gateway:latest"
     strategy = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/strategy:latest"
+    matching = "asia-east2-docker.pkg.dev/cerberus-9d94f/cerberus/matching:latest"
   }
 }
 

@@ -117,6 +117,7 @@ Frontend quality gates:
 cd apps/frontend
 npm run test
 npm run build
+npm run check:bundle-budget
 npm run test:e2e
 npm run lighthouse
 ```
@@ -128,6 +129,9 @@ cd apps/frontend
 E2E_BASE_URL="https://<your-hosting-url>" E2E_GATE_MODE=true E2E_USE_DEPLOYED=true E2E_AUTH_EMAIL="gate-user@example.com" E2E_AUTH_PASSWORD="replace_me" npm run test:e2e:gate
 LHCI_COLLECT_URL="https://<your-hosting-url>" npm run lighthouse:gate
 ```
+
+`npm run lighthouse:gate` runs both desktop and mobile SLO assertions.
+Note: Lighthouse navigation runs may not always emit INP (`auditRan=0`), so INP is treated as warning in gate; responsiveness hard gate uses `total-blocking-time`.
 
 3. Start local stack:
 

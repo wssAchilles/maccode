@@ -3,9 +3,11 @@ import { Suspense } from 'react'
 import { LazyExecutionConsole, PanelSkeleton } from '../lazyPanels'
 import type { TradingSectionProps } from './types'
 
-export function TradingSection({ t, selectedSymbol, latestBid, latestAsk }: TradingSectionProps) {
+export function TradingSection({ t, className, selectedSymbol, latestBid, latestAsk }: TradingSectionProps) {
+  const sectionClassName = className ?? 'mt-6'
+
   return (
-    <section className="mt-6" aria-label={t('section.trading')}>
+    <section className={sectionClassName} aria-label={t('section.trading')}>
       <h2 className="section-title">{t('section.trading')}</h2>
       <div className="min-h-[540px]">
         <Suspense fallback={<PanelSkeleton height="h-[540px]" />}>
