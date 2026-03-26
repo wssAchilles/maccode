@@ -2,6 +2,11 @@
 
 Quant strategy service.
 
+Startup policy:
+
+- Runtime validates critical settings at startup and fails fast on invalid combinations.
+- Set `APP_ENV=production` to enable stricter production policy checks (for example, wildcard CORS rejection).
+
 ## Run
 
 ```bash
@@ -55,6 +60,15 @@ Market subscriptions:
 - `MARKET_STREAM_CONSUMER_NAME=` (optional override; auto-generated when empty)
 - `MARKET_STREAM_LEGACY_PUBSUB_FALLBACK=true`
 
+Runtime module skeleton:
+
+- `app/market_ingest_runtime/loop.py`: market ingest mode orchestrator
+- `app/market_ingest_runtime/pubsub_runtime.py`: legacy pub/sub ingest loop
+- `app/market_ingest_runtime/stream_runtime.py`: stream consumer-group main loop + maintenance
+- `app/market_ingest_runtime/stream_io.py`: stream read/ack/backlog parsing helpers
+- `app/market_ingest_runtime/stream_processing.py`: entry decode + batch processing
+- `app/market_ingest_runtime/stream_reclaim.py`: reclaim + poison routing
+
 Signal smoke endpoint (works without Redis):
 
 - `POST /api/v1/signal/ingest`
@@ -80,6 +94,7 @@ Observability notes:
 
 - Strategy gRPC client attaches `x-request-id` metadata to matching RPC calls.
 - Strategy order submit forwards `idempotency_key` (HTTP `idempotency-key` or signal-derived key).
+- Redis signal path batches `strategy.signal.generated` and optional `matching.order.submitted` into one pipeline write.
 - Strategy HTTP middleware preserves incoming `x-request-id` (or generates one) and echoes it in response headers.
 - HTTP errors are wrapped as `{ "error": { "code", "message", "request_id" } }`.
 - `/api/v1/status/persistence` now includes `matching.health` and `matching.stats`.

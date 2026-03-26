@@ -144,4 +144,5 @@ def register_request_id_middleware(app: FastAPI) -> None:
         response.headers[REQUEST_ID_HEADER] = request_id
         if idempotency_key:
             response.headers[IDEMPOTENCY_KEY_HEADER] = idempotency_key
+            response.headers[IDEMPOTENCY_KEY_ALT_HEADER] = idempotency_key
         return response

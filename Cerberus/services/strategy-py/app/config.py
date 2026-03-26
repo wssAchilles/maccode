@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    app_env: str = "development"
     service_name: str = "strategy-py"
     service_version: str = "0.1.0"
     cors_allow_origins: str = "*"

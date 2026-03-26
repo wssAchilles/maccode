@@ -9,8 +9,7 @@ from redis.asyncio import Redis
 
 from app.config import settings
 from app.event_runtime import (
-    publish_matching_submission,
-    publish_signal_event,
+    publish_signal_and_matching_submission,
     run_execution_relay_loop,
 )
 from app.firebase_publisher import FirebaseSignalPublisher
@@ -105,8 +104,7 @@ class RedisMarketWorker:
             self.last_signal = signal
 
             if self._redis is not None:
-                await publish_signal_event(self, signal, tick, signal_id)
-                await self._publish_matching_submission(signal, tick.price, signal_id)
+                await publish_signal_and_matching_submission(self, signal, tick, signal_id)
 
             await self._firebase.publish_signal(signal)
             await self._supabase.publish_signal(signal)
@@ -120,11 +118,6 @@ class RedisMarketWorker:
         self.last_tick_epoch_seconds = int(now.timestamp())
         self.last_error = None
         return signal
-
-    async def _publish_matching_submission(
-        self, signal: Signal, tick_price: float, signal_id: str
-    ) -> None:
-        await publish_matching_submission(self, signal, tick_price, signal_id)
 
     async def _run_execution_relay_loop(self) -> None:
         await run_execution_relay_loop(self)

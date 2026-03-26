@@ -7,12 +7,14 @@ firebase_auth_required         = true
 jwt_auth_enabled               = true
 jwt_auth_require_in_production = true
 
-internal_services_ingress = true
-strategy_public_access    = false
-matching_public_access    = false
-gateway_public_access     = true
-matching_max_inflight_requests = 2048
+internal_services_ingress            = true
+strategy_public_access               = false
+matching_public_access               = false
+gateway_public_access                = true
+matching_max_inflight_requests       = 2048
 matching_inflight_acquire_timeout_ms = 40
+strategy_summary_cache_ttl_ms        = 1200
+strategy_summary_batch_window_ms     = 80
 
 strategy_internal_auth_enabled              = true
 strategy_upstream_circuit_enabled           = true
@@ -21,6 +23,7 @@ strategy_upstream_circuit_open_ms           = 20000
 
 market_stream_legacy_pubsub_fallback      = false
 redis_market_events_publish_legacy_pubsub = false
+redis_order_events_legacy_pubsub_fallback = false
 
 cloud_run_gateway = {
   min_instance_count               = 2

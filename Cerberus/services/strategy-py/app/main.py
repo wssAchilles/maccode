@@ -16,11 +16,13 @@ from app.api import (
 from app.config import settings
 from app.http import register_error_handlers, register_request_id_middleware
 from app.runtime_container import build_runtime_container
+from app.settings_validation import validate_runtime_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
 
 SERVICE_STARTED_AT = monotonic()
+validate_runtime_settings()
 runtime = build_runtime_container(started_at=SERVICE_STARTED_AT)
 
 

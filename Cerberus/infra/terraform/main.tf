@@ -7,12 +7,37 @@ locals {
     "secretmanager.googleapis.com",
     "iam.googleapis.com",
   ])
+  required_secret_values = {
+    gurobi_licenseid          = var.gurobi_licenseid
+    gurobi_wlsaccessid        = var.gurobi_wlsaccessid
+    gurobi_wlssecret          = var.gurobi_wlssecret
+    upstash_redis_url         = var.upstash_redis_url
+    upstash_redis_rest_url    = var.upstash_redis_rest_url
+    upstash_redis_rest_token  = var.upstash_redis_rest_token
+    supabase_project_url      = var.supabase_project_url
+    supabase_anon_key         = var.supabase_anon_key
+    supabase_service_role_key = var.supabase_service_role_key
+    supabase_db_url           = var.supabase_db_url
+    firebase_web_api_key      = var.firebase_web_api_key
+    jwt_hs256_secret          = var.jwt_hs256_secret
+    binance_api_key           = var.binance_api_key
+    binance_api_secret        = var.binance_api_secret
+    alpaca_api_key            = var.alpaca_api_key
+    alpaca_api_secret         = var.alpaca_api_secret
+  }
+  empty_required_secret_keys = [
+    for key, value in local.required_secret_values : key if length(trimspace(value)) == 0
+  ]
 }
 
 resource "terraform_data" "policy_guardrails" {
   input = true
 
   lifecycle {
+    precondition {
+      condition     = length(local.empty_required_secret_keys) == 0
+      error_message = "Required secret variables must be non-empty: ${join(", ", local.empty_required_secret_keys)}"
+    }
     precondition {
       condition     = length(trimspace(var.jwt_hs256_secret)) > 0
       error_message = "jwt_hs256_secret must be non-empty."
@@ -40,6 +65,20 @@ resource "terraform_data" "policy_guardrails" {
     precondition {
       condition     = !local.is_production || var.strategy_upstream_circuit_enabled
       error_message = "strategy_upstream_circuit_enabled must be true when environment=production."
+    }
+    precondition {
+      condition     = !local.is_production || (var.redis_order_events_stream_enabled && var.market_stream_enabled)
+      error_message = "redis_order_events_stream_enabled and market_stream_enabled must both be true when environment=production."
+    }
+    precondition {
+      condition = (
+        !local.is_production || (
+          !var.market_stream_legacy_pubsub_fallback &&
+          !var.redis_market_events_publish_legacy_pubsub &&
+          !var.redis_order_events_legacy_pubsub_fallback
+        )
+      )
+      error_message = "market_stream_legacy_pubsub_fallback, redis_market_events_publish_legacy_pubsub, and redis_order_events_legacy_pubsub_fallback must be false when environment=production."
     }
     precondition {
       condition     = !local.is_production || var.cloud_run_gateway.min_instance_count >= 1
@@ -474,6 +513,10 @@ resource "google_cloud_run_v2_service" "strategy" {
         value = var.cors_allow_origins
       }
       env {
+        name  = "APP_ENV"
+        value = var.environment
+      }
+      env {
         name  = "MATCHING_ENABLED"
         value = tostring(var.matching_enabled)
       }
@@ -651,6 +694,14 @@ resource "google_cloud_run_v2_service" "gateway" {
         value = tostring(var.strategy_upstream_circuit_open_ms)
       }
       env {
+        name  = "STRATEGY_SUMMARY_CACHE_TTL_MS"
+        value = tostring(var.strategy_summary_cache_ttl_ms)
+      }
+      env {
+        name  = "STRATEGY_SUMMARY_BATCH_WINDOW_MS"
+        value = tostring(var.strategy_summary_batch_window_ms)
+      }
+      env {
         name  = "APP_ENV"
         value = var.environment
       }
@@ -791,6 +842,10 @@ resource "google_cloud_run_v2_service" "gateway" {
       env {
         name  = "REDIS_ORDER_EVENTS_STREAM_ENABLED"
         value = tostring(var.redis_order_events_stream_enabled)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_LEGACY_PUBSUB_FALLBACK"
+        value = tostring(var.redis_order_events_legacy_pubsub_fallback)
       }
       env {
         name  = "REDIS_ORDER_EVENTS_STREAM_KEY"

@@ -6,12 +6,15 @@ matching_enabled       = true
 firebase_auth_required = true
 jwt_auth_enabled       = false
 
-internal_services_ingress = true
-strategy_public_access    = false
-matching_public_access    = false
-gateway_public_access     = true
-matching_max_inflight_requests = 512
-matching_inflight_acquire_timeout_ms = 25
+internal_services_ingress                 = true
+strategy_public_access                    = false
+matching_public_access                    = false
+gateway_public_access                     = true
+matching_max_inflight_requests            = 512
+matching_inflight_acquire_timeout_ms      = 25
+redis_order_events_legacy_pubsub_fallback = true
+strategy_summary_cache_ttl_ms             = 1500
+strategy_summary_batch_window_ms          = 120
 
 cloud_run_gateway = {
   min_instance_count               = 1

@@ -116,6 +116,8 @@ jobs:
           TF_VAR_strategy_upstream_circuit_enabled: "true"
           TF_VAR_strategy_upstream_circuit_failure_threshold: "6"
           TF_VAR_strategy_upstream_circuit_open_ms: "15000"
+          TF_VAR_strategy_summary_cache_ttl_ms: "1500"
+          TF_VAR_strategy_summary_batch_window_ms: "120"
           TF_VAR_redis_market_events_stream_enabled: "true"
           TF_VAR_redis_market_events_stream_key: "cerberus.market.events"
           TF_VAR_redis_market_events_stream_maxlen: "50000"

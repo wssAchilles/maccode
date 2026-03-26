@@ -37,8 +37,13 @@ async fn run_order_events_loop(state: AppState) -> anyhow::Result<()> {
         match run_order_events_stream_loop(&state).await {
             Ok(()) => return Ok(()),
             Err(err) => {
-                warn!("redis stream ingest failed, fallback to pubsub mode: {err:#}");
-                record_stream_fallback_failure(&state, &err.to_string()).await;
+                if state.order_event_stream.legacy_pubsub_fallback {
+                    warn!("redis stream ingest failed, fallback to pubsub mode: {err:#}");
+                    record_stream_fallback_failure(&state, &err.to_string()).await;
+                } else {
+                    record_stream_hard_failure(&state, &err.to_string()).await;
+                    return Err(err);
+                }
             }
         }
     }
@@ -52,5 +57,11 @@ async fn record_stream_fallback_failure(state: &AppState, reason: &str) {
     metrics.order_stream_fallbacks += 1;
     metrics.order_stream_consecutive_failures = 0;
     metrics.last_order_stream_retry_backoff_ms = None;
+    metrics.last_order_ingest_error = Some(reason.to_string());
+}
+
+async fn record_stream_hard_failure(state: &AppState, reason: &str) {
+    let mut metrics = state.metrics.write().await;
+    metrics.order_stream_read_failures += 1;
     metrics.last_order_ingest_error = Some(reason.to_string());
 }

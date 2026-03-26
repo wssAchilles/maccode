@@ -5,7 +5,7 @@ use std::{
 
 use reqwest::Client;
 use serde::Serialize;
-use tokio::sync::{broadcast, RwLock, Semaphore};
+use tokio::sync::{broadcast, Notify, RwLock, Semaphore};
 
 use crate::gateway_types::{BinanceSymbolRule, MarketEvent, OrderEvent, TradingPolicy};
 
@@ -35,6 +35,8 @@ pub(crate) struct AppState {
     pub(crate) order_event_stream: OrderEventsStreamConfig,
     pub(crate) strategy_summary_cache: Arc<RwLock<HashMap<String, CachedJsonPayload>>>,
     pub(crate) strategy_summary_cache_ttl_ms: u64,
+    pub(crate) strategy_summary_batch_window_ms: u64,
+    pub(crate) strategy_summary_inflight: Arc<RwLock<HashMap<String, SummaryInflightEntry>>>,
     pub(crate) ready_max_market_staleness_ms: u64,
     pub(crate) jwt_auth: JwtAuthConfig,
     pub(crate) unit_request_cost_usd: f64,
@@ -81,6 +83,7 @@ impl JwtAuthConfig {
 #[derive(Clone)]
 pub(crate) struct OrderEventsStreamConfig {
     pub(crate) enabled: bool,
+    pub(crate) legacy_pubsub_fallback: bool,
     pub(crate) stream_key: String,
     pub(crate) consumer_group: String,
     pub(crate) consumer_name: String,
@@ -150,6 +153,12 @@ pub(crate) struct CachedJsonPayload {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct SummaryInflightEntry {
+    pub(crate) waiter: Arc<Notify>,
+    pub(crate) started_at_ms: u64,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct AuthenticatedUser {
     pub(crate) uid: String,
     pub(crate) email: Option<String>,
@@ -213,6 +222,9 @@ pub(crate) struct GatewayMetrics {
     pub(crate) strategy_upstream_circuit_open: bool,
     pub(crate) strategy_upstream_circuit_opened_at: Option<u64>,
     pub(crate) strategy_upstream_last_error: Option<String>,
+    pub(crate) strategy_summary_cache_hits: u64,
+    pub(crate) strategy_summary_cache_misses: u64,
+    pub(crate) strategy_summary_coalesced_waits: u64,
 }
 
 #[derive(Debug, Clone)]

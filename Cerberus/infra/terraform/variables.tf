@@ -260,6 +260,34 @@ variable "strategy_upstream_circuit_open_ms" {
   }
 }
 
+variable "strategy_summary_cache_ttl_ms" {
+  description = "Gateway strategy summary cache TTL in milliseconds"
+  type        = number
+  default     = 1500
+
+  validation {
+    condition = (
+      var.strategy_summary_cache_ttl_ms >= 100 &&
+      var.strategy_summary_cache_ttl_ms <= 60000
+    )
+    error_message = "strategy_summary_cache_ttl_ms must be in [100,60000]."
+  }
+}
+
+variable "strategy_summary_batch_window_ms" {
+  description = "Gateway coalescing window before summary upstream fetch in milliseconds"
+  type        = number
+  default     = 120
+
+  validation {
+    condition = (
+      var.strategy_summary_batch_window_ms >= 0 &&
+      var.strategy_summary_batch_window_ms <= 5000
+    )
+    error_message = "strategy_summary_batch_window_ms must be in [0,5000]."
+  }
+}
+
 variable "firebase_auth_required" {
   description = "Require Firebase ID token verification on protected gateway APIs"
   type        = bool
@@ -382,6 +410,12 @@ variable "redis_order_events_channels" {
 
 variable "redis_order_events_stream_enabled" {
   description = "Enable gateway order events stream consumer-group ingest path"
+  type        = bool
+  default     = true
+}
+
+variable "redis_order_events_legacy_pubsub_fallback" {
+  description = "Allow gateway to fallback to legacy order events pubsub when stream loop fails"
   type        = bool
   default     = true
 }

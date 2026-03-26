@@ -10,9 +10,15 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
 - Services:
   - `apps/frontend`: React + TypeScript + Zustand + Lightweight Charts + Firebase SDK bootstrap.
   - `services/gateway-rs`: Rust Axum gateway, Binance stream ingestion, Redis publishing, REST/WS APIs.
+    - Startup/bootstrap skeleton:
+      - `bootstrap/config.rs` for environment loading + runtime policy validation.
+      - `bootstrap/router.rs` for route composition and middleware/cors assembly.
+      - `main.rs` kept as lifecycle orchestration only.
     - Order ingest skeleton:
       - `ingest/orders.rs` for ingest orchestrator.
       - `ingest/orders/stream.rs` for Redis Stream consumer-group ingest/reclaim/poison path.
+      - `ingest/orders/stream/stream_group.rs` for consumer-group bootstrap + pending replay.
+      - `ingest/orders/stream/{stream_io,stream_payload,stream_processing,stream_reclaim}.rs` for stream read/parse/process/reclaim units.
       - `ingest/orders/pubsub.rs` for legacy Pub/Sub fallback.
       - `ingest/orders/stream_metrics.rs` for stream ingest metrics state transitions.
     - Strategy upstream skeleton:
@@ -27,7 +33,11 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
     - `signal_engine_service.py` for per-symbol signal engine orchestration.
     - `worker_idempotency.py` for idempotency ownership.
     - `worker_lifecycle.py` for worker start/stop/supervisor lifecycle.
-    - `market_ingest_runtime.py` + `event_runtime.py` for stream/event orchestration.
+    - `market_ingest_runtime/` package for market ingest orchestration:
+      - `loop.py` / `pubsub_runtime.py` / `stream_runtime.py`
+      - `stream_io.py` / `stream_processing.py` / `stream_reclaim.py`
+      - `retry.py` / `time_utils.py`
+    - `event_runtime.py` for event publish/relay orchestration.
 - `services/matching-cpp`: C++20 matching core + order service layer (execution journal, snapshot/stats) + GTest.
   - gRPC build path enabled when `gRPC + Protobuf` dependencies are present.
 - Infra:
@@ -242,12 +252,14 @@ Gateway stream envs:
 - `KLINE_API_URL` (optional explicit kline URL; for Binance Futures test path use `https://demo-fapi.binance.com/fapi/v1/klines`)
 - `REDIS_ORDER_EVENTS_CHANNELS` (comma-separated order-event channels for `/ws/orders`)
 - `REDIS_ORDER_EVENTS_STREAM_ENABLED` / `REDIS_ORDER_EVENTS_STREAM_KEY` / `REDIS_ORDER_EVENTS_CONSUMER_GROUP` / `REDIS_ORDER_EVENTS_CONSUMER_NAME`
+- `REDIS_ORDER_EVENTS_LEGACY_PUBSUB_FALLBACK` (allow stream ingest downgrade to legacy Pub/Sub on failure; set `false` for strict stream-first mode)
 - `REDIS_ORDER_EVENTS_READ_BATCH_SIZE` / `REDIS_ORDER_EVENTS_READ_BLOCK_MS` / `REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT` / `REDIS_ORDER_EVENTS_BATCH_WINDOW_MS`
 - `REDIS_ORDER_EVENTS_MAX_RETRIES_BEFORE_FALLBACK` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MS` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MAX_MS`
 - `REDIS_ORDER_EVENTS_RECLAIM_ENABLED` / `REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS` / `REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS` / `REDIS_ORDER_EVENTS_RECLAIM_BATCH_SIZE`
 - `REDIS_ORDER_EVENTS_MAX_DELIVERY_ATTEMPTS` / `REDIS_ORDER_EVENTS_POISON_STREAM_KEY` / `REDIS_ORDER_EVENTS_POISON_STREAM_MAXLEN`
 - `REDIS_ORDER_EVENTS_PENDING_WARN_THRESHOLD` / `REDIS_ORDER_EVENTS_LAG_WARN_THRESHOLD`
 - `STRATEGY_SUMMARY_CACHE_TTL_MS` (gateway side short-lived cache for `/api/v1/strategy/summary`)
+- `STRATEGY_SUMMARY_BATCH_WINDOW_MS` (gateway single-flight coalescing window before upstream summary fetch)
 - `READY_MAX_MARKET_STALENESS_MS` (optional ready gate; `0` disables market freshness checks)
 - `UNIT_REQUEST_COST_USD` (cost baseline used by gateway `/metrics` + `/api/v1/metrics`)
 - `JWT_AUTH_ENABLED` / `JWT_AUTH_REQUIRE_IN_PRODUCTION` / `JWT_HS256_SECRET` / `JWT_ISSUER` / `JWT_AUDIENCE`

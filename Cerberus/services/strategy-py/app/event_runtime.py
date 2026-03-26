@@ -36,12 +36,7 @@ class PublishedEvent:
         self.correlation_id = correlation_id
 
 
-async def publish_signal_event(
-    worker: RedisMarketWorker,
-    signal: Signal,
-    tick: TickEvent,
-    signal_id: str,
-) -> None:
+def build_signal_event(signal: Signal, tick: TickEvent, signal_id: str) -> PublishedEvent:
     payload = {
         "strategy_id": signal.strategy_id,
         "symbol": signal.symbol,
@@ -52,8 +47,7 @@ async def publish_signal_event(
         "event_time": tick.event_time,
         "signal_id": signal_id,
     }
-    await publish_event(
-        worker=worker,
+    return PublishedEvent(
         channel=settings.signal_channel,
         event_type="strategy.signal.generated",
         payload=payload,
@@ -61,14 +55,23 @@ async def publish_signal_event(
     )
 
 
-async def publish_matching_submission(
+async def publish_signal_event(
+    worker: RedisMarketWorker,
+    signal: Signal,
+    tick: TickEvent,
+    signal_id: str,
+) -> None:
+    await publish_events_batch(worker, [build_signal_event(signal, tick, signal_id)])
+
+
+async def build_matching_submission_event(
     worker: RedisMarketWorker,
     signal: Signal,
     tick_price: float,
     signal_id: str,
-) -> None:
+) -> tuple[PublishedEvent | None, str | None]:
     if worker._redis is None:
-        return
+        return None, None
 
     claimed_order_id: str | None = None
     try:
@@ -76,11 +79,11 @@ async def publish_matching_submission(
             signal, tick_price, idempotency_key=signal_id
         )
         if order_event is None:
-            return
+            return None, None
         order_id = str(order_event.get("order_id", "")).strip()
         if order_id:
             if not await worker.claim_order(order_id):
-                return
+                return None, None
             claimed_order_id = order_id
         channel = f"{settings.trade_execution_channel_prefix}.{settings.strategy_account_id}"
         payload = build_matching_submission_payload(
@@ -89,13 +92,67 @@ async def publish_matching_submission(
             order_event=order_event,
         )
         payload["signal_id"] = signal_id
-        await publish_event(
-            worker=worker,
-            channel=channel,
-            event_type="matching.order.submitted",
-            payload=payload,
-            correlation_id=signal_id,
+        return (
+            PublishedEvent(
+                channel=channel,
+                event_type="matching.order.submitted",
+                payload=payload,
+                correlation_id=signal_id,
+            ),
+            claimed_order_id,
         )
+    except Exception as exc:  # noqa: BLE001
+        if claimed_order_id:
+            await worker.release_order_claim(claimed_order_id)
+        logger.warning("matching submit flow failed: %s", exc)
+        return None, None
+
+
+async def publish_signal_and_matching_submission(
+    worker: RedisMarketWorker,
+    signal: Signal,
+    tick: TickEvent,
+    signal_id: str,
+) -> None:
+    if worker._redis is None:
+        return
+
+    signal_event = build_signal_event(signal, tick, signal_id)
+    matching_event, claimed_order_id = await build_matching_submission_event(
+        worker,
+        signal,
+        tick.price,
+        signal_id,
+    )
+
+    events = [signal_event]
+    if matching_event is not None:
+        events.append(matching_event)
+
+    try:
+        await publish_events_batch(worker, events)
+    except Exception:  # noqa: BLE001
+        if claimed_order_id:
+            await worker.release_order_claim(claimed_order_id)
+        raise
+
+
+async def publish_matching_submission(
+    worker: RedisMarketWorker,
+    signal: Signal,
+    tick_price: float,
+    signal_id: str,
+) -> None:
+    event, claimed_order_id = await build_matching_submission_event(
+        worker,
+        signal,
+        tick_price,
+        signal_id,
+    )
+    if event is None:
+        return
+    try:
+        await publish_events_batch(worker, [event])
     except Exception as exc:  # noqa: BLE001
         if claimed_order_id:
             await worker.release_order_claim(claimed_order_id)
@@ -109,43 +166,7 @@ async def run_execution_relay_loop(worker: RedisMarketWorker) -> None:
     channel = f"{settings.trade_execution_channel_prefix}.{settings.strategy_account_id}"
     while True:
         try:
-            items = await worker._matching.list_recent_executions(
-                account_id=settings.strategy_account_id,
-                limit=max(settings.execution_relay_batch_limit, 1),
-            )
-            publish_batch: list[PublishedEvent] = []
-            claimed_order_ids: list[str] = []
-            next_last_execution_id = worker.last_execution_id
-            for execution_id, item in filter_new_executions(items, worker.last_execution_id):
-                order_id = str(item.get("order_id", "")).strip()
-                if order_id:
-                    claimed = await worker.claim_order(order_id)
-                    if not claimed:
-                        next_last_execution_id = execution_id
-                        continue
-                    claimed_order_ids.append(order_id)
-                payload = build_matching_execution_payload(
-                    account_id=settings.strategy_account_id,
-                    execution=item,
-                )
-                publish_batch.append(
-                    PublishedEvent(
-                        channel=channel,
-                        event_type="matching.execution.filled",
-                        payload=payload,
-                        correlation_id=order_id or None,
-                    )
-                )
-                next_last_execution_id = execution_id
-
-            if publish_batch:
-                try:
-                    await publish_events_batch(worker, publish_batch)
-                except Exception:  # noqa: BLE001
-                    await release_claimed_orders(worker, claimed_order_ids)
-                    raise
-                worker.forwarded_executions += len(publish_batch)
-            worker.last_execution_id = next_last_execution_id
+            await relay_execution_once(worker, channel)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -153,6 +174,58 @@ async def run_execution_relay_loop(worker: RedisMarketWorker) -> None:
             logger.warning("execution relay failed: %s", exc)
 
         await asyncio.sleep(max(settings.execution_relay_interval_seconds, 0.1))
+
+
+async def relay_execution_once(worker: RedisMarketWorker, channel: str) -> None:
+    items = await worker._matching.list_recent_executions(
+        account_id=settings.strategy_account_id,
+        limit=max(settings.execution_relay_batch_limit, 1),
+    )
+    publish_batch, claimed_order_ids, next_last_execution_id = await build_execution_publish_batch(
+        worker,
+        channel,
+        items,
+    )
+    if publish_batch:
+        try:
+            await publish_events_batch(worker, publish_batch)
+        except Exception:  # noqa: BLE001
+            await release_claimed_orders(worker, claimed_order_ids)
+            raise
+        worker.forwarded_executions += len(publish_batch)
+    worker.last_execution_id = next_last_execution_id
+
+
+async def build_execution_publish_batch(
+    worker: RedisMarketWorker,
+    channel: str,
+    items: list[dict[str, Any]],
+) -> tuple[list[PublishedEvent], list[str], int]:
+    publish_batch: list[PublishedEvent] = []
+    claimed_order_ids: list[str] = []
+    next_last_execution_id = worker.last_execution_id
+    for execution_id, item in filter_new_executions(items, worker.last_execution_id):
+        order_id = str(item.get("order_id", "")).strip()
+        if order_id:
+            claimed = await worker.claim_order(order_id)
+            if not claimed:
+                next_last_execution_id = execution_id
+                continue
+            claimed_order_ids.append(order_id)
+        payload = build_matching_execution_payload(
+            account_id=settings.strategy_account_id,
+            execution=item,
+        )
+        publish_batch.append(
+            PublishedEvent(
+                channel=channel,
+                event_type="matching.execution.filled",
+                payload=payload,
+                correlation_id=order_id or None,
+            )
+        )
+        next_last_execution_id = execution_id
+    return publish_batch, claimed_order_ids, next_last_execution_id
 
 
 async def release_claimed_orders(worker: RedisMarketWorker, order_ids: list[str]) -> None:
