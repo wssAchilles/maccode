@@ -1,4 +1,5 @@
 import { formatAppError, toAppError } from '../../lib/http'
+import { InlineAlert } from '../../ui'
 
 type Props = {
   error: unknown
@@ -8,12 +9,8 @@ type Props = {
 export function AppErrorNotice({ error, className }: Props) {
   const normalized = toAppError(error)
   return (
-    <div
-      className={`rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100 ${className ?? ''}`}
-      aria-live="polite"
-    >
-      <p className="font-semibold">{normalized.message}</p>
-      <p className="mt-1 text-[11px] text-rose-200/90">{formatAppError(normalized)}</p>
-    </div>
+    <InlineAlert title={normalized.message} tone="danger" className={className}>
+      {formatAppError(normalized)}
+    </InlineAlert>
   )
 }

@@ -2,30 +2,43 @@ import { useMemo } from 'react'
 
 import { useI18n } from '../i18n/I18nProvider'
 import type { MatchingOrderBook, MatchingOrderBookLevel } from '../types/contracts'
+import { EmptyState, GlassPanel, SectionFrame } from '../ui'
 
 type Props = {
   orderbook?: MatchingOrderBook
 }
 
-function renderRows(levels: MatchingOrderBookLevel[], side: 'bid' | 'ask', emptyText: string) {
-  if (levels.length === 0) {
-    return (
-      <div className="rounded border border-slate-700/60 bg-slate-900/40 px-2 py-1 text-[11px] text-slate-500">
-        {emptyText}
-      </div>
-    )
-  }
-
-  return levels.map((level, index) => (
-    <div
-      key={`${side}-${index}-${level.price}`}
-      className="grid grid-cols-3 gap-2 rounded border border-slate-700/60 bg-slate-900/40 px-2 py-1 text-[11px]"
-    >
-      <span className={side === 'bid' ? 'text-gain' : 'text-loss'}>{level.price.toFixed(6)}</span>
-      <span className="text-slate-300">{level.total_quantity.toFixed(6)}</span>
-      <span className="text-slate-400">{level.order_count}</span>
+function LevelGroup({
+  title,
+  levels,
+  tone,
+  emptyText,
+}: {
+  title: string
+  levels: MatchingOrderBookLevel[]
+  tone: 'bid' | 'ask'
+  emptyText: string
+}) {
+  return (
+    <div className="orderbook-group">
+      <p className="subtle-label">{title}</p>
+      {levels.length === 0 ? (
+        <EmptyState title={emptyText} body="" />
+      ) : (
+        <div className="stack-sm">
+          {levels.map((level, index) => (
+            <div key={`${tone}-${index}-${level.price}`} className="orderbook-row">
+              <span className={tone === 'bid' ? 'orderbook-price orderbook-price-bid' : 'orderbook-price orderbook-price-ask'}>
+                {level.price.toFixed(6)}
+              </span>
+              <span>{level.total_quantity.toFixed(6)}</span>
+              <span>{level.order_count}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  ))
+  )
 }
 
 export function MatchingOrderBookPanel({ orderbook }: Props) {
@@ -40,30 +53,20 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
   }, [orderbook?.generated_at_ms])
 
   return (
-    <article className="panel-card" data-testid="matching-orderbook-panel">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="panel-title">{t('orderbook.title')}</h2>
-        <span className="text-[11px] text-slate-400">
-          {orderbook ? `${orderbook.symbol} depth=${orderbook.depth}` : t('common.disabled')}
-        </span>
+    <SectionFrame
+      title={t('orderbook.title')}
+      description={orderbook ? `${orderbook.symbol} · depth ${orderbook.depth}` : t('common.disabled')}
+    >
+      <div className="orderbook-grid" data-testid="matching-orderbook-panel">
+        <LevelGroup title={t('orderbook.bids')} levels={bids} tone="bid" emptyText={t('orderbook.empty')} />
+        <LevelGroup title={t('orderbook.asks')} levels={asks} tone="ask" emptyText={t('orderbook.empty')} />
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <p className="text-[11px] text-slate-400">{t('orderbook.bids')}</p>
-          {renderRows(bids, 'bid', t('orderbook.empty'))}
-        </div>
-        <div className="space-y-1">
-          <p className="text-[11px] text-slate-400">{t('orderbook.asks')}</p>
-          {renderRows(asks, 'ask', t('orderbook.empty'))}
-        </div>
-      </div>
-
-      <p className="mt-3 text-[11px] text-slate-500">
-        {t('orderbook.updated')}:{' '}
-        {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
-      </p>
-      {stale ? <p className="text-[11px] text-amber-200">{t('orderbook.stale')}</p> : null}
-    </article>
+      <GlassPanel className="orderbook-foot" tone="subtle" padded={false}>
+        <p className="orderbook-updated">
+          {t('orderbook.updated')}: {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
+        </p>
+        {stale ? <p className="orderbook-stale">{t('orderbook.stale')}</p> : null}
+      </GlassPanel>
+    </SectionFrame>
   )
 }

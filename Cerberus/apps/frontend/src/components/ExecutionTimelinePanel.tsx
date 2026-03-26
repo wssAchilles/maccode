@@ -1,18 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
+import { Virtuoso } from 'react-virtuoso'
 
+import { useRecentEventsResource } from '../app/bootstrap/useResourceQueries'
 import { useI18n } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
-
-const ROW_HEIGHT = 98
-const VIEWPORT_HEIGHT = 320
-
-function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp).toLocaleString()
-}
+import { buildExecutionRows } from '../view-models/workbench'
+import { EmptyState, GlassPanel } from '../ui'
 
 function formatOptionalIso(iso: string | undefined): string {
   if (!iso) {
-    return '-'
+    return '—'
   }
   const parsed = Date.parse(iso)
   if (Number.isNaN(parsed)) {
@@ -21,14 +18,21 @@ function formatOptionalIso(iso: string | undefined): string {
   return new Date(parsed).toLocaleString()
 }
 
-export function ExecutionTimelinePanel() {
+type Props = {
+  active?: boolean
+}
+
+export function ExecutionTimelinePanel({ active = true }: Props) {
   const { t } = useI18n()
   const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
   const filterSymbol = useCerberusStore((state) => state.executionTrading.filter_symbol)
   const filterAccountId = useCerberusStore((state) => state.executionTrading.filter_account_id)
   const filterStatus = useCerberusStore((state) => state.executionTrading.filter_status)
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
-  const [scrollTop, setScrollTop] = useState(0)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
+
+  useRecentEventsResource(active)
 
   const symbolOptions = useMemo(() => {
     const values = new Set<string>()
@@ -61,118 +65,110 @@ export function ExecutionTimelinePanel() {
   }, [orderEvents])
 
   const filteredEvents = useMemo(() => {
+    const keyword = deferredSearch.trim().toLowerCase()
     return orderEvents.filter((item) => {
       const symbolMatched = filterSymbol === 'ALL' || item.symbol === filterSymbol
       const accountMatched = filterAccountId === 'ALL' || item.account_id === filterAccountId
       const statusMatched = filterStatus === 'ALL' || item.status === filterStatus
-      return symbolMatched && accountMatched && statusMatched
+      const searchMatched =
+        keyword.length === 0 ||
+        JSON.stringify(item).toLowerCase().includes(keyword)
+      return symbolMatched && accountMatched && statusMatched && searchMatched
     })
-  }, [filterAccountId, filterStatus, filterSymbol, orderEvents])
+  }, [deferredSearch, filterAccountId, filterStatus, filterSymbol, orderEvents])
 
-  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 4)
-  const visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 8
-  const endIndex = Math.min(filteredEvents.length, startIndex + visibleCount)
-  const visibleRows = filteredEvents.slice(startIndex, endIndex)
-  const paddingTop = startIndex * ROW_HEIGHT
-  const paddingBottom = Math.max(0, (filteredEvents.length - endIndex) * ROW_HEIGHT)
+  const rows = buildExecutionRows(filteredEvents, t)
 
   return (
-    <article className="panel-card" data-testid="execution-timeline-panel">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="panel-title">{t('execution.timeline')}</h2>
-        <div className="grid gap-2 text-xs sm:grid-cols-3">
-          <label className="field-label">
-            {t('execution.filterSymbol')}
-            <select
-              id="timeline-filter-symbol"
-              name="timeline_filter_symbol"
-              className="field-input"
-              value={filterSymbol}
-              onChange={(event) => setFilters({ symbol: event.target.value })}
-            >
-              {symbolOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            {t('execution.filterAccount')}
-            <select
-              id="timeline-filter-account"
-              name="timeline_filter_account"
-              className="field-input"
-              value={filterAccountId}
-              onChange={(event) => setFilters({ account_id: event.target.value })}
-            >
-              {accountOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            {t('execution.filterStatus')}
-            <select
-              id="timeline-filter-status"
-              name="timeline_filter_status"
-              className="field-input"
-              value={filterStatus}
-              onChange={(event) => setFilters({ status: event.target.value })}
-            >
-              {statusOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+    <article data-testid="execution-timeline-panel" className="execution-timeline">
+      <div className="timeline-toolbar">
+        <label className="field-label">
+          {t('execution.filterSymbol')}
+          <select
+            id="timeline-filter-symbol"
+            name="timeline_filter_symbol"
+            className="field-input"
+            value={filterSymbol}
+            onChange={(event) => setFilters({ symbol: event.target.value })}
+          >
+            {symbolOptions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          {t('execution.filterAccount')}
+          <select
+            id="timeline-filter-account"
+            name="timeline_filter_account"
+            className="field-input"
+            value={filterAccountId}
+            onChange={(event) => setFilters({ account_id: event.target.value })}
+          >
+            {accountOptions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          {t('execution.filterStatus')}
+          <select
+            id="timeline-filter-status"
+            name="timeline_filter_status"
+            className="field-input"
+            value={filterStatus}
+            onChange={(event) => setFilters({ status: event.target.value })}
+          >
+            {statusOptions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          {t('workspace.execution.search')}
+          <input
+            className="field-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('execution.requestId')}
+          />
+        </label>
       </div>
 
       {filteredEvents.length === 0 ? (
-        <p className="text-xs text-slate-400">{t('execution.noEvents')}</p>
+        <EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} />
       ) : (
-        <div
-          className="overflow-y-auto rounded-xl border border-slate-700/60 bg-slate-950/45"
-          style={{ height: VIEWPORT_HEIGHT }}
-          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-        >
-          <div style={{ paddingTop, paddingBottom }}>
-            {visibleRows.map((event) => (
-              <div
-                key={event.id}
-                className="grid grid-cols-[1.3fr_1fr_1fr] gap-2 border-b border-slate-800/80 px-3 py-2 text-xs"
-              >
-                <div>
-                  <p className="font-semibold text-cyan-200">{event.event_type}</p>
-                  <p className="text-[11px] text-slate-500">{event.channel}</p>
-                </div>
-                <div>
-                  <p className="text-slate-300">{event.symbol ?? '-'}</p>
-                  <p className="text-[11px] text-slate-500">{event.account_id ?? '-'}</p>
-                  <p className="truncate text-[11px] text-slate-500">
-                    {t('execution.orderId')}: {event.order_id ?? '-'}
+        <Virtuoso
+          style={{ height: 420 }}
+          data={filteredEvents}
+          itemContent={(index, event) => {
+            const row = rows[index]
+            return (
+              <GlassPanel className="timeline-row" tone="subtle">
+                <div className="timeline-row-main">
+                  <p className="timeline-row-title">{row.title}</p>
+                  <p className="timeline-row-subtitle">{row.subtitle}</p>
+                  <p className="timeline-row-meta">
+                    {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-slate-300">{event.status ?? '-'}</p>
-                  <p className="truncate text-[11px] text-slate-500">
-                    {t('execution.requestId')}: {event.request_id ?? '-'}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
+                <div className="timeline-row-side">
+                  <p className="timeline-row-status">{row.rightTop}</p>
+                  <p className="timeline-row-time">{row.rightBottom}</p>
+                  <p className="timeline-row-time">
                     {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}
                   </p>
-                  <p className="text-[11px] text-slate-500">
-                    {t('execution.receivedAt')}: {formatTimestamp(event.received_at)}
-                  </p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              </GlassPanel>
+            )
+          }}
+        />
       )}
     </article>
   )

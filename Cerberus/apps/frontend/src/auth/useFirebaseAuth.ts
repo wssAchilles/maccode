@@ -1,7 +1,5 @@
 import {
   type User,
-  createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -9,8 +7,10 @@ import {
 } from 'firebase/auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { useI18n } from '../i18n/I18nProvider'
 import { getFirebaseServices } from '../lib/firebase-services'
 import { setAuthTokenProvider } from '../lib/auth-session'
+import { describeAuthError, getAuthMessage } from './errors'
 
 type AuthStatus = 'disabled' | 'loading' | 'ready' | 'error'
 
@@ -24,30 +24,13 @@ export type FirebaseAuthState = {
   password: string
   setEmail: (value: string) => void
   setPassword: (value: string) => void
-  signInWithEmailAutoRegister: () => Promise<void>
+  signInWithEmail: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOutCurrentUser: () => Promise<void>
 }
 
-function normalizeAuthError(error: unknown): string {
-  const code = (error as { code?: unknown }).code
-  const message = (error as { message?: unknown }).message
-  if (typeof code === 'string' && code.length > 0) {
-    if (code === 'auth/wrong-password') {
-      return 'invalid email or password'
-    }
-    if (code === 'auth/popup-closed-by-user') {
-      return 'google sign-in canceled'
-    }
-    return code
-  }
-  if (typeof message === 'string' && message.length > 0) {
-    return message
-  }
-  return 'authentication failed'
-}
-
 export function useFirebaseAuth(): FirebaseAuthState {
+  const { locale } = useI18n()
   const required = import.meta.env.VITE_AUTH_REQUIRED === 'true'
   const [status, setStatus] = useState<AuthStatus>(required ? 'loading' : 'disabled')
   const [user, setUser] = useState<User | null>(null)
@@ -72,7 +55,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
 
     if (!services) {
       setStatus('error')
-      setError('firebase auth is required but firebase config is missing')
+      setError(getAuthMessage(locale, 'missingConfig'))
       setAuthTokenProvider(null)
       return
     }
@@ -97,31 +80,26 @@ export function useFirebaseAuth(): FirebaseAuthState {
     }
   }, [required, services])
 
-  const signInWithEmailAutoRegister = useCallback(async () => {
+  const signInWithEmail = useCallback(async () => {
     if (!services) {
       return
     }
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || !password) {
-      setError('email and password are required')
+      setError(getAuthMessage(locale, 'missingCredentials'))
       return
     }
 
     setSigningIn(true)
     setError(undefined)
     try {
-      const signInMethods = await fetchSignInMethodsForEmail(services.auth, normalizedEmail)
-      if (signInMethods.length === 0) {
-        await createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
-      } else {
-        await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
-      }
+      await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
     } catch (error) {
-      setError(normalizeAuthError(error))
+      setError(describeAuthError(error, locale))
     } finally {
       setSigningIn(false)
     }
-  }, [email, password, services])
+  }, [email, locale, password, services])
 
   const signInWithGoogle = useCallback(async () => {
     if (!services) {
@@ -133,11 +111,11 @@ export function useFirebaseAuth(): FirebaseAuthState {
       const { GoogleAuthProvider } = await import('firebase/auth')
       await signInWithPopup(services.auth, new GoogleAuthProvider())
     } catch (error) {
-      setError(normalizeAuthError(error))
+      setError(describeAuthError(error, locale))
     } finally {
       setSigningIn(false)
     }
-  }, [services])
+  }, [locale, services])
 
   const signOutCurrentUser = useCallback(async () => {
     if (!services) {
@@ -156,7 +134,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
     password,
     setEmail,
     setPassword,
-    signInWithEmailAutoRegister,
+    signInWithEmail,
     signInWithGoogle,
     signOutCurrentUser,
   }

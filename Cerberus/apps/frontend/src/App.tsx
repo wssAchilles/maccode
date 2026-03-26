@@ -1,76 +1,22 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 
-import {
-  AppHeader,
-  ExecutionSection,
-  HealthSection,
-  MarketSection,
-  TradingSection,
-} from './app/sections'
-import { useFirebaseAuth } from './auth/useFirebaseAuth'
-import { AuthLoginPanel } from './components/auth/AuthLoginPanel'
+import { useAppBootstrap } from './app/bootstrap/useAppBootstrap'
+import { type FirebaseAuthState } from './auth/useFirebaseAuth'
+import { AuthGate } from './features/auth/AuthGate'
+import { WorkbenchShell } from './features/shell/WorkbenchShell'
 import { useI18n } from './i18n/I18nProvider'
 import { formatAppError } from './lib/http'
 import { useCerberusStore } from './store'
 
-function toOrderSummary(event: {
-  event_type: string
-  symbol?: string
-  status?: string
-} | null | undefined): string {
-  if (!event) {
-    return ''
-  }
-  return `${event.event_type} ${event.symbol ?? ''} ${event.status ?? ''}`.trim()
-}
-
-export default function App() {
-  const { locale, setLocale: setI18nLocale, t } = useI18n()
-  const auth = useFirebaseAuth()
-
-  const env = useCerberusStore((state) => state.env)
-  const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
-  const latest = useCerberusStore((state) => state.marketStream.latest)
-  const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
-  const candles = useCerberusStore((state) => state.marketStream.candles)
-  const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
-  const recentSignals = useCerberusStore((state) => state.strategySummary.recent_signals)
-  const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
-  const matchingOrderBook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
-  const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
-  const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
-  const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
-
+function AppContent({ auth }: { auth: FirebaseAuthState }) {
+  const { locale, setLocale: setI18nLocale } = useI18n()
   const storeLocale = useCerberusStore((state) => state.uiState.locale)
-  const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
-  const liveAnnouncement = useCerberusStore((state) => state.uiState.live_announcement)
-
+  const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const announce = useCerberusStore((state) => state.uiActions.announce)
-  const setStoreLocale = useCerberusStore((state) => state.uiActions.setLocale)
-  const recomputeStaleFlags = useCerberusStore((state) => state.uiActions.recomputeStaleFlags)
-  const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
-  const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
-  const connectMarketSocket = useCerberusStore((state) => state.marketStreamActions.connectMarketSocket)
-  const loadCandles = useCerberusStore((state) => state.marketStreamActions.loadCandles)
-  const connectOrdersSocket = useCerberusStore((state) => state.executionTradingActions.connectOrdersSocket)
-  const loadRecentOrderEvents = useCerberusStore(
-    (state) => state.executionTradingActions.loadRecentOrderEvents,
-  )
-  const loadTradingPolicy = useCerberusStore((state) => state.executionTradingActions.loadTradingPolicy)
-  const loadBinanceRule = useCerberusStore((state) => state.executionTradingActions.loadBinanceRule)
-  const refreshSummary = useCerberusStore((state) => state.strategySummaryActions.refreshSummary)
-
-  const displayQuote = latestBySymbol[selectedSymbol] ?? latest
-  const orderSummary = latestEvent ? toOrderSummary(latestEvent) : heartbeat ?? t('common.heartbeat')
   const isAuthenticated = !auth.required || Boolean(auth.user)
-  const authUserLabel = useMemo(() => {
-    if (!auth.user) {
-      return undefined
-    }
-    const account = auth.user.email ?? auth.user.displayName ?? auth.user.uid
-    return `${t('auth.userPrefix')}: ${account}`
-  }, [auth.user, t])
+
+  useAppBootstrap({ enabled: isAuthenticated })
 
   useEffect(() => {
     if (storeLocale !== locale) {
@@ -79,60 +25,13 @@ export default function App() {
   }, [locale, setI18nLocale, storeLocale])
 
   useEffect(() => {
-    setCoreFlowStep('bootstrap', {
-      state: 'active',
-      reason: 'initializing runtime',
-    })
-  }, [setCoreFlowStep])
-
-  useEffect(() => {
     if (!isAuthenticated) {
       return
     }
     void import('./lib/firebase').then((module) => {
       module.initFirebase()
     })
-    connectMarketSocket()
-    connectOrdersSocket()
-    void loadRecentOrderEvents()
-    void loadTradingPolicy()
-    void loadCandles()
-    void loadBinanceRule(selectedSymbol)
-    void refreshSummary()
-
-    const summaryTimer = window.setInterval(() => {
-      void refreshSummary()
-    }, 4_000)
-
-    const staleTimer = window.setInterval(() => {
-      recomputeStaleFlags()
-    }, 2_000)
-
-    return () => {
-      window.clearInterval(summaryTimer)
-      window.clearInterval(staleTimer)
-    }
-  }, [
-    connectMarketSocket,
-    connectOrdersSocket,
-    loadRecentOrderEvents,
-    loadBinanceRule,
-    loadCandles,
-    loadTradingPolicy,
-    recomputeStaleFlags,
-    refreshSummary,
-    selectedSymbol,
-    isAuthenticated,
-  ])
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return
-    }
-    void loadCandles()
-    void loadBinanceRule(selectedSymbol)
-    void refreshSummary()
-  }, [loadBinanceRule, loadCandles, refreshSummary, selectedSymbol, isAuthenticated])
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (summaryError) {
@@ -140,67 +39,9 @@ export default function App() {
     }
   }, [announce, summaryError])
 
-  if (auth.required && (auth.status === 'loading' || !auth.user)) {
-    return <AuthLoginPanel t={t} auth={auth} />
-  }
+  return <WorkbenchShell auth={auth} />
+}
 
-  return (
-    <main
-      className="mx-auto w-full max-w-[1680px] px-4 pb-8 pt-4 text-white md:px-6 md:pb-10"
-      data-testid="app-shell"
-    >
-      <AppHeader
-        t={t}
-        env={env}
-        locale={storeLocale}
-        liveAnnouncement={liveAnnouncement}
-        authUserLabel={authUserLabel}
-        onSignOut={
-          auth.required
-            ? () => {
-                void auth.signOutCurrentUser()
-              }
-            : undefined
-        }
-        onLocaleChange={setStoreLocale}
-      />
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-6" data-testid="workbench-left-column">
-          <MarketSection
-            t={t}
-            className="mt-0"
-            selectedSymbol={selectedSymbol}
-            displayQuote={displayQuote}
-            latestEvent={latestEvent}
-            orderSummary={orderSummary}
-            candles={candles}
-            onSymbolSelect={setSelectedSymbol}
-          />
-
-          <ExecutionSection
-            t={t}
-            className="mt-0"
-            selectedSymbol={selectedSymbol}
-            strategySignal={strategySignal}
-            recentSignals={recentSignals}
-            persistenceStatus={persistenceStatus}
-            summaryError={summaryError}
-            matchingOrderBook={matchingOrderBook}
-          />
-        </div>
-
-        <aside className="min-w-0 space-y-6" data-testid="workbench-right-column">
-          <TradingSection
-            t={t}
-            className="mt-0"
-            selectedSymbol={selectedSymbol}
-            latestBid={displayQuote?.bid_price}
-            latestAsk={displayQuote?.ask_price}
-          />
-          <HealthSection className="mt-0" domainStatus={domainStatus} persistenceStatus={persistenceStatus} />
-        </aside>
-      </div>
-    </main>
-  )
+export default function App() {
+  return <AuthGate>{(auth) => <AppContent auth={auth} />}</AuthGate>
 }

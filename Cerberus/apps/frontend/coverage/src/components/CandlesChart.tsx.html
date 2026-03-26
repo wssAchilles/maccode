@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/54</span>
+                <span class='fraction'>0/73</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/54</span>
+                <span class='fraction'>0/73</span>
             </div>
         
             
@@ -138,7 +138,27 @@
 <a name='L73'></a><a href='#L73'>73</a>
 <a name='L74'></a><a href='#L74'>74</a>
 <a name='L75'></a><a href='#L75'>75</a>
-<a name='L76'></a><a href='#L76'>76</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -168,6 +188,25 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -182,6 +221,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -236,28 +276,48 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >      return</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 &nbsp;
+<span class="cstat-no" title="statement not covered" >    const styles = getComputedStyle(document.documentElement)</span>
+<span class="cstat-no" title="statement not covered" >    const chartText = styles.getPropertyValue('--color-chart-text').trim() || '#536275'</span>
+<span class="cstat-no" title="statement not covered" >    const chartGrid = styles.getPropertyValue('--color-chart-grid').trim() || 'rgba(120, 136, 157, 0.14)'</span>
+<span class="cstat-no" title="statement not covered" >    const chartAxis = styles.getPropertyValue('--color-chart-axis').trim() || 'rgba(103, 120, 145, 0.22)'</span>
+<span class="cstat-no" title="statement not covered" >    const chartCrosshair = styles.getPropertyValue('--color-chart-crosshair').trim() || 'rgba(53, 94, 147, 0.26)'</span>
+<span class="cstat-no" title="statement not covered" >    const upColor = styles.getPropertyValue('--color-success').trim() || '#15803d'</span>
+<span class="cstat-no" title="statement not covered" >    const downColor = styles.getPropertyValue('--color-danger').trim() || '#b91c1c'</span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    const chart = createChart(containerRef.current, {</span>
 <span class="cstat-no" title="statement not covered" >      layout: {</span>
-<span class="cstat-no" title="statement not covered" >        background: { color: '#121a30' },</span>
-<span class="cstat-no" title="statement not covered" >        textColor: '#e5e7eb',</span>
+<span class="cstat-no" title="statement not covered" >        background: { color: 'transparent' },</span>
+<span class="cstat-no" title="statement not covered" >        textColor: chartText,</span>
+<span class="cstat-no" title="statement not covered" >        attributionLogo: false,</span>
 <span class="cstat-no" title="statement not covered" >      },</span>
 <span class="cstat-no" title="statement not covered" >      grid: {</span>
-<span class="cstat-no" title="statement not covered" >        vertLines: { color: '#1f2937' },</span>
-<span class="cstat-no" title="statement not covered" >        horzLines: { color: '#1f2937' },</span>
+<span class="cstat-no" title="statement not covered" >        vertLines: { color: chartGrid },</span>
+<span class="cstat-no" title="statement not covered" >        horzLines: { color: chartGrid },</span>
+<span class="cstat-no" title="statement not covered" >      },</span>
+<span class="cstat-no" title="statement not covered" >      rightPriceScale: {</span>
+<span class="cstat-no" title="statement not covered" >        borderColor: chartAxis,</span>
+<span class="cstat-no" title="statement not covered" >      },</span>
+<span class="cstat-no" title="statement not covered" >      timeScale: {</span>
+<span class="cstat-no" title="statement not covered" >        borderColor: chartAxis,</span>
+<span class="cstat-no" title="statement not covered" >      },</span>
+<span class="cstat-no" title="statement not covered" >      crosshair: {</span>
+<span class="cstat-no" title="statement not covered" >        vertLine: { color: chartCrosshair },</span>
+<span class="cstat-no" title="statement not covered" >        horzLine: { color: chartCrosshair },</span>
 <span class="cstat-no" title="statement not covered" >      },</span>
 <span class="cstat-no" title="statement not covered" >      width: containerRef.current.clientWidth,</span>
-<span class="cstat-no" title="statement not covered" >      height: 340,</span>
+<span class="cstat-no" title="statement not covered" >      height: 360,</span>
 <span class="cstat-no" title="statement not covered" >    })</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    const series = chart.addSeries(CandlestickSeries, {</span>
-<span class="cstat-no" title="statement not covered" >      upColor: '#34d399',</span>
-<span class="cstat-no" title="statement not covered" >      downColor: '#f87171',</span>
+<span class="cstat-no" title="statement not covered" >      upColor,</span>
+<span class="cstat-no" title="statement not covered" >      downColor,</span>
 <span class="cstat-no" title="statement not covered" >      borderVisible: false,</span>
-<span class="cstat-no" title="statement not covered" >      wickUpColor: '#34d399',</span>
-<span class="cstat-no" title="statement not covered" >      wickDownColor: '#f87171',</span>
+<span class="cstat-no" title="statement not covered" >      wickUpColor: upColor,</span>
+<span class="cstat-no" title="statement not covered" >      wickDownColor: downColor,</span>
 <span class="cstat-no" title="statement not covered" >    })</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    seriesRef.current = series</span>
+<span class="cstat-no" title="statement not covered" >    chart.timeScale().fitContent()</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    const resizeObserver = new ResizeObserver(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >      chart.applyOptions({ width: containerRef.current?.clientWidth ?? 680 })</span>
@@ -286,7 +346,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >    )</span>
 <span class="cstat-no" title="statement not covered" >  }, [candles])</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return &lt;div ref={containerRef} className="w-full min-h-[340px]" aria-label="candles-chart" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >  return &lt;div ref={containerRef} className="chart-frame" aria-label="candles-chart" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
@@ -295,7 +355,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-25T12:56:18.698Z
+                at 2026-03-26T08:04:00.252Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

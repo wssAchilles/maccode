@@ -1,5 +1,6 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { TradingPolicy } from '../../types/contracts'
+import { DataList, DiagnosticDrawer, GlassPanel } from '../../ui'
 import { AppErrorNotice } from '../common/AppErrorNotice'
 
 import type { GatewayResponse } from './types'
@@ -52,10 +53,13 @@ export function AlpacaPaperPanel({
   onCancel,
 }: Props) {
   return (
-    <article className="panel-card">
-      <h2 className="panel-title">{t('execution.alpacaPaper')}</h2>
+    <article className="stack">
+      <div>
+        <p className="subtle-label">{t('execution.alpacaPaper')}</p>
+        <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
+      </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="execution-form-grid">
         <label className="field-label">
           Symbol
           <input
@@ -134,12 +138,23 @@ export function AlpacaPaperPanel({
         ) : null}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <GlassPanel tone="subtle">
+        <DataList
+          items={[
+            { id: 'policy', label: t('execution.policy'), value: policy?.enforced ? t('common.ready') : t('common.disabled') },
+            { id: 'alpacaSymbolAllowance', label: 'Allowed symbols', value: String(policy?.alpaca_allowed_symbols.length ?? 0) },
+            { id: 'maxQty', label: 'Max qty', value: String(policy?.max_alpaca_order_qty ?? '—') },
+            { id: 'maxNotional', label: 'Max limit notional', value: String(policy?.max_alpaca_limit_notional_usd ?? '—') },
+          ]}
+        />
+      </GlassPanel>
+
+      <div className="workspace-actions">
         <button
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="action-button action-button-success disabled:opacity-50"
+          className="soft-button soft-button-primary"
           data-testid="submit-alpaca-order-button"
         >
           {submitting ? 'Submitting...' : t('execution.submit')}
@@ -148,29 +163,27 @@ export function AlpacaPaperPanel({
           type="button"
           onClick={onCancel}
           disabled={!canCancel || canceling}
-          className="action-button action-button-warning disabled:opacity-50"
+          className="soft-button"
           data-testid="cancel-alpaca-order-button"
         >
           {canceling ? 'Canceling...' : t('execution.cancel')}
         </button>
       </div>
 
-      <h3 className="mt-3 text-xs text-slate-400">{t('execution.response')}</h3>
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
-      <pre className="mt-1 max-h-40 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-2 text-[11px] text-slate-300">
-        {JSON.stringify(result, null, 2)}
-      </pre>
-
-      <h3 className="mt-3 text-xs text-slate-400">{t('execution.accountSnapshot')}</h3>
       {account?.error ? <AppErrorNotice error={account.error} className="mt-2" /> : null}
-      <pre className="mt-1 max-h-32 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-2 text-[11px] text-slate-300">
-        {JSON.stringify(account, null, 2)}
-      </pre>
 
-      <h3 className="mt-3 text-xs text-slate-400">{t('execution.policy')}</h3>
-      <pre className="mt-1 max-h-32 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-2 text-[11px] text-slate-300">
-        {JSON.stringify(policy, null, 2)}
-      </pre>
+      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result)}>
+        <pre className="diagnostic-pre">{JSON.stringify(result, null, 2)}</pre>
+      </DiagnosticDrawer>
+
+      <DiagnosticDrawer title={t('execution.accountSnapshot')} summary={account ? String(account.status) : '—'} defaultOpen={Boolean(account?.error)}>
+        <pre className="diagnostic-pre">{JSON.stringify(account, null, 2)}</pre>
+      </DiagnosticDrawer>
+
+      <DiagnosticDrawer title={t('execution.policy')} summary={policy?.enforced ? t('common.ready') : t('common.disabled')}>
+        <pre className="diagnostic-pre">{JSON.stringify(policy, null, 2)}</pre>
+      </DiagnosticDrawer>
     </article>
   )
 }

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { I18nProvider } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
@@ -73,10 +74,20 @@ describe('ExecutionConsole', () => {
   })
 
   it('runs precheck then submits binance test order', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
     render(
-      <I18nProvider>
-        <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
-      </I18nProvider>,
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
+        </I18nProvider>
+      </QueryClientProvider>,
     )
 
     const precheckButton = await screen.findByTestId('run-precheck-button')

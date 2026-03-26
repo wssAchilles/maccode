@@ -35,6 +35,9 @@ describe('ui state machine', () => {
           feedback: { ...EMPTY_FLOW },
           cancel: { ...EMPTY_FLOW },
         },
+        shell_navigation: {
+          workspace: 'overview',
+        },
       },
     }))
   })
@@ -104,5 +107,12 @@ describe('ui state machine', () => {
     const flow = useCerberusStore.getState().uiState.core_flow.feedback
     expect(status.request_id).toBe('rid-exec-404')
     expect(flow.request_id).toBe('rid-exec-404')
+  })
+
+  it('updates shell workspace through ui actions', () => {
+    const { uiActions } = useCerberusStore.getState()
+    uiActions.setWorkspace('execution')
+
+    expect(useCerberusStore.getState().uiState.shell_navigation.workspace).toBe('execution')
   })
 })

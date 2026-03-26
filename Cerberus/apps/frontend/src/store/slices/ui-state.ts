@@ -10,6 +10,7 @@ import type {
   DomainName,
   RootStore,
   UIStateSlice,
+  WorkspaceId,
 } from './shared'
 
 const LOCALE_KEY = 'cerberus.locale'
@@ -77,6 +78,20 @@ const wsBase = gatewayBase.startsWith('https')
   : gatewayBase.replace(/^http/, 'ws')
 const liveStreamEnabled = import.meta.env.VITE_DISABLE_LIVE_STREAM !== 'true'
 
+function isWorkspaceId(value: string | null): value is WorkspaceId {
+  return value === 'overview' || value === 'market' || value === 'execution' || value === 'health'
+}
+
+function resolveWorkspace(): WorkspaceId {
+  if (typeof window === 'undefined') {
+    return 'overview'
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const workspace = params.get('workspace')
+  return isWorkspaceId(workspace) ? workspace : 'overview'
+}
+
 export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> = (set, get) => ({
   env: {
     gateway_base: gatewayBase,
@@ -93,6 +108,9 @@ export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> =
       'execution-trading': { ...DEFAULT_UI_STATE },
     },
     core_flow: { ...DEFAULT_CORE_FLOW },
+    shell_navigation: {
+      workspace: resolveWorkspace(),
+    },
   },
   uiActions: {
     setLocale: (locale) => {
@@ -105,6 +123,16 @@ export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> =
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(LOCALE_KEY, locale)
       }
+    },
+    setWorkspace: (workspace) => {
+      set((state) => ({
+        uiState: {
+          ...state.uiState,
+          shell_navigation: {
+            workspace,
+          },
+        },
+      }))
     },
     setDomainStatus: (domain, patch) => {
       set((state) => {

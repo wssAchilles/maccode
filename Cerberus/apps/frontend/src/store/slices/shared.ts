@@ -17,6 +17,12 @@ export type DomainName = 'market-stream' | 'strategy-summary' | 'execution-tradi
 
 export type DomainStatusMap = Record<DomainName, UIState>
 
+export type WorkspaceId = 'overview' | 'market' | 'execution' | 'health'
+
+export type ShellNavigationState = {
+  workspace: WorkspaceId
+}
+
 export type CoreFlowStepId = 'bootstrap' | 'market' | 'precheck' | 'submit' | 'feedback' | 'cancel'
 
 export type CoreFlowStepState = 'idle' | 'active' | 'success' | 'degraded' | 'error'
@@ -97,9 +103,11 @@ export type UIStateSlice = {
     domain_status: DomainStatusMap
     live_announcement: string
     core_flow: CoreFlowMap
+    shell_navigation: ShellNavigationState
   }
   uiActions: {
     setLocale: (locale: Locale) => void
+    setWorkspace: (workspace: WorkspaceId) => void
     setDomainStatus: (
       domain: DomainName,
       patch: Partial<UIState> & { state?: UIState['state'] },

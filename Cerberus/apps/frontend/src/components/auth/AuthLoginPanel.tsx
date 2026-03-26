@@ -1,5 +1,6 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { FirebaseAuthState } from '../../auth/useFirebaseAuth'
+import { GlassPanel, InlineAlert } from '../../ui'
 
 type Translate = (key: TranslationKey) => string
 
@@ -14,7 +15,7 @@ type Props = {
     | 'password'
     | 'setEmail'
     | 'setPassword'
-    | 'signInWithEmailAutoRegister'
+    | 'signInWithEmail'
     | 'signInWithGoogle'
   >
 }
@@ -22,26 +23,34 @@ type Props = {
 export function AuthLoginPanel({ t, auth }: Props) {
   if (auth.status === 'loading') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center p-6 text-white">
-        <section className="panel-card w-full">
-          <h1 className="text-xl font-bold text-cyan-300">{t('auth.loading')}</h1>
-          <p className="mt-2 text-sm text-slate-300">{t('auth.loadingHint')}</p>
-        </section>
+      <main className="auth-shell">
+        <GlassPanel className="auth-panel" tone="hero">
+          <p className="workbench-eyebrow">{t('app.kicker')}</p>
+          <h1 className="auth-title">{t('auth.loading')}</h1>
+          <p className="auth-subtitle">{t('auth.loadingHint')}</p>
+        </GlassPanel>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center p-6 text-white">
-      <section className="panel-card w-full" data-testid="auth-login-panel">
-        <h1 className="text-xl font-bold text-cyan-300">{t('auth.title')}</h1>
-        <p className="mt-2 text-sm text-slate-300">{t('auth.subtitle')}</p>
+    <main className="auth-shell">
+        <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
+        <p className="workbench-eyebrow">{t('app.kicker')}</p>
+        <h1 className="auth-title">{t('auth.title')}</h1>
+        <p className="auth-subtitle">{t('auth.subtitle')}</p>
+
+        {auth.error ? (
+          <InlineAlert title={t('common.error')} tone="danger" className="auth-error" >
+            {auth.error}
+          </InlineAlert>
+        ) : null}
 
         <form
-          className="mt-4 space-y-3"
+          className="auth-form"
           onSubmit={(event) => {
             event.preventDefault()
-            void auth.signInWithEmailAutoRegister()
+            void auth.signInWithEmail()
           }}
         >
           <label className="field-label">
@@ -76,7 +85,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
 
           <button
             type="submit"
-            className="action-button action-button-primary w-full"
+            className="soft-button soft-button-primary auth-submit"
             disabled={auth.signingIn}
             data-testid="auth-email-submit"
           >
@@ -86,7 +95,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
 
         <button
           type="button"
-          className="action-button action-button-secondary mt-3 w-full"
+          className="soft-button auth-google"
           onClick={() => {
             void auth.signInWithGoogle()
           }}
@@ -95,16 +104,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
         >
           {t('auth.signInGoogle')}
         </button>
-
-        {auth.error ? (
-          <p
-            data-testid="auth-error"
-            className="mt-3 rounded-lg border border-rose-300/40 bg-rose-400/10 px-3 py-2 text-xs text-rose-100"
-          >
-            {auth.error}
-          </p>
-        ) : null}
-      </section>
+      </GlassPanel>
     </main>
   )
 }

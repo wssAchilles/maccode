@@ -2,6 +2,7 @@ import type { TranslationKey } from '../i18n/messages'
 import { useI18n } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
 import type { CoreFlowStepId, CoreFlowStepState } from '../store/slices/shared'
+import { GlassPanel, SectionFrame, StatusPill } from '../ui'
 
 const STEP_ORDER: CoreFlowStepId[] = ['bootstrap', 'market', 'precheck', 'submit', 'feedback', 'cancel']
 
@@ -22,33 +23,17 @@ const STATE_LABEL_MAP: Record<CoreFlowStepState, TranslationKey> = {
   error: 'health.state.error',
 }
 
-function stateClass(state: CoreFlowStepState): string {
-  if (state === 'success') {
-    return 'status-chip status-ready'
+function toneClass(state: CoreFlowStepState): string {
+  if (state === 'error') {
+    return 'flow-card flow-card-error'
   }
   if (state === 'degraded') {
-    return 'status-chip status-degraded'
-  }
-  if (state === 'error') {
-    return 'status-chip status-error'
-  }
-  if (state === 'active') {
-    return 'status-chip status-loading'
-  }
-  return 'status-chip'
-}
-
-function reasonClass(state: CoreFlowStepState): string {
-  if (state === 'error') {
-    return 'text-rose-200'
-  }
-  if (state === 'degraded') {
-    return 'text-amber-200'
+    return 'flow-card flow-card-warning'
   }
   if (state === 'success') {
-    return 'text-emerald-200'
+    return 'flow-card flow-card-success'
   }
-  return 'text-slate-400'
+  return 'flow-card'
 }
 
 export function CoreFlowPanel() {
@@ -56,37 +41,27 @@ export function CoreFlowPanel() {
   const flow = useCerberusStore((state) => state.uiState.core_flow)
 
   return (
-    <article className="panel-card" data-testid="core-flow-panel" aria-label={t('flow.title')}>
-      <h3 className="panel-title">{t('flow.title')}</h3>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+    <SectionFrame title={t('flow.title')} description={t('workspace.overview.description')}>
+      <div className="flow-grid" data-testid="core-flow-panel">
         {STEP_ORDER.map((step, index) => {
           const item = flow[step]
           return (
-            <div
-              key={step}
-              className="rounded-xl border border-slate-700/70 bg-slate-950/45 p-3"
-              data-testid={`core-flow-step-${step}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-cyan-200">
-                  {index + 1}. {t(STEP_LABEL_MAP[step])}
-                </p>
-                <span className={stateClass(item.state)}>{t(STATE_LABEL_MAP[item.state])}</span>
+            <GlassPanel key={step} className={toneClass(item.state)} tone="subtle" data-testid={`core-flow-step-${step}`}>
+              <div className="flow-card-head">
+                <div>
+                  <p className="flow-card-index">{index + 1}. {t(STEP_LABEL_MAP[step])}</p>
+                  <p className="flow-card-updated">
+                    {t('common.updatedAt')}: {item.last_update_ms ? new Date(item.last_update_ms).toLocaleTimeString() : t('common.na')}
+                  </p>
+                </div>
+                <StatusPill state={item.state} label={t(STATE_LABEL_MAP[item.state])} compact />
               </div>
-              <p className={`mt-2 text-[11px] ${reasonClass(item.state)}`}>
-                {item.reason?.trim().length ? item.reason : t('common.na')}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">
-                {t('common.updatedAt')}:{' '}
-                {item.last_update_ms ? new Date(item.last_update_ms).toLocaleTimeString() : t('common.na')}
-              </p>
-              {item.request_id ? (
-                <p className="mt-1 truncate text-[11px] text-slate-500">rid: {item.request_id}</p>
-              ) : null}
-            </div>
+              <p className="flow-card-reason">{item.reason?.trim().length ? item.reason : t('common.na')}</p>
+              {item.request_id ? <p className="flow-card-request">rid: {item.request_id}</p> : null}
+            </GlassPanel>
           )
         })}
       </div>
-    </article>
+    </SectionFrame>
   )
 }

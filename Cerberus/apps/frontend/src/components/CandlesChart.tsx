@@ -21,28 +21,48 @@ export function CandlesChart({ candles }: Props) {
       return
     }
 
+    const styles = getComputedStyle(document.documentElement)
+    const chartText = styles.getPropertyValue('--color-chart-text').trim() || '#536275'
+    const chartGrid = styles.getPropertyValue('--color-chart-grid').trim() || 'rgba(120, 136, 157, 0.14)'
+    const chartAxis = styles.getPropertyValue('--color-chart-axis').trim() || 'rgba(103, 120, 145, 0.22)'
+    const chartCrosshair = styles.getPropertyValue('--color-chart-crosshair').trim() || 'rgba(53, 94, 147, 0.26)'
+    const upColor = styles.getPropertyValue('--color-success').trim() || '#15803d'
+    const downColor = styles.getPropertyValue('--color-danger').trim() || '#b91c1c'
+
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { color: '#121a30' },
-        textColor: '#e5e7eb',
+        background: { color: 'transparent' },
+        textColor: chartText,
+        attributionLogo: false,
       },
       grid: {
-        vertLines: { color: '#1f2937' },
-        horzLines: { color: '#1f2937' },
+        vertLines: { color: chartGrid },
+        horzLines: { color: chartGrid },
+      },
+      rightPriceScale: {
+        borderColor: chartAxis,
+      },
+      timeScale: {
+        borderColor: chartAxis,
+      },
+      crosshair: {
+        vertLine: { color: chartCrosshair },
+        horzLine: { color: chartCrosshair },
       },
       width: containerRef.current.clientWidth,
-      height: 340,
+      height: 360,
     })
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: '#34d399',
-      downColor: '#f87171',
+      upColor,
+      downColor,
       borderVisible: false,
-      wickUpColor: '#34d399',
-      wickDownColor: '#f87171',
+      wickUpColor: upColor,
+      wickDownColor: downColor,
     })
 
     seriesRef.current = series
+    chart.timeScale().fitContent()
 
     const resizeObserver = new ResizeObserver(() => {
       chart.applyOptions({ width: containerRef.current?.clientWidth ?? 680 })
@@ -71,5 +91,5 @@ export function CandlesChart({ candles }: Props) {
     )
   }, [candles])
 
-  return <div ref={containerRef} className="w-full min-h-[340px]" aria-label="candles-chart" />
+  return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />
 }

@@ -1,6 +1,7 @@
 import type { PrecheckResult } from '../../domain/trading/precheck'
 import type { TranslationKey } from '../../i18n/messages'
 import type { BinanceRule, TradingPolicy } from '../../types/contracts'
+import { DataList, DiagnosticDrawer, GlassPanel } from '../../ui'
 import { AppErrorNotice } from '../common/AppErrorNotice'
 
 import { STAGE_KEY_MAP, type GatewayResponse, type Stage } from './types'
@@ -49,13 +50,15 @@ export function BinanceTestPanel({
   const precheckPass = precheck?.ok ?? false
 
   return (
-    <article className="panel-card">
-      <h2 className="panel-title">{t('execution.binanceTest')}</h2>
-      <p className="mt-1 text-xs text-slate-400" aria-live="polite">
-        {t(STAGE_KEY_MAP[stage])}
-      </p>
+    <article className="stack">
+      <div>
+        <p className="subtle-label">{t('execution.binanceTest')}</p>
+        <p className="panel-caption" aria-live="polite">
+          {t(STAGE_KEY_MAP[stage])}
+        </p>
+      </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="execution-form-grid">
         <label className="field-label">
           Symbol
           <input id="binance-symbol" name="binance_symbol" className="field-input" value={selectedSymbol} disabled />
@@ -98,21 +101,24 @@ export function BinanceTestPanel({
         </label>
       </div>
 
-      <div className="mt-3 rounded-xl border border-slate-700/70 bg-slate-950/45 p-2 text-xs text-slate-300">
-        <div>notional: {notional === null ? '--' : notional.toFixed(6)}</div>
-        <div>min_notional: {rule?.min_notional ?? '--'}</div>
-        <div>min_qty: {rule?.min_qty ?? '--'}</div>
-        <div>step_size: {rule?.step_size ?? '--'}</div>
-        <div>tick_size: {rule?.tick_size ?? '--'}</div>
-        <div>policy max qty: {policy?.max_binance_order_qty ?? '--'}</div>
-        <div>policy max notional: {policy?.max_binance_order_notional_usd ?? '--'}</div>
-      </div>
+      <GlassPanel tone="subtle">
+        <DataList
+          items={[
+            { id: 'notional', label: 'Notional', value: notional === null ? '—' : notional.toFixed(6) },
+            { id: 'minNotional', label: 'Min notional', value: String(rule?.min_notional ?? '—') },
+            { id: 'minQty', label: 'Min qty', value: String(rule?.min_qty ?? '—') },
+            { id: 'stepSize', label: 'Step size', value: String(rule?.step_size ?? '—') },
+            { id: 'tickSize', label: 'Tick size', value: String(rule?.tick_size ?? '—') },
+            { id: 'policyQty', label: 'Policy max qty', value: String(policy?.max_binance_order_qty ?? '—') },
+          ]}
+        />
+      </GlassPanel>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="workspace-actions">
         <button
           type="button"
           onClick={onRunPrecheck}
-          className="action-button action-button-secondary"
+          className="soft-button"
           data-testid="run-precheck-button"
         >
           {t('execution.precheckRun')}
@@ -121,7 +127,7 @@ export function BinanceTestPanel({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="action-button action-button-primary disabled:opacity-50"
+          className="soft-button soft-button-primary"
           data-testid="submit-binance-order-button"
         >
           {submitting ? 'Submitting...' : t('execution.submit')}
@@ -129,20 +135,17 @@ export function BinanceTestPanel({
       </div>
 
       {precheck ? (
-        <div
-          className="mt-3 rounded-xl border border-slate-700/70 bg-slate-950/45 p-2"
-          data-testid="binance-precheck-result"
-        >
+        <GlassPanel tone="subtle" data-testid="binance-precheck-result">
           <p
-            className={`text-xs ${precheckPass ? 'text-gain' : 'text-loss'}`}
+            className={precheckPass ? 'precheck-status precheck-status-pass' : 'precheck-status precheck-status-fail'}
             aria-live="polite"
             data-testid="binance-precheck-status"
           >
             {precheckPass ? t('execution.precheckPassed') : t('execution.precheckFailed')}
           </p>
-          <ul className="mt-2 space-y-1 text-xs text-slate-300">
+          <ul className="precheck-list">
             {precheck.checks.map((item) => (
-              <li key={item.id} className="flex items-center gap-2">
+              <li key={item.id} className="precheck-list-item">
                 <span
                   className={
                     item.status === 'pass'
@@ -156,17 +159,16 @@ export function BinanceTestPanel({
               </li>
             ))}
           </ul>
-        </div>
+        </GlassPanel>
       ) : null}
 
-      <h3 className="mt-3 text-xs text-slate-400">{t('execution.response')}</h3>
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
-      <pre
-        className="mt-1 max-h-56 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-2 text-[11px] text-slate-300"
-        data-testid="binance-response"
-      >
-        {JSON.stringify(result, null, 2)}
-      </pre>
+
+      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result)}>
+        <pre className="diagnostic-pre" data-testid="binance-response">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      </DiagnosticDrawer>
     </article>
   )
 }
