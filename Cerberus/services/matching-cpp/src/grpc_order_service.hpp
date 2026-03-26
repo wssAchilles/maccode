@@ -21,6 +21,7 @@ struct GrpcRuntimeConfig {
   std::size_t submit_latency_window_size{1024};
   std::size_t max_inflight_requests{512};
   std::uint64_t inflight_acquire_timeout_ms{25};
+  std::uint64_t backpressure_retry_sleep_ms{1};
 };
 
 class GrpcOrderService final : public cerberus::order::v1::OrderService::Service {
@@ -92,6 +93,8 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   std::string NextGeneratedOrderId(const std::string& account_id);
   bool IsDegraded() const;
   std::string DegradedStatusText() const;
+  std::string DegradedReasonForRpc(const char* rpc_name) const;
+  grpc::Status BuildDegradedUnavailable(grpc::ServerContext* context, const char* rpc_name) const;
   std::string EffectiveSchemaVersion(const std::string& requested_schema) const;
   std::string EffectiveCorrelationId(
       grpc::ServerContext* context, const std::string& requested_correlation_id) const;
@@ -103,6 +106,7 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   void MarkBackpressure(grpc::ServerContext* context, const std::string& reason) const;
   grpc::Status AcquireInflightPermit(grpc::ServerContext* context, const char* rpc_name,
                                      std::optional<InflightPermit>* permit);
+  void BackpressureRetryPause() const;
   void ReleaseInflightPermit();
   void ObserveInflightPeak(std::uint64_t inflight_after_acquire);
   grpc::Status FinalizeSubmitStatus(
@@ -129,6 +133,7 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   std::size_t submit_latency_window_size_{1024};
   std::size_t max_inflight_requests_{512};
   std::uint64_t inflight_acquire_timeout_ms_{25};
+  std::uint64_t backpressure_retry_sleep_ms_{1};
   std::atomic_uint64_t inflight_requests_{0};
   std::atomic_uint64_t inflight_requests_peak_{0};
   std::atomic_uint64_t backpressure_waits_total_{0};

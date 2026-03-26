@@ -35,6 +35,8 @@ Use them as base overlays with your secret-bearing `terraform.tfvars`.
 - Terraform creates dedicated runtime service accounts and grants `roles/secretmanager.secretAccessor` for secret-backed env vars.
 - Terraform policy guardrails fail `plan/apply` when required secret variables are empty.
 - Production guardrails enforce stream-first mode (`market_stream_legacy_pubsub_fallback=false`, `redis_market_events_publish_legacy_pubsub=false`, `redis_order_events_legacy_pubsub_fallback=false`).
+- Strategy event publisher env is Terraform-managed (`EVENT_STREAM_ENABLED`, `EVENT_STREAM_KEY`, `EVENT_STREAM_PUBLISH_LEGACY_PUBSUB`), with legacy publish tied to `redis_order_events_legacy_pubsub_fallback`.
+- Strategy event stream retention knob is Terraform-managed via `strategy_event_stream_maxlen` -> `EVENT_STREAM_MAXLEN`.
 - Gateway exchange credentials (`BINANCE_API_KEY/BINANCE_API_SECRET/ALPACA_API_KEY/ALPACA_API_SECRET`) are managed via Secret Manager and injected at runtime.
 - Strategy service receives `MATCHING_GRPC_TARGET` from Terraform (`cloud_run_matching_url`) so matching gRPC can be wired without manual env edits.
 - Gateway market events are published to Redis Stream (`redis_market_events_stream_key`) with optional legacy Pub/Sub dual-write.
@@ -50,7 +52,7 @@ Use them as base overlays with your secret-bearing `terraform.tfvars`.
   - `redis_order_events_legacy_pubsub_fallback` (controls stream failure fallback to legacy Pub/Sub)
 - Matching capacity tunables are exposed:
   - `matching_execution_stream_limit`, `matching_submit_latency_window_size`
-  - `matching_max_inflight_requests`, `matching_inflight_acquire_timeout_ms`
+  - `matching_max_inflight_requests`, `matching_inflight_acquire_timeout_ms`, `matching_backpressure_retry_sleep_ms`
 - Matching gRPC thread/CQ tuning is exposed (`matching_grpc_max_pollers`, `matching_grpc_min_pollers`, `matching_grpc_num_cqs`).
 - Cloud Run runtime/capacity is parameterized per service:
   - `cloud_run_gateway`, `cloud_run_strategy`, `cloud_run_matching`

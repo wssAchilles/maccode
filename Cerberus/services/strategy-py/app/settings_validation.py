@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import logging
-
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 
 
 class SettingsValidationError(RuntimeError):
@@ -48,9 +44,9 @@ def validate_runtime_settings() -> None:
         errors.append("CORS_ALLOW_ORIGINS cannot be '*' in production")
 
     if _is_production_env() and settings.market_stream_legacy_pubsub_fallback:
-        logger.warning(
-            "market_stream_legacy_pubsub_fallback=true in production; stream-first resilience target is weakened"
-        )
+        errors.append("market_stream_legacy_pubsub_fallback must be false in production")
+    if _is_production_env() and settings.event_stream_publish_legacy_pubsub:
+        errors.append("event_stream_publish_legacy_pubsub must be false in production")
 
     if errors:
         raise SettingsValidationError("; ".join(errors))

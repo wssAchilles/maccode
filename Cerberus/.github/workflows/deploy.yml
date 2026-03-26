@@ -154,11 +154,13 @@ jobs:
           TF_VAR_market_stream_poison_stream_key: "cerberus.market.events.poison"
           TF_VAR_market_stream_poison_stream_maxlen: "20000"
           TF_VAR_market_stream_legacy_pubsub_fallback: "true"
+          TF_VAR_strategy_event_stream_maxlen: "10000"
           TF_VAR_matching_grpc_max_pollers: "16"
           TF_VAR_matching_grpc_min_pollers: "4"
           TF_VAR_matching_grpc_num_cqs: "4"
           TF_VAR_matching_execution_stream_limit: "500"
           TF_VAR_matching_submit_latency_window_size: "1024"
+          TF_VAR_matching_backpressure_retry_sleep_ms: "1"
           TF_VAR_cloud_run_gateway: >-
             {"min_instance_count":1,"max_instance_count":30,"max_instance_request_concurrency":80,"timeout_seconds":900,"cpu":"1","memory":"1Gi","cpu_idle":false,"startup_cpu_boost":true}
           TF_VAR_cloud_run_strategy: >-
@@ -193,71 +195,7 @@ jobs:
           GATEWAY_PERF_MAX_P95_MS: "800"
           GATEWAY_PERF_MIN_RPS: "2"
           GATEWAY_PERF_MAX_UNIT_COST_USD: "0.01"
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import statistics
-          import time
-          import urllib.error
-          import urllib.request
-
-          base = os.environ["GATEWAY_BASE_URL"].rstrip("/")
-          samples = max(int(os.getenv("GATEWAY_PERF_REQUESTS", "40")), 1)
-          max_p95 = float(os.getenv("GATEWAY_PERF_MAX_P95_MS", "800"))
-          min_rps = float(os.getenv("GATEWAY_PERF_MIN_RPS", "2"))
-          max_unit_cost = float(os.getenv("GATEWAY_PERF_MAX_UNIT_COST_USD", "0.01"))
-
-          def get_json(url: str, request_id: str | None = None) -> dict:
-            req = urllib.request.Request(url=url, method="GET")
-            if request_id:
-              req.add_header("x-request-id", request_id)
-            with urllib.request.urlopen(req, timeout=15) as resp:
-              body = resp.read().decode("utf-8")
-              return json.loads(body)
-
-          latencies_ms: list[float] = []
-          started_at = time.perf_counter()
-          for idx in range(samples):
-            rid = f"deploy-gate-{idx}"
-            call_started = time.perf_counter()
-            try:
-              payload = get_json(f"{base}/api/v1/external/status", request_id=rid)
-            except urllib.error.HTTPError as exc:
-              raise SystemExit(f"/api/v1/external/status failed: {exc}") from exc
-            if payload.get("error") not in (None, {}):
-              raise SystemExit(f"/api/v1/external/status returned error envelope: {payload}")
-            latencies_ms.append((time.perf_counter() - call_started) * 1000.0)
-
-          elapsed = max(time.perf_counter() - started_at, 1e-6)
-          throughput_rps = samples / elapsed
-          ordered = sorted(latencies_ms)
-          p95_index = max(int(round(0.95 * len(ordered) + 0.5)) - 1, 0)
-          p95_ms = ordered[min(p95_index, len(ordered) - 1)]
-
-          metrics = get_json(f"{base}/api/v1/metrics", request_id="deploy-gate-metrics")
-          data = metrics.get("data", {}) if isinstance(metrics, dict) else {}
-          unit_cost = float(data.get("estimated_request_cost_usd", 0.0) or 0.0)
-          service_p95 = float(data.get("http_latency_p95_ms", 0.0) or 0.0)
-
-          print(json.dumps({
-            "samples": samples,
-            "sample_p95_ms": round(p95_ms, 2),
-            "sample_mean_ms": round(statistics.mean(latencies_ms), 2),
-            "sample_throughput_rps": round(throughput_rps, 3),
-            "service_reported_p95_ms": round(service_p95, 2),
-            "unit_request_cost_usd": unit_cost,
-          }, ensure_ascii=False))
-
-          if p95_ms > max_p95:
-            raise SystemExit(f"backend p95 gate failed: {p95_ms:.2f}ms > {max_p95}ms")
-          if throughput_rps < min_rps:
-            raise SystemExit(f"backend throughput gate failed: {throughput_rps:.3f}rps < {min_rps}rps")
-          if unit_cost > max_unit_cost:
-            raise SystemExit(
-              f"backend unit cost gate failed: {unit_cost:.8f} > {max_unit_cost:.8f}"
-            )
-          PY
+        run: python scripts/gateway_perf_gate.py
 
       - uses: actions/setup-node@v4
         with:

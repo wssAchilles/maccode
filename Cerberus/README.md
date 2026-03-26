@@ -28,7 +28,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
   - Optional Firebase Firestore signal persistence.
   - Runtime skeleton:
     - `runtime_container.py` for dependency assembly.
-    - `signal_service.py` / `summary_service.py` / `matching_service.py` for API-facing application services.
+    - `signal_service.py` / `summary_service.py` / `matching_service/` for API-facing application services.
     - `system_status_service.py` for ready/metrics/persistence application service.
     - `signal_engine_service.py` for per-symbol signal engine orchestration.
     - `worker_idempotency.py` for idempotency ownership.
@@ -37,9 +37,17 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
       - `loop.py` / `pubsub_runtime.py` / `stream_runtime.py`
       - `stream_io.py` / `stream_processing.py` / `stream_reclaim.py`
       - `retry.py` / `time_utils.py`
-    - `event_runtime.py` for event publish/relay orchestration.
+    - `event_runtime/` package for publish/relay orchestration:
+      - `publish.py` / `matching_submission.py` / `relay.py`
+      - `envelope.py` / `model.py`
 - `services/matching-cpp`: C++20 matching core + order service layer (execution journal, snapshot/stats) + GTest.
   - gRPC build path enabled when `gRPC + Protobuf` dependencies are present.
+  - gRPC runtime skeleton:
+    - `grpc_order_service_common.cpp` for bootstrap/runtime knobs + domain enum/timestamp conversion.
+    - `grpc_order_service_context.cpp` for schema/correlation propagation + degraded/backpressure metadata.
+    - `grpc_order_service_backpressure.cpp` for inflight permit acquisition/release + timeout/retry pacing.
+    - `grpc_order_service_telemetry.cpp` for submit latency window/P95/throughput/uptime accounting.
+    - `grpc_order_service_{submit,order_lifecycle,orderbook,executions,health_stats}.cpp` for RPC handlers.
 - Infra:
   - Local: Docker Compose (`redis`, `postgres`, `timescaledb`, all app services).
   - Cloud: Firebase Hosting (frontend) + Cloud Run (gateway/strategy) + Upstash Redis + Supabase Postgres, provisioned by Terraform under `infra/terraform`.
@@ -253,6 +261,7 @@ Gateway stream envs:
 - `REDIS_ORDER_EVENTS_CHANNELS` (comma-separated order-event channels for `/ws/orders`)
 - `REDIS_ORDER_EVENTS_STREAM_ENABLED` / `REDIS_ORDER_EVENTS_STREAM_KEY` / `REDIS_ORDER_EVENTS_CONSUMER_GROUP` / `REDIS_ORDER_EVENTS_CONSUMER_NAME`
 - `REDIS_ORDER_EVENTS_LEGACY_PUBSUB_FALLBACK` (allow stream ingest downgrade to legacy Pub/Sub on failure; set `false` for strict stream-first mode)
+- production runtime policy: `REDIS_ORDER_EVENTS_LEGACY_PUBSUB_FALLBACK=false`, `REDIS_MARKET_EVENTS_PUBLISH_LEGACY_PUBSUB=false`, and strategy `EVENT_STREAM_PUBLISH_LEGACY_PUBSUB=false`
 - `REDIS_ORDER_EVENTS_READ_BATCH_SIZE` / `REDIS_ORDER_EVENTS_READ_BLOCK_MS` / `REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT` / `REDIS_ORDER_EVENTS_BATCH_WINDOW_MS`
 - `REDIS_ORDER_EVENTS_MAX_RETRIES_BEFORE_FALLBACK` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MS` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MAX_MS`
 - `REDIS_ORDER_EVENTS_RECLAIM_ENABLED` / `REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS` / `REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS` / `REDIS_ORDER_EVENTS_RECLAIM_BATCH_SIZE`
@@ -278,6 +287,7 @@ Gateway stream envs:
 - `MAX_ALPACA_ORDER_QTY` / `MAX_ALPACA_LIMIT_NOTIONAL_USD`
 - `MATCHING_SUBMIT_LATENCY_WINDOW_SIZE` (rolling sample size for matching submit P95)
 - `MATCHING_MAX_INFLIGHT_REQUESTS` / `MATCHING_INFLIGHT_ACQUIRE_TIMEOUT_MS` (matching backpressure budget/queue wait)
+- `MATCHING_BACKPRESSURE_RETRY_SLEEP_MS` (retry sleep while waiting for in-flight budget)
 - `MATCHING_GRPC_MAX_POLLERS` / `MATCHING_GRPC_MIN_POLLERS` / `MATCHING_GRPC_NUM_CQS`
 
 Gateway external trading endpoints:
@@ -292,6 +302,7 @@ Signal persistence path:
 - Matching execution relay (Strategy) -> Redis `trade.executions.<account_id>` -> Gateway `/ws/orders`
 - Strategy emits canonical stream events to `EVENT_STREAM_KEY` with envelope:
   - `event_type`, `event_id`, `created_at`, `schema_version`, `payload` (+ optional `correlation_id`)
+  - publish knobs: `EVENT_STREAM_ENABLED`, `EVENT_STREAM_KEY`, `EVENT_STREAM_MAXLEN`, `EVENT_STREAM_PUBLISH_LEGACY_PUBSUB`
 - Strategy idempotency can use Redis-backed claims:
   - `IDEMPOTENCY_STORE_REDIS_ENABLED`, `IDEMPOTENCY_REDIS_KEY_PREFIX`, `SIGNAL_IDEMPOTENCY_TTL_SECONDS`
 - Strategy market ingest can use Redis Stream consumer group:
@@ -312,6 +323,7 @@ Matching service runtime capabilities:
 - Matching degraded signals are explicit:
   - `Health.status=degraded:*`
   - gRPC trailing metadata `x-cerberus-degraded` / `x-cerberus-degraded-reason`
+  - business RPCs reject with `UNAVAILABLE` in forced degraded mode (no silent empty stream/orderbook)
 - Matching `GetServiceStats` now includes capacity baselines:
   - `submit_order_requests_total`, `submit_order_errors_total`, `submit_order_rejections_total`
   - `submit_order_latency_p95_ms`, `submit_order_throughput_rps`, `trade_throughput_rps`
@@ -362,7 +374,7 @@ Cloud deployment workflow is `.github/workflows/deploy.yml`:
 - Builds and deploys `gateway-rs` + `strategy-py` to Cloud Run.
 - Builds frontend and deploys to Firebase Hosting.
 - Runs deployed e2e/lighthouse gate against the live Firebase URL.
-- Runs backend deploy gate with latency/throughput/unit-cost thresholds against deployed gateway.
+- Runs backend deploy gate with latency/throughput/unit-cost thresholds against deployed gateway (`scripts/gateway_perf_gate.py`).
 - Requires GitHub secrets `FIREBASE_E2E_EMAIL` and `FIREBASE_E2E_PASSWORD` for auth-enabled gate runs.
 - Requires exchange secrets `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `ALPACA_API_KEY`, `ALPACA_API_SECRET` for trading endpoints.
 - Requires `JWT_HS256_SECRET` and runs `scripts/validate_deploy_policy.sh` as deploy gate.

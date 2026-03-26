@@ -28,8 +28,7 @@ grpc::Status GrpcOrderService::StreamExecutions(
   LogRequestStart("StreamExecutions", context);
   EchoRequestId(context);
   if (IsDegraded()) {
-    MarkDegraded(context, DegradedStatusText());
-    return grpc::Status::OK;
+    return BuildDegradedUnavailable(context, "StreamExecutions");
   }
   if (request->account_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "account_id is required");

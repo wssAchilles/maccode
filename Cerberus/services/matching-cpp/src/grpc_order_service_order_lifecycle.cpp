@@ -11,10 +11,9 @@ grpc::Status GrpcOrderService::CancelOrder(
   FillResponseContext(context, request->schema_version(), request->correlation_id(),
                       response->mutable_schema_version(), response->mutable_correlation_id());
   if (IsDegraded()) {
-    MarkDegraded(context, DegradedStatusText());
     response->set_canceled(false);
-    response->set_reason(DegradedStatusText());
-    return grpc::Status::OK;
+    response->set_reason(DegradedReasonForRpc("CancelOrder"));
+    return BuildDegradedUnavailable(context, "CancelOrder");
   }
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
@@ -56,8 +55,7 @@ grpc::Status GrpcOrderService::GetOrder(grpc::ServerContext* context,
   FillResponseContext(context, request->schema_version(), request->correlation_id(),
                       response->mutable_schema_version(), response->mutable_correlation_id());
   if (IsDegraded()) {
-    MarkDegraded(context, DegradedStatusText());
-    return grpc::Status(grpc::StatusCode::UNAVAILABLE, DegradedStatusText());
+    return BuildDegradedUnavailable(context, "GetOrder");
   }
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");

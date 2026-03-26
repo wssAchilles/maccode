@@ -706,6 +706,20 @@ variable "market_stream_legacy_pubsub_fallback" {
   default     = true
 }
 
+variable "strategy_event_stream_maxlen" {
+  description = "Approximate max length of strategy event stream writes"
+  type        = number
+  default     = 10000
+
+  validation {
+    condition = (
+      var.strategy_event_stream_maxlen >= 100 &&
+      var.strategy_event_stream_maxlen <= 1000000
+    )
+    error_message = "strategy_event_stream_maxlen must be in [100,1000000]."
+  }
+}
+
 variable "matching_execution_stream_limit" {
   description = "Maximum executions returned by matching stream/list query"
   type        = number
@@ -789,6 +803,20 @@ variable "matching_inflight_acquire_timeout_ms" {
       var.matching_inflight_acquire_timeout_ms <= 10000
     )
     error_message = "matching_inflight_acquire_timeout_ms must be in [1,10000]."
+  }
+}
+
+variable "matching_backpressure_retry_sleep_ms" {
+  description = "Matching backpressure retry sleep between capacity checks in milliseconds"
+  type        = number
+  default     = 1
+
+  validation {
+    condition = (
+      var.matching_backpressure_retry_sleep_ms >= 0 &&
+      var.matching_backpressure_retry_sleep_ms <= 1000
+    )
+    error_message = "matching_backpressure_retry_sleep_ms must be in [0,1000]."
   }
 }
 

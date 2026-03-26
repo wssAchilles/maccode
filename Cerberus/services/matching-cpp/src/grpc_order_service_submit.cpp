@@ -13,10 +13,9 @@ grpc::Status GrpcOrderService::SubmitOrder(grpc::ServerContext* context,
   FillResponseContext(context, request->schema_version(), request->correlation_id(),
                       response->mutable_schema_version(), response->mutable_correlation_id());
   if (IsDegraded()) {
-    MarkDegraded(context, DegradedStatusText());
+    response->set_reason(DegradedReasonForRpc("SubmitOrder"));
     response->set_accepted(false);
-    response->set_reason(DegradedStatusText());
-    return FinalizeSubmitStatus(grpc::Status::OK, false, started_at);
+    return FinalizeSubmitStatus(BuildDegradedUnavailable(context, "SubmitOrder"), false, started_at);
   }
   if (request->account_id().empty()) {
     return FinalizeSubmitStatus(

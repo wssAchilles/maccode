@@ -1,5 +1,8 @@
 mod json;
+mod json_sections;
 mod prometheus;
+mod prometheus_sections;
+mod runtime;
 mod shared;
 
 use crate::gateway_types::{AppState, GatewayMetrics};

@@ -90,6 +90,9 @@ if(ENABLE_GRPC_SERVICE)
 
     add_library(grpc_order_service
       src/grpc_order_service_common.cpp
+      src/grpc_order_service_context.cpp
+      src/grpc_order_service_backpressure.cpp
+      src/grpc_order_service_telemetry.cpp
       src/grpc_order_service_submit.cpp
       src/grpc_order_service_order_lifecycle.cpp
       src/grpc_order_service_orderbook.cpp
@@ -105,6 +108,7 @@ if(ENABLE_GRPC_SERVICE)
     set(MATCHING_SERVICE_SOURCES
       src/main_grpc.cpp
       src/runtime_config.cpp
+      src/runtime_env.cpp
     )
     set(MATCHING_SERVICE_LIBRARIES grpc_order_service)
     set(CERBERUS_GRPC_SERVICE_BUILT ON)

@@ -396,6 +396,10 @@ resource "google_cloud_run_v2_service" "matching" {
         name  = "MATCHING_INFLIGHT_ACQUIRE_TIMEOUT_MS"
         value = tostring(var.matching_inflight_acquire_timeout_ms)
       }
+      env {
+        name  = "MATCHING_BACKPRESSURE_RETRY_SLEEP_MS"
+        value = tostring(var.matching_backpressure_retry_sleep_ms)
+      }
     }
   }
 }
@@ -575,6 +579,22 @@ resource "google_cloud_run_v2_service" "strategy" {
       env {
         name  = "MARKET_STREAM_LEGACY_PUBSUB_FALLBACK"
         value = tostring(var.market_stream_legacy_pubsub_fallback)
+      }
+      env {
+        name  = "EVENT_STREAM_ENABLED"
+        value = tostring(var.redis_order_events_stream_enabled)
+      }
+      env {
+        name  = "EVENT_STREAM_KEY"
+        value = var.redis_order_events_stream_key
+      }
+      env {
+        name  = "EVENT_STREAM_MAXLEN"
+        value = tostring(var.strategy_event_stream_maxlen)
+      }
+      env {
+        name  = "EVENT_STREAM_PUBLISH_LEGACY_PUBSUB"
+        value = tostring(var.redis_order_events_legacy_pubsub_fallback)
       }
 
       env {

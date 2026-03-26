@@ -25,8 +25,7 @@ grpc::Status GrpcOrderService::GetOrderBook(
   response->set_generated_at_ms(static_cast<std::uint64_t>(std::max<std::int64_t>(millis, 0)));
 
   if (IsDegraded()) {
-    MarkDegraded(context, DegradedStatusText());
-    return grpc::Status::OK;
+    return BuildDegradedUnavailable(context, "GetOrderBook");
   }
 
   std::optional<InflightPermit> permit;

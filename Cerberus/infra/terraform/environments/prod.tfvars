@@ -13,6 +13,8 @@ matching_public_access               = false
 gateway_public_access                = true
 matching_max_inflight_requests       = 2048
 matching_inflight_acquire_timeout_ms = 40
+matching_backpressure_retry_sleep_ms = 1
+strategy_event_stream_maxlen         = 50000
 strategy_summary_cache_ttl_ms        = 1200
 strategy_summary_batch_window_ms     = 80
 

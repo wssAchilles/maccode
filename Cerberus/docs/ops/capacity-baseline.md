@@ -31,10 +31,15 @@
 1. Start local Redis + strategy + gateway.
 2. Warm up endpoint with `20` requests.
 3. Run `120` timed requests to `/api/v1/external/status`.
+   - reusable gate script:
+     - `GATEWAY_BASE_URL=http://127.0.0.1:8080 GATEWAY_PERF_REQUESTS=120 GATEWAY_PERF_MAX_P95_MS=2000 GATEWAY_PERF_MIN_RPS=1 GATEWAY_PERF_MAX_UNIT_COST_USD=1 python3 scripts/gateway_perf_gate.py`
 4. Read `/api/v1/metrics` and record:
    - `http_latency_p95_ms`
    - `request_throughput_rps`
    - `estimated_request_cost_usd`
+5. Read strategy `/metrics` and record stream policy gauges:
+   - `cerberus_strategy_market_stream_legacy_pubsub_fallback_enabled`
+   - `cerberus_strategy_event_stream_legacy_pubsub_publish_enabled`
 
 ## Next Calibration (Cloud Run)
 

@@ -6,6 +6,7 @@ Startup policy:
 
 - Runtime validates critical settings at startup and fails fast on invalid combinations.
 - Set `APP_ENV=production` to enable stricter production policy checks (for example, wildcard CORS rejection).
+- In production, `MARKET_STREAM_LEGACY_PUBSUB_FALLBACK` and `EVENT_STREAM_PUBLISH_LEGACY_PUBSUB` must be `false` (startup hard-fail on violation).
 
 ## Run
 
@@ -46,6 +47,8 @@ Optional matching gRPC submit path (signal -> order):
 - `EXECUTION_RELAY_INTERVAL_SECONDS=1`
 - `EXECUTION_RELAY_BATCH_LIMIT=100`
 - `EVENT_SCHEMA_VERSION=v1`
+- `EVENT_STREAM_MAXLEN=10000`
+- `EVENT_STREAM_PUBLISH_LEGACY_PUBSUB=true` (set `false` for strict stream-only publish)
 - `IDEMPOTENCY_STORE_REDIS_ENABLED=true`
 - `IDEMPOTENCY_REDIS_KEY_PREFIX=cerberus:idempotency`
 - `SIGNAL_IDEMPOTENCY_TTL_SECONDS=900`
@@ -68,6 +71,12 @@ Runtime module skeleton:
 - `app/market_ingest_runtime/stream_io.py`: stream read/ack/backlog parsing helpers
 - `app/market_ingest_runtime/stream_processing.py`: entry decode + batch processing
 - `app/market_ingest_runtime/stream_reclaim.py`: reclaim + poison routing
+- `app/event_runtime/publish.py`: generic publish path + signal event encode
+- `app/event_runtime/matching_submission.py`: matching submit event orchestration
+- `app/event_runtime/relay.py`: execution relay loop + batch builders
+- `app/event_runtime/envelope.py`: canonical event envelope builder
+- `app/matching_service/service.py`: matching API orchestration service
+- `app/matching_service/{mapping,filters,fallbacks}.py`: response mapping/filtering/degraded fallback helpers
 
 Signal smoke endpoint (works without Redis):
 
@@ -99,6 +108,7 @@ Observability notes:
 - HTTP errors are wrapped as `{ "error": { "code", "message", "request_id" } }`.
 - `/api/v1/status/persistence` now includes `matching.health` and `matching.stats`.
 - `/metrics` exposes Prometheus counters/gauges for worker loops, signal throughput, storage toggles, matching reachability, and matching degraded state.
+- `/metrics` includes stream-mode policy gauges (`market_stream_legacy_pubsub_fallback_enabled`, `event_stream_legacy_pubsub_publish_enabled`) for drift detection.
 - `/metrics` also exposes market stream consumer-group health (`market_stream_events`, ack/read failures, retry/fallback counters, ingest mode).
 - `matching.stats` includes matching capacity baselines from gRPC:
   - submit request/error/rejection counters
