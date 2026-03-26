@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80.88% </span>
+                <span class="strong">80.55% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>55/68</span>
+                <span class='fraction'>58/72</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15.38% </span>
+                <span class="strong">14.28% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/13</span>
+                <span class='fraction'>2/14</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80.88% </span>
+                <span class="strong">80.55% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>55/68</span>
+                <span class='fraction'>58/72</span>
             </div>
         
             
@@ -152,7 +152,12 @@
 <a name='L87'></a><a href='#L87'>87</a>
 <a name='L88'></a><a href='#L88'>88</a>
 <a name='L89'></a><a href='#L89'>89</a>
-<a name='L90'></a><a href='#L90'>90</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -168,6 +173,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -214,6 +222,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -248,6 +258,7 @@ type AuthMessageKey =
   | 'missingConfig'
   | 'invalidCredentials'
   | 'emailInUse'
+  | 'weakPassword'
   | 'popupCancelled'
   | 'popupBlocked'
   | 'networkFailed'
@@ -263,6 +274,7 @@ const AUTH_MESSAGES: Record&lt;Locale, Record&lt;AuthMessageKey, string&gt;&gt; 
     missingConfig: '登录服务尚未完成配置，请联系管理员。',
     invalidCredentials: '邮箱或密码不正确，请重新输入。',
     emailInUse: '该邮箱已注册，请直接登录。',
+    weakPassword: '密码至少需要 6 位，请重新设置。',
     popupCancelled: '你已取消 Google 登录。',
     popupBlocked: '浏览器拦截了登录弹窗，请允许弹窗后重试。',
     networkFailed: '网络异常，请检查连接后重试。',
@@ -277,6 +289,7 @@ const AUTH_MESSAGES: Record&lt;Locale, Record&lt;AuthMessageKey, string&gt;&gt; 
     missingConfig: 'Authentication is not configured for this environment.',
     invalidCredentials: 'Incorrect email or password. Try again.',
     emailInUse: 'This email is already registered. Sign in instead.',
+    weakPassword: 'Use a password with at least 6 characters.',
     popupCancelled: 'Google sign-in was canceled.',
     popupBlocked: 'The browser blocked the sign-in popup. Allow popups and try again.',
     networkFailed: 'Network error. Check your connection and try again.',
@@ -305,6 +318,8 @@ export function describeAuthError(error: unknown, locale: Locale): string {
         return getAuthMessage(locale, 'invalidCredentials')
 <span class="branch-0 cbranch-no" title="branch not covered" >      case 'auth/email-already-in-use':</span>
 <span class="cstat-no" title="statement not covered" >        return getAuthMessage(locale, 'emailInUse')</span>
+<span class="branch-0 cbranch-no" title="branch not covered" >      case 'auth/weak-password':</span>
+<span class="cstat-no" title="statement not covered" >        return getAuthMessage(locale, 'weakPassword')</span>
 <span class="branch-0 cbranch-no" title="branch not covered" >      case 'auth/popup-closed-by-user':</span>
 <span class="cstat-no" title="statement not covered" >        return getAuthMessage(locale, 'popupCancelled')</span>
 <span class="branch-0 cbranch-no" title="branch not covered" >      case 'auth/popup-blocked':</span>
@@ -337,7 +352,7 @@ export function describeAuthError(error: unknown, locale: Locale): string {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-26T08:04:00.252Z
+                at 2026-03-26T08:18:17.225Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

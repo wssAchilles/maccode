@@ -1,4 +1,5 @@
 import {
+  createUserWithEmailAndPassword,
   type User,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -25,6 +26,7 @@ export type FirebaseAuthState = {
   setEmail: (value: string) => void
   setPassword: (value: string) => void
   signInWithEmail: () => Promise<void>
+  signUpWithEmail: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOutCurrentUser: () => Promise<void>
 }
@@ -78,7 +80,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
       unsubscribe()
       setAuthTokenProvider(null)
     }
-  }, [required, services])
+  }, [locale, required, services])
 
   const signInWithEmail = useCallback(async () => {
     if (!services) {
@@ -94,6 +96,27 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setError(undefined)
     try {
       await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
+    } catch (error) {
+      setError(describeAuthError(error, locale))
+    } finally {
+      setSigningIn(false)
+    }
+  }, [email, locale, password, services])
+
+  const signUpWithEmail = useCallback(async () => {
+    if (!services) {
+      return
+    }
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !password) {
+      setError(getAuthMessage(locale, 'missingCredentials'))
+      return
+    }
+
+    setSigningIn(true)
+    setError(undefined)
+    try {
+      await createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
@@ -135,6 +158,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setEmail,
     setPassword,
     signInWithEmail,
+    signUpWithEmail,
     signInWithGoogle,
     signOutCurrentUser,
   }

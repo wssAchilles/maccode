@@ -5,6 +5,7 @@ type AuthMessageKey =
   | 'missingConfig'
   | 'invalidCredentials'
   | 'emailInUse'
+  | 'weakPassword'
   | 'popupCancelled'
   | 'popupBlocked'
   | 'networkFailed'
@@ -20,6 +21,7 @@ const AUTH_MESSAGES: Record<Locale, Record<AuthMessageKey, string>> = {
     missingConfig: '登录服务尚未完成配置，请联系管理员。',
     invalidCredentials: '邮箱或密码不正确，请重新输入。',
     emailInUse: '该邮箱已注册，请直接登录。',
+    weakPassword: '密码至少需要 6 位，请重新设置。',
     popupCancelled: '你已取消 Google 登录。',
     popupBlocked: '浏览器拦截了登录弹窗，请允许弹窗后重试。',
     networkFailed: '网络异常，请检查连接后重试。',
@@ -34,6 +36,7 @@ const AUTH_MESSAGES: Record<Locale, Record<AuthMessageKey, string>> = {
     missingConfig: 'Authentication is not configured for this environment.',
     invalidCredentials: 'Incorrect email or password. Try again.',
     emailInUse: 'This email is already registered. Sign in instead.',
+    weakPassword: 'Use a password with at least 6 characters.',
     popupCancelled: 'Google sign-in was canceled.',
     popupBlocked: 'The browser blocked the sign-in popup. Allow popups and try again.',
     networkFailed: 'Network error. Check your connection and try again.',
@@ -62,6 +65,8 @@ export function describeAuthError(error: unknown, locale: Locale): string {
         return getAuthMessage(locale, 'invalidCredentials')
       case 'auth/email-already-in-use':
         return getAuthMessage(locale, 'emailInUse')
+      case 'auth/weak-password':
+        return getAuthMessage(locale, 'weakPassword')
       case 'auth/popup-closed-by-user':
         return getAuthMessage(locale, 'popupCancelled')
       case 'auth/popup-blocked':

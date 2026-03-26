@@ -16,6 +16,7 @@ type Props = {
     | 'setEmail'
     | 'setPassword'
     | 'signInWithEmail'
+    | 'signUpWithEmail'
     | 'signInWithGoogle'
   >
 }
@@ -35,13 +36,13 @@ export function AuthLoginPanel({ t, auth }: Props) {
 
   return (
     <main className="auth-shell">
-        <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
+      <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
         <p className="workbench-eyebrow">{t('app.kicker')}</p>
         <h1 className="auth-title">{t('auth.title')}</h1>
         <p className="auth-subtitle">{t('auth.subtitle')}</p>
 
         {auth.error ? (
-          <InlineAlert title={t('common.error')} tone="danger" className="auth-error" >
+          <InlineAlert title={t('common.error')} tone="danger" className="auth-error">
             {auth.error}
           </InlineAlert>
         ) : null}
@@ -83,14 +84,27 @@ export function AuthLoginPanel({ t, auth }: Props) {
             />
           </label>
 
-          <button
-            type="submit"
-            className="soft-button soft-button-primary auth-submit"
-            disabled={auth.signingIn}
-            data-testid="auth-email-submit"
-          >
-            {auth.signingIn ? t('auth.signingIn') : t('auth.signInEmail')}
-          </button>
+          <div className="auth-actions">
+            <button
+              type="submit"
+              className="soft-button soft-button-primary auth-submit"
+              disabled={auth.signingIn}
+              data-testid="auth-email-submit"
+            >
+              {auth.signingIn ? t('auth.signingIn') : t('auth.signInEmail')}
+            </button>
+            <button
+              type="button"
+              className="soft-button auth-submit"
+              disabled={auth.signingIn}
+              data-testid="auth-email-signup"
+              onClick={() => {
+                void auth.signUpWithEmail()
+              }}
+            >
+              {t('auth.createAccountEmail')}
+            </button>
+          </div>
         </form>
 
         <button

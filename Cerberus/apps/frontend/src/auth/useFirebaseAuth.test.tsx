@@ -65,7 +65,10 @@ function Harness() {
         />
       </label>
       <button type="button" onClick={() => void auth.signInWithEmail()}>
-        submit
+        sign-in
+      </button>
+      <button type="button" onClick={() => void auth.signUpWithEmail()}>
+        sign-up
       </button>
       {auth.error ? <p role="alert">{auth.error}</p> : null}
     </div>
@@ -93,7 +96,7 @@ describe('useFirebaseAuth', () => {
     window.localStorage.clear()
   })
 
-  it('uses email sign-in and never attempts implicit registration', async () => {
+  it('uses email sign-in for the login action', async () => {
     mockSignInWithEmailAndPassword.mockResolvedValue({})
 
     render(
@@ -108,7 +111,7 @@ describe('useFirebaseAuth', () => {
 
     await userEvent.type(screen.getByLabelText('email'), 'Existing@Example.com')
     await userEvent.type(screen.getByLabelText('password'), 'topsecret')
-    await userEvent.click(screen.getByRole('button', { name: 'submit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'sign-in' }))
 
     await waitFor(() => {
       expect(mockSignInWithEmailAndPassword).toHaveBeenCalledWith(
@@ -119,6 +122,34 @@ describe('useFirebaseAuth', () => {
     })
 
     expect(mockCreateUserWithEmailAndPassword).not.toHaveBeenCalled()
+  })
+
+  it('uses email sign-up for the create-account action', async () => {
+    mockCreateUserWithEmailAndPassword.mockResolvedValue({})
+
+    render(
+      <I18nProvider>
+        <Harness />
+      </I18nProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status').textContent).toBe('ready')
+    })
+
+    await userEvent.type(screen.getByLabelText('email'), 'new-user@example.com')
+    await userEvent.type(screen.getByLabelText('password'), 'topsecret')
+    await userEvent.click(screen.getByRole('button', { name: 'sign-up' }))
+
+    await waitFor(() => {
+      expect(mockCreateUserWithEmailAndPassword).toHaveBeenCalledWith(
+        expect.anything(),
+        'new-user@example.com',
+        'topsecret',
+      )
+    })
+
+    expect(mockSignInWithEmailAndPassword).not.toHaveBeenCalled()
   })
 
   it('shows a human-readable message for invalid credentials', async () => {
@@ -136,7 +167,7 @@ describe('useFirebaseAuth', () => {
 
     await userEvent.type(screen.getByLabelText('email'), 'existing@example.com')
     await userEvent.type(screen.getByLabelText('password'), 'wrong-password')
-    await userEvent.click(screen.getByRole('button', { name: 'submit' }))
+    await userEvent.click(screen.getByRole('button', { name: 'sign-in' }))
 
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('邮箱或密码不正确')
