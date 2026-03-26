@@ -1,4 +1,5 @@
 import { startTransition, useMemo, useState } from 'react'
+import type { TranslationKey } from '../i18n/messages'
 import { useI18n } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
 
@@ -7,7 +8,24 @@ import { BinanceTestPanel } from './execution/BinanceTestPanel'
 import { useAlpacaPaperTrading } from './execution/useAlpacaPaperTrading'
 import { useBinanceOrderTest } from './execution/useBinanceOrderTest'
 import { useBinanceRuleResource, useTradingPolicyResource } from '../app/bootstrap/useResourceQueries'
-import { DataList, GlassPanel } from '../ui'
+import { DataList, GlassPanel, StatusPill } from '../ui'
+
+const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
+
+const EXECUTION_STEP_LABELS: Record<(typeof EXECUTION_PROGRESS_STEPS)[number], TranslationKey> = {
+  precheck: 'execution.precheck',
+  submit: 'execution.submit',
+  feedback: 'flow.step.feedback',
+  cancel: 'execution.cancel',
+}
+
+const FLOW_STATE_LABELS = {
+  idle: 'health.state.idle',
+  active: 'health.state.loading',
+  success: 'health.state.ready',
+  degraded: 'health.state.degraded',
+  error: 'health.state.error',
+} as const
 
 type Props = {
   active?: boolean
@@ -22,6 +40,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
   const gatewayBase = useCerberusStore((state) => state.env.gateway_base)
   const tradingPolicy = useCerberusStore((state) => state.executionTrading.trading_policy)
   const binanceRule = useCerberusStore((state) => state.executionTrading.binance_rule)
+  const coreFlow = useCerberusStore((state) => state.uiState.core_flow)
   const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
   useTradingPolicyResource(active)
@@ -79,6 +98,22 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
       },
     ],
     [alpacaModel.symbol, broker, latestAsk, latestBid, selectedSymbol, t, tradingPolicy?.enforced],
+  )
+
+  const progressItems = useMemo(
+    () =>
+      EXECUTION_PROGRESS_STEPS.map((step) => {
+        const item = coreFlow[step]
+        return {
+          id: step,
+          title: t(EXECUTION_STEP_LABELS[step]),
+          state: item.state,
+          stateLabel: t(FLOW_STATE_LABELS[item.state]),
+          reason: item.reason?.trim() ? item.reason : t('common.na'),
+          requestId: item.request_id,
+        }
+      }),
+    [coreFlow, t],
   )
 
   return (
@@ -161,8 +196,39 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
         </div>
 
         <GlassPanel className="execution-layout-side" tone="subtle">
-          <p className="subtle-label">{t('workspace.execution.ticketDescription')}</p>
+          <div className="execution-side-copy">
+            <p className="subtle-label">{t('workspace.execution.diagnostics')}</p>
+            <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
+          </div>
           <DataList items={executionSummary} />
+          <div className="execution-progress">
+            {progressItems.map((item, index) => (
+              <div key={item.id} className="execution-progress-item">
+                <div className="execution-progress-rail" aria-hidden="true">
+                  <span
+                    className={
+                      item.state === 'success'
+                        ? 'execution-progress-dot execution-progress-dot-success'
+                        : item.state === 'error'
+                          ? 'execution-progress-dot execution-progress-dot-error'
+                          : item.state === 'active'
+                            ? 'execution-progress-dot execution-progress-dot-active'
+                            : 'execution-progress-dot'
+                    }
+                  />
+                  {index < progressItems.length - 1 ? <span className="execution-progress-line" /> : null}
+                </div>
+                <div className="execution-progress-copy">
+                  <div className="execution-progress-head">
+                    <p className="execution-progress-title">{item.title}</p>
+                    <StatusPill state={item.state} label={item.stateLabel} compact />
+                  </div>
+                  <p className="execution-progress-reason">{item.reason}</p>
+                  {item.requestId ? <p className="execution-progress-request">rid: {item.requestId}</p> : null}
+                </div>
+              </div>
+            ))}
+          </div>
         </GlassPanel>
       </div>
     </section>

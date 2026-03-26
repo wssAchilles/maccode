@@ -164,7 +164,7 @@ export function BinanceTestPanel({
 
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
 
-      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result)}>
+      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result?.error)}>
         <pre className="diagnostic-pre" data-testid="binance-response">
           {JSON.stringify(result, null, 2)}
         </pre>

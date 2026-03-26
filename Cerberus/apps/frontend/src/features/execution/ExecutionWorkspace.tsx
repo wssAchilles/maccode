@@ -48,13 +48,17 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="workspace-side stack">
+      <div className="workspace-side stack execution-side">
         {summaryError ? (
           <DiagnosticDrawer title={t('workspace.execution.diagnostics')} summary={summaryError.message}>
             <pre className="diagnostic-pre">{JSON.stringify(summaryError, null, 2)}</pre>
           </DiagnosticDrawer>
         ) : null}
-        <SectionFrame title={t('execution.timeline')} description={t('workspace.execution.timelineDescription')}>
+        <SectionFrame
+          title={t('execution.timeline')}
+          description={t('workspace.execution.timelineDescription')}
+          className="timeline-section"
+        >
           <ExecutionTimelinePanel active={active} />
         </SectionFrame>
       </div>

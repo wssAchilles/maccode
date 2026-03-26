@@ -52,6 +52,7 @@ export function useBinanceOrderTest({
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
   const [quantity, setQuantity] = useState('0.002')
   const [price, setPrice] = useState('')
+  const [priceMode, setPriceMode] = useState<'auto' | 'manual'>('auto')
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<GatewayResponse | null>(null)
   const [precheck, setPrecheck] = useState<PrecheckResult | null>(null)
@@ -65,10 +66,14 @@ export function useBinanceOrderTest({
   }, [latestAsk, latestBid, side])
 
   useEffect(() => {
-    if (!price && priceHint) {
+    if (priceMode === 'auto' && priceHint) {
       setPrice(priceHint)
     }
-  }, [price, priceHint])
+  }, [priceHint, priceMode])
+
+  useEffect(() => {
+    setPriceMode('auto')
+  }, [selectedSymbol, side])
 
   const notional = useMemo(() => {
     const qty = parsePositiveNumber(quantity)
@@ -170,7 +175,10 @@ export function useBinanceOrderTest({
     notional,
     setSide,
     setQuantity,
-    setPrice,
+    setPrice: (nextPrice) => {
+      setPriceMode('manual')
+      setPrice(nextPrice)
+    },
     runPrecheck,
     submit,
   }

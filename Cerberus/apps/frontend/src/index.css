@@ -190,6 +190,8 @@ button {
 
 .section-frame {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
   gap: 18px;
 }
 
@@ -710,13 +712,46 @@ button {
   grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.8fr);
 }
 
+.execution-layout-main,
+.execution-layout-side,
+.timeline-section,
+.timeline-section .section-frame-body,
+.execution-timeline,
+.execution-timeline-list {
+  min-height: 0;
+}
+
+.execution-layout-side {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: start;
+}
+
+.execution-side-copy {
+  display: grid;
+  gap: 6px;
+}
+
 .execution-form-grid,
 .timeline-toolbar {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .flow-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.core-flow-frame {
+  height: 100%;
+}
+
+.core-flow-frame .section-frame-body {
+  min-height: 0;
+  height: 100%;
+}
+
+.core-flow-frame .flow-grid {
+  min-height: 100%;
+  grid-auto-rows: minmax(140px, 1fr);
 }
 
 .flow-card-success {
@@ -846,9 +881,124 @@ button {
   background: var(--color-warning);
 }
 
-.execution-timeline {
+.execution-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.execution-progress-item {
   display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.execution-progress-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.execution-progress-line {
+  position: absolute;
+  top: 10px;
+  bottom: -12px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(101, 122, 150, 0.32), rgba(101, 122, 150, 0.08));
+}
+
+.execution-progress-dot {
+  position: relative;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(113, 128, 150, 0.48);
+  box-shadow: 0 0 0 5px rgba(232, 238, 244, 0.9);
+}
+
+.execution-progress-dot-active {
+  background: var(--color-accent);
+}
+
+.execution-progress-dot-success {
+  background: var(--color-success);
+}
+
+.execution-progress-dot-error {
+  background: var(--color-danger);
+}
+
+.execution-progress-copy {
+  display: grid;
+  gap: 6px;
+  min-height: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: rgba(240, 244, 249, 0.74);
+}
+
+.execution-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.execution-progress-title,
+.execution-progress-reason,
+.execution-progress-request {
+  margin: 0;
+}
+
+.execution-progress-title {
+  font-weight: 700;
+}
+
+.execution-progress-reason {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.execution-progress-request {
+  color: var(--color-text-soft);
+  font: 500 0.78rem/1.45 var(--font-mono);
+}
+
+.execution-side {
+  min-height: 0;
+}
+
+.timeline-section {
+  height: 100%;
+}
+
+.execution-timeline {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  height: 100%;
+}
+
+.execution-timeline-empty {
+  flex: 1 1 auto;
+  display: flex;
+}
+
+.execution-timeline-empty .empty-state {
+  width: 100%;
+  align-content: center;
+}
+
+.execution-timeline-list {
+  flex: 1 1 auto;
+  min-height: 360px;
 }
 
 .timeline-row {
@@ -909,6 +1059,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .core-flow-frame .flow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .workspace-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -929,9 +1083,12 @@ button {
   .metric-grid,
   .health-grid,
   .orderbook-grid,
-  .flow-grid,
   .execution-form-grid,
   .timeline-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-grid {
     grid-template-columns: 1fr;
   }
 

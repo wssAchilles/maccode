@@ -42,7 +42,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
         <p className="auth-subtitle">{t('auth.subtitle')}</p>
 
         {auth.error ? (
-          <InlineAlert title={t('common.error')} tone="danger" className="auth-error">
+          <InlineAlert title={t('common.error')} tone="danger" className="auth-error" data-testid="auth-error">
             {auth.error}
           </InlineAlert>
         ) : null}

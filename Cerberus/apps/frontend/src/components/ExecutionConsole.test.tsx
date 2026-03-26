@@ -18,9 +18,32 @@ function makeResponse(body: unknown, status = 200): Response {
 
 describe('ExecutionConsole', () => {
   const originalFetch = globalThis.fetch
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  const EMPTY_FLOW = {
+    state: 'idle' as const,
+    last_update_ms: null,
+    reason: undefined,
+    request_id: undefined,
+  }
 
   beforeEach(() => {
-    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    useCerberusStore.setState((state) => ({
+      ...state,
+      uiState: {
+        ...state.uiState,
+        core_flow: {
+          bootstrap: { ...EMPTY_FLOW },
+          market: { ...EMPTY_FLOW },
+          precheck: { ...EMPTY_FLOW },
+          submit: { ...EMPTY_FLOW },
+          feedback: { ...EMPTY_FLOW },
+          cancel: { ...EMPTY_FLOW },
+        },
+      },
+    }))
+
+    fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
 
       if (url.includes('/api/v1/trading/policy')) {
@@ -65,7 +88,9 @@ describe('ExecutionConsole', () => {
       }
 
       return makeResponse({ error: 'not mocked' }, 404)
-    }) as typeof fetch
+    })
+
+    globalThis.fetch = fetchMock as typeof fetch
   })
 
   afterEach(() => {
@@ -101,11 +126,78 @@ describe('ExecutionConsole', () => {
     await userEvent.click(screen.getByTestId('submit-binance-order-button'))
 
     await waitFor(() => {
+      expect(screen.getByRole('button', { name: /api response 200/i })).toBeTruthy()
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: /api response 200/i }))
+
+    await waitFor(() => {
       expect(screen.getByTestId('binance-response').textContent).toContain('accepted')
     })
 
     const submitFlow = useCerberusStore.getState().uiState.core_flow.submit
     expect(submitFlow.state).toBe('success')
     expect(submitFlow.request_id).toBe('rid-binance-001')
+
+    const submitCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes('/api/v1/binance/order/test') && init?.method === 'POST',
+    )
+
+    expect(submitCall).toBeTruthy()
+    const headers = new Headers(submitCall?.[1]?.headers)
+    expect(headers.has('idempotency-key')).toBe(false)
+    expect(headers.has('x-idempotency-key')).toBe(false)
+  })
+
+  it('tracks market price updates until the operator edits the price manually', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
+        </I18nProvider>
+      </QueryClientProvider>,
+    )
+
+    const priceInput = (await screen.findByTestId('binance-price-input')) as HTMLInputElement
+
+    await waitFor(() => {
+      expect(priceInput.value).toBe('50010')
+    })
+
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70005.2" latestAsk="70005.3" />
+        </I18nProvider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(priceInput.value).toBe('70005.3')
+    })
+
+    await userEvent.clear(priceInput)
+    await userEvent.type(priceInput, '70006.1')
+
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70008.4" latestAsk="70008.5" />
+        </I18nProvider>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(priceInput.value).toBe('70006.1')
+    })
   })
 })

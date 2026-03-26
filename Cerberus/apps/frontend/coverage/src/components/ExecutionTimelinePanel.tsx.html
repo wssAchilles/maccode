@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/153</span>
+                <span class='fraction'>0/159</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/153</span>
+                <span class='fraction'>0/159</span>
             </div>
         
             
@@ -238,7 +238,13 @@
 <a name='L173'></a><a href='#L173'>173</a>
 <a name='L174'></a><a href='#L174'>174</a>
 <a name='L175'></a><a href='#L175'>175</a>
-<a name='L176'></a><a href='#L176'>176</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -380,7 +386,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -388,6 +393,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -407,6 +418,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -548,6 +560,8 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;label className="field-label"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {t('workspace.execution.search')}</span>
 <span class="cstat-no" title="statement not covered" >          &lt;input</span>
+<span class="cstat-no" title="statement not covered" >            id="timeline-search"</span>
+<span class="cstat-no" title="statement not covered" >            name="timeline_search"</span>
 <span class="cstat-no" title="statement not covered" >            className="field-input"</span>
 <span class="cstat-no" title="statement not covered" >            value={search}</span>
 <span class="cstat-no" title="statement not covered" >            onChange={(event) =&gt; setSearch(event.target.value)}</span>
@@ -557,33 +571,37 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      {filteredEvents.length === 0 ? (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="execution-timeline-empty"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
       ) : (
-<span class="cstat-no" title="statement not covered" >        &lt;Virtuoso</span>
-<span class="cstat-no" title="statement not covered" >          style={{ height: 420 }}</span>
-<span class="cstat-no" title="statement not covered" >          data={filteredEvents}</span>
-<span class="cstat-no" title="statement not covered" >          itemContent={(index, event) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >            const row = rows[index]</span>
-<span class="cstat-no" title="statement not covered" >            return (</span>
-<span class="cstat-no" title="statement not covered" >              &lt;GlassPanel className="timeline-row" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;div className="timeline-row-main"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-title"&gt;{row.title}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-subtitle"&gt;{row.subtitle}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-meta"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;div className="timeline-row-side"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-status"&gt;{row.rightTop}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-time"&gt;{row.rightBottom}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="timeline-row-time"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/GlassPanel&gt;</span>
-            )
-<span class="cstat-no" title="statement not covered" >          }}</span>
-<span class="cstat-no" title="statement not covered" >        /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="execution-timeline-list"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;Virtuoso</span>
+<span class="cstat-no" title="statement not covered" >            style={{ height: '100%' }}</span>
+<span class="cstat-no" title="statement not covered" >            data={filteredEvents}</span>
+<span class="cstat-no" title="statement not covered" >            itemContent={(index, event) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >              const row = rows[index]</span>
+<span class="cstat-no" title="statement not covered" >              return (</span>
+<span class="cstat-no" title="statement not covered" >                &lt;GlassPanel className="timeline-row" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;div className="timeline-row-main"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-title"&gt;{row.title}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-subtitle"&gt;{row.subtitle}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-meta"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;div className="timeline-row-side"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-status"&gt;{row.rightTop}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-time"&gt;{row.rightBottom}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="timeline-row-time"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/GlassPanel&gt;</span>
+              )
+<span class="cstat-no" title="statement not covered" >            }}</span>
+<span class="cstat-no" title="statement not covered" >          /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
       )}
 <span class="cstat-no" title="statement not covered" >    &lt;/article&gt;</span>
   )
@@ -595,7 +613,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-26T08:18:17.225Z
+                at 2026-03-26T09:21:32.268Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

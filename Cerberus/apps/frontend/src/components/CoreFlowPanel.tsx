@@ -41,7 +41,7 @@ export function CoreFlowPanel() {
   const flow = useCerberusStore((state) => state.uiState.core_flow)
 
   return (
-    <SectionFrame title={t('flow.title')} description={t('workspace.overview.description')}>
+    <SectionFrame title={t('flow.title')} description={t('workspace.overview.description')} className="core-flow-frame">
       <div className="flow-grid" data-testid="core-flow-panel">
         {STEP_ORDER.map((step, index) => {
           const item = flow[step]

@@ -38,28 +38,10 @@ function normalizeResponseBody(body: unknown): unknown {
   return resolved
 }
 
-function shouldSetIdempotencyKey(method?: string): boolean {
-  const normalized = (method ?? 'GET').toUpperCase()
-  return normalized === 'POST' || normalized === 'PUT' || normalized === 'PATCH' || normalized === 'DELETE'
-}
-
-function createIdempotencyKey(path: string): string {
-  const random =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-  return `idem:${path}:${random}`
-}
-
 export async function callGateway(path: string, gatewayBase: string, init?: RequestInit): Promise<GatewayResponse> {
   const url = `${gatewayBase}${path}`
   try {
     const headers = await buildRequestHeaders(init?.headers)
-    if (shouldSetIdempotencyKey(init?.method) && !headers.has('idempotency-key')) {
-      const idem = createIdempotencyKey(path)
-      headers.set('idempotency-key', idem)
-      headers.set('x-idempotency-key', idem)
-    }
     const response = await fetch(url, {
       ...init,
       headers,

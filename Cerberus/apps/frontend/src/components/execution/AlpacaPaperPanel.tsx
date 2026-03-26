@@ -173,7 +173,7 @@ export function AlpacaPaperPanel({
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
       {account?.error ? <AppErrorNotice error={account.error} className="mt-2" /> : null}
 
-      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result)}>
+      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result?.error)}>
         <pre className="diagnostic-pre">{JSON.stringify(result, null, 2)}</pre>
       </DiagnosticDrawer>
 

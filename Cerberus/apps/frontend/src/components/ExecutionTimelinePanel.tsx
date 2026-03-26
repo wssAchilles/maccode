@@ -133,6 +133,8 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <label className="field-label">
           {t('workspace.execution.search')}
           <input
+            id="timeline-search"
+            name="timeline_search"
             className="field-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -142,33 +144,37 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
       </div>
 
       {filteredEvents.length === 0 ? (
-        <EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} />
+        <div className="execution-timeline-empty">
+          <EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} />
+        </div>
       ) : (
-        <Virtuoso
-          style={{ height: 420 }}
-          data={filteredEvents}
-          itemContent={(index, event) => {
-            const row = rows[index]
-            return (
-              <GlassPanel className="timeline-row" tone="subtle">
-                <div className="timeline-row-main">
-                  <p className="timeline-row-title">{row.title}</p>
-                  <p className="timeline-row-subtitle">{row.subtitle}</p>
-                  <p className="timeline-row-meta">
-                    {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}
-                  </p>
-                </div>
-                <div className="timeline-row-side">
-                  <p className="timeline-row-status">{row.rightTop}</p>
-                  <p className="timeline-row-time">{row.rightBottom}</p>
-                  <p className="timeline-row-time">
-                    {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}
-                  </p>
-                </div>
-              </GlassPanel>
-            )
-          }}
-        />
+        <div className="execution-timeline-list">
+          <Virtuoso
+            style={{ height: '100%' }}
+            data={filteredEvents}
+            itemContent={(index, event) => {
+              const row = rows[index]
+              return (
+                <GlassPanel className="timeline-row" tone="subtle">
+                  <div className="timeline-row-main">
+                    <p className="timeline-row-title">{row.title}</p>
+                    <p className="timeline-row-subtitle">{row.subtitle}</p>
+                    <p className="timeline-row-meta">
+                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}
+                    </p>
+                  </div>
+                  <div className="timeline-row-side">
+                    <p className="timeline-row-status">{row.rightTop}</p>
+                    <p className="timeline-row-time">{row.rightBottom}</p>
+                    <p className="timeline-row-time">
+                      {t('execution.eventTime')}: {formatOptionalIso(event.event_time)}
+                    </p>
+                  </div>
+                </GlassPanel>
+              )
+            }}
+          />
+        </div>
       )}
     </article>
   )
