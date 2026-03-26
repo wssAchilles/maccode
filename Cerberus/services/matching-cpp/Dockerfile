@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY . .
 ARG ENABLE_GRPC_SERVICE=ON
-RUN rm -rf build && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_GRPC_SERVICE=${ENABLE_GRPC_SERVICE} -DBUILD_TESTING=OFF \
+ARG REQUIRE_GRPC_SERVICE=ON
+RUN rm -rf build && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_GRPC_SERVICE=${ENABLE_GRPC_SERVICE} -DREQUIRE_GRPC_SERVICE=${REQUIRE_GRPC_SERVICE} -DBUILD_TESTING=OFF \
     && cmake --build build -j
 
 FROM debian:bookworm-slim

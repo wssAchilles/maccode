@@ -10,29 +10,28 @@ from app.api import (
     build_matching_router,
     build_optimize_router,
     build_signal_router,
+    build_summary_router,
     build_system_router,
 )
 from app.config import settings
 from app.http import register_error_handlers, register_request_id_middleware
-from app.redis_worker import RedisMarketWorker
-from app.signal_store import SignalStore
+from app.runtime_container import build_runtime_container
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
 
 SERVICE_STARTED_AT = monotonic()
-worker = RedisMarketWorker()
-signal_store = SignalStore()
+runtime = build_runtime_container(started_at=SERVICE_STARTED_AT)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await worker.start()
+    await runtime.worker.start()
     try:
         yield
     finally:
-        await worker.stop()
-        await signal_store.aclose()
+        await runtime.worker.stop()
+        await runtime.signal_store.aclose()
 
 
 def _build_cors_origins() -> list[str]:
@@ -59,7 +58,8 @@ app.add_middleware(
 register_request_id_middleware(app)
 register_error_handlers(app, logger)
 
-app.include_router(build_system_router(worker, signal_store, SERVICE_STARTED_AT))
-app.include_router(build_signal_router(worker, signal_store))
+app.include_router(build_system_router(runtime.system_status_service))
+app.include_router(build_signal_router(runtime.signal_service))
+app.include_router(build_summary_router(runtime.summary_service))
 app.include_router(build_optimize_router())
-app.include_router(build_matching_router(worker))
+app.include_router(build_matching_router(runtime.matching_service))

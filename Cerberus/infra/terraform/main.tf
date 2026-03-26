@@ -38,6 +38,10 @@ resource "terraform_data" "policy_guardrails" {
       error_message = "strategy_internal_auth_enabled must be true when environment=production."
     }
     precondition {
+      condition     = !local.is_production || var.strategy_upstream_circuit_enabled
+      error_message = "strategy_upstream_circuit_enabled must be true when environment=production."
+    }
+    precondition {
       condition     = !local.is_production || var.cloud_run_gateway.min_instance_count >= 1
       error_message = "cloud_run_gateway.min_instance_count must be >= 1 when environment=production."
     }
@@ -345,6 +349,14 @@ resource "google_cloud_run_v2_service" "matching" {
         name  = "MATCHING_SUBMIT_LATENCY_WINDOW_SIZE"
         value = tostring(var.matching_submit_latency_window_size)
       }
+      env {
+        name  = "MATCHING_MAX_INFLIGHT_REQUESTS"
+        value = tostring(var.matching_max_inflight_requests)
+      }
+      env {
+        name  = "MATCHING_INFLIGHT_ACQUIRE_TIMEOUT_MS"
+        value = tostring(var.matching_inflight_acquire_timeout_ms)
+      }
     }
   }
 }
@@ -482,6 +494,42 @@ resource "google_cloud_run_v2_service" "strategy" {
         value = var.market_stream_consumer_group
       }
       env {
+        name  = "MARKET_STREAM_RECLAIM_ENABLED"
+        value = tostring(var.market_stream_reclaim_enabled)
+      }
+      env {
+        name  = "MARKET_STREAM_RECLAIM_INTERVAL_MS"
+        value = tostring(var.market_stream_reclaim_interval_ms)
+      }
+      env {
+        name  = "MARKET_STREAM_RECLAIM_IDLE_MS"
+        value = tostring(var.market_stream_reclaim_idle_ms)
+      }
+      env {
+        name  = "MARKET_STREAM_RECLAIM_BATCH_SIZE"
+        value = tostring(var.market_stream_reclaim_batch_size)
+      }
+      env {
+        name  = "MARKET_STREAM_MAX_DELIVERY_ATTEMPTS"
+        value = tostring(var.market_stream_max_delivery_attempts)
+      }
+      env {
+        name  = "MARKET_STREAM_PENDING_WARN_THRESHOLD"
+        value = tostring(var.market_stream_pending_warn_threshold)
+      }
+      env {
+        name  = "MARKET_STREAM_LAG_WARN_THRESHOLD"
+        value = tostring(var.market_stream_lag_warn_threshold)
+      }
+      env {
+        name  = "MARKET_STREAM_POISON_STREAM_KEY"
+        value = var.market_stream_poison_stream_key
+      }
+      env {
+        name  = "MARKET_STREAM_POISON_STREAM_MAXLEN"
+        value = tostring(var.market_stream_poison_stream_maxlen)
+      }
+      env {
         name  = "MARKET_STREAM_LEGACY_PUBSUB_FALLBACK"
         value = tostring(var.market_stream_legacy_pubsub_fallback)
       }
@@ -573,6 +621,34 @@ resource "google_cloud_run_v2_service" "gateway" {
       env {
         name  = "GCP_METADATA_IDENTITY_URL"
         value = var.strategy_internal_auth_metadata_identity_url
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_TIMEOUT_MS"
+        value = tostring(var.strategy_upstream_timeout_ms)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_HEALTH_TIMEOUT_MS"
+        value = tostring(var.strategy_upstream_health_timeout_ms)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_MAX_INFLIGHT"
+        value = tostring(var.strategy_upstream_max_inflight)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_QUEUE_TIMEOUT_MS"
+        value = tostring(var.strategy_upstream_queue_timeout_ms)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_CIRCUIT_ENABLED"
+        value = tostring(var.strategy_upstream_circuit_enabled)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_CIRCUIT_FAILURE_THRESHOLD"
+        value = tostring(var.strategy_upstream_circuit_failure_threshold)
+      }
+      env {
+        name  = "STRATEGY_UPSTREAM_CIRCUIT_OPEN_MS"
+        value = tostring(var.strategy_upstream_circuit_open_ms)
       }
       env {
         name  = "APP_ENV"
@@ -711,6 +787,86 @@ resource "google_cloud_run_v2_service" "gateway" {
       env {
         name  = "REDIS_ORDER_EVENTS_CHANNELS"
         value = var.redis_order_events_channels
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_STREAM_ENABLED"
+        value = tostring(var.redis_order_events_stream_enabled)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_STREAM_KEY"
+        value = var.redis_order_events_stream_key
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_CONSUMER_GROUP"
+        value = var.redis_order_events_consumer_group
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_CONSUMER_NAME"
+        value = var.redis_order_events_consumer_name
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_READ_BATCH_SIZE"
+        value = tostring(var.redis_order_events_read_batch_size)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_READ_BLOCK_MS"
+        value = tostring(var.redis_order_events_read_block_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT"
+        value = tostring(var.redis_order_events_pending_replay_count)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_BATCH_WINDOW_MS"
+        value = tostring(var.redis_order_events_batch_window_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_MAX_RETRIES_BEFORE_FALLBACK"
+        value = tostring(var.redis_order_events_max_retries_before_fallback)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RETRY_BACKOFF_MS"
+        value = tostring(var.redis_order_events_retry_backoff_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RETRY_BACKOFF_MAX_MS"
+        value = tostring(var.redis_order_events_retry_backoff_max_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RECLAIM_ENABLED"
+        value = tostring(var.redis_order_events_reclaim_enabled)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS"
+        value = tostring(var.redis_order_events_reclaim_interval_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS"
+        value = tostring(var.redis_order_events_reclaim_idle_ms)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_RECLAIM_BATCH_SIZE"
+        value = tostring(var.redis_order_events_reclaim_batch_size)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_MAX_DELIVERY_ATTEMPTS"
+        value = tostring(var.redis_order_events_max_delivery_attempts)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_POISON_STREAM_KEY"
+        value = var.redis_order_events_poison_stream_key
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_POISON_STREAM_MAXLEN"
+        value = tostring(var.redis_order_events_poison_stream_maxlen)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_PENDING_WARN_THRESHOLD"
+        value = tostring(var.redis_order_events_pending_warn_threshold)
+      }
+      env {
+        name  = "REDIS_ORDER_EVENTS_LAG_WARN_THRESHOLD"
+        value = tostring(var.redis_order_events_lag_warn_threshold)
       }
       env {
         name  = "REDIS_ORDERBOOK_CHANNEL"

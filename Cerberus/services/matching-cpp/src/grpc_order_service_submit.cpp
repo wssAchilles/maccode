@@ -50,6 +50,11 @@ grpc::Status GrpcOrderService::SubmitOrder(grpc::ServerContext* context,
                                    ? NextGeneratedOrderId(request->account_id())
                                    : request->client_order_id();
 
+  std::optional<InflightPermit> permit;
+  if (grpc::Status status = AcquireInflightPermit(context, "SubmitOrder", &permit); !status.ok()) {
+    return FinalizeSubmitStatus(status, false, started_at);
+  }
+
   const Order order{
       .order_id = order_id,
       .account_id = request->account_id(),

@@ -140,6 +140,8 @@ message HealthResponse {
   uint64 uptime_seconds = 4;
   string schema_version = 5;
   string correlation_id = 6;
+  bool degraded = 7;
+  string degraded_reason = 8;
 }
 
 message GetServiceStatsRequest {}
@@ -162,4 +164,18 @@ message GetServiceStatsResponse {
   double submit_order_latency_p95_ms = 15;
   double submit_order_throughput_rps = 16;
   double trade_throughput_rps = 17;
+  bool degraded = 18;
+  string degraded_reason = 19;
+  uint64 inflight_requests = 20;
+  uint64 inflight_requests_peak = 21;
+  uint64 max_inflight_requests = 22;
+  uint64 backpressure_waits_total = 23;
+  uint64 backpressure_rejections_total = 24;
+  uint64 backpressure_wait_timeouts_total = 25;
+  uint64 backpressure_wait_ms_total = 26;
+  uint64 execution_stream_limit = 27;
+  uint64 submit_latency_window_size = 28;
+  uint64 grpc_min_pollers = 29;
+  uint64 grpc_max_pollers = 30;
+  uint64 grpc_num_cqs = 31;
 }

@@ -94,6 +94,39 @@ async fn main() -> anyhow::Result<()> {
             .filter(|value| *value > 0)
             .unwrap_or(300),
     };
+    let strategy_upstream = StrategyUpstreamConfig {
+        timeout_ms: env::var("STRATEGY_UPSTREAM_TIMEOUT_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(1_800),
+        health_timeout_ms: env::var("STRATEGY_UPSTREAM_HEALTH_TIMEOUT_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(1_500),
+        max_inflight: env::var("STRATEGY_UPSTREAM_MAX_INFLIGHT")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(64),
+        queue_timeout_ms: env::var("STRATEGY_UPSTREAM_QUEUE_TIMEOUT_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(250),
+        circuit_enabled: env_flag("STRATEGY_UPSTREAM_CIRCUIT_ENABLED", true),
+        circuit_failure_threshold: env::var("STRATEGY_UPSTREAM_CIRCUIT_FAILURE_THRESHOLD")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(6),
+        circuit_open_ms: env::var("STRATEGY_UPSTREAM_CIRCUIT_OPEN_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(15_000),
+    };
     if strategy_internal_auth.enabled && strategy_internal_auth.audience.is_none() {
         warn!(
             "STRATEGY_INTERNAL_AUTH_ENABLED=true but STRATEGY_INTERNAL_AUTH_AUDIENCE/STRATEGY_BASE_URL is missing; upstream strategy calls will fail"
@@ -156,6 +189,43 @@ async fn main() -> anyhow::Result<()> {
             .and_then(|raw| raw.trim().parse::<u64>().ok())
             .filter(|value| *value > 0)
             .unwrap_or(5_000),
+        reclaim_enabled: env_flag("REDIS_ORDER_EVENTS_RECLAIM_ENABLED", true),
+        reclaim_interval_ms: env::var("REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .unwrap_or(5_000),
+        reclaim_idle_ms: env::var("REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(30_000),
+        reclaim_batch_size: env::var("REDIS_ORDER_EVENTS_RECLAIM_BATCH_SIZE")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(64),
+        max_delivery_attempts: env::var("REDIS_ORDER_EVENTS_MAX_DELIVERY_ATTEMPTS")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .unwrap_or(8),
+        poison_stream_key: env::var("REDIS_ORDER_EVENTS_POISON_STREAM_KEY")
+            .ok()
+            .map(|raw| raw.trim().to_string())
+            .filter(|raw| !raw.is_empty())
+            .unwrap_or_else(|| "cerberus.order.events.poison".to_string()),
+        poison_stream_maxlen: env::var("REDIS_ORDER_EVENTS_POISON_STREAM_MAXLEN")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .filter(|value| *value > 0)
+            .unwrap_or(20_000),
+        pending_warn_threshold: env::var("REDIS_ORDER_EVENTS_PENDING_WARN_THRESHOLD")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .unwrap_or(2_000),
+        lag_warn_threshold: env::var("REDIS_ORDER_EVENTS_LAG_WARN_THRESHOLD")
+            .ok()
+            .and_then(|raw| raw.trim().parse::<usize>().ok())
+            .unwrap_or(2_000),
     };
     let market_event_stream = MarketEventsStreamPublishConfig {
         enabled: env_flag("REDIS_MARKET_EVENTS_STREAM_ENABLED", true),
@@ -231,6 +301,11 @@ async fn main() -> anyhow::Result<()> {
         market_event_stream,
         strategy_internal_auth,
         strategy_internal_token_cache: Arc::new(RwLock::new(None)),
+        strategy_upstream_semaphore: Arc::new(tokio::sync::Semaphore::new(
+            strategy_upstream.max_inflight,
+        )),
+        strategy_upstream_circuit: Arc::new(RwLock::new(StrategyUpstreamCircuitState::default())),
+        strategy_upstream,
     };
 
     spawn_market_ingest(state.clone());

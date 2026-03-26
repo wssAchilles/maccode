@@ -29,6 +29,11 @@ grpc::Status GrpcOrderService::GetOrderBook(
     return grpc::Status::OK;
   }
 
+  std::optional<InflightPermit> permit;
+  if (grpc::Status status = AcquireInflightPermit(context, "GetOrderBook", &permit); !status.ok()) {
+    return status;
+  }
+
   OrderBookSnapshot snapshot;
   {
     std::scoped_lock<std::mutex> lock(mu_);

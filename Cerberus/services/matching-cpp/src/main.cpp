@@ -1,10 +1,23 @@
+#include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 #include "order_service.hpp"
 
-int main() {
-  std::cout << "Cerberus matching service started (gRPC stub pending integration)." << std::endl;
+namespace {
+
+bool ReadEnvBool(const char* key, bool default_value) {
+  const char* raw = std::getenv(key);
+  if (raw == nullptr || *raw == '\0') {
+    return default_value;
+  }
+  const std::string value(raw);
+  return value == "1" || value == "true" || value == "TRUE" || value == "yes" || value == "on";
+}
+
+int RunWarmupOrderbookProbe() {
+  std::cout << "Cerberus matching warmup probe started (non-gRPC fallback mode)." << std::endl;
 
   OrderService service;
   const auto result = service.Submit(Order{
@@ -37,4 +50,15 @@ int main() {
               << warmup_state->filled_quantity << "/" << warmup_state->quantity << std::endl;
   }
   return 0;
+}
+
+}  // namespace
+
+int main() {
+  if (!ReadEnvBool("MATCHING_ALLOW_STUB_STARTUP", false)) {
+    std::cerr << "non-gRPC matching binary is disabled by default. "
+              << "set MATCHING_ALLOW_STUB_STARTUP=true for diagnostic startup only." << std::endl;
+    return 78;
+  }
+  return RunWarmupOrderbookProbe();
 }

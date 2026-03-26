@@ -12,9 +12,19 @@
 cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars
 terraform init
-terraform plan
-terraform apply
+terraform fmt -check
+terraform validate
+terraform plan -var-file=environments/dev.tfvars -var-file=terraform.tfvars
+terraform apply -var-file=environments/dev.tfvars -var-file=terraform.tfvars
 ```
+
+Environment profile templates are under `infra/terraform/environments/`:
+
+- `dev.tfvars`
+- `staging.tfvars`
+- `prod.tfvars`
+
+Use them as base overlays with your secret-bearing `terraform.tfvars`.
 
 ## Notes
 
@@ -27,7 +37,17 @@ terraform apply
 - Strategy service receives `MATCHING_GRPC_TARGET` from Terraform (`cloud_run_matching_url`) so matching gRPC can be wired without manual env edits.
 - Gateway market events are published to Redis Stream (`redis_market_events_stream_key`) with optional legacy Pub/Sub dual-write.
 - Strategy market ingestion uses Redis Stream consumer group (`market_stream_consumer_group`) with optional Pub/Sub fallback.
-- Matching capacity tunables are exposed (`matching_execution_stream_limit`, `matching_submit_latency_window_size`).
+- Strategy market stream reliability knobs are exposed for reclaim/poison/backlog:
+  - `market_stream_reclaim_enabled`, `market_stream_reclaim_interval_ms`, `market_stream_reclaim_idle_ms`, `market_stream_reclaim_batch_size`
+  - `market_stream_max_delivery_attempts`, `market_stream_pending_warn_threshold`, `market_stream_lag_warn_threshold`
+  - `market_stream_poison_stream_key`, `market_stream_poison_stream_maxlen`
+- Gateway order stream reliability knobs are exposed for reclaim/poison/backlog:
+  - `redis_order_events_reclaim_enabled`, `redis_order_events_reclaim_interval_ms`, `redis_order_events_reclaim_idle_ms`, `redis_order_events_reclaim_batch_size`
+  - `redis_order_events_max_delivery_attempts`, `redis_order_events_pending_warn_threshold`, `redis_order_events_lag_warn_threshold`
+  - `redis_order_events_poison_stream_key`, `redis_order_events_poison_stream_maxlen`
+- Matching capacity tunables are exposed:
+  - `matching_execution_stream_limit`, `matching_submit_latency_window_size`
+  - `matching_max_inflight_requests`, `matching_inflight_acquire_timeout_ms`
 - Matching gRPC thread/CQ tuning is exposed (`matching_grpc_max_pollers`, `matching_grpc_min_pollers`, `matching_grpc_num_cqs`).
 - Cloud Run runtime/capacity is parameterized per service:
   - `cloud_run_gateway`, `cloud_run_strategy`, `cloud_run_matching`
@@ -36,3 +56,7 @@ terraform apply
   - `strategy_internal_auth_enabled`
   - `strategy_internal_auth_token_ttl_seconds`
   - `strategy_internal_auth_metadata_identity_url`
+- Gateway strategy upstream resilience can be tuned:
+  - `strategy_upstream_timeout_ms`, `strategy_upstream_health_timeout_ms`
+  - `strategy_upstream_max_inflight`, `strategy_upstream_queue_timeout_ms`
+  - `strategy_upstream_circuit_enabled`, `strategy_upstream_circuit_failure_threshold`, `strategy_upstream_circuit_open_ms`

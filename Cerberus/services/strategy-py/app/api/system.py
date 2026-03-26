@@ -5,18 +5,10 @@ from fastapi.responses import JSONResponse, Response
 
 from app.config import settings
 from app.http import PROMETHEUS_CONTENT_TYPE, request_id_from
-from app.redis_worker import RedisMarketWorker
-from app.signal_store import SignalStore
-from app.api.system_helpers import (
-    build_metrics_lines,
-    build_persistence_status,
-    build_ready_content,
-)
+from app.system_status_service import SystemStatusService
 
 
-def build_system_router(
-    worker: RedisMarketWorker, signal_store: SignalStore, started_at: float
-) -> APIRouter:
+def build_system_router(system_status: SystemStatusService) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health")
@@ -29,28 +21,21 @@ def build_system_router(
 
     @router.get("/ready")
     async def ready(request: Request) -> JSONResponse:
-        status_code, content = await build_ready_content(
-            worker,
-            started_at=started_at,
+        status_code, content = await system_status.ready(
             request_id=request_id_from(request),
         )
         return JSONResponse(status_code=status_code, content=content)
 
     @router.get("/metrics")
     async def metrics(request: Request) -> Response:
-        lines = await build_metrics_lines(
-            worker,
-            signal_store,
-            started_at=started_at,
+        lines = await system_status.metrics_lines(
             request_id=request_id_from(request),
         )
         return Response(content="\n".join(lines) + "\n", media_type=PROMETHEUS_CONTENT_TYPE)
 
     @router.get("/api/v1/status/persistence")
     async def persistence_status(request: Request) -> dict[str, Any]:
-        return await build_persistence_status(
-            worker,
-            signal_store,
+        return await system_status.persistence(
             request_id=request_id_from(request),
         )
 

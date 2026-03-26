@@ -94,6 +94,7 @@ class MatchingHealthView(BaseModel):
     enabled: bool = True
     reachable: bool = True
     degraded: bool = False
+    degraded_reason: str | None = None
     status: str
     service: str
     version: str
@@ -107,6 +108,7 @@ class MatchingHealthView(BaseModel):
 class MatchingStatsView(BaseModel):
     enabled: bool = True
     degraded: bool = False
+    degraded_reason: str | None = None
     live_orders: int
     trade_count: int
     tracked_orders: int
@@ -120,6 +122,18 @@ class MatchingStatsView(BaseModel):
     submit_order_latency_p95_ms: float = 0.0
     submit_order_throughput_rps: float = 0.0
     trade_throughput_rps: float = 0.0
+    inflight_requests: int = 0
+    inflight_requests_peak: int = 0
+    max_inflight_requests: int = 0
+    backpressure_waits_total: int = 0
+    backpressure_rejections_total: int = 0
+    backpressure_wait_timeouts_total: int = 0
+    backpressure_wait_ms_total: int = 0
+    execution_stream_limit: int = 0
+    submit_latency_window_size: int = 0
+    grpc_min_pollers: int = 0
+    grpc_max_pollers: int = 0
+    grpc_num_cqs: int = 0
     request_id: str | None = None
     reason: str | None = None
     schema_version: str | None = None

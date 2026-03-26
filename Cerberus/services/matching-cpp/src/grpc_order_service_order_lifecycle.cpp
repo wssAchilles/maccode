@@ -20,6 +20,11 @@ grpc::Status GrpcOrderService::CancelOrder(
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
   }
 
+  std::optional<InflightPermit> permit;
+  if (grpc::Status status = AcquireInflightPermit(context, "CancelOrder", &permit); !status.ok()) {
+    return status;
+  }
+
   {
     std::scoped_lock<std::mutex> lock(mu_);
     const auto order = service_.GetOrder(request->order_id());
@@ -56,6 +61,11 @@ grpc::Status GrpcOrderService::GetOrder(grpc::ServerContext* context,
   }
   if (request->order_id().empty()) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "order_id is required");
+  }
+
+  std::optional<InflightPermit> permit;
+  if (grpc::Status status = AcquireInflightPermit(context, "GetOrder", &permit); !status.ok()) {
+    return status;
   }
 
   std::optional<OrderView> order;

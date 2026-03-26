@@ -35,6 +35,11 @@ grpc::Status GrpcOrderService::StreamExecutions(
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "account_id is required");
   }
 
+  std::optional<InflightPermit> permit;
+  if (grpc::Status status = AcquireInflightPermit(context, "StreamExecutions", &permit); !status.ok()) {
+    return status;
+  }
+
   std::vector<ExecutionEvent> executions;
   {
     std::scoped_lock<std::mutex> lock(mu_);

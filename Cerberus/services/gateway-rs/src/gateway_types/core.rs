@@ -5,7 +5,7 @@ use std::{
 
 use reqwest::Client;
 use serde::Serialize;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{broadcast, RwLock, Semaphore};
 
 use crate::gateway_types::{BinanceSymbolRule, MarketEvent, OrderEvent, TradingPolicy};
 
@@ -41,6 +41,9 @@ pub(crate) struct AppState {
     pub(crate) market_event_stream: MarketEventsStreamPublishConfig,
     pub(crate) strategy_internal_auth: InternalServiceAuthConfig,
     pub(crate) strategy_internal_token_cache: Arc<RwLock<Option<CachedInternalServiceToken>>>,
+    pub(crate) strategy_upstream: StrategyUpstreamConfig,
+    pub(crate) strategy_upstream_circuit: Arc<RwLock<StrategyUpstreamCircuitState>>,
+    pub(crate) strategy_upstream_semaphore: Arc<Semaphore>,
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +91,15 @@ pub(crate) struct OrderEventsStreamConfig {
     pub(crate) max_retries_before_fallback: usize,
     pub(crate) retry_backoff_base_ms: u64,
     pub(crate) retry_backoff_max_ms: u64,
+    pub(crate) reclaim_enabled: bool,
+    pub(crate) reclaim_interval_ms: u64,
+    pub(crate) reclaim_idle_ms: u64,
+    pub(crate) reclaim_batch_size: usize,
+    pub(crate) max_delivery_attempts: usize,
+    pub(crate) poison_stream_key: String,
+    pub(crate) poison_stream_maxlen: usize,
+    pub(crate) pending_warn_threshold: usize,
+    pub(crate) lag_warn_threshold: usize,
 }
 
 #[derive(Clone)]
@@ -111,6 +123,24 @@ pub(crate) struct InternalServiceAuthConfig {
 pub(crate) struct CachedInternalServiceToken {
     pub(crate) token: String,
     pub(crate) expires_at_ms: u64,
+}
+
+#[derive(Clone)]
+pub(crate) struct StrategyUpstreamConfig {
+    pub(crate) timeout_ms: u64,
+    pub(crate) health_timeout_ms: u64,
+    pub(crate) max_inflight: usize,
+    pub(crate) queue_timeout_ms: u64,
+    pub(crate) circuit_enabled: bool,
+    pub(crate) circuit_failure_threshold: u64,
+    pub(crate) circuit_open_ms: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct StrategyUpstreamCircuitState {
+    pub(crate) consecutive_failures: u64,
+    pub(crate) opened_at_ms: Option<u64>,
+    pub(crate) last_failure_reason: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -167,6 +197,22 @@ pub(crate) struct GatewayMetrics {
     pub(crate) order_stream_consecutive_failures: u64,
     pub(crate) last_order_stream_retry_backoff_ms: Option<u64>,
     pub(crate) last_order_stream_id: Option<String>,
+    pub(crate) order_stream_pending: u64,
+    pub(crate) order_stream_lag: u64,
+    pub(crate) order_stream_reclaim_attempts: u64,
+    pub(crate) order_stream_reclaimed_events: u64,
+    pub(crate) order_stream_reclaim_failures: u64,
+    pub(crate) order_stream_poisoned_events: u64,
+    pub(crate) last_order_stream_reclaim_at: Option<u64>,
+    pub(crate) last_order_stream_poison_id: Option<String>,
+    pub(crate) strategy_upstream_requests_total: u64,
+    pub(crate) strategy_upstream_failures_total: u64,
+    pub(crate) strategy_upstream_auth_failures_total: u64,
+    pub(crate) strategy_upstream_circuit_rejections_total: u64,
+    pub(crate) strategy_upstream_queue_rejections_total: u64,
+    pub(crate) strategy_upstream_circuit_open: bool,
+    pub(crate) strategy_upstream_circuit_opened_at: Option<u64>,
+    pub(crate) strategy_upstream_last_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]

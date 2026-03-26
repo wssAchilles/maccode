@@ -1,0 +1,47 @@
+environment = "dev"
+
+firebase_enabled       = true
+supabase_enabled       = true
+matching_enabled       = true
+firebase_auth_required = true
+jwt_auth_enabled       = false
+
+internal_services_ingress = true
+strategy_public_access    = false
+matching_public_access    = false
+gateway_public_access     = true
+matching_max_inflight_requests = 512
+matching_inflight_acquire_timeout_ms = 25
+
+cloud_run_gateway = {
+  min_instance_count               = 1
+  max_instance_count               = 30
+  max_instance_request_concurrency = 80
+  timeout_seconds                  = 900
+  cpu                              = "1"
+  memory                           = "1Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}
+
+cloud_run_strategy = {
+  min_instance_count               = 1
+  max_instance_count               = 20
+  max_instance_request_concurrency = 20
+  timeout_seconds                  = 300
+  cpu                              = "2"
+  memory                           = "2Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}
+
+cloud_run_matching = {
+  min_instance_count               = 1
+  max_instance_count               = 20
+  max_instance_request_concurrency = 16
+  timeout_seconds                  = 120
+  cpu                              = "2"
+  memory                           = "2Gi"
+  cpu_idle                         = false
+  startup_cpu_boost                = true
+}

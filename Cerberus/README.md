@@ -10,8 +10,24 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
 - Services:
   - `apps/frontend`: React + TypeScript + Zustand + Lightweight Charts + Firebase SDK bootstrap.
   - `services/gateway-rs`: Rust Axum gateway, Binance stream ingestion, Redis publishing, REST/WS APIs.
+    - Order ingest skeleton:
+      - `ingest/orders.rs` for ingest orchestrator.
+      - `ingest/orders/stream.rs` for Redis Stream consumer-group ingest/reclaim/poison path.
+      - `ingest/orders/pubsub.rs` for legacy Pub/Sub fallback.
+      - `ingest/orders/stream_metrics.rs` for stream ingest metrics state transitions.
+    - Strategy upstream skeleton:
+      - `handlers/trading/strategy/upstream.rs` for request orchestration.
+      - `handlers/trading/strategy/upstream/{error,queue,circuit,metrics}.rs` for upstream runtime concerns.
 - `services/strategy-py`: FastAPI quant service + Gurobi mean-variance optimization endpoint.
   - Optional Firebase Firestore signal persistence.
+  - Runtime skeleton:
+    - `runtime_container.py` for dependency assembly.
+    - `signal_service.py` / `summary_service.py` / `matching_service.py` for API-facing application services.
+    - `system_status_service.py` for ready/metrics/persistence application service.
+    - `signal_engine_service.py` for per-symbol signal engine orchestration.
+    - `worker_idempotency.py` for idempotency ownership.
+    - `worker_lifecycle.py` for worker start/stop/supervisor lifecycle.
+    - `market_ingest_runtime.py` + `event_runtime.py` for stream/event orchestration.
 - `services/matching-cpp`: C++20 matching core + order service layer (execution journal, snapshot/stats) + GTest.
   - gRPC build path enabled when `gRPC + Protobuf` dependencies are present.
 - Infra:
@@ -49,6 +65,7 @@ Industrial event-driven microservices skeleton for quant trading and high-freque
   - `GET /api/v1/signal`
   - `GET /api/v1/signals/recent`
   - `GET /api/v1/status/persistence`
+  - `GET /api/v1/summary` (internal aggregate endpoint used by Gateway with fallback)
   - `POST /api/v1/signal/ingest`
   - `POST /api/v1/matching/orders`
   - `POST /api/v1/matching/orders/{order_id}/cancel`
@@ -227,6 +244,9 @@ Gateway stream envs:
 - `REDIS_ORDER_EVENTS_STREAM_ENABLED` / `REDIS_ORDER_EVENTS_STREAM_KEY` / `REDIS_ORDER_EVENTS_CONSUMER_GROUP` / `REDIS_ORDER_EVENTS_CONSUMER_NAME`
 - `REDIS_ORDER_EVENTS_READ_BATCH_SIZE` / `REDIS_ORDER_EVENTS_READ_BLOCK_MS` / `REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT` / `REDIS_ORDER_EVENTS_BATCH_WINDOW_MS`
 - `REDIS_ORDER_EVENTS_MAX_RETRIES_BEFORE_FALLBACK` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MS` / `REDIS_ORDER_EVENTS_RETRY_BACKOFF_MAX_MS`
+- `REDIS_ORDER_EVENTS_RECLAIM_ENABLED` / `REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS` / `REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS` / `REDIS_ORDER_EVENTS_RECLAIM_BATCH_SIZE`
+- `REDIS_ORDER_EVENTS_MAX_DELIVERY_ATTEMPTS` / `REDIS_ORDER_EVENTS_POISON_STREAM_KEY` / `REDIS_ORDER_EVENTS_POISON_STREAM_MAXLEN`
+- `REDIS_ORDER_EVENTS_PENDING_WARN_THRESHOLD` / `REDIS_ORDER_EVENTS_LAG_WARN_THRESHOLD`
 - `STRATEGY_SUMMARY_CACHE_TTL_MS` (gateway side short-lived cache for `/api/v1/strategy/summary`)
 - `READY_MAX_MARKET_STALENESS_MS` (optional ready gate; `0` disables market freshness checks)
 - `UNIT_REQUEST_COST_USD` (cost baseline used by gateway `/metrics` + `/api/v1/metrics`)
@@ -237,11 +257,15 @@ Gateway stream envs:
 - `STRATEGY_BASE_URL` (optional strategy upstream probe for gateway `/api/v1/external/status`)
 - `STRATEGY_INTERNAL_AUTH_ENABLED` / `STRATEGY_INTERNAL_AUTH_AUDIENCE` / `STRATEGY_INTERNAL_AUTH_TOKEN_TTL_SECONDS`
 - `GCP_METADATA_IDENTITY_URL` (override metadata identity endpoint when needed)
+- `STRATEGY_UPSTREAM_TIMEOUT_MS` / `STRATEGY_UPSTREAM_HEALTH_TIMEOUT_MS`
+- `STRATEGY_UPSTREAM_MAX_INFLIGHT` / `STRATEGY_UPSTREAM_QUEUE_TIMEOUT_MS`
+- `STRATEGY_UPSTREAM_CIRCUIT_ENABLED` / `STRATEGY_UPSTREAM_CIRCUIT_FAILURE_THRESHOLD` / `STRATEGY_UPSTREAM_CIRCUIT_OPEN_MS`
 - `TRADING_POLICY_ENFORCED` (server-side risk gate)
 - `BINANCE_ALLOWED_SYMBOLS` / `ALPACA_ALLOWED_SYMBOLS`
 - `MAX_BINANCE_ORDER_QTY` / `MAX_BINANCE_ORDER_NOTIONAL_USD`
 - `MAX_ALPACA_ORDER_QTY` / `MAX_ALPACA_LIMIT_NOTIONAL_USD`
 - `MATCHING_SUBMIT_LATENCY_WINDOW_SIZE` (rolling sample size for matching submit P95)
+- `MATCHING_MAX_INFLIGHT_REQUESTS` / `MATCHING_INFLIGHT_ACQUIRE_TIMEOUT_MS` (matching backpressure budget/queue wait)
 - `MATCHING_GRPC_MAX_POLLERS` / `MATCHING_GRPC_MIN_POLLERS` / `MATCHING_GRPC_NUM_CQS`
 
 Gateway external trading endpoints:
@@ -260,6 +284,9 @@ Signal persistence path:
   - `IDEMPOTENCY_STORE_REDIS_ENABLED`, `IDEMPOTENCY_REDIS_KEY_PREFIX`, `SIGNAL_IDEMPOTENCY_TTL_SECONDS`
 - Strategy market ingest can use Redis Stream consumer group:
   - `MARKET_STREAM_ENABLED`, `MARKET_STREAM_KEY`, `MARKET_STREAM_CONSUMER_GROUP`, `MARKET_STREAM_LEGACY_PUBSUB_FALLBACK`
+  - `MARKET_STREAM_RECLAIM_ENABLED`, `MARKET_STREAM_RECLAIM_INTERVAL_MS`, `MARKET_STREAM_RECLAIM_IDLE_MS`, `MARKET_STREAM_RECLAIM_BATCH_SIZE`
+  - `MARKET_STREAM_MAX_DELIVERY_ATTEMPTS`, `MARKET_STREAM_POISON_STREAM_KEY`, `MARKET_STREAM_POISON_STREAM_MAXLEN`
+  - `MARKET_STREAM_PENDING_WARN_THRESHOLD`, `MARKET_STREAM_LAG_WARN_THRESHOLD`
 - Matching gRPC schema fallback can be pinned with:
   - `CERBERUS_EVENT_SCHEMA_VERSION` (default `v1`)
 
@@ -276,6 +303,10 @@ Matching service runtime capabilities:
 - Matching `GetServiceStats` now includes capacity baselines:
   - `submit_order_requests_total`, `submit_order_errors_total`, `submit_order_rejections_total`
   - `submit_order_latency_p95_ms`, `submit_order_throughput_rps`, `trade_throughput_rps`
+  - `inflight_requests`, `inflight_requests_peak`, `max_inflight_requests`
+  - `backpressure_waits_total`, `backpressure_rejections_total`, `backpressure_wait_timeouts_total`, `backpressure_wait_ms_total`
+  - runtime knobs echo: `execution_stream_limit`, `submit_latency_window_size`, `grpc_min_pollers`, `grpc_max_pollers`, `grpc_num_cqs`
+- Non-gRPC fallback binary startup is disabled by default (`MATCHING_ALLOW_STUB_STARTUP=true` enables diagnostic warmup only).
 - Local gRPC build command: `cmake -S services/matching-cpp -B services/matching-cpp/build-grpc -DENABLE_GRPC_SERVICE=ON`
 
 OrderService RPC set:
@@ -319,9 +350,16 @@ Cloud deployment workflow is `.github/workflows/deploy.yml`:
 - Builds and deploys `gateway-rs` + `strategy-py` to Cloud Run.
 - Builds frontend and deploys to Firebase Hosting.
 - Runs deployed e2e/lighthouse gate against the live Firebase URL.
+- Runs backend deploy gate with latency/throughput/unit-cost thresholds against deployed gateway.
 - Requires GitHub secrets `FIREBASE_E2E_EMAIL` and `FIREBASE_E2E_PASSWORD` for auth-enabled gate runs.
 - Requires exchange secrets `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `ALPACA_API_KEY`, `ALPACA_API_SECRET` for trading endpoints.
 - Requires `JWT_HS256_SECRET` and runs `scripts/validate_deploy_policy.sh` as deploy gate.
+
+Operational references:
+
+- `docs/ops/runbook-stream-reliability.md`
+- `docs/ops/alerts-and-slo.md`
+- `docs/ops/capacity-baseline.md`
 
 ## Post-Deploy Chrome DevTools MCP Gate (Manual Release Blocker)
 

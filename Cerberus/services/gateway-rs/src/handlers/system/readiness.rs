@@ -44,6 +44,19 @@ pub(super) fn build_ready_payload(
     {
         reasons.push("order_stream_unstable".to_string());
     }
+    if state.order_event_stream.pending_warn_threshold > 0
+        && metrics.order_stream_pending > state.order_event_stream.pending_warn_threshold as u64
+    {
+        reasons.push("order_stream_pending_high".to_string());
+    }
+    if state.order_event_stream.lag_warn_threshold > 0
+        && metrics.order_stream_lag > state.order_event_stream.lag_warn_threshold as u64
+    {
+        reasons.push("order_stream_lag_high".to_string());
+    }
+    if metrics.strategy_upstream_circuit_open {
+        reasons.push("strategy_upstream_circuit_open".to_string());
+    }
     if state.ready_max_market_staleness_ms > 0 {
         match market_staleness_ms {
             Some(staleness) if staleness > state.ready_max_market_staleness_ms => {
@@ -88,7 +101,18 @@ pub(super) fn build_ready_payload(
                 "last_market_ingest_error": metrics.last_market_ingest_error,
                 "last_order_ingest_error": metrics.last_order_ingest_error,
                 "order_stream_consecutive_failures": metrics.order_stream_consecutive_failures,
-                "order_stream_fallbacks": metrics.order_stream_fallbacks
+                "order_stream_fallbacks": metrics.order_stream_fallbacks,
+                "order_stream_pending": metrics.order_stream_pending,
+                "order_stream_lag": metrics.order_stream_lag,
+                "order_stream_reclaim_attempts": metrics.order_stream_reclaim_attempts,
+                "order_stream_reclaimed_events": metrics.order_stream_reclaimed_events,
+                "order_stream_reclaim_failures": metrics.order_stream_reclaim_failures,
+                "order_stream_poisoned_events": metrics.order_stream_poisoned_events,
+                "last_order_stream_reclaim_at": metrics.last_order_stream_reclaim_at,
+                "last_order_stream_poison_id": metrics.last_order_stream_poison_id,
+                "strategy_upstream_circuit_open": metrics.strategy_upstream_circuit_open,
+                "strategy_upstream_circuit_opened_at": metrics.strategy_upstream_circuit_opened_at,
+                "strategy_upstream_last_error": metrics.strategy_upstream_last_error
             },
             "security": {
                 "jwt_required": state.jwt_auth.effective_required(),

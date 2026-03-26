@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     market_stream_max_retries_before_fallback: int = 6
     market_stream_retry_backoff_ms: int = 200
     market_stream_retry_backoff_max_ms: int = 5000
+    market_stream_reclaim_enabled: bool = True
+    market_stream_reclaim_interval_ms: int = 5000
+    market_stream_reclaim_idle_ms: int = 30000
+    market_stream_reclaim_batch_size: int = 64
+    market_stream_max_delivery_attempts: int = 8
+    market_stream_pending_warn_threshold: int = 2000
+    market_stream_lag_warn_threshold: int = 2000
+    market_stream_poison_stream_key: str = "cerberus.market.events.poison"
+    market_stream_poison_stream_maxlen: int = 20000
     market_stream_legacy_pubsub_fallback: bool = True
     signal_channel: str = "strategy.signals.default"
     fast_window: int = 5

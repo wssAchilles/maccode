@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #include "grpc_request_logging.hpp"
@@ -34,19 +35,6 @@ bool ReadEnvBool(const char* key, bool default_value) {
   return default_value;
 }
 
-std::size_t ReadEnvSize(const char* key, std::size_t default_value) {
-  const std::string raw = ReadEnvString(key);
-  if (raw.empty()) {
-    return default_value;
-  }
-  try {
-    const auto parsed = static_cast<std::size_t>(std::stoull(raw));
-    return parsed > 0 ? parsed : default_value;
-  } catch (...) {
-    return default_value;
-  }
-}
-
 std::string TrimAscii(std::string value) {
   const auto begin = value.find_first_not_of(" \t\r\n");
   if (begin == std::string::npos) {
@@ -58,7 +46,7 @@ std::string TrimAscii(std::string value) {
 
 }  // namespace
 
-GrpcOrderService::GrpcOrderService(OrderService& service)
+GrpcOrderService::GrpcOrderService(OrderService& service, GrpcRuntimeConfig runtime_config)
     : service_(service),
       started_at_(std::chrono::steady_clock::now()),
       service_version_([] {
@@ -83,8 +71,17 @@ GrpcOrderService::GrpcOrderService(OrderService& service)
         }
         return raw;
       }()),
-      execution_stream_limit_(ReadEnvSize("MATCHING_EXECUTION_STREAM_LIMIT", 500)),
-      submit_latency_window_size_(ReadEnvSize("MATCHING_SUBMIT_LATENCY_WINDOW_SIZE", 1024)) {}
+      grpc_min_pollers_(std::max(runtime_config.min_pollers, 1)),
+      grpc_max_pollers_(std::max(runtime_config.max_pollers, 1)),
+      grpc_num_cqs_(std::max(runtime_config.num_cqs, 1)),
+      execution_stream_limit_(std::max<std::size_t>(runtime_config.execution_stream_limit, 1)),
+      submit_latency_window_size_(std::max<std::size_t>(runtime_config.submit_latency_window_size, 1)),
+      max_inflight_requests_(std::max<std::size_t>(runtime_config.max_inflight_requests, 1)),
+      inflight_acquire_timeout_ms_(runtime_config.inflight_acquire_timeout_ms) {
+  grpc_max_pollers_ = std::max(grpc_max_pollers_, 1);
+  grpc_min_pollers_ = std::clamp(grpc_min_pollers_, 1, grpc_max_pollers_);
+  grpc_num_cqs_ = std::clamp(grpc_num_cqs_, 1, grpc_max_pollers_);
+}
 
 Side GrpcOrderService::ToDomainSide(cerberus::order::v1::Side side, bool& ok) {
   ok = true;
@@ -193,6 +190,108 @@ void GrpcOrderService::MarkDegraded(grpc::ServerContext* context, const std::str
   context->AddTrailingMetadata("x-cerberus-degraded", "true");
   if (!reason.empty()) {
     context->AddTrailingMetadata("x-cerberus-degraded-reason", reason);
+  }
+}
+
+void GrpcOrderService::MarkBackpressure(grpc::ServerContext* context, const std::string& reason) const {
+  if (context == nullptr) {
+    return;
+  }
+  context->AddTrailingMetadata("x-cerberus-backpressure", "true");
+  if (!reason.empty()) {
+    context->AddTrailingMetadata("x-cerberus-backpressure-reason", reason);
+  }
+}
+
+grpc::Status GrpcOrderService::AcquireInflightPermit(grpc::ServerContext* context, const char* rpc_name,
+                                                      std::optional<InflightPermit>* permit) {
+  if (permit == nullptr) {
+    return grpc::Status(grpc::StatusCode::INTERNAL, "inflight permit container is null");
+  }
+
+  const auto started_at = std::chrono::steady_clock::now();
+  const std::uint64_t limit =
+      static_cast<std::uint64_t>(std::max<std::size_t>(max_inflight_requests_, 1));
+  bool waited = false;
+
+  while (true) {
+    std::uint64_t inflight_now = inflight_requests_.load(std::memory_order_relaxed);
+    while (inflight_now < limit) {
+      const std::uint64_t next = inflight_now + 1;
+      if (inflight_requests_.compare_exchange_weak(inflight_now, next, std::memory_order_acq_rel,
+                                                   std::memory_order_relaxed)) {
+        ObserveInflightPeak(next);
+        if (waited) {
+          const auto waited_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::steady_clock::now() - started_at)
+                                     .count();
+          backpressure_wait_ms_total_.fetch_add(
+              static_cast<std::uint64_t>(std::max<std::int64_t>(waited_ms, 0)),
+              std::memory_order_relaxed);
+        }
+        *permit = InflightPermit(this);
+        return grpc::Status::OK;
+      }
+    }
+
+    if (context != nullptr && context->IsCancelled()) {
+      return grpc::Status(grpc::StatusCode::CANCELLED, "request cancelled while waiting for capacity");
+    }
+
+    const auto waited_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::steady_clock::now() - started_at)
+                               .count();
+    const auto waited_ms_u64 = static_cast<std::uint64_t>(std::max<std::int64_t>(waited_ms, 0));
+    const bool timed_out =
+        inflight_acquire_timeout_ms_ > 0 && waited_ms_u64 >= inflight_acquire_timeout_ms_;
+    const bool reject_immediately = inflight_acquire_timeout_ms_ == 0;
+    if (reject_immediately || timed_out) {
+      backpressure_rejections_total_.fetch_add(1, std::memory_order_relaxed);
+      if (timed_out) {
+        backpressure_wait_timeouts_total_.fetch_add(1, std::memory_order_relaxed);
+      }
+      if (waited_ms_u64 > 0) {
+        backpressure_wait_ms_total_.fetch_add(waited_ms_u64, std::memory_order_relaxed);
+      }
+      std::ostringstream reason;
+      reason << "backpressure limit reached (max_inflight=" << limit
+             << ", acquire_timeout_ms=" << inflight_acquire_timeout_ms_;
+      if (rpc_name != nullptr && *rpc_name != '\0') {
+        reason << ", rpc=" << rpc_name;
+      }
+      reason << ")";
+      const auto reason_text = reason.str();
+      MarkBackpressure(context, reason_text);
+      return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED, reason_text);
+    }
+
+    if (!waited) {
+      backpressure_waits_total_.fetch_add(1, std::memory_order_relaxed);
+      waited = true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void GrpcOrderService::ReleaseInflightPermit() {
+  std::uint64_t current = inflight_requests_.load(std::memory_order_relaxed);
+  while (current > 0) {
+    const std::uint64_t next = current - 1;
+    if (inflight_requests_.compare_exchange_weak(current, next, std::memory_order_acq_rel,
+                                                 std::memory_order_relaxed)) {
+      return;
+    }
+  }
+}
+
+void GrpcOrderService::ObserveInflightPeak(std::uint64_t inflight_after_acquire) {
+  std::uint64_t peak = inflight_requests_peak_.load(std::memory_order_relaxed);
+  while (inflight_after_acquire > peak) {
+    if (inflight_requests_peak_.compare_exchange_weak(peak, inflight_after_acquire,
+                                                      std::memory_order_relaxed,
+                                                      std::memory_order_relaxed)) {
+      return;
+    }
   }
 }
 

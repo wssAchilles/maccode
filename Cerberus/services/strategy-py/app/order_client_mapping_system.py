@@ -25,6 +25,7 @@ def health_disabled_payload() -> dict[str, Any]:
         "enabled": False,
         "reachable": False,
         "degraded": False,
+        "degraded_reason": None,
         "status": "disabled",
         "service": "matching-cpp",
         "version": "",
@@ -42,16 +43,21 @@ def health_ok_payload(
     degraded_reason: str | None = None,
 ) -> dict[str, Any]:
     schema_version, correlation_id = _response_context(response, request_id)
+    response_degraded = bool(getattr(response, "degraded", False))
+    response_degraded_reason = _normalize_text(getattr(response, "degraded_reason", None))
+    effective_degraded = degraded or response_degraded
+    effective_reason = degraded_reason or response_degraded_reason
     return {
         "enabled": True,
         "reachable": True,
-        "degraded": degraded,
+        "degraded": effective_degraded,
+        "degraded_reason": effective_reason,
         "status": response.status,
         "service": response.service,
         "version": response.version,
         "uptime_seconds": int(response.uptime_seconds),
         "request_id": request_id,
-        "reason": degraded_reason,
+        "reason": effective_reason,
         "schema_version": schema_version,
         "correlation_id": correlation_id,
     }
@@ -62,6 +68,7 @@ def health_timeout_payload(request_id: str) -> dict[str, Any]:
         "enabled": True,
         "reachable": False,
         "degraded": True,
+        "degraded_reason": "matching health timeout",
         "status": "timeout",
         "service": "matching-cpp",
         "version": "",
@@ -74,15 +81,17 @@ def health_timeout_payload(request_id: str) -> dict[str, Any]:
 
 
 def health_error_payload(exc: grpc.aio.AioRpcError, request_id: str) -> dict[str, Any]:
+    reason = exc.details()
     return {
         "enabled": True,
         "reachable": False,
         "degraded": True,
+        "degraded_reason": reason,
         "status": exc.code().name,
         "service": "matching-cpp",
         "version": "",
         "uptime_seconds": 0,
-        "reason": exc.details(),
+        "reason": reason,
         "request_id": request_id,
         "schema_version": None,
         "correlation_id": request_id,
@@ -93,6 +102,7 @@ def stats_disabled_payload() -> dict[str, Any]:
     return {
         "enabled": False,
         "degraded": False,
+        "degraded_reason": None,
         "live_orders": 0,
         "trade_count": 0,
         "tracked_orders": 0,
@@ -106,6 +116,18 @@ def stats_disabled_payload() -> dict[str, Any]:
         "submit_order_latency_p95_ms": 0.0,
         "submit_order_throughput_rps": 0.0,
         "trade_throughput_rps": 0.0,
+        "inflight_requests": 0,
+        "inflight_requests_peak": 0,
+        "max_inflight_requests": 0,
+        "backpressure_waits_total": 0,
+        "backpressure_rejections_total": 0,
+        "backpressure_wait_timeouts_total": 0,
+        "backpressure_wait_ms_total": 0,
+        "execution_stream_limit": 0,
+        "submit_latency_window_size": 0,
+        "grpc_min_pollers": 0,
+        "grpc_max_pollers": 0,
+        "grpc_num_cqs": 0,
         "schema_version": None,
         "correlation_id": None,
     }
@@ -119,9 +141,14 @@ def stats_payload(
     degraded_reason: str | None = None,
 ) -> dict[str, Any]:
     schema_version, correlation_id = _response_context(response, request_id)
+    response_degraded = bool(getattr(response, "degraded", False))
+    response_degraded_reason = _normalize_text(getattr(response, "degraded_reason", None))
+    effective_degraded = degraded or response_degraded
+    effective_reason = degraded_reason or response_degraded_reason
     return {
         "enabled": True,
-        "degraded": degraded,
+        "degraded": effective_degraded,
+        "degraded_reason": effective_reason,
         "live_orders": int(response.live_orders),
         "trade_count": int(response.trade_count),
         "tracked_orders": int(response.tracked_orders),
@@ -143,8 +170,26 @@ def stats_payload(
             getattr(response, "submit_order_throughput_rps", 0.0)
         ),
         "trade_throughput_rps": float(getattr(response, "trade_throughput_rps", 0.0)),
+        "inflight_requests": int(getattr(response, "inflight_requests", 0)),
+        "inflight_requests_peak": int(getattr(response, "inflight_requests_peak", 0)),
+        "max_inflight_requests": int(getattr(response, "max_inflight_requests", 0)),
+        "backpressure_waits_total": int(getattr(response, "backpressure_waits_total", 0)),
+        "backpressure_rejections_total": int(
+            getattr(response, "backpressure_rejections_total", 0)
+        ),
+        "backpressure_wait_timeouts_total": int(
+            getattr(response, "backpressure_wait_timeouts_total", 0)
+        ),
+        "backpressure_wait_ms_total": int(getattr(response, "backpressure_wait_ms_total", 0)),
+        "execution_stream_limit": int(getattr(response, "execution_stream_limit", 0)),
+        "submit_latency_window_size": int(
+            getattr(response, "submit_latency_window_size", 0)
+        ),
+        "grpc_min_pollers": int(getattr(response, "grpc_min_pollers", 0)),
+        "grpc_max_pollers": int(getattr(response, "grpc_max_pollers", 0)),
+        "grpc_num_cqs": int(getattr(response, "grpc_num_cqs", 0)),
         "request_id": request_id,
-        "reason": degraded_reason,
+        "reason": effective_reason,
         "schema_version": schema_version,
         "correlation_id": correlation_id,
     }

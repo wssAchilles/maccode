@@ -5,6 +5,10 @@ from typing import Any
 
 from app.config import settings
 from app.http import prometheus_escape
+from app.matching_observability import (
+    collect_matching_snapshot,
+    default_matching_health,
+)
 from app.redis_worker import RedisMarketWorker
 from app.signal_store import SignalStore
 
@@ -24,39 +28,14 @@ def _worker_state(worker: RedisMarketWorker) -> dict[str, Any]:
         "market_stream_consecutive_failures": worker.market_stream_consecutive_failures,
         "last_market_stream_retry_backoff_ms": worker.last_market_stream_retry_backoff_ms,
         "last_market_stream_id": worker.last_market_stream_id,
-    }
-
-
-def _default_matching_health(enabled: bool) -> dict[str, Any]:
-    return {
-        "enabled": enabled,
-        "reachable": False,
-        "degraded": False,
-        "status": "disabled" if not enabled else "unknown",
-        "service": "matching-cpp",
-        "version": "",
-        "uptime_seconds": 0,
-    }
-
-
-def _default_matching_stats(enabled: bool) -> dict[str, Any]:
-    return {
-        "enabled": enabled,
-        "degraded": False,
-        "live_orders": 0,
-        "trade_count": 0,
-        "tracked_orders": 0,
-        "rejected_orders": 0,
-        "symbols": 0,
-        "best_bid": None,
-        "best_ask": None,
-        "submit_order_requests_total": 0,
-        "submit_order_errors_total": 0,
-        "submit_order_rejections_total": 0,
-        "submit_order_latency_p95_ms": 0.0,
-        "submit_order_throughput_rps": 0.0,
-        "trade_throughput_rps": 0.0,
-        "reason": None,
+        "market_stream_pending": worker.market_stream_pending,
+        "market_stream_lag": worker.market_stream_lag,
+        "market_stream_reclaim_attempts": worker.market_stream_reclaim_attempts,
+        "market_stream_reclaimed": worker.market_stream_reclaimed,
+        "market_stream_reclaim_failures": worker.market_stream_reclaim_failures,
+        "market_stream_poisoned": worker.market_stream_poisoned,
+        "last_market_stream_reclaim_at_ms": worker.last_market_stream_reclaim_at_ms,
+        "last_market_stream_poison_id": worker.last_market_stream_poison_id,
     }
 
 
@@ -78,6 +57,16 @@ async def build_ready_content(
         and worker.market_stream_fallbacks > 0
     ):
         reasons.append("market_stream_unstable")
+    if (
+        settings.market_stream_pending_warn_threshold > 0
+        and worker.market_stream_pending > settings.market_stream_pending_warn_threshold
+    ):
+        reasons.append("market_stream_pending_high")
+    if (
+        settings.market_stream_lag_warn_threshold > 0
+        and worker.market_stream_lag > settings.market_stream_lag_warn_threshold
+    ):
+        reasons.append("market_stream_lag_high")
 
     if settings.matching_enabled:
         matching = await worker.matching_client.health(request_id=request_id)
@@ -86,7 +75,7 @@ async def build_ready_content(
         if bool(matching.get("degraded", False)):
             reasons.append("matching_degraded")
     else:
-        matching = _default_matching_health(enabled=False)
+        matching = default_matching_health(enabled=False)
 
     status_code = 200 if not reasons else 503
     return status_code, {
@@ -110,16 +99,13 @@ async def build_metrics_lines(
     uptime_seconds = int(max(monotonic() - started_at, 0.0))
     idempotency = worker.idempotency_snapshot()
 
-    matching_status = "disabled"
-    matching_reachable = 0
-    matching_degraded = 0
-    matching_uptime_seconds = 0
-    if worker.matching_client.enabled:
-        health = await worker.matching_client.health(request_id=request_id)
-        matching_status = str(health.get("status", "unknown"))
-        matching_reachable = 1 if bool(health.get("reachable", False)) else 0
-        matching_degraded = 1 if bool(health.get("degraded", False)) else 0
-        matching_uptime_seconds = int(health.get("uptime_seconds", 0))
+    matching_snapshot = await collect_matching_snapshot(worker, request_id=request_id)
+    matching_health = matching_snapshot.health
+    matching_stats = matching_snapshot.stats
+    matching_status = str(matching_health.get("status", "disabled"))
+    matching_reachable = 1 if bool(matching_health.get("reachable", False)) else 0
+    matching_degraded = 1 if bool(matching_health.get("degraded", False)) else 0
+    matching_uptime_seconds = int(matching_health.get("uptime_seconds", 0))
 
     stores = signal_store.status()
     return [
@@ -147,9 +133,19 @@ async def build_metrics_lines(
         f"cerberus_strategy_market_stream_retry_attempts_total {worker.market_stream_retry_attempts}",
         f"cerberus_strategy_market_stream_fallbacks_total {worker.market_stream_fallbacks}",
         f"cerberus_strategy_market_stream_consecutive_failures {worker.market_stream_consecutive_failures}",
+        f"cerberus_strategy_market_stream_pending {worker.market_stream_pending}",
+        f"cerberus_strategy_market_stream_lag {worker.market_stream_lag}",
+        f"cerberus_strategy_market_stream_reclaim_attempts_total {worker.market_stream_reclaim_attempts}",
+        f"cerberus_strategy_market_stream_reclaimed_total {worker.market_stream_reclaimed}",
+        f"cerberus_strategy_market_stream_reclaim_failures_total {worker.market_stream_reclaim_failures}",
+        f"cerberus_strategy_market_stream_poisoned_total {worker.market_stream_poisoned}",
         (
             "cerberus_strategy_market_stream_last_retry_backoff_ms "
             f"{worker.last_market_stream_retry_backoff_ms or 0}"
+        ),
+        (
+            "cerberus_strategy_market_stream_last_reclaim_at_ms "
+            f"{worker.last_market_stream_reclaim_at_ms or 0}"
         ),
         f"cerberus_strategy_forwarded_executions_total {worker.forwarded_executions}",
         f"cerberus_strategy_last_execution_id {worker.last_execution_id}",
@@ -166,6 +162,46 @@ async def build_metrics_lines(
             f'{{status="{prometheus_escape(matching_status)}"}} 1'
         ),
         f"cerberus_strategy_matching_uptime_seconds {matching_uptime_seconds}",
+        (
+            "cerberus_strategy_matching_submit_order_latency_p95_ms "
+            f"{float(matching_stats.get('submit_order_latency_p95_ms', 0.0))}"
+        ),
+        (
+            "cerberus_strategy_matching_submit_order_throughput_rps "
+            f"{float(matching_stats.get('submit_order_throughput_rps', 0.0))}"
+        ),
+        (
+            "cerberus_strategy_matching_trade_throughput_rps "
+            f"{float(matching_stats.get('trade_throughput_rps', 0.0))}"
+        ),
+        (
+            "cerberus_strategy_matching_inflight_requests "
+            f"{int(matching_stats.get('inflight_requests', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_inflight_requests_peak "
+            f"{int(matching_stats.get('inflight_requests_peak', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_max_inflight_requests "
+            f"{int(matching_stats.get('max_inflight_requests', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_backpressure_waits_total "
+            f"{int(matching_stats.get('backpressure_waits_total', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_backpressure_rejections_total "
+            f"{int(matching_stats.get('backpressure_rejections_total', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_backpressure_wait_timeouts_total "
+            f"{int(matching_stats.get('backpressure_wait_timeouts_total', 0))}"
+        ),
+        (
+            "cerberus_strategy_matching_backpressure_wait_ms_total "
+            f"{int(matching_stats.get('backpressure_wait_ms_total', 0))}"
+        ),
         f"cerberus_strategy_idempotency_redis_enabled {1 if idempotency['redis_enabled'] else 0}",
         f"cerberus_strategy_idempotency_signal_claim_attempts_total {idempotency['signal_claim_attempts']}",
         f"cerberus_strategy_idempotency_signal_conflicts_total {idempotency['signal_claim_conflicts']}",
@@ -183,22 +219,10 @@ async def build_persistence_status(
     *,
     request_id: str,
 ) -> dict[str, Any]:
-    matching_health = _default_matching_health(enabled=worker.matching_client.enabled)
-    matching_stats = _default_matching_stats(enabled=worker.matching_client.enabled)
+    matching_snapshot = await collect_matching_snapshot(worker, request_id=request_id)
+    matching_health = matching_snapshot.health
+    matching_stats = matching_snapshot.stats
     idempotency = worker.idempotency_snapshot()
-
-    if worker.matching_client.enabled:
-        try:
-            matching_health = await worker.matching_client.health(request_id=request_id)
-            matching_stats = await worker.matching_client.get_service_stats(request_id=request_id)
-        except Exception as exc:
-            matching_health = {
-                **matching_health,
-                "enabled": True,
-                "degraded": True,
-                "status": "error",
-                "reason": str(exc),
-            }
 
     return {
         "status": "ok",

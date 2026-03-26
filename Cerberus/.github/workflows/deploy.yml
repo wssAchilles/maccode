@@ -109,12 +109,48 @@ jobs:
           TF_VAR_strategy_internal_auth_enabled: "true"
           TF_VAR_strategy_internal_auth_token_ttl_seconds: "300"
           TF_VAR_strategy_internal_auth_metadata_identity_url: "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
+          TF_VAR_strategy_upstream_timeout_ms: "1800"
+          TF_VAR_strategy_upstream_health_timeout_ms: "1500"
+          TF_VAR_strategy_upstream_max_inflight: "64"
+          TF_VAR_strategy_upstream_queue_timeout_ms: "250"
+          TF_VAR_strategy_upstream_circuit_enabled: "true"
+          TF_VAR_strategy_upstream_circuit_failure_threshold: "6"
+          TF_VAR_strategy_upstream_circuit_open_ms: "15000"
           TF_VAR_redis_market_events_stream_enabled: "true"
           TF_VAR_redis_market_events_stream_key: "cerberus.market.events"
           TF_VAR_redis_market_events_stream_maxlen: "50000"
           TF_VAR_redis_market_events_publish_legacy_pubsub: "true"
+          TF_VAR_redis_order_events_stream_enabled: "true"
+          TF_VAR_redis_order_events_stream_key: "cerberus.order.events"
+          TF_VAR_redis_order_events_consumer_group: "gateway-orders"
+          TF_VAR_redis_order_events_consumer_name: ""
+          TF_VAR_redis_order_events_read_batch_size: "64"
+          TF_VAR_redis_order_events_read_block_ms: "3000"
+          TF_VAR_redis_order_events_pending_replay_count: "128"
+          TF_VAR_redis_order_events_batch_window_ms: "100"
+          TF_VAR_redis_order_events_max_retries_before_fallback: "6"
+          TF_VAR_redis_order_events_retry_backoff_ms: "200"
+          TF_VAR_redis_order_events_retry_backoff_max_ms: "5000"
+          TF_VAR_redis_order_events_reclaim_enabled: "true"
+          TF_VAR_redis_order_events_reclaim_interval_ms: "5000"
+          TF_VAR_redis_order_events_reclaim_idle_ms: "30000"
+          TF_VAR_redis_order_events_reclaim_batch_size: "64"
+          TF_VAR_redis_order_events_max_delivery_attempts: "8"
+          TF_VAR_redis_order_events_poison_stream_key: "cerberus.order.events.poison"
+          TF_VAR_redis_order_events_poison_stream_maxlen: "20000"
+          TF_VAR_redis_order_events_pending_warn_threshold: "2000"
+          TF_VAR_redis_order_events_lag_warn_threshold: "2000"
           TF_VAR_market_stream_enabled: "true"
           TF_VAR_market_stream_consumer_group: "strategy-market"
+          TF_VAR_market_stream_reclaim_enabled: "true"
+          TF_VAR_market_stream_reclaim_interval_ms: "5000"
+          TF_VAR_market_stream_reclaim_idle_ms: "30000"
+          TF_VAR_market_stream_reclaim_batch_size: "64"
+          TF_VAR_market_stream_max_delivery_attempts: "8"
+          TF_VAR_market_stream_pending_warn_threshold: "2000"
+          TF_VAR_market_stream_lag_warn_threshold: "2000"
+          TF_VAR_market_stream_poison_stream_key: "cerberus.market.events.poison"
+          TF_VAR_market_stream_poison_stream_maxlen: "20000"
           TF_VAR_market_stream_legacy_pubsub_fallback: "true"
           TF_VAR_matching_grpc_max_pollers: "16"
           TF_VAR_matching_grpc_min_pollers: "4"
@@ -147,6 +183,79 @@ jobs:
           echo "cloud_run_gateway_url=$CLOUD_RUN_GATEWAY_URL" >> "$GITHUB_OUTPUT"
           echo "cloud_run_strategy_url=$CLOUD_RUN_STRATEGY_URL" >> "$GITHUB_OUTPUT"
           echo "cloud_run_matching_url=$CLOUD_RUN_MATCHING_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy gate backend SLO
+        env:
+          GATEWAY_BASE_URL: ${{ steps.tf_outputs.outputs.cloud_run_gateway_url }}
+          GATEWAY_PERF_REQUESTS: "40"
+          GATEWAY_PERF_MAX_P95_MS: "800"
+          GATEWAY_PERF_MIN_RPS: "2"
+          GATEWAY_PERF_MAX_UNIT_COST_USD: "0.01"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import statistics
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = os.environ["GATEWAY_BASE_URL"].rstrip("/")
+          samples = max(int(os.getenv("GATEWAY_PERF_REQUESTS", "40")), 1)
+          max_p95 = float(os.getenv("GATEWAY_PERF_MAX_P95_MS", "800"))
+          min_rps = float(os.getenv("GATEWAY_PERF_MIN_RPS", "2"))
+          max_unit_cost = float(os.getenv("GATEWAY_PERF_MAX_UNIT_COST_USD", "0.01"))
+
+          def get_json(url: str, request_id: str | None = None) -> dict:
+            req = urllib.request.Request(url=url, method="GET")
+            if request_id:
+              req.add_header("x-request-id", request_id)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+              body = resp.read().decode("utf-8")
+              return json.loads(body)
+
+          latencies_ms: list[float] = []
+          started_at = time.perf_counter()
+          for idx in range(samples):
+            rid = f"deploy-gate-{idx}"
+            call_started = time.perf_counter()
+            try:
+              payload = get_json(f"{base}/api/v1/external/status", request_id=rid)
+            except urllib.error.HTTPError as exc:
+              raise SystemExit(f"/api/v1/external/status failed: {exc}") from exc
+            if payload.get("error") not in (None, {}):
+              raise SystemExit(f"/api/v1/external/status returned error envelope: {payload}")
+            latencies_ms.append((time.perf_counter() - call_started) * 1000.0)
+
+          elapsed = max(time.perf_counter() - started_at, 1e-6)
+          throughput_rps = samples / elapsed
+          ordered = sorted(latencies_ms)
+          p95_index = max(int(round(0.95 * len(ordered) + 0.5)) - 1, 0)
+          p95_ms = ordered[min(p95_index, len(ordered) - 1)]
+
+          metrics = get_json(f"{base}/api/v1/metrics", request_id="deploy-gate-metrics")
+          data = metrics.get("data", {}) if isinstance(metrics, dict) else {}
+          unit_cost = float(data.get("estimated_request_cost_usd", 0.0) or 0.0)
+          service_p95 = float(data.get("http_latency_p95_ms", 0.0) or 0.0)
+
+          print(json.dumps({
+            "samples": samples,
+            "sample_p95_ms": round(p95_ms, 2),
+            "sample_mean_ms": round(statistics.mean(latencies_ms), 2),
+            "sample_throughput_rps": round(throughput_rps, 3),
+            "service_reported_p95_ms": round(service_p95, 2),
+            "unit_request_cost_usd": unit_cost,
+          }, ensure_ascii=False))
+
+          if p95_ms > max_p95:
+            raise SystemExit(f"backend p95 gate failed: {p95_ms:.2f}ms > {max_p95}ms")
+          if throughput_rps < min_rps:
+            raise SystemExit(f"backend throughput gate failed: {throughput_rps:.3f}rps < {min_rps}rps")
+          if unit_cost > max_unit_cost:
+            raise SystemExit(
+              f"backend unit cost gate failed: {unit_cost:.8f} > {max_unit_cost:.8f}"
+            )
+          PY
 
       - uses: actions/setup-node@v4
         with:

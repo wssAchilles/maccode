@@ -167,6 +167,11 @@ async def health(
         )
         response, trailing = await _await_unary_with_metadata(call)
         degraded, reason = _degraded_hint(trailing)
+        if bool(getattr(response, "degraded", False)):
+            degraded = True
+            if not reason:
+                raw_reason = str(getattr(response, "degraded_reason", "")).strip()
+                reason = raw_reason or reason
         response_status = str(getattr(response, "status", "")).strip()
         if response_status.lower().startswith("degraded"):
             degraded = True

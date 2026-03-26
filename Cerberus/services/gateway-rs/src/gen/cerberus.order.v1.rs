@@ -189,6 +189,10 @@ pub struct HealthResponse {
     pub schema_version: ::prost::alloc::string::String,
     #[prost(string, tag="6")]
     pub correlation_id: ::prost::alloc::string::String,
+    #[prost(bool, tag="7")]
+    pub degraded: bool,
+    #[prost(string, tag="8")]
+    pub degraded_reason: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -231,6 +235,34 @@ pub struct GetServiceStatsResponse {
     pub submit_order_throughput_rps: f64,
     #[prost(double, tag="17")]
     pub trade_throughput_rps: f64,
+    #[prost(bool, tag="18")]
+    pub degraded: bool,
+    #[prost(string, tag="19")]
+    pub degraded_reason: ::prost::alloc::string::String,
+    #[prost(uint64, tag="20")]
+    pub inflight_requests: u64,
+    #[prost(uint64, tag="21")]
+    pub inflight_requests_peak: u64,
+    #[prost(uint64, tag="22")]
+    pub max_inflight_requests: u64,
+    #[prost(uint64, tag="23")]
+    pub backpressure_waits_total: u64,
+    #[prost(uint64, tag="24")]
+    pub backpressure_rejections_total: u64,
+    #[prost(uint64, tag="25")]
+    pub backpressure_wait_timeouts_total: u64,
+    #[prost(uint64, tag="26")]
+    pub backpressure_wait_ms_total: u64,
+    #[prost(uint64, tag="27")]
+    pub execution_stream_limit: u64,
+    #[prost(uint64, tag="28")]
+    pub submit_latency_window_size: u64,
+    #[prost(uint64, tag="29")]
+    pub grpc_min_pollers: u64,
+    #[prost(uint64, tag="30")]
+    pub grpc_max_pollers: u64,
+    #[prost(uint64, tag="31")]
+    pub grpc_num_cqs: u64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

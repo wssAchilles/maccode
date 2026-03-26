@@ -160,12 +160,104 @@ variable "strategy_internal_auth_token_ttl_seconds" {
   description = "Gateway cache TTL for strategy internal auth token"
   type        = number
   default     = 300
+
+  validation {
+    condition = (
+      var.strategy_internal_auth_token_ttl_seconds >= 30 &&
+      var.strategy_internal_auth_token_ttl_seconds <= 3600
+    )
+    error_message = "strategy_internal_auth_token_ttl_seconds must be in [30,3600]."
+  }
 }
 
 variable "strategy_internal_auth_metadata_identity_url" {
   description = "Metadata identity endpoint used by gateway to mint internal auth token"
   type        = string
   default     = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
+}
+
+variable "strategy_upstream_timeout_ms" {
+  description = "Gateway timeout for strategy summary/status upstream calls"
+  type        = number
+  default     = 1800
+
+  validation {
+    condition     = var.strategy_upstream_timeout_ms >= 100 && var.strategy_upstream_timeout_ms <= 30000
+    error_message = "strategy_upstream_timeout_ms must be in [100,30000]."
+  }
+}
+
+variable "strategy_upstream_health_timeout_ms" {
+  description = "Gateway timeout for strategy health upstream call"
+  type        = number
+  default     = 1500
+
+  validation {
+    condition = (
+      var.strategy_upstream_health_timeout_ms >= 100 &&
+      var.strategy_upstream_health_timeout_ms <= 30000
+    )
+    error_message = "strategy_upstream_health_timeout_ms must be in [100,30000]."
+  }
+}
+
+variable "strategy_upstream_max_inflight" {
+  description = "Gateway max in-flight upstream requests to strategy"
+  type        = number
+  default     = 64
+
+  validation {
+    condition     = var.strategy_upstream_max_inflight >= 1 && var.strategy_upstream_max_inflight <= 10000
+    error_message = "strategy_upstream_max_inflight must be in [1,10000]."
+  }
+}
+
+variable "strategy_upstream_queue_timeout_ms" {
+  description = "Gateway max wait time for strategy upstream queue slot"
+  type        = number
+  default     = 250
+
+  validation {
+    condition = (
+      var.strategy_upstream_queue_timeout_ms >= 1 &&
+      var.strategy_upstream_queue_timeout_ms <= 10000
+    )
+    error_message = "strategy_upstream_queue_timeout_ms must be in [1,10000]."
+  }
+}
+
+variable "strategy_upstream_circuit_enabled" {
+  description = "Enable gateway strategy upstream circuit breaker"
+  type        = bool
+  default     = true
+}
+
+variable "strategy_upstream_circuit_failure_threshold" {
+  description = "Consecutive upstream failures required to open circuit"
+  type        = number
+  default     = 6
+
+  validation {
+    condition = (
+      var.strategy_upstream_circuit_failure_threshold >= 1 &&
+      var.strategy_upstream_circuit_failure_threshold <= 100
+    )
+    error_message = "strategy_upstream_circuit_failure_threshold must be in [1,100]."
+  }
+}
+
+variable "strategy_upstream_circuit_open_ms" {
+  description = "Duration circuit stays open before probe retries"
+  type        = number
+  default     = 15000
+
+  validation {
+    condition = (
+      var.strategy_upstream_circuit_open_ms >= 100 &&
+      var.strategy_upstream_circuit_open_ms <= 300000
+    )
+    error_message = "strategy_upstream_circuit_open_ms must be in [100,300000]."
+  }
 }
 
 variable "firebase_auth_required" {
@@ -288,6 +380,168 @@ variable "redis_order_events_channels" {
   default     = "strategy.signals.default,trade.executions.default"
 }
 
+variable "redis_order_events_stream_enabled" {
+  description = "Enable gateway order events stream consumer-group ingest path"
+  type        = bool
+  default     = true
+}
+
+variable "redis_order_events_stream_key" {
+  description = "Redis stream key consumed by gateway for order events"
+  type        = string
+  default     = "cerberus.order.events"
+}
+
+variable "redis_order_events_consumer_group" {
+  description = "Gateway consumer group for order events stream"
+  type        = string
+  default     = "gateway-orders"
+}
+
+variable "redis_order_events_consumer_name" {
+  description = "Gateway consumer name for order events stream"
+  type        = string
+  default     = ""
+}
+
+variable "redis_order_events_read_batch_size" {
+  description = "Gateway order stream read batch size"
+  type        = number
+  default     = 64
+
+  validation {
+    condition     = var.redis_order_events_read_batch_size >= 1 && var.redis_order_events_read_batch_size <= 1024
+    error_message = "redis_order_events_read_batch_size must be in [1,1024]."
+  }
+}
+
+variable "redis_order_events_read_block_ms" {
+  description = "Gateway order stream read block timeout in milliseconds"
+  type        = number
+  default     = 3000
+}
+
+variable "redis_order_events_pending_replay_count" {
+  description = "Gateway order stream pending replay batch size on startup"
+  type        = number
+  default     = 128
+
+  validation {
+    condition = (
+      var.redis_order_events_pending_replay_count >= 1 &&
+      var.redis_order_events_pending_replay_count <= 4096
+    )
+    error_message = "redis_order_events_pending_replay_count must be in [1,4096]."
+  }
+}
+
+variable "redis_order_events_batch_window_ms" {
+  description = "Gateway order stream consumer batch processing interval in milliseconds"
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.redis_order_events_batch_window_ms >= 0 && var.redis_order_events_batch_window_ms <= 5000
+    error_message = "redis_order_events_batch_window_ms must be in [0,5000]."
+  }
+}
+
+variable "redis_order_events_max_retries_before_fallback" {
+  description = "Gateway order stream max retries before fallback to pub/sub"
+  type        = number
+  default     = 6
+
+  validation {
+    condition = (
+      var.redis_order_events_max_retries_before_fallback >= 0 &&
+      var.redis_order_events_max_retries_before_fallback <= 50
+    )
+    error_message = "redis_order_events_max_retries_before_fallback must be in [0,50]."
+  }
+}
+
+variable "redis_order_events_retry_backoff_ms" {
+  description = "Gateway order stream retry backoff base in milliseconds"
+  type        = number
+  default     = 200
+}
+
+variable "redis_order_events_retry_backoff_max_ms" {
+  description = "Gateway order stream retry backoff max in milliseconds"
+  type        = number
+  default     = 5000
+}
+
+variable "redis_order_events_reclaim_enabled" {
+  description = "Enable gateway order stream stale pending reclaim loop"
+  type        = bool
+  default     = true
+}
+
+variable "redis_order_events_reclaim_interval_ms" {
+  description = "Gateway order stream reclaim interval in milliseconds"
+  type        = number
+  default     = 5000
+}
+
+variable "redis_order_events_reclaim_idle_ms" {
+  description = "Gateway order stream minimum idle time before reclaim in milliseconds"
+  type        = number
+  default     = 30000
+}
+
+variable "redis_order_events_reclaim_batch_size" {
+  description = "Gateway order stream reclaim batch size"
+  type        = number
+  default     = 64
+
+  validation {
+    condition = (
+      var.redis_order_events_reclaim_batch_size >= 1 &&
+      var.redis_order_events_reclaim_batch_size <= 1024
+    )
+    error_message = "redis_order_events_reclaim_batch_size must be in [1,1024]."
+  }
+}
+
+variable "redis_order_events_max_delivery_attempts" {
+  description = "Gateway order stream max delivery attempts before poison routing"
+  type        = number
+  default     = 8
+
+  validation {
+    condition = (
+      var.redis_order_events_max_delivery_attempts >= 1 &&
+      var.redis_order_events_max_delivery_attempts <= 100
+    )
+    error_message = "redis_order_events_max_delivery_attempts must be in [1,100]."
+  }
+}
+
+variable "redis_order_events_poison_stream_key" {
+  description = "Gateway order stream poison stream key"
+  type        = string
+  default     = "cerberus.order.events.poison"
+}
+
+variable "redis_order_events_poison_stream_maxlen" {
+  description = "Gateway order stream poison stream maxlen"
+  type        = number
+  default     = 20000
+}
+
+variable "redis_order_events_pending_warn_threshold" {
+  description = "Gateway order stream readiness warning threshold for pending backlog"
+  type        = number
+  default     = 2000
+}
+
+variable "redis_order_events_lag_warn_threshold" {
+  description = "Gateway order stream readiness warning threshold for lag"
+  type        = number
+  default     = 2000
+}
+
 variable "redis_orderbook_channel" {
   description = "Default orderbook channel"
   type        = string
@@ -342,6 +596,76 @@ variable "market_stream_consumer_group" {
   default     = "strategy-market"
 }
 
+variable "market_stream_reclaim_enabled" {
+  description = "Enable strategy market stream stale pending reclaim loop"
+  type        = bool
+  default     = true
+}
+
+variable "market_stream_reclaim_interval_ms" {
+  description = "Strategy market stream reclaim interval in milliseconds"
+  type        = number
+  default     = 5000
+}
+
+variable "market_stream_reclaim_idle_ms" {
+  description = "Strategy market stream minimum idle time before reclaim in milliseconds"
+  type        = number
+  default     = 30000
+}
+
+variable "market_stream_reclaim_batch_size" {
+  description = "Strategy market stream reclaim batch size"
+  type        = number
+  default     = 64
+
+  validation {
+    condition = (
+      var.market_stream_reclaim_batch_size >= 1 &&
+      var.market_stream_reclaim_batch_size <= 1024
+    )
+    error_message = "market_stream_reclaim_batch_size must be in [1,1024]."
+  }
+}
+
+variable "market_stream_max_delivery_attempts" {
+  description = "Strategy market stream max delivery attempts before poison routing"
+  type        = number
+  default     = 8
+
+  validation {
+    condition = (
+      var.market_stream_max_delivery_attempts >= 1 &&
+      var.market_stream_max_delivery_attempts <= 100
+    )
+    error_message = "market_stream_max_delivery_attempts must be in [1,100]."
+  }
+}
+
+variable "market_stream_pending_warn_threshold" {
+  description = "Strategy readiness warning threshold for market stream pending backlog"
+  type        = number
+  default     = 2000
+}
+
+variable "market_stream_lag_warn_threshold" {
+  description = "Strategy readiness warning threshold for market stream lag"
+  type        = number
+  default     = 2000
+}
+
+variable "market_stream_poison_stream_key" {
+  description = "Strategy market stream poison stream key"
+  type        = string
+  default     = "cerberus.market.events.poison"
+}
+
+variable "market_stream_poison_stream_maxlen" {
+  description = "Strategy market stream poison stream maxlen"
+  type        = number
+  default     = 20000
+}
+
 variable "market_stream_legacy_pubsub_fallback" {
   description = "Allow strategy to fallback to legacy pubsub when stream loop fails"
   type        = bool
@@ -352,30 +676,86 @@ variable "matching_execution_stream_limit" {
   description = "Maximum executions returned by matching stream/list query"
   type        = number
   default     = 500
+
+  validation {
+    condition     = var.matching_execution_stream_limit >= 1 && var.matching_execution_stream_limit <= 5000
+    error_message = "matching_execution_stream_limit must be in [1,5000]."
+  }
 }
 
 variable "matching_grpc_max_pollers" {
   description = "Matching gRPC sync server max pollers"
   type        = number
   default     = 16
+
+  validation {
+    condition     = var.matching_grpc_max_pollers >= 1 && var.matching_grpc_max_pollers <= 256
+    error_message = "matching_grpc_max_pollers must be in [1,256]."
+  }
 }
 
 variable "matching_grpc_min_pollers" {
   description = "Matching gRPC sync server min pollers"
   type        = number
   default     = 4
+
+  validation {
+    condition     = var.matching_grpc_min_pollers >= 1 && var.matching_grpc_min_pollers <= 256
+    error_message = "matching_grpc_min_pollers must be in [1,256]."
+  }
 }
 
 variable "matching_grpc_num_cqs" {
   description = "Matching gRPC sync server completion queues"
   type        = number
   default     = 4
+
+  validation {
+    condition     = var.matching_grpc_num_cqs >= 1 && var.matching_grpc_num_cqs <= 256
+    error_message = "matching_grpc_num_cqs must be in [1,256]."
+  }
 }
 
 variable "matching_submit_latency_window_size" {
   description = "Rolling sample size for matching submit latency P95"
   type        = number
   default     = 1024
+
+  validation {
+    condition = (
+      var.matching_submit_latency_window_size >= 16 &&
+      var.matching_submit_latency_window_size <= 200000
+    )
+    error_message = "matching_submit_latency_window_size must be in [16,200000]."
+  }
+}
+
+variable "matching_max_inflight_requests" {
+  description = "Matching gRPC max in-flight request budget before backpressure kicks in"
+  type        = number
+  default     = 1024
+
+  validation {
+    condition = (
+      var.matching_max_inflight_requests >= 1 &&
+      var.matching_max_inflight_requests <= 100000
+    )
+    error_message = "matching_max_inflight_requests must be in [1,100000]."
+  }
+}
+
+variable "matching_inflight_acquire_timeout_ms" {
+  description = "Matching gRPC max queue wait time for in-flight budget in milliseconds"
+  type        = number
+  default     = 30
+
+  validation {
+    condition = (
+      var.matching_inflight_acquire_timeout_ms >= 1 &&
+      var.matching_inflight_acquire_timeout_ms <= 10000
+    )
+    error_message = "matching_inflight_acquire_timeout_ms must be in [1,10000]."
+  }
 }
 
 variable "internal_services_ingress" {

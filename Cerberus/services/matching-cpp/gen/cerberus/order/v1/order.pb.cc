@@ -195,7 +195,11 @@ inline constexpr HealthResponse::Impl_::Impl_(
         correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
-        uptime_seconds_{::uint64_t{0u}} {}
+        degraded_reason_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        uptime_seconds_{::uint64_t{0u}},
+        degraded_{false} {}
 
 template <typename>
 constexpr HealthResponse::HealthResponse(::_pbi::ConstantInitialized)
@@ -245,6 +249,9 @@ inline constexpr GetServiceStatsResponse::Impl_::Impl_(
         correlation_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
+        degraded_reason_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
         live_orders_{::uint64_t{0u}},
         trade_count_{::uint64_t{0u}},
         tracked_orders_{::uint64_t{0u}},
@@ -258,8 +265,21 @@ inline constexpr GetServiceStatsResponse::Impl_::Impl_(
         submit_order_latency_p95_ms_{0},
         submit_order_throughput_rps_{0},
         trade_throughput_rps_{0},
+        inflight_requests_{::uint64_t{0u}},
+        inflight_requests_peak_{::uint64_t{0u}},
+        max_inflight_requests_{::uint64_t{0u}},
+        backpressure_waits_total_{::uint64_t{0u}},
+        backpressure_rejections_total_{::uint64_t{0u}},
+        backpressure_wait_timeouts_total_{::uint64_t{0u}},
+        backpressure_wait_ms_total_{::uint64_t{0u}},
+        execution_stream_limit_{::uint64_t{0u}},
+        submit_latency_window_size_{::uint64_t{0u}},
+        grpc_min_pollers_{::uint64_t{0u}},
+        grpc_max_pollers_{::uint64_t{0u}},
+        grpc_num_cqs_{::uint64_t{0u}},
         has_best_bid_{false},
-        has_best_ask_{false} {}
+        has_best_ask_{false},
+        degraded_{false} {}
 
 template <typename>
 constexpr GetServiceStatsResponse::GetServiceStatsResponse(::_pbi::ConstantInitialized)
@@ -757,23 +777,27 @@ const ::uint32_t
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_._has_bits_),
-        9, // hasbit index offset
+        11, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.status_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.service_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.version_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.uptime_seconds_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.schema_version_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.correlation_id_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.degraded_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::HealthResponse, _impl_.degraded_reason_),
         0,
         1,
         2,
-        5,
+        6,
         3,
         4,
+        7,
+        5,
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_._has_bits_),
-        20, // hasbit index offset
+        34, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.live_orders_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.trade_count_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.tracked_orders_),
@@ -791,23 +815,51 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_order_throughput_rps_),
         PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.trade_throughput_rps_),
-        2,
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.degraded_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.degraded_reason_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.inflight_requests_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.inflight_requests_peak_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.max_inflight_requests_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.backpressure_waits_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.backpressure_rejections_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.backpressure_wait_timeouts_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.backpressure_wait_ms_total_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.execution_stream_limit_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.submit_latency_window_size_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.grpc_min_pollers_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.grpc_max_pollers_),
+        PROTOBUF_FIELD_OFFSET(::cerberus::order::v1::GetServiceStatsResponse, _impl_.grpc_num_cqs_),
         3,
         4,
         5,
         6,
-        15,
         7,
-        16,
+        28,
         8,
+        29,
+        9,
         0,
         1,
-        9,
         10,
         11,
         12,
         13,
         14,
+        15,
+        30,
+        2,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
 };
 
 static const ::_pbi::MigrationSchema
@@ -825,8 +877,8 @@ static const ::_pbi::MigrationSchema
         {140, sizeof(::cerberus::order::v1::StreamExecutionsResponse)},
         {159, sizeof(::cerberus::order::v1::HealthRequest)},
         {160, sizeof(::cerberus::order::v1::HealthResponse)},
-        {175, sizeof(::cerberus::order::v1::GetServiceStatsRequest)},
-        {176, sizeof(::cerberus::order::v1::GetServiceStatsResponse)},
+        {179, sizeof(::cerberus::order::v1::GetServiceStatsRequest)},
+        {180, sizeof(::cerberus::order::v1::GetServiceStatsResponse)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::cerberus::order::v1::_SubmitOrderRequest_default_instance_._instance,
@@ -912,61 +964,80 @@ const char descriptor_table_protodef_cerberus_2forder_2fv1_2forder_2eproto[] ABS
     ".google.protobuf.TimestampR\teventTime\022%\n"
     "\016schema_version\030\007 \001(\tR\rschemaVersion\022%\n\016"
     "correlation_id\030\010 \001(\tR\rcorrelationId\"\017\n\rH"
-    "ealthRequest\"\321\001\n\016HealthResponse\022\026\n\006statu"
+    "ealthRequest\"\226\002\n\016HealthResponse\022\026\n\006statu"
     "s\030\001 \001(\tR\006status\022\030\n\007service\030\002 \001(\tR\007servic"
     "e\022\030\n\007version\030\003 \001(\tR\007version\022%\n\016uptime_se"
     "conds\030\004 \001(\004R\ruptimeSeconds\022%\n\016schema_ver"
     "sion\030\005 \001(\tR\rschemaVersion\022%\n\016correlation"
-    "_id\030\006 \001(\tR\rcorrelationId\"\030\n\026GetServiceSt"
-    "atsRequest\"\371\005\n\027GetServiceStatsResponse\022\037"
-    "\n\013live_orders\030\001 \001(\004R\nliveOrders\022\037\n\013trade"
-    "_count\030\002 \001(\004R\ntradeCount\022%\n\016tracked_orde"
-    "rs\030\003 \001(\004R\rtrackedOrders\022\'\n\017rejected_orde"
-    "rs\030\004 \001(\004R\016rejectedOrders\022\030\n\007symbols\030\005 \001("
-    "\004R\007symbols\022 \n\014has_best_bid\030\006 \001(\010R\nhasBes"
-    "tBid\022\031\n\010best_bid\030\007 \001(\001R\007bestBid\022 \n\014has_b"
-    "est_ask\030\010 \001(\010R\nhasBestAsk\022\031\n\010best_ask\030\t "
-    "\001(\001R\007bestAsk\022%\n\016schema_version\030\n \001(\tR\rsc"
-    "hemaVersion\022%\n\016correlation_id\030\013 \001(\tR\rcor"
-    "relationId\022=\n\033submit_order_requests_tota"
-    "l\030\014 \001(\004R\030submitOrderRequestsTotal\0229\n\031sub"
-    "mit_order_errors_total\030\r \001(\004R\026submitOrde"
-    "rErrorsTotal\022A\n\035submit_order_rejections_"
-    "total\030\016 \001(\004R\032submitOrderRejectionsTotal\022"
-    "<\n\033submit_order_latency_p95_ms\030\017 \001(\001R\027su"
-    "bmitOrderLatencyP95Ms\022=\n\033submit_order_th"
-    "roughput_rps\030\020 \001(\001R\030submitOrderThroughpu"
-    "tRps\0220\n\024trade_throughput_rps\030\021 \001(\001R\022trad"
-    "eThroughputRps*9\n\004Side\022\024\n\020SIDE_UNSPECIFI"
-    "ED\020\000\022\014\n\010SIDE_BUY\020\001\022\r\n\tSIDE_SELL\020\002*T\n\tOrd"
-    "erType\022\032\n\026ORDER_TYPE_UNSPECIFIED\020\000\022\024\n\020OR"
-    "DER_TYPE_LIMIT\020\001\022\025\n\021ORDER_TYPE_MARKET\020\002*"
-    "\263\001\n\013OrderStatus\022\034\n\030ORDER_STATUS_UNSPECIF"
-    "IED\020\000\022\024\n\020ORDER_STATUS_NEW\020\001\022!\n\035ORDER_STA"
-    "TUS_PARTIALLY_FILLED\020\002\022\027\n\023ORDER_STATUS_F"
-    "ILLED\020\003\022\031\n\025ORDER_STATUS_CANCELED\020\004\022\031\n\025OR"
-    "DER_STATUS_REJECTED\020\0052\250\005\n\014OrderService\022\\"
-    "\n\013SubmitOrder\022%.cerberus.order.v1.Submit"
-    "OrderRequest\032&.cerberus.order.v1.SubmitO"
-    "rderResponse\022\\\n\013CancelOrder\022%.cerberus.o"
-    "rder.v1.CancelOrderRequest\032&.cerberus.or"
-    "der.v1.CancelOrderResponse\022S\n\010GetOrder\022\""
-    ".cerberus.order.v1.GetOrderRequest\032#.cer"
-    "berus.order.v1.GetOrderResponse\022_\n\014GetOr"
-    "derBook\022&.cerberus.order.v1.GetOrderBook"
-    "Request\032\'.cerberus.order.v1.GetOrderBook"
-    "Response\022m\n\020StreamExecutions\022*.cerberus."
-    "order.v1.StreamExecutionsRequest\032+.cerbe"
-    "rus.order.v1.StreamExecutionsResponse0\001\022"
-    "M\n\006Health\022 .cerberus.order.v1.HealthRequ"
-    "est\032!.cerberus.order.v1.HealthResponse\022h"
-    "\n\017GetServiceStats\022).cerberus.order.v1.Ge"
-    "tServiceStatsRequest\032*.cerberus.order.v1"
-    ".GetServiceStatsResponseB\211\001\n\025com.cerberu"
-    "s.order.v1B\nOrderProtoP\001\242\002\003COX\252\002\021Cerberu"
-    "s.Order.V1\312\002\021Cerberus\\Order\\V1\342\002\035Cerberu"
-    "s\\Order\\V1\\GPBMetadata\352\002\023Cerberus::Order"
-    "::V1b\006proto3"
+    "_id\030\006 \001(\tR\rcorrelationId\022\032\n\010degraded\030\007 \001"
+    "(\010R\010degraded\022\'\n\017degraded_reason\030\010 \001(\tR\016d"
+    "egradedReason\"\030\n\026GetServiceStatsRequest\""
+    "\302\013\n\027GetServiceStatsResponse\022\037\n\013live_orde"
+    "rs\030\001 \001(\004R\nliveOrders\022\037\n\013trade_count\030\002 \001("
+    "\004R\ntradeCount\022%\n\016tracked_orders\030\003 \001(\004R\rt"
+    "rackedOrders\022\'\n\017rejected_orders\030\004 \001(\004R\016r"
+    "ejectedOrders\022\030\n\007symbols\030\005 \001(\004R\007symbols\022"
+    " \n\014has_best_bid\030\006 \001(\010R\nhasBestBid\022\031\n\010bes"
+    "t_bid\030\007 \001(\001R\007bestBid\022 \n\014has_best_ask\030\010 \001"
+    "(\010R\nhasBestAsk\022\031\n\010best_ask\030\t \001(\001R\007bestAs"
+    "k\022%\n\016schema_version\030\n \001(\tR\rschemaVersion"
+    "\022%\n\016correlation_id\030\013 \001(\tR\rcorrelationId\022"
+    "=\n\033submit_order_requests_total\030\014 \001(\004R\030su"
+    "bmitOrderRequestsTotal\0229\n\031submit_order_e"
+    "rrors_total\030\r \001(\004R\026submitOrderErrorsTota"
+    "l\022A\n\035submit_order_rejections_total\030\016 \001(\004"
+    "R\032submitOrderRejectionsTotal\022<\n\033submit_o"
+    "rder_latency_p95_ms\030\017 \001(\001R\027submitOrderLa"
+    "tencyP95Ms\022=\n\033submit_order_throughput_rp"
+    "s\030\020 \001(\001R\030submitOrderThroughputRps\0220\n\024tra"
+    "de_throughput_rps\030\021 \001(\001R\022tradeThroughput"
+    "Rps\022\032\n\010degraded\030\022 \001(\010R\010degraded\022\'\n\017degra"
+    "ded_reason\030\023 \001(\tR\016degradedReason\022+\n\021infl"
+    "ight_requests\030\024 \001(\004R\020inflightRequests\0224\n"
+    "\026inflight_requests_peak\030\025 \001(\004R\024inflightR"
+    "equestsPeak\0222\n\025max_inflight_requests\030\026 \001"
+    "(\004R\023maxInflightRequests\0228\n\030backpressure_"
+    "waits_total\030\027 \001(\004R\026backpressureWaitsTota"
+    "l\022B\n\035backpressure_rejections_total\030\030 \001(\004"
+    "R\033backpressureRejectionsTotal\022G\n backpre"
+    "ssure_wait_timeouts_total\030\031 \001(\004R\035backpre"
+    "ssureWaitTimeoutsTotal\022;\n\032backpressure_w"
+    "ait_ms_total\030\032 \001(\004R\027backpressureWaitMsTo"
+    "tal\0224\n\026execution_stream_limit\030\033 \001(\004R\024exe"
+    "cutionStreamLimit\022;\n\032submit_latency_wind"
+    "ow_size\030\034 \001(\004R\027submitLatencyWindowSize\022("
+    "\n\020grpc_min_pollers\030\035 \001(\004R\016grpcMinPollers"
+    "\022(\n\020grpc_max_pollers\030\036 \001(\004R\016grpcMaxPolle"
+    "rs\022 \n\014grpc_num_cqs\030\037 \001(\004R\ngrpcNumCqs*9\n\004"
+    "Side\022\024\n\020SIDE_UNSPECIFIED\020\000\022\014\n\010SIDE_BUY\020\001"
+    "\022\r\n\tSIDE_SELL\020\002*T\n\tOrderType\022\032\n\026ORDER_TY"
+    "PE_UNSPECIFIED\020\000\022\024\n\020ORDER_TYPE_LIMIT\020\001\022\025"
+    "\n\021ORDER_TYPE_MARKET\020\002*\263\001\n\013OrderStatus\022\034\n"
+    "\030ORDER_STATUS_UNSPECIFIED\020\000\022\024\n\020ORDER_STA"
+    "TUS_NEW\020\001\022!\n\035ORDER_STATUS_PARTIALLY_FILL"
+    "ED\020\002\022\027\n\023ORDER_STATUS_FILLED\020\003\022\031\n\025ORDER_S"
+    "TATUS_CANCELED\020\004\022\031\n\025ORDER_STATUS_REJECTE"
+    "D\020\0052\250\005\n\014OrderService\022\\\n\013SubmitOrder\022%.ce"
+    "rberus.order.v1.SubmitOrderRequest\032&.cer"
+    "berus.order.v1.SubmitOrderResponse\022\\\n\013Ca"
+    "ncelOrder\022%.cerberus.order.v1.CancelOrde"
+    "rRequest\032&.cerberus.order.v1.CancelOrder"
+    "Response\022S\n\010GetOrder\022\".cerberus.order.v1"
+    ".GetOrderRequest\032#.cerberus.order.v1.Get"
+    "OrderResponse\022_\n\014GetOrderBook\022&.cerberus"
+    ".order.v1.GetOrderBookRequest\032\'.cerberus"
+    ".order.v1.GetOrderBookResponse\022m\n\020Stream"
+    "Executions\022*.cerberus.order.v1.StreamExe"
+    "cutionsRequest\032+.cerberus.order.v1.Strea"
+    "mExecutionsResponse0\001\022M\n\006Health\022 .cerber"
+    "us.order.v1.HealthRequest\032!.cerberus.ord"
+    "er.v1.HealthResponse\022h\n\017GetServiceStats\022"
+    ").cerberus.order.v1.GetServiceStatsReque"
+    "st\032*.cerberus.order.v1.GetServiceStatsRe"
+    "sponseB\211\001\n\025com.cerberus.order.v1B\nOrderP"
+    "rotoP\001\242\002\003COX\252\002\021Cerberus.Order.V1\312\002\021Cerbe"
+    "rus\\Order\\V1\342\002\035Cerberus\\Order\\V1\\GPBMeta"
+    "data\352\002\023Cerberus::Order::V1b\006proto3"
 };
 static const ::_pbi::DescriptorTable* PROTOBUF_NONNULL const
     descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_deps[1] = {
@@ -976,7 +1047,7 @@ static ::absl::once_flag descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_cerberus_2forder_2fv1_2forder_2eproto = {
     false,
     false,
-    4772,
+    5554,
     descriptor_table_protodef_cerberus_2forder_2fv1_2forder_2eproto,
     "cerberus/order/v1/order.proto",
     &descriptor_table_cerberus_2forder_2fv1_2forder_2eproto_once,
@@ -6225,7 +6296,8 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
         service_(arena, from.service_),
         version_(arena, from.version_),
         schema_version_(arena, from.schema_version_),
-        correlation_id_(arena, from.correlation_id_) {}
+        correlation_id_(arena, from.correlation_id_),
+        degraded_reason_(arena, from.degraded_reason_) {}
 
 HealthResponse::HealthResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -6240,7 +6312,13 @@ HealthResponse::HealthResponse(
   _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
       from._internal_metadata_);
   new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
-  _impl_.uptime_seconds_ = from._impl_.uptime_seconds_;
+  ::memcpy(reinterpret_cast<char*>(&_impl_) +
+               offsetof(Impl_, uptime_seconds_),
+           reinterpret_cast<const char*>(&from._impl_) +
+               offsetof(Impl_, uptime_seconds_),
+           offsetof(Impl_, degraded_) -
+               offsetof(Impl_, uptime_seconds_) +
+               sizeof(Impl_::degraded_));
 
   // @@protoc_insertion_point(copy_constructor:cerberus.order.v1.HealthResponse)
 }
@@ -6252,11 +6330,17 @@ PROTOBUF_NDEBUG_INLINE HealthResponse::Impl_::Impl_(
         service_(arena),
         version_(arena),
         schema_version_(arena),
-        correlation_id_(arena) {}
+        correlation_id_(arena),
+        degraded_reason_(arena) {}
 
 inline void HealthResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
-  _impl_.uptime_seconds_ = {};
+  ::memset(reinterpret_cast<char*>(&_impl_) +
+               offsetof(Impl_, uptime_seconds_),
+           0,
+           offsetof(Impl_, degraded_) -
+               offsetof(Impl_, uptime_seconds_) +
+               sizeof(Impl_::degraded_));
 }
 HealthResponse::~HealthResponse() {
   // @@protoc_insertion_point(destructor:cerberus.order.v1.HealthResponse)
@@ -6274,6 +6358,7 @@ inline void HealthResponse::SharedDtor(MessageLite& self) {
   this_._impl_.version_.Destroy();
   this_._impl_.schema_version_.Destroy();
   this_._impl_.correlation_id_.Destroy();
+  this_._impl_.degraded_reason_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -6319,16 +6404,16 @@ HealthResponse::GetClassData() const {
   return HealthResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<3, 6, 0, 89, 2>
+const ::_pbi::TcParseTable<3, 8, 0, 112, 2>
 HealthResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_._has_bits_),
     0, // no _extensions_
-    6, 56,  // max_field_number, fast_idx_mask
+    8, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967232,  // skipmap
+    4294967040,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    6,  // num_field_entries
+    8,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     HealthResponse_class_data_.base(),
@@ -6338,7 +6423,10 @@ HealthResponse::_table_ = {
     ::_pbi::TcParser::GetTable<::cerberus::order::v1::HealthResponse>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    {::_pbi::TcParser::MiniParse, {}},
+    // string degraded_reason = 8 [json_name = "degradedReason"];
+    {::_pbi::TcParser::FastUS1,
+     {66, 5, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.degraded_reason_)}},
     // string status = 1 [json_name = "status"];
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -6352,8 +6440,8 @@ HealthResponse::_table_ = {
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_)}},
     // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(HealthResponse, _impl_.uptime_seconds_), 5>(),
-     {32, 5, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(HealthResponse, _impl_.uptime_seconds_), 6>(),
+     {32, 6, 0,
       PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_)}},
     // string schema_version = 5 [json_name = "schemaVersion"];
     {::_pbi::TcParser::FastUS1,
@@ -6363,7 +6451,10 @@ HealthResponse::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {50, 4, 0,
       PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_)}},
-    {::_pbi::TcParser::MiniParse, {}},
+    // bool degraded = 7 [json_name = "degraded"];
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(HealthResponse, _impl_.degraded_), 7>(),
+     {56, 7, 0,
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.degraded_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -6374,21 +6465,26 @@ HealthResponse::_table_ = {
     // string version = 3 [json_name = "version"];
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.version_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // string schema_version = 5 [json_name = "schemaVersion"];
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string correlation_id = 6 [json_name = "correlationId"];
     {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // bool degraded = 7 [json_name = "degraded"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.degraded_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    // string degraded_reason = 8 [json_name = "degradedReason"];
+    {PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.degraded_reason_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\40\6\7\7\0\16\16\0"
+    "\40\6\7\7\0\16\16\0\17\0\0\0\0\0\0\0"
     "cerberus.order.v1.HealthResponse"
     "status"
     "service"
     "version"
     "schema_version"
     "correlation_id"
+    "degraded_reason"
   }},
 };
 PROTOBUF_NOINLINE void HealthResponse::Clear() {
@@ -6399,7 +6495,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.status_.ClearNonDefaultToEmpty();
     }
@@ -6415,8 +6511,15 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
     if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      _impl_.degraded_reason_.ClearNonDefaultToEmpty();
+    }
   }
-  _impl_.uptime_seconds_ = ::uint64_t{0u};
+  if (BatchCheckHasBit(cached_has_bits, 0x000000c0U)) {
+    ::memset(&_impl_.uptime_seconds_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.degraded_) -
+        reinterpret_cast<char*>(&_impl_.uptime_seconds_)) + sizeof(_impl_.degraded_));
+  }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
 }
@@ -6471,7 +6574,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
   }
 
   // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (this_._internal_uptime_seconds() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -6496,6 +6599,25 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
       ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
           _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.HealthResponse.correlation_id");
       target = stream->WriteStringMaybeAliased(6, _s, target);
+    }
+  }
+
+  // bool degraded = 7 [json_name = "degraded"];
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (this_._internal_degraded() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteBoolToArray(
+          7, this_._internal_degraded(), target);
+    }
+  }
+
+  // string degraded_reason = 8 [json_name = "degradedReason"];
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (!this_._internal_degraded_reason().empty()) {
+      const ::std::string& _s = this_._internal_degraded_reason();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.HealthResponse.degraded_reason");
+      target = stream->WriteStringMaybeAliased(8, _s, target);
     }
   }
 
@@ -6524,7 +6646,7 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     // string status = 1 [json_name = "status"];
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_status().empty()) {
@@ -6560,11 +6682,24 @@ PROTOBUF_NOINLINE void HealthResponse::Clear() {
                                         this_._internal_correlation_id());
       }
     }
-    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
+    // string degraded_reason = 8 [json_name = "degradedReason"];
     if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      if (!this_._internal_degraded_reason().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_degraded_reason());
+      }
+    }
+    // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (this_._internal_uptime_seconds() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_uptime_seconds());
+      }
+    }
+    // bool degraded = 7 [json_name = "degraded"];
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+      if (this_._internal_degraded() != 0) {
+        total_size += 2;
       }
     }
   }
@@ -6586,7 +6721,7 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000003fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000ffU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_status().empty()) {
         _this->_internal_set_status(from._internal_status());
@@ -6633,8 +6768,22 @@ void HealthResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+      if (!from._internal_degraded_reason().empty()) {
+        _this->_internal_set_degraded_reason(from._internal_degraded_reason());
+      } else {
+        if (_this->_impl_.degraded_reason_.IsDefault()) {
+          _this->_internal_set_degraded_reason("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (from._internal_uptime_seconds() != 0) {
         _this->_impl_.uptime_seconds_ = from._impl_.uptime_seconds_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+      if (from._internal_degraded() != 0) {
+        _this->_impl_.degraded_ = from._impl_.degraded_;
       }
     }
   }
@@ -6662,7 +6811,13 @@ void HealthResponse::InternalSwap(HealthResponse* PROTOBUF_RESTRICT PROTOBUF_NON
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.version_, &other->_impl_.version_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
-  swap(_impl_.uptime_seconds_, other->_impl_.uptime_seconds_);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.degraded_reason_, &other->_impl_.degraded_reason_, arena);
+  ::google::protobuf::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.degraded_)
+      + sizeof(HealthResponse::_impl_.degraded_)
+      - PROTOBUF_FIELD_OFFSET(HealthResponse, _impl_.uptime_seconds_)>(
+          reinterpret_cast<char*>(&_impl_.uptime_seconds_),
+          reinterpret_cast<char*>(&other->_impl_.uptime_seconds_));
 }
 
 ::google::protobuf::Metadata HealthResponse::GetMetadata() const {
@@ -6803,7 +6958,8 @@ PROTOBUF_NDEBUG_INLINE GetServiceStatsResponse::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         schema_version_(arena, from.schema_version_),
-        correlation_id_(arena, from.correlation_id_) {}
+        correlation_id_(arena, from.correlation_id_),
+        degraded_reason_(arena, from.degraded_reason_) {}
 
 GetServiceStatsResponse::GetServiceStatsResponse(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -6822,9 +6978,9 @@ GetServiceStatsResponse::GetServiceStatsResponse(
                offsetof(Impl_, live_orders_),
            reinterpret_cast<const char*>(&from._impl_) +
                offsetof(Impl_, live_orders_),
-           offsetof(Impl_, has_best_ask_) -
+           offsetof(Impl_, degraded_) -
                offsetof(Impl_, live_orders_) +
-               sizeof(Impl_::has_best_ask_));
+               sizeof(Impl_::degraded_));
 
   // @@protoc_insertion_point(copy_constructor:cerberus.order.v1.GetServiceStatsResponse)
 }
@@ -6833,16 +6989,17 @@ PROTOBUF_NDEBUG_INLINE GetServiceStatsResponse::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         schema_version_(arena),
-        correlation_id_(arena) {}
+        correlation_id_(arena),
+        degraded_reason_(arena) {}
 
 inline void GetServiceStatsResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
   ::memset(reinterpret_cast<char*>(&_impl_) +
                offsetof(Impl_, live_orders_),
            0,
-           offsetof(Impl_, has_best_ask_) -
+           offsetof(Impl_, degraded_) -
                offsetof(Impl_, live_orders_) +
-               sizeof(Impl_::has_best_ask_));
+               sizeof(Impl_::degraded_));
 }
 GetServiceStatsResponse::~GetServiceStatsResponse() {
   // @@protoc_insertion_point(destructor:cerberus.order.v1.GetServiceStatsResponse)
@@ -6857,6 +7014,7 @@ inline void GetServiceStatsResponse::SharedDtor(MessageLite& self) {
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.schema_version_.Destroy();
   this_._impl_.correlation_id_.Destroy();
+  this_._impl_.degraded_reason_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -6902,16 +7060,16 @@ GetServiceStatsResponse::GetClassData() const {
   return GetServiceStatsResponse_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<5, 17, 0, 94, 2>
+const ::_pbi::TcParseTable<5, 31, 0, 117, 2>
 GetServiceStatsResponse::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_._has_bits_),
     0, // no _extensions_
-    17, 248,  // max_field_number, fast_idx_mask
+    31, 248,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294836224,  // skipmap
+    2147483648,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    17,  // num_field_entries
+    31,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     GetServiceStatsResponse_class_data_.base(),
@@ -6923,40 +7081,40 @@ GetServiceStatsResponse::_table_ = {
   }, {{
     {::_pbi::TcParser::MiniParse, {}},
     // uint64 live_orders = 1 [json_name = "liveOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.live_orders_), 2>(),
-     {8, 2, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.live_orders_), 3>(),
+     {8, 3, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_)}},
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.trade_count_), 3>(),
-     {16, 3, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.trade_count_), 4>(),
+     {16, 4, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_)}},
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.tracked_orders_), 4>(),
-     {24, 4, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.tracked_orders_), 5>(),
+     {24, 5, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_)}},
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.rejected_orders_), 5>(),
-     {32, 5, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.rejected_orders_), 6>(),
+     {32, 6, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_)}},
     // uint64 symbols = 5 [json_name = "symbols"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.symbols_), 6>(),
-     {40, 6, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.symbols_), 7>(),
+     {40, 7, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_)}},
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_bid_), 15>(),
-     {48, 15, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_bid_), 28>(),
+     {48, 28, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_)}},
     // double best_bid = 7 [json_name = "bestBid"];
     {::_pbi::TcParser::FastF64S1,
-     {57, 7, 0,
+     {57, 8, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_)}},
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_ask_), 16>(),
-     {64, 16, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(GetServiceStatsResponse, _impl_.has_best_ask_), 29>(),
+     {64, 29, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_)}},
     // double best_ask = 9 [json_name = "bestAsk"];
     {::_pbi::TcParser::FastF64S1,
-     {73, 8, 0,
+     {73, 9, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_)}},
     // string schema_version = 10 [json_name = "schemaVersion"];
     {::_pbi::TcParser::FastUS1,
@@ -6967,87 +7125,158 @@ GetServiceStatsResponse::_table_ = {
      {90, 1, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.correlation_id_)}},
     // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_requests_total_), 9>(),
-     {96, 9, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_requests_total_), 10>(),
+     {96, 10, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_requests_total_)}},
     // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_errors_total_), 10>(),
-     {104, 10, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_errors_total_), 11>(),
+     {104, 11, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_errors_total_)}},
     // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), 11>(),
-     {112, 11, 0,
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), 12>(),
+     {112, 12, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_rejections_total_)}},
     // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
     {::_pbi::TcParser::FastF64S1,
-     {121, 12, 0,
+     {121, 13, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_)}},
     // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
     {::_pbi::TcParser::FastF64S2,
-     {385, 13, 0,
+     {385, 14, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_throughput_rps_)}},
     // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
     {::_pbi::TcParser::FastF64S2,
-     {393, 14, 0,
+     {393, 15, 0,
       PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_throughput_rps_)}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
-    {::_pbi::TcParser::MiniParse, {}},
+    // bool degraded = 18 [json_name = "degraded"];
+    {::_pbi::TcParser::FastV8S2,
+     {400, 30, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.degraded_)}},
+    // string degraded_reason = 19 [json_name = "degradedReason"];
+    {::_pbi::TcParser::FastUS2,
+     {410, 2, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.degraded_reason_)}},
+    // uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+    {::_pbi::TcParser::FastV64S2,
+     {416, 16, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.inflight_requests_)}},
+    // uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+    {::_pbi::TcParser::FastV64S2,
+     {424, 17, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.inflight_requests_peak_)}},
+    // uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+    {::_pbi::TcParser::FastV64S2,
+     {432, 18, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.max_inflight_requests_)}},
+    // uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+    {::_pbi::TcParser::FastV64S2,
+     {440, 19, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_waits_total_)}},
+    // uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+    {::_pbi::TcParser::FastV64S2,
+     {448, 20, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_rejections_total_)}},
+    // uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+    {::_pbi::TcParser::FastV64S2,
+     {456, 21, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_wait_timeouts_total_)}},
+    // uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+    {::_pbi::TcParser::FastV64S2,
+     {464, 22, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_wait_ms_total_)}},
+    // uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+    {::_pbi::TcParser::FastV64S2,
+     {472, 23, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.execution_stream_limit_)}},
+    // uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+    {::_pbi::TcParser::FastV64S2,
+     {480, 24, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_latency_window_size_)}},
+    // uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+    {::_pbi::TcParser::FastV64S2,
+     {488, 25, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_min_pollers_)}},
+    // uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+    {::_pbi::TcParser::FastV64S2,
+     {496, 26, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_max_pollers_)}},
+    // uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+    {::_pbi::TcParser::FastV64S2,
+     {504, 27, 0,
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_num_cqs_)}},
   }}, {{
     65535, 65535
   }}, {{
     // uint64 live_orders = 1 [json_name = "liveOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_count_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.tracked_orders_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_), _Internal::kHasBitsOffset + 5, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.rejected_orders_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 symbols = 5 [json_name = "symbols"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_), _Internal::kHasBitsOffset + 6, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.symbols_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_), _Internal::kHasBitsOffset + 15, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_bid_), _Internal::kHasBitsOffset + 28, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // double best_bid = 7 [json_name = "bestBid"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_), _Internal::kHasBitsOffset + 7, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_bid_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_), _Internal::kHasBitsOffset + 16, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_), _Internal::kHasBitsOffset + 29, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
     // double best_ask = 9 [json_name = "bestAsk"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_), _Internal::kHasBitsOffset + 8, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.best_ask_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // string schema_version = 10 [json_name = "schemaVersion"];
     {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.schema_version_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string correlation_id = 11 [json_name = "correlationId"];
     {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.correlation_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_requests_total_), _Internal::kHasBitsOffset + 9, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_requests_total_), _Internal::kHasBitsOffset + 10, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_errors_total_), _Internal::kHasBitsOffset + 10, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_errors_total_), _Internal::kHasBitsOffset + 11, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), _Internal::kHasBitsOffset + 11, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_rejections_total_), _Internal::kHasBitsOffset + 12, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
     // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_), _Internal::kHasBitsOffset + 12, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_latency_p95_ms_), _Internal::kHasBitsOffset + 13, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_throughput_rps_), _Internal::kHasBitsOffset + 13, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_order_throughput_rps_), _Internal::kHasBitsOffset + 14, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
     // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
-    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_throughput_rps_), _Internal::kHasBitsOffset + 14, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.trade_throughput_rps_), _Internal::kHasBitsOffset + 15, 0, (0 | ::_fl::kFcOptional | ::_fl::kDouble)},
+    // bool degraded = 18 [json_name = "degraded"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.degraded_), _Internal::kHasBitsOffset + 30, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    // string degraded_reason = 19 [json_name = "degradedReason"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.degraded_reason_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.inflight_requests_), _Internal::kHasBitsOffset + 16, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.inflight_requests_peak_), _Internal::kHasBitsOffset + 17, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.max_inflight_requests_), _Internal::kHasBitsOffset + 18, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_waits_total_), _Internal::kHasBitsOffset + 19, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_rejections_total_), _Internal::kHasBitsOffset + 20, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_wait_timeouts_total_), _Internal::kHasBitsOffset + 21, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.backpressure_wait_ms_total_), _Internal::kHasBitsOffset + 22, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.execution_stream_limit_), _Internal::kHasBitsOffset + 23, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.submit_latency_window_size_), _Internal::kHasBitsOffset + 24, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_min_pollers_), _Internal::kHasBitsOffset + 25, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_max_pollers_), _Internal::kHasBitsOffset + 26, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
+    // uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+    {PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.grpc_num_cqs_), _Internal::kHasBitsOffset + 27, 0, (0 | ::_fl::kFcOptional | ::_fl::kUInt64)},
   }},
   // no aux_entries
   {{
-    "\51\0\0\0\0\0\0\0\0\0\16\16\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\51\0\0\0\0\0\0\0\0\0\16\16\0\0\0\0\0\0\0\17\0\0\0\0\0\0\0\0\0\0\0\0"
     "cerberus.order.v1.GetServiceStatsResponse"
     "schema_version"
     "correlation_id"
+    "degraded_reason"
   }},
 };
 PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
@@ -7058,25 +7287,37 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.schema_version_.ClearNonDefaultToEmpty();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.correlation_id_.ClearNonDefaultToEmpty();
     }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.degraded_reason_.ClearNonDefaultToEmpty();
+    }
   }
-  if (BatchCheckHasBit(cached_has_bits, 0x000000fcU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x000000f8U)) {
     ::memset(&_impl_.live_orders_, 0, static_cast<::size_t>(
-        reinterpret_cast<char*>(&_impl_.best_bid_) -
-        reinterpret_cast<char*>(&_impl_.live_orders_)) + sizeof(_impl_.best_bid_));
+        reinterpret_cast<char*>(&_impl_.symbols_) -
+        reinterpret_cast<char*>(&_impl_.live_orders_)) + sizeof(_impl_.symbols_));
   }
   if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
-    ::memset(&_impl_.best_ask_, 0, static_cast<::size_t>(
-        reinterpret_cast<char*>(&_impl_.has_best_bid_) -
-        reinterpret_cast<char*>(&_impl_.best_ask_)) + sizeof(_impl_.has_best_bid_));
+    ::memset(&_impl_.best_bid_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.trade_throughput_rps_) -
+        reinterpret_cast<char*>(&_impl_.best_bid_)) + sizeof(_impl_.trade_throughput_rps_));
   }
-  _impl_.has_best_ask_ = false;
+  if (BatchCheckHasBit(cached_has_bits, 0x00ff0000U)) {
+    ::memset(&_impl_.inflight_requests_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.execution_stream_limit_) -
+        reinterpret_cast<char*>(&_impl_.inflight_requests_)) + sizeof(_impl_.execution_stream_limit_));
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x7f000000U)) {
+    ::memset(&_impl_.submit_latency_window_size_, 0, static_cast<::size_t>(
+        reinterpret_cast<char*>(&_impl_.degraded_) -
+        reinterpret_cast<char*>(&_impl_.submit_latency_window_size_)) + sizeof(_impl_.degraded_));
+  }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
 }
@@ -7101,7 +7342,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
 
   cached_has_bits = this_._impl_._has_bits_[0];
   // uint64 live_orders = 1 [json_name = "liveOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
     if (this_._internal_live_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7110,7 +7351,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 trade_count = 2 [json_name = "tradeCount"];
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (this_._internal_trade_count() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7119,7 +7360,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
     if (this_._internal_tracked_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7128,7 +7369,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-  if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
     if (this_._internal_rejected_orders() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7137,7 +7378,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 symbols = 5 [json_name = "symbols"];
-  if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
     if (this_._internal_symbols() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7146,7 +7387,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // bool has_best_bid = 6 [json_name = "hasBestBid"];
-  if (CheckHasBit(cached_has_bits, 0x00008000U)) {
+  if (CheckHasBit(cached_has_bits, 0x10000000U)) {
     if (this_._internal_has_best_bid() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -7155,7 +7396,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double best_bid = 7 [json_name = "bestBid"];
-  if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_best_bid()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -7164,7 +7405,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-  if (CheckHasBit(cached_has_bits, 0x00010000U)) {
+  if (CheckHasBit(cached_has_bits, 0x20000000U)) {
     if (this_._internal_has_best_ask() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteBoolToArray(
@@ -7173,7 +7414,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double best_ask = 9 [json_name = "bestAsk"];
-  if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_best_ask()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -7202,7 +7443,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
-  if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000400U)) {
     if (this_._internal_submit_order_requests_total() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7211,7 +7452,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
-  if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000800U)) {
     if (this_._internal_submit_order_errors_total() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7220,7 +7461,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
-  if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+  if (CheckHasBit(cached_has_bits, 0x00001000U)) {
     if (this_._internal_submit_order_rejections_total() != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
@@ -7229,7 +7470,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
-  if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+  if (CheckHasBit(cached_has_bits, 0x00002000U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_latency_p95_ms()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -7238,7 +7479,7 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
-  if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+  if (CheckHasBit(cached_has_bits, 0x00004000U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_throughput_rps()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
@@ -7247,11 +7488,138 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
   }
 
   // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
-  if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+  if (CheckHasBit(cached_has_bits, 0x00008000U)) {
     if (::absl::bit_cast<::uint64_t>(this_._internal_trade_throughput_rps()) != 0) {
       target = stream->EnsureSpace(target);
       target = ::_pbi::WireFormatLite::WriteDoubleToArray(
           17, this_._internal_trade_throughput_rps(), target);
+    }
+  }
+
+  // bool degraded = 18 [json_name = "degraded"];
+  if (CheckHasBit(cached_has_bits, 0x40000000U)) {
+    if (this_._internal_degraded() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteBoolToArray(
+          18, this_._internal_degraded(), target);
+    }
+  }
+
+  // string degraded_reason = 19 [json_name = "degradedReason"];
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_degraded_reason().empty()) {
+      const ::std::string& _s = this_._internal_degraded_reason();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "cerberus.order.v1.GetServiceStatsResponse.degraded_reason");
+      target = stream->WriteStringMaybeAliased(19, _s, target);
+    }
+  }
+
+  // uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+  if (CheckHasBit(cached_has_bits, 0x00010000U)) {
+    if (this_._internal_inflight_requests() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          20, this_._internal_inflight_requests(), target);
+    }
+  }
+
+  // uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+  if (CheckHasBit(cached_has_bits, 0x00020000U)) {
+    if (this_._internal_inflight_requests_peak() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          21, this_._internal_inflight_requests_peak(), target);
+    }
+  }
+
+  // uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+  if (CheckHasBit(cached_has_bits, 0x00040000U)) {
+    if (this_._internal_max_inflight_requests() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          22, this_._internal_max_inflight_requests(), target);
+    }
+  }
+
+  // uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00080000U)) {
+    if (this_._internal_backpressure_waits_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          23, this_._internal_backpressure_waits_total(), target);
+    }
+  }
+
+  // uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00100000U)) {
+    if (this_._internal_backpressure_rejections_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          24, this_._internal_backpressure_rejections_total(), target);
+    }
+  }
+
+  // uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00200000U)) {
+    if (this_._internal_backpressure_wait_timeouts_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          25, this_._internal_backpressure_wait_timeouts_total(), target);
+    }
+  }
+
+  // uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+  if (CheckHasBit(cached_has_bits, 0x00400000U)) {
+    if (this_._internal_backpressure_wait_ms_total() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          26, this_._internal_backpressure_wait_ms_total(), target);
+    }
+  }
+
+  // uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+  if (CheckHasBit(cached_has_bits, 0x00800000U)) {
+    if (this_._internal_execution_stream_limit() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          27, this_._internal_execution_stream_limit(), target);
+    }
+  }
+
+  // uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+  if (CheckHasBit(cached_has_bits, 0x01000000U)) {
+    if (this_._internal_submit_latency_window_size() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          28, this_._internal_submit_latency_window_size(), target);
+    }
+  }
+
+  // uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+  if (CheckHasBit(cached_has_bits, 0x02000000U)) {
+    if (this_._internal_grpc_min_pollers() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          29, this_._internal_grpc_min_pollers(), target);
+    }
+  }
+
+  // uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+  if (CheckHasBit(cached_has_bits, 0x04000000U)) {
+    if (this_._internal_grpc_max_pollers() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          30, this_._internal_grpc_max_pollers(), target);
+    }
+  }
+
+  // uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+  if (CheckHasBit(cached_has_bits, 0x08000000U)) {
+    if (this_._internal_grpc_num_cqs() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteUInt64ToArray(
+          31, this_._internal_grpc_num_cqs(), target);
     }
   }
 
@@ -7295,106 +7663,205 @@ PROTOBUF_NOINLINE void GetServiceStatsResponse::Clear() {
                                         this_._internal_correlation_id());
       }
     }
-    // uint64 live_orders = 1 [json_name = "liveOrders"];
+    // string degraded_reason = 19 [json_name = "degradedReason"];
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_degraded_reason().empty()) {
+        total_size += 2 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_degraded_reason());
+      }
+    }
+    // uint64 live_orders = 1 [json_name = "liveOrders"];
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (this_._internal_live_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_live_orders());
       }
     }
     // uint64 trade_count = 2 [json_name = "tradeCount"];
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (this_._internal_trade_count() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_trade_count());
       }
     }
     // uint64 tracked_orders = 3 [json_name = "trackedOrders"];
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (this_._internal_tracked_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_tracked_orders());
       }
     }
     // uint64 rejected_orders = 4 [json_name = "rejectedOrders"];
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (this_._internal_rejected_orders() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_rejected_orders());
       }
     }
     // uint64 symbols = 5 [json_name = "symbols"];
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (this_._internal_symbols() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_symbols());
       }
     }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
     // double best_bid = 7 [json_name = "bestBid"];
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_best_bid()) != 0) {
         total_size += 9;
       }
     }
-  }
-  if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
     // double best_ask = 9 [json_name = "bestAsk"];
-    if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_best_ask()) != 0) {
         total_size += 9;
       }
     }
     // uint64 submit_order_requests_total = 12 [json_name = "submitOrderRequestsTotal"];
-    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
       if (this_._internal_submit_order_requests_total() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_submit_order_requests_total());
       }
     }
     // uint64 submit_order_errors_total = 13 [json_name = "submitOrderErrorsTotal"];
-    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
       if (this_._internal_submit_order_errors_total() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_submit_order_errors_total());
       }
     }
     // uint64 submit_order_rejections_total = 14 [json_name = "submitOrderRejectionsTotal"];
-    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
       if (this_._internal_submit_order_rejections_total() != 0) {
         total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(
             this_._internal_submit_order_rejections_total());
       }
     }
     // double submit_order_latency_p95_ms = 15 [json_name = "submitOrderLatencyP95Ms"];
-    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_latency_p95_ms()) != 0) {
         total_size += 9;
       }
     }
     // double submit_order_throughput_rps = 16 [json_name = "submitOrderThroughputRps"];
-    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_submit_order_throughput_rps()) != 0) {
         total_size += 10;
       }
     }
     // double trade_throughput_rps = 17 [json_name = "tradeThroughputRps"];
-    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
       if (::absl::bit_cast<::uint64_t>(this_._internal_trade_throughput_rps()) != 0) {
         total_size += 10;
       }
     }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00ff0000U)) {
+    // uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+    if (CheckHasBit(cached_has_bits, 0x00010000U)) {
+      if (this_._internal_inflight_requests() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_inflight_requests());
+      }
+    }
+    // uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+    if (CheckHasBit(cached_has_bits, 0x00020000U)) {
+      if (this_._internal_inflight_requests_peak() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_inflight_requests_peak());
+      }
+    }
+    // uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+    if (CheckHasBit(cached_has_bits, 0x00040000U)) {
+      if (this_._internal_max_inflight_requests() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_max_inflight_requests());
+      }
+    }
+    // uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00080000U)) {
+      if (this_._internal_backpressure_waits_total() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_backpressure_waits_total());
+      }
+    }
+    // uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00100000U)) {
+      if (this_._internal_backpressure_rejections_total() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_backpressure_rejections_total());
+      }
+    }
+    // uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00200000U)) {
+      if (this_._internal_backpressure_wait_timeouts_total() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_backpressure_wait_timeouts_total());
+      }
+    }
+    // uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+    if (CheckHasBit(cached_has_bits, 0x00400000U)) {
+      if (this_._internal_backpressure_wait_ms_total() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_backpressure_wait_ms_total());
+      }
+    }
+    // uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+    if (CheckHasBit(cached_has_bits, 0x00800000U)) {
+      if (this_._internal_execution_stream_limit() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_execution_stream_limit());
+      }
+    }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x7f000000U)) {
+    // uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+    if (CheckHasBit(cached_has_bits, 0x01000000U)) {
+      if (this_._internal_submit_latency_window_size() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_submit_latency_window_size());
+      }
+    }
+    // uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+    if (CheckHasBit(cached_has_bits, 0x02000000U)) {
+      if (this_._internal_grpc_min_pollers() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_grpc_min_pollers());
+      }
+    }
+    // uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+    if (CheckHasBit(cached_has_bits, 0x04000000U)) {
+      if (this_._internal_grpc_max_pollers() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_grpc_max_pollers());
+      }
+    }
+    // uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+    if (CheckHasBit(cached_has_bits, 0x08000000U)) {
+      if (this_._internal_grpc_num_cqs() != 0) {
+        total_size += 2 + ::_pbi::WireFormatLite::UInt64Size(
+                                        this_._internal_grpc_num_cqs());
+      }
+    }
     // bool has_best_bid = 6 [json_name = "hasBestBid"];
-    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
+    if (CheckHasBit(cached_has_bits, 0x10000000U)) {
       if (this_._internal_has_best_bid() != 0) {
         total_size += 2;
       }
     }
-  }
-   {
     // bool has_best_ask = 8 [json_name = "hasBestAsk"];
-    if (CheckHasBit(cached_has_bits, 0x00010000U)) {
+    if (CheckHasBit(cached_has_bits, 0x20000000U)) {
       if (this_._internal_has_best_ask() != 0) {
         total_size += 2;
+      }
+    }
+    // bool degraded = 18 [json_name = "degraded"];
+    if (CheckHasBit(cached_has_bits, 0x40000000U)) {
+      if (this_._internal_degraded() != 0) {
+        total_size += 3;
       }
     }
   }
@@ -7436,81 +7903,159 @@ void GetServiceStatsResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_degraded_reason().empty()) {
+        _this->_internal_set_degraded_reason(from._internal_degraded_reason());
+      } else {
+        if (_this->_impl_.degraded_reason_.IsDefault()) {
+          _this->_internal_set_degraded_reason("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       if (from._internal_live_orders() != 0) {
         _this->_impl_.live_orders_ = from._impl_.live_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (from._internal_trade_count() != 0) {
         _this->_impl_.trade_count_ = from._impl_.trade_count_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
       if (from._internal_tracked_orders() != 0) {
         _this->_impl_.tracked_orders_ = from._impl_.tracked_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000020U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
       if (from._internal_rejected_orders() != 0) {
         _this->_impl_.rejected_orders_ = from._impl_.rejected_orders_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000040U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
       if (from._internal_symbols() != 0) {
         _this->_impl_.symbols_ = from._impl_.symbols_;
-      }
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000080U)) {
-      if (::absl::bit_cast<::uint64_t>(from._internal_best_bid()) != 0) {
-        _this->_impl_.best_bid_ = from._impl_.best_bid_;
       }
     }
   }
   if (BatchCheckHasBit(cached_has_bits, 0x0000ff00U)) {
     if (CheckHasBit(cached_has_bits, 0x00000100U)) {
+      if (::absl::bit_cast<::uint64_t>(from._internal_best_bid()) != 0) {
+        _this->_impl_.best_bid_ = from._impl_.best_bid_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_best_ask()) != 0) {
         _this->_impl_.best_ask_ = from._impl_.best_ask_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000200U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
       if (from._internal_submit_order_requests_total() != 0) {
         _this->_impl_.submit_order_requests_total_ = from._impl_.submit_order_requests_total_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000400U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
       if (from._internal_submit_order_errors_total() != 0) {
         _this->_impl_.submit_order_errors_total_ = from._impl_.submit_order_errors_total_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00000800U)) {
+    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
       if (from._internal_submit_order_rejections_total() != 0) {
         _this->_impl_.submit_order_rejections_total_ = from._impl_.submit_order_rejections_total_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00001000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_submit_order_latency_p95_ms()) != 0) {
         _this->_impl_.submit_order_latency_p95_ms_ = from._impl_.submit_order_latency_p95_ms_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00002000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_submit_order_throughput_rps()) != 0) {
         _this->_impl_.submit_order_throughput_rps_ = from._impl_.submit_order_throughput_rps_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00004000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
       if (::absl::bit_cast<::uint64_t>(from._internal_trade_throughput_rps()) != 0) {
         _this->_impl_.trade_throughput_rps_ = from._impl_.trade_throughput_rps_;
       }
     }
-    if (CheckHasBit(cached_has_bits, 0x00008000U)) {
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x00ff0000U)) {
+    if (CheckHasBit(cached_has_bits, 0x00010000U)) {
+      if (from._internal_inflight_requests() != 0) {
+        _this->_impl_.inflight_requests_ = from._impl_.inflight_requests_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00020000U)) {
+      if (from._internal_inflight_requests_peak() != 0) {
+        _this->_impl_.inflight_requests_peak_ = from._impl_.inflight_requests_peak_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00040000U)) {
+      if (from._internal_max_inflight_requests() != 0) {
+        _this->_impl_.max_inflight_requests_ = from._impl_.max_inflight_requests_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00080000U)) {
+      if (from._internal_backpressure_waits_total() != 0) {
+        _this->_impl_.backpressure_waits_total_ = from._impl_.backpressure_waits_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00100000U)) {
+      if (from._internal_backpressure_rejections_total() != 0) {
+        _this->_impl_.backpressure_rejections_total_ = from._impl_.backpressure_rejections_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00200000U)) {
+      if (from._internal_backpressure_wait_timeouts_total() != 0) {
+        _this->_impl_.backpressure_wait_timeouts_total_ = from._impl_.backpressure_wait_timeouts_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00400000U)) {
+      if (from._internal_backpressure_wait_ms_total() != 0) {
+        _this->_impl_.backpressure_wait_ms_total_ = from._impl_.backpressure_wait_ms_total_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00800000U)) {
+      if (from._internal_execution_stream_limit() != 0) {
+        _this->_impl_.execution_stream_limit_ = from._impl_.execution_stream_limit_;
+      }
+    }
+  }
+  if (BatchCheckHasBit(cached_has_bits, 0x7f000000U)) {
+    if (CheckHasBit(cached_has_bits, 0x01000000U)) {
+      if (from._internal_submit_latency_window_size() != 0) {
+        _this->_impl_.submit_latency_window_size_ = from._impl_.submit_latency_window_size_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x02000000U)) {
+      if (from._internal_grpc_min_pollers() != 0) {
+        _this->_impl_.grpc_min_pollers_ = from._impl_.grpc_min_pollers_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x04000000U)) {
+      if (from._internal_grpc_max_pollers() != 0) {
+        _this->_impl_.grpc_max_pollers_ = from._impl_.grpc_max_pollers_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x08000000U)) {
+      if (from._internal_grpc_num_cqs() != 0) {
+        _this->_impl_.grpc_num_cqs_ = from._impl_.grpc_num_cqs_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x10000000U)) {
       if (from._internal_has_best_bid() != 0) {
         _this->_impl_.has_best_bid_ = from._impl_.has_best_bid_;
       }
     }
-  }
-  if (CheckHasBit(cached_has_bits, 0x00010000U)) {
-    if (from._internal_has_best_ask() != 0) {
-      _this->_impl_.has_best_ask_ = from._impl_.has_best_ask_;
+    if (CheckHasBit(cached_has_bits, 0x20000000U)) {
+      if (from._internal_has_best_ask() != 0) {
+        _this->_impl_.has_best_ask_ = from._impl_.has_best_ask_;
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x40000000U)) {
+      if (from._internal_degraded() != 0) {
+        _this->_impl_.degraded_ = from._impl_.degraded_;
+      }
     }
   }
   _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -7534,9 +8079,10 @@ void GetServiceStatsResponse::InternalSwap(GetServiceStatsResponse* PROTOBUF_RES
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.schema_version_, &other->_impl_.schema_version_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.correlation_id_, &other->_impl_.correlation_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.degraded_reason_, &other->_impl_.degraded_reason_, arena);
   ::google::protobuf::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.has_best_ask_)
-      + sizeof(GetServiceStatsResponse::_impl_.has_best_ask_)
+      PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.degraded_)
+      + sizeof(GetServiceStatsResponse::_impl_.degraded_)
       - PROTOBUF_FIELD_OFFSET(GetServiceStatsResponse, _impl_.live_orders_)>(
           reinterpret_cast<char*>(&_impl_.live_orders_),
           reinterpret_cast<char*>(&other->_impl_.live_orders_));

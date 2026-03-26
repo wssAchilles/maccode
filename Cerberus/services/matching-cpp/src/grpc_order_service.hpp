@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include <string>
 
 #include <grpcpp/grpcpp.h>
@@ -12,9 +13,19 @@
 #include "cerberus/order/v1/order.grpc.pb.h"
 #include "order_service.hpp"
 
+struct GrpcRuntimeConfig {
+  int min_pollers{4};
+  int max_pollers{8};
+  int num_cqs{4};
+  std::size_t execution_stream_limit{500};
+  std::size_t submit_latency_window_size{1024};
+  std::size_t max_inflight_requests{512};
+  std::uint64_t inflight_acquire_timeout_ms{25};
+};
+
 class GrpcOrderService final : public cerberus::order::v1::OrderService::Service {
  public:
-  explicit GrpcOrderService(OrderService& service);
+  explicit GrpcOrderService(OrderService& service, GrpcRuntimeConfig runtime_config = {});
 
   grpc::Status SubmitOrder(grpc::ServerContext* context,
                            const cerberus::order::v1::SubmitOrderRequest* request,
@@ -45,6 +56,35 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
       cerberus::order::v1::GetServiceStatsResponse* response) override;
 
  private:
+  class InflightPermit final {
+   public:
+    explicit InflightPermit(GrpcOrderService* owner) : owner_(owner) {}
+    InflightPermit(InflightPermit&& other) noexcept : owner_(other.owner_) {
+      other.owner_ = nullptr;
+    }
+    InflightPermit& operator=(InflightPermit&& other) noexcept {
+      if (this == &other) {
+        return *this;
+      }
+      if (owner_ != nullptr) {
+        owner_->ReleaseInflightPermit();
+      }
+      owner_ = other.owner_;
+      other.owner_ = nullptr;
+      return *this;
+    }
+    InflightPermit(const InflightPermit&) = delete;
+    InflightPermit& operator=(const InflightPermit&) = delete;
+    ~InflightPermit() {
+      if (owner_ != nullptr) {
+        owner_->ReleaseInflightPermit();
+      }
+    }
+
+   private:
+    GrpcOrderService* owner_{nullptr};
+  };
+
   static Side ToDomainSide(cerberus::order::v1::Side side, bool& ok);
   static cerberus::order::v1::Side ToProtoSide(Side side);
   static cerberus::order::v1::OrderStatus ToProtoStatus(OrderStatus status);
@@ -60,6 +100,11 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
                            std::string* response_schema,
                            std::string* response_correlation) const;
   void MarkDegraded(grpc::ServerContext* context, const std::string& reason) const;
+  void MarkBackpressure(grpc::ServerContext* context, const std::string& reason) const;
+  grpc::Status AcquireInflightPermit(grpc::ServerContext* context, const char* rpc_name,
+                                     std::optional<InflightPermit>* permit);
+  void ReleaseInflightPermit();
+  void ObserveInflightPeak(std::uint64_t inflight_after_acquire);
   grpc::Status FinalizeSubmitStatus(
       grpc::Status status, bool accepted,
       const std::chrono::steady_clock::time_point& started_at);
@@ -77,8 +122,19 @@ class GrpcOrderService final : public cerberus::order::v1::OrderService::Service
   bool force_degraded_{false};
   std::string degraded_reason_;
   std::string schema_version_;
+  int grpc_min_pollers_{4};
+  int grpc_max_pollers_{8};
+  int grpc_num_cqs_{4};
   std::size_t execution_stream_limit_{500};
   std::size_t submit_latency_window_size_{1024};
+  std::size_t max_inflight_requests_{512};
+  std::uint64_t inflight_acquire_timeout_ms_{25};
+  std::atomic_uint64_t inflight_requests_{0};
+  std::atomic_uint64_t inflight_requests_peak_{0};
+  std::atomic_uint64_t backpressure_waits_total_{0};
+  std::atomic_uint64_t backpressure_rejections_total_{0};
+  std::atomic_uint64_t backpressure_wait_timeouts_total_{0};
+  std::atomic_uint64_t backpressure_wait_ms_total_{0};
   std::atomic_uint64_t submit_order_requests_total_{0};
   std::atomic_uint64_t submit_order_errors_total_{0};
   std::atomic_uint64_t submit_order_rejections_total_{0};

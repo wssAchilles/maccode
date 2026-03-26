@@ -1481,7 +1481,9 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
     kVersionFieldNumber = 3,
     kSchemaVersionFieldNumber = 5,
     kCorrelationIdFieldNumber = 6,
+    kDegradedReasonFieldNumber = 8,
     kUptimeSecondsFieldNumber = 4,
+    kDegradedFieldNumber = 7,
   };
   // string status = 1 [json_name = "status"];
   void clear_status() ;
@@ -1558,6 +1560,21 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
   ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
 
   public:
+  // string degraded_reason = 8 [json_name = "degradedReason"];
+  void clear_degraded_reason() ;
+  [[nodiscard]] const ::std::string& degraded_reason() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_degraded_reason(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_degraded_reason();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_degraded_reason();
+  void set_allocated_degraded_reason(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_degraded_reason() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_degraded_reason(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_degraded_reason();
+
+  public:
   // uint64 uptime_seconds = 4 [json_name = "uptimeSeconds"];
   void clear_uptime_seconds() ;
   [[nodiscard]] ::uint64_t uptime_seconds() const;
@@ -1568,12 +1585,22 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
   void _internal_set_uptime_seconds(::uint64_t value);
 
   public:
+  // bool degraded = 7 [json_name = "degraded"];
+  void clear_degraded() ;
+  [[nodiscard]] bool degraded() const;
+  void set_degraded(bool value);
+
+  private:
+  bool _internal_degraded() const;
+  void _internal_set_degraded(bool value);
+
+  public:
   // @@protoc_insertion_point(class_scope:cerberus.order.v1.HealthResponse)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<3, 6,
-                                   0, 89,
+  static const ::google::protobuf::internal::TcParseTable<3, 8,
+                                   0, 112,
                                    2>
       _table_;
 
@@ -1601,7 +1628,9 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED HealthResponse final : public ::goo
     ::google::protobuf::internal::ArenaStringPtr version_;
     ::google::protobuf::internal::ArenaStringPtr schema_version_;
     ::google::protobuf::internal::ArenaStringPtr correlation_id_;
+    ::google::protobuf::internal::ArenaStringPtr degraded_reason_;
     ::uint64_t uptime_seconds_;
+    bool degraded_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -1896,6 +1925,7 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
   enum : int {
     kSchemaVersionFieldNumber = 10,
     kCorrelationIdFieldNumber = 11,
+    kDegradedReasonFieldNumber = 19,
     kLiveOrdersFieldNumber = 1,
     kTradeCountFieldNumber = 2,
     kTrackedOrdersFieldNumber = 3,
@@ -1909,8 +1939,21 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
     kSubmitOrderLatencyP95MsFieldNumber = 15,
     kSubmitOrderThroughputRpsFieldNumber = 16,
     kTradeThroughputRpsFieldNumber = 17,
+    kInflightRequestsFieldNumber = 20,
+    kInflightRequestsPeakFieldNumber = 21,
+    kMaxInflightRequestsFieldNumber = 22,
+    kBackpressureWaitsTotalFieldNumber = 23,
+    kBackpressureRejectionsTotalFieldNumber = 24,
+    kBackpressureWaitTimeoutsTotalFieldNumber = 25,
+    kBackpressureWaitMsTotalFieldNumber = 26,
+    kExecutionStreamLimitFieldNumber = 27,
+    kSubmitLatencyWindowSizeFieldNumber = 28,
+    kGrpcMinPollersFieldNumber = 29,
+    kGrpcMaxPollersFieldNumber = 30,
+    kGrpcNumCqsFieldNumber = 31,
     kHasBestBidFieldNumber = 6,
     kHasBestAskFieldNumber = 8,
+    kDegradedFieldNumber = 18,
   };
   // string schema_version = 10 [json_name = "schemaVersion"];
   void clear_schema_version() ;
@@ -1940,6 +1983,21 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
   const ::std::string& _internal_correlation_id() const;
   PROTOBUF_ALWAYS_INLINE void _internal_set_correlation_id(const ::std::string& value);
   ::std::string* PROTOBUF_NONNULL _internal_mutable_correlation_id();
+
+  public:
+  // string degraded_reason = 19 [json_name = "degradedReason"];
+  void clear_degraded_reason() ;
+  [[nodiscard]] const ::std::string& degraded_reason() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_degraded_reason(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_degraded_reason();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_degraded_reason();
+  void set_allocated_degraded_reason(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_degraded_reason() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_degraded_reason(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_degraded_reason();
 
   public:
   // uint64 live_orders = 1 [json_name = "liveOrders"];
@@ -2072,6 +2130,126 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
   void _internal_set_trade_throughput_rps(double value);
 
   public:
+  // uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+  void clear_inflight_requests() ;
+  [[nodiscard]] ::uint64_t inflight_requests() const;
+  void set_inflight_requests(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_inflight_requests() const;
+  void _internal_set_inflight_requests(::uint64_t value);
+
+  public:
+  // uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+  void clear_inflight_requests_peak() ;
+  [[nodiscard]] ::uint64_t inflight_requests_peak() const;
+  void set_inflight_requests_peak(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_inflight_requests_peak() const;
+  void _internal_set_inflight_requests_peak(::uint64_t value);
+
+  public:
+  // uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+  void clear_max_inflight_requests() ;
+  [[nodiscard]] ::uint64_t max_inflight_requests() const;
+  void set_max_inflight_requests(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_max_inflight_requests() const;
+  void _internal_set_max_inflight_requests(::uint64_t value);
+
+  public:
+  // uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+  void clear_backpressure_waits_total() ;
+  [[nodiscard]] ::uint64_t backpressure_waits_total() const;
+  void set_backpressure_waits_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_backpressure_waits_total() const;
+  void _internal_set_backpressure_waits_total(::uint64_t value);
+
+  public:
+  // uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+  void clear_backpressure_rejections_total() ;
+  [[nodiscard]] ::uint64_t backpressure_rejections_total() const;
+  void set_backpressure_rejections_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_backpressure_rejections_total() const;
+  void _internal_set_backpressure_rejections_total(::uint64_t value);
+
+  public:
+  // uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+  void clear_backpressure_wait_timeouts_total() ;
+  [[nodiscard]] ::uint64_t backpressure_wait_timeouts_total() const;
+  void set_backpressure_wait_timeouts_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_backpressure_wait_timeouts_total() const;
+  void _internal_set_backpressure_wait_timeouts_total(::uint64_t value);
+
+  public:
+  // uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+  void clear_backpressure_wait_ms_total() ;
+  [[nodiscard]] ::uint64_t backpressure_wait_ms_total() const;
+  void set_backpressure_wait_ms_total(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_backpressure_wait_ms_total() const;
+  void _internal_set_backpressure_wait_ms_total(::uint64_t value);
+
+  public:
+  // uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+  void clear_execution_stream_limit() ;
+  [[nodiscard]] ::uint64_t execution_stream_limit() const;
+  void set_execution_stream_limit(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_execution_stream_limit() const;
+  void _internal_set_execution_stream_limit(::uint64_t value);
+
+  public:
+  // uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+  void clear_submit_latency_window_size() ;
+  [[nodiscard]] ::uint64_t submit_latency_window_size() const;
+  void set_submit_latency_window_size(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_submit_latency_window_size() const;
+  void _internal_set_submit_latency_window_size(::uint64_t value);
+
+  public:
+  // uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+  void clear_grpc_min_pollers() ;
+  [[nodiscard]] ::uint64_t grpc_min_pollers() const;
+  void set_grpc_min_pollers(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_grpc_min_pollers() const;
+  void _internal_set_grpc_min_pollers(::uint64_t value);
+
+  public:
+  // uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+  void clear_grpc_max_pollers() ;
+  [[nodiscard]] ::uint64_t grpc_max_pollers() const;
+  void set_grpc_max_pollers(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_grpc_max_pollers() const;
+  void _internal_set_grpc_max_pollers(::uint64_t value);
+
+  public:
+  // uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+  void clear_grpc_num_cqs() ;
+  [[nodiscard]] ::uint64_t grpc_num_cqs() const;
+  void set_grpc_num_cqs(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_grpc_num_cqs() const;
+  void _internal_set_grpc_num_cqs(::uint64_t value);
+
+  public:
   // bool has_best_bid = 6 [json_name = "hasBestBid"];
   void clear_has_best_bid() ;
   [[nodiscard]] bool has_best_bid() const;
@@ -2092,12 +2270,22 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
   void _internal_set_has_best_ask(bool value);
 
   public:
+  // bool degraded = 18 [json_name = "degraded"];
+  void clear_degraded() ;
+  [[nodiscard]] bool degraded() const;
+  void set_degraded(bool value);
+
+  private:
+  bool _internal_degraded() const;
+  void _internal_set_degraded(bool value);
+
+  public:
   // @@protoc_insertion_point(class_scope:cerberus.order.v1.GetServiceStatsResponse)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<5, 17,
-                                   0, 94,
+  static const ::google::protobuf::internal::TcParseTable<5, 31,
+                                   0, 117,
                                    2>
       _table_;
 
@@ -2122,6 +2310,7 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::internal::ArenaStringPtr schema_version_;
     ::google::protobuf::internal::ArenaStringPtr correlation_id_;
+    ::google::protobuf::internal::ArenaStringPtr degraded_reason_;
     ::uint64_t live_orders_;
     ::uint64_t trade_count_;
     ::uint64_t tracked_orders_;
@@ -2135,8 +2324,21 @@ class  PROTOBUF_FUTURE_ADD_EARLY_WARN_UNUSED GetServiceStatsResponse final : pub
     double submit_order_latency_p95_ms_;
     double submit_order_throughput_rps_;
     double trade_throughput_rps_;
+    ::uint64_t inflight_requests_;
+    ::uint64_t inflight_requests_peak_;
+    ::uint64_t max_inflight_requests_;
+    ::uint64_t backpressure_waits_total_;
+    ::uint64_t backpressure_rejections_total_;
+    ::uint64_t backpressure_wait_timeouts_total_;
+    ::uint64_t backpressure_wait_ms_total_;
+    ::uint64_t execution_stream_limit_;
+    ::uint64_t submit_latency_window_size_;
+    ::uint64_t grpc_min_pollers_;
+    ::uint64_t grpc_max_pollers_;
+    ::uint64_t grpc_num_cqs_;
     bool has_best_bid_;
     bool has_best_ask_;
+    bool degraded_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -7878,7 +8080,7 @@ inline void HealthResponse::clear_uptime_seconds() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.uptime_seconds_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000040U);
 }
 inline ::uint64_t HealthResponse::uptime_seconds() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.uptime_seconds)
@@ -7886,7 +8088,7 @@ inline ::uint64_t HealthResponse::uptime_seconds() const {
 }
 inline void HealthResponse::set_uptime_seconds(::uint64_t value) {
   _internal_set_uptime_seconds(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.uptime_seconds)
 }
 inline ::uint64_t HealthResponse::_internal_uptime_seconds() const {
@@ -8028,6 +8230,96 @@ inline void HealthResponse::set_allocated_correlation_id(::std::string* PROTOBUF
   // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.HealthResponse.correlation_id)
 }
 
+// bool degraded = 7 [json_name = "degraded"];
+inline void HealthResponse::clear_degraded() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_ = false;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000080U);
+}
+inline bool HealthResponse::degraded() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.degraded)
+  return _internal_degraded();
+}
+inline void HealthResponse::set_degraded(bool value) {
+  _internal_set_degraded(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.degraded)
+}
+inline bool HealthResponse::_internal_degraded() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.degraded_;
+}
+inline void HealthResponse::_internal_set_degraded(bool value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_ = value;
+}
+
+// string degraded_reason = 8 [json_name = "degradedReason"];
+inline void HealthResponse::clear_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_reason_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000020U);
+}
+inline const ::std::string& HealthResponse::degraded_reason() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.HealthResponse.degraded_reason)
+  return _internal_degraded_reason();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void HealthResponse::set_degraded_reason(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  _impl_.degraded_reason_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.HealthResponse.degraded_reason)
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::mutable_degraded_reason()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  ::std::string* _s = _internal_mutable_degraded_reason();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.HealthResponse.degraded_reason)
+  return _s;
+}
+inline const ::std::string& HealthResponse::_internal_degraded_reason() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.degraded_reason_.Get();
+}
+inline void HealthResponse::_internal_set_degraded_reason(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_reason_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL HealthResponse::_internal_mutable_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.degraded_reason_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE HealthResponse::release_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.HealthResponse.degraded_reason)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000020U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
+  auto* released = _impl_.degraded_reason_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.degraded_reason_.Set("", GetArena());
+  }
+  return released;
+}
+inline void HealthResponse::set_allocated_degraded_reason(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000020U);
+  }
+  _impl_.degraded_reason_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.degraded_reason_.IsDefault()) {
+    _impl_.degraded_reason_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.HealthResponse.degraded_reason)
+}
+
 // -------------------------------------------------------------------
 
 // GetServiceStatsRequest
@@ -8041,7 +8333,7 @@ inline void GetServiceStatsResponse::clear_live_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.live_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000004U);
+                  0x00000008U);
 }
 inline ::uint64_t GetServiceStatsResponse::live_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.live_orders)
@@ -8049,7 +8341,7 @@ inline ::uint64_t GetServiceStatsResponse::live_orders() const {
 }
 inline void GetServiceStatsResponse::set_live_orders(::uint64_t value) {
   _internal_set_live_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.live_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_live_orders() const {
@@ -8066,7 +8358,7 @@ inline void GetServiceStatsResponse::clear_trade_count() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.trade_count_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000010U);
 }
 inline ::uint64_t GetServiceStatsResponse::trade_count() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.trade_count)
@@ -8074,7 +8366,7 @@ inline ::uint64_t GetServiceStatsResponse::trade_count() const {
 }
 inline void GetServiceStatsResponse::set_trade_count(::uint64_t value) {
   _internal_set_trade_count(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.trade_count)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_trade_count() const {
@@ -8091,7 +8383,7 @@ inline void GetServiceStatsResponse::clear_tracked_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.tracked_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000010U);
+                  0x00000020U);
 }
 inline ::uint64_t GetServiceStatsResponse::tracked_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.tracked_orders)
@@ -8099,7 +8391,7 @@ inline ::uint64_t GetServiceStatsResponse::tracked_orders() const {
 }
 inline void GetServiceStatsResponse::set_tracked_orders(::uint64_t value) {
   _internal_set_tracked_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.tracked_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_tracked_orders() const {
@@ -8116,7 +8408,7 @@ inline void GetServiceStatsResponse::clear_rejected_orders() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.rejected_orders_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000020U);
+                  0x00000040U);
 }
 inline ::uint64_t GetServiceStatsResponse::rejected_orders() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.rejected_orders)
@@ -8124,7 +8416,7 @@ inline ::uint64_t GetServiceStatsResponse::rejected_orders() const {
 }
 inline void GetServiceStatsResponse::set_rejected_orders(::uint64_t value) {
   _internal_set_rejected_orders(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.rejected_orders)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_rejected_orders() const {
@@ -8141,7 +8433,7 @@ inline void GetServiceStatsResponse::clear_symbols() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.symbols_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000040U);
+                  0x00000080U);
 }
 inline ::uint64_t GetServiceStatsResponse::symbols() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.symbols)
@@ -8149,7 +8441,7 @@ inline ::uint64_t GetServiceStatsResponse::symbols() const {
 }
 inline void GetServiceStatsResponse::set_symbols(::uint64_t value) {
   _internal_set_symbols(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.symbols)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_symbols() const {
@@ -8166,7 +8458,7 @@ inline void GetServiceStatsResponse::clear_has_best_bid() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.has_best_bid_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00008000U);
+                  0x10000000U);
 }
 inline bool GetServiceStatsResponse::has_best_bid() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.has_best_bid)
@@ -8174,7 +8466,7 @@ inline bool GetServiceStatsResponse::has_best_bid() const {
 }
 inline void GetServiceStatsResponse::set_has_best_bid(bool value) {
   _internal_set_has_best_bid(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00008000U);
+  SetHasBit(_impl_._has_bits_[0], 0x10000000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.has_best_bid)
 }
 inline bool GetServiceStatsResponse::_internal_has_best_bid() const {
@@ -8191,7 +8483,7 @@ inline void GetServiceStatsResponse::clear_best_bid() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.best_bid_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000080U);
+                  0x00000100U);
 }
 inline double GetServiceStatsResponse::best_bid() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.best_bid)
@@ -8199,7 +8491,7 @@ inline double GetServiceStatsResponse::best_bid() const {
 }
 inline void GetServiceStatsResponse::set_best_bid(double value) {
   _internal_set_best_bid(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.best_bid)
 }
 inline double GetServiceStatsResponse::_internal_best_bid() const {
@@ -8216,7 +8508,7 @@ inline void GetServiceStatsResponse::clear_has_best_ask() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.has_best_ask_ = false;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00010000U);
+                  0x20000000U);
 }
 inline bool GetServiceStatsResponse::has_best_ask() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.has_best_ask)
@@ -8224,7 +8516,7 @@ inline bool GetServiceStatsResponse::has_best_ask() const {
 }
 inline void GetServiceStatsResponse::set_has_best_ask(bool value) {
   _internal_set_has_best_ask(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00010000U);
+  SetHasBit(_impl_._has_bits_[0], 0x20000000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.has_best_ask)
 }
 inline bool GetServiceStatsResponse::_internal_has_best_ask() const {
@@ -8241,7 +8533,7 @@ inline void GetServiceStatsResponse::clear_best_ask() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.best_ask_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000100U);
+                  0x00000200U);
 }
 inline double GetServiceStatsResponse::best_ask() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.best_ask)
@@ -8249,7 +8541,7 @@ inline double GetServiceStatsResponse::best_ask() const {
 }
 inline void GetServiceStatsResponse::set_best_ask(double value) {
   _internal_set_best_ask(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.best_ask)
 }
 inline double GetServiceStatsResponse::_internal_best_ask() const {
@@ -8396,7 +8688,7 @@ inline void GetServiceStatsResponse::clear_submit_order_requests_total() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.submit_order_requests_total_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000200U);
+                  0x00000400U);
 }
 inline ::uint64_t GetServiceStatsResponse::submit_order_requests_total() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_requests_total)
@@ -8404,7 +8696,7 @@ inline ::uint64_t GetServiceStatsResponse::submit_order_requests_total() const {
 }
 inline void GetServiceStatsResponse::set_submit_order_requests_total(::uint64_t value) {
   _internal_set_submit_order_requests_total(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000400U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_requests_total)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_requests_total() const {
@@ -8421,7 +8713,7 @@ inline void GetServiceStatsResponse::clear_submit_order_errors_total() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.submit_order_errors_total_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000400U);
+                  0x00000800U);
 }
 inline ::uint64_t GetServiceStatsResponse::submit_order_errors_total() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_errors_total)
@@ -8429,7 +8721,7 @@ inline ::uint64_t GetServiceStatsResponse::submit_order_errors_total() const {
 }
 inline void GetServiceStatsResponse::set_submit_order_errors_total(::uint64_t value) {
   _internal_set_submit_order_errors_total(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000400U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000800U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_errors_total)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_errors_total() const {
@@ -8446,7 +8738,7 @@ inline void GetServiceStatsResponse::clear_submit_order_rejections_total() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.submit_order_rejections_total_ = ::uint64_t{0u};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000800U);
+                  0x00001000U);
 }
 inline ::uint64_t GetServiceStatsResponse::submit_order_rejections_total() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_rejections_total)
@@ -8454,7 +8746,7 @@ inline ::uint64_t GetServiceStatsResponse::submit_order_rejections_total() const
 }
 inline void GetServiceStatsResponse::set_submit_order_rejections_total(::uint64_t value) {
   _internal_set_submit_order_rejections_total(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000800U);
+  SetHasBit(_impl_._has_bits_[0], 0x00001000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_rejections_total)
 }
 inline ::uint64_t GetServiceStatsResponse::_internal_submit_order_rejections_total() const {
@@ -8471,7 +8763,7 @@ inline void GetServiceStatsResponse::clear_submit_order_latency_p95_ms() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.submit_order_latency_p95_ms_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00001000U);
+                  0x00002000U);
 }
 inline double GetServiceStatsResponse::submit_order_latency_p95_ms() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_latency_p95_ms)
@@ -8479,7 +8771,7 @@ inline double GetServiceStatsResponse::submit_order_latency_p95_ms() const {
 }
 inline void GetServiceStatsResponse::set_submit_order_latency_p95_ms(double value) {
   _internal_set_submit_order_latency_p95_ms(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00001000U);
+  SetHasBit(_impl_._has_bits_[0], 0x00002000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_latency_p95_ms)
 }
 inline double GetServiceStatsResponse::_internal_submit_order_latency_p95_ms() const {
@@ -8496,7 +8788,7 @@ inline void GetServiceStatsResponse::clear_submit_order_throughput_rps() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.submit_order_throughput_rps_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00002000U);
+                  0x00004000U);
 }
 inline double GetServiceStatsResponse::submit_order_throughput_rps() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_order_throughput_rps)
@@ -8504,7 +8796,7 @@ inline double GetServiceStatsResponse::submit_order_throughput_rps() const {
 }
 inline void GetServiceStatsResponse::set_submit_order_throughput_rps(double value) {
   _internal_set_submit_order_throughput_rps(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00002000U);
+  SetHasBit(_impl_._has_bits_[0], 0x00004000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_order_throughput_rps)
 }
 inline double GetServiceStatsResponse::_internal_submit_order_throughput_rps() const {
@@ -8521,7 +8813,7 @@ inline void GetServiceStatsResponse::clear_trade_throughput_rps() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.trade_throughput_rps_ = 0;
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00004000U);
+                  0x00008000U);
 }
 inline double GetServiceStatsResponse::trade_throughput_rps() const {
   // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.trade_throughput_rps)
@@ -8529,7 +8821,7 @@ inline double GetServiceStatsResponse::trade_throughput_rps() const {
 }
 inline void GetServiceStatsResponse::set_trade_throughput_rps(double value) {
   _internal_set_trade_throughput_rps(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00004000U);
+  SetHasBit(_impl_._has_bits_[0], 0x00008000U);
   // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.trade_throughput_rps)
 }
 inline double GetServiceStatsResponse::_internal_trade_throughput_rps() const {
@@ -8539,6 +8831,396 @@ inline double GetServiceStatsResponse::_internal_trade_throughput_rps() const {
 inline void GetServiceStatsResponse::_internal_set_trade_throughput_rps(double value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.trade_throughput_rps_ = value;
+}
+
+// bool degraded = 18 [json_name = "degraded"];
+inline void GetServiceStatsResponse::clear_degraded() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_ = false;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x40000000U);
+}
+inline bool GetServiceStatsResponse::degraded() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.degraded)
+  return _internal_degraded();
+}
+inline void GetServiceStatsResponse::set_degraded(bool value) {
+  _internal_set_degraded(value);
+  SetHasBit(_impl_._has_bits_[0], 0x40000000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.degraded)
+}
+inline bool GetServiceStatsResponse::_internal_degraded() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.degraded_;
+}
+inline void GetServiceStatsResponse::_internal_set_degraded(bool value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_ = value;
+}
+
+// string degraded_reason = 19 [json_name = "degradedReason"];
+inline void GetServiceStatsResponse::clear_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_reason_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& GetServiceStatsResponse::degraded_reason() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.degraded_reason)
+  return _internal_degraded_reason();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void GetServiceStatsResponse::set_degraded_reason(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.degraded_reason_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.degraded_reason)
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::mutable_degraded_reason()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_degraded_reason();
+  // @@protoc_insertion_point(field_mutable:cerberus.order.v1.GetServiceStatsResponse.degraded_reason)
+  return _s;
+}
+inline const ::std::string& GetServiceStatsResponse::_internal_degraded_reason() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.degraded_reason_.Get();
+}
+inline void GetServiceStatsResponse::_internal_set_degraded_reason(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.degraded_reason_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL GetServiceStatsResponse::_internal_mutable_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.degraded_reason_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE GetServiceStatsResponse::release_degraded_reason() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:cerberus.order.v1.GetServiceStatsResponse.degraded_reason)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.degraded_reason_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.degraded_reason_.Set("", GetArena());
+  }
+  return released;
+}
+inline void GetServiceStatsResponse::set_allocated_degraded_reason(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.degraded_reason_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.degraded_reason_.IsDefault()) {
+    _impl_.degraded_reason_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:cerberus.order.v1.GetServiceStatsResponse.degraded_reason)
+}
+
+// uint64 inflight_requests = 20 [json_name = "inflightRequests"];
+inline void GetServiceStatsResponse::clear_inflight_requests() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.inflight_requests_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00010000U);
+}
+inline ::uint64_t GetServiceStatsResponse::inflight_requests() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.inflight_requests)
+  return _internal_inflight_requests();
+}
+inline void GetServiceStatsResponse::set_inflight_requests(::uint64_t value) {
+  _internal_set_inflight_requests(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00010000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.inflight_requests)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_inflight_requests() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.inflight_requests_;
+}
+inline void GetServiceStatsResponse::_internal_set_inflight_requests(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.inflight_requests_ = value;
+}
+
+// uint64 inflight_requests_peak = 21 [json_name = "inflightRequestsPeak"];
+inline void GetServiceStatsResponse::clear_inflight_requests_peak() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.inflight_requests_peak_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00020000U);
+}
+inline ::uint64_t GetServiceStatsResponse::inflight_requests_peak() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.inflight_requests_peak)
+  return _internal_inflight_requests_peak();
+}
+inline void GetServiceStatsResponse::set_inflight_requests_peak(::uint64_t value) {
+  _internal_set_inflight_requests_peak(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00020000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.inflight_requests_peak)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_inflight_requests_peak() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.inflight_requests_peak_;
+}
+inline void GetServiceStatsResponse::_internal_set_inflight_requests_peak(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.inflight_requests_peak_ = value;
+}
+
+// uint64 max_inflight_requests = 22 [json_name = "maxInflightRequests"];
+inline void GetServiceStatsResponse::clear_max_inflight_requests() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.max_inflight_requests_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00040000U);
+}
+inline ::uint64_t GetServiceStatsResponse::max_inflight_requests() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.max_inflight_requests)
+  return _internal_max_inflight_requests();
+}
+inline void GetServiceStatsResponse::set_max_inflight_requests(::uint64_t value) {
+  _internal_set_max_inflight_requests(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00040000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.max_inflight_requests)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_max_inflight_requests() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.max_inflight_requests_;
+}
+inline void GetServiceStatsResponse::_internal_set_max_inflight_requests(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.max_inflight_requests_ = value;
+}
+
+// uint64 backpressure_waits_total = 23 [json_name = "backpressureWaitsTotal"];
+inline void GetServiceStatsResponse::clear_backpressure_waits_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_waits_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00080000U);
+}
+inline ::uint64_t GetServiceStatsResponse::backpressure_waits_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.backpressure_waits_total)
+  return _internal_backpressure_waits_total();
+}
+inline void GetServiceStatsResponse::set_backpressure_waits_total(::uint64_t value) {
+  _internal_set_backpressure_waits_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00080000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.backpressure_waits_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_backpressure_waits_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.backpressure_waits_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_backpressure_waits_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_waits_total_ = value;
+}
+
+// uint64 backpressure_rejections_total = 24 [json_name = "backpressureRejectionsTotal"];
+inline void GetServiceStatsResponse::clear_backpressure_rejections_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_rejections_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00100000U);
+}
+inline ::uint64_t GetServiceStatsResponse::backpressure_rejections_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.backpressure_rejections_total)
+  return _internal_backpressure_rejections_total();
+}
+inline void GetServiceStatsResponse::set_backpressure_rejections_total(::uint64_t value) {
+  _internal_set_backpressure_rejections_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00100000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.backpressure_rejections_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_backpressure_rejections_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.backpressure_rejections_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_backpressure_rejections_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_rejections_total_ = value;
+}
+
+// uint64 backpressure_wait_timeouts_total = 25 [json_name = "backpressureWaitTimeoutsTotal"];
+inline void GetServiceStatsResponse::clear_backpressure_wait_timeouts_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_wait_timeouts_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00200000U);
+}
+inline ::uint64_t GetServiceStatsResponse::backpressure_wait_timeouts_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.backpressure_wait_timeouts_total)
+  return _internal_backpressure_wait_timeouts_total();
+}
+inline void GetServiceStatsResponse::set_backpressure_wait_timeouts_total(::uint64_t value) {
+  _internal_set_backpressure_wait_timeouts_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00200000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.backpressure_wait_timeouts_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_backpressure_wait_timeouts_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.backpressure_wait_timeouts_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_backpressure_wait_timeouts_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_wait_timeouts_total_ = value;
+}
+
+// uint64 backpressure_wait_ms_total = 26 [json_name = "backpressureWaitMsTotal"];
+inline void GetServiceStatsResponse::clear_backpressure_wait_ms_total() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_wait_ms_total_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00400000U);
+}
+inline ::uint64_t GetServiceStatsResponse::backpressure_wait_ms_total() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.backpressure_wait_ms_total)
+  return _internal_backpressure_wait_ms_total();
+}
+inline void GetServiceStatsResponse::set_backpressure_wait_ms_total(::uint64_t value) {
+  _internal_set_backpressure_wait_ms_total(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00400000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.backpressure_wait_ms_total)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_backpressure_wait_ms_total() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.backpressure_wait_ms_total_;
+}
+inline void GetServiceStatsResponse::_internal_set_backpressure_wait_ms_total(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.backpressure_wait_ms_total_ = value;
+}
+
+// uint64 execution_stream_limit = 27 [json_name = "executionStreamLimit"];
+inline void GetServiceStatsResponse::clear_execution_stream_limit() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.execution_stream_limit_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00800000U);
+}
+inline ::uint64_t GetServiceStatsResponse::execution_stream_limit() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.execution_stream_limit)
+  return _internal_execution_stream_limit();
+}
+inline void GetServiceStatsResponse::set_execution_stream_limit(::uint64_t value) {
+  _internal_set_execution_stream_limit(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00800000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.execution_stream_limit)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_execution_stream_limit() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.execution_stream_limit_;
+}
+inline void GetServiceStatsResponse::_internal_set_execution_stream_limit(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.execution_stream_limit_ = value;
+}
+
+// uint64 submit_latency_window_size = 28 [json_name = "submitLatencyWindowSize"];
+inline void GetServiceStatsResponse::clear_submit_latency_window_size() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_latency_window_size_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x01000000U);
+}
+inline ::uint64_t GetServiceStatsResponse::submit_latency_window_size() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.submit_latency_window_size)
+  return _internal_submit_latency_window_size();
+}
+inline void GetServiceStatsResponse::set_submit_latency_window_size(::uint64_t value) {
+  _internal_set_submit_latency_window_size(value);
+  SetHasBit(_impl_._has_bits_[0], 0x01000000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.submit_latency_window_size)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_submit_latency_window_size() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.submit_latency_window_size_;
+}
+inline void GetServiceStatsResponse::_internal_set_submit_latency_window_size(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.submit_latency_window_size_ = value;
+}
+
+// uint64 grpc_min_pollers = 29 [json_name = "grpcMinPollers"];
+inline void GetServiceStatsResponse::clear_grpc_min_pollers() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_min_pollers_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x02000000U);
+}
+inline ::uint64_t GetServiceStatsResponse::grpc_min_pollers() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.grpc_min_pollers)
+  return _internal_grpc_min_pollers();
+}
+inline void GetServiceStatsResponse::set_grpc_min_pollers(::uint64_t value) {
+  _internal_set_grpc_min_pollers(value);
+  SetHasBit(_impl_._has_bits_[0], 0x02000000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.grpc_min_pollers)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_grpc_min_pollers() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.grpc_min_pollers_;
+}
+inline void GetServiceStatsResponse::_internal_set_grpc_min_pollers(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_min_pollers_ = value;
+}
+
+// uint64 grpc_max_pollers = 30 [json_name = "grpcMaxPollers"];
+inline void GetServiceStatsResponse::clear_grpc_max_pollers() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_max_pollers_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x04000000U);
+}
+inline ::uint64_t GetServiceStatsResponse::grpc_max_pollers() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.grpc_max_pollers)
+  return _internal_grpc_max_pollers();
+}
+inline void GetServiceStatsResponse::set_grpc_max_pollers(::uint64_t value) {
+  _internal_set_grpc_max_pollers(value);
+  SetHasBit(_impl_._has_bits_[0], 0x04000000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.grpc_max_pollers)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_grpc_max_pollers() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.grpc_max_pollers_;
+}
+inline void GetServiceStatsResponse::_internal_set_grpc_max_pollers(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_max_pollers_ = value;
+}
+
+// uint64 grpc_num_cqs = 31 [json_name = "grpcNumCqs"];
+inline void GetServiceStatsResponse::clear_grpc_num_cqs() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_num_cqs_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x08000000U);
+}
+inline ::uint64_t GetServiceStatsResponse::grpc_num_cqs() const {
+  // @@protoc_insertion_point(field_get:cerberus.order.v1.GetServiceStatsResponse.grpc_num_cqs)
+  return _internal_grpc_num_cqs();
+}
+inline void GetServiceStatsResponse::set_grpc_num_cqs(::uint64_t value) {
+  _internal_set_grpc_num_cqs(value);
+  SetHasBit(_impl_._has_bits_[0], 0x08000000U);
+  // @@protoc_insertion_point(field_set:cerberus.order.v1.GetServiceStatsResponse.grpc_num_cqs)
+}
+inline ::uint64_t GetServiceStatsResponse::_internal_grpc_num_cqs() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.grpc_num_cqs_;
+}
+inline void GetServiceStatsResponse::_internal_set_grpc_num_cqs(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.grpc_num_cqs_ = value;
 }
 
 #ifdef __GNUC__

@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTING "Build tests" ON)
 option(ENABLE_GRPC_SERVICE "Build gRPC server for matching service when dependencies are available" ON)
+option(REQUIRE_GRPC_SERVICE "Fail configure when gRPC service cannot be built" OFF)
 
 add_library(matching_engine
   src/matching_engine_submit.cpp
@@ -21,6 +22,7 @@ target_include_directories(matching_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sr
 set(MATCHING_SERVICE_SOURCES src/main.cpp)
 set(MATCHING_SERVICE_LIBRARIES matching_engine)
 set(CERBERUS_PROTO_INCLUDE_DIR "")
+set(CERBERUS_GRPC_SERVICE_BUILT OFF)
 
 if(ENABLE_GRPC_SERVICE)
   find_package(gRPC QUIET)
@@ -100,13 +102,21 @@ if(ENABLE_GRPC_SERVICE)
     )
     target_link_libraries(grpc_order_service PUBLIC matching_engine cerberus_proto)
 
-    set(MATCHING_SERVICE_SOURCES src/main_grpc.cpp)
+    set(MATCHING_SERVICE_SOURCES
+      src/main_grpc.cpp
+      src/runtime_config.cpp
+    )
     set(MATCHING_SERVICE_LIBRARIES grpc_order_service)
+    set(CERBERUS_GRPC_SERVICE_BUILT ON)
 
     message(STATUS "gRPC dependencies detected, building matching_service with gRPC.")
   else()
     message(WARNING "gRPC/Protobuf not found, building fallback matching_service without network RPC.")
   endif()
+endif()
+
+if(REQUIRE_GRPC_SERVICE AND NOT CERBERUS_GRPC_SERVICE_BUILT)
+  message(FATAL_ERROR "REQUIRE_GRPC_SERVICE=ON but gRPC service could not be built. Install gRPC/protobuf deps or disable REQUIRE_GRPC_SERVICE.")
 endif()
 
 add_executable(matching_service ${MATCHING_SERVICE_SOURCES})
