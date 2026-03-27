@@ -50,6 +50,22 @@ OrderBookSnapshot MatchingEngine::Snapshot(std::size_t depth) const {
   };
 }
 
+MatchingEngineStats MatchingEngine::Stats() const {
+  return MatchingEngineStats{
+      .live_orders = LiveOrderCount(),
+      .trade_count = TradeCount(),
+      .best_bid = BestBid(),
+      .best_ask = BestAsk(),
+  };
+}
+
+MatchingEngineView MatchingEngine::View(std::size_t depth) const {
+  return MatchingEngineView{
+      .stats = Stats(),
+      .order_book = Snapshot(depth),
+  };
+}
+
 std::size_t MatchingEngine::LiveOrderCount() const {
   return live_order_ids_.size();
 }

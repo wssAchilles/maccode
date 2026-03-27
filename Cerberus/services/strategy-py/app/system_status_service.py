@@ -1,44 +1,27 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
-from app.api.system_helpers import (
-    build_metrics_lines,
-    build_persistence_status,
-    build_ready_content,
-)
-from app.ports import MatchingObservabilityPort, RuntimeStatusPort, StoreStatusPort
+from app.application import SystemStatusApplicationService
 
 
-@dataclass(slots=True)
 class SystemStatusService:
-    runtime_status: RuntimeStatusPort
-    signal_store_status: StoreStatusPort
-    matching_observability: MatchingObservabilityPort
-    started_at: float
+    def __init__(self, *, application: SystemStatusApplicationService) -> None:
+        self._application = application
 
     async def ready(self, *, request_id: str) -> tuple[int, dict[str, Any]]:
-        return await build_ready_content(
-            self.runtime_status,
-            self.matching_observability,
-            started_at=self.started_at,
+        result = await self._application.ready(
             request_id=request_id,
         )
+        return result.status_code, result.payload
 
     async def metrics_lines(self, *, request_id: str) -> list[str]:
-        return await build_metrics_lines(
-            self.runtime_status,
-            self.signal_store_status,
-            self.matching_observability,
-            started_at=self.started_at,
+        return await self._application.metrics_lines(
             request_id=request_id,
         )
 
     async def persistence(self, *, request_id: str) -> dict[str, Any]:
-        return await build_persistence_status(
-            self.runtime_status,
-            self.signal_store_status,
-            self.matching_observability,
+        result = await self._application.persistence_status(
             request_id=request_id,
         )
+        return result.to_dict()

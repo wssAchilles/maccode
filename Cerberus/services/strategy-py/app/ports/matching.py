@@ -2,6 +2,14 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from app.schemas import (
+    MatchingExecutionView,
+    MatchingHealthView,
+    MatchingOrderBookView,
+    MatchingOrderView,
+    MatchingStatsView,
+)
+
 
 class MatchingGatewayPort(Protocol):
     @property
@@ -34,7 +42,7 @@ class MatchingGatewayPort(Protocol):
         account_id: str,
         order_id: str,
         request_id: str | None = None,
-    ) -> dict[str, Any]: ...
+    ) -> MatchingOrderView: ...
 
     async def list_recent_executions(
         self,
@@ -42,7 +50,7 @@ class MatchingGatewayPort(Protocol):
         account_id: str,
         limit: int = 20,
         request_id: str | None = None,
-    ) -> list[dict[str, Any]]: ...
+    ) -> list[MatchingExecutionView]: ...
 
     async def get_order_book(
         self,
@@ -50,12 +58,11 @@ class MatchingGatewayPort(Protocol):
         symbol: str,
         depth: int = 20,
         request_id: str | None = None,
-    ) -> dict[str, Any]: ...
+    ) -> MatchingOrderBookView: ...
 
-    async def health(self, request_id: str | None = None) -> dict[str, Any]: ...
+    async def health(self, request_id: str | None = None) -> MatchingHealthView: ...
 
     async def get_service_stats(
         self,
         request_id: str | None = None,
-    ) -> dict[str, Any]: ...
-
+    ) -> MatchingStatsView: ...

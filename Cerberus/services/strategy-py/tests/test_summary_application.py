@@ -1,0 +1,146 @@
+from __future__ import annotations
+
+import pytest
+
+from app.application import SummaryApplicationService
+from app.schemas import (
+    MatchingHealthView,
+    MatchingOrderBookView,
+    MatchingStatsView,
+    Signal,
+    SignalRecord,
+)
+from app.system_status_query import (
+    PersistenceMatchingPayload,
+    PersistenceStatusResult,
+    PersistenceStoresPayload,
+    PersistenceWorkerPayload,
+)
+from app.summary_query import SummaryRecentSignalsPayload, SummaryResult, SummarySignalPayload
+
+
+class FakeSignalRuntime:
+    def read_current_signal(self) -> Signal | None:
+        return Signal(
+            strategy_id="default",
+            symbol="BTCUSDT",
+            signal="BUY",
+            confidence=0.91,
+        )
+
+
+class FakeSignalStore:
+    async def list_recent(
+        self,
+        limit: int,
+        source: str = "auto",
+    ) -> tuple[str, list[SignalRecord]]:
+        assert limit == 2
+        assert source == "supabase"
+        return (
+            "supabase",
+            [
+                SignalRecord(
+                    strategy_id="default",
+                    symbol="BTCUSDT",
+                    signal="BUY",
+                    confidence=0.82,
+                    created_at="2026-03-27T10:00:00Z",
+                )
+            ],
+        )
+
+
+class FakeMatchingGateway:
+    enabled = True
+
+    async def get_order_book(
+        self,
+        *,
+        symbol: str,
+        depth: int = 20,
+        request_id: str | None = None,
+    ) -> MatchingOrderBookView:
+        assert symbol == "BTCUSDT"
+        assert depth == 5
+        assert request_id == "rid-summary-typed-001"
+        return MatchingOrderBookView(
+            enabled=True,
+            symbol=symbol,
+            depth=depth,
+            bids=[{"price": 100.0, "total_quantity": 1.2, "order_count": 2}],
+            asks=[{"price": 100.5, "total_quantity": 0.8, "order_count": 1}],
+            generated_at_ms=1700000000000,
+            request_id=request_id,
+        )
+
+
+class FakePersistenceStatus:
+    async def get_persistence_status(self, *, request_id: str) -> PersistenceStatusResult:
+        assert request_id == "rid-summary-typed-001"
+        return PersistenceStatusResult(
+            status="ok",
+            worker=PersistenceWorkerPayload(
+                processed_ticks=12,
+                forwarded_executions=0,
+                last_execution_id=0,
+                last_tick_at=None,
+                last_error=None,
+                has_last_signal=True,
+                tracked_symbols=["BTCUSDT"],
+                idempotency={"redis_enabled": False},
+                state={"started": True},
+            ),
+            matching=PersistenceMatchingPayload(
+                health=MatchingHealthView(
+                    enabled=True,
+                    reachable=True,
+                    status="ok",
+                    service="matching-cpp",
+                    version="0.1.0",
+                    uptime_seconds=10,
+                ),
+                stats=MatchingStatsView(
+                    enabled=True,
+                    live_orders=0,
+                    trade_count=0,
+                    tracked_orders=0,
+                    rejected_orders=0,
+                    symbols=0,
+                ),
+            ),
+            stores=PersistenceStoresPayload(
+                supabase_enabled=True,
+                firebase_enabled=False,
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_summary_application_returns_typed_result_and_serializes_without_contract_change() -> None:
+    service = SummaryApplicationService(
+        signal_runtime=FakeSignalRuntime(),
+        signal_store=FakeSignalStore(),
+        matching_gateway=FakeMatchingGateway(),
+        persistence_status=FakePersistenceStatus(),
+    )
+
+    result = await service.summary(
+        symbol="btcusdt",
+        recent_limit=2,
+        source="supabase",
+        orderbook_depth=5,
+        request_id="rid-summary-typed-001",
+    )
+
+    assert isinstance(result, SummaryResult)
+    assert isinstance(result.signal.payload, SummarySignalPayload)
+    assert isinstance(result.recent_signals.payload, SummaryRecentSignalsPayload)
+
+    payload = result.to_dict()
+    assert payload["symbol"] == "BTCUSDT"
+    assert payload["source"] == "supabase"
+    assert payload["signal"]["payload"]["signal"] == "BUY"
+    assert payload["recent_signals"]["payload"]["count"] == 1
+    assert payload["matching_orderbook"]["payload"]["depth"] == 5
+    assert payload["persistence"]["payload"]["worker"]["processed_ticks"] == 12

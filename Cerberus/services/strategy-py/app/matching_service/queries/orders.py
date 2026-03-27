@@ -7,8 +7,6 @@ from app.api.matching_helpers import ensure_matching_enabled, raise_get_order_er
 from app.ports import MatchingGatewayPort
 from app.schemas import MatchingOrderView
 
-from ..mapping import to_order_view
-
 
 async def get_order(
     gateway: MatchingGatewayPort,
@@ -19,7 +17,7 @@ async def get_order(
 ) -> MatchingOrderView:
     ensure_matching_enabled(gateway)
     try:
-        result = await gateway.get_order(
+        return await gateway.get_order(
             account_id=account_id,
             order_id=order_id,
             request_id=request_id,
@@ -34,4 +32,3 @@ async def get_order(
                 "message": f"matching get_order error: {exc}",
             },
         ) from exc
-    return to_order_view(result, request_id=request_id)

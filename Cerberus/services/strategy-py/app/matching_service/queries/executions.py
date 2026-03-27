@@ -7,7 +7,6 @@ from app.ports import MatchingGatewayPort
 from app.schemas import MatchingExecutionView
 
 from ..filters import filter_execution_items
-from ..mapping import to_execution_views
 
 
 async def list_executions(
@@ -36,4 +35,4 @@ async def list_executions(
         order_id=order_id,
         request_id_filter=request_id_filter,
     )
-    return to_execution_views(filtered, request_id=request_id)
+    return filtered

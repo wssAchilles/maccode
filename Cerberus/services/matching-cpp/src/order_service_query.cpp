@@ -1,6 +1,7 @@
 #include "order_service.hpp"
 
 #include <algorithm>
+#include <utility>
 
 std::optional<OrderView> OrderService::GetOrder(const std::string& order_id) const {
   const auto it = orders_.find(order_id);
@@ -14,15 +15,29 @@ OrderBookSnapshot OrderService::Snapshot(std::size_t depth) const {
   if (engines_.empty()) {
     return {};
   }
-  return engines_.begin()->second.Snapshot(depth);
+  return engines_.begin()->second.View(depth).order_book;
 }
 
 OrderBookSnapshot OrderService::SnapshotForSymbol(const std::string& symbol, std::size_t depth) const {
-  const auto it = engines_.find(symbol);
-  if (it == engines_.end()) {
+  const auto view = ViewForSymbol(symbol, depth);
+  if (!view.has_value()) {
     return {};
   }
-  return it->second.Snapshot(depth);
+  return view->order_book;
+}
+
+std::optional<SymbolOrderBookView> OrderService::ViewForSymbol(const std::string& symbol,
+                                                               std::size_t depth) const {
+  const auto it = engines_.find(symbol);
+  if (it == engines_.end()) {
+    return std::nullopt;
+  }
+  const MatchingEngineView engine_view = it->second.View(depth);
+  return SymbolOrderBookView{
+      .symbol = symbol,
+      .stats = std::move(engine_view.stats),
+      .order_book = std::move(engine_view.order_book),
+  };
 }
 
 std::vector<ExecutionEvent> OrderService::RecentExecutions(std::size_t limit) const {
@@ -65,16 +80,17 @@ ServiceStats OrderService::Stats() const {
   std::size_t live_orders = 0;
   std::size_t trade_count = 0;
   for (const auto& [_, engine] : engines_) {
-    live_orders += engine.LiveOrderCount();
-    trade_count += engine.TradeCount();
+    const MatchingEngineStats engine_stats = engine.Stats();
+    live_orders += engine_stats.live_orders;
+    trade_count += engine_stats.trade_count;
   }
 
   std::optional<double> best_bid;
   std::optional<double> best_ask;
   if (engines_.size() == 1) {
-    const auto& engine = engines_.begin()->second;
-    best_bid = engine.BestBid();
-    best_ask = engine.BestAsk();
+    const MatchingEngineStats engine_stats = engines_.begin()->second.Stats();
+    best_bid = engine_stats.best_bid;
+    best_ask = engine_stats.best_ask;
   }
 
   return ServiceStats{

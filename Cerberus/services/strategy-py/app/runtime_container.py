@@ -6,6 +6,7 @@ from app.application import (
     OptimizationApplicationService,
     SignalApplicationService,
     SummaryApplicationService,
+    SystemStatusApplicationService,
 )
 from app.infrastructure import (
     GurobiPortfolioOptimizer,
@@ -53,15 +54,17 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         publishers=(worker.firebase_publisher, worker.supabase_publisher),
     )
     worker.attach_signal_application(signal_application)
+    system_status_application = SystemStatusApplicationService(
+        runtime_status=runtime_status,
+        signal_store_status=signal_store_status,
+        matching_observability=matching_observability,
+        started_at=started_at,
+    )
     summary_application = SummaryApplicationService(
         signal_runtime=signal_runtime,
         signal_store=signal_store,
         matching_gateway=matching_gateway,
-        persistence_status=WorkerPersistenceStatusAdapter(
-            runtime_status,
-            signal_store_status,
-            matching_observability,
-        ),
+        persistence_status=WorkerPersistenceStatusAdapter(system_status_application),
     )
     signal_service = SignalService(
         application=signal_application,
@@ -74,10 +77,7 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     )
     matching_service = MatchingService(gateway=matching_gateway)
     system_status_service = SystemStatusService(
-        runtime_status=runtime_status,
-        signal_store_status=signal_store_status,
-        matching_observability=matching_observability,
-        started_at=started_at,
+        application=system_status_application,
     )
     return RuntimeContainer(
         worker=worker,

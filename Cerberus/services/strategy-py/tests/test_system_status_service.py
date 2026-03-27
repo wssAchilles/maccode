@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import pytest
 
+from app.application import SystemStatusApplicationService
 from app.config import settings
 from app.matching_observability import MatchingSnapshot
 from app.redis_worker.runtime_state import (
     MarketStreamRuntimeSnapshot,
     WorkerRuntimeSnapshot,
 )
+from app.schemas import MatchingHealthView, MatchingStatsView
 from app.system_status_service import SystemStatusService
+from app.system_status_query import PersistenceStatusResult
 
 
 class FakeRuntimeStatus:
@@ -84,42 +87,53 @@ class FakeMatchingObservability:
         return self._snapshot
 
 
-def _build_service(snapshot: MatchingSnapshot) -> tuple[SystemStatusService, FakeMatchingObservability]:
+def _build_service(
+    snapshot: MatchingSnapshot,
+) -> tuple[SystemStatusService, SystemStatusApplicationService, FakeMatchingObservability]:
     observability = FakeMatchingObservability(snapshot)
-    service = SystemStatusService(
+    application = SystemStatusApplicationService(
         runtime_status=FakeRuntimeStatus(),
         signal_store_status=FakeStoreStatus(),
         matching_observability=observability,
         started_at=0.0,
     )
-    return service, observability
+    service = SystemStatusService(
+        application=application,
+    )
+    return service, application, observability
 
 
 @pytest.mark.asyncio
 async def test_system_status_service_metrics_lines_use_observability_facade() -> None:
-    service, observability = _build_service(
+    service, _, observability = _build_service(
         MatchingSnapshot(
-            health={
-                "enabled": True,
-                "reachable": True,
-                "degraded": False,
-                "status": "ok",
-                "service": "matching-cpp",
-                "version": "0.1.0",
-                "uptime_seconds": 120,
-            },
-            stats={
-                "submit_order_latency_p95_ms": 14.5,
-                "submit_order_throughput_rps": 8.2,
-                "trade_throughput_rps": 4.1,
-                "inflight_requests": 2,
-                "inflight_requests_peak": 5,
-                "max_inflight_requests": 32,
-                "backpressure_waits_total": 3,
-                "backpressure_rejections_total": 1,
-                "backpressure_wait_timeouts_total": 0,
-                "backpressure_wait_ms_total": 45,
-            },
+            health=MatchingHealthView(
+                enabled=True,
+                reachable=True,
+                degraded=False,
+                status="ok",
+                service="matching-cpp",
+                version="0.1.0",
+                uptime_seconds=120,
+            ),
+            stats=MatchingStatsView(
+                enabled=True,
+                live_orders=0,
+                trade_count=0,
+                tracked_orders=0,
+                rejected_orders=0,
+                symbols=0,
+                submit_order_latency_p95_ms=14.5,
+                submit_order_throughput_rps=8.2,
+                trade_throughput_rps=4.1,
+                inflight_requests=2,
+                inflight_requests_peak=5,
+                max_inflight_requests=32,
+                backpressure_waits_total=3,
+                backpressure_rejections_total=1,
+                backpressure_wait_timeouts_total=0,
+                backpressure_wait_ms_total=45,
+            ),
         )
     )
 
@@ -136,34 +150,46 @@ async def test_system_status_service_ready_and_persistence_preserve_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "matching_enabled", True)
-    service, observability = _build_service(
+    service, application, observability = _build_service(
         MatchingSnapshot(
-            health={
-                "enabled": True,
-                "reachable": False,
-                "degraded": True,
-                "status": "error",
-                "service": "matching-cpp",
-                "version": "0.1.0",
-                "uptime_seconds": 0,
-                "reason": "rpc timeout",
-            },
-            stats={
-                "live_orders": 0,
-                "trade_count": 0,
-            },
+            health=MatchingHealthView(
+                enabled=True,
+                reachable=False,
+                degraded=True,
+                status="error",
+                service="matching-cpp",
+                version="0.1.0",
+                uptime_seconds=0,
+                reason="rpc timeout",
+            ),
+            stats=MatchingStatsView(
+                enabled=True,
+                live_orders=0,
+                trade_count=0,
+                tracked_orders=0,
+                rejected_orders=0,
+                symbols=0,
+            ),
         )
     )
 
     status_code, ready_payload = await service.ready(request_id="rid-ready-facade")
     persistence_payload = await service.persistence(request_id="rid-persist-facade")
+    typed_persistence = await application.persistence_status(
+        request_id="rid-persist-typed-facade"
+    )
 
     assert status_code == 503
     assert "matching_unreachable" in ready_payload["reasons"]
     assert "matching_degraded" in ready_payload["reasons"]
     assert ready_payload["matching"]["status"] == "error"
 
-    assert observability.request_ids == ["rid-ready-facade", "rid-persist-facade"]
+    assert observability.request_ids == [
+        "rid-ready-facade",
+        "rid-persist-facade",
+        "rid-persist-typed-facade",
+    ]
+    assert isinstance(typed_persistence, PersistenceStatusResult)
     assert persistence_payload["status"] == "ok"
     assert persistence_payload["worker"]["processed_ticks"] == 12
     assert persistence_payload["worker"]["tracked_symbols"] == ["BTCUSDT", "ETHUSDT"]

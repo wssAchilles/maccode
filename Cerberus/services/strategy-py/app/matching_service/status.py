@@ -7,19 +7,17 @@ from app.ports import MatchingGatewayPort
 from app.schemas import MatchingHealthView, MatchingStatsView
 
 from .fallbacks import build_degraded_stats
-from .mapping import to_health_view, to_stats_view
 
 
 async def health(gateway: MatchingGatewayPort, *, request_id: str) -> MatchingHealthView:
     ensure_matching_enabled(gateway)
-    payload = await gateway.health(request_id=request_id)
-    return to_health_view(payload, request_id=request_id)
+    return await gateway.health(request_id=request_id)
 
 
 async def stats(gateway: MatchingGatewayPort, *, request_id: str) -> MatchingStatsView:
     ensure_matching_enabled(gateway)
     try:
-        payload = await gateway.get_service_stats(request_id=request_id)
+        return await gateway.get_service_stats(request_id=request_id)
     except grpc.aio.AioRpcError as exc:
         return build_degraded_stats(
             request_id=request_id,
@@ -30,7 +28,6 @@ async def stats(gateway: MatchingGatewayPort, *, request_id: str) -> MatchingSta
             request_id=request_id,
             reason=f"matching stats error: {exc}",
         )
-    return to_stats_view(payload)
 
 
 __all__ = ["health", "stats"]

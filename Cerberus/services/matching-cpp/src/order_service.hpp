@@ -47,6 +47,12 @@ struct ServiceStats {
   std::optional<double> best_ask;
 };
 
+struct SymbolOrderBookView {
+  std::string symbol;
+  MatchingEngineStats stats;
+  OrderBookSnapshot order_book;
+};
+
 class OrderService {
  public:
   SubmitResult Submit(const Order& order);
@@ -54,6 +60,8 @@ class OrderService {
   std::optional<OrderView> GetOrder(const std::string& order_id) const;
   OrderBookSnapshot Snapshot(std::size_t depth = 20) const;
   OrderBookSnapshot SnapshotForSymbol(const std::string& symbol, std::size_t depth = 20) const;
+  std::optional<SymbolOrderBookView> ViewForSymbol(const std::string& symbol,
+                                                   std::size_t depth = 20) const;
   std::vector<ExecutionEvent> RecentExecutions(std::size_t limit = 50) const;
   std::vector<ExecutionEvent> RecentExecutionsForAccount(const std::string& account_id,
                                                          std::size_t limit = 50) const;

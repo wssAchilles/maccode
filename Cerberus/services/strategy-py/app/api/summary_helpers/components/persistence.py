@@ -19,4 +19,4 @@ async def build_persistence_component(
             request_id=request_id,
             status_code=502,
         )
-    return component_ok(payload)
+    return component_ok(payload.to_dict())

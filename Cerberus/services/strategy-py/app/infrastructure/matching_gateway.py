@@ -2,7 +2,21 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.matching_service.mapping import (
+    to_execution_views,
+    to_health_view,
+    to_order_view,
+    to_orderbook_view,
+    to_stats_view,
+)
 from app.order_client import MatchingOrderClient
+from app.schemas import (
+    MatchingExecutionView,
+    MatchingHealthView,
+    MatchingOrderBookView,
+    MatchingOrderView,
+    MatchingStatsView,
+)
 
 
 class MatchingGatewayAdapter:
@@ -55,12 +69,13 @@ class MatchingGatewayAdapter:
         account_id: str,
         order_id: str,
         request_id: str | None = None,
-    ) -> dict[str, Any]:
-        return await self._client.get_order(
+    ) -> MatchingOrderView:
+        payload = await self._client.get_order(
             account_id=account_id,
             order_id=order_id,
             request_id=request_id,
         )
+        return to_order_view(payload, request_id=request_id)
 
     async def list_recent_executions(
         self,
@@ -68,12 +83,13 @@ class MatchingGatewayAdapter:
         account_id: str,
         limit: int = 20,
         request_id: str | None = None,
-    ) -> list[dict[str, Any]]:
-        return await self._client.list_recent_executions(
+    ) -> list[MatchingExecutionView]:
+        items = await self._client.list_recent_executions(
             account_id=account_id,
             limit=limit,
             request_id=request_id,
         )
+        return to_execution_views(items, request_id=request_id)
 
     async def get_order_book(
         self,
@@ -81,19 +97,21 @@ class MatchingGatewayAdapter:
         symbol: str,
         depth: int = 20,
         request_id: str | None = None,
-    ) -> dict[str, Any]:
-        return await self._client.get_order_book(
+    ) -> MatchingOrderBookView:
+        payload = await self._client.get_order_book(
             symbol=symbol,
             depth=depth,
             request_id=request_id,
         )
+        return to_orderbook_view(payload, request_id=request_id)
 
-    async def health(self, request_id: str | None = None) -> dict[str, Any]:
-        return await self._client.health(request_id=request_id)
+    async def health(self, request_id: str | None = None) -> MatchingHealthView:
+        payload = await self._client.health(request_id=request_id)
+        return to_health_view(payload, request_id=request_id)
 
     async def get_service_stats(
         self,
         request_id: str | None = None,
-    ) -> dict[str, Any]:
-        return await self._client.get_service_stats(request_id=request_id)
-
+    ) -> MatchingStatsView:
+        payload = await self._client.get_service_stats(request_id=request_id)
+        return to_stats_view(payload)

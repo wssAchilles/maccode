@@ -18,10 +18,11 @@ class StrategySummaryService:
         orderbook_depth: int,
         request_id: str,
     ) -> dict[str, Any]:
-        return await self._application.summary(
+        result = await self._application.summary(
             symbol=symbol,
             recent_limit=recent_limit,
             source=source,
             orderbook_depth=orderbook_depth,
             request_id=request_id,
         )
+        return result.to_dict()

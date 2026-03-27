@@ -175,6 +175,29 @@ TEST(MatchingEngineTest, PartialFillUpdatesSnapshot) {
   EXPECT_EQ(snapshot.asks[0].order_count, 1);
 }
 
+TEST(MatchingEngineTest, ViewCombinesStatsAndOrderBook) {
+  MatchingEngine engine;
+  ASSERT_TRUE(engine.Submit(Order{
+                 .order_id = "buy-1",
+                 .account_id = "a1",
+                 .symbol = "BTCUSDT",
+                 .side = Side::Buy,
+                 .price = 100.0,
+                 .quantity = 2.0,
+                 .sequence = 1,
+             }).accepted);
+
+  const MatchingEngineView view = engine.View(3);
+
+  ASSERT_EQ(view.order_book.bids.size(), 1);
+  EXPECT_EQ(view.stats.live_orders, 1);
+  EXPECT_EQ(view.stats.trade_count, 0);
+  ASSERT_TRUE(view.stats.best_bid.has_value());
+  EXPECT_DOUBLE_EQ(*view.stats.best_bid, 100.0);
+  EXPECT_FALSE(view.stats.best_ask.has_value());
+  EXPECT_DOUBLE_EQ(view.order_book.bids[0].total_quantity, 2.0);
+}
+
 TEST(MatchingEngineTest, RejectsNonMonotonicSequence) {
   MatchingEngine engine;
   ASSERT_TRUE(engine.Submit(Order{
@@ -309,6 +332,30 @@ TEST(OrderServiceTest, SnapshotForUnknownSymbolIsEmpty) {
   const auto unknown = service.SnapshotForSymbol("SOLUSDT", 5);
   EXPECT_TRUE(unknown.bids.empty());
   EXPECT_TRUE(unknown.asks.empty());
+}
+
+TEST(OrderServiceTest, ViewForSymbolCombinesStatsAndSnapshot) {
+  OrderService service;
+  ASSERT_TRUE(service.Submit(Order{
+                 .order_id = "btc-buy-1",
+                 .account_id = "a1",
+                 .symbol = "BTCUSDT",
+                 .side = Side::Buy,
+                 .price = 100.0,
+                 .quantity = 1.0,
+                 .sequence = 1,
+             }).accepted);
+
+  const auto view = service.ViewForSymbol("BTCUSDT", 5);
+
+  ASSERT_TRUE(view.has_value());
+  EXPECT_EQ(view->symbol, "BTCUSDT");
+  EXPECT_EQ(view->stats.live_orders, 1);
+  EXPECT_EQ(view->stats.trade_count, 0);
+  ASSERT_TRUE(view->stats.best_bid.has_value());
+  EXPECT_DOUBLE_EQ(*view->stats.best_bid, 100.0);
+  ASSERT_EQ(view->order_book.bids.size(), 1);
+  EXPECT_DOUBLE_EQ(view->order_book.bids[0].price, 100.0);
 }
 
 TEST(OrderServiceTest, ExposesStatsAndSnapshot) {

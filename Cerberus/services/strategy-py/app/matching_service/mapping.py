@@ -46,10 +46,11 @@ def to_cancel_response(
 def to_order_view(
     result: Mapping[str, Any],
     *,
-    request_id: str,
+    request_id: str | None = None,
 ) -> MatchingOrderView:
     payload = dict(result.items())
-    payload["request_id"] = payload.get("request_id") or request_id
+    if request_id and not payload.get("request_id"):
+        payload["request_id"] = request_id
     payload["schema_version"] = payload.get("schema_version")
     payload["correlation_id"] = payload.get("correlation_id")
     return MatchingOrderView(**payload)
@@ -58,7 +59,7 @@ def to_order_view(
 def to_execution_views(
     items: list[dict[str, Any]],
     *,
-    request_id: str,
+    request_id: str | None = None,
 ) -> list[MatchingExecutionView]:
     return [
         MatchingExecutionView(
@@ -73,9 +74,15 @@ def to_execution_views(
     ]
 
 
-def to_health_view(payload: Mapping[str, Any], *, request_id: str) -> MatchingHealthView:
+def to_health_view(
+    payload: Mapping[str, Any],
+    *,
+    request_id: str | None = None,
+) -> MatchingHealthView:
     normalized = dict(payload.items())
     if bool(normalized.get("reachable", False)):
+        if request_id and not normalized.get("request_id"):
+            normalized["request_id"] = request_id
         return MatchingHealthView(**normalized)
 
     reason = str(
@@ -84,7 +91,8 @@ def to_health_view(payload: Mapping[str, Any], *, request_id: str) -> MatchingHe
     normalized["degraded"] = True
     normalized["reachable"] = False
     normalized["reason"] = reason
-    normalized["request_id"] = normalized.get("request_id") or request_id
+    if request_id and not normalized.get("request_id"):
+        normalized["request_id"] = request_id
     return MatchingHealthView(**normalized)
 
 
@@ -92,6 +100,12 @@ def to_stats_view(payload: Mapping[str, Any]) -> MatchingStatsView:
     return MatchingStatsView(**dict(payload.items()))
 
 
-def to_orderbook_view(payload: Mapping[str, Any]) -> MatchingOrderBookView:
-    return cast(MatchingOrderBookView, MatchingOrderBookView(**dict(payload.items())))
-
+def to_orderbook_view(
+    payload: Mapping[str, Any],
+    *,
+    request_id: str | None = None,
+) -> MatchingOrderBookView:
+    normalized = dict(payload.items())
+    if request_id and not normalized.get("request_id"):
+        normalized["request_id"] = request_id
+    return cast(MatchingOrderBookView, MatchingOrderBookView(**normalized))

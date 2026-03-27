@@ -6,8 +6,7 @@ from app.api.matching_helpers import ensure_matching_enabled
 from app.ports import MatchingGatewayPort
 from app.schemas import MatchingOrderBookView
 
-from ..fallbacks import build_degraded_orderbook, mark_orderbook_degraded_if_empty
-from ..mapping import to_orderbook_view
+from ..fallbacks import build_degraded_orderbook
 
 
 async def orderbook(
@@ -40,5 +39,11 @@ async def orderbook(
             request_id=request_id,
             reason=f"matching orderbook error: {exc}",
         )
-    normalized_payload = mark_orderbook_degraded_if_empty(payload)
-    return to_orderbook_view(normalized_payload)
+    if payload.bids or payload.asks:
+        return payload
+    return payload.model_copy(
+        update={
+            "degraded": payload.degraded or True,
+            "reason": payload.reason or "orderbook empty",
+        }
+    )

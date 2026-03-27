@@ -51,6 +51,18 @@ struct OrderBookSnapshot {
   std::vector<PriceLevelAggregate> asks;
 };
 
+struct MatchingEngineStats {
+  std::size_t live_orders;
+  std::size_t trade_count;
+  std::optional<double> best_bid;
+  std::optional<double> best_ask;
+};
+
+struct MatchingEngineView {
+  MatchingEngineStats stats;
+  OrderBookSnapshot order_book;
+};
+
 class MatchingEngine {
  public:
   SubmitResult Submit(const Order& order);
@@ -59,6 +71,8 @@ class MatchingEngine {
   std::optional<double> BestBid() const;
   std::optional<double> BestAsk() const;
   OrderBookSnapshot Snapshot(std::size_t depth = 20) const;
+  MatchingEngineStats Stats() const;
+  MatchingEngineView View(std::size_t depth = 20) const;
   std::size_t LiveOrderCount() const;
   std::size_t TradeCount() const;
 

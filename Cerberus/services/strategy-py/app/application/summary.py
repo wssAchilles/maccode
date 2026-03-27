@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from app.config import settings
 from app.ports import (
@@ -10,6 +9,13 @@ from app.ports import (
     SignalHistorySource,
     SignalRuntimePort,
     SignalStorePort,
+)
+from app.schemas import MatchingOrderBookView
+from app.summary_query import (
+    SummaryComponent,
+    SummaryRecentSignalsPayload,
+    SummaryResult,
+    SummarySignalPayload,
 )
 
 
@@ -35,7 +41,7 @@ class SummaryApplicationService:
         source: str,
         orderbook_depth: int,
         request_id: str,
-    ) -> dict[str, Any]:
+    ) -> SummaryResult:
         normalized_symbol = _normalize_symbol(symbol)
         selected_source = _normalize_source(source)
 
@@ -54,34 +60,34 @@ class SummaryApplicationService:
             ),
         )
 
-        return {
-            "symbol": normalized_symbol,
-            "source": selected_source,
-            "recent_limit": recent_limit,
-            "orderbook_depth": orderbook_depth,
-            "signal": signal_component,
-            "recent_signals": recent_component,
-            "persistence": persistence_component,
-            "matching_orderbook": orderbook_component,
-        }
+        return SummaryResult(
+            symbol=normalized_symbol,
+            source=selected_source,
+            recent_limit=recent_limit,
+            orderbook_depth=orderbook_depth,
+            signal=signal_component,
+            recent_signals=recent_component,
+            persistence=persistence_component,
+            matching_orderbook=orderbook_component,
+        )
 
-    def _build_signal_component(self) -> dict[str, Any]:
+    def _build_signal_component(self) -> SummaryComponent:
         signal = self._signal_runtime.read_current_signal()
         if signal is None:
-            return _component_ok(
-                {
-                    "status": "warmup",
-                    "signal": "HOLD",
-                    "confidence": 0.0,
-                }
+            return SummaryComponent.ok_result(
+                SummarySignalPayload(
+                    status="warmup",
+                    signal="HOLD",
+                    confidence=0.0,
+                )
             )
-        return _component_ok(
-            {
-                "status": "ready",
-                "signal": signal.signal,
-                "confidence": signal.confidence,
-                "symbol": signal.symbol,
-            }
+        return SummaryComponent.ok_result(
+            SummarySignalPayload(
+                status="ready",
+                signal=signal.signal,
+                confidence=signal.confidence,
+                symbol=signal.symbol,
+            )
         )
 
     async def _build_recent_signals_component(
@@ -90,41 +96,41 @@ class SummaryApplicationService:
         limit: int,
         source: SignalHistorySource,
         request_id: str,
-    ) -> dict[str, Any]:
+    ) -> SummaryComponent:
         try:
             used_source, records = await self._signal_store.list_recent(
                 limit=limit,
                 source=source,
             )
         except Exception as exc:
-            return _component_error(
+            return SummaryComponent.error_result(
                 code="summary_recent_signals_failed",
                 message=f"recent signals unavailable: {exc}",
                 request_id=request_id,
                 status_code=502,
             )
 
-        return _component_ok(
-            {
-                "source": used_source,
-                "count": len(records),
-                "signals": [item.model_dump() for item in records],
-            }
+        return SummaryComponent.ok_result(
+            SummaryRecentSignalsPayload(
+                source=used_source,
+                count=len(records),
+                signals=records,
+            )
         )
 
-    async def _build_persistence_component(self, *, request_id: str) -> dict[str, Any]:
+    async def _build_persistence_component(self, *, request_id: str) -> SummaryComponent:
         try:
             payload = await self._persistence_status.get_persistence_status(
                 request_id=request_id,
             )
         except Exception as exc:
-            return _component_error(
+            return SummaryComponent.error_result(
                 code="summary_persistence_failed",
                 message=f"persistence status unavailable: {exc}",
                 request_id=request_id,
                 status_code=502,
             )
-        return _component_ok(payload)
+        return SummaryComponent.ok_result(payload)
 
     async def _build_matching_orderbook_component(
         self,
@@ -132,7 +138,7 @@ class SummaryApplicationService:
         symbol: str,
         depth: int,
         request_id: str,
-    ) -> dict[str, Any]:
+    ) -> SummaryComponent:
         try:
             payload = await self._matching_gateway.get_order_book(
                 symbol=symbol,
@@ -140,8 +146,8 @@ class SummaryApplicationService:
                 request_id=request_id,
             )
         except Exception as exc:
-            return _component_ok(
-                self._orderbook_degraded_payload(
+            return SummaryComponent.ok_result(
+                self._degraded_orderbook(
                     symbol=symbol,
                     depth=depth,
                     request_id=request_id,
@@ -149,23 +155,25 @@ class SummaryApplicationService:
                 )
             )
 
-        if not payload.get("bids") and not payload.get("asks"):
-            payload = {
-                **payload,
-                "degraded": payload.get("degraded", True),
-                "reason": payload.get("reason") or "orderbook empty",
-            }
-        return _component_ok(payload)
+        if not payload.bids and not payload.asks:
+            payload = payload.model_copy(
+                update={
+                    "degraded": payload.degraded or True,
+                    "reason": payload.reason or "orderbook empty",
+                }
+            )
+        return SummaryComponent.ok_result(payload)
 
-    def _orderbook_degraded_payload(
+    def _degraded_orderbook(
         self,
         *,
         symbol: str,
         depth: int,
         request_id: str,
         reason: str,
-    ) -> dict[str, Any]:
-        return {
+    ) -> MatchingOrderBookView:
+        return MatchingOrderBookView.model_validate(
+            {
             "enabled": self._matching_gateway.enabled,
             "degraded": True,
             "symbol": symbol,
@@ -177,7 +185,8 @@ class SummaryApplicationService:
             "reason": reason,
             "schema_version": settings.event_schema_version,
             "correlation_id": request_id,
-        }
+            }
+        )
 
 
 def _normalize_symbol(symbol: str) -> str:
@@ -191,32 +200,6 @@ def _normalize_source(source: str) -> SignalHistorySource:
     if source == "firestore":
         return "firestore"
     return "auto"
-
-
-def _component_ok(payload: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
-    return {
-        "ok": True,
-        "status_code": status_code,
-        "payload": payload,
-    }
-
-
-def _component_error(
-    *,
-    code: str,
-    message: str,
-    request_id: str,
-    status_code: int,
-) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "status_code": status_code,
-        "error": {
-            "code": code,
-            "message": message,
-            "request_id": request_id,
-        },
-    }
 
 
 def _format_matching_error_reason(exc: Exception) -> str:
@@ -234,4 +217,3 @@ def _format_matching_error_reason(exc: Exception) -> str:
         if detail:
             return str(detail)
     return f"matching orderbook error: {exc}"
-
