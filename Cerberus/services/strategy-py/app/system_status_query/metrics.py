@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import monotonic
-from typing import Any
 
 from app.config import settings
 from app.http import prometheus_escape
 from app.ports import MatchingObservabilityPort, RuntimeStatusPort, StoreStatusPort
 from app.schemas import MatchingStatsView
+from app.system_status_query.persistence import PersistenceStoresPayload
 
 
 @dataclass(frozen=True)
@@ -51,10 +51,10 @@ def base_metrics_lines(uptime_seconds: int) -> list[str]:
     ]
 
 
-def stores_metrics_lines(stores: dict[str, Any]) -> list[str]:
+def stores_metrics_lines(stores: PersistenceStoresPayload) -> list[str]:
     return [
-        f"cerberus_strategy_store_enabled{{store=\"firebase\"}} {1 if stores['firebase_enabled'] else 0}",
-        f"cerberus_strategy_store_enabled{{store=\"supabase\"}} {1 if stores['supabase_enabled'] else 0}",
+        f"cerberus_strategy_store_enabled{{store=\"firebase\"}} {1 if stores.firebase_enabled else 0}",
+        f"cerberus_strategy_store_enabled{{store=\"supabase\"}} {1 if stores.supabase_enabled else 0}",
     ]
 
 

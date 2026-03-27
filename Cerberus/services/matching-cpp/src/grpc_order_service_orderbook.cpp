@@ -1,4 +1,5 @@
 #include "grpc_order_service.hpp"
+#include "grpc_order_service_mapping.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -33,25 +34,19 @@ grpc::Status GrpcOrderService::GetOrderBook(
     return status;
   }
 
-  OrderBookSnapshot snapshot;
+  std::optional<SymbolOrderBookView> view;
   {
     std::scoped_lock<std::mutex> lock(mu_);
-    snapshot = service_.SnapshotForSymbol(symbol, depth);
+    view = service_.ViewForSymbol(symbol, depth);
   }
-
-  for (const auto& level : snapshot.bids) {
-    auto* out = response->add_bids();
-    out->set_price(level.price);
-    out->set_total_quantity(level.total_quantity);
-    out->set_order_count(static_cast<std::uint64_t>(level.order_count));
+  if (view.has_value()) {
+    PopulateOrderBookResponse(*view, static_cast<std::uint64_t>(std::max<std::int64_t>(millis, 0)),
+                              response);
+  } else {
+    response->set_symbol(symbol);
+    response->set_generated_at_ms(static_cast<std::uint64_t>(std::max<std::int64_t>(millis, 0)));
   }
-  for (const auto& level : snapshot.asks) {
-    auto* out = response->add_asks();
-    out->set_price(level.price);
-    out->set_total_quantity(level.total_quantity);
-    out->set_order_count(static_cast<std::uint64_t>(level.order_count));
-  }
-  if (snapshot.bids.empty() && snapshot.asks.empty()) {
+  if (!view.has_value() || (view->order_book.bids.empty() && view->order_book.asks.empty())) {
     MarkDegraded(context, "degraded:orderbook_empty");
   }
 

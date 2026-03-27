@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
-
 from app.matching_service.mapping import (
+    to_cancel_response,
     to_execution_views,
     to_health_view,
     to_order_view,
     to_orderbook_view,
     to_stats_view,
+    to_submit_response,
 )
 from app.order_client import MatchingOrderClient
 from app.schemas import (
+    MatchingCancelResponse,
     MatchingExecutionView,
     MatchingHealthView,
     MatchingOrderBookView,
     MatchingOrderView,
     MatchingStatsView,
+    MatchingSubmitResponse,
 )
 
 
@@ -38,8 +40,8 @@ class MatchingGatewayAdapter:
         client_order_id: str = "",
         request_id: str | None = None,
         idempotency_key: str | None = None,
-    ) -> dict[str, Any]:
-        return await self._client.submit_limit_order(
+    ) -> MatchingSubmitResponse:
+        payload = await self._client.submit_limit_order(
             account_id=account_id,
             symbol=symbol,
             side=side,
@@ -49,6 +51,7 @@ class MatchingGatewayAdapter:
             request_id=request_id,
             idempotency_key=idempotency_key,
         )
+        return to_submit_response(payload, request_id=request_id or "")
 
     async def cancel_order(
         self,
@@ -56,12 +59,13 @@ class MatchingGatewayAdapter:
         account_id: str,
         order_id: str,
         request_id: str | None = None,
-    ) -> dict[str, Any]:
-        return await self._client.cancel_order(
+    ) -> MatchingCancelResponse:
+        payload = await self._client.cancel_order(
             account_id=account_id,
             order_id=order_id,
             request_id=request_id,
         )
+        return to_cancel_response(payload, request_id=request_id or "")
 
     async def get_order(
         self,

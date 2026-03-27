@@ -63,7 +63,15 @@ JWT_HS256_SECRET_SECRET="${JWT_HS256_SECRET_SECRET:-cerberus-jwt-hs256-secret}"
 
 validate_gateway_policy
 
-env_file="$(mktemp /tmp/cerberus-gateway-env.XXXXXX.yaml)"
+create_temp_env_file() {
+  local prefix="$1"
+  local base
+  base="$(mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX")"
+  mv "${base}" "${base}.yaml"
+  printf '%s.yaml\n' "${base}"
+}
+
+env_file="$(create_temp_env_file cerberus-gateway-env)"
 cat >"${env_file}" <<YAML
 REDIS_ORDERBOOK_CHANNEL: ${REDIS_ORDERBOOK_CHANNEL}
 REDIS_ORDERBOOK_CHANNEL_PREFIX: ${REDIS_ORDERBOOK_CHANNEL_PREFIX}

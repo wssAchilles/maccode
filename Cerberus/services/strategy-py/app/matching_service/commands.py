@@ -10,9 +10,6 @@ from app.schemas import (
     MatchingSubmitResponse,
 )
 
-from .mapping import to_cancel_response, to_submit_response
-
-
 async def submit_order(
     gateway: MatchingGatewayPort,
     payload: MatchingSubmitRequest,
@@ -22,7 +19,7 @@ async def submit_order(
 ) -> MatchingSubmitResponse:
     ensure_matching_enabled(gateway)
     account_id = payload.account_id or settings.strategy_account_id
-    result = await gateway.submit_limit_order(
+    return await gateway.submit_limit_order(
         account_id=account_id,
         symbol=payload.symbol,
         side=payload.side,
@@ -32,7 +29,6 @@ async def submit_order(
         request_id=request_id,
         idempotency_key=idempotency_key,
     )
-    return to_submit_response(result, request_id=request_id)
 
 
 async def cancel_order(
@@ -44,12 +40,11 @@ async def cancel_order(
 ) -> MatchingCancelResponse:
     ensure_matching_enabled(gateway)
     account_id = payload.account_id or settings.strategy_account_id
-    result = await gateway.cancel_order(
+    return await gateway.cancel_order(
         account_id=account_id,
         order_id=order_id,
         request_id=request_id,
     )
-    return to_cancel_response(result, request_id=request_id)
 
 
 __all__ = ["submit_order", "cancel_order"]

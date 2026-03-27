@@ -11,7 +11,7 @@ from app.redis_worker.runtime_state import (
 )
 from app.schemas import MatchingHealthView, MatchingStatsView
 from app.system_status_service import SystemStatusService
-from app.system_status_query import PersistenceStatusResult
+from app.system_status_query import PersistenceStatusResult, PersistenceStoresPayload
 
 
 class FakeRuntimeStatus:
@@ -64,13 +64,13 @@ class FakeRuntimeStatus:
 
 
 class FakeStoreStatus:
-    def status(self) -> dict[str, object]:
-        return {
-            "supabase_enabled": True,
-            "firebase_enabled": False,
-            "supabase_table": "strategy_signals",
-            "firebase_collection": "signals",
-        }
+    def status(self) -> PersistenceStoresPayload:
+        return PersistenceStoresPayload(
+            supabase_enabled=True,
+            firebase_enabled=False,
+            supabase_table="strategy_signals",
+            firebase_collection="signals",
+        )
 
 
 class FakeMatchingObservability:

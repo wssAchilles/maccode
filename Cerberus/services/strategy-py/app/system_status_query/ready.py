@@ -1,13 +1,37 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from time import monotonic
 from typing import Any
 
 from app.config import settings
 from app.matching_observability import default_matching_health
 from app.ports import MatchingObservabilityPort, RuntimeStatusPort
+from app.schemas import MatchingHealthView
 
 from .worker_state import build_worker_state
+
+
+@dataclass(frozen=True, slots=True)
+class ReadyPayload:
+    ready: bool
+    service: str
+    uptime_seconds: int
+    reasons: list[str]
+    worker: dict[str, Any]
+    matching: MatchingHealthView
+    request_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ready": self.ready,
+            "service": self.service,
+            "uptime_seconds": self.uptime_seconds,
+            "reasons": self.reasons,
+            "worker": self.worker,
+            "matching": self.matching.model_dump(),
+            "request_id": self.request_id,
+        }
 
 
 def _collect_stream_readiness_reasons(runtime_status: RuntimeStatusPort) -> list[str]:
@@ -39,9 +63,9 @@ def _collect_stream_readiness_reasons(runtime_status: RuntimeStatusPort) -> list
 async def _read_matching_ready(
     matching_observability: MatchingObservabilityPort,
     request_id: str,
-) -> tuple[list[str], dict[str, object]]:
+) -> tuple[list[str], MatchingHealthView]:
     if not settings.matching_enabled:
-        return [], default_matching_health(enabled=False).model_dump()
+        return [], default_matching_health(enabled=False)
 
     reasons: list[str] = []
     matching = (await matching_observability.collect_snapshot(request_id=request_id)).health
@@ -49,7 +73,7 @@ async def _read_matching_ready(
         reasons.append("matching_unreachable")
     if matching.degraded:
         reasons.append("matching_degraded")
-    return reasons, matching.model_dump()
+    return reasons, matching
 
 
 async def build_ready_content(
@@ -58,7 +82,7 @@ async def build_ready_content(
     *,
     started_at: float,
     request_id: str,
-) -> tuple[int, dict[str, Any]]:
+) -> tuple[int, ReadyPayload]:
     reasons = _collect_stream_readiness_reasons(runtime_status)
     matching_reasons, matching = await _read_matching_ready(
         matching_observability,
@@ -67,12 +91,12 @@ async def build_ready_content(
     reasons.extend(matching_reasons)
 
     status_code = 200 if not reasons else 503
-    return status_code, {
-        "ready": status_code == 200,
-        "service": settings.service_name,
-        "uptime_seconds": int(max(monotonic() - started_at, 0.0)),
-        "reasons": reasons,
-        "worker": build_worker_state(runtime_status),
-        "matching": matching,
-        "request_id": request_id,
-    }
+    return status_code, ReadyPayload(
+        ready=status_code == 200,
+        service=settings.service_name,
+        uptime_seconds=int(max(monotonic() - started_at, 0.0)),
+        reasons=reasons,
+        worker=build_worker_state(runtime_status),
+        matching=matching,
+        request_id=request_id,
+    )

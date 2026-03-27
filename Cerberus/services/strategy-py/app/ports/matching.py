@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 from app.schemas import (
+    MatchingCancelResponse,
     MatchingExecutionView,
     MatchingHealthView,
     MatchingOrderBookView,
     MatchingOrderView,
     MatchingStatsView,
+    MatchingSubmitResponse,
 )
 
 
@@ -26,7 +28,7 @@ class MatchingGatewayPort(Protocol):
         client_order_id: str = "",
         request_id: str | None = None,
         idempotency_key: str | None = None,
-    ) -> dict[str, Any]: ...
+    ) -> MatchingSubmitResponse: ...
 
     async def cancel_order(
         self,
@@ -34,7 +36,7 @@ class MatchingGatewayPort(Protocol):
         account_id: str,
         order_id: str,
         request_id: str | None = None,
-    ) -> dict[str, Any]: ...
+    ) -> MatchingCancelResponse: ...
 
     async def get_order(
         self,

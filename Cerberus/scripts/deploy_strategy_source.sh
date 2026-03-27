@@ -40,7 +40,15 @@ GRB_LICENSEID_SECRET="${GRB_LICENSEID_SECRET:-cerberus-grb-licenseid}"
 GRB_WLSACCESSID_SECRET="${GRB_WLSACCESSID_SECRET:-cerberus-grb-wlsaccessid}"
 GRB_WLSSECRET_SECRET="${GRB_WLSSECRET_SECRET:-cerberus-grb-wlssecret}"
 
-env_file="$(mktemp /tmp/cerberus-strategy-env.XXXXXX.yaml)"
+create_temp_env_file() {
+  local prefix="$1"
+  local base
+  base="$(mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX")"
+  mv "${base}" "${base}.yaml"
+  printf '%s.yaml\n' "${base}"
+}
+
+env_file="$(create_temp_env_file cerberus-strategy-env)"
 cat >"${env_file}" <<YAML
 CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS}"
 MARKET_CHANNEL: ${MARKET_CHANNEL}

@@ -89,6 +89,7 @@ if(ENABLE_GRPC_SERVICE)
     target_link_libraries(cerberus_proto PUBLIC ${PROTOBUF_LIB_TARGET} gRPC::grpc++ gRPC::grpc)
 
     add_library(grpc_order_service
+      src/grpc_order_service_mapping.cpp
       src/grpc_order_service_common.cpp
       src/grpc_order_service_context.cpp
       src/grpc_order_service_backpressure.cpp
@@ -143,4 +144,21 @@ if(BUILD_TESTING)
 
   include(GoogleTest)
   gtest_discover_tests(matching_engine_test)
+
+  if(CERBERUS_GRPC_SERVICE_BUILT)
+    add_executable(
+      grpc_order_service_mapping_test
+      tests/test_grpc_mapping.cpp
+      src/grpc_order_service_mapping.cpp
+    )
+    target_include_directories(grpc_order_service_mapping_test PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+      ${CERBERUS_PROTO_INCLUDE_DIR}
+    )
+    target_link_libraries(grpc_order_service_mapping_test PRIVATE
+      matching_engine
+      cerberus_proto
+    )
+    add_test(NAME grpc_order_service_mapping_test COMMAND grpc_order_service_mapping_test)
+  endif()
 endif()

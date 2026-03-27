@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any
+from typing import Any, Generic, TypeAlias, TypeVar
 
 from pydantic import BaseModel
 
 from app.ports.signal import SignalHistorySource, SignalStoreSource
-from app.schemas import SignalRecord
+from app.schemas import MatchingOrderBookView, SignalRecord
+from app.system_status_query.persistence import PersistenceStatusResult
+
+SummaryPayloadT = TypeVar("SummaryPayloadT")
 
 
 def _serialize_value(value: Any) -> Any:
@@ -40,14 +43,19 @@ class SummaryError:
 
 
 @dataclass(frozen=True, slots=True)
-class SummaryComponent:
+class SummaryComponent(Generic[SummaryPayloadT]):
     ok: bool
     status_code: int
-    payload: Any | None = None
+    payload: SummaryPayloadT | None = None
     error: SummaryError | None = None
 
     @classmethod
-    def ok_result(cls, payload: Any, *, status_code: int = 200) -> SummaryComponent:
+    def ok_result(
+        cls,
+        payload: SummaryPayloadT,
+        *,
+        status_code: int = 200,
+    ) -> "SummaryComponent[SummaryPayloadT]":
         return cls(ok=True, status_code=status_code, payload=payload)
 
     @classmethod
@@ -58,7 +66,7 @@ class SummaryComponent:
         message: str,
         request_id: str,
         status_code: int,
-    ) -> SummaryComponent:
+    ) -> "SummaryComponent[SummaryPayloadT]":
         return cls(
             ok=False,
             status_code=status_code,
@@ -96,16 +104,21 @@ class SummaryRecentSignalsPayload:
     signals: list[SignalRecord]
 
 
+SummaryPayload: TypeAlias = (
+    MatchingOrderBookView | PersistenceStatusResult | SummaryRecentSignalsPayload | SummarySignalPayload
+)
+
+
 @dataclass(frozen=True, slots=True)
 class SummaryResult:
     symbol: str
     source: SignalHistorySource
     recent_limit: int
     orderbook_depth: int
-    signal: SummaryComponent
-    recent_signals: SummaryComponent
-    persistence: SummaryComponent
-    matching_orderbook: SummaryComponent
+    signal: SummaryComponent[SummarySignalPayload]
+    recent_signals: SummaryComponent[SummaryRecentSignalsPayload]
+    persistence: SummaryComponent[PersistenceStatusResult]
+    matching_orderbook: SummaryComponent[MatchingOrderBookView]
 
     def to_dict(self) -> dict[str, Any]:
         return {

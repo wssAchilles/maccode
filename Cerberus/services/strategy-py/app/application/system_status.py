@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from app.ports import MatchingObservabilityPort, RuntimeStatusPort, StoreStatusPort
 from app.system_status_query import (
     PersistenceStatusResult,
+    ReadyPayload,
     build_metrics_lines,
     build_persistence_status,
     build_ready_content,
@@ -15,7 +15,7 @@ from app.system_status_query import (
 @dataclass(frozen=True, slots=True)
 class ReadyResult:
     status_code: int
-    payload: dict[str, Any]
+    payload: ReadyPayload
 
 
 class SystemStatusApplicationService:

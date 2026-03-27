@@ -110,7 +110,7 @@ async def build_persistence_status(
     snapshot = runtime_status.runtime_snapshot()
     matching_snapshot = await matching_observability.collect_snapshot(request_id=request_id)
     idempotency = runtime_status.idempotency_snapshot()
-    stores = PersistenceStoresPayload.from_status(signal_store_status.status())
+    stores = signal_store_status.status()
     worker = PersistenceWorkerPayload(
         processed_ticks=snapshot.processed_ticks,
         forwarded_executions=snapshot.forwarded_executions,

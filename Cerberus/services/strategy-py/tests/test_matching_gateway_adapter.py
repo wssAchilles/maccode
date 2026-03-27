@@ -4,11 +4,13 @@ import pytest
 
 from app.infrastructure import MatchingGatewayAdapter
 from app.schemas import (
+    MatchingCancelResponse,
     MatchingExecutionView,
     MatchingHealthView,
     MatchingOrderBookView,
     MatchingOrderView,
     MatchingStatsView,
+    MatchingSubmitResponse,
 )
 
 
@@ -34,6 +36,43 @@ class FakeMatchingClient:
             "quantity": 1.0,
             "filled_quantity": 0.25,
             "status": "OPEN",
+        }
+
+    async def submit_limit_order(
+        self,
+        *,
+        account_id: str,
+        symbol: str,
+        side: str,
+        price: float,
+        quantity: float,
+        client_order_id: str = "",
+        request_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, object]:
+        assert account_id == "acc-1"
+        assert symbol == "BTCUSDT"
+        assert side == "BUY"
+        return {
+            "accepted": True,
+            "order_id": "ord-typed-submit",
+            "reason": "",
+            "request_id": request_id,
+        }
+
+    async def cancel_order(
+        self,
+        *,
+        account_id: str,
+        order_id: str,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        assert account_id == "acc-1"
+        assert order_id == "ord-1"
+        return {
+            "canceled": True,
+            "reason": "",
+            "request_id": request_id,
         }
 
     async def list_recent_executions(
@@ -107,6 +146,19 @@ async def test_matching_gateway_adapter_returns_typed_query_models() -> None:
         order_id="ord-1",
         request_id="rid-typed-order",
     )
+    submit = await adapter.submit_limit_order(
+        account_id="acc-1",
+        symbol="BTCUSDT",
+        side="BUY",
+        price=100.0,
+        quantity=1.0,
+        request_id="rid-typed-submit",
+    )
+    cancel = await adapter.cancel_order(
+        account_id="acc-1",
+        order_id="ord-1",
+        request_id="rid-typed-cancel",
+    )
     executions = await adapter.list_recent_executions(
         account_id="acc-1",
         limit=2,
@@ -120,11 +172,15 @@ async def test_matching_gateway_adapter_returns_typed_query_models() -> None:
     health = await adapter.health(request_id="rid-typed-health")
     stats = await adapter.get_service_stats(request_id="rid-typed-stats")
 
+    assert isinstance(submit, MatchingSubmitResponse)
+    assert isinstance(cancel, MatchingCancelResponse)
     assert isinstance(order, MatchingOrderView)
     assert isinstance(executions[0], MatchingExecutionView)
     assert isinstance(orderbook, MatchingOrderBookView)
     assert isinstance(health, MatchingHealthView)
     assert isinstance(stats, MatchingStatsView)
+    assert submit.request_id == "rid-typed-submit"
+    assert cancel.request_id == "rid-typed-cancel"
     assert order.request_id == "rid-typed-order"
     assert executions[0].request_id == "rid-typed-executions"
     assert orderbook.request_id == "rid-typed-orderbook"
