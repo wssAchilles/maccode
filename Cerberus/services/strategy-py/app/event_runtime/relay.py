@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run_execution_relay_loop(worker: RedisMarketWorker) -> None:
-    if not worker._matching.enabled or worker._redis is None:
+    if not worker.matching_client.enabled or worker.redis_client is None:
         return
 
     channel = f"{settings.trade_execution_channel_prefix}.{settings.strategy_account_id}"
@@ -28,14 +28,14 @@ async def run_execution_relay_loop(worker: RedisMarketWorker) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
-            worker.last_error = f"execution relay: {exc}"
+            worker.set_last_error(f"execution relay: {exc}")
             logger.warning("execution relay failed: %s", exc)
 
         await asyncio.sleep(max(settings.execution_relay_interval_seconds, 0.1))
 
 
 async def relay_execution_once(worker: RedisMarketWorker, channel: str) -> None:
-    items = await worker._matching.list_recent_executions(
+    items = await worker.matching_client.list_recent_executions(
         account_id=settings.strategy_account_id,
         limit=max(settings.execution_relay_batch_limit, 1),
     )
@@ -50,8 +50,8 @@ async def relay_execution_once(worker: RedisMarketWorker, channel: str) -> None:
         except Exception:  # noqa: BLE001
             await release_claimed_orders(worker, claimed_order_ids)
             raise
-        worker.forwarded_executions += len(publish_batch)
-    worker.last_execution_id = next_last_execution_id
+        worker.increment_forwarded_executions(len(publish_batch))
+    worker.update_last_execution_id(next_last_execution_id)
 
 
 async def build_execution_publish_batch(

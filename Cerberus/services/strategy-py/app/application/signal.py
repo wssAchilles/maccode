@@ -3,7 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.ports import SignalHistorySource, SignalRuntimePort, SignalStorePort, SignalStoreSource
+from app.ports import (
+    SignalClaimPort,
+    SignalEventPort,
+    SignalHistorySource,
+    SignalPublisherPort,
+    SignalRuntimePort,
+    SignalStorePort,
+    SignalStoreSource,
+)
 from app.schemas import Signal, SignalRecord, TickEvent
 
 
@@ -26,10 +34,16 @@ class SignalApplicationService:
         *,
         runtime: SignalRuntimePort,
         signal_store: SignalStorePort,
+        signal_claims: SignalClaimPort,
+        event_flow: SignalEventPort,
+        publishers: tuple[SignalPublisherPort, ...] = (),
         default_engine_name: str = "moving_average",
     ) -> None:
         self._runtime = runtime
         self._signal_store = signal_store
+        self._signal_claims = signal_claims
+        self._event_flow = event_flow
+        self._publishers = publishers
         self._default_engine_name = default_engine_name
 
     def current_signal(self) -> SignalDecision | None:
@@ -39,14 +53,34 @@ class SignalApplicationService:
         return self._build_decision(signal)
 
     async def ingest_tick(self, tick: TickEvent) -> SignalDecision:
-        signal = await self._runtime.ingest_tick(tick)
+        signal, signal_id = self._runtime.evaluate_tick(tick)
+        if not await self._signal_claims.claim_signal(signal_id):
+            return self._build_decision(
+                signal,
+                metadata=self._decision_metadata(
+                    tick,
+                    signal_id=signal_id,
+                    dispatch_state="duplicate",
+                ),
+            )
+
+        try:
+            self._runtime.store_current_signal(signal)
+            await self._event_flow.publish_signal_flow(signal, tick, signal_id)
+            for publisher in self._publishers:
+                await publisher.publish_signal(signal)
+        except Exception:
+            await self._signal_claims.release_signal_claim(signal_id)
+            raise
+
+        self._runtime.record_tick_processed()
         return self._build_decision(
             signal,
-            metadata={
-                "event_time": tick.event_time,
-                "price": tick.price,
-                "quantity": tick.quantity,
-            },
+            metadata=self._decision_metadata(
+                tick,
+                signal_id=signal_id,
+                dispatch_state="accepted",
+            ),
         )
 
     async def recent_signals(
@@ -70,3 +104,18 @@ class SignalApplicationService:
                 metadata=metadata or {},
             ),
         )
+
+    def _decision_metadata(
+        self,
+        tick: TickEvent,
+        *,
+        signal_id: str,
+        dispatch_state: str,
+    ) -> dict[str, Any]:
+        return {
+            "event_time": tick.event_time,
+            "price": tick.price,
+            "quantity": tick.quantity,
+            "signal_id": signal_id,
+            "dispatch_state": dispatch_state,
+        }

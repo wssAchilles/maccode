@@ -21,12 +21,12 @@ async def build_matching_submission_event(
     tick_price: float,
     signal_id: str,
 ) -> tuple[PublishedEvent | None, str | None]:
-    if worker._redis is None:
+    if worker.redis_client is None:
         return None, None
 
     claimed_order_id: str | None = None
     try:
-        order_event = await worker._matching.submit_from_signal(
+        order_event = await worker.matching_client.submit_from_signal(
             signal, tick_price, idempotency_key=signal_id
         )
         if order_event is None:

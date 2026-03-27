@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run_market_loop(worker: RedisMarketWorker) -> None:
-    assert worker._redis is not None
+    assert worker.redis_client is not None
     if settings.market_stream_enabled:
         try:
             await run_market_stream_loop(worker)
@@ -24,8 +24,8 @@ async def run_market_loop(worker: RedisMarketWorker) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
-            worker.last_error = f"market stream: {exc}"
-            worker.market_stream_fallbacks += 1
+            worker.set_last_error(f"market stream: {exc}")
+            worker.mark_market_stream_fallback()
             logger.warning("market stream loop failed, fallback to pubsub: %s", exc)
             if not settings.market_stream_legacy_pubsub_fallback:
                 raise

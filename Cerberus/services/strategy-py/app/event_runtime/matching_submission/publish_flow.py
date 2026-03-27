@@ -23,7 +23,7 @@ async def publish_signal_and_matching_submission(
     tick: TickEvent,
     signal_id: str,
 ) -> None:
-    if worker._redis is None:
+    if worker.redis_client is None:
         return
 
     signal_event = build_signal_event(signal, tick, signal_id)

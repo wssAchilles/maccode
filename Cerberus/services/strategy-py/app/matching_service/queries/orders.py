@@ -4,22 +4,22 @@ import grpc
 from fastapi import HTTPException
 
 from app.api.matching_helpers import ensure_matching_enabled, raise_get_order_error
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 from app.schemas import MatchingOrderView
 
 from ..mapping import to_order_view
 
 
 async def get_order(
-    worker: RedisMarketWorker,
+    gateway: MatchingGatewayPort,
     *,
     order_id: str,
     account_id: str,
     request_id: str,
 ) -> MatchingOrderView:
-    ensure_matching_enabled(worker)
+    ensure_matching_enabled(gateway)
     try:
-        result = await worker.matching_client.get_order(
+        result = await gateway.get_order(
             account_id=account_id,
             order_id=order_id,
             request_id=request_id,

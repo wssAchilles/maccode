@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 from app.schemas import (
     MatchingCancelRequest,
     MatchingCancelResponse,
@@ -19,8 +19,8 @@ from .status import health, stats
 
 
 class MatchingService:
-    def __init__(self, *, worker: RedisMarketWorker) -> None:
-        self._worker = worker
+    def __init__(self, *, gateway: MatchingGatewayPort) -> None:
+        self._gateway = gateway
 
     async def submit_order(
         self,
@@ -30,7 +30,7 @@ class MatchingService:
         idempotency_key: str | None,
     ) -> MatchingSubmitResponse:
         return await submit_order(
-            self._worker,
+            self._gateway,
             payload,
             request_id=request_id,
             idempotency_key=idempotency_key,
@@ -44,7 +44,7 @@ class MatchingService:
         request_id: str,
     ) -> MatchingCancelResponse:
         return await cancel_order(
-            self._worker,
+            self._gateway,
             order_id=order_id,
             payload=payload,
             request_id=request_id,
@@ -58,7 +58,7 @@ class MatchingService:
         request_id: str,
     ) -> MatchingOrderView:
         return await get_order(
-            self._worker,
+            self._gateway,
             order_id=order_id,
             account_id=account_id,
             request_id=request_id,
@@ -75,7 +75,7 @@ class MatchingService:
         request_id: str,
     ) -> list[MatchingExecutionView]:
         return await list_executions(
-            self._worker,
+            self._gateway,
             account_id=account_id,
             symbol=symbol,
             order_id=order_id,
@@ -85,10 +85,10 @@ class MatchingService:
         )
 
     async def health(self, *, request_id: str) -> MatchingHealthView:
-        return await health(self._worker, request_id=request_id)
+        return await health(self._gateway, request_id=request_id)
 
     async def stats(self, *, request_id: str) -> MatchingStatsView:
-        return await stats(self._worker, request_id=request_id)
+        return await stats(self._gateway, request_id=request_id)
 
     async def orderbook(
         self,
@@ -98,7 +98,7 @@ class MatchingService:
         request_id: str,
     ) -> MatchingOrderBookView:
         return await orderbook(
-            self._worker,
+            self._gateway,
             symbol=symbol,
             depth=depth,
             request_id=request_id,

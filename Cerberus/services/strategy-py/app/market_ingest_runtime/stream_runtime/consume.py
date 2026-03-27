@@ -36,8 +36,8 @@ async def market_stream_consume_loop(
                 try:
                     await run_market_stream_maintenance(worker, stream_key, group, consumer)
                 except Exception as exc:  # noqa: BLE001
-                    worker.market_stream_reclaim_failures += 1
-                    worker.last_error = f"market stream maintenance: {exc}"
+                    worker.increment_market_stream_reclaim_failures()
+                    worker.set_last_error(f"market stream maintenance: {exc}")
                     logger.warning("market stream maintenance failed: %s", exc)
                 last_maintenance_at_ms = current_epoch_millis()
             entries = await read_market_stream_entries(
@@ -54,18 +54,18 @@ async def market_stream_consume_loop(
                 if settings.market_stream_batch_window_ms > 0:
                     await asyncio.sleep(settings.market_stream_batch_window_ms / 1_000.0)
             consecutive_failures = 0
-            worker.market_stream_consecutive_failures = 0
-            worker.last_market_stream_retry_backoff_ms = None
+            worker.reset_market_stream_retry_state()
             continue
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
             consecutive_failures += 1
-            worker.market_stream_retry_attempts += 1
-            worker.market_stream_consecutive_failures = consecutive_failures
-            worker.last_error = f"market stream: {exc}"
             backoff_ms = compute_market_stream_backoff_ms(consecutive_failures)
-            worker.last_market_stream_retry_backoff_ms = backoff_ms
+            worker.record_market_stream_retry(
+                consecutive_failures=consecutive_failures,
+                backoff_ms=backoff_ms,
+                message=f"market stream: {exc}",
+            )
             logger.warning(
                 "market stream retrying after failure (attempt=%s/%s, backoff_ms=%s): %s",
                 consecutive_failures,

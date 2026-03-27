@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.api.matching_helpers import ensure_matching_enabled
 from app.config import settings
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 from app.schemas import (
     MatchingCancelRequest,
     MatchingCancelResponse,
@@ -14,15 +14,15 @@ from .mapping import to_cancel_response, to_submit_response
 
 
 async def submit_order(
-    worker: RedisMarketWorker,
+    gateway: MatchingGatewayPort,
     payload: MatchingSubmitRequest,
     *,
     request_id: str,
     idempotency_key: str | None,
 ) -> MatchingSubmitResponse:
-    ensure_matching_enabled(worker)
+    ensure_matching_enabled(gateway)
     account_id = payload.account_id or settings.strategy_account_id
-    result = await worker.matching_client.submit_limit_order(
+    result = await gateway.submit_limit_order(
         account_id=account_id,
         symbol=payload.symbol,
         side=payload.side,
@@ -36,15 +36,15 @@ async def submit_order(
 
 
 async def cancel_order(
-    worker: RedisMarketWorker,
+    gateway: MatchingGatewayPort,
     *,
     order_id: str,
     payload: MatchingCancelRequest,
     request_id: str,
 ) -> MatchingCancelResponse:
-    ensure_matching_enabled(worker)
+    ensure_matching_enabled(gateway)
     account_id = payload.account_id or settings.strategy_account_id
-    result = await worker.matching_client.cancel_order(
+    result = await gateway.cancel_order(
         account_id=account_id,
         order_id=order_id,
         request_id=request_id,

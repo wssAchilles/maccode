@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 async def run_market_stream_loop(worker: RedisMarketWorker) -> None:
-    assert worker._redis is not None
+    assert worker.redis_client is not None
     stream_key = settings.market_stream_key.strip() or "cerberus.market.events"
     group = settings.market_stream_consumer_group.strip() or "strategy-market"
     consumer = market_stream_consumer_name()
 
     await ensure_market_stream_group(worker, stream_key, group, consumer)
-    worker.market_ingest_mode = "stream"
+    worker.set_market_ingest_mode("stream")
     logger.info(
         "consuming market stream=%s group=%s consumer=%s",
         stream_key,

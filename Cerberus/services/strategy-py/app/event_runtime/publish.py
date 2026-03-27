@@ -63,10 +63,11 @@ async def publish_event(
 
 
 async def publish_events_batch(worker: RedisMarketWorker, events: list[PublishedEvent]) -> None:
-    if worker._redis is None or not events:
+    redis = worker.redis_client
+    if redis is None or not events:
         return
 
-    pipe = worker._redis.pipeline(transaction=False)
+    pipe = redis.pipeline(transaction=False)
     for event in events:
         if settings.event_stream_enabled:
             envelope = build_event_envelope(event)

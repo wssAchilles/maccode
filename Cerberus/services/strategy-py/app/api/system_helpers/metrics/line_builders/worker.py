@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from app.config import settings
 from app.http import prometheus_escape
-from app.redis_worker import RedisMarketWorker
+from app.ports import RuntimeStatusPort
 
 
-def worker_runtime_metrics_lines(worker: RedisMarketWorker) -> list[str]:
+def worker_runtime_metrics_lines(runtime_status: RuntimeStatusPort) -> list[str]:
+    snapshot = runtime_status.runtime_snapshot()
     return [
-        f"cerberus_strategy_worker_started {1 if worker.started else 0}",
-        f"cerberus_strategy_worker_market_loop_running {1 if worker.market_loop_running else 0}",
-        f"cerberus_strategy_worker_execution_loop_running {1 if worker.execution_loop_running else 0}",
-        f"cerberus_strategy_worker_redis_configured {1 if worker.redis_configured else 0}",
+        f"cerberus_strategy_worker_started {1 if snapshot.started else 0}",
+        f"cerberus_strategy_worker_market_loop_running {1 if snapshot.market_loop_running else 0}",
+        f"cerberus_strategy_worker_execution_loop_running {1 if snapshot.execution_loop_running else 0}",
+        f"cerberus_strategy_worker_redis_configured {1 if snapshot.redis_configured else 0}",
         f"cerberus_strategy_market_stream_enabled {1 if settings.market_stream_enabled else 0}",
         (
             "cerberus_strategy_market_stream_legacy_pubsub_fallback_enabled "
@@ -23,38 +24,39 @@ def worker_runtime_metrics_lines(worker: RedisMarketWorker) -> list[str]:
         ),
         (
             "cerberus_strategy_market_ingest_mode"
-            f'{{mode="{prometheus_escape(worker.market_ingest_mode)}"}} 1'
+            f'{{mode="{prometheus_escape(snapshot.market_ingest_mode)}"}} 1'
         ),
-        f"cerberus_strategy_processed_ticks_total {worker.processed_ticks}",
-        f"cerberus_strategy_forwarded_executions_total {worker.forwarded_executions}",
-        f"cerberus_strategy_last_execution_id {worker.last_execution_id}",
-        f"cerberus_strategy_tracked_symbols {len(worker.tracked_symbols)}",
-        f"cerberus_strategy_last_tick_timestamp_seconds {worker.last_tick_epoch_seconds or 0}",
-        f"cerberus_strategy_last_error {1 if worker.last_error else 0}",
+        f"cerberus_strategy_processed_ticks_total {snapshot.processed_ticks}",
+        f"cerberus_strategy_forwarded_executions_total {snapshot.forwarded_executions}",
+        f"cerberus_strategy_last_execution_id {snapshot.last_execution_id}",
+        f"cerberus_strategy_tracked_symbols {len(snapshot.tracked_symbols)}",
+        f"cerberus_strategy_last_tick_timestamp_seconds {snapshot.last_tick_epoch_seconds or 0}",
+        f"cerberus_strategy_last_error {1 if snapshot.last_error else 0}",
     ]
 
 
-def market_stream_metrics_lines(worker: RedisMarketWorker) -> list[str]:
+def market_stream_metrics_lines(runtime_status: RuntimeStatusPort) -> list[str]:
+    market_stream = runtime_status.runtime_snapshot().market_stream
     return [
-        f"cerberus_strategy_market_stream_events_total {worker.market_stream_events}",
-        f"cerberus_strategy_market_stream_ack_failures_total {worker.market_stream_ack_failures}",
-        f"cerberus_strategy_market_stream_read_failures_total {worker.market_stream_read_failures}",
-        f"cerberus_strategy_market_stream_retry_attempts_total {worker.market_stream_retry_attempts}",
-        f"cerberus_strategy_market_stream_fallbacks_total {worker.market_stream_fallbacks}",
-        f"cerberus_strategy_market_stream_consecutive_failures {worker.market_stream_consecutive_failures}",
-        f"cerberus_strategy_market_stream_pending {worker.market_stream_pending}",
-        f"cerberus_strategy_market_stream_lag {worker.market_stream_lag}",
-        f"cerberus_strategy_market_stream_reclaim_attempts_total {worker.market_stream_reclaim_attempts}",
-        f"cerberus_strategy_market_stream_reclaimed_total {worker.market_stream_reclaimed}",
-        f"cerberus_strategy_market_stream_reclaim_failures_total {worker.market_stream_reclaim_failures}",
-        f"cerberus_strategy_market_stream_poisoned_total {worker.market_stream_poisoned}",
+        f"cerberus_strategy_market_stream_events_total {market_stream.events}",
+        f"cerberus_strategy_market_stream_ack_failures_total {market_stream.ack_failures}",
+        f"cerberus_strategy_market_stream_read_failures_total {market_stream.read_failures}",
+        f"cerberus_strategy_market_stream_retry_attempts_total {market_stream.retry_attempts}",
+        f"cerberus_strategy_market_stream_fallbacks_total {market_stream.fallbacks}",
+        f"cerberus_strategy_market_stream_consecutive_failures {market_stream.consecutive_failures}",
+        f"cerberus_strategy_market_stream_pending {market_stream.pending}",
+        f"cerberus_strategy_market_stream_lag {market_stream.lag}",
+        f"cerberus_strategy_market_stream_reclaim_attempts_total {market_stream.reclaim_attempts}",
+        f"cerberus_strategy_market_stream_reclaimed_total {market_stream.reclaimed}",
+        f"cerberus_strategy_market_stream_reclaim_failures_total {market_stream.reclaim_failures}",
+        f"cerberus_strategy_market_stream_poisoned_total {market_stream.poisoned}",
         (
             "cerberus_strategy_market_stream_last_retry_backoff_ms "
-            f"{worker.last_market_stream_retry_backoff_ms or 0}"
+            f"{market_stream.last_retry_backoff_ms or 0}"
         ),
         (
             "cerberus_strategy_market_stream_last_reclaim_at_ms "
-            f"{worker.last_market_stream_reclaim_at_ms or 0}"
+            f"{market_stream.last_reclaim_at_ms or 0}"
         ),
     ]
 

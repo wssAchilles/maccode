@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 from app.http import prometheus_escape
-from app.redis_worker import RedisMarketWorker
 
 from ..context import MatchingMetricsContext
 
 
-def matching_metrics_lines(
-    worker: RedisMarketWorker, context: MatchingMetricsContext
-) -> list[str]:
+def matching_metrics_lines(context: MatchingMetricsContext) -> list[str]:
     stats = context.stats
     return [
-        f"cerberus_strategy_matching_enabled {1 if worker.matching_client.enabled else 0}",
+        f"cerberus_strategy_matching_enabled {context.enabled}",
         f"cerberus_strategy_matching_reachable {context.reachable}",
         f"cerberus_strategy_matching_degraded {context.degraded}",
         (

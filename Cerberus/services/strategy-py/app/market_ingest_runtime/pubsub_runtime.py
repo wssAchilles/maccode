@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 async def run_market_pubsub_loop(worker: RedisMarketWorker) -> None:
-    assert worker._redis is not None
-    pubsub = worker._redis.pubsub()
+    redis = worker.redis_client
+    assert redis is not None
+    pubsub = redis.pubsub()
     channels = market_channels_from_settings(settings.market_channels, settings.market_channel)
     await pubsub.subscribe(*channels)
-    worker.market_ingest_mode = "pubsub"
+    worker.set_market_ingest_mode("pubsub")
     logger.info("subscribed to market pubsub channels: %s", ", ".join(channels))
 
     consecutive_retriable_failures = 0
@@ -40,7 +41,7 @@ async def run_market_pubsub_loop(worker: RedisMarketWorker) -> None:
                 await worker.ingest_tick(tick)
                 consecutive_retriable_failures = 0
             except Exception as exc:  # noqa: BLE001
-                worker.last_error = str(exc)
+                worker.set_last_error(str(exc))
                 if is_retriable_error(exc):
                     consecutive_retriable_failures += 1
                     backoff_seconds = compute_backoff_seconds(consecutive_retriable_failures)

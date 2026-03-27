@@ -3,23 +3,23 @@ from __future__ import annotations
 import grpc
 
 from app.api.matching_helpers import ensure_matching_enabled
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 from app.schemas import MatchingHealthView, MatchingStatsView
 
 from .fallbacks import build_degraded_stats
 from .mapping import to_health_view, to_stats_view
 
 
-async def health(worker: RedisMarketWorker, *, request_id: str) -> MatchingHealthView:
-    ensure_matching_enabled(worker)
-    payload = await worker.matching_client.health(request_id=request_id)
+async def health(gateway: MatchingGatewayPort, *, request_id: str) -> MatchingHealthView:
+    ensure_matching_enabled(gateway)
+    payload = await gateway.health(request_id=request_id)
     return to_health_view(payload, request_id=request_id)
 
 
-async def stats(worker: RedisMarketWorker, *, request_id: str) -> MatchingStatsView:
-    ensure_matching_enabled(worker)
+async def stats(gateway: MatchingGatewayPort, *, request_id: str) -> MatchingStatsView:
+    ensure_matching_enabled(gateway)
     try:
-        payload = await worker.matching_client.get_service_stats(request_id=request_id)
+        payload = await gateway.get_service_stats(request_id=request_id)
     except grpc.aio.AioRpcError as exc:
         return build_degraded_stats(
             request_id=request_id,

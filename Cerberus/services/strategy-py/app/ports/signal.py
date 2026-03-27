@@ -11,7 +11,26 @@ SignalStoreSource = Literal["supabase", "firestore", "none"]
 class SignalRuntimePort(Protocol):
     def read_current_signal(self) -> Signal | None: ...
 
-    async def ingest_tick(self, tick: TickEvent) -> Signal: ...
+    def evaluate_tick(self, tick: TickEvent) -> tuple[Signal, str]: ...
+
+    def store_current_signal(self, signal: Signal) -> None: ...
+
+    def record_tick_processed(self) -> None: ...
+
+
+class SignalClaimPort(Protocol):
+    async def claim_signal(self, signal_id: str) -> bool: ...
+
+    async def release_signal_claim(self, signal_id: str) -> None: ...
+
+
+class SignalEventPort(Protocol):
+    async def publish_signal_flow(
+        self,
+        signal: Signal,
+        tick: TickEvent,
+        signal_id: str,
+    ) -> None: ...
 
 
 class SignalStorePort(Protocol):

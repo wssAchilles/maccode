@@ -1,11 +1,11 @@
 import grpc
 from fastapi import HTTPException
 
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 
 
-def ensure_matching_enabled(worker: RedisMarketWorker) -> None:
-    if not worker.matching_client.enabled:
+def ensure_matching_enabled(gateway: MatchingGatewayPort) -> None:
+    if not gateway.enabled:
         raise HTTPException(
             status_code=503,
             detail={

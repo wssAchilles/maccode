@@ -16,13 +16,13 @@ async def ingest_tick(worker: RedisMarketWorker, tick: TickEvent) -> Signal:
         return signal
 
     try:
-        worker.last_signal = signal
+        worker.store_current_signal(signal)
 
-        if worker._redis is not None:
+        if worker.redis_client is not None:
             await publish_signal_and_matching_submission(worker, signal, tick, signal_id)
 
-        await worker._firebase.publish_signal(signal)
-        await worker._supabase.publish_signal(signal)
+        await worker.firebase_publisher.publish_signal(signal)
+        await worker.supabase_publisher.publish_signal(signal)
     except Exception:
         await worker.release_signal_claim(signal_id)
         raise
@@ -32,8 +32,8 @@ async def ingest_tick(worker: RedisMarketWorker, tick: TickEvent) -> Signal:
 
 
 def record_tick_processed(worker: RedisMarketWorker) -> None:
-    worker.processed_ticks += 1
+    worker._runtime_state.processed_ticks += 1
     now = datetime.now(timezone.utc)
-    worker.last_tick_at = now.isoformat()
-    worker.last_tick_epoch_seconds = int(now.timestamp())
-    worker.last_error = None
+    worker._runtime_state.last_tick_at = now.isoformat()
+    worker._runtime_state.last_tick_epoch_seconds = int(now.timestamp())
+    worker._runtime_state.last_error = None

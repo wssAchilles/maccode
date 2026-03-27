@@ -36,10 +36,9 @@ async def process_market_stream_batch(
         try:
             await worker.ingest_tick(tick)
             ack_ids.append(stream_id)
-            worker.market_stream_events += 1
-            worker.last_market_stream_id = stream_id
+            worker.mark_market_stream_event_processed(stream_id)
         except Exception as exc:  # noqa: BLE001
-            worker.last_error = str(exc)
+            worker.set_last_error(str(exc))
             if is_retriable_error(exc):
                 if ack_ids:
                     await ack_market_stream_entries(worker, stream_key, group, ack_ids)

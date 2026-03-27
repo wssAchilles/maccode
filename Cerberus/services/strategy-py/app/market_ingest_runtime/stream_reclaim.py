@@ -27,11 +27,11 @@ async def reclaim_market_stream_entries(
     group: str,
     consumer: str,
 ) -> None:
-    assert worker._redis is not None
-    worker.market_stream_reclaim_attempts += 1
-    worker.last_market_stream_reclaim_at_ms = current_epoch_millis()
+    redis = worker.redis_client
+    assert redis is not None
+    worker.mark_market_stream_reclaim_attempt(current_epoch_millis())
 
-    claim_raw = await worker._redis.xautoclaim(
+    claim_raw = await redis.xautoclaim(
         stream_key,
         group,
         consumer,
@@ -43,7 +43,7 @@ async def reclaim_market_stream_entries(
     if not reclaimed:
         return
 
-    worker.market_stream_reclaimed += len(reclaimed)
+    worker.mark_market_stream_reclaimed(len(reclaimed))
     logger.info("reclaimed %s stuck market stream entries", len(reclaimed))
 
     processable: list[tuple[str, dict[str, Any]]] = []
@@ -81,7 +81,8 @@ async def poison_market_stream_entry(
     fields: dict[str, Any],
     deliveries: int,
 ) -> None:
-    assert worker._redis is not None
+    redis = worker.redis_client
+    assert redis is not None
 
     payload = {
         "stream": stream_key,
@@ -95,14 +96,13 @@ async def poison_market_stream_entry(
         "fields": fields,
     }
     data = json.dumps(payload, separators=(",", ":"))
-    await worker._redis.xadd(
+    await redis.xadd(
         market_stream_poison_stream_key(),
         {"data": data},
         maxlen=max(settings.market_stream_poison_stream_maxlen, 1),
         approximate=True,
     )
-    worker.market_stream_poisoned += 1
-    worker.last_market_stream_poison_id = stream_id
+    worker.mark_market_stream_poisoned(stream_id)
 
 
 def market_stream_poison_stream_key() -> str:

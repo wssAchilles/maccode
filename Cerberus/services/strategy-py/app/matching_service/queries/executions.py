@@ -3,7 +3,7 @@ from __future__ import annotations
 import grpc
 
 from app.api.matching_helpers import ensure_matching_enabled, raise_gateway_grpc_error
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 from app.schemas import MatchingExecutionView
 
 from ..filters import filter_execution_items
@@ -11,7 +11,7 @@ from ..mapping import to_execution_views
 
 
 async def list_executions(
-    worker: RedisMarketWorker,
+    gateway: MatchingGatewayPort,
     *,
     account_id: str,
     symbol: str | None,
@@ -20,9 +20,9 @@ async def list_executions(
     limit: int,
     request_id: str,
 ) -> list[MatchingExecutionView]:
-    ensure_matching_enabled(worker)
+    ensure_matching_enabled(gateway)
     try:
-        items = await worker.matching_client.list_recent_executions(
+        items = await gateway.list_recent_executions(
             account_id=account_id,
             limit=limit,
             request_id=request_id,

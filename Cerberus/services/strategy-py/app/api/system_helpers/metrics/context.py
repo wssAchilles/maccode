@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.matching_observability import collect_matching_snapshot
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingObservabilityPort
 
 
 @dataclass(frozen=True)
 class MatchingMetricsContext:
+    enabled: int
     status: str
     reachable: int
     degraded: int
@@ -17,11 +17,14 @@ class MatchingMetricsContext:
 
 
 async def build_matching_metrics_context(
-    worker: RedisMarketWorker, *, request_id: str
+    matching_observability: MatchingObservabilityPort,
+    *,
+    request_id: str,
 ) -> MatchingMetricsContext:
-    snapshot = await collect_matching_snapshot(worker, request_id=request_id)
+    snapshot = await matching_observability.collect_snapshot(request_id=request_id)
     health = snapshot.health
     return MatchingMetricsContext(
+        enabled=1 if bool(health.get("enabled", False)) else 0,
         status=str(health.get("status", "disabled")),
         reachable=1 if bool(health.get("reachable", False)) else 0,
         degraded=1 if bool(health.get("degraded", False)) else 0,

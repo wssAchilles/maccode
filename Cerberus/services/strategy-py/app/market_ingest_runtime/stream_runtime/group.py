@@ -21,14 +21,15 @@ async def ensure_market_stream_group(
     group: str,
     consumer: str,
 ) -> None:
-    assert worker._redis is not None
+    redis = worker.redis_client
+    assert redis is not None
     try:
-        await worker._redis.xgroup_create(stream_key, group, id="0", mkstream=True)
+        await redis.xgroup_create(stream_key, group, id="0", mkstream=True)
     except RedisError as exc:
         if "BUSYGROUP" not in str(exc):
             raise
     try:
-        await worker._redis.xgroup_createconsumer(stream_key, group, consumer)
+        await redis.xgroup_createconsumer(stream_key, group, consumer)
     except RedisError:
         pass
 

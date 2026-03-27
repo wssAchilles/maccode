@@ -2,38 +2,38 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.matching_observability import collect_matching_snapshot
-from app.redis_worker import RedisMarketWorker
-from app.signal_store import SignalStore
+from app.ports import MatchingObservabilityPort, RuntimeStatusPort, StoreStatusPort
 
 from .worker_state import build_worker_state
 
 
 async def build_persistence_status(
-    worker: RedisMarketWorker,
-    signal_store: SignalStore,
+    runtime_status: RuntimeStatusPort,
+    signal_store_status: StoreStatusPort,
+    matching_observability: MatchingObservabilityPort,
     *,
     request_id: str,
 ) -> dict[str, Any]:
-    matching_snapshot = await collect_matching_snapshot(worker, request_id=request_id)
-    idempotency = worker.idempotency_snapshot()
+    snapshot = runtime_status.runtime_snapshot()
+    matching_snapshot = await matching_observability.collect_snapshot(request_id=request_id)
+    idempotency = runtime_status.idempotency_snapshot()
 
     return {
         "status": "ok",
         "worker": {
-            "processed_ticks": worker.processed_ticks,
-            "forwarded_executions": worker.forwarded_executions,
-            "last_execution_id": worker.last_execution_id,
-            "last_tick_at": worker.last_tick_at,
-            "last_error": worker.last_error,
-            "has_last_signal": worker.last_signal is not None,
-            "tracked_symbols": worker.tracked_symbols,
+            "processed_ticks": snapshot.processed_ticks,
+            "forwarded_executions": snapshot.forwarded_executions,
+            "last_execution_id": snapshot.last_execution_id,
+            "last_tick_at": snapshot.last_tick_at,
+            "last_error": snapshot.last_error,
+            "has_last_signal": snapshot.last_signal is not None,
+            "tracked_symbols": list(snapshot.tracked_symbols),
             "idempotency": idempotency,
-            **build_worker_state(worker),
+            **build_worker_state(runtime_status),
         },
         "matching": {
             "health": matching_snapshot.health,
             "stats": matching_snapshot.stats,
         },
-        "stores": signal_store.status(),
+        "stores": signal_store_status.status(),
     }

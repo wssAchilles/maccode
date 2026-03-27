@@ -23,7 +23,7 @@ async def start_worker(worker: RedisMarketWorker) -> None:
         return
 
     worker._redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    worker.market_ingest_mode = "starting"
+    worker.set_market_ingest_mode("starting")
     worker._task = asyncio.create_task(
         run_market_supervisor_loop(worker),
         name="redis-market-worker",
@@ -52,7 +52,7 @@ async def stop_worker(worker: RedisMarketWorker) -> None:
     await worker._supabase.aclose()
     await worker._matching.aclose()
     worker._started = False
-    worker.market_ingest_mode = "stopped"
+    worker.set_market_ingest_mode("stopped")
 
 
 async def run_market_supervisor_loop(worker: RedisMarketWorker) -> None:
@@ -65,7 +65,7 @@ async def run_market_supervisor_loop(worker: RedisMarketWorker) -> None:
             raise
         except Exception as exc:
             consecutive_failures += 1
-            worker.last_error = f"market loop: {exc}"
+            worker.set_last_error(f"market loop: {exc}")
             delay_seconds = min(2 ** max(consecutive_failures - 1, 0), 15)
             logger.warning(
                 "market worker loop failed (attempt=%s, backoff=%ss): %s",

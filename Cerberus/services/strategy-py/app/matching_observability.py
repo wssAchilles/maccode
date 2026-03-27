@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.redis_worker import RedisMarketWorker
+from app.ports import MatchingGatewayPort
 
 
 @dataclass(slots=True)
@@ -60,17 +60,17 @@ def default_matching_stats(enabled: bool) -> dict[str, Any]:
 
 
 async def collect_matching_snapshot(
-    worker: RedisMarketWorker,
+    gateway: MatchingGatewayPort,
     *,
     request_id: str,
 ) -> MatchingSnapshot:
-    health = default_matching_health(enabled=worker.matching_client.enabled)
-    stats = default_matching_stats(enabled=worker.matching_client.enabled)
-    if not worker.matching_client.enabled:
+    health = default_matching_health(enabled=gateway.enabled)
+    stats = default_matching_stats(enabled=gateway.enabled)
+    if not gateway.enabled:
         return MatchingSnapshot(health=health, stats=stats)
 
     try:
-        health = await worker.matching_client.health(request_id=request_id)
+        health = await gateway.health(request_id=request_id)
     except Exception as exc:  # noqa: BLE001
         health = {
             **health,
@@ -82,7 +82,7 @@ async def collect_matching_snapshot(
         }
 
     try:
-        stats = await worker.matching_client.get_service_stats(request_id=request_id)
+        stats = await gateway.get_service_stats(request_id=request_id)
     except Exception as exc:  # noqa: BLE001
         stats = {
             **stats,
