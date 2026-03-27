@@ -1,4 +1,8 @@
 use crate::gateway_types::{AppState, REQUEST_ID_HEADER};
+use crate::handlers::trading::strategy::summary::model::{
+    AggregateSummaryComponent, AggregateSummaryPayload, StrategySummaryPayload,
+    SummaryComponentEnvelope,
+};
 use crate::handlers::trading::strategy::summary::params::SummaryRequest;
 use crate::handlers::trading::strategy::upstream::send_strategy_request;
 use tracing::warn;
@@ -9,7 +13,7 @@ pub(super) async fn fetch_strategy_summary_aggregate(
     request_id: &str,
     idempotency_key: Option<&str>,
     request: &SummaryRequest,
-) -> Option<serde_json::Value> {
+) -> Option<StrategySummaryPayload> {
     let aggregate_path = format!(
         "/api/v1/summary?symbol={}&recent_limit={}&source={}&orderbook_depth={}",
         request.symbol, request.recent_limit, request.source, request.orderbook_depth
@@ -49,7 +53,7 @@ pub(super) async fn fetch_strategy_summary_aggregate(
         return None;
     }
 
-    let payload = match response.json::<serde_json::Value>().await {
+    let payload = match response.json::<AggregateSummaryPayload>().await {
         Ok(payload) => payload,
         Err(err) => {
             warn!(
@@ -62,7 +66,7 @@ pub(super) async fn fetch_strategy_summary_aggregate(
         }
     };
 
-    if !validate_strategy_aggregate_payload(&payload) {
+    if !payload.has_required_components() {
         warn!(
             request_id,
             url = %aggregate_url,
@@ -80,59 +84,44 @@ pub(super) async fn fetch_strategy_summary_aggregate(
 
 fn build_summary_payload_from_aggregate(
     strategy_base: &str,
-    aggregate: &serde_json::Value,
+    aggregate: &AggregateSummaryPayload,
     request: &SummaryRequest,
-) -> serde_json::Value {
-    serde_json::json!({
-        "strategy_base_url": strategy_base,
-        "symbol": aggregate
-            .get("symbol")
-            .and_then(|value| value.as_str())
+) -> StrategySummaryPayload {
+    StrategySummaryPayload {
+        strategy_base_url: strategy_base.to_string(),
+        symbol: aggregate
+            .symbol
+            .as_deref()
             .filter(|value| !value.is_empty())
-            .unwrap_or(request.symbol.as_str()),
-        "source": aggregate
-            .get("source")
-            .and_then(|value| value.as_str())
+            .unwrap_or(request.symbol.as_str())
+            .to_string(),
+        source: aggregate
+            .source
+            .as_deref()
             .filter(|value| !value.is_empty())
-            .unwrap_or(request.source.as_str()),
-        "recent_limit": aggregate
-            .get("recent_limit")
-            .and_then(|value| value.as_u64())
+            .unwrap_or(request.source.as_str())
+            .to_string(),
+        recent_limit: aggregate
+            .recent_limit
             .unwrap_or(request.recent_limit as u64),
-        "orderbook_depth": aggregate
-            .get("orderbook_depth")
-            .and_then(|value| value.as_u64())
+        orderbook_depth: aggregate
+            .orderbook_depth
             .unwrap_or(request.orderbook_depth as u64),
-        "aggregation_mode": "strategy_aggregate",
-        "signal": aggregate.get("signal").cloned().unwrap_or(serde_json::Value::Null),
-        "recent_signals": aggregate
-            .get("recent_signals")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null),
-        "persistence": aggregate
-            .get("persistence")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null),
-        "matching_orderbook": aggregate
-            .get("matching_orderbook")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null),
-    })
+        aggregation_mode: "strategy_aggregate",
+        signal: from_aggregate_component(&aggregate.signal),
+        recent_signals: from_aggregate_component(&aggregate.recent_signals),
+        persistence: from_aggregate_component(&aggregate.persistence),
+        matching_orderbook: from_aggregate_component(&aggregate.matching_orderbook),
+    }
 }
 
-fn validate_strategy_aggregate_payload(payload: &serde_json::Value) -> bool {
-    has_summary_component(payload, "signal")
-        && has_summary_component(payload, "recent_signals")
-        && has_summary_component(payload, "persistence")
-        && has_summary_component(payload, "matching_orderbook")
-}
-
-fn has_summary_component(payload: &serde_json::Value, field: &str) -> bool {
-    let Some(component) = payload.get(field).and_then(serde_json::Value::as_object) else {
-        return false;
-    };
-
-    component.contains_key("ok")
-        && component.contains_key("status_code")
-        && (component.contains_key("payload") || component.contains_key("error"))
+fn from_aggregate_component(component: &AggregateSummaryComponent) -> SummaryComponentEnvelope {
+    SummaryComponentEnvelope {
+        ok: component.ok,
+        status_code: component.status_code,
+        url: None,
+        payload: component.payload.clone(),
+        error: component.error.clone(),
+        retry_after_ms: component.retry_after_ms,
+    }
 }

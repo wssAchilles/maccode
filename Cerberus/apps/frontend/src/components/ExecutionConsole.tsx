@@ -1,31 +1,9 @@
-import { startTransition, useMemo, useState } from 'react'
-import type { TranslationKey } from '../i18n/messages'
 import { useI18n } from '../i18n/I18nProvider'
-import { useCerberusStore } from '../store'
 
 import { AlpacaPaperPanel } from './execution/AlpacaPaperPanel'
 import { BinanceTestPanel } from './execution/BinanceTestPanel'
-import { useAlpacaPaperTrading } from './execution/useAlpacaPaperTrading'
-import { useBinanceOrderTest } from './execution/useBinanceOrderTest'
-import { useBinanceRuleResource, useTradingPolicyResource } from '../app/bootstrap/useResourceQueries'
 import { DataList, GlassPanel, StatusPill } from '../ui'
-
-const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
-
-const EXECUTION_STEP_LABELS: Record<(typeof EXECUTION_PROGRESS_STEPS)[number], TranslationKey> = {
-  precheck: 'execution.precheck',
-  submit: 'execution.submit',
-  feedback: 'flow.step.feedback',
-  cancel: 'execution.cancel',
-}
-
-const FLOW_STATE_LABELS = {
-  idle: 'health.state.idle',
-  active: 'health.state.loading',
-  success: 'health.state.ready',
-  degraded: 'health.state.degraded',
-  error: 'health.state.error',
-} as const
+import { useExecutionConsoleModel } from '../features/execution/useExecutionConsoleModel'
 
 type Props = {
   active?: boolean
@@ -36,85 +14,21 @@ type Props = {
 
 export function ExecutionConsole({ active = true, selectedSymbol, latestBid, latestAsk }: Props) {
   const { t } = useI18n()
-  const [broker, setBroker] = useState<'binance' | 'alpaca'>('binance')
-  const gatewayBase = useCerberusStore((state) => state.env.gateway_base)
-  const tradingPolicy = useCerberusStore((state) => state.executionTrading.trading_policy)
-  const binanceRule = useCerberusStore((state) => state.executionTrading.binance_rule)
-  const coreFlow = useCerberusStore((state) => state.uiState.core_flow)
-  const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
-
-  useTradingPolicyResource(active)
-  useBinanceRuleResource(active && broker === 'binance', selectedSymbol)
-
-  const binanceModel = useBinanceOrderTest({
+  const {
+    broker,
+    setBroker,
+    tradingPolicy,
+    binanceRule,
+    binanceModel,
+    alpacaModel,
+    executionSummary,
+    progressItems,
+  } = useExecutionConsoleModel({
+    active,
     selectedSymbol,
     latestBid,
     latestAsk,
-    gatewayBase,
-    rule: binanceRule ?? null,
-    policy: tradingPolicy ?? null,
-    onFlowEvent: (event) => {
-      setCoreFlowStep(event.step, {
-        state: event.state,
-        reason: event.reason,
-        request_id: event.requestId,
-      })
-    },
   })
-
-  const alpacaModel = useAlpacaPaperTrading({
-    gatewayBase,
-    tradingPolicy: tradingPolicy ?? null,
-    onFlowEvent: (event) => {
-      setCoreFlowStep(event.step, {
-        state: event.state,
-        reason: event.reason,
-        request_id: event.requestId,
-      })
-    },
-  })
-
-  const executionSummary = useMemo(
-    () => [
-      {
-        id: 'symbol',
-        label: 'Symbol',
-        value: broker === 'binance' ? selectedSymbol : alpacaModel.symbol.toUpperCase(),
-      },
-      {
-        id: 'policy',
-        label: t('execution.policy'),
-        value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
-      },
-      {
-        id: 'bid',
-        label: t('market.bestBid'),
-        value: latestBid ?? '—',
-      },
-      {
-        id: 'ask',
-        label: t('market.bestAsk'),
-        value: latestAsk ?? '—',
-      },
-    ],
-    [alpacaModel.symbol, broker, latestAsk, latestBid, selectedSymbol, t, tradingPolicy?.enforced],
-  )
-
-  const progressItems = useMemo(
-    () =>
-      EXECUTION_PROGRESS_STEPS.map((step) => {
-        const item = coreFlow[step]
-        return {
-          id: step,
-          title: t(EXECUTION_STEP_LABELS[step]),
-          state: item.state,
-          stateLabel: t(FLOW_STATE_LABELS[item.state]),
-          reason: item.reason?.trim() ? item.reason : t('common.na'),
-          requestId: item.request_id,
-        }
-      }),
-    [coreFlow, t],
-  )
 
   return (
     <section className="execution-orchestrator" data-testid="execution-console">
@@ -124,7 +38,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
           role="tab"
           aria-selected={broker === 'binance'}
           className={broker === 'binance' ? 'chip-button chip-button-active' : 'chip-button'}
-          onClick={() => startTransition(() => setBroker('binance'))}
+          onClick={() => setBroker('binance')}
         >
           Binance
         </button>
@@ -133,7 +47,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
           role="tab"
           aria-selected={broker === 'alpaca'}
           className={broker === 'alpaca' ? 'chip-button chip-button-active' : 'chip-button'}
-          onClick={() => startTransition(() => setBroker('alpaca'))}
+          onClick={() => setBroker('alpaca')}
         >
           Alpaca
         </button>

@@ -2,6 +2,9 @@ use crate::gateway_types::{AppState, REQUEST_ID_HEADER};
 use crate::handlers::trading::strategy::summary::downstream_errors::{
     normalize_downstream_error, render_upstream_send_error, structured_error,
 };
+use crate::handlers::trading::strategy::summary::model::{
+    StrategySummaryPayload, SummaryComponentEnvelope,
+};
 use crate::handlers::trading::strategy::summary::params::SummaryRequest;
 use crate::handlers::trading::strategy::upstream::send_strategy_request;
 
@@ -11,7 +14,7 @@ pub(super) async fn fetch_strategy_summary_fanout(
     request_id: &str,
     idempotency_key: Option<&str>,
     request: &SummaryRequest,
-) -> serde_json::Value {
+) -> StrategySummaryPayload {
     let signal_path = "/api/v1/signal".to_string();
     let recent_path = format!(
         "/api/v1/signals/recent?limit={}&source={}",
@@ -54,18 +57,18 @@ pub(super) async fn fetch_strategy_summary_fanout(
         ),
     );
 
-    serde_json::json!({
-        "strategy_base_url": strategy_base,
-        "symbol": request.symbol,
-        "source": request.source,
-        "recent_limit": request.recent_limit,
-        "orderbook_depth": request.orderbook_depth,
-        "aggregation_mode": "gateway_fanout",
-        "signal": signal,
-        "recent_signals": recent,
-        "persistence": persistence,
-        "matching_orderbook": orderbook,
-    })
+    StrategySummaryPayload {
+        strategy_base_url: strategy_base.to_string(),
+        symbol: request.symbol.clone(),
+        source: request.source.clone(),
+        recent_limit: request.recent_limit as u64,
+        orderbook_depth: request.orderbook_depth as u64,
+        aggregation_mode: "gateway_fanout",
+        signal,
+        recent_signals: recent,
+        persistence,
+        matching_orderbook: orderbook,
+    }
 }
 
 async fn fetch_strategy_json(
@@ -74,7 +77,7 @@ async fn fetch_strategy_json(
     path_and_query: &str,
     request_id: &str,
     idempotency_key: Option<&str>,
-) -> serde_json::Value {
+) -> SummaryComponentEnvelope {
     let url = format!("{}{}", strategy_base.trim_end_matches('/'), path_and_query);
     let mut req = state
         .http_client
@@ -90,33 +93,38 @@ async fn fetch_strategy_json(
             match resp.json::<serde_json::Value>().await {
                 Ok(payload) => {
                     if status.is_success() {
-                        serde_json::json!({
-                            "ok": true,
-                            "status_code": status.as_u16(),
-                            "url": url,
-                            "payload": payload
-                        })
+                        SummaryComponentEnvelope {
+                            ok: true,
+                            status_code: status.as_u16(),
+                            url: Some(url),
+                            payload: Some(payload),
+                            error: None,
+                            retry_after_ms: None,
+                        }
                     } else {
                         let error = normalize_downstream_error(&payload, status, request_id);
-                        serde_json::json!({
-                            "ok": false,
-                            "status_code": status.as_u16(),
-                            "url": url,
-                            "payload": payload,
-                            "error": error
-                        })
+                        SummaryComponentEnvelope {
+                            ok: false,
+                            status_code: status.as_u16(),
+                            url: Some(url),
+                            payload: Some(payload),
+                            error: Some(error),
+                            retry_after_ms: None,
+                        }
                     }
                 }
-                Err(err) => serde_json::json!({
-                    "ok": false,
-                    "status_code": status.as_u16(),
-                    "url": url,
-                    "error": structured_error(
+                Err(err) => SummaryComponentEnvelope {
+                    ok: false,
+                    status_code: status.as_u16(),
+                    url: Some(url),
+                    payload: None,
+                    error: Some(structured_error(
                         "upstream_decode_failed",
                         format!("decode failed: {err}"),
-                        request_id
-                    )
-                }),
+                        request_id,
+                    )),
+                    retry_after_ms: None,
+                },
             }
         }
         Err(err) => render_upstream_send_error(err, url.as_str(), request_id),

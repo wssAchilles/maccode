@@ -24,16 +24,23 @@ logger = logging.getLogger(__name__)
 SERVICE_STARTED_AT = monotonic()
 validate_runtime_settings()
 runtime = build_runtime_container(started_at=SERVICE_STARTED_AT)
+worker = runtime.worker
+signal_store = runtime.signal_store
+signal_service = runtime.signal_service
+optimization_service = runtime.optimization_service
+summary_service = runtime.summary_service
+matching_service = runtime.matching_service
+system_status_service = runtime.system_status_service
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await runtime.worker.start()
+    await worker.start()
     try:
         yield
     finally:
-        await runtime.worker.stop()
-        await runtime.signal_store.aclose()
+        await worker.stop()
+        await signal_store.aclose()
 
 
 def _build_cors_origins() -> list[str]:
@@ -60,8 +67,8 @@ app.add_middleware(
 register_request_id_middleware(app)
 register_error_handlers(app, logger)
 
-app.include_router(build_system_router(runtime.system_status_service))
-app.include_router(build_signal_router(runtime.signal_service))
-app.include_router(build_summary_router(runtime.summary_service))
-app.include_router(build_optimize_router())
-app.include_router(build_matching_router(runtime.matching_service))
+app.include_router(build_system_router(system_status_service))
+app.include_router(build_signal_router(signal_service))
+app.include_router(build_summary_router(summary_service))
+app.include_router(build_optimize_router(optimization_service))
+app.include_router(build_matching_router(matching_service))

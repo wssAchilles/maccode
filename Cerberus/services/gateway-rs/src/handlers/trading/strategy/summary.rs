@@ -2,6 +2,7 @@ mod aggregate;
 mod cache;
 mod downstream_errors;
 mod fanout;
+mod model;
 mod params;
 
 use axum::{
@@ -19,6 +20,7 @@ use cache::{
     write_summary_cache, SummaryInflightRole,
 };
 use fanout::fetch_strategy_summary_fanout;
+use model::StrategySummaryPayload;
 use params::parse_summary_request;
 
 pub(crate) async fn get_strategy_summary(
@@ -121,14 +123,15 @@ async fn fetch_summary_payload(
     idempotency_key: Option<&str>,
     summary_request: &params::SummaryRequest,
 ) -> serde_json::Value {
-    if let Some(aggregated_payload) = fetch_strategy_summary_aggregate(
-        state,
-        strategy_base,
-        request_id,
-        idempotency_key,
-        summary_request,
-    )
-    .await
+    let payload: StrategySummaryPayload = if let Some(aggregated_payload) =
+        fetch_strategy_summary_aggregate(
+            state,
+            strategy_base,
+            request_id,
+            idempotency_key,
+            summary_request,
+        )
+        .await
     {
         aggregated_payload
     } else {
@@ -140,7 +143,9 @@ async fn fetch_summary_payload(
             summary_request,
         )
         .await
-    }
+    };
+
+    payload.into_value()
 }
 
 async fn record_summary_cache_hit(state: &AppState) {

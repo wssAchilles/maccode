@@ -1,46 +1,58 @@
 use axum::http::StatusCode;
 
+use crate::handlers::trading::strategy::summary::model::SummaryComponentEnvelope;
 use crate::handlers::trading::strategy::upstream::StrategyUpstreamError;
 
 pub(super) fn render_upstream_send_error(
     err: StrategyUpstreamError,
     url: &str,
     request_id: &str,
-) -> serde_json::Value {
+) -> SummaryComponentEnvelope {
     match err {
-        StrategyUpstreamError::CircuitOpen { retry_after_ms } => serde_json::json!({
-            "ok": false,
-            "status_code": StatusCode::SERVICE_UNAVAILABLE.as_u16(),
-            "url": url,
-            "retry_after_ms": retry_after_ms,
-            "error": structured_error(
+        StrategyUpstreamError::CircuitOpen { retry_after_ms } => SummaryComponentEnvelope {
+            ok: false,
+            status_code: StatusCode::SERVICE_UNAVAILABLE.as_u16(),
+            url: Some(url.to_string()),
+            payload: None,
+            retry_after_ms: Some(retry_after_ms),
+            error: Some(structured_error(
                 "upstream_circuit_open",
                 format!("strategy upstream circuit open, retry after {retry_after_ms}ms"),
-                request_id
-            )
-        }),
-        StrategyUpstreamError::QueueSaturated { waited_ms } => serde_json::json!({
-            "ok": false,
-            "status_code": StatusCode::TOO_MANY_REQUESTS.as_u16(),
-            "url": url,
-            "error": structured_error(
+                request_id,
+            )),
+        },
+        StrategyUpstreamError::QueueSaturated { waited_ms } => SummaryComponentEnvelope {
+            ok: false,
+            status_code: StatusCode::TOO_MANY_REQUESTS.as_u16(),
+            url: Some(url.to_string()),
+            payload: None,
+            retry_after_ms: None,
+            error: Some(structured_error(
                 "upstream_queue_saturated",
                 format!("strategy upstream queue saturated, waited {waited_ms}ms"),
-                request_id
-            )
-        }),
-        StrategyUpstreamError::AuthFailed(reason) => serde_json::json!({
-            "ok": false,
-            "status_code": StatusCode::BAD_GATEWAY.as_u16(),
-            "url": url,
-            "error": structured_error("upstream_auth_failed", reason, request_id)
-        }),
-        StrategyUpstreamError::RequestFailed(reason) => serde_json::json!({
-            "ok": false,
-            "status_code": StatusCode::BAD_GATEWAY.as_u16(),
-            "url": url,
-            "error": structured_error("upstream_request_failed", reason, request_id)
-        }),
+                request_id,
+            )),
+        },
+        StrategyUpstreamError::AuthFailed(reason) => SummaryComponentEnvelope {
+            ok: false,
+            status_code: StatusCode::BAD_GATEWAY.as_u16(),
+            url: Some(url.to_string()),
+            payload: None,
+            retry_after_ms: None,
+            error: Some(structured_error("upstream_auth_failed", reason, request_id)),
+        },
+        StrategyUpstreamError::RequestFailed(reason) => SummaryComponentEnvelope {
+            ok: false,
+            status_code: StatusCode::BAD_GATEWAY.as_u16(),
+            url: Some(url.to_string()),
+            payload: None,
+            retry_after_ms: None,
+            error: Some(structured_error(
+                "upstream_request_failed",
+                reason,
+                request_id,
+            )),
+        },
     }
 }
 

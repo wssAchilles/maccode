@@ -2,41 +2,35 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from app.redis_worker import RedisMarketWorker
+from app.application import SignalApplicationService, SignalDecision
 from app.schemas import TickEvent
-from app.signal_store import SignalStore
 
 SignalSource = Literal["auto", "supabase", "firestore"]
 
 
 class SignalService:
-    def __init__(self, *, worker: RedisMarketWorker, signal_store: SignalStore) -> None:
-        self._worker = worker
-        self._signal_store = signal_store
+    def __init__(self, *, application: SignalApplicationService) -> None:
+        self._application = application
 
     def current_signal(self) -> dict[str, Any]:
-        if self._worker.last_signal is None:
+        decision = self._application.current_signal()
+        if decision is None:
             return {"status": "warmup", "signal": "HOLD", "confidence": 0.0}
-        return {
-            "status": "ready",
-            "signal": self._worker.last_signal.signal,
-            "confidence": self._worker.last_signal.confidence,
-            "symbol": self._worker.last_signal.symbol,
-        }
+        return self._ready_signal_payload(decision)
 
     async def ingest_tick(self, tick: TickEvent) -> dict[str, Any]:
-        signal = await self._worker.ingest_tick(tick)
+        decision = await self._application.ingest_tick(tick)
         return {
             "status": "accepted",
-            "signal": signal.signal,
-            "confidence": signal.confidence,
-            "symbol": signal.symbol,
-            "strategy_id": signal.strategy_id,
+            "signal": decision.signal.signal,
+            "confidence": decision.signal.confidence,
+            "symbol": decision.signal.symbol,
+            "strategy_id": decision.signal.strategy_id,
         }
 
     async def recent_signals(self, *, limit: int, source: str) -> dict[str, Any]:
         normalized_source = self._normalize_source(source)
-        used_source, records = await self._signal_store.list_recent(
+        used_source, records = await self._application.recent_signals(
             limit=limit,
             source=normalized_source,
         )
@@ -52,3 +46,11 @@ class SignalService:
         if source == "firestore":
             return "firestore"
         return "auto"
+
+    def _ready_signal_payload(self, decision: SignalDecision) -> dict[str, Any]:
+        return {
+            "status": "ready",
+            "signal": decision.signal.signal,
+            "confidence": decision.signal.confidence,
+            "symbol": decision.signal.symbol,
+        }
