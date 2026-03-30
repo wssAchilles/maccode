@@ -12,3 +12,6 @@ class InferenceService:
 
     def models(self) -> dict[str, object]:
         return self._application.models().to_dict()
+
+    def audit(self, *, limit: int = 20) -> dict[str, object]:
+        return self._application.audit(limit=limit)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from app.application import SignalApplicationService
+from app.infrastructure.inference_rollout import RuntimeInferenceRolloutManager
+from app.ports import RegisteredModel
 from app.schemas import Signal, TickEvent
 
 
@@ -267,3 +269,42 @@ async def test_signal_application_keeps_rule_signal_when_inference_is_observe_on
     assert decision.context.engine == "moving_average"
     assert decision.context.metadata["decision_source"] == "rule_engine"
     assert decision.context.metadata["inference"]["engine"] == "shadow-model"
+
+
+@pytest.mark.asyncio
+async def test_signal_application_respects_rollout_holdback_before_using_primary() -> None:
+    runtime = FakeSignalRuntime()
+    claims = FakeSignalClaims()
+    event_flow = FakeSignalEventFlow()
+    publisher = FakeSignalPublisher()
+    inference = FakeInferenceEngine(signal="SELL", confidence=0.91, engine="shadow-model")
+    rollout = RuntimeInferenceRolloutManager(
+        configured_mode="primary",
+        active_model=RegisteredModel(
+            model_id="cerberus-transformer-lstm",
+            version="v1",
+            source="gcs",
+            metadata={"best_macro_f1": 0.60},
+        ),
+        started_at=1_711_767_200.0,
+        required_macro_f1=0.55,
+        required_observe_ticks=3,
+        required_agreement_ratio=0.55,
+        force_primary=False,
+    )
+    service = SignalApplicationService(
+        runtime=runtime,
+        signal_store=FakeSignalStore(),
+        signal_claims=claims,
+        event_flow=event_flow,
+        publishers=(publisher,),
+        inference_engine=inference,
+        inference_mode="primary",
+        inference_rollout=rollout,
+    )
+
+    decision = await service.ingest_tick(_sample_tick())
+
+    assert rollout.effective_mode() == "observe"
+    assert decision.signal.signal == "BUY"
+    assert decision.context.metadata["inference_mode"] == "observe"

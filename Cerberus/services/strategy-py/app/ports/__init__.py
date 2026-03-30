@@ -1,8 +1,13 @@
 from app.ports.execution import ExecutionGatewayPort
 from app.ports.inference import (
+    InferenceAuditEvent,
+    InferenceComparisonSnapshot,
     InferenceDecision,
     InferenceEnginePort,
     InferenceEngineStatus,
+    InferenceRolloutPort,
+    InferenceRolloutSnapshot,
+    InferenceSymbolComparison,
     ModelRegistryPort,
     RegisteredModel,
 )
@@ -26,9 +31,14 @@ from app.ports.system_status import (
 
 __all__ = [
     "ExecutionGatewayPort",
+    "InferenceAuditEvent",
+    "InferenceComparisonSnapshot",
     "InferenceDecision",
     "InferenceEnginePort",
     "InferenceEngineStatus",
+    "InferenceRolloutPort",
+    "InferenceRolloutSnapshot",
+    "InferenceSymbolComparison",
     "MatchingObservabilityPort",
     "MatchingGatewayPort",
     "ModelRegistryPort",

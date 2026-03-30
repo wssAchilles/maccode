@@ -1,23 +1,77 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.ports import (
+    InferenceAuditEvent,
+    InferenceComparisonSnapshot,
     InferenceEnginePort,
     InferenceEngineStatus,
+    InferenceRolloutPort,
+    InferenceRolloutSnapshot,
     ModelRegistryPort,
     RegisteredModel,
 )
+
+
+class _StaticInferenceRollout:
+    def effective_mode(self) -> str:
+        return "disabled"
+
+    def record_observation(self, *, symbol: str, rule_signal: str, inference_decision: object | None) -> None:
+        del symbol, rule_signal, inference_decision
+
+    def snapshot(self) -> InferenceRolloutSnapshot:
+        return InferenceRolloutSnapshot(
+            configured_mode="disabled",
+            effective_mode="disabled",
+            auto_promote_enabled=False,
+            force_primary=False,
+            promotion_eligible=False,
+        )
+
+    def comparison(self) -> InferenceComparisonSnapshot:
+        return InferenceComparisonSnapshot(
+            observed_ticks=0,
+            compared_ticks=0,
+            agreement_count=0,
+            divergence_count=0,
+        )
+
+    def recent_audit_events(self, *, limit: int = 10) -> tuple[InferenceAuditEvent, ...]:
+        del limit
+        return ()
 
 
 @dataclass(frozen=True, slots=True)
 class InferenceStatusResult:
     engine_status: InferenceEngineStatus
     active_model: RegisteredModel | None
+    rollout: InferenceRolloutSnapshot = field(
+        default_factory=lambda: InferenceRolloutSnapshot(
+            configured_mode="disabled",
+            effective_mode="disabled",
+            auto_promote_enabled=False,
+            force_primary=False,
+            promotion_eligible=False,
+        )
+    )
+    comparison: InferenceComparisonSnapshot = field(
+        default_factory=lambda: InferenceComparisonSnapshot(
+            observed_ticks=0,
+            compared_ticks=0,
+            agreement_count=0,
+            divergence_count=0,
+        )
+    )
+    audit: tuple[InferenceAuditEvent, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         payload = self.engine_status.to_dict()
         payload["active_model"] = None if self.active_model is None else self.active_model.to_dict()
+        payload["rollout"] = self.rollout.to_dict()
+        payload["comparison"] = self.comparison.to_dict()
+        payload["audit"] = [item.to_dict() for item in self.audit]
         return payload
 
 
@@ -40,14 +94,29 @@ class InferenceApplicationService:
         *,
         engine: InferenceEnginePort,
         model_registry: ModelRegistryPort,
+        rollout: InferenceRolloutPort | None = None,
     ) -> None:
         self._engine = engine
         self._model_registry = model_registry
+        self._rollout = rollout or _StaticInferenceRollout()
 
     async def status(self) -> InferenceStatusResult:
+        rollout = self._rollout.snapshot()
+        engine_status = await self._engine.status()
+        engine_status = InferenceEngineStatus(
+            enabled=engine_status.enabled,
+            ready=engine_status.ready,
+            engine=engine_status.engine,
+            mode=rollout.effective_mode,
+            reason=engine_status.reason,
+            metadata=dict(engine_status.metadata),
+        )
         return InferenceStatusResult(
-            engine_status=await self._engine.status(),
+            engine_status=engine_status,
             active_model=self._model_registry.active_model(),
+            rollout=rollout,
+            comparison=self._rollout.comparison(),
+            audit=self._rollout.recent_audit_events(),
         )
 
     def models(self) -> InferenceCatalogResult:
@@ -55,3 +124,9 @@ class InferenceApplicationService:
             active_model=self._model_registry.active_model(),
             models=self._model_registry.list_models(),
         )
+
+    def audit(self, *, limit: int = 20) -> dict[str, object]:
+        return {
+            "count": len(self._rollout.recent_audit_events(limit=limit)),
+            "events": [item.to_dict() for item in self._rollout.recent_audit_events(limit=limit)],
+        }

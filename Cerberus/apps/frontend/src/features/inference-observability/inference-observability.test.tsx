@@ -29,6 +29,54 @@ describe('inference observability module', () => {
           metadata: {
             lookback: 256,
           },
+          rollout: {
+            configured_mode: 'primary',
+            effective_mode: 'observe',
+            auto_promote_enabled: true,
+            force_primary: false,
+            promotion_eligible: false,
+            blockers: ['offline_macro_f1_below_threshold'],
+            required_observe_ticks: 500,
+            compared_ticks: 18,
+            required_agreement_ratio: 0.55,
+            agreement_ratio: 0.5,
+            required_macro_f1: 0.58,
+            current_macro_f1: 0.5001,
+            started_at: '2026-03-30T00:00:00Z',
+            last_transition_at: '2026-03-30T00:00:00Z',
+          },
+          comparison: {
+            observed_ticks: 20,
+            compared_ticks: 18,
+            agreement_count: 9,
+            divergence_count: 9,
+            agreement_ratio: 0.5,
+            rule_signal_counts: { BUY: 9 },
+            inference_signal_counts: { SELL: 9 },
+            symbols: [
+              {
+                symbol: 'BTCUSDT',
+                compared_ticks: 12,
+                agreement_count: 7,
+                divergence_count: 5,
+                agreement_ratio: 7 / 12,
+              },
+            ],
+          },
+          audit: [
+            {
+              event_type: 'rollout_holdback',
+              created_at: '2026-03-30T00:00:00Z',
+              message: 'primary rollout held back until promotion gates pass',
+              metadata: {},
+            },
+            {
+              event_type: 'comparison_milestone',
+              created_at: '2026-03-30T00:05:00Z',
+              message: 'inference comparison reached 10 compared ticks',
+              metadata: { milestone: 10 },
+            },
+          ],
           active_model: {
             model_id: 'cerberus-transformer-lstm',
             version: 'v1',
@@ -57,6 +105,7 @@ describe('inference observability module', () => {
 
     expect(screen.getByText(/cerberus-transformer-lstm/i)).toBeTruthy()
     expect(screen.getByText(/observe/i)).toBeTruthy()
+    expect(screen.getByText(/50.0%/i)).toBeTruthy()
 
     await userEvent.click(screen.getByRole('button', { name: /查看健康详情|open health details/i }))
     expect(onOpenHealth).toHaveBeenCalledOnce()
@@ -72,6 +121,33 @@ describe('inference observability module', () => {
         mode: 'observe',
         reason: 'artifact cache warming',
         metadata: {},
+        rollout: {
+          configured_mode: 'primary',
+          effective_mode: 'observe',
+          auto_promote_enabled: true,
+          force_primary: false,
+          promotion_eligible: false,
+          blockers: ['agreement_ratio_unavailable'],
+          required_observe_ticks: 500,
+          compared_ticks: 0,
+          required_agreement_ratio: 0.55,
+          agreement_ratio: null,
+          required_macro_f1: 0.58,
+          current_macro_f1: null,
+          started_at: '2026-03-30T00:00:00Z',
+          last_transition_at: '2026-03-30T00:00:00Z',
+        },
+        comparison: {
+          observed_ticks: 0,
+          compared_ticks: 0,
+          agreement_count: 0,
+          divergence_count: 0,
+          agreement_ratio: null,
+          rule_signal_counts: {},
+          inference_signal_counts: {},
+          symbols: [],
+        },
+        audit: [],
         active_model: {
           model_id: 'cerberus-transformer-lstm',
           version: 'v1',
@@ -85,8 +161,9 @@ describe('inference observability module', () => {
 
     renderWithI18n(<InferenceDiagnosticsPanel model={model} />)
 
-    expect(screen.getAllByText(/artifact cache warming/i).length).toBe(2)
+    expect(screen.getAllByText(/workspace\.inference\.blocker\.agreementUnavailable/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/common\.na/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/No symbol-level comparison data yet|暂无标的级对照数据/i)).toBeTruthy()
   })
 
   it('integrates into overview workspace without replacing existing sections', () => {
@@ -102,6 +179,9 @@ describe('inference observability module', () => {
     renderWithI18n(<HealthWorkspace />)
 
     expect(screen.getByText(/推理可观测|Inference observability/i)).toBeTruthy()
-    expect(screen.getByText(/离线 Macro F1|Offline Macro F1/i)).toBeTruthy()
+    expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/推广状态|Promotion state/i)).toBeTruthy()
+    expect(screen.getByText(/标的级对照|Symbol-level comparison/i)).toBeTruthy()
+    expect(screen.getByText(/审计时间线|Audit timeline/i)).toBeTruthy()
   })
 })

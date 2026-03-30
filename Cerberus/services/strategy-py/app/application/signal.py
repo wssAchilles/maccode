@@ -6,6 +6,7 @@ from typing import Any
 from app.ports import (
     InferenceDecision,
     InferenceEnginePort,
+    InferenceRolloutPort,
     SignalClaimPort,
     SignalEventPort,
     SignalHistorySource,
@@ -42,6 +43,7 @@ class SignalApplicationService:
         default_engine_name: str = "moving_average",
         inference_engine: InferenceEnginePort | None = None,
         inference_mode: str = "disabled",
+        inference_rollout: InferenceRolloutPort | None = None,
     ) -> None:
         self._runtime = runtime
         self._signal_store = signal_store
@@ -51,6 +53,7 @@ class SignalApplicationService:
         self._default_engine_name = default_engine_name
         self._inference_engine = inference_engine
         self._inference_mode = inference_mode
+        self._inference_rollout = inference_rollout
 
     def current_signal(self) -> SignalDecision | None:
         signal = self._runtime.read_current_signal()
@@ -61,6 +64,12 @@ class SignalApplicationService:
     async def ingest_tick(self, tick: TickEvent) -> SignalDecision:
         rule_signal, rule_signal_id = self._runtime.evaluate_tick(tick)
         inference_decision = await self._run_inference(tick)
+        self._record_inference_observation(
+            symbol=tick.symbol,
+            rule_signal=rule_signal.signal,
+            inference_decision=inference_decision,
+        )
+        effective_inference_mode = self._effective_inference_mode()
 
         signal = rule_signal
         signal_id = rule_signal_id
@@ -70,8 +79,9 @@ class SignalApplicationService:
             signal_id=signal_id,
             dispatch_state="accepted",
             inference_decision=inference_decision,
+            inference_mode=effective_inference_mode,
         )
-        if inference_decision is not None and self._inference_mode == "primary":
+        if inference_decision is not None and effective_inference_mode == "primary":
             signal = Signal(
                 strategy_id=inference_decision.strategy_id,
                 symbol=tick.symbol,
@@ -91,6 +101,7 @@ class SignalApplicationService:
                     signal_id=signal_id,
                     dispatch_state="duplicate",
                     inference_decision=inference_decision,
+                    inference_mode=effective_inference_mode,
                 ),
                 engine=engine_name,
             )
@@ -141,6 +152,7 @@ class SignalApplicationService:
         signal_id: str,
         dispatch_state: str,
         inference_decision: InferenceDecision | None = None,
+        inference_mode: str | None = None,
     ) -> dict[str, Any]:
         payload = {
             "event_time": tick.event_time,
@@ -149,6 +161,7 @@ class SignalApplicationService:
             "signal_id": signal_id,
             "dispatch_state": dispatch_state,
             "decision_source": "rule_engine",
+            "inference_mode": inference_mode or self._effective_inference_mode(),
         }
         if inference_decision is not None:
             payload["inference"] = {
@@ -169,4 +182,24 @@ class SignalApplicationService:
             price=tick.price,
             quantity=tick.quantity,
             event_time=tick.event_time,
+        )
+
+    def _effective_inference_mode(self) -> str:
+        if self._inference_rollout is None:
+            return self._inference_mode
+        return self._inference_rollout.effective_mode()
+
+    def _record_inference_observation(
+        self,
+        *,
+        symbol: str,
+        rule_signal: str,
+        inference_decision: InferenceDecision | None,
+    ) -> None:
+        if self._inference_rollout is None:
+            return
+        self._inference_rollout.record_observation(
+            symbol=symbol,
+            rule_signal=rule_signal,
+            inference_decision=inference_decision,
         )

@@ -135,6 +135,49 @@ export type InferenceModelDescriptor = {
   metadata: Record<string, unknown>
 }
 
+export type InferenceAuditEvent = {
+  event_type: string
+  created_at: string
+  message: string
+  metadata: Record<string, unknown>
+}
+
+export type InferenceSymbolComparison = {
+  symbol: string
+  compared_ticks: number
+  agreement_count: number
+  divergence_count: number
+  agreement_ratio?: number | null
+}
+
+export type InferenceComparisonPayload = {
+  observed_ticks: number
+  compared_ticks: number
+  agreement_count: number
+  divergence_count: number
+  agreement_ratio?: number | null
+  rule_signal_counts: Record<string, number>
+  inference_signal_counts: Record<string, number>
+  symbols: InferenceSymbolComparison[]
+}
+
+export type InferenceRolloutPayload = {
+  configured_mode: string
+  effective_mode: string
+  auto_promote_enabled: boolean
+  force_primary: boolean
+  promotion_eligible: boolean
+  blockers: string[]
+  required_observe_ticks: number
+  compared_ticks: number
+  required_agreement_ratio: number
+  agreement_ratio?: number | null
+  required_macro_f1: number
+  current_macro_f1?: number | null
+  started_at: string
+  last_transition_at: string
+}
+
 export type InferenceStatusPayload = {
   enabled: boolean
   ready: boolean
@@ -143,6 +186,9 @@ export type InferenceStatusPayload = {
   reason?: string | null
   metadata: Record<string, unknown>
   active_model?: InferenceModelDescriptor | null
+  rollout?: InferenceRolloutPayload
+  comparison?: InferenceComparisonPayload
+  audit?: InferenceAuditEvent[]
 }
 
 export type StrategySummaryResponse = {

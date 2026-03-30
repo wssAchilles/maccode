@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     inference_artifact_folder_url: str = ""
     inference_artifact_gcs_uri: str = ""
     inference_artifact_cache_dir: str = "/tmp/cerberus-inference"
+    inference_primary_min_macro_f1: float = 0.58
+    inference_primary_min_observe_ticks: int = 500
+    inference_primary_min_agreement_ratio: float = 0.55
+    inference_rollout_force_primary: bool = False
+    inference_audit_max_events: int = 50
     grb_licenseid: str | None = None
     grb_wlsaccessid: str | None = None
     grb_wlssecret: str | None = None

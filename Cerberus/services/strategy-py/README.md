@@ -65,6 +65,11 @@ Optional research / inference baseline:
 - `INFERENCE_ARTIFACT_FOLDER_URL=` (required when `INFERENCE_MODEL_SOURCE=google_drive`)
 - `INFERENCE_ARTIFACT_GCS_URI=` (required when `INFERENCE_MODEL_SOURCE=gcs`)
 - `INFERENCE_ARTIFACT_CACHE_DIR=/tmp/cerberus-inference`
+- `INFERENCE_PRIMARY_MIN_MACRO_F1=0.58`
+- `INFERENCE_PRIMARY_MIN_OBSERVE_TICKS=500`
+- `INFERENCE_PRIMARY_MIN_AGREEMENT_RATIO=0.55`
+- `INFERENCE_ROLLOUT_FORCE_PRIMARY=false`
+- `INFERENCE_AUDIT_MAX_EVENTS=50`
 
 Google Drive artifact-backed inference:
 
@@ -137,6 +142,7 @@ Runtime introspection endpoints:
 - `GET /api/v1/status/persistence`
 - `GET /api/v1/inference/status`
 - `GET /api/v1/inference/models`
+- `GET /api/v1/inference/audit`
 
 Matching control endpoints:
 

@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from app.application import InferenceStatusResult, SummaryApplicationService
-from app.ports import InferenceEngineStatus, RegisteredModel
+from app.ports import (
+    InferenceComparisonSnapshot,
+    InferenceEngineStatus,
+    InferenceRolloutSnapshot,
+    RegisteredModel,
+)
 from app.schemas import (
     MatchingHealthView,
     MatchingOrderBookView,
@@ -134,6 +139,28 @@ class FakeInferenceApplication:
                 symbols=("BTCUSDT", "ETHUSDT", "SOLUSDT"),
                 metadata={"best_macro_f1": 0.5001, "horizon": 32},
             ),
+            rollout=InferenceRolloutSnapshot(
+                configured_mode="primary",
+                effective_mode="observe",
+                auto_promote_enabled=True,
+                force_primary=False,
+                promotion_eligible=False,
+                blockers=("offline_macro_f1_below_threshold",),
+                required_observe_ticks=500,
+                compared_ticks=18,
+                required_agreement_ratio=0.55,
+                agreement_ratio=0.5,
+                required_macro_f1=0.58,
+                current_macro_f1=0.5001,
+                started_at="2026-03-30T00:00:00Z",
+                last_transition_at="2026-03-30T00:00:00Z",
+            ),
+            comparison=InferenceComparisonSnapshot(
+                observed_ticks=20,
+                compared_ticks=18,
+                agreement_count=9,
+                divergence_count=9,
+            ),
         )
 
 
@@ -168,3 +195,5 @@ async def test_summary_application_returns_typed_result_and_serializes_without_c
     assert payload["persistence"]["payload"]["worker"]["processed_ticks"] == 12
     assert payload["inference_status"]["payload"]["engine"] == "cerberus_signal_transformer_lstm"
     assert payload["inference_status"]["payload"]["active_model"]["model_id"] == "cerberus-transformer-lstm"
+    assert payload["inference_status"]["payload"]["rollout"]["effective_mode"] == "observe"
+    assert payload["inference_status"]["payload"]["comparison"]["compared_ticks"] == 18

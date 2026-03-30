@@ -3,7 +3,12 @@ from fastapi.testclient import TestClient
 from app import main as main_module
 from app.application import InferenceStatusResult
 from app.main import app
-from app.ports import InferenceEngineStatus, RegisteredModel
+from app.ports import (
+    InferenceComparisonSnapshot,
+    InferenceEngineStatus,
+    InferenceRolloutSnapshot,
+    RegisteredModel,
+)
 from app.schemas import Signal, SignalRecord
 
 
@@ -69,6 +74,28 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
                 symbols=("BTCUSDT", "ETHUSDT"),
                 metadata={"best_macro_f1": 0.5001, "horizon": 32},
             ),
+            rollout=InferenceRolloutSnapshot(
+                configured_mode="primary",
+                effective_mode="observe",
+                auto_promote_enabled=True,
+                force_primary=False,
+                promotion_eligible=False,
+                blockers=("offline_macro_f1_below_threshold",),
+                required_observe_ticks=500,
+                compared_ticks=24,
+                required_agreement_ratio=0.55,
+                agreement_ratio=0.5,
+                required_macro_f1=0.58,
+                current_macro_f1=0.5001,
+                started_at="2026-03-30T00:00:00Z",
+                last_transition_at="2026-03-30T00:00:00Z",
+            ),
+            comparison=InferenceComparisonSnapshot(
+                observed_ticks=30,
+                compared_ticks=24,
+                agreement_count=12,
+                divergence_count=12,
+            ),
         )
 
     main_module.inference_service._application.status = fake_inference_status  # type: ignore[method-assign, attr-defined]
@@ -90,6 +117,8 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
     assert "persistence" in payload
     assert payload["inference_status"]["payload"]["mode"] == "observe"
     assert payload["inference_status"]["payload"]["active_model"]["model_id"] == "cerberus-transformer-lstm"
+    assert payload["inference_status"]["payload"]["rollout"]["configured_mode"] == "primary"
+    assert payload["inference_status"]["payload"]["comparison"]["compared_ticks"] == 24
 
 
 def test_strategy_summary_inference_status_matches_standalone_endpoint_shape() -> None:

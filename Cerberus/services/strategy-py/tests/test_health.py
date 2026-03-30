@@ -40,6 +40,9 @@ def test_inference_status_endpoint_shape() -> None:
     assert "enabled" in payload
     assert "engine" in payload
     assert "active_model" in payload
+    assert "rollout" in payload
+    assert "comparison" in payload
+    assert "audit" in payload
 
 
 def test_inference_models_endpoint_shape() -> None:
@@ -49,6 +52,15 @@ def test_inference_models_endpoint_shape() -> None:
     payload = response.json()
     assert "count" in payload
     assert "models" in payload
+
+
+def test_inference_audit_endpoint_shape() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/inference/audit?limit=5")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "count" in payload
+    assert "events" in payload
 
 
 def test_optimize_validation() -> None:

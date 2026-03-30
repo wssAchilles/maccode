@@ -67,6 +67,40 @@ describe('strategy summary slice', () => {
             engine: 'cerberus_signal_transformer_lstm',
             mode: 'observe',
             metadata: { lookback: 256 },
+            rollout: {
+              configured_mode: 'primary',
+              effective_mode: 'observe',
+              auto_promote_enabled: true,
+              force_primary: false,
+              promotion_eligible: false,
+              blockers: ['offline_macro_f1_below_threshold'],
+              required_observe_ticks: 500,
+              compared_ticks: 18,
+              required_agreement_ratio: 0.55,
+              agreement_ratio: 0.5,
+              required_macro_f1: 0.58,
+              current_macro_f1: 0.5001,
+              started_at: '2026-03-30T00:00:00Z',
+              last_transition_at: '2026-03-30T00:00:00Z',
+            },
+            comparison: {
+              observed_ticks: 20,
+              compared_ticks: 18,
+              agreement_count: 9,
+              divergence_count: 9,
+              agreement_ratio: 0.5,
+              rule_signal_counts: { BUY: 9, HOLD: 9 },
+              inference_signal_counts: { SELL: 9, HOLD: 9 },
+              symbols: [],
+            },
+            audit: [
+              {
+                event_type: 'rollout_holdback',
+                created_at: '2026-03-30T00:00:00Z',
+                message: 'primary rollout held back until promotion gates pass',
+                metadata: {},
+              },
+            ],
             active_model: {
               model_id: 'cerberus-transformer-lstm',
               version: 'v1',
@@ -84,6 +118,8 @@ describe('strategy summary slice', () => {
 
     const state = useCerberusStore.getState().strategySummary
     expect(state.inference_status?.mode).toBe('observe')
+    expect(state.inference_status?.rollout?.effective_mode).toBe('observe')
+    expect(state.inference_status?.comparison?.compared_ticks).toBe(18)
     expect(state.inference_status?.active_model?.model_id).toBe('cerberus-transformer-lstm')
     expect(state.last_error).toBeUndefined()
   })

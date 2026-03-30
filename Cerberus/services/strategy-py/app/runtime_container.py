@@ -21,6 +21,7 @@ from app.infrastructure.inference_runtime import (
     OnnxInferenceEngine,
     StaticModelRegistry,
 )
+from app.infrastructure.inference_rollout import RuntimeInferenceRolloutManager
 from app.infrastructure.matching_gateway import MatchingGatewayAdapter
 from app.infrastructure.persistence_status import WorkerPersistenceStatusAdapter
 from app.infrastructure.portfolio_optimizer import GurobiPortfolioOptimizer
@@ -67,6 +68,16 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     loaded_artifacts = _load_inference_artifacts()
     inference_registry = _build_inference_registry(loaded_artifacts)
     active_model = inference_registry.active_model()
+    inference_rollout = RuntimeInferenceRolloutManager(
+        configured_mode=settings.inference_mode,
+        active_model=active_model,
+        started_at=started_at,
+        required_macro_f1=settings.inference_primary_min_macro_f1,
+        required_observe_ticks=settings.inference_primary_min_observe_ticks,
+        required_agreement_ratio=settings.inference_primary_min_agreement_ratio,
+        force_primary=settings.inference_rollout_force_primary,
+        max_audit_events=settings.inference_audit_max_events,
+    )
     if settings.inference_enabled and active_model is not None:
         if loaded_artifacts is not None:
             inference_engine = OnnxInferenceEngine(
@@ -88,6 +99,7 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     inference_application = InferenceApplicationService(
         engine=inference_engine,
         model_registry=inference_registry,
+        rollout=inference_rollout,
     )
     signal_application = SignalApplicationService(
         runtime=signal_runtime,
@@ -97,6 +109,7 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         publishers=(worker.firebase_publisher, worker.supabase_publisher),
         inference_engine=inference_engine,
         inference_mode=settings.inference_mode,
+        inference_rollout=inference_rollout,
     )
     worker.attach_signal_application(signal_application)
     system_status_application = SystemStatusApplicationService(

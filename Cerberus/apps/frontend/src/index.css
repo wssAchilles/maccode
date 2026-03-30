@@ -517,6 +517,12 @@ button {
   gap: 14px;
 }
 
+.inference-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .metric-tile {
   display: grid;
   gap: 8px;
@@ -584,6 +590,91 @@ button {
   color: var(--color-text);
   font-weight: 600;
   text-align: right;
+}
+
+.inference-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inference-panel-detail {
+  align-content: start;
+}
+
+.inference-symbol-list,
+.inference-audit-list {
+  display: grid;
+  gap: 10px;
+}
+
+.inference-symbol-row,
+.inference-audit-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.inference-symbol-side {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+}
+
+.inference-symbol-title,
+.inference-audit-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+.inference-symbol-value {
+  margin: 0;
+  font: 700 1.05rem/1 var(--font-mono);
+  color: var(--color-text);
+}
+
+.inference-symbol-value-accent {
+  color: var(--color-accent-strong);
+}
+
+.inference-symbol-meta,
+.inference-audit-time,
+.inference-audit-detail {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.inference-audit-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inference-audit-message {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.inference-distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inference-distribution-group {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .empty-state,
@@ -1117,7 +1208,8 @@ button {
 @media (max-width: 1120px) {
   .workspace-grid,
   .execution-layout,
-  .timeline-row {
+  .timeline-row,
+  .inference-detail-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1144,6 +1236,7 @@ button {
   .workbench-status-strip,
   .metric-grid,
   .health-grid,
+  .inference-distribution-grid,
   .orderbook-grid,
   .execution-form-grid,
   .timeline-toolbar {
@@ -1160,6 +1253,15 @@ button {
 
   .workspace-mobile-nav {
     display: flex;
+  }
+
+  .inference-symbol-row,
+  .inference-audit-row {
+    flex-direction: column;
+  }
+
+  .inference-symbol-side {
+    text-align: left;
   }
 }
 

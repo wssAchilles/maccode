@@ -44,6 +44,14 @@ def validate_runtime_settings() -> None:
             errors.append(
                 "inference_model_source=gcs requires INFERENCE_ARTIFACT_GCS_URI"
             )
+    if not 0.0 <= settings.inference_primary_min_macro_f1 <= 1.0:
+        errors.append("inference_primary_min_macro_f1 must be between 0 and 1")
+    if settings.inference_primary_min_observe_ticks < 0:
+        errors.append("inference_primary_min_observe_ticks must be >= 0")
+    if not 0.0 <= settings.inference_primary_min_agreement_ratio <= 1.0:
+        errors.append("inference_primary_min_agreement_ratio must be between 0 and 1")
+    if settings.inference_audit_max_events <= 0:
+        errors.append("inference_audit_max_events must be > 0")
 
     if settings.market_stream_enabled and not settings.market_stream_key.strip():
         errors.append("market_stream_enabled=true requires MARKET_STREAM_KEY")

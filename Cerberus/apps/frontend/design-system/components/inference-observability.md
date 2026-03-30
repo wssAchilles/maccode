@@ -19,11 +19,15 @@
 
 ## Layout Rules
 - Overview uses a single compact card in the right rail.
-- Health uses a two-panel diagnostic layout that collapses to one column on tablet/mobile.
+- Health uses a multi-panel diagnostic layout for runtime, rollout, comparison, model, and audit state, followed by deeper symbol-level comparison and audit timeline panels.
+- Symbol comparison rows must stay scan-friendly: symbol on the left, agreement and divergence on the right, no dense table chrome.
+- The audit timeline must read newest-first and keep timestamps visually secondary.
 - The component must remain within the existing workspace grid and never introduce horizontal scrolling.
 
 ## Content Rules
 - Show only trusted fields already available from summary aggregation.
-- Prefer: runtime status, mode, engine, active model, symbol coverage, lookback, horizon, offline macro F1, reason.
+- Prefer: runtime status, configured/effective rollout mode, agreement rate, compared ticks, active model, symbol coverage, lookback, horizon, offline macro F1, blockers, latest audit event, signal distributions, and symbol-level comparison.
 - Omit missing metadata instead of rendering placeholder noise.
 - `best_macro_f1` is an offline reference metric only; never frame it as live trading performance.
+- Rollout blockers and audit messages must always be accompanied by text labels; never use color-only encoding to imply rollout readiness.
+- Audit event titles should be normalized into operator-readable labels. Raw event payloads may appear only as short textual detail lines, never dumped as JSON in the primary surface.

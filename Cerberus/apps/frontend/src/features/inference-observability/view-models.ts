@@ -1,5 +1,13 @@
 import type { TranslationKey } from '../../i18n/messages'
-import type { InferenceModelDescriptor, InferenceStatusPayload, LoadState } from '../../types/contracts'
+import type {
+  InferenceAuditEvent,
+  InferenceComparisonPayload,
+  InferenceModelDescriptor,
+  InferenceRolloutPayload,
+  InferenceStatusPayload,
+  InferenceSymbolComparison,
+  LoadState,
+} from '../../types/contracts'
 
 type Translate = (key: TranslationKey) => string
 
@@ -18,13 +26,42 @@ export type InferenceStatusCardModel = {
   items: InferenceDataItem[]
 }
 
+export type InferenceSignalDistributionGroup = {
+  id: string
+  label: string
+  items: InferenceDataItem[]
+}
+
+export type InferenceSymbolComparisonModel = {
+  id: string
+  symbol: string
+  comparedTicks: string
+  agreementRate: string
+  divergenceCount: string
+  tone?: 'default' | 'muted' | 'accent'
+}
+
+export type InferenceAuditTimelineEntry = {
+  id: string
+  title: string
+  message: string
+  createdAt: string
+  detail?: string
+}
+
 export type InferenceDiagnosticsModel = {
   state: LoadState
   stateLabel: string
   summary: string
   reason?: string
   runtimeItems: InferenceDataItem[]
+  rolloutItems: InferenceDataItem[]
+  comparisonItems: InferenceDataItem[]
   modelItems: InferenceDataItem[]
+  auditItems: InferenceDataItem[]
+  signalDistributions: InferenceSignalDistributionGroup[]
+  symbolComparisons: InferenceSymbolComparisonModel[]
+  auditTimeline: InferenceAuditTimelineEntry[]
 }
 
 type InferenceModelParams = {
@@ -36,6 +73,23 @@ const MODE_LABELS: Record<string, TranslationKey> = {
   observe: 'workspace.inference.mode.observe',
   primary: 'workspace.inference.mode.primary',
   disabled: 'workspace.inference.mode.disabled',
+}
+
+const BLOCKER_LABELS: Record<string, TranslationKey> = {
+  no_active_model: 'workspace.inference.blocker.noActiveModel',
+  macro_f1_missing: 'workspace.inference.blocker.macroF1Missing',
+  offline_macro_f1_below_threshold: 'workspace.inference.blocker.offlineMacroF1',
+  insufficient_observe_ticks: 'workspace.inference.blocker.observeTicks',
+  agreement_ratio_unavailable: 'workspace.inference.blocker.agreementUnavailable',
+  agreement_ratio_below_threshold: 'workspace.inference.blocker.agreementBelow',
+}
+
+const AUDIT_EVENT_LABELS: Record<string, TranslationKey> = {
+  rollout_initialized: 'workspace.inference.auditEvent.rolloutInitialized',
+  rollout_holdback: 'workspace.inference.auditEvent.rolloutHoldback',
+  rollout_transition: 'workspace.inference.auditEvent.rolloutTransition',
+  rollout_blockers_changed: 'workspace.inference.auditEvent.rolloutBlockersChanged',
+  comparison_milestone: 'workspace.inference.auditEvent.comparisonMilestone',
 }
 
 function resolveLoadState(inferenceStatus?: InferenceStatusPayload): LoadState {
@@ -95,20 +149,6 @@ function readNumber(metadata: Record<string, unknown> | undefined, key: string):
   return undefined
 }
 
-function compactSymbolCoverage(t: Translate, model?: InferenceModelDescriptor | null): string {
-  if (!model || model.symbols.length === 0) {
-    return t('common.na')
-  }
-  return `${model.symbols.length}`
-}
-
-function detailedSymbolCoverage(t: Translate, model?: InferenceModelDescriptor | null): string {
-  if (!model || model.symbols.length === 0) {
-    return t('common.na')
-  }
-  return model.symbols.join(', ')
-}
-
 function formatMacroF1(value: number | undefined, t: Translate): string {
   if (value === undefined) {
     return t('common.na')
@@ -117,10 +157,166 @@ function formatMacroF1(value: number | undefined, t: Translate): string {
 }
 
 function formatInteger(value: number | undefined, t: Translate): string {
-  if (value === undefined || value <= 0) {
+  if (value === undefined || value < 0) {
     return t('common.na')
   }
   return String(value)
+}
+
+function formatPercent(value: number | undefined | null, t: Translate): string {
+  if (value === undefined || value === null || !Number.isFinite(value)) {
+    return t('common.na')
+  }
+  return `${(value * 100).toFixed(1)}%`
+}
+
+function formatDateTime(value: string | undefined, t: Translate): string {
+  if (!value) {
+    return t('common.na')
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+  return parsed.toLocaleString()
+}
+
+function translateBlocker(t: Translate, blocker: string): string {
+  return BLOCKER_LABELS[blocker] ? t(BLOCKER_LABELS[blocker]) : blocker
+}
+
+function blockersSummary(t: Translate, rollout?: InferenceRolloutPayload): string | undefined {
+  if (!rollout || rollout.blockers.length === 0) {
+    return undefined
+  }
+  return rollout.blockers.map((blocker) => translateBlocker(t, blocker)).join(' · ')
+}
+
+function comparisonSummary(t: Translate, comparison?: InferenceComparisonPayload): string {
+  if (!comparison || comparison.compared_ticks <= 0) {
+    return t('workspace.inference.comparisonPending')
+  }
+  return `${formatPercent(comparison.agreement_ratio, t)} · ${comparison.compared_ticks} ${t('workspace.inference.comparedTicks').toLowerCase()}`
+}
+
+function latestAudit(audit?: InferenceAuditEvent[]): InferenceAuditEvent | undefined {
+  if (!audit || audit.length === 0) {
+    return undefined
+  }
+  return audit[audit.length - 1]
+}
+
+function promotionStateLabel(t: Translate, rollout?: InferenceRolloutPayload): string {
+  if (!rollout) {
+    return t('common.na')
+  }
+  if (rollout.configured_mode !== 'primary') {
+    return t('workspace.inference.promotionNotRequested')
+  }
+  if (rollout.effective_mode === 'primary') {
+    return t('workspace.inference.promotionReady')
+  }
+  return t('workspace.inference.promotionHeld')
+}
+
+function auditEventTitle(t: Translate, event: InferenceAuditEvent): string {
+  return AUDIT_EVENT_LABELS[event.event_type] ? t(AUDIT_EVENT_LABELS[event.event_type]) : event.event_type
+}
+
+function auditEventDetail(t: Translate, event: InferenceAuditEvent): string | undefined {
+  const parts: string[] = []
+  const blockers = event.metadata.blockers
+  if (Array.isArray(blockers) && blockers.length > 0) {
+    parts.push(blockers.map((blocker) => translateBlocker(t, String(blocker))).join(' · '))
+  }
+  const currentBlockers = event.metadata.current_blockers
+  if (Array.isArray(currentBlockers) && currentBlockers.length > 0) {
+    parts.push(currentBlockers.map((blocker) => translateBlocker(t, String(blocker))).join(' · '))
+  }
+  const previousBlockers = event.metadata.previous_blockers
+  if (Array.isArray(previousBlockers) && previousBlockers.length > 0) {
+    parts.push(previousBlockers.map((blocker) => translateBlocker(t, String(blocker))).join(' · '))
+  }
+  const milestone = event.metadata.milestone
+  if (typeof milestone === 'number') {
+    parts.push(`${formatInteger(milestone, t)} ${t('workspace.inference.comparedTicks').toLowerCase()}`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
+}
+
+function buildSignalDistribution(
+  t: Translate,
+  comparison?: InferenceComparisonPayload,
+): InferenceSignalDistributionGroup[] {
+  if (!comparison) {
+    return []
+  }
+
+  const toItems = (counts: Record<string, number>, prefixKey: TranslationKey, idPrefix: string): InferenceDataItem[] => {
+    const entries = Object.entries(counts).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    return entries.map(([signal, count]) => ({
+      id: `${idPrefix}-${signal}`,
+      label: `${t(prefixKey)} · ${signal}`,
+      value: String(count),
+    }))
+  }
+
+  const groups: InferenceSignalDistributionGroup[] = []
+  const ruleItems = toItems(comparison.rule_signal_counts, 'workspace.inference.ruleSignals', 'rule')
+  if (ruleItems.length > 0) {
+    groups.push({
+      id: 'rule-signals',
+      label: t('workspace.inference.ruleSignals'),
+      items: ruleItems,
+    })
+  }
+  const inferenceItems = toItems(comparison.inference_signal_counts, 'workspace.inference.inferenceSignals', 'inference')
+  if (inferenceItems.length > 0) {
+    groups.push({
+      id: 'inference-signals',
+      label: t('workspace.inference.inferenceSignals'),
+      items: inferenceItems,
+    })
+  }
+  return groups
+}
+
+function buildSymbolComparisons(
+  t: Translate,
+  comparison?: InferenceComparisonPayload,
+): InferenceSymbolComparisonModel[] {
+  if (!comparison || comparison.symbols.length === 0) {
+    return []
+  }
+  return comparison.symbols.map((entry: InferenceSymbolComparison) => ({
+    id: entry.symbol,
+    symbol: entry.symbol,
+    comparedTicks: formatInteger(entry.compared_ticks, t),
+    agreementRate: formatPercent(entry.agreement_ratio, t),
+    divergenceCount: formatInteger(entry.divergence_count, t),
+    tone:
+      entry.agreement_ratio !== undefined && entry.agreement_ratio !== null && entry.agreement_ratio >= 0.55
+        ? 'accent'
+        : 'default',
+  }))
+}
+
+function buildAuditTimeline(
+  t: Translate,
+  audit?: InferenceAuditEvent[],
+): InferenceAuditTimelineEntry[] {
+  if (!audit || audit.length === 0) {
+    return []
+  }
+  return [...audit]
+    .reverse()
+    .map((event, index) => ({
+      id: `${event.event_type}-${event.created_at}-${index}`,
+      title: auditEventTitle(t, event),
+      message: event.message,
+      createdAt: formatDateTime(event.created_at, t),
+      detail: auditEventDetail(t, event),
+    }))
 }
 
 export function buildInferenceStatusCardModel({
@@ -131,40 +327,42 @@ export function buildInferenceStatusCardModel({
   const stateLabel = resolveStateLabel(t, state, inferenceStatus)
   const model = inferenceStatus?.active_model
   const modelMetadata = model?.metadata
+  const rollout = inferenceStatus?.rollout
+  const comparison = inferenceStatus?.comparison
   const macroF1 = readNumber(modelMetadata, 'best_macro_f1')
-  const lookback = readNumber(modelMetadata, 'lookback') ?? readNumber(inferenceStatus?.metadata, 'lookback')
 
   return {
     state,
     stateLabel,
     summary: modelSummary(t, model),
-    reason: inferenceStatus?.reason ?? undefined,
+    reason: blockersSummary(t, rollout) ?? inferenceStatus?.reason ?? undefined,
     items: [
       {
         id: 'mode',
         label: t('workspace.inference.rolloutMode'),
-        value: formatMode(t, inferenceStatus?.mode),
+        value: formatMode(t, rollout?.effective_mode ?? inferenceStatus?.mode),
       },
       {
-        id: 'engine',
-        label: t('workspace.inference.engine'),
-        value: inferenceStatus?.engine ?? t('common.na'),
+        id: 'promotion',
+        label: t('workspace.inference.promotionState'),
+        value: promotionStateLabel(t, rollout),
       },
       {
-        id: 'coverage',
-        label: t('workspace.inference.symbolCoverage'),
-        value: compactSymbolCoverage(t, model),
+        id: 'comparedTicks',
+        label: t('workspace.inference.comparedTicks'),
+        value: formatInteger(comparison?.compared_ticks, t),
+      },
+      {
+        id: 'agreementRate',
+        label: t('workspace.inference.agreementRate'),
+        value: formatPercent(comparison?.agreement_ratio, t),
+        tone: comparison?.agreement_ratio !== undefined && comparison?.agreement_ratio !== null ? 'accent' : 'default',
       },
       {
         id: 'macroF1',
         label: t('workspace.inference.macroF1'),
         value: formatMacroF1(macroF1, t),
         tone: macroF1 !== undefined ? 'accent' : 'default',
-      },
-      {
-        id: 'lookback',
-        label: t('workspace.inference.lookback'),
-        value: formatInteger(lookback, t),
       },
     ],
   }
@@ -179,15 +377,19 @@ export function buildInferenceDiagnosticsModel({
   const model = inferenceStatus?.active_model
   const modelMetadata = model?.metadata
   const runtimeMetadata = inferenceStatus?.metadata
+  const rollout = inferenceStatus?.rollout
+  const comparison = inferenceStatus?.comparison
+  const audit = latestAudit(inferenceStatus?.audit)
   const lookback = readNumber(modelMetadata, 'lookback') ?? readNumber(runtimeMetadata, 'lookback')
   const horizon = readNumber(modelMetadata, 'horizon') ?? readNumber(runtimeMetadata, 'horizon')
   const macroF1 = readNumber(modelMetadata, 'best_macro_f1')
+  const blockers = blockersSummary(t, rollout)
 
   return {
     state,
     stateLabel,
     summary: modelSummary(t, model),
-    reason: inferenceStatus?.reason ?? undefined,
+    reason: blockers ?? inferenceStatus?.reason ?? undefined,
     runtimeItems: [
       {
         id: 'runtimeStatus',
@@ -196,19 +398,75 @@ export function buildInferenceDiagnosticsModel({
         tone: state === 'ready' ? 'accent' : 'default',
       },
       {
-        id: 'rollout',
+        id: 'configuredMode',
+        label: t('workspace.inference.configuredMode'),
+        value: formatMode(t, rollout?.configured_mode ?? inferenceStatus?.mode),
+      },
+      {
+        id: 'effectiveMode',
         label: t('workspace.inference.rolloutMode'),
-        value: formatMode(t, inferenceStatus?.mode),
+        value: formatMode(t, rollout?.effective_mode ?? inferenceStatus?.mode),
       },
       {
         id: 'engine',
         label: t('workspace.inference.engine'),
         value: inferenceStatus?.engine ?? t('common.na'),
       },
+    ],
+    rolloutItems: [
       {
-        id: 'reason',
-        label: t('workspace.inference.reason'),
-        value: inferenceStatus?.reason ?? t('common.na'),
+        id: 'promotion',
+        label: t('workspace.inference.promotionState'),
+        value: promotionStateLabel(t, rollout),
+        tone: rollout?.effective_mode === 'primary' ? 'accent' : 'default',
+      },
+      {
+        id: 'requiredObserveTicks',
+        label: t('workspace.inference.requiredObserveTicks'),
+        value: formatInteger(rollout?.required_observe_ticks, t),
+      },
+      {
+        id: 'requiredAgreement',
+        label: t('workspace.inference.requiredAgreementRate'),
+        value: formatPercent(rollout?.required_agreement_ratio, t),
+      },
+      {
+        id: 'requiredMacroF1',
+        label: t('workspace.inference.requiredMacroF1'),
+        value: formatMacroF1(rollout?.required_macro_f1, t),
+      },
+      {
+        id: 'lastTransitionAt',
+        label: t('workspace.inference.lastTransitionAt'),
+        value: formatDateTime(rollout?.last_transition_at, t),
+      },
+    ],
+    comparisonItems: [
+      {
+        id: 'comparedTicks',
+        label: t('workspace.inference.comparedTicks'),
+        value: formatInteger(comparison?.compared_ticks, t),
+      },
+      {
+        id: 'observedTicks',
+        label: t('workspace.inference.observedTicks'),
+        value: formatInteger(comparison?.observed_ticks, t),
+      },
+      {
+        id: 'agreementRate',
+        label: t('workspace.inference.agreementRate'),
+        value: formatPercent(comparison?.agreement_ratio, t),
+        tone: comparison?.agreement_ratio !== undefined && comparison?.agreement_ratio !== null ? 'accent' : 'default',
+      },
+      {
+        id: 'divergenceCount',
+        label: t('workspace.inference.divergenceCount'),
+        value: formatInteger(comparison?.divergence_count, t),
+      },
+      {
+        id: 'comparisonSummary',
+        label: t('workspace.inference.comparisonSummary'),
+        value: comparisonSummary(t, comparison),
       },
     ],
     modelItems: [
@@ -220,7 +478,7 @@ export function buildInferenceDiagnosticsModel({
       {
         id: 'symbols',
         label: t('workspace.inference.symbolCoverage'),
-        value: detailedSymbolCoverage(t, model),
+        value: model && model.symbols.length > 0 ? model.symbols.join(', ') : t('common.na'),
       },
       {
         id: 'lookback',
@@ -239,5 +497,25 @@ export function buildInferenceDiagnosticsModel({
         tone: macroF1 !== undefined ? 'accent' : 'default',
       },
     ],
+    auditItems: [
+      {
+        id: 'event',
+        label: t('workspace.inference.recentAudit'),
+        value: audit?.message ?? t('workspace.inference.auditEmpty'),
+      },
+      {
+        id: 'auditAt',
+        label: t('workspace.inference.lastTransitionAt'),
+        value: formatDateTime(audit?.created_at, t),
+      },
+      {
+        id: 'blockers',
+        label: t('workspace.inference.gateBlockers'),
+        value: blockers ?? t('common.na'),
+      },
+    ],
+    signalDistributions: buildSignalDistribution(t, comparison),
+    symbolComparisons: buildSymbolComparisons(t, comparison),
+    auditTimeline: buildAuditTimeline(t, inferenceStatus?.audit),
   }
 }

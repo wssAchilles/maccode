@@ -172,7 +172,17 @@ mod tests {
             recent_signals: component(serde_json::json!({"count": 1})),
             persistence: component(serde_json::json!({"status": "ok"})),
             matching_orderbook: component(serde_json::json!({"depth": 10})),
-            inference_status: Some(component(serde_json::json!({"mode": "observe"}))),
+            inference_status: Some(component(serde_json::json!({
+                "mode": "observe",
+                "rollout": {
+                    "configured_mode": "primary",
+                    "effective_mode": "observe"
+                },
+                "comparison": {
+                    "compared_ticks": 18,
+                    "agreement_ratio": 0.5
+                }
+            }))),
         };
         let request = SummaryRequest {
             symbol: "BTCUSDT".to_string(),
@@ -190,7 +200,17 @@ mod tests {
         assert!(payload.inference_status.ok);
         assert_eq!(
             payload.inference_status.payload,
-            Some(serde_json::json!({"mode": "observe"}))
+            Some(serde_json::json!({
+                "mode": "observe",
+                "rollout": {
+                    "configured_mode": "primary",
+                    "effective_mode": "observe"
+                },
+                "comparison": {
+                    "compared_ticks": 18,
+                    "agreement_ratio": 0.5
+                }
+            }))
         );
     }
 

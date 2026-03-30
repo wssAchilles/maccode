@@ -18,6 +18,8 @@ async def test_inference_application_returns_disabled_status_without_models() ->
 
     assert status.engine_status.enabled is False
     assert status.active_model is None
+    assert status.rollout.effective_mode == "disabled"
+    assert status.comparison.compared_ticks == 0
 
 
 def test_inference_application_lists_registered_models() -> None:

@@ -85,6 +85,9 @@ export function WorkbenchShell({ auth }: Props) {
   }, [setWorkspace])
 
   const handleWorkspaceChange = (next: WorkspaceId) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
     startTransition(() => {
       setWorkspace(next)
     })
