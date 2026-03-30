@@ -26,8 +26,9 @@
 
 ## Content Rules
 - Show only trusted fields already available from summary aggregation.
-- Prefer: runtime status, configured/effective rollout mode, agreement rate, compared ticks, active model, symbol coverage, lookback, horizon, offline macro F1, blockers, latest audit event, signal distributions, and symbol-level comparison.
+- Prefer: runtime status, configured/effective rollout mode, agreement rate, compared ticks, active model, symbol coverage, lookback, horizon, offline macro F1, blockers, latest audit event, signal distributions, symbol-level comparison, state backend, restore status, and last persisted timestamp.
 - Omit missing metadata instead of rendering placeholder noise.
 - `best_macro_f1` is an offline reference metric only; never frame it as live trading performance.
 - Rollout blockers and audit messages must always be accompanied by text labels; never use color-only encoding to imply rollout readiness.
+- Persistent-state details must be rendered as explicit text labels. Never imply restore success or backend health with color alone.
 - Audit event titles should be normalized into operator-readable labels. Raw event payloads may appear only as short textual detail lines, never dumped as JSON in the primary surface.

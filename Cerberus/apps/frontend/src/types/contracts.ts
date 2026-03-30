@@ -167,6 +167,9 @@ export type InferenceRolloutPayload = {
   auto_promote_enabled: boolean
   force_primary: boolean
   promotion_eligible: boolean
+  state_backend?: string | null
+  state_restored?: boolean
+  last_persisted_at?: string
   blockers: string[]
   required_observe_ticks: number
   compared_ticks: number

@@ -35,6 +35,9 @@ describe('inference observability module', () => {
             auto_promote_enabled: true,
             force_primary: false,
             promotion_eligible: false,
+            state_backend: 'redis',
+            state_restored: true,
+            last_persisted_at: '2026-03-30T00:06:00Z',
             blockers: ['offline_macro_f1_below_threshold'],
             required_observe_ticks: 500,
             compared_ticks: 18,
@@ -75,6 +78,12 @@ describe('inference observability module', () => {
               created_at: '2026-03-30T00:05:00Z',
               message: 'inference comparison reached 10 compared ticks',
               metadata: { milestone: 10 },
+            },
+            {
+              event_type: 'rollout_resumed',
+              created_at: '2026-03-30T00:06:00Z',
+              message: 'inference rollout state restored from persistent storage',
+              metadata: { backend: 'redis' },
             },
           ],
           active_model: {
@@ -127,6 +136,9 @@ describe('inference observability module', () => {
           auto_promote_enabled: true,
           force_primary: false,
           promotion_eligible: false,
+          state_backend: 'redis',
+          state_restored: false,
+          last_persisted_at: '',
           blockers: ['agreement_ratio_unavailable'],
           required_observe_ticks: 500,
           compared_ticks: 0,
@@ -163,6 +175,7 @@ describe('inference observability module', () => {
 
     expect(screen.getAllByText(/workspace\.inference\.blocker\.agreementUnavailable/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/common\.na/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/workspace\.inference\.stateBackend/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/No symbol-level comparison data yet|暂无标的级对照数据/i)).toBeTruthy()
   })
 
@@ -181,6 +194,7 @@ describe('inference observability module', () => {
     expect(screen.getByText(/推理可观测|Inference observability/i)).toBeTruthy()
     expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/推广状态|Promotion state/i)).toBeTruthy()
+    expect(screen.getAllByText(/状态后端|State backend/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/标的级对照|Symbol-level comparison/i)).toBeTruthy()
     expect(screen.getByText(/审计时间线|Audit timeline/i)).toBeTruthy()
   })

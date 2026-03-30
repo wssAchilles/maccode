@@ -7,6 +7,12 @@ class InferenceService:
     def __init__(self, *, application: InferenceApplicationService) -> None:
         self._application = application
 
+    async def startup(self) -> None:
+        await self._application.startup()
+
+    async def shutdown(self) -> None:
+        await self._application.shutdown()
+
     async def status(self) -> dict[str, object]:
         return (await self._application.status()).to_dict()
 

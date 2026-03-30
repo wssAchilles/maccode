@@ -130,6 +130,9 @@ class InferenceRolloutSnapshot:
     auto_promote_enabled: bool
     force_primary: bool
     promotion_eligible: bool
+    state_backend: str | None = None
+    state_restored: bool = False
+    last_persisted_at: str = ""
     blockers: tuple[str, ...] = ()
     required_observe_ticks: int = 0
     compared_ticks: int = 0
@@ -147,6 +150,9 @@ class InferenceRolloutSnapshot:
             "auto_promote_enabled": self.auto_promote_enabled,
             "force_primary": self.force_primary,
             "promotion_eligible": self.promotion_eligible,
+            "state_backend": self.state_backend,
+            "state_restored": self.state_restored,
+            "last_persisted_at": self.last_persisted_at,
             "blockers": list(self.blockers),
             "required_observe_ticks": self.required_observe_ticks,
             "compared_ticks": self.compared_ticks,
@@ -165,6 +171,15 @@ class ModelRegistryPort(Protocol):
     def active_model(self) -> RegisteredModel | None: ...
 
 
+class InferenceRolloutStateStorePort(Protocol):
+    @property
+    def backend_name(self) -> str: ...
+
+    async def load_state(self) -> dict[str, Any] | None: ...
+
+    async def save_state(self, state: dict[str, Any]) -> None: ...
+
+
 class InferenceEnginePort(Protocol):
     async def infer_signal(
         self,
@@ -179,9 +194,11 @@ class InferenceEnginePort(Protocol):
 
 
 class InferenceRolloutPort(Protocol):
+    async def restore(self) -> None: ...
+
     def effective_mode(self) -> str: ...
 
-    def record_observation(
+    async def record_observation(
         self,
         *,
         symbol: str,
@@ -194,3 +211,5 @@ class InferenceRolloutPort(Protocol):
     def comparison(self) -> InferenceComparisonSnapshot: ...
 
     def recent_audit_events(self, *, limit: int = 10) -> tuple[InferenceAuditEvent, ...]: ...
+
+    async def flush(self) -> None: ...

@@ -52,6 +52,10 @@ def validate_runtime_settings() -> None:
         errors.append("inference_primary_min_agreement_ratio must be between 0 and 1")
     if settings.inference_audit_max_events <= 0:
         errors.append("inference_audit_max_events must be > 0")
+    if settings.inference_rollout_state_enabled and not settings.inference_rollout_state_key.strip():
+        errors.append("inference_rollout_state_key must be non-empty when inference_rollout_state_enabled=true")
+    if settings.inference_rollout_persist_every_observations <= 0:
+        errors.append("inference_rollout_persist_every_observations must be > 0")
 
     if settings.market_stream_enabled and not settings.market_stream_key.strip():
         errors.append("market_stream_enabled=true requires MARKET_STREAM_KEY")

@@ -22,6 +22,7 @@ from app.infrastructure.inference_runtime import (
     StaticModelRegistry,
 )
 from app.infrastructure.inference_rollout import RuntimeInferenceRolloutManager
+from app.infrastructure.inference_rollout_state import RedisInferenceRolloutStateStore
 from app.infrastructure.matching_gateway import MatchingGatewayAdapter
 from app.infrastructure.persistence_status import WorkerPersistenceStatusAdapter
 from app.infrastructure.portfolio_optimizer import GurobiPortfolioOptimizer
@@ -77,6 +78,15 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         required_agreement_ratio=settings.inference_primary_min_agreement_ratio,
         force_primary=settings.inference_rollout_force_primary,
         max_audit_events=settings.inference_audit_max_events,
+        state_store=(
+            RedisInferenceRolloutStateStore(
+                redis_getter=lambda: worker.redis_client,
+                state_key=settings.inference_rollout_state_key,
+            )
+            if settings.inference_enabled and settings.inference_rollout_state_enabled
+            else None
+        ),
+        persist_every_observations=settings.inference_rollout_persist_every_observations,
     )
     if settings.inference_enabled and active_model is not None:
         if loaded_artifacts is not None:

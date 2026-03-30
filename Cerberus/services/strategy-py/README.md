@@ -70,6 +70,9 @@ Optional research / inference baseline:
 - `INFERENCE_PRIMARY_MIN_AGREEMENT_RATIO=0.55`
 - `INFERENCE_ROLLOUT_FORCE_PRIMARY=false`
 - `INFERENCE_AUDIT_MAX_EVENTS=50`
+- `INFERENCE_ROLLOUT_STATE_ENABLED=true`
+- `INFERENCE_ROLLOUT_STATE_KEY=cerberus:inference:rollout`
+- `INFERENCE_ROLLOUT_PERSIST_EVERY_OBSERVATIONS=25`
 
 Google Drive artifact-backed inference:
 
@@ -104,6 +107,8 @@ GCS artifact-backed inference:
   - load preprocessing metadata from `preprocessing.json` when present
   - otherwise extract preprocessing metadata from `cerberus_signal_model.pt`
   - run online ONNX inference over the live tick stream
+  - persist rollout/comparison/audit state in Redis when `INFERENCE_ROLLOUT_STATE_ENABLED=true`
+  - restore rollout/comparison/audit state after Cloud Run instance restarts when the configured model identity still matches
 
 Market subscriptions:
 

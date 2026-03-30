@@ -3,12 +3,14 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from app.ports import (
     InferenceAuditEvent,
     InferenceComparisonSnapshot,
     InferenceDecision,
     InferenceRolloutSnapshot,
+    InferenceRolloutStateStorePort,
     InferenceSymbolComparison,
     RegisteredModel,
 )
@@ -41,6 +43,8 @@ class RuntimeInferenceRolloutManager:
         required_agreement_ratio: float,
         force_primary: bool,
         max_audit_events: int = 50,
+        state_store: InferenceRolloutStateStorePort | None = None,
+        persist_every_observations: int = 25,
     ) -> None:
         self._configured_mode = configured_mode
         self._active_model = active_model
@@ -48,6 +52,8 @@ class RuntimeInferenceRolloutManager:
         self._required_observe_ticks = required_observe_ticks
         self._required_agreement_ratio = required_agreement_ratio
         self._force_primary = force_primary
+        self._state_store = state_store
+        self._persist_every_observations = max(persist_every_observations, 1)
         self._observed_ticks = 0
         self._compared_ticks = 0
         self._agreement_count = 0
@@ -57,6 +63,10 @@ class RuntimeInferenceRolloutManager:
         self._symbol_counters: dict[str, _SymbolCounter] = {}
         self._audit_events: deque[InferenceAuditEvent] = deque(maxlen=max_audit_events)
         self._emitted_milestones: set[int] = set()
+        self._state_restored = False
+        self._last_persisted_at = ""
+        self._dirty_observations = 0
+        self._last_state_error: str | None = None
         started_iso = _iso_from_timestamp(started_at)
         self._started_at = started_iso
         self._last_transition_at = started_iso
@@ -81,10 +91,40 @@ class RuntimeInferenceRolloutManager:
                 created_at=started_iso,
             )
 
+    async def restore(self) -> None:
+        if self._state_store is None:
+            return
+        try:
+            payload = await self._state_store.load_state()
+        except Exception as exc:
+            self._record_state_error("load", exc)
+            return
+        if payload is None:
+            return
+        reason = self._restore_state(payload)
+        if reason is None:
+            self._state_restored = True
+            self._append_audit(
+                "rollout_resumed",
+                "inference rollout state restored from persistent storage",
+                {
+                    "observed_ticks": self._observed_ticks,
+                    "compared_ticks": self._compared_ticks,
+                    "backend": self._state_store.backend_name,
+                },
+            )
+            await self._persist_state(force=True)
+            return
+        self._append_audit(
+            "rollout_restore_skipped",
+            "inference rollout state restore skipped",
+            {"reason": reason, "backend": self._state_store.backend_name},
+        )
+
     def effective_mode(self) -> str:
         return self._effective_mode
 
-    def record_observation(
+    async def record_observation(
         self,
         *,
         symbol: str,
@@ -93,6 +133,9 @@ class RuntimeInferenceRolloutManager:
     ) -> None:
         self._observed_ticks += 1
         if inference_decision is None:
+            self._dirty_observations += 1
+            if self._dirty_observations >= self._persist_every_observations:
+                await self._persist_state(force=False)
             return
 
         self._compared_ticks += 1
@@ -107,7 +150,7 @@ class RuntimeInferenceRolloutManager:
             self._divergence_count += 1
             symbol_counter.divergence_count += 1
 
-        self._maybe_emit_comparison_milestone()
+        should_persist = self._maybe_emit_comparison_milestone()
         current_blockers = tuple(self._compute_blockers())
         if current_blockers != self._last_blockers:
             self._append_audit(
@@ -121,6 +164,7 @@ class RuntimeInferenceRolloutManager:
                 },
             )
             self._last_blockers = current_blockers
+            should_persist = True
 
         previous_mode = self._effective_mode
         next_mode = self._resolve_effective_mode(current_blockers=current_blockers)
@@ -139,6 +183,11 @@ class RuntimeInferenceRolloutManager:
                 },
                 created_at=transition_time,
             )
+            should_persist = True
+
+        self._dirty_observations += 1
+        if should_persist or self._dirty_observations >= self._persist_every_observations:
+            await self._persist_state(force=should_persist)
 
     def snapshot(self) -> InferenceRolloutSnapshot:
         blockers = self._compute_blockers()
@@ -148,6 +197,9 @@ class RuntimeInferenceRolloutManager:
             auto_promote_enabled=self._configured_mode == "primary" and not self._force_primary,
             force_primary=self._force_primary,
             promotion_eligible=not blockers if self._configured_mode == "primary" else False,
+            state_backend=self._state_store.backend_name if self._state_store is not None else None,
+            state_restored=self._state_restored,
+            last_persisted_at=self._last_persisted_at,
             blockers=tuple(blockers),
             required_observe_ticks=self._required_observe_ticks,
             compared_ticks=self._compared_ticks,
@@ -181,6 +233,9 @@ class RuntimeInferenceRolloutManager:
         if limit <= 0:
             return ()
         return tuple(list(self._audit_events)[-limit:])
+
+    async def flush(self) -> None:
+        await self._persist_state(force=True)
 
     def _initial_effective_mode(self) -> str:
         if self._configured_mode == "disabled":
@@ -231,12 +286,12 @@ class RuntimeInferenceRolloutManager:
             return None
         return self._agreement_count / self._compared_ticks
 
-    def _maybe_emit_comparison_milestone(self) -> None:
+    def _maybe_emit_comparison_milestone(self) -> bool:
         if self._compared_ticks <= 0:
-            return
+            return False
         milestone = _comparison_milestone(self._compared_ticks)
         if milestone is None or milestone in self._emitted_milestones:
-            return
+            return False
         self._emitted_milestones.add(milestone)
         self._append_audit(
             "comparison_milestone",
@@ -248,6 +303,7 @@ class RuntimeInferenceRolloutManager:
                 "divergence_count": self._divergence_count,
             },
         )
+        return True
 
     def _append_audit(
         self,
@@ -265,6 +321,147 @@ class RuntimeInferenceRolloutManager:
                 message=message,
                 metadata=sanitized,
             )
+        )
+
+    async def _persist_state(self, *, force: bool) -> None:
+        if self._state_store is None:
+            self._dirty_observations = 0
+            return
+        if not force and self._dirty_observations <= 0:
+            return
+        persisted_at = _utc_now_iso()
+        try:
+            await self._state_store.save_state(self._serialize_state(last_persisted_at=persisted_at))
+        except Exception as exc:
+            self._record_state_error("save", exc)
+            return
+        self._last_persisted_at = persisted_at
+        self._dirty_observations = 0
+        self._last_state_error = None
+
+    def _serialize_state(self, *, last_persisted_at: str | None = None) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "configured_mode": self._configured_mode,
+            "force_primary": self._force_primary,
+            "active_model": {
+                "model_id": self._active_model.model_id if self._active_model is not None else None,
+                "version": self._active_model.version if self._active_model is not None else None,
+            },
+            "started_at": self._started_at,
+            "last_transition_at": self._last_transition_at,
+            "effective_mode": self._effective_mode,
+            "last_blockers": list(self._last_blockers),
+            "observed_ticks": self._observed_ticks,
+            "compared_ticks": self._compared_ticks,
+            "agreement_count": self._agreement_count,
+            "divergence_count": self._divergence_count,
+            "rule_signal_counts": dict(self._rule_signal_counts),
+            "inference_signal_counts": dict(self._inference_signal_counts),
+            "symbol_counters": {
+                symbol: {
+                    "compared_ticks": counter.compared_ticks,
+                    "agreement_count": counter.agreement_count,
+                    "divergence_count": counter.divergence_count,
+                }
+                for symbol, counter in self._symbol_counters.items()
+            },
+            "emitted_milestones": sorted(self._emitted_milestones),
+            "audit_events": [event.to_dict() for event in self._audit_events],
+            "last_persisted_at": last_persisted_at or self._last_persisted_at,
+        }
+
+    def _restore_state(self, payload: dict[str, Any]) -> str | None:
+        if int(payload.get("schema_version", 0)) != 1:
+            return "schema_version_mismatch"
+        if str(payload.get("configured_mode", "")) != self._configured_mode:
+            return "configured_mode_mismatch"
+
+        persisted_model = payload.get("active_model")
+        if self._active_model is None:
+            if persisted_model:
+                return "active_model_mismatch"
+        else:
+            if not isinstance(persisted_model, dict):
+                return "active_model_missing"
+            if str(persisted_model.get("model_id", "")) != self._active_model.model_id:
+                return "active_model_id_mismatch"
+            if str(persisted_model.get("version", "")) != self._active_model.version:
+                return "active_model_version_mismatch"
+
+        self._started_at = str(payload.get("started_at", self._started_at))
+        self._last_transition_at = str(payload.get("last_transition_at", self._last_transition_at))
+        restored_effective_mode = str(payload.get("effective_mode", self._effective_mode))
+        self._observed_ticks = max(int(payload.get("observed_ticks", 0)), 0)
+        self._compared_ticks = max(int(payload.get("compared_ticks", 0)), 0)
+        self._agreement_count = max(int(payload.get("agreement_count", 0)), 0)
+        self._divergence_count = max(int(payload.get("divergence_count", 0)), 0)
+        self._rule_signal_counts = Counter(
+            {
+                str(signal): max(int(count), 0)
+                for signal, count in dict(payload.get("rule_signal_counts", {})).items()
+            }
+        )
+        self._inference_signal_counts = Counter(
+            {
+                str(signal): max(int(count), 0)
+                for signal, count in dict(payload.get("inference_signal_counts", {})).items()
+            }
+        )
+        self._symbol_counters = {}
+        for symbol, raw_counter in dict(payload.get("symbol_counters", {})).items():
+            counter_payload = dict(raw_counter)
+            self._symbol_counters[str(symbol)] = _SymbolCounter(
+                compared_ticks=max(int(counter_payload.get("compared_ticks", 0)), 0),
+                agreement_count=max(int(counter_payload.get("agreement_count", 0)), 0),
+                divergence_count=max(int(counter_payload.get("divergence_count", 0)), 0),
+            )
+        self._emitted_milestones = {
+            max(int(milestone), 0) for milestone in payload.get("emitted_milestones", [])
+        }
+        self._audit_events.clear()
+        for item in payload.get("audit_events", []):
+            event_payload = dict(item)
+            self._audit_events.append(
+                InferenceAuditEvent(
+                    event_type=str(event_payload.get("event_type", "unknown")),
+                    created_at=str(event_payload.get("created_at", self._started_at)),
+                    message=str(event_payload.get("message", "")),
+                    metadata=dict(event_payload.get("metadata", {})),
+                )
+            )
+        current_blockers = tuple(self._compute_blockers())
+        self._last_blockers = current_blockers
+        self._effective_mode = self._resolve_effective_mode(current_blockers=current_blockers)
+        if restored_effective_mode != self._effective_mode:
+            self._last_transition_at = _utc_now_iso()
+            self._append_audit(
+                "rollout_transition",
+                f"inference rollout transitioned from {restored_effective_mode} to {self._effective_mode}",
+                {
+                    "from": restored_effective_mode,
+                    "to": self._effective_mode,
+                    "reason": "recomputed from persisted comparison state",
+                },
+                created_at=self._last_transition_at,
+            )
+        self._last_persisted_at = str(payload.get("last_persisted_at", ""))
+        self._dirty_observations = 0
+        return None
+
+    def _record_state_error(self, action: str, exc: Exception) -> None:
+        message = f"{action}: {exc}"
+        if message == self._last_state_error:
+            return
+        self._last_state_error = message
+        self._append_audit(
+            "rollout_state_degraded",
+            "persistent rollout state backend unavailable",
+            {
+                "backend": self._state_store.backend_name if self._state_store is not None else None,
+                "action": action,
+                "error": str(exc),
+            },
         )
 
 

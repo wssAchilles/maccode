@@ -15,10 +15,19 @@ from app.ports import (
 
 
 class _StaticInferenceRollout:
+    async def restore(self) -> None:
+        return
+
     def effective_mode(self) -> str:
         return "disabled"
 
-    def record_observation(self, *, symbol: str, rule_signal: str, inference_decision: object | None) -> None:
+    async def record_observation(
+        self,
+        *,
+        symbol: str,
+        rule_signal: str,
+        inference_decision: object | None,
+    ) -> None:
         del symbol, rule_signal, inference_decision
 
     def snapshot(self) -> InferenceRolloutSnapshot:
@@ -41,6 +50,9 @@ class _StaticInferenceRollout:
     def recent_audit_events(self, *, limit: int = 10) -> tuple[InferenceAuditEvent, ...]:
         del limit
         return ()
+
+    async def flush(self) -> None:
+        return
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +111,12 @@ class InferenceApplicationService:
         self._engine = engine
         self._model_registry = model_registry
         self._rollout = rollout or _StaticInferenceRollout()
+
+    async def startup(self) -> None:
+        await self._rollout.restore()
+
+    async def shutdown(self) -> None:
+        await self._rollout.flush()
 
     async def status(self) -> InferenceStatusResult:
         rollout = self._rollout.snapshot()

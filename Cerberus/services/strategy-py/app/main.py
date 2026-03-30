@@ -38,9 +38,11 @@ system_status_service = runtime.system_status_service
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await worker.start()
+    await inference_service.startup()
     try:
         yield
     finally:
+        await inference_service.shutdown()
         await worker.stop()
         await signal_store.aclose()
 

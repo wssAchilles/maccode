@@ -64,7 +64,7 @@ class SignalApplicationService:
     async def ingest_tick(self, tick: TickEvent) -> SignalDecision:
         rule_signal, rule_signal_id = self._runtime.evaluate_tick(tick)
         inference_decision = await self._run_inference(tick)
-        self._record_inference_observation(
+        await self._record_inference_observation(
             symbol=tick.symbol,
             rule_signal=rule_signal.signal,
             inference_decision=inference_decision,
@@ -189,7 +189,7 @@ class SignalApplicationService:
             return self._inference_mode
         return self._inference_rollout.effective_mode()
 
-    def _record_inference_observation(
+    async def _record_inference_observation(
         self,
         *,
         symbol: str,
@@ -198,7 +198,7 @@ class SignalApplicationService:
     ) -> None:
         if self._inference_rollout is None:
             return
-        self._inference_rollout.record_observation(
+        await self._inference_rollout.record_observation(
             symbol=symbol,
             rule_signal=rule_signal,
             inference_decision=inference_decision,

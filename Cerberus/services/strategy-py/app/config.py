@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     inference_primary_min_agreement_ratio: float = 0.55
     inference_rollout_force_primary: bool = False
     inference_audit_max_events: int = 50
+    inference_rollout_state_enabled: bool = True
+    inference_rollout_state_key: str = "cerberus:inference:rollout"
+    inference_rollout_persist_every_observations: int = 25
     grb_licenseid: str | None = None
     grb_wlsaccessid: str | None = None
     grb_wlssecret: str | None = None

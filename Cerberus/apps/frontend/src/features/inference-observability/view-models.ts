@@ -90,6 +90,9 @@ const AUDIT_EVENT_LABELS: Record<string, TranslationKey> = {
   rollout_transition: 'workspace.inference.auditEvent.rolloutTransition',
   rollout_blockers_changed: 'workspace.inference.auditEvent.rolloutBlockersChanged',
   comparison_milestone: 'workspace.inference.auditEvent.comparisonMilestone',
+  rollout_resumed: 'workspace.inference.auditEvent.rolloutResumed',
+  rollout_restore_skipped: 'workspace.inference.auditEvent.rolloutRestoreSkipped',
+  rollout_state_degraded: 'workspace.inference.auditEvent.rolloutStateDegraded',
 }
 
 function resolveLoadState(inferenceStatus?: InferenceStatusPayload): LoadState {
@@ -181,6 +184,13 @@ function formatDateTime(value: string | undefined, t: Translate): string {
   return parsed.toLocaleString()
 }
 
+function formatBoolean(value: boolean | undefined, t: Translate): string {
+  if (value === undefined) {
+    return t('common.na')
+  }
+  return value ? t('common.yes') : t('common.no')
+}
+
 function translateBlocker(t: Translate, blocker: string): string {
   return BLOCKER_LABELS[blocker] ? t(BLOCKER_LABELS[blocker]) : blocker
 }
@@ -240,6 +250,18 @@ function auditEventDetail(t: Translate, event: InferenceAuditEvent): string | un
   const milestone = event.metadata.milestone
   if (typeof milestone === 'number') {
     parts.push(`${formatInteger(milestone, t)} ${t('workspace.inference.comparedTicks').toLowerCase()}`)
+  }
+  const backend = event.metadata.backend
+  if (typeof backend === 'string' && backend.length > 0) {
+    parts.push(`${t('workspace.inference.stateBackend')}: ${backend}`)
+  }
+  const reason = event.metadata.reason
+  if (typeof reason === 'string' && reason.length > 0) {
+    parts.push(reason)
+  }
+  const action = event.metadata.action
+  if (typeof action === 'string' && action.length > 0) {
+    parts.push(action)
   }
   return parts.length > 0 ? parts.join(' · ') : undefined
 }
@@ -412,6 +434,16 @@ export function buildInferenceDiagnosticsModel({
         label: t('workspace.inference.engine'),
         value: inferenceStatus?.engine ?? t('common.na'),
       },
+      {
+        id: 'stateBackend',
+        label: t('workspace.inference.stateBackend'),
+        value: rollout?.state_backend ?? t('common.na'),
+      },
+      {
+        id: 'stateRestored',
+        label: t('workspace.inference.stateRestored'),
+        value: formatBoolean(rollout?.state_restored, t),
+      },
     ],
     rolloutItems: [
       {
@@ -436,9 +468,19 @@ export function buildInferenceDiagnosticsModel({
         value: formatMacroF1(rollout?.required_macro_f1, t),
       },
       {
+        id: 'rolloutStartedAt',
+        label: t('workspace.inference.rolloutStartedAt'),
+        value: formatDateTime(rollout?.started_at, t),
+      },
+      {
         id: 'lastTransitionAt',
         label: t('workspace.inference.lastTransitionAt'),
         value: formatDateTime(rollout?.last_transition_at, t),
+      },
+      {
+        id: 'lastPersistedAt',
+        label: t('workspace.inference.lastPersistedAt'),
+        value: formatDateTime(rollout?.last_persisted_at, t),
       },
     ],
     comparisonItems: [
