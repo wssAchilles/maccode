@@ -2,6 +2,8 @@ import { CandlesChart } from '../../components/CandlesChart'
 import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
+import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
+import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { useMarketWorkspaceModel } from './useMarketWorkspaceModel'
 
 type Props = {
@@ -74,9 +76,22 @@ export function MarketWorkspace({ active = true }: Props) {
             <pre className="diagnostic-pre">{JSON.stringify(model.summaryError, null, 2)}</pre>
           </DiagnosticDrawer>
         ) : null}
+
+        <SectionFrame
+          title={t('workspace.strategy.title')}
+          description={t('workspace.strategy.description')}
+        >
+          <StrategyDecisionMatrix model={model.strategyMatrix} />
+        </SectionFrame>
       </div>
 
-      <div className="workspace-side">
+      <div className="workspace-side stack">
+        <SectionFrame
+          title={t('workspace.strategy.portfolioTitle')}
+          description={t('workspace.strategy.portfolioDescription')}
+        >
+          <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+        </SectionFrame>
         <MatchingOrderBookPanel orderbook={model.orderbook} />
       </div>
     </div>

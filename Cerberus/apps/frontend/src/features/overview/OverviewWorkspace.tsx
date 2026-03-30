@@ -5,6 +5,8 @@ import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
+import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
+import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 
 type Props = {
   active?: boolean
@@ -78,6 +80,13 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
 
         <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
           <InferenceStatusCard model={model.inferenceCard} onOpenHealth={model.openHealth} />
+        </SectionFrame>
+
+        <SectionFrame title={t('workspace.strategy.title')} description={t('workspace.strategy.description')}>
+          <div className="stack">
+            <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+            <StrategyDecisionMatrix model={model.strategyMatrix} />
+          </div>
         </SectionFrame>
 
         <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')}>

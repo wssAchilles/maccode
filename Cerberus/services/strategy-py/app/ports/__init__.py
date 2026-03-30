@@ -17,11 +17,14 @@ from app.ports.matching import MatchingGatewayPort
 from app.ports.optimization import OptimizationServicePort
 from app.ports.persistence import PersistenceStatusPort
 from app.ports.signal import (
+    PortfolioSignalSnapshot,
     SignalClaimPort,
+    SignalDecisionSnapshot,
     SignalEventPort,
     SignalHistorySource,
     SignalPublisherPort,
     SignalRuntimePort,
+    StrategyDecisionSnapshot,
     SignalStorePort,
     SignalStoreSource,
 )
@@ -47,10 +50,12 @@ __all__ = [
     "MatchingGatewayPort",
     "ModelRegistryPort",
     "OptimizationServicePort",
+    "PortfolioSignalSnapshot",
     "PersistenceStatusPort",
     "RegisteredModel",
     "RuntimeStatusPort",
     "SignalClaimPort",
+    "SignalDecisionSnapshot",
     "SignalEventPort",
     "SignalHistorySource",
     "SignalPublisherPort",
@@ -58,4 +63,5 @@ __all__ = [
     "SignalStorePort",
     "SignalStoreSource",
     "StoreStatusPort",
+    "StrategyDecisionSnapshot",
 ]

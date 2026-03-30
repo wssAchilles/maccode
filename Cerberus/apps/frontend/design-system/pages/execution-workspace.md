@@ -9,7 +9,10 @@ This page inherits the global Cerberus design system and adds execution-specific
 
 ## Layout Override
 - Keep the primary ticket in the dominant column.
+- Place the lifecycle panel above the ticket so the operator sees readiness and feedback before acting.
 - Keep progress, policy, and request-trace information in a stable side rail on desktop.
+- Keep the strategy basket and portfolio summary in the side rail; they should support the ticket, not compete with it.
+- Place the live order book in the side rail so the operator sees venue context without leaving the execution workspace.
 - Timeline remains a separate surface and must not visually compete with the ticket header.
 
 ## Visual Override
@@ -22,6 +25,8 @@ This page inherits the global Cerberus design system and adds execution-specific
 - Broker switching should feel immediate, without dramatic animation.
 - Submit/cancel affordances must remain visually prominent at all breakpoints.
 - Request IDs and diagnostics should be easy to scan with monospace text.
+- Lifecycle states should update without reflow or jumping content.
+- Tracked-symbol chips should reuse the same compact chip pattern as market workspace and never appear as destructive actions.
 
 ## Accessibility Override
 - Progress changes must keep visible labels.

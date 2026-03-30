@@ -694,6 +694,192 @@ button {
   resize: vertical;
 }
 
+.strategy-panel,
+.strategy-portfolio-panel,
+.execution-lifecycle-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.strategy-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.strategy-panel-summary,
+.strategy-portfolio-bias {
+  margin: 0;
+  font: 700 1.1rem/1.2 var(--font-heading);
+  color: var(--color-accent-strong);
+}
+
+.strategy-portfolio-status {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.strategy-portfolio-gate {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strategy-portfolio-gate-accent {
+  border-color: rgba(15, 118, 110, 0.22);
+  color: var(--color-success);
+}
+
+.strategy-portfolio-gate-muted {
+  color: var(--color-text-muted);
+}
+
+.strategy-portfolio-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.strategy-panel-hint,
+.strategy-panel-signal-id,
+.strategy-decision-engine,
+.strategy-decision-source,
+.strategy-decision-reason,
+.execution-lifecycle-reason {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.strategy-decision-list {
+  display: grid;
+  gap: 12px;
+}
+
+.execution-lifecycle-stages {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.execution-lifecycle-stage {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.execution-lifecycle-stage-ready {
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.execution-lifecycle-stage-degraded,
+.execution-lifecycle-stage-loading {
+  border-color: rgba(3, 105, 161, 0.18);
+}
+
+.execution-lifecycle-stage-error {
+  border-color: rgba(220, 38, 38, 0.18);
+}
+
+.execution-lifecycle-stage-label,
+.execution-lifecycle-stage-detail {
+  margin: 0;
+}
+
+.execution-lifecycle-stage-label {
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.execution-lifecycle-stage-detail {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.strategy-decision-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.strategy-decision-card-active {
+  border-color: rgba(3, 105, 161, 0.28);
+  box-shadow: 0 18px 40px -32px rgba(3, 105, 161, 0.28);
+}
+
+.strategy-decision-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.strategy-decision-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+.strategy-decision-signal {
+  margin: 0;
+  font: 700 1rem/1 var(--font-heading);
+  color: var(--color-text);
+}
+
+.strategy-decision-signal-positive {
+  color: var(--color-success);
+}
+
+.strategy-decision-signal-negative {
+  color: var(--color-danger);
+}
+
+.strategy-decision-signal-accent {
+  color: var(--color-accent);
+}
+
+.strategy-decision-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.strategy-decision-meta div {
+  display: grid;
+  gap: 4px;
+}
+
+.strategy-decision-meta dt {
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.strategy-decision-meta dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .empty-state,
 .empty-inline {
   padding: 18px;
@@ -986,6 +1172,32 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.orderbook-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.orderbook-summary-card {
+  display: grid;
+  gap: 8px;
+}
+
+.orderbook-summary-value {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font: 700 1rem/1.1 var(--font-heading);
+}
+
+.orderbook-summary-value-bid {
+  color: var(--color-success);
+}
+
+.orderbook-summary-value-ask {
+  color: var(--color-danger);
+}
+
 .orderbook-group {
   display: grid;
   gap: 10px;
@@ -1009,6 +1221,11 @@ button {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--color-border);
+}
+
+.orderbook-foot-copy {
+  display: grid;
+  gap: 4px;
 }
 
 .precheck-status {
@@ -1279,6 +1496,35 @@ button {
 
   .inference-symbol-side {
     text-align: left;
+  }
+
+  .strategy-panel-head,
+  .strategy-decision-head {
+    flex-direction: column;
+  }
+
+  .strategy-portfolio-status {
+    justify-items: start;
+  }
+
+  .execution-lifecycle-stages,
+  .orderbook-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .strategy-decision-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .execution-lifecycle-stages,
+  .orderbook-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-decision-meta {
+    grid-template-columns: 1fr;
   }
 }
 

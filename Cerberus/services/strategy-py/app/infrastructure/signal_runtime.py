@@ -12,6 +12,9 @@ class WorkerSignalRuntimeAdapter:
     def read_current_signal(self) -> Signal | None:
         return self._worker.last_signal
 
+    def read_current_decision(self):
+        return self._worker.last_decision
+
     def evaluate_tick(self, tick: TickEvent) -> tuple[Signal, str]:
         return self._worker.evaluate_tick(tick)
 
@@ -20,6 +23,12 @@ class WorkerSignalRuntimeAdapter:
 
     def store_current_signal(self, signal: Signal) -> None:
         self._worker.store_current_signal(signal)
+
+    def store_current_decision(self, decision) -> None:
+        self._worker.store_current_decision(decision)
+
+    def tracked_symbols(self) -> tuple[str, ...]:
+        return tuple(self._worker.tracked_symbols)
 
     def record_tick_processed(self) -> None:
         self._worker.record_tick_processed()

@@ -4,6 +4,10 @@ import { useCandlesResource } from '../../app/bootstrap/useResourceQueries'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import {
+  buildStrategyDecisionMatrixModel,
+  buildStrategyPortfolioPanelModel,
+} from '../strategy-orchestration/view-models'
+import {
   buildMarketChartStateModel,
   buildMarketMetricTiles,
   buildMarketSymbolChips,
@@ -57,6 +61,16 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [candles.length, candlesQuery.isFetching, candlesQuery.isLoading, marketStatus, t],
   )
 
+  const strategyMatrix = useMemo(
+    () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+    [strategySignal, t],
+  )
+
+  const portfolioPanel = useMemo(
+    () => buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+    [selectedSymbol, strategySignal, t],
+  )
+
   return {
     activeSymbol: selectedSymbol,
     candles,
@@ -65,6 +79,8 @@ export function useMarketWorkspaceModel({ active }: Params) {
     orderbook,
     symbolChips,
     metricTiles,
+    portfolioPanel,
+    strategyMatrix,
     selectSymbol: setSelectedSymbol,
   }
 }

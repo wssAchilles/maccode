@@ -48,9 +48,22 @@ class SignalService:
         return "auto"
 
     def _ready_signal_payload(self, decision: SignalDecision) -> dict[str, Any]:
-        return {
+        payload = {
             "status": "ready",
             "signal": decision.signal.signal,
             "confidence": decision.signal.confidence,
             "symbol": decision.signal.symbol,
+            "strategy_id": decision.signal.strategy_id,
+            "engine": decision.context.engine,
         }
+        for key in (
+            "decision_source",
+            "dispatch_state",
+            "inference_mode",
+            "signal_id",
+            "strategy_basket",
+            "portfolio",
+        ):
+            if key in decision.context.metadata:
+                payload[key] = decision.context.metadata[key]
+        return payload

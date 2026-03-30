@@ -6,6 +6,7 @@ from typing import Any, Generic, TypeAlias, TypeVar
 from pydantic import BaseModel
 
 from app.ports.signal import SignalHistorySource, SignalStoreSource
+from app.ports.signal import PortfolioSignalSnapshot, StrategyDecisionSnapshot
 from app.schemas import MatchingOrderBookView, SignalRecord
 from app.system_status_query.persistence import PersistenceStatusResult
 
@@ -95,6 +96,14 @@ class SummarySignalPayload:
     signal: str
     confidence: float
     symbol: str | None = None
+    strategy_id: str | None = None
+    engine: str | None = None
+    decision_source: str | None = None
+    dispatch_state: str | None = None
+    inference_mode: str | None = None
+    signal_id: str | None = None
+    strategy_basket: tuple[StrategyDecisionSnapshot, ...] = ()
+    portfolio: PortfolioSignalSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)

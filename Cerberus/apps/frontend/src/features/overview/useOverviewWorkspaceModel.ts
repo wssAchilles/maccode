@@ -11,6 +11,10 @@ import {
   buildOverviewPersistenceItems,
 } from './view-models'
 import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
+import {
+  buildStrategyDecisionMatrixModel,
+  buildStrategyPortfolioPanelModel,
+} from '../strategy-orchestration/view-models'
 
 type Params = {
   onSelectWorkspace: (workspace: WorkspaceId) => void
@@ -29,6 +33,7 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
   const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
   const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
+  const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
 
   const displayQuote = latestBySymbol[selectedSymbol] ?? latest
 
@@ -57,13 +62,26 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
     [inferenceStatus, t],
   )
 
+  const strategyMatrix = useMemo(
+    () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+    [strategySignal, t],
+  )
+
+  const portfolioPanel = useMemo(
+    () => buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+    [selectedSymbol, strategySignal, t],
+  )
+
   return {
     summaryError,
     healthCards,
     inferenceCard,
+    strategyMatrix,
+    portfolioPanel,
     metricTiles,
     persistenceItems,
     recentSignals: recentSignals.slice(0, 4),
+    selectSymbol: setSelectedSymbol,
     openExecution: () => onSelectWorkspace('execution'),
     openHealth: () => onSelectWorkspace('health'),
     openMarket: () => onSelectWorkspace('market'),

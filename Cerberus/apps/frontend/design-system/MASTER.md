@@ -66,3 +66,4 @@ This file is the global source of truth for all UI work in `apps/frontend`.
 
 ## Registered Component Rules
 - `components/inference-observability.md`: read-only model/runtime visibility for the authenticated workbench only.
+- `components/strategy-orchestration.md`: multi-strategy basket, portfolio signal summary, and execution lifecycle panels for the authenticated workbench only.

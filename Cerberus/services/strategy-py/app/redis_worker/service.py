@@ -46,6 +46,10 @@ class RedisMarketWorker:
         return self._runtime_state.processed_ticks
 
     @property
+    def last_decision(self):
+        return self._runtime_state.last_decision
+
+    @property
     def market_ingest_mode(self) -> str:
         return self._runtime_state.market_ingest_mode
 
@@ -196,6 +200,9 @@ class RedisMarketWorker:
 
     def store_current_signal(self, signal: Signal) -> None:
         self._runtime_state.last_signal = signal
+
+    def store_current_decision(self, decision) -> None:
+        self._runtime_state.last_decision = decision
 
     def record_tick_processed(self) -> None:
         record_tick_processed(self)

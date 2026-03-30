@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.ports.signal import SignalDecisionSnapshot
 from app.schemas import Signal
 
 
@@ -28,6 +29,7 @@ class MarketStreamRuntimeState:
 @dataclass(slots=True)
 class WorkerRuntimeState:
     last_signal: Signal | None = None
+    last_decision: SignalDecisionSnapshot | None = None
     processed_ticks: int = 0
     market_ingest_mode: str = "starting"
     forwarded_executions: int = 0
@@ -74,4 +76,3 @@ class WorkerRuntimeSnapshot:
     last_tick_epoch_seconds: int | None
     last_error: str | None
     market_stream: MarketStreamRuntimeSnapshot
-

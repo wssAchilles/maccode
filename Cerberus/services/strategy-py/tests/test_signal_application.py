@@ -11,12 +11,17 @@ from app.schemas import Signal, TickEvent
 class FakeSignalRuntime:
     def __init__(self) -> None:
         self.current_signal: Signal | None = None
+        self.current_decision = None
         self.evaluated_tick: TickEvent | None = None
         self.stored_signal: Signal | None = None
+        self.stored_decision = None
         self.processed_count = 0
 
     def read_current_signal(self) -> Signal | None:
         return self.current_signal
+
+    def read_current_decision(self):
+        return self.current_decision
 
     def evaluate_tick(self, tick: TickEvent) -> tuple[Signal, str]:
         self.evaluated_tick = tick
@@ -33,6 +38,12 @@ class FakeSignalRuntime:
 
     def store_current_signal(self, signal: Signal) -> None:
         self.stored_signal = signal
+
+    def store_current_decision(self, decision) -> None:
+        self.stored_decision = decision
+
+    def tracked_symbols(self) -> tuple[str, ...]:
+        return ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 
     def record_tick_processed(self) -> None:
         self.processed_count += 1
@@ -160,7 +171,12 @@ async def test_signal_application_ingest_tick_runs_full_dispatch_flow() -> None:
     assert decision.signal.signal == "BUY"
     assert decision.context.metadata["signal_id"] == "sig-001"
     assert decision.context.metadata["dispatch_state"] == "accepted"
+    assert decision.context.metadata["strategy_basket"][0]["strategy_id"] == "default"
+    assert decision.context.metadata["portfolio"]["tracked_symbols"] == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+    assert decision.context.metadata["portfolio"]["execution_gate"] == "ready"
+    assert decision.context.metadata["portfolio"]["consensus_level"] == "high"
     assert runtime.stored_signal is not None
+    assert runtime.stored_decision is not None
     assert runtime.processed_count == 1
     assert claims.claimed_ids == ["sig-001"]
     assert claims.released_ids == []
@@ -241,6 +257,8 @@ async def test_signal_application_uses_inference_as_primary_when_enabled() -> No
     assert decision.signal.strategy_id == "inference"
     assert decision.context.engine == "moving_average_baseline"
     assert decision.context.metadata["decision_source"] == "inference"
+    assert decision.context.metadata["portfolio"]["execution_gate"] == "review"
+    assert decision.context.metadata["portfolio"]["lead_strategy_label"] == "Inference model"
     assert runtime.stored_signal is not None
     assert runtime.stored_signal.signal == "SELL"
     assert inference.calls
@@ -269,6 +287,8 @@ async def test_signal_application_keeps_rule_signal_when_inference_is_observe_on
     assert decision.context.engine == "moving_average"
     assert decision.context.metadata["decision_source"] == "rule_engine"
     assert decision.context.metadata["inference"]["engine"] == "shadow-model"
+    assert len(decision.context.metadata["strategy_basket"]) == 2
+    assert decision.context.metadata["portfolio"]["dominant_signal"] == "BUY"
 
 
 @pytest.mark.asyncio
@@ -308,3 +328,4 @@ async def test_signal_application_respects_rollout_holdback_before_using_primary
     assert rollout.effective_mode() == "observe"
     assert decision.signal.signal == "BUY"
     assert decision.context.metadata["inference_mode"] == "observe"
+    assert decision.context.metadata["strategy_basket"][1]["reason"] == "running in observe"

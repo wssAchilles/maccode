@@ -45,6 +45,11 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
   const { t } = useI18n()
   const bids = orderbook?.bids ?? []
   const asks = orderbook?.asks ?? []
+  const bestBid = bids[0]?.price
+  const bestAsk = asks[0]?.price
+  const spread = bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined
+  const totalBidDepth = bids.reduce((sum, level) => sum + level.total_quantity, 0)
+  const totalAskDepth = asks.reduce((sum, level) => sum + level.total_quantity, 0)
   const stale = useMemo(() => {
     if (!orderbook?.generated_at_ms) {
       return true
@@ -57,14 +62,38 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
       title={t('orderbook.title')}
       description={orderbook ? `${orderbook.symbol} · depth ${orderbook.depth}` : t('common.disabled')}
     >
+      <div className="orderbook-summary-grid">
+        <GlassPanel className="orderbook-summary-card" tone="subtle">
+          <p className="subtle-label">{t('market.bestBid')}</p>
+          <p className="orderbook-summary-value orderbook-summary-value-bid">
+            {bestBid !== undefined ? bestBid.toFixed(6) : '—'}
+          </p>
+        </GlassPanel>
+        <GlassPanel className="orderbook-summary-card" tone="subtle">
+          <p className="subtle-label">{t('market.bestAsk')}</p>
+          <p className="orderbook-summary-value orderbook-summary-value-ask">
+            {bestAsk !== undefined ? bestAsk.toFixed(6) : '—'}
+          </p>
+        </GlassPanel>
+        <GlassPanel className="orderbook-summary-card" tone="subtle">
+          <p className="subtle-label">{t('orderbook.spread')}</p>
+          <p className="orderbook-summary-value">{spread !== undefined ? spread.toFixed(6) : '—'}</p>
+        </GlassPanel>
+      </div>
+
       <div className="orderbook-grid" data-testid="matching-orderbook-panel">
         <LevelGroup title={t('orderbook.bids')} levels={bids} tone="bid" emptyText={t('orderbook.empty')} />
         <LevelGroup title={t('orderbook.asks')} levels={asks} tone="ask" emptyText={t('orderbook.empty')} />
       </div>
       <GlassPanel className="orderbook-foot" tone="subtle" padded={false}>
-        <p className="orderbook-updated">
-          {t('orderbook.updated')}: {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
-        </p>
+        <div className="orderbook-foot-copy">
+          <p className="orderbook-updated">
+            {t('orderbook.updated')}: {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
+          </p>
+          <p className="orderbook-updated">
+            {t('orderbook.depthBalance')}: {totalBidDepth.toFixed(3)} / {totalAskDepth.toFixed(3)}
+          </p>
+        </div>
         {stale ? <p className="orderbook-stale">{t('orderbook.stale')}</p> : null}
       </GlassPanel>
     </SectionFrame>

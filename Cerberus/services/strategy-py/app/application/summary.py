@@ -77,6 +77,25 @@ class SummaryApplicationService:
         )
 
     def _build_signal_component(self) -> SummaryComponent:
+        decision = self._signal_runtime.read_current_decision()
+        if decision is not None:
+            return SummaryComponent.ok_result(
+                SummarySignalPayload(
+                    status="ready",
+                    signal=decision.signal.signal,
+                    confidence=decision.signal.confidence,
+                    symbol=decision.signal.symbol,
+                    strategy_id=decision.signal.strategy_id,
+                    engine=decision.engine,
+                    decision_source=decision.decision_source,
+                    dispatch_state=decision.dispatch_state,
+                    inference_mode=decision.inference_mode,
+                    signal_id=decision.signal_id,
+                    strategy_basket=decision.strategies,
+                    portfolio=decision.portfolio,
+                )
+            )
+
         signal = self._signal_runtime.read_current_signal()
         if signal is None:
             return SummaryComponent.ok_result(
@@ -92,6 +111,7 @@ class SummaryApplicationService:
                 signal=signal.signal,
                 confidence=signal.confidence,
                 symbol=signal.symbol,
+                strategy_id=signal.strategy_id,
             )
         )
 

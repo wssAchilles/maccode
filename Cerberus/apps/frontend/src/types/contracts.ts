@@ -56,6 +56,51 @@ export type StrategySignal = {
   signal: string
   confidence: number
   symbol?: string
+  strategy_id?: string
+  engine?: string
+  decision_source?: string
+  dispatch_state?: string
+  inference_mode?: string
+  signal_id?: string
+  strategy_basket?: StrategyDecisionContribution[]
+  portfolio?: PortfolioSignalSummary
+}
+
+export type StrategyDecisionContribution = {
+  strategy_id: string
+  label: string
+  engine: string
+  signal: string
+  confidence: number
+  weight: number
+  priority: number
+  role: string
+  active: boolean
+  source: string
+  reason?: string | null
+  metadata: Record<string, unknown>
+}
+
+export type PortfolioSignalSummary = {
+  symbol: string
+  dominant_signal: string
+  final_signal: string
+  final_source: string
+  signal_bias: string
+  consensus_level: string
+  execution_ready: boolean
+  execution_gate: string
+  execution_gate_reason: string
+  lead_strategy_id?: string | null
+  lead_strategy_label?: string | null
+  aligned_count: number
+  contested_count: number
+  agreement_ratio?: number | null
+  weighted_score: number
+  active_strategy_count: number
+  tracked_symbols: string[]
+  updated_at?: string | null
+  latest_price?: number | null
 }
 
 export type SignalRecord = {
@@ -70,6 +115,8 @@ export type PersistenceStatus = {
   status: string
   worker: {
     processed_ticks: number
+    forwarded_executions: number
+    last_execution_id: number
     last_tick_at?: string
     last_error?: string
     has_last_signal: boolean

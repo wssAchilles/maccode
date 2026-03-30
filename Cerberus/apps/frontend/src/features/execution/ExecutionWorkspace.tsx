@@ -1,9 +1,12 @@
 import { ExecutionConsole } from '../../components/ExecutionConsole'
 import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
+import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { useCerberusStore } from '../../store'
-import { formatConfidence, summarizeLatestFeedback, summarizeLatestEventAt } from '../../view-models/workbench'
 import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
+import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
+import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
+import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
+import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
 
 type Props = {
   active?: boolean
@@ -11,15 +14,7 @@ type Props = {
 
 export function ExecutionWorkspace({ active = true }: Props) {
   const { t } = useI18n()
-  const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
-  const latest = useCerberusStore((state) => state.marketStream.latest)
-  const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
-  const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
-  const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
-  const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
-  const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
-
-  const displayQuote = latestBySymbol[selectedSymbol] ?? latest
+  const model = useExecutionWorkspaceModel({ active })
 
   return (
     <div className="workspace-grid">
@@ -30,28 +25,52 @@ export function ExecutionWorkspace({ active = true }: Props) {
         className="workspace-span-full"
       >
         <div className="metric-grid">
-          <MetricTile label={t('strategy.signal')} value={strategySignal?.signal ?? 'HOLD'} hint={`${t('strategy.confidence')}: ${formatConfidence(strategySignal?.confidence)}`} tone="accent" />
-          <MetricTile label={t('market.bestBid')} value={displayQuote?.bid_price ?? '—'} tone="positive" />
-          <MetricTile label={t('market.bestAsk')} value={displayQuote?.ask_price ?? '—'} tone="negative" />
-          <MetricTile label={t('execution.timeline')} value={summarizeLatestFeedback(latestEvent, heartbeat, t)} hint={summarizeLatestEventAt(latestEvent)} />
+          {model.metricTiles.map((tile) => (
+            <MetricTile
+              key={tile.id}
+              label={tile.label}
+              value={tile.value}
+              hint={tile.hint}
+              tone={tile.tone}
+            />
+          ))}
         </div>
       </SectionFrame>
 
       <div className="workspace-main stack">
+        <SectionFrame
+          title={t('workspace.execution.lifecycleTitle')}
+          description={t('workspace.execution.lifecycleDescription')}
+        >
+          <ExecutionLifecyclePanel model={model.lifecyclePanel} />
+        </SectionFrame>
+
         <SectionFrame title={t('workspace.execution.ticketTitle')} description={t('workspace.execution.ticketDescription')}>
           <ExecutionConsole
             active={active}
-            selectedSymbol={selectedSymbol}
-            latestBid={displayQuote?.bid_price}
-            latestAsk={displayQuote?.ask_price}
+            selectedSymbol={model.selectedSymbol}
+            latestBid={model.displayQuote?.bid_price}
+            latestAsk={model.displayQuote?.ask_price}
           />
         </SectionFrame>
       </div>
 
       <div className="workspace-side stack execution-side">
-        {summaryError ? (
-          <DiagnosticDrawer title={t('workspace.execution.diagnostics')} summary={summaryError.message}>
-            <pre className="diagnostic-pre">{JSON.stringify(summaryError, null, 2)}</pre>
+        <SectionFrame
+          title={t('workspace.strategy.matrixTitle')}
+          description={t('workspace.strategy.description')}
+        >
+          <div className="stack">
+            <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+            <StrategyDecisionMatrix model={model.strategyMatrix} />
+          </div>
+        </SectionFrame>
+
+        <MatchingOrderBookPanel orderbook={model.orderbook} />
+
+        {model.summaryError ? (
+          <DiagnosticDrawer title={t('workspace.execution.diagnostics')} summary={model.summaryError.message}>
+            <pre className="diagnostic-pre">{JSON.stringify(model.summaryError, null, 2)}</pre>
           </DiagnosticDrawer>
         ) : null}
         <SectionFrame

@@ -7,7 +7,10 @@ from app.ports import (
     InferenceComparisonSnapshot,
     InferenceEngineStatus,
     InferenceRolloutSnapshot,
+    PortfolioSignalSnapshot,
     RegisteredModel,
+    SignalDecisionSnapshot,
+    StrategyDecisionSnapshot,
 )
 from app.schemas import (
     MatchingHealthView,
@@ -33,6 +36,74 @@ class FakeSignalRuntime:
             signal="BUY",
             confidence=0.91,
         )
+
+    def read_current_decision(self) -> SignalDecisionSnapshot | None:
+        signal = self.read_current_signal()
+        assert signal is not None
+        return SignalDecisionSnapshot(
+            signal=signal,
+            engine="moving_average",
+            signal_id="sig-typed-001",
+            dispatch_state="accepted",
+            decision_source="rule_engine",
+            inference_mode="observe",
+            strategies=(
+                StrategyDecisionSnapshot(
+                    strategy_id="default",
+                    label="Rule engine",
+                    engine="moving_average",
+                    signal="BUY",
+                    confidence=0.91,
+                    weight=0.62,
+                    priority=1,
+                    role="baseline",
+                    active=True,
+                    source="rule_engine",
+                ),
+                StrategyDecisionSnapshot(
+                    strategy_id="inference",
+                    label="Inference model",
+                    engine="cerberus_signal_transformer_lstm",
+                    signal="SELL",
+                    confidence=0.64,
+                    weight=0.38,
+                    priority=2,
+                    role="adaptive",
+                    active=False,
+                    source="inference",
+                    reason="running in observe",
+                    metadata={"model_id": "cerberus-transformer-lstm", "model_version": "v1"},
+                ),
+            ),
+            portfolio=PortfolioSignalSnapshot(
+                symbol="BTCUSDT",
+                dominant_signal="BUY",
+                final_signal="BUY",
+                final_source="rule_engine",
+                signal_bias="bullish",
+                consensus_level="moderate",
+                execution_ready=False,
+                execution_gate="review",
+                execution_gate_reason="strategy basket is still contested",
+                lead_strategy_id="default",
+                lead_strategy_label="Rule engine",
+                aligned_count=1,
+                contested_count=1,
+                agreement_ratio=0.5,
+                weighted_score=0.5642,
+                active_strategy_count=2,
+                tracked_symbols=("BTCUSDT", "ETHUSDT"),
+                updated_at="2026-03-30T10:00:00Z",
+                latest_price=101.25,
+            ),
+            metadata={},
+        )
+
+    def store_current_decision(self, decision) -> None:
+        del decision
+
+    def tracked_symbols(self) -> tuple[str, ...]:
+        return ("BTCUSDT", "ETHUSDT")
 
 
 class FakeSignalStore:
@@ -192,6 +263,11 @@ async def test_summary_application_returns_typed_result_and_serializes_without_c
     assert payload["symbol"] == "BTCUSDT"
     assert payload["source"] == "supabase"
     assert payload["signal"]["payload"]["signal"] == "BUY"
+    assert payload["signal"]["payload"]["engine"] == "moving_average"
+    assert payload["signal"]["payload"]["portfolio"]["execution_gate"] == "review"
+    assert payload["signal"]["payload"]["portfolio"]["lead_strategy_label"] == "Rule engine"
+    assert payload["signal"]["payload"]["strategy_basket"][1]["engine"] == "cerberus_signal_transformer_lstm"
+    assert payload["signal"]["payload"]["portfolio"]["signal_bias"] == "bullish"
     assert payload["recent_signals"]["payload"]["count"] == 1
     assert payload["matching_orderbook"]["payload"]["depth"] == 5
     assert payload["persistence"]["payload"]["worker"]["processed_ticks"] == 12
