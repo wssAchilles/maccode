@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/deploy_common.sh"
+trap cleanup_registered_files EXIT
+
 PROJECT_ID="${1:-$(gcloud config get-value project 2>/dev/null || true)}"
 REGION="${2:-asia-east2}"
 SERVICE_NAME="${SERVICE_NAME:-cerberus-gateway}"
-SOURCE_DIR="${SOURCE_DIR:-$(cd "$(dirname "$0")/../services/gateway-rs" && pwd)}"
+SOURCE_DIR="${SOURCE_DIR:-$(cd "${SCRIPT_DIR}/../services/gateway-rs" && pwd)}"
 
 if [[ -z "${PROJECT_ID}" ]]; then
   echo "PROJECT_ID is required (arg1 or active gcloud project)." >&2
+  exit 1
+fi
+
+require_command gcloud
+
+if [[ ! -d "${SOURCE_DIR}" ]]; then
+  echo "SOURCE_DIR does not exist: ${SOURCE_DIR}" >&2
   exit 1
 fi
 
@@ -68,19 +79,10 @@ ALPACA_API_SECRET_SECRET="${ALPACA_API_SECRET_SECRET:-cerberus-alpaca-api-secret
 JWT_HS256_SECRET_SECRET="${JWT_HS256_SECRET_SECRET:-cerberus-jwt-hs256-secret}"
 
 validate_gateway_policy
+ensure_artifact_registry_repo "${PROJECT_ID}" "${REGION}" "${REPOSITORY}"
 
-if ! gcloud artifacts repositories describe "${REPOSITORY}" \
-  --project="${PROJECT_ID}" \
-  --location="${REGION}" >/dev/null 2>&1; then
-  echo "creating Artifact Registry repository: ${REPOSITORY}"
-  gcloud artifacts repositories create "${REPOSITORY}" \
-    --project="${PROJECT_ID}" \
-    --location="${REGION}" \
-    --repository-format=docker \
-    --description="Cerberus container images"
-fi
-
-cloudbuild_file="$(mktemp /tmp/cerberus-gateway-cloudbuild.XXXXXX.yaml)"
+cloudbuild_file="$(create_temp_yaml cerberus-gateway-cloudbuild)"
+register_cleanup_file "${cloudbuild_file}"
 cat >"${cloudbuild_file}" <<YAML
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -104,13 +106,14 @@ images:
 YAML
 
 echo "building cached image: ${IMAGE_URI}"
-gcloud builds submit "${SOURCE_DIR}" \
+run_cmd gcloud builds submit "${SOURCE_DIR}" \
   --project="${PROJECT_ID}" \
   --config="${cloudbuild_file}" \
-  --ignore-file="${SOURCE_DIR}/.gcloudignore"
-rm -f "${cloudbuild_file}"
+  --ignore-file="${SOURCE_DIR}/.gcloudignore" \
+  $(gcloud_quiet_args)
 
-env_file="$(mktemp /tmp/cerberus-gateway-env.XXXXXX.yaml)"
+env_file="$(create_temp_yaml cerberus-gateway-env)"
+register_cleanup_file "${env_file}"
 cat >"${env_file}" <<YAML
 REDIS_ORDERBOOK_CHANNEL: ${REDIS_ORDERBOOK_CHANNEL}
 REDIS_ORDERBOOK_CHANNEL_PREFIX: ${REDIS_ORDERBOOK_CHANNEL_PREFIX}
@@ -141,15 +144,15 @@ MAX_ALPACA_LIMIT_NOTIONAL_USD: "${MAX_ALPACA_LIMIT_NOTIONAL_USD}"
 YAML
 
 echo "deploying image to Cloud Run service: ${SERVICE_NAME}"
-gcloud run deploy "${SERVICE_NAME}" \
+run_cmd gcloud run deploy "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
   --platform=managed \
   --allow-unauthenticated \
   --image="${IMAGE_URI}" \
   --env-vars-file="${env_file}" \
-  --set-secrets="REDIS_URL=${REDIS_URL_SECRET}:latest,FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY_SECRET}:latest,JWT_HS256_SECRET=${JWT_HS256_SECRET_SECRET}:latest,BINANCE_API_KEY=${BINANCE_API_KEY_SECRET}:latest,BINANCE_API_SECRET=${BINANCE_API_SECRET_SECRET}:latest,ALPACA_API_KEY=${ALPACA_API_KEY_SECRET}:latest,ALPACA_API_SECRET=${ALPACA_API_SECRET_SECRET}:latest"
+  --set-secrets="REDIS_URL=${REDIS_URL_SECRET}:latest,FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY_SECRET}:latest,JWT_HS256_SECRET=${JWT_HS256_SECRET_SECRET}:latest,BINANCE_API_KEY=${BINANCE_API_KEY_SECRET}:latest,BINANCE_API_SECRET=${BINANCE_API_SECRET_SECRET}:latest,ALPACA_API_KEY=${ALPACA_API_KEY_SECRET}:latest,ALPACA_API_SECRET=${ALPACA_API_SECRET_SECRET}:latest" \
+  $(gcloud_quiet_args)
 
-rm -f "${env_file}"
 echo "cached deploy completed: ${SERVICE_NAME} (${PROJECT_ID}/${REGION})"
 echo "image: ${IMAGE_URI}"
