@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from app.ports import (
     InferenceAuditEvent,
     InferenceComparisonSnapshot,
+    InferenceControlResult,
     InferenceEnginePort,
     InferenceEngineStatus,
     InferenceRolloutPort,
@@ -33,7 +34,9 @@ class _StaticInferenceRollout:
     def snapshot(self) -> InferenceRolloutSnapshot:
         return InferenceRolloutSnapshot(
             configured_mode="disabled",
+            target_mode="disabled",
             effective_mode="disabled",
+            override_active=False,
             auto_promote_enabled=False,
             force_primary=False,
             promotion_eligible=False,
@@ -51,6 +54,24 @@ class _StaticInferenceRollout:
         del limit
         return ()
 
+    async def set_target_mode(
+        self,
+        *,
+        target_mode: str,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        del target_mode, actor, reason
+
+    async def set_active_model(
+        self,
+        *,
+        model: RegisteredModel | None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        del model, actor, reason
+
     async def flush(self) -> None:
         return
 
@@ -62,7 +83,9 @@ class InferenceStatusResult:
     rollout: InferenceRolloutSnapshot = field(
         default_factory=lambda: InferenceRolloutSnapshot(
             configured_mode="disabled",
+            target_mode="disabled",
             effective_mode="disabled",
+            override_active=False,
             auto_promote_enabled=False,
             force_primary=False,
             promotion_eligible=False,
@@ -148,3 +171,101 @@ class InferenceApplicationService:
             "count": len(self._rollout.recent_audit_events(limit=limit)),
             "events": [item.to_dict() for item in self._rollout.recent_audit_events(limit=limit)],
         }
+
+    async def promote(
+        self,
+        *,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> InferenceControlResult:
+        await self._rollout.set_target_mode(
+            target_mode="primary",
+            actor=actor,
+            reason=reason,
+        )
+        return await self._build_control_result(
+            action="promote",
+            actor=actor,
+            reason=reason,
+            requested_mode="primary",
+        )
+
+    async def rollback(
+        self,
+        *,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> InferenceControlResult:
+        await self._rollout.set_target_mode(
+            target_mode="observe",
+            actor=actor,
+            reason=reason,
+        )
+        return await self._build_control_result(
+            action="rollback",
+            actor=actor,
+            reason=reason,
+            requested_mode="observe",
+        )
+
+    async def activate_model(
+        self,
+        *,
+        model_id: str,
+        version: str | None = None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> InferenceControlResult:
+        selected_model = self._model_registry.activate_model(
+            model_id=model_id,
+            version=version,
+        )
+        await self._rollout.set_active_model(
+            model=selected_model,
+            actor=actor,
+            reason=reason,
+        )
+        return await self._build_control_result(
+            action="activate_model",
+            actor=actor,
+            reason=reason,
+            selected_model=selected_model,
+        )
+
+    async def _build_control_result(
+        self,
+        *,
+        action: str,
+        actor: str | None,
+        reason: str | None,
+        requested_mode: str | None = None,
+        selected_model: RegisteredModel | None = None,
+    ) -> InferenceControlResult:
+        status = await self.status()
+        rollout = status.rollout
+        accepted = True
+        message = "inference rollout updated"
+        if action == "promote":
+            if rollout.effective_mode == "primary":
+                message = "inference rollout promoted to primary"
+            elif rollout.target_mode == "primary":
+                accepted = False
+                message = "primary rollout requested and held by promotion gates"
+        elif action == "rollback":
+            message = "inference rollout reverted to observe"
+        elif action == "activate_model":
+            message = "active inference model changed"
+        return InferenceControlResult(
+            accepted=accepted,
+            action=action,
+            message=message,
+            actor=actor,
+            reason=reason,
+            requested_mode=requested_mode,
+            selected_model=selected_model,
+            active_model=status.active_model,
+            rollout=rollout,
+            comparison=status.comparison,
+            audit=status.audit,
+            models=self._model_registry.list_models(),
+        )

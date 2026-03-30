@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { useInferenceOperationsModel } from '../inference-observability/useInferenceOperationsModel'
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
@@ -11,6 +12,7 @@ import {
 
 export function useHealthWorkspaceModel() {
   const { t } = useI18n()
+  const inferenceOperations = useInferenceOperationsModel()
   const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
   const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
@@ -40,6 +42,7 @@ export function useHealthWorkspaceModel() {
     domainStatus,
     persistenceStatus,
     inferenceDiagnostics,
+    inferenceOperations,
     workerItems,
     storeItems,
     diagnostics,

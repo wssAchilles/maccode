@@ -677,6 +677,23 @@ button {
   padding-top: 2px;
 }
 
+.inference-operations-panel {
+  align-content: start;
+}
+
+.inference-operations-actions {
+  justify-content: flex-start;
+}
+
+.inference-operation-alert {
+  margin-top: 6px;
+}
+
+.inference-reason-input {
+  min-height: 92px;
+  resize: vertical;
+}
+
 .empty-state,
 .empty-inline {
   padding: 18px;

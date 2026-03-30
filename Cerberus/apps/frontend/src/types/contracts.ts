@@ -163,7 +163,9 @@ export type InferenceComparisonPayload = {
 
 export type InferenceRolloutPayload = {
   configured_mode: string
+  target_mode: string
   effective_mode: string
+  override_active: boolean
   auto_promote_enabled: boolean
   force_primary: boolean
   promotion_eligible: boolean
@@ -192,6 +194,27 @@ export type InferenceStatusPayload = {
   rollout?: InferenceRolloutPayload
   comparison?: InferenceComparisonPayload
   audit?: InferenceAuditEvent[]
+}
+
+export type InferenceCatalogResponse = {
+  count: number
+  active_model?: InferenceModelDescriptor | null
+  models: InferenceModelDescriptor[]
+}
+
+export type InferenceControlResult = {
+  accepted: boolean
+  action: string
+  message: string
+  actor?: string | null
+  reason?: string | null
+  requested_mode?: string | null
+  selected_model?: InferenceModelDescriptor | null
+  active_model?: InferenceModelDescriptor | null
+  rollout?: InferenceRolloutPayload
+  comparison?: InferenceComparisonPayload
+  audit?: InferenceAuditEvent[]
+  models?: InferenceModelDescriptor[]
 }
 
 export type StrategySummaryResponse = {

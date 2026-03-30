@@ -76,7 +76,9 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
             ),
             rollout=InferenceRolloutSnapshot(
                 configured_mode="primary",
+                target_mode="primary",
                 effective_mode="observe",
+                override_active=False,
                 auto_promote_enabled=True,
                 force_primary=False,
                 promotion_eligible=False,

@@ -68,6 +68,20 @@ pub(crate) struct StrategySummaryQuery {
     pub(crate) orderbook_depth: Option<u16>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct InferenceActionRequest {
+    pub(crate) actor: Option<String>,
+    pub(crate) reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct InferenceActivateModelRequest {
+    pub(crate) model_id: String,
+    pub(crate) version: Option<String>,
+    pub(crate) actor: Option<String>,
+    pub(crate) reason: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct BinanceTestOrderRequest {
     pub(crate) symbol: String,

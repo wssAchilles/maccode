@@ -126,7 +126,9 @@ class InferenceComparisonSnapshot:
 @dataclass(frozen=True, slots=True)
 class InferenceRolloutSnapshot:
     configured_mode: str
+    target_mode: str
     effective_mode: str
+    override_active: bool
     auto_promote_enabled: bool
     force_primary: bool
     promotion_eligible: bool
@@ -146,7 +148,9 @@ class InferenceRolloutSnapshot:
     def to_dict(self) -> dict[str, Any]:
         return {
             "configured_mode": self.configured_mode,
+            "target_mode": self.target_mode,
             "effective_mode": self.effective_mode,
+            "override_active": self.override_active,
             "auto_promote_enabled": self.auto_promote_enabled,
             "force_primary": self.force_primary,
             "promotion_eligible": self.promotion_eligible,
@@ -165,10 +169,61 @@ class InferenceRolloutSnapshot:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class InferenceControlResult:
+    accepted: bool
+    action: str
+    message: str
+    actor: str | None = None
+    reason: str | None = None
+    requested_mode: str | None = None
+    selected_model: RegisteredModel | None = None
+    active_model: RegisteredModel | None = None
+    rollout: InferenceRolloutSnapshot = field(
+        default_factory=lambda: InferenceRolloutSnapshot(
+            configured_mode="disabled",
+            target_mode="disabled",
+            effective_mode="disabled",
+            override_active=False,
+            auto_promote_enabled=False,
+            force_primary=False,
+            promotion_eligible=False,
+        )
+    )
+    comparison: InferenceComparisonSnapshot = field(
+        default_factory=lambda: InferenceComparisonSnapshot(
+            observed_ticks=0,
+            compared_ticks=0,
+            agreement_count=0,
+            divergence_count=0,
+        )
+    )
+    audit: tuple[InferenceAuditEvent, ...] = ()
+    models: tuple[RegisteredModel, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "accepted": self.accepted,
+            "action": self.action,
+            "message": self.message,
+            "actor": self.actor,
+            "reason": self.reason,
+            "requested_mode": self.requested_mode,
+            "selected_model": None if self.selected_model is None else self.selected_model.to_dict(),
+            "active_model": None if self.active_model is None else self.active_model.to_dict(),
+            "rollout": self.rollout.to_dict(),
+            "comparison": self.comparison.to_dict(),
+            "audit": [item.to_dict() for item in self.audit],
+            "models": [item.to_dict() for item in self.models],
+        }
+
+
 class ModelRegistryPort(Protocol):
     def list_models(self) -> tuple[RegisteredModel, ...]: ...
 
     def active_model(self) -> RegisteredModel | None: ...
+
+    def activate_model(self, *, model_id: str, version: str | None = None) -> RegisteredModel: ...
 
 
 class InferenceRolloutStateStorePort(Protocol):
@@ -211,5 +266,21 @@ class InferenceRolloutPort(Protocol):
     def comparison(self) -> InferenceComparisonSnapshot: ...
 
     def recent_audit_events(self, *, limit: int = 10) -> tuple[InferenceAuditEvent, ...]: ...
+
+    async def set_target_mode(
+        self,
+        *,
+        target_mode: str,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None: ...
+
+    async def set_active_model(
+        self,
+        *,
+        model: RegisteredModel | None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None: ...
 
     async def flush(self) -> None: ...

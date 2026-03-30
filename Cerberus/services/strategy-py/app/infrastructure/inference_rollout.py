@@ -54,6 +54,7 @@ class RuntimeInferenceRolloutManager:
         self._force_primary = force_primary
         self._state_store = state_store
         self._persist_every_observations = max(persist_every_observations, 1)
+        self._target_mode = configured_mode
         self._observed_ticks = 0
         self._compared_ticks = 0
         self._agreement_count = 0
@@ -77,6 +78,7 @@ class RuntimeInferenceRolloutManager:
             f"inference rollout initialized in {self._effective_mode} mode",
             {
                 "configured_mode": self._configured_mode,
+                "target_mode": self._target_mode,
                 "effective_mode": self._effective_mode,
                 "force_primary": self._force_primary,
                 "model_id": self._active_model.model_id if self._active_model is not None else None,
@@ -193,10 +195,12 @@ class RuntimeInferenceRolloutManager:
         blockers = self._compute_blockers()
         return InferenceRolloutSnapshot(
             configured_mode=self._configured_mode,
+            target_mode=self._target_mode,
             effective_mode=self._effective_mode,
-            auto_promote_enabled=self._configured_mode == "primary" and not self._force_primary,
+            override_active=self._target_mode != self._configured_mode,
+            auto_promote_enabled=self._target_mode == "primary" and not self._force_primary,
             force_primary=self._force_primary,
-            promotion_eligible=not blockers if self._configured_mode == "primary" else False,
+            promotion_eligible=not blockers if self._target_mode == "primary" else False,
             state_backend=self._state_store.backend_name if self._state_store is not None else None,
             state_restored=self._state_restored,
             last_persisted_at=self._last_persisted_at,
@@ -237,15 +241,151 @@ class RuntimeInferenceRolloutManager:
     async def flush(self) -> None:
         await self._persist_state(force=True)
 
+    async def set_target_mode(
+        self,
+        *,
+        target_mode: str,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        normalized_target = target_mode.strip().lower()
+        if normalized_target not in {"observe", "primary", "disabled"}:
+            raise ValueError("target_mode must be one of: disabled, observe, primary")
+        if self._configured_mode == "disabled":
+            normalized_target = "disabled"
+
+        previous_target = self._target_mode
+        previous_mode = self._effective_mode
+        if previous_target == normalized_target:
+            self._append_audit(
+                "rollout_target_noop",
+                f"inference rollout target already {normalized_target}",
+                {
+                    "actor": actor,
+                    "reason": reason,
+                    "target_mode": normalized_target,
+                },
+            )
+            await self._persist_state(force=True)
+            return
+
+        self._target_mode = normalized_target
+        self._last_blockers = tuple(self._compute_blockers())
+        next_mode = self._resolve_effective_mode(current_blockers=self._last_blockers)
+        self._append_audit(
+            "rollout_target_changed",
+            f"inference rollout target changed from {previous_target} to {normalized_target}",
+            {
+                "actor": actor,
+                "reason": reason,
+                "from_target_mode": previous_target,
+                "to_target_mode": normalized_target,
+                "override_active": normalized_target != self._configured_mode,
+            },
+        )
+        if previous_mode != next_mode:
+            self._effective_mode = next_mode
+            self._last_transition_at = _utc_now_iso()
+            self._append_audit(
+                "rollout_transition",
+                f"inference rollout transitioned from {previous_mode} to {next_mode}",
+                {
+                    "actor": actor,
+                    "reason": reason,
+                    "from": previous_mode,
+                    "to": next_mode,
+                    "compared_ticks": self._compared_ticks,
+                    "agreement_ratio": self._agreement_ratio(),
+                },
+                created_at=self._last_transition_at,
+            )
+        elif normalized_target == "primary" and self._last_blockers:
+            self._append_audit(
+                "rollout_holdback",
+                "primary rollout held back until promotion gates pass",
+                {
+                    "actor": actor,
+                    "reason": reason,
+                    "blockers": list(self._last_blockers),
+                },
+            )
+        await self._persist_state(force=True)
+
+    async def set_active_model(
+        self,
+        *,
+        model: RegisteredModel | None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        previous_model = self._active_model
+        previous_key = _model_key(previous_model)
+        next_key = _model_key(model)
+        if previous_key == next_key:
+            self._append_audit(
+                "model_activation_noop",
+                "active inference model already selected",
+                {
+                    "actor": actor,
+                    "reason": reason,
+                    "model_id": model.model_id if model is not None else None,
+                    "version": model.version if model is not None else None,
+                },
+            )
+            await self._persist_state(force=True)
+            return
+
+        previous_mode = self._effective_mode
+        self._active_model = model
+        self._observed_ticks = 0
+        self._compared_ticks = 0
+        self._agreement_count = 0
+        self._divergence_count = 0
+        self._rule_signal_counts.clear()
+        self._inference_signal_counts.clear()
+        self._symbol_counters.clear()
+        self._emitted_milestones.clear()
+        self._dirty_observations = 0
+        self._last_blockers = tuple(self._compute_blockers())
+        self._effective_mode = self._resolve_effective_mode(current_blockers=self._last_blockers)
+        self._last_transition_at = _utc_now_iso()
+        self._append_audit(
+            "active_model_changed",
+            "active inference model changed and rollout comparison counters reset",
+            {
+                "actor": actor,
+                "reason": reason,
+                "previous_model_id": previous_model.model_id if previous_model is not None else None,
+                "previous_version": previous_model.version if previous_model is not None else None,
+                "model_id": model.model_id if model is not None else None,
+                "version": model.version if model is not None else None,
+            },
+            created_at=self._last_transition_at,
+        )
+        if previous_mode != self._effective_mode:
+            self._append_audit(
+                "rollout_transition",
+                f"inference rollout transitioned from {previous_mode} to {self._effective_mode}",
+                {
+                    "actor": actor,
+                    "reason": reason,
+                    "from": previous_mode,
+                    "to": self._effective_mode,
+                    "reason_code": "active_model_changed",
+                },
+                created_at=self._last_transition_at,
+            )
+        await self._persist_state(force=True)
+
     def _initial_effective_mode(self) -> str:
         if self._configured_mode == "disabled":
             return "disabled"
         return self._resolve_effective_mode(current_blockers=tuple(self._compute_blockers()))
 
     def _resolve_effective_mode(self, *, current_blockers: tuple[str, ...] | None = None) -> str:
-        if self._configured_mode == "disabled":
+        if self._target_mode == "disabled" or self._configured_mode == "disabled":
             return "disabled"
-        if self._configured_mode == "observe":
+        if self._target_mode == "observe":
             return "observe"
         if self._force_primary:
             return "primary"
@@ -253,7 +393,7 @@ class RuntimeInferenceRolloutManager:
         return "primary" if not blockers else "observe"
 
     def _compute_blockers(self) -> list[str]:
-        if self._configured_mode != "primary":
+        if self._target_mode != "primary":
             return []
         blockers: list[str] = []
         if self._active_model is None:
@@ -343,6 +483,7 @@ class RuntimeInferenceRolloutManager:
         return {
             "schema_version": 1,
             "configured_mode": self._configured_mode,
+            "target_mode": self._target_mode,
             "force_primary": self._force_primary,
             "active_model": {
                 "model_id": self._active_model.model_id if self._active_model is not None else None,
@@ -391,6 +532,10 @@ class RuntimeInferenceRolloutManager:
 
         self._started_at = str(payload.get("started_at", self._started_at))
         self._last_transition_at = str(payload.get("last_transition_at", self._last_transition_at))
+        restored_target_mode = str(payload.get("target_mode", self._configured_mode)).lower()
+        if restored_target_mode not in {"observe", "primary", "disabled"}:
+            return "target_mode_invalid"
+        self._target_mode = restored_target_mode
         restored_effective_mode = str(payload.get("effective_mode", self._effective_mode))
         self._observed_ticks = max(int(payload.get("observed_ticks", 0)), 0)
         self._compared_ticks = max(int(payload.get("compared_ticks", 0)), 0)
@@ -481,3 +626,9 @@ def _comparison_milestone(compared_ticks: int) -> int | None:
     if compared_ticks > milestones[-1] and compared_ticks % 1000 == 0:
         return compared_ticks
     return None
+
+
+def _model_key(model: RegisteredModel | None) -> str | None:
+    if model is None:
+        return None
+    return f"{model.model_id}:{model.version}"

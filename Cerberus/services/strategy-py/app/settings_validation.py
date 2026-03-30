@@ -44,6 +44,13 @@ def validate_runtime_settings() -> None:
             errors.append(
                 "inference_model_source=gcs requires INFERENCE_ARTIFACT_GCS_URI"
             )
+    if settings.inference_registry_gcs_uris.strip():
+        for raw_uri in settings.inference_registry_gcs_uris.split(","):
+            uri = raw_uri.strip()
+            if not uri:
+                continue
+            if not uri.startswith("gs://"):
+                errors.append("inference_registry_gcs_uris entries must start with gs://")
     if not 0.0 <= settings.inference_primary_min_macro_f1 <= 1.0:
         errors.append("inference_primary_min_macro_f1 must be between 0 and 1")
     if settings.inference_primary_min_observe_ticks < 0:

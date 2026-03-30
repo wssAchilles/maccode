@@ -21,3 +21,26 @@ class InferenceService:
 
     def audit(self, *, limit: int = 20) -> dict[str, object]:
         return self._application.audit(limit=limit)
+
+    async def promote(self, *, actor: str | None = None, reason: str | None = None) -> dict[str, object]:
+        return (await self._application.promote(actor=actor, reason=reason)).to_dict()
+
+    async def rollback(self, *, actor: str | None = None, reason: str | None = None) -> dict[str, object]:
+        return (await self._application.rollback(actor=actor, reason=reason)).to_dict()
+
+    async def activate_model(
+        self,
+        *,
+        model_id: str,
+        version: str | None = None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> dict[str, object]:
+        return (
+            await self._application.activate_model(
+                model_id=model_id,
+                version=version,
+                actor=actor,
+                reason=reason,
+            )
+        ).to_dict()

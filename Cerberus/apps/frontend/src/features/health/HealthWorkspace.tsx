@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
+import { InferenceOperationsPanel } from '../inference-observability/components/InferenceOperationsPanel'
 
 type Props = {
   active?: boolean
@@ -37,6 +38,16 @@ export function HealthWorkspace({ active: _active = true }: Props) {
 
         <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
           <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
+          <InferenceOperationsPanel
+            model={model.inferenceOperations.model}
+            reason={model.inferenceOperations.reason}
+            selectedModelId={model.inferenceOperations.selectedModelId}
+            onReasonChange={model.inferenceOperations.setReason}
+            onSelectedModelIdChange={model.inferenceOperations.setSelectedModelId}
+            onPromote={model.inferenceOperations.onPromote}
+            onRollback={model.inferenceOperations.onRollback}
+            onActivate={model.inferenceOperations.onActivate}
+          />
         </SectionFrame>
       </div>
 

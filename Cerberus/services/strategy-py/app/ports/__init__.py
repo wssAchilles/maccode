@@ -2,6 +2,7 @@ from app.ports.execution import ExecutionGatewayPort
 from app.ports.inference import (
     InferenceAuditEvent,
     InferenceComparisonSnapshot,
+    InferenceControlResult,
     InferenceDecision,
     InferenceEnginePort,
     InferenceEngineStatus,
@@ -34,6 +35,7 @@ __all__ = [
     "ExecutionGatewayPort",
     "InferenceAuditEvent",
     "InferenceComparisonSnapshot",
+    "InferenceControlResult",
     "InferenceDecision",
     "InferenceEnginePort",
     "InferenceEngineStatus",

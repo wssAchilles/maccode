@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     inference_model_symbols: str = ""
     inference_artifact_folder_url: str = ""
     inference_artifact_gcs_uri: str = ""
+    inference_registry_gcs_uris: str = ""
     inference_artifact_cache_dir: str = "/tmp/cerberus-inference"
     inference_primary_min_macro_f1: float = 0.58
     inference_primary_min_observe_ticks: int = 500

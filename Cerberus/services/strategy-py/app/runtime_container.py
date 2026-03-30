@@ -66,8 +66,8 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     signal_store_status = SignalStoreStatusAdapter(signal_store)
     matching_gateway = MatchingGatewayAdapter(worker.matching_client)
     matching_observability = MatchingObservabilityAdapter(matching_gateway)
-    loaded_artifacts = _load_inference_artifacts()
-    inference_registry = _build_inference_registry(loaded_artifacts)
+    loaded_artifacts_catalog = _load_inference_artifact_catalog()
+    inference_registry = _build_inference_registry(loaded_artifacts_catalog)
     active_model = inference_registry.active_model()
     inference_rollout = RuntimeInferenceRolloutManager(
         configured_mode=settings.inference_mode,
@@ -89,12 +89,11 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         persist_every_observations=settings.inference_rollout_persist_every_observations,
     )
     if settings.inference_enabled and active_model is not None:
-        if loaded_artifacts is not None:
+        if loaded_artifacts_catalog:
             inference_engine = OnnxInferenceEngine(
                 engine_name=active_model.metadata.get("engine_name", settings.inference_engine_name),
                 mode=settings.inference_mode,
-                model=active_model,
-                artifacts=loaded_artifacts,
+                registry=inference_registry,
             )
         else:
             inference_engine = MovingAverageInferenceEngine(
@@ -163,46 +162,63 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     )
 
 
-def _load_inference_artifacts() -> LoadedInferenceArtifacts | None:
+def _load_inference_artifact_catalog() -> tuple[LoadedInferenceArtifacts, ...]:
     if not settings.inference_enabled:
-        return None
-    if settings.inference_model_source == "google_drive":
-        loader = PublicGoogleDriveArtifactLoader(
-            folder_url=settings.inference_artifact_folder_url,
-            cache_dir=settings.inference_artifact_cache_dir,
+        return ()
+
+    loaders: list[object] = []
+    if settings.inference_model_source == "google_drive" and settings.inference_artifact_folder_url.strip():
+        loaders.append(
+            PublicGoogleDriveArtifactLoader(
+                folder_url=settings.inference_artifact_folder_url,
+                cache_dir=settings.inference_artifact_cache_dir,
+            )
         )
-    elif settings.inference_model_source == "gcs":
-        loader = GcsArtifactLoader(
-            gcs_uri=settings.inference_artifact_gcs_uri,
-            cache_dir=settings.inference_artifact_cache_dir,
+    if settings.inference_model_source == "gcs" and settings.inference_artifact_gcs_uri.strip():
+        loaders.append(
+            GcsArtifactLoader(
+                gcs_uri=settings.inference_artifact_gcs_uri,
+                cache_dir=settings.inference_artifact_cache_dir,
+            )
         )
-    else:
-        return None
-    return loader.load()
+
+    seen_uris = {settings.inference_artifact_gcs_uri.strip()}
+    for raw_uri in settings.inference_registry_gcs_uris.split(","):
+        uri = raw_uri.strip()
+        if not uri or uri in seen_uris:
+            continue
+        seen_uris.add(uri)
+        loaders.append(
+            GcsArtifactLoader(
+                gcs_uri=uri,
+                cache_dir=settings.inference_artifact_cache_dir,
+            )
+        )
+
+    loaded: list[LoadedInferenceArtifacts] = []
+    for loader in loaders:
+        loaded.append(loader.load())
+    return tuple(loaded)
 
 
-def _build_inference_registry(loaded_artifacts: LoadedInferenceArtifacts | None) -> StaticModelRegistry:
+def _build_inference_registry(
+    loaded_artifacts_catalog: tuple[LoadedInferenceArtifacts, ...],
+) -> StaticModelRegistry:
     if not settings.inference_enabled:
         return StaticModelRegistry(models=())
-    if loaded_artifacts is not None:
-        manifest = loaded_artifacts.manifest
-        model = RegisteredModel(
-            model_id=str(manifest.get("model_id", settings.inference_model_id)),
-            version=str(manifest.get("model_version", settings.inference_model_version)),
-            source=str(manifest.get("model_source", settings.inference_model_source)),
-            task=str(manifest.get("task", "signal_inference")),
-            symbols=tuple(str(item) for item in manifest.get("symbols", [])),
-            metadata={
-                "engine_name": str(manifest.get("engine_name", settings.inference_engine_name)),
-                "lookback": int(manifest.get("lookback", 0)),
-                "horizon": int(manifest.get("horizon", 0)),
-                "feature_columns": list(manifest.get("feature_columns", [])),
-                "feature_count": len(manifest.get("feature_columns", [])),
-                "best_macro_f1": float(loaded_artifacts.metrics.get("best_macro_f1", 0.0)),
-                "artifact_cache_dir": str(loaded_artifacts.cache_dir),
-            },
+    if loaded_artifacts_catalog:
+        models: list[RegisteredModel] = []
+        artifacts_by_key: dict[str, LoadedInferenceArtifacts] = {}
+        for loaded_artifacts in loaded_artifacts_catalog:
+            model = _registered_model_from_artifacts(loaded_artifacts)
+            models.append(model)
+            artifacts_by_key[f"{model.model_id}:{model.version}"] = loaded_artifacts
+        return StaticModelRegistry(
+            models=tuple(models),
+            active_model_id=settings.inference_model_id,
+            active_model_version=settings.inference_model_version,
+            artifacts=artifacts_by_key,
         )
-        return StaticModelRegistry(models=(model,), active_model_id=model.model_id)
     symbols = tuple(
         item.strip()
         for item in settings.inference_model_symbols.split(",")
@@ -221,4 +237,25 @@ def _build_inference_registry(loaded_artifacts: LoadedInferenceArtifacts | None)
     return StaticModelRegistry(
         models=(model,),
         active_model_id=model.model_id,
+        active_model_version=model.version,
+    )
+
+
+def _registered_model_from_artifacts(loaded_artifacts: LoadedInferenceArtifacts) -> RegisteredModel:
+    manifest = loaded_artifacts.manifest
+    return RegisteredModel(
+        model_id=str(manifest.get("model_id", settings.inference_model_id)),
+        version=str(manifest.get("model_version", settings.inference_model_version)),
+        source=str(manifest.get("model_source", settings.inference_model_source)),
+        task=str(manifest.get("task", "signal_inference")),
+        symbols=tuple(str(item) for item in manifest.get("symbols", [])),
+        metadata={
+            "engine_name": str(manifest.get("engine_name", settings.inference_engine_name)),
+            "lookback": int(manifest.get("lookback", 0)),
+            "horizon": int(manifest.get("horizon", 0)),
+            "feature_columns": list(manifest.get("feature_columns", [])),
+            "feature_count": len(manifest.get("feature_columns", [])),
+            "best_macro_f1": float(loaded_artifacts.metrics.get("best_macro_f1", 0.0)),
+            "artifact_cache_dir": str(loaded_artifacts.cache_dir),
+        },
     )

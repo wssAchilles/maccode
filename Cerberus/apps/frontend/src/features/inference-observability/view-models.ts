@@ -1,7 +1,9 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type {
   InferenceAuditEvent,
+  InferenceCatalogResponse,
   InferenceComparisonPayload,
+  InferenceControlResult,
   InferenceModelDescriptor,
   InferenceRolloutPayload,
   InferenceStatusPayload,
@@ -64,9 +66,38 @@ export type InferenceDiagnosticsModel = {
   auditTimeline: InferenceAuditTimelineEntry[]
 }
 
+export type InferenceModelOption = {
+  id: string
+  label: string
+  active: boolean
+}
+
+export type InferenceOperationsModel = {
+  state: LoadState
+  stateLabel: string
+  targetModeLabel: string
+  effectiveModeLabel: string
+  summary: string
+  blockers: string[]
+  pendingAction?: string
+  statusMessage?: string
+  statusTone?: 'default' | 'accent' | 'danger'
+  canPromote: boolean
+  canRollback: boolean
+  canActivateModel: boolean
+  selectedModelId: string
+  modelOptions: InferenceModelOption[]
+}
+
 type InferenceModelParams = {
   t: Translate
   inferenceStatus?: InferenceStatusPayload
+}
+
+type InferenceOperationsParams = InferenceModelParams & {
+  catalog?: InferenceCatalogResponse
+  lastResult?: InferenceControlResult
+  selectedModelId: string
 }
 
 const MODE_LABELS: Record<string, TranslationKey> = {
@@ -93,6 +124,10 @@ const AUDIT_EVENT_LABELS: Record<string, TranslationKey> = {
   rollout_resumed: 'workspace.inference.auditEvent.rolloutResumed',
   rollout_restore_skipped: 'workspace.inference.auditEvent.rolloutRestoreSkipped',
   rollout_state_degraded: 'workspace.inference.auditEvent.rolloutStateDegraded',
+  rollout_target_changed: 'workspace.inference.auditEvent.rolloutTargetChanged',
+  rollout_target_noop: 'workspace.inference.auditEvent.rolloutTargetNoop',
+  active_model_changed: 'workspace.inference.auditEvent.activeModelChanged',
+  model_activation_noop: 'workspace.inference.auditEvent.modelActivationNoop',
 }
 
 function resolveLoadState(inferenceStatus?: InferenceStatusPayload): LoadState {
@@ -559,5 +594,57 @@ export function buildInferenceDiagnosticsModel({
     signalDistributions: buildSignalDistribution(t, comparison),
     symbolComparisons: buildSymbolComparisons(t, comparison),
     auditTimeline: buildAuditTimeline(t, inferenceStatus?.audit),
+  }
+}
+
+export function buildInferenceOperationsModel({
+  t,
+  inferenceStatus,
+  catalog,
+  lastResult,
+  selectedModelId,
+}: InferenceOperationsParams): InferenceOperationsModel {
+  const state = resolveLoadState(inferenceStatus)
+  const stateLabel = resolveStateLabel(t, state, inferenceStatus)
+  const rollout = inferenceStatus?.rollout
+  const targetMode = rollout?.target_mode ?? inferenceStatus?.mode
+  const effectiveMode = rollout?.effective_mode ?? inferenceStatus?.mode
+  const activeModel = catalog?.active_model ?? inferenceStatus?.active_model ?? null
+  const blockers = rollout?.blockers?.map((blocker) => translateBlocker(t, blocker)) ?? []
+  const modelOptions = (catalog?.models ?? []).map((model) => {
+    const id = `${model.model_id}:${model.version}`
+    const active =
+      activeModel?.model_id === model.model_id && activeModel?.version === model.version
+    return {
+      id,
+      label: `${model.model_id} · ${model.version}`,
+      active,
+    }
+  })
+  const statusTone =
+    lastResult == null
+      ? undefined
+      : lastResult.accepted
+        ? 'accent'
+        : 'danger'
+
+  return {
+    state,
+    stateLabel,
+    targetModeLabel: formatMode(t, targetMode),
+    effectiveModeLabel: formatMode(t, effectiveMode),
+    summary: modelSummary(t, activeModel),
+    blockers,
+    pendingAction: undefined,
+    statusMessage: lastResult?.message,
+    statusTone,
+    canPromote: state === 'ready' && targetMode !== 'primary',
+    canRollback: state !== 'idle' && targetMode !== 'observe',
+    canActivateModel:
+      modelOptions.length > 1 &&
+      selectedModelId.trim().length > 0 &&
+      selectedModelId !== `${activeModel?.model_id ?? ''}:${activeModel?.version ?? ''}`,
+    selectedModelId,
+    modelOptions,
   }
 }

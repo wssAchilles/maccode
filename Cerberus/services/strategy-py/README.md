@@ -64,6 +64,7 @@ Optional research / inference baseline:
 - `INFERENCE_MODEL_SYMBOLS=BTCUSDT,ETHUSDT`
 - `INFERENCE_ARTIFACT_FOLDER_URL=` (required when `INFERENCE_MODEL_SOURCE=google_drive`)
 - `INFERENCE_ARTIFACT_GCS_URI=` (required when `INFERENCE_MODEL_SOURCE=gcs`)
+- `INFERENCE_REGISTRY_GCS_URIS=` (optional comma-separated additional model prefixes for multi-model registry)
 - `INFERENCE_ARTIFACT_CACHE_DIR=/tmp/cerberus-inference`
 - `INFERENCE_PRIMARY_MIN_MACRO_F1=0.58`
 - `INFERENCE_PRIMARY_MIN_OBSERVE_TICKS=500`
@@ -109,6 +110,54 @@ GCS artifact-backed inference:
   - run online ONNX inference over the live tick stream
   - persist rollout/comparison/audit state in Redis when `INFERENCE_ROLLOUT_STATE_ENABLED=true`
   - restore rollout/comparison/audit state after Cloud Run instance restarts when the configured model identity still matches
+
+Multi-model registry:
+
+- Use `INFERENCE_ARTIFACT_GCS_URI` for the default active model prefix.
+- Use `INFERENCE_REGISTRY_GCS_URIS` for additional candidate model prefixes, comma separated.
+- Each prefix must contain a complete `best_model` artifact set:
+  - `artifact_manifest.json`
+  - `training_metrics.json`
+  - `cerberus_signal_model.onnx`
+  - `preprocessing.json` (preferred)
+- Active model identity is resolved from:
+  - `INFERENCE_MODEL_ID`
+  - `INFERENCE_MODEL_VERSION`
+- If the configured active identity is missing from the registry, startup falls back to the first registered model and exposes the effective identity through `/api/v1/inference/status`.
+
+Phase 4C controlled rollout:
+
+- Runtime now separates:
+  - `configured_mode`: the requested operational intent from environment or operator action
+  - `target_mode`: the current promotion target tracked by rollout control
+  - `effective_mode`: the actual decision mode after rollout gates and blockers are applied
+- `observe -> primary` is gated by:
+  - offline `best_macro_f1`
+  - minimum observed/comparison tick count
+  - minimum agreement ratio between inference and baseline decisions
+- Rollout state is persisted to Redis when `INFERENCE_ROLLOUT_STATE_ENABLED=true`, including:
+  - comparison counters
+  - symbol-level comparison summary
+  - audit timeline
+  - target/effective mode
+  - active model identity
+- On startup, rollout state is restored only when the configured rollout mode and active model identity still match the persisted snapshot; otherwise restore is skipped and an audit event is emitted.
+
+Operator control endpoints:
+
+- `POST /api/v1/inference/rollout/promote`
+  - body: `{ "reason": "operator note" }`
+- `POST /api/v1/inference/rollout/rollback`
+  - body: `{ "reason": "operator note" }`
+- `POST /api/v1/inference/models/activate`
+  - body: `{ "model_id": "cerberus-transformer-lstm", "version": "v2", "reason": "operator note" }`
+
+Control-plane behavior:
+
+- Promotion does not bypass rollout gates; it changes the rollout target to `primary`, recomputes blockers, and records an audit event.
+- Rollback changes the rollout target back to `observe`, clears the effective primary state, and records an audit event.
+- Active-model changes reset comparison counters, symbol-level comparison state, and promotion readiness so the newly activated model must re-earn promotion.
+- All control actions return an accepted/rejected result payload and append to the audit timeline consumed by `/api/v1/inference/status` and `/api/v1/summary`.
 
 Market subscriptions:
 

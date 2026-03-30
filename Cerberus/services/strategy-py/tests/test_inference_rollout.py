@@ -46,6 +46,7 @@ async def test_rollout_manager_holds_primary_until_promotion_gates_pass() -> Non
 
     assert manager.effective_mode() == "observe"
     assert "insufficient_observe_ticks" in manager.snapshot().blockers
+    assert manager.snapshot().target_mode == "primary"
 
     await manager.record_observation(
         symbol="BTCUSDT",
@@ -232,3 +233,112 @@ async def test_rollout_manager_skips_restore_when_model_identity_changes() -> No
     events = manager.recent_audit_events(limit=5)
     assert any(event.event_type == "rollout_restore_skipped" for event in events)
     assert manager.snapshot().state_restored is False
+
+
+@pytest.mark.asyncio
+async def test_rollout_manager_allows_manual_promotion_request_from_observe_mode() -> None:
+    manager = RuntimeInferenceRolloutManager(
+        configured_mode="observe",
+        active_model=_active_model(macro_f1=0.61),
+        started_at=1_711_767_200.0,
+        required_macro_f1=0.6,
+        required_observe_ticks=5,
+        required_agreement_ratio=0.5,
+        force_primary=False,
+    )
+
+    await manager.set_target_mode(
+        target_mode="primary",
+        actor="operator@example.com",
+        reason="request controlled promotion",
+    )
+
+    snapshot = manager.snapshot()
+    events = manager.recent_audit_events(limit=10)
+
+    assert snapshot.configured_mode == "observe"
+    assert snapshot.target_mode == "primary"
+    assert snapshot.override_active is True
+    assert snapshot.effective_mode == "observe"
+    assert any(event.event_type == "rollout_target_changed" for event in events)
+    assert any(event.event_type == "rollout_holdback" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_rollout_manager_rolls_back_to_observe_and_clears_primary_effective_mode() -> None:
+    manager = RuntimeInferenceRolloutManager(
+        configured_mode="primary",
+        active_model=_active_model(macro_f1=0.61),
+        started_at=1_711_767_200.0,
+        required_macro_f1=0.6,
+        required_observe_ticks=1,
+        required_agreement_ratio=0.5,
+        force_primary=False,
+    )
+    await manager.record_observation(
+        symbol="BTCUSDT",
+        rule_signal="BUY",
+        inference_decision=InferenceDecision(
+            strategy_id="inference",
+            signal="BUY",
+            confidence=0.9,
+            engine="cerberus_signal_transformer_lstm",
+        ),
+    )
+    assert manager.effective_mode() == "primary"
+
+    await manager.set_target_mode(
+        target_mode="observe",
+        actor="operator@example.com",
+        reason="safety rollback",
+    )
+
+    snapshot = manager.snapshot()
+    assert snapshot.target_mode == "observe"
+    assert snapshot.override_active is True
+    assert snapshot.effective_mode == "observe"
+
+
+@pytest.mark.asyncio
+async def test_rollout_manager_resets_comparison_counters_when_active_model_changes() -> None:
+    manager = RuntimeInferenceRolloutManager(
+        configured_mode="primary",
+        active_model=_active_model(macro_f1=0.61),
+        started_at=1_711_767_200.0,
+        required_macro_f1=0.6,
+        required_observe_ticks=1,
+        required_agreement_ratio=0.5,
+        force_primary=False,
+    )
+    await manager.record_observation(
+        symbol="BTCUSDT",
+        rule_signal="BUY",
+        inference_decision=InferenceDecision(
+            strategy_id="inference",
+            signal="BUY",
+            confidence=0.9,
+            engine="cerberus_signal_transformer_lstm",
+        ),
+    )
+    assert manager.comparison().compared_ticks == 1
+
+    await manager.set_active_model(
+        model=RegisteredModel(
+            model_id="cerberus-transformer-lstm",
+            version="v2",
+            source="gcs",
+            symbols=("BTCUSDT", "ETHUSDT"),
+            metadata={"best_macro_f1": 0.67},
+        ),
+        actor="operator@example.com",
+        reason="promote better candidate",
+    )
+
+    snapshot = manager.snapshot()
+    comparison = manager.comparison()
+    events = manager.recent_audit_events(limit=10)
+
+    assert comparison.compared_ticks == 0
+    assert comparison.observed_ticks == 0
+    assert snapshot.current_macro_f1 == pytest.approx(0.67)
+    assert any(event.event_type == "active_model_changed" for event in events)

@@ -23,6 +23,9 @@ describe('strategy summary slice', () => {
         persistence_status: undefined,
         matching_orderbook: undefined,
         inference_status: undefined,
+        inference_catalog: undefined,
+        inference_last_result: undefined,
+        inference_pending_action: undefined,
         last_error: undefined,
       },
     }))
@@ -69,7 +72,9 @@ describe('strategy summary slice', () => {
             metadata: { lookback: 256 },
             rollout: {
               configured_mode: 'primary',
+              target_mode: 'primary',
               effective_mode: 'observe',
+              override_active: false,
               auto_promote_enabled: true,
               force_primary: false,
               promotion_eligible: false,

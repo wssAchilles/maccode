@@ -3,6 +3,8 @@ import type {
   AppError,
   BinanceRule,
   Candle,
+  InferenceCatalogResponse,
+  InferenceControlResult,
   InferenceStatusPayload,
   MarketMessage,
   MatchingOrderBook,
@@ -65,10 +67,17 @@ export type StrategySummarySlice = {
     persistence_status?: PersistenceStatus
     matching_orderbook?: MatchingOrderBook
     inference_status?: InferenceStatusPayload
+    inference_catalog?: InferenceCatalogResponse
+    inference_last_result?: InferenceControlResult
+    inference_pending_action?: string
     last_error?: AppError
   }
   strategySummaryActions: {
     refreshSummary: () => Promise<void>
+    loadInferenceCatalog: () => Promise<void>
+    requestInferencePromotion: (reason?: string) => Promise<void>
+    requestInferenceRollback: (reason?: string) => Promise<void>
+    activateInferenceModel: (modelId: string, version?: string, reason?: string) => Promise<void>
   }
 }
 

@@ -21,6 +21,47 @@ describe('inference observability module', () => {
       ...state,
       strategySummary: {
         ...state.strategySummary,
+        inference_catalog: {
+          count: 2,
+          active_model: {
+            model_id: 'cerberus-transformer-lstm',
+            version: 'v1',
+            source: 'gcs',
+            task: 'signal_inference',
+            symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
+            metadata: {
+              best_macro_f1: 0.5001,
+              lookback: 256,
+              horizon: 32,
+            },
+          },
+          models: [
+            {
+              model_id: 'cerberus-transformer-lstm',
+              version: 'v1',
+              source: 'gcs',
+              task: 'signal_inference',
+              symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
+              metadata: {
+                best_macro_f1: 0.5001,
+                lookback: 256,
+                horizon: 32,
+              },
+            },
+            {
+              model_id: 'cerberus-transformer-lstm',
+              version: 'v2',
+              source: 'gcs',
+              task: 'signal_inference',
+              symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
+              metadata: {
+                best_macro_f1: 0.621,
+                lookback: 256,
+                horizon: 32,
+              },
+            },
+          ],
+        },
         inference_status: {
           enabled: true,
           ready: true,
@@ -31,7 +72,9 @@ describe('inference observability module', () => {
           },
           rollout: {
             configured_mode: 'primary',
+            target_mode: 'primary',
             effective_mode: 'observe',
+            override_active: false,
             auto_promote_enabled: true,
             force_primary: false,
             promotion_eligible: false,
@@ -132,7 +175,9 @@ describe('inference observability module', () => {
         metadata: {},
         rollout: {
           configured_mode: 'primary',
+          target_mode: 'primary',
           effective_mode: 'observe',
+          override_active: false,
           auto_promote_enabled: true,
           force_primary: false,
           promotion_eligible: false,
@@ -197,5 +242,8 @@ describe('inference observability module', () => {
     expect(screen.getAllByText(/状态后端|State backend/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/标的级对照|Symbol-level comparison/i)).toBeTruthy()
     expect(screen.getByText(/审计时间线|Audit timeline/i)).toBeTruthy()
+    expect(screen.getByText(/受控操作|Controlled operations/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /申请晋升为 Primary|Request primary promotion/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /回退到 Observe|Rollback to observe/i })).toBeTruthy()
   })
 })
