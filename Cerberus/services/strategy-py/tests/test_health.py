@@ -32,6 +32,25 @@ def test_ready_endpoint_shape() -> None:
     assert "reasons" in payload
 
 
+def test_inference_status_endpoint_shape() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/inference/status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "enabled" in payload
+    assert "engine" in payload
+    assert "active_model" in payload
+
+
+def test_inference_models_endpoint_shape() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/inference/models")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "count" in payload
+    assert "models" in payload
+
+
 def test_optimize_validation() -> None:
     client = TestClient(app)
     payload = {

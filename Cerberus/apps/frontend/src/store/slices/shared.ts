@@ -3,6 +3,7 @@ import type {
   AppError,
   BinanceRule,
   Candle,
+  InferenceStatusPayload,
   MarketMessage,
   MatchingOrderBook,
   OrderTimelineEvent,
@@ -63,6 +64,7 @@ export type StrategySummarySlice = {
     recent_signals: SignalRecord[]
     persistence_status?: PersistenceStatus
     matching_orderbook?: MatchingOrderBook
+    inference_status?: InferenceStatusPayload
     last_error?: AppError
   }
   strategySummaryActions: {

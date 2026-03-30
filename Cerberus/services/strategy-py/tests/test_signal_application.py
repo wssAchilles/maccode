@@ -26,6 +26,9 @@ class FakeSignalRuntime:
         )
         return signal, "sig-001"
 
+    def build_signal_id(self, tick: TickEvent, signal: Signal) -> str:
+        return f"{signal.strategy_id}:{signal.symbol}:{tick.event_time}:{signal.signal}"
+
     def store_current_signal(self, signal: Signal) -> None:
         self.stored_signal = signal
 
@@ -78,6 +81,52 @@ class FakeSignalPublisher:
         if self.should_fail:
             raise RuntimeError("publisher failed")
         self.published.append(signal)
+
+
+class FakeInferenceEngine:
+    def __init__(
+        self,
+        *,
+        signal: str = "SELL",
+        confidence: float = 0.91,
+        engine: str = "shadow-model",
+    ) -> None:
+        self.signal = signal
+        self.confidence = confidence
+        self.engine = engine
+        self.calls: list[TickEvent] = []
+
+    async def infer_signal(
+        self,
+        *,
+        symbol: str,
+        price: float,
+        quantity: float,
+        event_time: str,
+    ):
+        tick = TickEvent(
+            symbol=symbol,
+            price=price,
+            quantity=quantity,
+            event_time=event_time,
+        )
+        self.calls.append(tick)
+        return type(
+            "InferenceDecisionValue",
+            (),
+            {
+                "strategy_id": "inference",
+                "signal": self.signal,
+                "confidence": self.confidence,
+                "engine": self.engine,
+                "model_id": "model-001",
+                "model_version": "v1",
+                "metadata": {"source": "test"},
+            },
+        )()
+
+    async def status(self):
+        raise AssertionError("status should not be used in signal application tests")
 
 
 def _sample_tick() -> TickEvent:
@@ -165,3 +214,56 @@ async def test_signal_application_releases_claim_when_publisher_fails() -> None:
     assert claims.claimed_ids == ["sig-001"]
     assert claims.released_ids == ["sig-001"]
     assert len(event_flow.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_signal_application_uses_inference_as_primary_when_enabled() -> None:
+    runtime = FakeSignalRuntime()
+    claims = FakeSignalClaims()
+    event_flow = FakeSignalEventFlow()
+    publisher = FakeSignalPublisher()
+    inference = FakeInferenceEngine(signal="SELL", confidence=0.91, engine="moving_average_baseline")
+    service = SignalApplicationService(
+        runtime=runtime,
+        signal_store=FakeSignalStore(),
+        signal_claims=claims,
+        event_flow=event_flow,
+        publishers=(publisher,),
+        inference_engine=inference,
+        inference_mode="primary",
+    )
+
+    decision = await service.ingest_tick(_sample_tick())
+
+    assert decision.signal.signal == "SELL"
+    assert decision.signal.strategy_id == "inference"
+    assert decision.context.engine == "moving_average_baseline"
+    assert decision.context.metadata["decision_source"] == "inference"
+    assert runtime.stored_signal is not None
+    assert runtime.stored_signal.signal == "SELL"
+    assert inference.calls
+
+
+@pytest.mark.asyncio
+async def test_signal_application_keeps_rule_signal_when_inference_is_observe_only() -> None:
+    runtime = FakeSignalRuntime()
+    claims = FakeSignalClaims()
+    event_flow = FakeSignalEventFlow()
+    publisher = FakeSignalPublisher()
+    inference = FakeInferenceEngine(signal="SELL", confidence=0.91, engine="shadow-model")
+    service = SignalApplicationService(
+        runtime=runtime,
+        signal_store=FakeSignalStore(),
+        signal_claims=claims,
+        event_flow=event_flow,
+        publishers=(publisher,),
+        inference_engine=inference,
+        inference_mode="observe",
+    )
+
+    decision = await service.ingest_tick(_sample_tick())
+
+    assert decision.signal.signal == "BUY"
+    assert decision.context.engine == "moving_average"
+    assert decision.context.metadata["decision_source"] == "rule_engine"
+    assert decision.context.metadata["inference"]["engine"] == "shadow-model"

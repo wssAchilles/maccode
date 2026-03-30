@@ -50,8 +50,22 @@ export function MarketWorkspace({ active = true }: Props) {
 
       <div className="workspace-main stack">
         <SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}>
-          <div className="chart-shell">
+          <div
+            className="chart-shell"
+            aria-busy={model.chartState.state === 'loading'}
+            data-state={model.chartState.state}
+          >
             <CandlesChart candles={model.candles} />
+            {model.chartState.state !== 'ready' ? (
+              <div
+                className={`chart-overlay chart-overlay-${model.chartState.state}`}
+                role={model.chartState.state === 'loading' ? 'status' : 'note'}
+                aria-live="polite"
+              >
+                <p className="chart-overlay-title">{model.chartState.title}</p>
+                <p className="chart-overlay-hint">{model.chartState.hint}</p>
+              </div>
+            ) : null}
           </div>
         </SectionFrame>
 

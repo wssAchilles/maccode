@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    build_inference_router,
     build_matching_router,
     build_optimize_router,
     build_signal_router,
@@ -27,6 +28,7 @@ runtime = build_runtime_container(started_at=SERVICE_STARTED_AT)
 worker = runtime.worker
 signal_store = runtime.signal_store
 signal_service = runtime.signal_service
+inference_service = runtime.inference_service
 optimization_service = runtime.optimization_service
 summary_service = runtime.summary_service
 matching_service = runtime.matching_service
@@ -69,6 +71,7 @@ register_error_handlers(app, logger)
 
 app.include_router(build_system_router(system_status_service))
 app.include_router(build_signal_router(signal_service))
+app.include_router(build_inference_router(inference_service))
 app.include_router(build_summary_router(summary_service))
 app.include_router(build_optimize_router(optimization_service))
 app.include_router(build_matching_router(matching_service))

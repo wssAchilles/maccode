@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+from app.application.inference import InferenceApplicationService
 from app.config import settings
 from app.ports import (
     MatchingGatewayPort,
@@ -23,11 +24,13 @@ class SummaryApplicationService:
     def __init__(
         self,
         *,
+        inference_application: InferenceApplicationService,
         signal_runtime: SignalRuntimePort,
         signal_store: SignalStorePort,
         matching_gateway: MatchingGatewayPort,
         persistence_status: PersistenceStatusPort,
     ) -> None:
+        self._inference_application = inference_application
         self._signal_runtime = signal_runtime
         self._signal_store = signal_store
         self._matching_gateway = matching_gateway
@@ -46,7 +49,7 @@ class SummaryApplicationService:
         selected_source = _normalize_source(source)
 
         signal_component = self._build_signal_component()
-        recent_component, persistence_component, orderbook_component = await asyncio.gather(
+        recent_component, persistence_component, orderbook_component, inference_component = await asyncio.gather(
             self._build_recent_signals_component(
                 limit=recent_limit,
                 source=selected_source,
@@ -58,6 +61,7 @@ class SummaryApplicationService:
                 depth=orderbook_depth,
                 request_id=request_id,
             ),
+            self._build_inference_status_component(request_id=request_id),
         )
 
         return SummaryResult(
@@ -69,6 +73,7 @@ class SummaryApplicationService:
             recent_signals=recent_component,
             persistence=persistence_component,
             matching_orderbook=orderbook_component,
+            inference_status=inference_component,
         )
 
     def _build_signal_component(self) -> SummaryComponent:
@@ -174,19 +179,31 @@ class SummaryApplicationService:
     ) -> MatchingOrderBookView:
         return MatchingOrderBookView.model_validate(
             {
-            "enabled": self._matching_gateway.enabled,
-            "degraded": True,
-            "symbol": symbol,
-            "depth": depth,
-            "bids": [],
-            "asks": [],
-            "generated_at_ms": 0,
-            "request_id": request_id,
-            "reason": reason,
-            "schema_version": settings.event_schema_version,
-            "correlation_id": request_id,
+                "enabled": self._matching_gateway.enabled,
+                "degraded": True,
+                "symbol": symbol,
+                "depth": depth,
+                "bids": [],
+                "asks": [],
+                "generated_at_ms": 0,
+                "request_id": request_id,
+                "reason": reason,
+                "schema_version": settings.event_schema_version,
+                "correlation_id": request_id,
             }
         )
+
+    async def _build_inference_status_component(self, *, request_id: str) -> SummaryComponent:
+        try:
+            payload = (await self._inference_application.status()).to_dict()
+        except Exception as exc:
+            return SummaryComponent.error_result(
+                code="summary_inference_status_failed",
+                message=f"inference status unavailable: {exc}",
+                request_id=request_id,
+                status_code=502,
+            )
+        return SummaryComponent.ok_result(payload)
 
 
 def _normalize_symbol(symbol: str) -> str:

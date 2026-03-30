@@ -25,8 +25,9 @@ pub(super) async fn fetch_strategy_summary_fanout(
         "/api/v1/matching/orderbook?symbol={}&depth={}",
         request.symbol, request.orderbook_depth
     );
+    let inference_path = "/api/v1/inference/status".to_string();
 
-    let (signal, recent, persistence, orderbook) = tokio::join!(
+    let (signal, recent, persistence, orderbook, inference_status) = tokio::join!(
         fetch_strategy_json(
             state,
             strategy_base,
@@ -55,6 +56,13 @@ pub(super) async fn fetch_strategy_summary_fanout(
             request_id,
             idempotency_key,
         ),
+        fetch_strategy_json(
+            state,
+            strategy_base,
+            &inference_path,
+            request_id,
+            idempotency_key,
+        ),
     );
 
     StrategySummaryPayload {
@@ -68,6 +76,7 @@ pub(super) async fn fetch_strategy_summary_fanout(
         recent_signals: recent,
         persistence,
         matching_orderbook: orderbook,
+        inference_status,
     }
 }
 

@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     signal_channel: str = "strategy.signals.default"
     fast_window: int = 5
     slow_window: int = 20
+    inference_enabled: bool = False
+    inference_mode: str = "disabled"
+    inference_engine_name: str = "moving_average_baseline"
+    inference_model_id: str = "moving-average-baseline"
+    inference_model_version: str = "v1"
+    inference_model_source: str = "runtime"
+    inference_model_symbols: str = ""
+    inference_artifact_folder_url: str = ""
+    inference_artifact_gcs_uri: str = ""
+    inference_artifact_cache_dir: str = "/tmp/cerberus-inference"
     grb_licenseid: str | None = None
     grb_wlsaccessid: str | None = None
     grb_wlssecret: str | None = None

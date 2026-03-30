@@ -1,6 +1,7 @@
 import {
   CandlestickSeries,
   createChart,
+  type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts'
@@ -14,6 +15,7 @@ type Props = {
 
 export function CandlesChart({ candles }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export function CandlesChart({ candles }: Props) {
       wickDownColor: downColor,
     })
 
+    chartRef.current = chart
     seriesRef.current = series
     chart.timeScale().fitContent()
 
@@ -71,12 +74,14 @@ export function CandlesChart({ candles }: Props) {
 
     return () => {
       resizeObserver.disconnect()
+      chartRef.current = null
+      seriesRef.current = null
       chart.remove()
     }
   }, [])
 
   useEffect(() => {
-    if (!seriesRef.current || candles.length === 0) {
+    if (!seriesRef.current) {
       return
     }
 
@@ -89,6 +94,10 @@ export function CandlesChart({ candles }: Props) {
         close: Number(k[4]),
       })),
     )
+
+    if (candles.length > 0) {
+      chartRef.current?.timeScale().fitContent()
+    }
   }, [candles])
 
   return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />

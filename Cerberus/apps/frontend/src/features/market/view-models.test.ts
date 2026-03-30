@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMarketMetricTiles, buildMarketSymbolChips } from './view-models'
+import { buildMarketChartStateModel, buildMarketMetricTiles, buildMarketSymbolChips } from './view-models'
 
 const t = (key: string) => key
 
@@ -48,6 +48,45 @@ describe('market view models', () => {
     expect(tiles[3]).toMatchObject({
       id: 'execution-stream',
       value: 'execution.created · BTCUSDT · FILLED',
+    })
+  })
+
+  it('returns a loading chart state before the first candle batch arrives', () => {
+    const state = buildMarketChartStateModel({
+      t,
+      candlesCount: 0,
+      candlesFetching: true,
+      marketStatus: {
+        state: 'ready',
+        last_update_ms: null,
+        stale: false,
+      },
+    })
+
+    expect(state).toMatchObject({
+      state: 'loading',
+      title: 'market.chartLoadingTitle',
+      hint: 'market.chartLoadingHint',
+    })
+  })
+
+  it('returns an error chart state when candle loading fails', () => {
+    const state = buildMarketChartStateModel({
+      t,
+      candlesCount: 0,
+      candlesFetching: false,
+      marketStatus: {
+        state: 'error',
+        last_update_ms: null,
+        stale: true,
+        reason: 'market_candles_failed',
+      },
+    })
+
+    expect(state).toMatchObject({
+      state: 'error',
+      title: 'market.chartErrorTitle',
+      hint: 'market_candles_failed',
     })
   })
 })

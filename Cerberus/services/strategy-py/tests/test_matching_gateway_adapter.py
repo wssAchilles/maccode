@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.infrastructure import MatchingGatewayAdapter
+from app.infrastructure.matching_gateway import MatchingGatewayAdapter
 from app.schemas import (
     MatchingCancelResponse,
     MatchingExecutionView,

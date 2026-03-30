@@ -401,6 +401,8 @@ button {
 .health-digest-card,
 .signal-card,
 .health-card,
+.inference-card,
+.inference-panel,
 .flow-card {
   display: grid;
   gap: 10px;
@@ -409,6 +411,7 @@ button {
 .status-strip-head,
 .health-digest-head,
 .health-card-head,
+.inference-card-head,
 .flow-card-head,
 .signal-card-head {
   display: flex;
@@ -420,6 +423,7 @@ button {
 .status-strip-meta,
 .health-digest-meta,
 .health-card-meta,
+.inference-card-summary,
 .panel-caption,
 .metric-tile-hint,
 .data-list-label,
@@ -547,6 +551,7 @@ button {
 .orderbook-price-ask,
 .precheck-status-fail,
 .health-card-reason,
+.inference-panel-reason,
 .health-digest-reason,
 .orderbook-stale {
   color: var(--color-danger);
@@ -769,6 +774,7 @@ button {
 .flow-card-index,
 .signal-card-symbol,
 .health-card-title,
+.inference-card-summary,
 .timeline-row-title {
   margin: 0;
   font-weight: 700;
@@ -797,19 +803,75 @@ button {
   font: 700 1.1rem/1 var(--font-heading);
 }
 
+.inference-card-summary {
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
 .health-card-reason,
-.health-digest-reason {
+.health-digest-reason,
+.inference-panel-reason {
   margin: 0;
   font-size: 0.85rem;
 }
 
 .chart-shell {
+  position: relative;
   min-height: 360px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  isolation: isolate;
 }
 
 .chart-frame {
   width: 100%;
   min-height: 360px;
+}
+
+.chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 28px;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(249, 252, 253, 0.78), rgba(244, 249, 251, 0.92)),
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 46%);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.chart-overlay-title,
+.chart-overlay-hint {
+  margin: 0;
+  max-width: 28rem;
+}
+
+.chart-overlay-title {
+  color: var(--color-text);
+  font: 700 1rem/1.2 var(--font-heading);
+  letter-spacing: 0.01em;
+}
+
+.chart-overlay-hint {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.chart-overlay-loading {
+  border: 1px solid rgba(17, 94, 89, 0.12);
+}
+
+.chart-overlay-empty,
+.chart-overlay-error {
+  border: 1px dashed rgba(17, 94, 89, 0.16);
+}
+
+.chart-shell[data-state='ready'] .chart-overlay {
+  display: none;
 }
 
 .orderbook-grid {

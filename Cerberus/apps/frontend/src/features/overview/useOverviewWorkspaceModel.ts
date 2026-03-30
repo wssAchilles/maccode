@@ -10,6 +10,7 @@ import {
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
 } from './view-models'
+import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
 
 type Params = {
   onSelectWorkspace: (workspace: WorkspaceId) => void
@@ -23,6 +24,7 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
   const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
   const recentSignals = useCerberusStore((state) => state.strategySummary.recent_signals)
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
+  const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
   const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
@@ -50,9 +52,15 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
     [persistenceStatus, t],
   )
 
+  const inferenceCard = useMemo(
+    () => buildInferenceStatusCardModel({ t, inferenceStatus }),
+    [inferenceStatus, t],
+  )
+
   return {
     summaryError,
     healthCards,
+    inferenceCard,
     metricTiles,
     persistenceItems,
     recentSignals: recentSignals.slice(0, 4),

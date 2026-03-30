@@ -22,6 +22,7 @@ function resolveSummaryErrors(summary: StrategySummaryResponse): AppError[] {
     envelopeError('recent_signals', summary.recent_signals),
     envelopeError('persistence', summary.persistence),
     envelopeError('matching_orderbook', summary.matching_orderbook),
+    envelopeError('inference_status', summary.inference_status),
   ].filter((value): value is AppError => Boolean(value))
 }
 
@@ -45,6 +46,7 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
     recent_signals: [],
     persistence_status: undefined,
     matching_orderbook: undefined,
+    inference_status: undefined,
     last_error: undefined,
   },
   strategySummaryActions: {
@@ -97,6 +99,9 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
           persistence_status: summary.persistence.ok ? summary.persistence.payload : undefined,
           matching_orderbook: summary.matching_orderbook.ok
             ? summary.matching_orderbook.payload
+            : undefined,
+          inference_status: summary.inference_status.ok
+            ? summary.inference_status.payload
             : undefined,
           last_error: mergedError,
         },

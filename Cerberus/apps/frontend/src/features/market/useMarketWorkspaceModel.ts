@@ -3,7 +3,11 @@ import { useMemo } from 'react'
 import { useCandlesResource } from '../../app/bootstrap/useResourceQueries'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
-import { buildMarketMetricTiles, buildMarketSymbolChips } from './view-models'
+import {
+  buildMarketChartStateModel,
+  buildMarketMetricTiles,
+  buildMarketSymbolChips,
+} from './view-models'
 
 type Params = {
   active: boolean
@@ -16,12 +20,13 @@ export function useMarketWorkspaceModel({ active }: Params) {
   const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
   const candles = useCerberusStore((state) => state.marketStream.candles)
+  const marketStatus = useCerberusStore((state) => state.uiState.domain_status['market-stream'])
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
   const orderbook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
 
-  useCandlesResource(active)
+  const candlesQuery = useCandlesResource(active)
 
   const displayQuote = latestBySymbol[selectedSymbol] ?? latest
 
@@ -41,9 +46,21 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [displayQuote, latestEvent, strategySignal, t],
   )
 
+  const chartState = useMemo(
+    () =>
+      buildMarketChartStateModel({
+        t,
+        candlesCount: candles.length,
+        candlesFetching: candlesQuery.isLoading || candlesQuery.isFetching,
+        marketStatus,
+      }),
+    [candles.length, candlesQuery.isFetching, candlesQuery.isLoading, marketStatus, t],
+  )
+
   return {
     activeSymbol: selectedSymbol,
     candles,
+    chartState,
     summaryError,
     orderbook,
     symbolChips,

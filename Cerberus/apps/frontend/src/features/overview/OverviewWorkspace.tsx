@@ -4,6 +4,7 @@ import { DataList, GlassPanel, InlineAlert, MetricTile, SectionFrame, StatusPill
 import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
+import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
 
 type Props = {
   active?: boolean
@@ -73,6 +74,10 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
               </GlassPanel>
             ))}
           </div>
+        </SectionFrame>
+
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
+          <InferenceStatusCard model={model.inferenceCard} onOpenHealth={model.openHealth} />
         </SectionFrame>
 
         <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')}>

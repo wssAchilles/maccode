@@ -22,6 +22,29 @@ def validate_runtime_settings() -> None:
     if settings.matching_enabled and not settings.matching_grpc_target.strip():
         errors.append("matching_enabled=true requires MATCHING_GRPC_TARGET")
 
+    if settings.inference_mode not in {"disabled", "observe", "primary"}:
+        errors.append("inference_mode must be one of: disabled, observe, primary")
+
+    if settings.inference_enabled and settings.inference_mode == "disabled":
+        errors.append("inference_enabled=true requires inference_mode to be observe or primary")
+
+    if not settings.inference_enabled and settings.inference_mode != "disabled":
+        errors.append("inference_mode requires inference_enabled=true")
+
+    if settings.inference_enabled and not settings.inference_model_id.strip():
+        errors.append("inference_enabled=true requires INFERENCE_MODEL_ID")
+
+    if settings.inference_enabled and settings.inference_model_source == "google_drive":
+        if not settings.inference_artifact_folder_url.strip():
+            errors.append(
+                "inference_model_source=google_drive requires INFERENCE_ARTIFACT_FOLDER_URL"
+            )
+    if settings.inference_enabled and settings.inference_model_source == "gcs":
+        if not settings.inference_artifact_gcs_uri.strip():
+            errors.append(
+                "inference_model_source=gcs requires INFERENCE_ARTIFACT_GCS_URI"
+            )
+
     if settings.market_stream_enabled and not settings.market_stream_key.strip():
         errors.append("market_stream_enabled=true requires MARKET_STREAM_KEY")
 

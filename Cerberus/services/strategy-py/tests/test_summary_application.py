@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.application import SummaryApplicationService
+from app.application import InferenceStatusResult, SummaryApplicationService
+from app.ports import InferenceEngineStatus, RegisteredModel
 from app.schemas import (
     MatchingHealthView,
     MatchingOrderBookView,
@@ -116,9 +117,30 @@ class FakePersistenceStatus:
         )
 
 
+class FakeInferenceApplication:
+    async def status(self) -> InferenceStatusResult:
+        return InferenceStatusResult(
+            engine_status=InferenceEngineStatus(
+                enabled=True,
+                ready=True,
+                engine="cerberus_signal_transformer_lstm",
+                mode="observe",
+                metadata={"lookback": 256},
+            ),
+            active_model=RegisteredModel(
+                model_id="cerberus-transformer-lstm",
+                version="v1",
+                source="gcs",
+                symbols=("BTCUSDT", "ETHUSDT", "SOLUSDT"),
+                metadata={"best_macro_f1": 0.5001, "horizon": 32},
+            ),
+        )
+
+
 @pytest.mark.asyncio
 async def test_summary_application_returns_typed_result_and_serializes_without_contract_change() -> None:
     service = SummaryApplicationService(
+        inference_application=FakeInferenceApplication(),
         signal_runtime=FakeSignalRuntime(),
         signal_store=FakeSignalStore(),
         matching_gateway=FakeMatchingGateway(),
@@ -144,3 +166,5 @@ async def test_summary_application_returns_typed_result_and_serializes_without_c
     assert payload["recent_signals"]["payload"]["count"] == 1
     assert payload["matching_orderbook"]["payload"]["depth"] == 5
     assert payload["persistence"]["payload"]["worker"]["processed_ticks"] == 12
+    assert payload["inference_status"]["payload"]["engine"] == "cerberus_signal_transformer_lstm"
+    assert payload["inference_status"]["payload"]["active_model"]["model_id"] == "cerberus-transformer-lstm"

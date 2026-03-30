@@ -55,6 +55,7 @@ This file is the global source of truth for all UI work in `apps/frontend`.
 - Store slices keep state, not protocol shaping.
 - Network and response normalization stay in data/access layers.
 - Page-specific visual deviations must be documented in `design-system/pages/*.md`.
+- Reusable workspace modules with cross-page behavior must be documented in `design-system/components/*.md`.
 
 ## Anti-patterns
 - No “hero landing page” composition inside the authenticated workspace.
@@ -62,3 +63,6 @@ This file is the global source of truth for all UI work in `apps/frontend`.
 - No mixing multiple icon families.
 - No weak gray text on pale glass surfaces.
 - No ad-hoc local color constants inside components.
+
+## Registered Component Rules
+- `components/inference-observability.md`: read-only model/runtime visibility for the authenticated workbench only.

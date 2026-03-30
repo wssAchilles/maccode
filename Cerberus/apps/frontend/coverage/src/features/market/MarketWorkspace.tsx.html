@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/57</span>
+                <span class='fraction'>0/69</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/57</span>
+                <span class='fraction'>0/69</span>
             </div>
         
             
@@ -133,7 +133,21 @@
 <a name='L68'></a><a href='#L68'>68</a>
 <a name='L69'></a><a href='#L69'>69</a>
 <a name='L70'></a><a href='#L70'>70</a>
-<a name='L71'></a><a href='#L71'>71</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -176,6 +190,20 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -255,8 +283,22 @@ type Props = {
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;div className="workspace-main stack"&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="chart-shell"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div</span>
+<span class="cstat-no" title="statement not covered" >            className="chart-shell"</span>
+<span class="cstat-no" title="statement not covered" >            aria-busy={model.chartState.state === 'loading'}</span>
+<span class="cstat-no" title="statement not covered" >            data-state={model.chartState.state}</span>
+          &gt;
 <span class="cstat-no" title="statement not covered" >            &lt;CandlesChart candles={model.candles} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >            {model.chartState.state !== 'ready' ? (</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div</span>
+<span class="cstat-no" title="statement not covered" >                className={`chart-overlay chart-overlay-${model.chartState.state}`}</span>
+<span class="cstat-no" title="statement not covered" >                role={model.chartState.state === 'loading' ? 'status' : 'note'}</span>
+<span class="cstat-no" title="statement not covered" >                aria-live="polite"</span>
+              &gt;
+<span class="cstat-no" title="statement not covered" >                &lt;p className="chart-overlay-title"&gt;{model.chartState.title}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;p className="chart-overlay-hint"&gt;{model.chartState.hint}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            ) : null}</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
 &nbsp;
@@ -280,7 +322,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-27T08:12:24.615Z
+                at 2026-03-30T05:22:46.147Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

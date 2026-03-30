@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">52.94% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/17</span>
+                <span class='fraction'>17/17</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">33.33% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>1/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
-                <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">52.94% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/17</span>
+                <span class='fraction'>17/17</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -116,15 +116,15 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ReactNode } from 'react'
 &nbsp;
 import { cn } from '../lib/cn'
@@ -146,16 +146,16 @@ const TONE_CLASS: Record&lt;NonNullable&lt;Props['tone']&gt;, string&gt; = {
   accent: 'metric-tile-accent',
 }
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function MetricTile({ label, value, hint, caption, tone = 'default', className }: Props) {</span>
-<span class="cstat-no" title="statement not covered" >  return (</span>
-<span class="cstat-no" title="statement not covered" >    &lt;GlassPanel className={cn('metric-tile', TONE_CLASS[tone], className)} tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;p className="metric-tile-label"&gt;{label}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;p className="metric-tile-value"&gt;{value}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >      {hint ? &lt;p className="metric-tile-hint"&gt;{hint}&lt;/p&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >      {caption ? &lt;div className="metric-tile-caption"&gt;{caption}&lt;/div&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >    &lt;/GlassPanel&gt;</span>
+export function MetricTile({ label, value, hint, caption, tone = 'default', className }: Props) {
+  return (
+    &lt;GlassPanel className={cn('metric-tile', TONE_CLASS[tone], className)} tone="subtle"&gt;
+      &lt;p className="metric-tile-label"&gt;{label}&lt;/p&gt;
+      &lt;p className="metric-tile-value"&gt;{value}&lt;/p&gt;
+      {hint ? &lt;p className="metric-tile-hint"&gt;{hint}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
+      {<span class="branch-0 cbranch-no" title="branch not covered" >caption ? &lt;div className="metric-tile-caption"&gt;{caption}&lt;/div&gt; : n</span>ull}
+    &lt;/GlassPanel&gt;
   )
-<span class="cstat-no" title="statement not covered" >}</span>
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -163,7 +163,7 @@ export <span class="fstat-no" title="function not covered" >function MetricTile(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-27T08:12:24.615Z
+                at 2026-03-30T05:22:46.147Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

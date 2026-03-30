@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 
 from app import main as main_module
+from app.application import InferenceStatusResult
 from app.main import app
+from app.ports import InferenceEngineStatus, RegisteredModel
 from app.schemas import Signal, SignalRecord
 
 
@@ -51,6 +53,26 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
     main_module.worker.matching_client._enabled = True  # type: ignore[attr-defined]
     main_module.worker.matching_client.get_order_book = fake_orderbook  # type: ignore[method-assign]
 
+    async def fake_inference_status() -> InferenceStatusResult:
+        return InferenceStatusResult(
+            engine_status=InferenceEngineStatus(
+                enabled=True,
+                ready=True,
+                engine="cerberus_signal_transformer_lstm",
+                mode="observe",
+                metadata={"lookback": 256},
+            ),
+            active_model=RegisteredModel(
+                model_id="cerberus-transformer-lstm",
+                version="v1",
+                source="gcs",
+                symbols=("BTCUSDT", "ETHUSDT"),
+                metadata={"best_macro_f1": 0.5001, "horizon": 32},
+            ),
+        )
+
+    main_module.inference_service._application.status = fake_inference_status  # type: ignore[method-assign, attr-defined]
+
     client = TestClient(app)
     response = client.get(
         "/api/v1/summary?symbol=BTCUSDT&recent_limit=1&source=supabase&orderbook_depth=5",
@@ -66,3 +88,15 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
     assert payload["recent_signals"]["payload"]["count"] == 1
     assert payload["matching_orderbook"]["payload"]["depth"] == 5
     assert "persistence" in payload
+    assert payload["inference_status"]["payload"]["mode"] == "observe"
+    assert payload["inference_status"]["payload"]["active_model"]["model_id"] == "cerberus-transformer-lstm"
+
+
+def test_strategy_summary_inference_status_matches_standalone_endpoint_shape() -> None:
+    client = TestClient(app)
+    direct = client.get("/api/v1/inference/status")
+    summary = client.get("/api/v1/summary")
+
+    assert direct.status_code == 200
+    assert summary.status_code == 200
+    assert summary.json()["inference_status"]["payload"] == direct.json()

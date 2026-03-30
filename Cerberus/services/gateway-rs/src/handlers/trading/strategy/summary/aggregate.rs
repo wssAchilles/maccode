@@ -1,4 +1,5 @@
 use crate::gateway_types::{AppState, REQUEST_ID_HEADER};
+use crate::handlers::trading::strategy::summary::downstream_errors::structured_error;
 use crate::handlers::trading::strategy::summary::model::{
     AggregateSummaryComponent, AggregateSummaryPayload, StrategySummaryPayload,
     SummaryComponentEnvelope,
@@ -112,6 +113,11 @@ fn build_summary_payload_from_aggregate(
         recent_signals: from_aggregate_component(&aggregate.recent_signals),
         persistence: from_aggregate_component(&aggregate.persistence),
         matching_orderbook: from_aggregate_component(&aggregate.matching_orderbook),
+        inference_status: aggregate
+            .inference_status
+            .as_ref()
+            .map(from_aggregate_component)
+            .unwrap_or_else(|| missing_inference_component()),
     }
 }
 
@@ -123,5 +129,98 @@ fn from_aggregate_component(component: &AggregateSummaryComponent) -> SummaryCom
         payload: component.payload.clone(),
         error: component.error.clone(),
         retry_after_ms: component.retry_after_ms,
+    }
+}
+
+fn missing_inference_component() -> SummaryComponentEnvelope {
+    SummaryComponentEnvelope {
+        ok: false,
+        status_code: 503,
+        url: None,
+        payload: None,
+        error: Some(structured_error(
+            "summary_inference_status_missing",
+            "strategy aggregate summary did not include inference status",
+            "gateway-aggregate",
+        )),
+        retry_after_ms: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn component(payload: serde_json::Value) -> AggregateSummaryComponent {
+        AggregateSummaryComponent {
+            ok: true,
+            status_code: 200,
+            payload: Some(payload),
+            error: None,
+            retry_after_ms: None,
+        }
+    }
+
+    #[test]
+    fn build_summary_payload_maps_inference_status_when_present() {
+        let aggregate = AggregateSummaryPayload {
+            symbol: Some("BTCUSDT".to_string()),
+            source: Some("auto".to_string()),
+            recent_limit: Some(8),
+            orderbook_depth: Some(10),
+            signal: component(serde_json::json!({"signal": "BUY"})),
+            recent_signals: component(serde_json::json!({"count": 1})),
+            persistence: component(serde_json::json!({"status": "ok"})),
+            matching_orderbook: component(serde_json::json!({"depth": 10})),
+            inference_status: Some(component(serde_json::json!({"mode": "observe"}))),
+        };
+        let request = SummaryRequest {
+            symbol: "BTCUSDT".to_string(),
+            recent_limit: 8,
+            source: "auto".to_string(),
+            orderbook_depth: 10,
+        };
+
+        let payload = build_summary_payload_from_aggregate(
+            "https://strategy.example",
+            &aggregate,
+            &request,
+        );
+
+        assert!(payload.inference_status.ok);
+        assert_eq!(
+            payload.inference_status.payload,
+            Some(serde_json::json!({"mode": "observe"}))
+        );
+    }
+
+    #[test]
+    fn build_summary_payload_marks_missing_inference_status_as_component_error() {
+        let aggregate = AggregateSummaryPayload {
+            symbol: None,
+            source: None,
+            recent_limit: None,
+            orderbook_depth: None,
+            signal: component(serde_json::json!({"signal": "BUY"})),
+            recent_signals: component(serde_json::json!({"count": 1})),
+            persistence: component(serde_json::json!({"status": "ok"})),
+            matching_orderbook: component(serde_json::json!({"depth": 10})),
+            inference_status: None,
+        };
+        let request = SummaryRequest {
+            symbol: "BTCUSDT".to_string(),
+            recent_limit: 8,
+            source: "auto".to_string(),
+            orderbook_depth: 10,
+        };
+
+        let payload = build_summary_payload_from_aggregate(
+            "https://strategy.example",
+            &aggregate,
+            &request,
+        );
+
+        assert!(!payload.inference_status.ok);
+        assert_eq!(payload.inference_status.status_code, 503);
     }
 }

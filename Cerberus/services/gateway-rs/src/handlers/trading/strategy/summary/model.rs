@@ -12,6 +12,7 @@ pub(super) struct StrategySummaryPayload {
     pub(super) recent_signals: SummaryComponentEnvelope,
     pub(super) persistence: SummaryComponentEnvelope,
     pub(super) matching_orderbook: SummaryComponentEnvelope,
+    pub(super) inference_status: SummaryComponentEnvelope,
 }
 
 impl StrategySummaryPayload {
@@ -48,6 +49,8 @@ pub(super) struct AggregateSummaryPayload {
     pub(super) recent_signals: AggregateSummaryComponent,
     pub(super) persistence: AggregateSummaryComponent,
     pub(super) matching_orderbook: AggregateSummaryComponent,
+    #[serde(default)]
+    pub(super) inference_status: Option<AggregateSummaryComponent>,
 }
 
 impl AggregateSummaryPayload {
@@ -74,5 +77,37 @@ pub(super) struct AggregateSummaryComponent {
 impl AggregateSummaryComponent {
     fn has_required_shape(&self) -> bool {
         self.payload.is_some() || self.error.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AggregateSummaryComponent, AggregateSummaryPayload};
+
+    fn component() -> AggregateSummaryComponent {
+        AggregateSummaryComponent {
+            ok: true,
+            status_code: 200,
+            payload: Some(serde_json::json!({"ok": true})),
+            error: None,
+            retry_after_ms: None,
+        }
+    }
+
+    #[test]
+    fn aggregate_payload_accepts_missing_optional_inference_component() {
+        let payload = AggregateSummaryPayload {
+            symbol: None,
+            source: None,
+            recent_limit: None,
+            orderbook_depth: None,
+            signal: component(),
+            recent_signals: component(),
+            persistence: component(),
+            matching_orderbook: component(),
+            inference_status: None,
+        };
+
+        assert!(payload.has_required_components());
     }
 }

@@ -53,6 +53,53 @@ Optional matching gRPC submit path (signal -> order):
 - `IDEMPOTENCY_REDIS_KEY_PREFIX=cerberus:idempotency`
 - `SIGNAL_IDEMPOTENCY_TTL_SECONDS=900`
 
+Optional research / inference baseline:
+
+- `INFERENCE_ENABLED=false`
+- `INFERENCE_MODE=disabled` (`observe` and `primary` are also supported)
+- `INFERENCE_ENGINE_NAME=moving_average_baseline`
+- `INFERENCE_MODEL_ID=moving-average-baseline`
+- `INFERENCE_MODEL_VERSION=v1`
+- `INFERENCE_MODEL_SOURCE=runtime`
+- `INFERENCE_MODEL_SYMBOLS=BTCUSDT,ETHUSDT`
+- `INFERENCE_ARTIFACT_FOLDER_URL=` (required when `INFERENCE_MODEL_SOURCE=google_drive`)
+- `INFERENCE_ARTIFACT_GCS_URI=` (required when `INFERENCE_MODEL_SOURCE=gcs`)
+- `INFERENCE_ARTIFACT_CACHE_DIR=/tmp/cerberus-inference`
+
+Google Drive artifact-backed inference:
+
+- Set `INFERENCE_MODEL_SOURCE=google_drive`
+- Point `INFERENCE_ARTIFACT_FOLDER_URL` at a shared `best_model` folder
+- Required files in the folder:
+  - `artifact_manifest.json`
+  - `training_metrics.json`
+  - `cerberus_signal_model.onnx`
+  - `preprocessing.json` (preferred)
+  - `cerberus_signal_model.pt` (fallback for legacy bundles)
+- Runtime will:
+  - resolve file IDs from the shared folder page
+  - download and cache artifacts under `INFERENCE_ARTIFACT_CACHE_DIR`
+  - load preprocessing metadata from `preprocessing.json` when present
+  - otherwise extract preprocessing metadata from `cerberus_signal_model.pt`
+  - run online ONNX inference over the live tick stream
+
+GCS artifact-backed inference:
+
+- Set `INFERENCE_MODEL_SOURCE=gcs`
+- Point `INFERENCE_ARTIFACT_GCS_URI` at the `best_model` prefix, for example:
+  - `gs://cerberus-9d94f-models-20260330-ae2/models/cerberus-transformer-lstm/v1/best_model`
+- Required objects under that prefix:
+  - `artifact_manifest.json`
+  - `training_metrics.json`
+  - `cerberus_signal_model.onnx`
+  - `preprocessing.json` (preferred)
+  - `cerberus_signal_model.pt` (fallback for legacy bundles)
+- Runtime will:
+  - download and cache artifacts under `INFERENCE_ARTIFACT_CACHE_DIR`
+  - load preprocessing metadata from `preprocessing.json` when present
+  - otherwise extract preprocessing metadata from `cerberus_signal_model.pt`
+  - run online ONNX inference over the live tick stream
+
 Market subscriptions:
 
 - `MARKET_CHANNEL=md.orderbook.BTCUSDT` (single channel fallback)
@@ -88,6 +135,8 @@ Runtime introspection endpoints:
 - `GET /metrics` (Prometheus)
 - `GET /api/v1/signals/recent?limit=20&source=auto`
 - `GET /api/v1/status/persistence`
+- `GET /api/v1/inference/status`
+- `GET /api/v1/inference/models`
 
 Matching control endpoints:
 

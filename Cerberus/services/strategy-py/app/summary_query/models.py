@@ -105,7 +105,11 @@ class SummaryRecentSignalsPayload:
 
 
 SummaryPayload: TypeAlias = (
-    MatchingOrderBookView | PersistenceStatusResult | SummaryRecentSignalsPayload | SummarySignalPayload
+    MatchingOrderBookView
+    | PersistenceStatusResult
+    | SummaryRecentSignalsPayload
+    | SummarySignalPayload
+    | dict[str, Any]
 )
 
 
@@ -119,6 +123,7 @@ class SummaryResult:
     recent_signals: SummaryComponent[SummaryRecentSignalsPayload]
     persistence: SummaryComponent[PersistenceStatusResult]
     matching_orderbook: SummaryComponent[MatchingOrderBookView]
+    inference_status: SummaryComponent[dict[str, Any]]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -130,4 +135,5 @@ class SummaryResult:
             "recent_signals": self.recent_signals.to_dict(),
             "persistence": self.persistence.to_dict(),
             "matching_orderbook": self.matching_orderbook.to_dict(),
+            "inference_status": self.inference_status.to_dict(),
         }

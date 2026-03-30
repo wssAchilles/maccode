@@ -1,5 +1,5 @@
 import type { TranslationKey } from '../../i18n/messages'
-import type { MarketMessage, OrderTimelineEvent, StrategySignal } from '../../types/contracts'
+import type { MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
 import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
@@ -18,6 +18,14 @@ export type MarketSymbolChipModel = {
   active: boolean
 }
 
+export type MarketChartState = 'ready' | 'loading' | 'empty' | 'error'
+
+export type MarketChartStateModel = {
+  state: MarketChartState
+  title: string
+  hint: string
+}
+
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
 type BuildMarketMetricTilesParams = {
@@ -25,6 +33,13 @@ type BuildMarketMetricTilesParams = {
   displayQuote?: MarketMessage
   strategySignal?: StrategySignal
   latestEvent?: OrderTimelineEvent
+}
+
+type BuildMarketChartStateParams = {
+  t: Translate
+  candlesCount: number
+  candlesFetching: boolean
+  marketStatus: UIState
 }
 
 export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChipModel[] {
@@ -66,4 +81,41 @@ export function buildMarketMetricTiles({
       value: summarizeLatestFeedback(latestEvent, undefined, t),
     },
   ]
+}
+
+export function buildMarketChartStateModel({
+  t,
+  candlesCount,
+  candlesFetching,
+  marketStatus,
+}: BuildMarketChartStateParams): MarketChartStateModel {
+  if (candlesCount > 0) {
+    return {
+      state: 'ready',
+      title: '',
+      hint: '',
+    }
+  }
+
+  if (candlesFetching || marketStatus.state === 'loading') {
+    return {
+      state: 'loading',
+      title: t('market.chartLoadingTitle'),
+      hint: t('market.chartLoadingHint'),
+    }
+  }
+
+  if (marketStatus.state === 'error') {
+    return {
+      state: 'error',
+      title: t('market.chartErrorTitle'),
+      hint: marketStatus.reason ?? t('market.chartRetryHint'),
+    }
+  }
+
+  return {
+    state: 'empty',
+    title: t('market.chartEmptyTitle'),
+    hint: t('market.chartRetryHint'),
+  }
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
   buildHealthStoreItems,
@@ -12,6 +13,7 @@ export function useHealthWorkspaceModel() {
   const { t } = useI18n()
   const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
+  const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
 
   const workerItems = useMemo(
@@ -29,9 +31,15 @@ export function useHealthWorkspaceModel() {
     [domainStatus, summaryError],
   )
 
+  const inferenceDiagnostics = useMemo(
+    () => buildInferenceDiagnosticsModel({ t, inferenceStatus }),
+    [inferenceStatus, t],
+  )
+
   return {
     domainStatus,
     persistenceStatus,
+    inferenceDiagnostics,
     workerItems,
     storeItems,
     diagnostics,

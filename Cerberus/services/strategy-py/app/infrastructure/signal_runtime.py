@@ -15,6 +15,9 @@ class WorkerSignalRuntimeAdapter:
     def evaluate_tick(self, tick: TickEvent) -> tuple[Signal, str]:
         return self._worker.evaluate_tick(tick)
 
+    def build_signal_id(self, tick: TickEvent, signal: Signal) -> str:
+        return self._worker.build_signal_id(tick, signal)
+
     def store_current_signal(self, signal: Signal) -> None:
         self._worker.store_current_signal(signal)
 

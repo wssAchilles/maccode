@@ -1,5 +1,11 @@
 from app.ports.execution import ExecutionGatewayPort
-from app.ports.inference import InferenceDecision, InferenceEnginePort
+from app.ports.inference import (
+    InferenceDecision,
+    InferenceEnginePort,
+    InferenceEngineStatus,
+    ModelRegistryPort,
+    RegisteredModel,
+)
 from app.ports.matching import MatchingGatewayPort
 from app.ports.optimization import OptimizationServicePort
 from app.ports.persistence import PersistenceStatusPort
@@ -22,10 +28,13 @@ __all__ = [
     "ExecutionGatewayPort",
     "InferenceDecision",
     "InferenceEnginePort",
+    "InferenceEngineStatus",
     "MatchingObservabilityPort",
     "MatchingGatewayPort",
+    "ModelRegistryPort",
     "OptimizationServicePort",
     "PersistenceStatusPort",
+    "RegisteredModel",
     "RuntimeStatusPort",
     "SignalClaimPort",
     "SignalEventPort",

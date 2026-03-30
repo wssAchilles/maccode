@@ -126,6 +126,25 @@ export type MatchingOrderBook = {
   request_id?: string
 }
 
+export type InferenceModelDescriptor = {
+  model_id: string
+  version: string
+  source: string
+  task: string
+  symbols: string[]
+  metadata: Record<string, unknown>
+}
+
+export type InferenceStatusPayload = {
+  enabled: boolean
+  ready: boolean
+  engine: string
+  mode: string
+  reason?: string | null
+  metadata: Record<string, unknown>
+  active_model?: InferenceModelDescriptor | null
+}
+
 export type StrategySummaryResponse = {
   request_id: string
   strategy_base_url: string
@@ -137,6 +156,7 @@ export type StrategySummaryResponse = {
   recent_signals: Envelope<{ source: string; count: number; signals: SignalRecord[] }>
   persistence: Envelope<PersistenceStatus>
   matching_orderbook: Envelope<MatchingOrderBook>
+  inference_status: Envelope<InferenceStatusPayload>
 }
 
 export type TradingPolicy = {

@@ -2,6 +2,7 @@ import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
+import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
 type Props = {
   active?: boolean
@@ -32,6 +33,10 @@ export function HealthWorkspace({ active: _active = true }: Props) {
               <DataList items={model.storeItems} />
             </GlassPanel>
           </div>
+        </SectionFrame>
+
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
+          <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
         </SectionFrame>
       </div>
 
