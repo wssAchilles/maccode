@@ -26,6 +26,32 @@ class StrategyDecisionSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class StrategyRegistryEntrySnapshot:
+    strategy_id: str
+    label: str
+    engine: str
+    source: str
+    role: str
+    enabled: bool
+    priority: int
+    configured_weight: float
+    effective_weight: float
+    symbol_coverage: tuple[str, ...] = ()
+    conflict_policy: str = "review_on_conflict"
+    downgrade_policy: str = "review"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyRegistrySnapshot:
+    symbol: str
+    tracked_symbols: tuple[str, ...]
+    conflict_policy: str
+    downgrade_policy: str
+    entries: tuple[StrategyRegistryEntrySnapshot, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class PortfolioSignalSnapshot:
     symbol: str
     dominant_signal: str
@@ -58,6 +84,7 @@ class SignalDecisionSnapshot:
     inference_mode: str
     strategies: tuple[StrategyDecisionSnapshot, ...]
     portfolio: PortfolioSignalSnapshot
+    registry: StrategyRegistrySnapshot | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

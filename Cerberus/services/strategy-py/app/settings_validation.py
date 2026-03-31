@@ -22,6 +22,32 @@ def validate_runtime_settings() -> None:
     if settings.matching_enabled and not settings.matching_grpc_target.strip():
         errors.append("matching_enabled=true requires MATCHING_GRPC_TARGET")
 
+    if settings.strategy_conflict_policy not in {
+        "review_on_conflict",
+        "prefer_priority",
+        "prefer_weighted_score",
+    }:
+        errors.append(
+            "strategy_conflict_policy must be one of: review_on_conflict, prefer_priority, prefer_weighted_score"
+        )
+
+    if settings.strategy_downgrade_policy not in {"review", "hold"}:
+        errors.append("strategy_downgrade_policy must be one of: review, hold")
+
+    if settings.strategy_rule_priority <= 0:
+        errors.append("strategy_rule_priority must be > 0")
+    if settings.strategy_inference_priority <= 0:
+        errors.append("strategy_inference_priority must be > 0")
+
+    for name, value in {
+        "strategy_rule_weight_observe": settings.strategy_rule_weight_observe,
+        "strategy_inference_weight_observe": settings.strategy_inference_weight_observe,
+        "strategy_rule_weight_primary": settings.strategy_rule_weight_primary,
+        "strategy_inference_weight_primary": settings.strategy_inference_weight_primary,
+    }.items():
+        if value < 0:
+            errors.append(f"{name} must be >= 0")
+
     if settings.inference_mode not in {"disabled", "observe", "primary"}:
         errors.append("inference_mode must be one of: disabled, observe, primary")
 

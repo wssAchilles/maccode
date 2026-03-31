@@ -44,6 +44,13 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     asString(nestedExecution?.order_id) ??
     undefined
 
+  const executionId =
+    asString(payload.execution_id) ??
+    asString(payload.executionId) ??
+    asString(nestedExecution?.execution_id) ??
+    asString(nestedExecution?.executionId) ??
+    undefined
+
   const requestId =
     asString(payload.request_id) ??
     asString(payload.requestId) ??
@@ -83,6 +90,7 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     symbol,
     account_id: accountId,
     order_id: orderId,
+    execution_id: executionId,
     status,
     request_id: requestId,
   }

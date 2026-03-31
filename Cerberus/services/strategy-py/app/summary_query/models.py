@@ -6,7 +6,11 @@ from typing import Any, Generic, TypeAlias, TypeVar
 from pydantic import BaseModel
 
 from app.ports.signal import SignalHistorySource, SignalStoreSource
-from app.ports.signal import PortfolioSignalSnapshot, StrategyDecisionSnapshot
+from app.ports.signal import (
+    PortfolioSignalSnapshot,
+    StrategyDecisionSnapshot,
+    StrategyRegistrySnapshot,
+)
 from app.schemas import MatchingOrderBookView, SignalRecord
 from app.system_status_query.persistence import PersistenceStatusResult
 
@@ -104,6 +108,7 @@ class SummarySignalPayload:
     signal_id: str | None = None
     strategy_basket: tuple[StrategyDecisionSnapshot, ...] = ()
     portfolio: PortfolioSignalSnapshot | None = None
+    strategy_registry: StrategyRegistrySnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)

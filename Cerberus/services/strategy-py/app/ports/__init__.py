@@ -24,6 +24,8 @@ from app.ports.signal import (
     SignalHistorySource,
     SignalPublisherPort,
     SignalRuntimePort,
+    StrategyRegistryEntrySnapshot,
+    StrategyRegistrySnapshot,
     StrategyDecisionSnapshot,
     SignalStorePort,
     SignalStoreSource,
@@ -64,4 +66,6 @@ __all__ = [
     "SignalStoreSource",
     "StoreStatusPort",
     "StrategyDecisionSnapshot",
+    "StrategyRegistryEntrySnapshot",
+    "StrategyRegistrySnapshot",
 ]

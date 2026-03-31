@@ -11,6 +11,8 @@ from app.ports import (
     RegisteredModel,
     SignalDecisionSnapshot,
     StrategyDecisionSnapshot,
+    StrategyRegistryEntrySnapshot,
+    StrategyRegistrySnapshot,
 )
 from app.schemas import (
     MatchingHealthView,
@@ -95,6 +97,39 @@ class FakeSignalRuntime:
                 tracked_symbols=("BTCUSDT", "ETHUSDT"),
                 updated_at="2026-03-30T10:00:00Z",
                 latest_price=101.25,
+            ),
+            registry=StrategyRegistrySnapshot(
+                symbol="BTCUSDT",
+                tracked_symbols=("BTCUSDT", "ETHUSDT"),
+                conflict_policy="review_on_conflict",
+                downgrade_policy="review",
+                entries=(
+                    StrategyRegistryEntrySnapshot(
+                        strategy_id="default",
+                        label="Rule engine",
+                        engine="moving_average",
+                        source="rule_engine",
+                        role="baseline",
+                        enabled=True,
+                        priority=1,
+                        configured_weight=0.62,
+                        effective_weight=0.62,
+                        symbol_coverage=("BTCUSDT", "ETHUSDT"),
+                    ),
+                    StrategyRegistryEntrySnapshot(
+                        strategy_id="inference",
+                        label="Inference model",
+                        engine="cerberus_signal_transformer_lstm",
+                        source="inference",
+                        role="adaptive",
+                        enabled=True,
+                        priority=2,
+                        configured_weight=0.38,
+                        effective_weight=0.38,
+                        symbol_coverage=("BTCUSDT", "ETHUSDT", "SOLUSDT"),
+                        metadata={"model_id": "cerberus-transformer-lstm"},
+                    ),
+                ),
             ),
             metadata={},
         )
@@ -268,6 +303,8 @@ async def test_summary_application_returns_typed_result_and_serializes_without_c
     assert payload["signal"]["payload"]["portfolio"]["lead_strategy_label"] == "Rule engine"
     assert payload["signal"]["payload"]["strategy_basket"][1]["engine"] == "cerberus_signal_transformer_lstm"
     assert payload["signal"]["payload"]["portfolio"]["signal_bias"] == "bullish"
+    assert payload["signal"]["payload"]["strategy_registry"]["entries"][1]["engine"] == "cerberus_signal_transformer_lstm"
+    assert payload["signal"]["payload"]["strategy_registry"]["conflict_policy"] == "review_on_conflict"
     assert payload["recent_signals"]["payload"]["count"] == 1
     assert payload["matching_orderbook"]["payload"]["depth"] == 5
     assert payload["persistence"]["payload"]["worker"]["processed_ticks"] == 12

@@ -6,9 +6,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { ExecutionLifecyclePanel } from './components/ExecutionLifecyclePanel'
 import { StrategyPortfolioPanel } from './components/StrategyPortfolioPanel'
+import { StrategyRegistryPanel } from './components/StrategyRegistryPanel'
 import {
   buildExecutionLifecyclePanelModel,
   buildStrategyPortfolioPanelModel,
+  buildStrategyRegistryPanelModel,
 } from './view-models'
 
 function renderWithI18n(ui: ReactNode) {
@@ -61,13 +63,44 @@ describe('strategy orchestration module', () => {
   it('renders execution lifecycle stages with progression context', () => {
     const model = buildExecutionLifecyclePanelModel({
       t: (key) => key,
+      selectedSymbol: 'BTCUSDT',
       signal: {
         status: 'ready',
         signal: 'BUY',
         confidence: 0.84,
         decision_source: 'rule_engine',
         dispatch_state: 'accepted',
+        portfolio: {
+          symbol: 'BTCUSDT',
+          dominant_signal: 'BUY',
+          final_signal: 'BUY',
+          final_source: 'rule_engine',
+          signal_bias: 'bullish',
+          consensus_level: 'high',
+          execution_ready: true,
+          execution_gate: 'ready',
+          execution_gate_reason: 'basket supports live execution',
+          aligned_count: 2,
+          contested_count: 0,
+          weighted_score: 0.91,
+          active_strategy_count: 2,
+          tracked_symbols: ['BTCUSDT'],
+        },
       },
+      orderEvents: [
+        {
+          id: 'evt-1',
+          channel: 'trade.executions.default',
+          payload: {},
+          received_at: Date.now(),
+          event_type: 'matching.execution.filled',
+          symbol: 'BTCUSDT',
+          order_id: 'ord-1',
+          execution_id: 'exec-1',
+          request_id: 'rid-1',
+          status: 'filled',
+        },
+      ],
       persistenceStatus: {
         status: 'ok',
         worker: {
@@ -119,5 +152,47 @@ describe('strategy orchestration module', () => {
     expect(screen.getByText(/workspace\.execution\.lifecycleStageDispatch/i)).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleStageExecution/i)).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleLiveOrders/i)).toBeTruthy()
+    expect(screen.getByText(/workspace\.execution\.lifecycleExecutionId/i)).toBeTruthy()
+  })
+
+  it('builds strategy registry panel with enabled entries and coverage', () => {
+    const model = buildStrategyRegistryPanelModel({
+      t: (key) => key,
+      selectedSymbol: 'BTCUSDT',
+      signal: {
+        status: 'ready',
+        signal: 'BUY',
+        confidence: 0.82,
+        strategy_registry: {
+          symbol: 'BTCUSDT',
+          tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+          conflict_policy: 'review_on_conflict',
+          downgrade_policy: 'review',
+          entries: [
+            {
+              strategy_id: 'default',
+              label: 'Rule engine',
+              engine: 'moving_average',
+              source: 'rule_engine',
+              role: 'baseline',
+              enabled: true,
+              priority: 1,
+              configured_weight: 0.62,
+              effective_weight: 0.62,
+              symbol_coverage: ['BTCUSDT', 'ETHUSDT'],
+              conflict_policy: 'review_on_conflict',
+              downgrade_policy: 'review',
+              metadata: {},
+            },
+          ],
+        },
+      },
+    })
+
+    renderWithI18n(<StrategyRegistryPanel model={model} />)
+
+    expect(screen.getByText('Rule engine')).toBeTruthy()
+    expect(screen.getAllByText(/common\.ready/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/workspace\.strategy\.configuredWeight/i)).toBeTruthy()
   })
 })

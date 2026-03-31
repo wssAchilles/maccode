@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     signal_channel: str = "strategy.signals.default"
     fast_window: int = 5
     slow_window: int = 20
+    strategy_conflict_policy: str = "review_on_conflict"
+    strategy_downgrade_policy: str = "review"
+    strategy_rule_priority: int = 1
+    strategy_inference_priority: int = 2
+    strategy_rule_weight_observe: float = 0.62
+    strategy_inference_weight_observe: float = 0.38
+    strategy_rule_weight_primary: float = 0.42
+    strategy_inference_weight_primary: float = 0.58
     inference_enabled: bool = False
     inference_mode: str = "disabled"
     inference_engine_name: str = "moving_average_baseline"

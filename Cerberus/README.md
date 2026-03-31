@@ -121,9 +121,24 @@
 Firebase Authentication 行为：
 
 - 登录页只提供邮箱登录和 Google 登录。
-- 没有显式“注册”按钮。
-- 邮箱登录走 `login -> auto-register fallback`，首次账号会自动创建。
+- 没有独立的“公共首页”，当前前端在启用鉴权时会先进入登录闸门，再进入工作台。
+- 生产环境下，只要 Firebase Web SDK 配置存在，就默认启用登录闸门；不再要求显式设置 `VITE_AUTH_REQUIRED=true`。
+- 如需在某个环境下强制关闭登录闸门，可显式设置 `VITE_AUTH_REQUIRED=false`。
+- 如需在本地或预览环境下强制开启登录闸门，可显式设置 `VITE_AUTH_REQUIRED=true`。
+- 邮箱登录使用 Firebase Email/Password，输入已存在账号时直接登录。
+- 邮箱创建账号使用单独的“创建账号”动作，不再走“登录失败后自动注册”的隐式回退。
 - Google 登录使用 Firebase onboarding，首次登录也会自动创建账号。
+
+生产前端最小鉴权配置：
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+只要上述配置完整，生产 bundle 就会默认进入登录面板；如果配置缺失，登录面板会显示“登录服务尚未完成配置”。
 
 ## 快速开始
 
@@ -219,6 +234,27 @@ export ALPACA_API_SECRET=...
 
 ```bash
 ./scripts/deploy_gateway_cached.sh cerberus-9d94f asia-east2
+```
+
+统一部署脚本骨架：
+
+- `scripts/deploy_common.sh` 是 Gateway / Strategy / Matching 三条 Cloud Run 发布脚本的共享底座。
+- 共享能力包括：
+  - `Artifact Registry` 预检
+  - `Cloud Build` 显式构建
+  - `Cloud Run` 镜像部署
+  - 临时 YAML 自动清理
+  - `DRY_RUN`
+  - `GCLOUD_QUIET`
+- 当前推荐发布顺序：
+  1. `./scripts/deploy_gateway_source.sh <project> <region>`
+  2. `./scripts/deploy_strategy_source.sh <project> <region>`
+  3. `./scripts/deploy_matching_source.sh <project> <region>`
+  4. `cd apps/frontend && npm run build && firebase deploy --only hosting --project <project>`
+- 如需先看完整命令展开而不真正执行，可设置：
+
+```bash
+DRY_RUN=true ./scripts/deploy_gateway_source.sh cerberus-9d94f asia-east2
 ```
 
 ## Colab 训练与 ONNX 导出复盘
@@ -657,3 +693,22 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 会执行：
    - LCP <= 2.0s
    - INP <= 150ms（通过交互 trace / field probe 测量）
    - CLS < 0.1
+
+鉴权态验收补充：
+
+1. 必须使用真实 Firebase 账号完成一次表单登录，不再依赖开发期的临时 bearer 注入。
+2. 登录成功后，页头应出现：
+   - 当前登录邮箱
+   - “退出登录”按钮
+3. 登录后的网络请求必须满足：
+   - `POST https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword` 返回 `200`
+   - `GET /api/v1/strategy/summary` 返回 `200`
+   - `GET /api/v1/klines` 返回 `200`
+   - `GET /api/v1/trading/policy` 返回 `200`
+   - `GET /api/v1/binance/symbol-rules` 返回 `200`
+   - `GET /api/v1/orders/events/recent` 返回 `200`
+4. 登录后的 `Overview / Market / Execution` 至少要验证：
+   - `Overview`：推理可观测、策略编排、组合级信号摘要
+   - `Market`：分钟 K 线、策略决策篮子、组合级信号摘要、订单簿摘要
+   - `Execution`：执行生命周期、交易工单、策略决策篮子、执行回报时间线
+5. 如果匿名访问时 `strategy summary` 返回 `401`，这属于预期降级路径；但一旦完成登录，继续出现 `401` 就视为阻断发布。

@@ -4,11 +4,13 @@ import { useCandlesResource } from '../../app/bootstrap/useResourceQueries'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import {
+  buildStrategyRegistryPanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
 } from '../strategy-orchestration/view-models'
 import {
   buildMarketChartStateModel,
+  buildMarketExecutionRailModel,
   buildMarketMetricTiles,
   buildMarketSymbolChips,
 } from './view-models'
@@ -23,12 +25,14 @@ export function useMarketWorkspaceModel({ active }: Params) {
   const latest = useCerberusStore((state) => state.marketStream.latest)
   const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
+  const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
   const candles = useCerberusStore((state) => state.marketStream.candles)
   const marketStatus = useCerberusStore((state) => state.uiState.domain_status['market-stream'])
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
   const orderbook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
+  const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
 
   const candlesQuery = useCandlesResource(active)
 
@@ -71,6 +75,21 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [selectedSymbol, strategySignal, t],
   )
 
+  const strategyRegistry = useMemo(
+    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol }),
+    [selectedSymbol, strategySignal, t],
+  )
+
+  const executionRail = useMemo(
+    () => buildMarketExecutionRailModel({ t, orderEvents, selectedSymbol }),
+    [orderEvents, selectedSymbol, t],
+  )
+
+  const selectSymbol = (symbol: string) => {
+    setSelectedSymbol(symbol)
+    syncExecutionFilters({ symbol })
+  }
+
   return {
     activeSymbol: selectedSymbol,
     candles,
@@ -80,7 +99,9 @@ export function useMarketWorkspaceModel({ active }: Params) {
     symbolChips,
     metricTiles,
     portfolioPanel,
+    strategyRegistry,
     strategyMatrix,
-    selectSymbol: setSelectedSymbol,
+    executionRail,
+    selectSymbol,
   }
 }

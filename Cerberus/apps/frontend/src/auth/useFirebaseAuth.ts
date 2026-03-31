@@ -33,7 +33,13 @@ export type FirebaseAuthState = {
 
 export function useFirebaseAuth(): FirebaseAuthState {
   const { locale } = useI18n()
-  const required = import.meta.env.VITE_AUTH_REQUIRED === 'true'
+  const authRequiredOverride = import.meta.env.VITE_AUTH_REQUIRED
+  const hasFirebaseConfig = Boolean(
+    import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  )
+  const required =
+    authRequiredOverride === 'true' ||
+    (import.meta.env.PROD && authRequiredOverride !== 'false' && hasFirebaseConfig)
   const [status, setStatus] = useState<AuthStatus>(required ? 'loading' : 'disabled')
   const [user, setUser] = useState<User | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)

@@ -1,8 +1,10 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type {
   BinanceRule,
+  OrderTimelineEvent,
   PersistenceStatus,
   StrategyDecisionContribution,
+  StrategyRegistrySummary,
   StrategySignal,
   TradingPolicy,
   UIState,
@@ -42,6 +44,24 @@ export type StrategyPortfolioPanelModel = {
   gateTone: 'default' | 'muted' | 'accent'
   symbolChips: { id: string; label: string; active: boolean }[]
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  emptyTitle?: string
+  emptyHint?: string
+}
+
+export type StrategyRegistryRowModel = {
+  id: string
+  label: string
+  engine: string
+  stateLabel: string
+  stateTone: 'default' | 'muted' | 'accent'
+  items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+}
+
+export type StrategyRegistryPanelModel = {
+  summary: string
+  policyLabel: string
+  downgradeLabel: string
+  rows: StrategyRegistryRowModel[]
   emptyTitle?: string
   emptyHint?: string
 }
@@ -145,6 +165,78 @@ function executionGateLabel(t: Translate, value?: string): string {
   }
   const key = `workspace.strategy.gate.${value}` as TranslationKey
   return t(key)
+}
+
+function conflictPolicyLabel(t: Translate, value?: string): string {
+  if (!value) {
+    return t('common.na')
+  }
+  const key = `workspace.strategy.conflict.${value}` as TranslationKey
+  return t(key)
+}
+
+function downgradePolicyLabel(t: Translate, value?: string): string {
+  if (!value) {
+    return t('common.na')
+  }
+  const key = `workspace.strategy.downgrade.${value}` as TranslationKey
+  return t(key)
+}
+
+function lifecycleStatusLabel(t: Translate, value?: string, eventType?: string): string {
+  const normalized = `${value ?? ''}`.trim().toLowerCase()
+  if (normalized === 'filled') {
+    return t('workspace.execution.lifecycleStatus.filled')
+  }
+  if (normalized === 'partial_fill' || normalized === 'partially_filled') {
+    return t('workspace.execution.lifecycleStatus.partialFill')
+  }
+  if (normalized === 'submitted' || normalized === 'accepted') {
+    return t('workspace.execution.lifecycleStatus.submitted')
+  }
+  if (normalized === 'rejected') {
+    return t('workspace.execution.lifecycleStatus.rejected')
+  }
+  if (normalized === 'canceled' || normalized === 'cancelled') {
+    return t('workspace.execution.lifecycleStatus.canceled')
+  }
+  if ((eventType ?? '').includes('execution.filled')) {
+    return t('workspace.execution.lifecycleStatus.filled')
+  }
+  return t('health.state.idle')
+}
+
+function lifecycleStateFromStatus(
+  status?: string,
+  eventType?: string,
+): ExecutionLifecycleStageModel['state'] {
+  const normalized = `${status ?? ''}`.trim().toLowerCase()
+  if (normalized === 'filled' || normalized === 'submitted' || normalized === 'accepted') {
+    return 'ready'
+  }
+  if (normalized === 'partial_fill' || normalized === 'partially_filled' || normalized === 'canceled' || normalized === 'cancelled') {
+    return 'degraded'
+  }
+  if (normalized === 'rejected') {
+    return 'error'
+  }
+  if ((eventType ?? '').includes('execution.filled')) {
+    return 'ready'
+  }
+  return 'idle'
+}
+
+function summarizeCoverage(selectedSymbol: string | undefined, coverage: string[]): string {
+  if (coverage.length === 0) {
+    return '—'
+  }
+  if (!selectedSymbol) {
+    return coverage.join(' · ')
+  }
+  if (coverage.includes(selectedSymbol)) {
+    return `${selectedSymbol} · ${coverage.length}/${coverage.length}`
+  }
+  return coverage.join(' · ')
 }
 
 function lifecycleStateLabel(
@@ -307,10 +399,87 @@ export function buildStrategyPortfolioPanelModel({
   }
 }
 
+export function buildStrategyRegistryPanelModel({
+  t,
+  signal,
+  selectedSymbol,
+}: {
+  t: Translate
+  signal?: StrategySignal
+  selectedSymbol?: string
+}): StrategyRegistryPanelModel {
+  const registry = signal?.strategy_registry
+  if (!registry || registry.entries.length === 0) {
+    return {
+      summary: t('workspace.strategy.registryEmpty'),
+      policyLabel: t('common.na'),
+      downgradeLabel: t('common.na'),
+      rows: [],
+      emptyTitle: t('workspace.strategy.registryEmpty'),
+      emptyHint: t('workspace.strategy.noDecisionsHint'),
+    }
+  }
+
+  const rows: StrategyRegistryRowModel[] = [...registry.entries]
+    .sort((left, right) => left.priority - right.priority)
+    .map((entry) => {
+      const stateTone: StrategyRegistryRowModel['stateTone'] = entry.enabled ? 'accent' : 'muted'
+      return {
+        id: `${entry.strategy_id}-${entry.engine}`,
+        label: entry.label,
+        engine: entry.engine,
+        stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
+        stateTone,
+        items: [
+          {
+            id: 'priority',
+            label: t('workspace.strategy.priority'),
+            value: String(entry.priority),
+          },
+          {
+            id: 'configuredWeight',
+            label: t('workspace.strategy.configuredWeight'),
+            value: formatPercent(entry.configured_weight),
+          },
+          {
+            id: 'effectiveWeight',
+            label: t('workspace.strategy.effectiveWeight'),
+            value: formatPercent(entry.effective_weight),
+            tone: 'accent',
+          },
+          {
+            id: 'coverage',
+            label: t('workspace.strategy.symbolCoverage'),
+            value: summarizeCoverage(selectedSymbol, entry.symbol_coverage),
+          },
+          {
+            id: 'role',
+            label: t('workspace.strategy.role'),
+            value: roleLabel(t, entry.role),
+          },
+          {
+            id: 'source',
+            label: t('workspace.strategy.lifecycleSource'),
+            value: sourceLabel(t, entry.source),
+          },
+        ],
+      }
+    })
+
+  return {
+    summary: `${registry.entries.length} ${t('workspace.strategy.registrySummarySuffix')} · ${registry.symbol}`,
+    policyLabel: conflictPolicyLabel(t, registry.conflict_policy),
+    downgradeLabel: downgradePolicyLabel(t, registry.downgrade_policy),
+    rows,
+  }
+}
+
 export function buildExecutionLifecyclePanelModel({
   t,
   signal,
   persistenceStatus,
+  orderEvents,
+  selectedSymbol,
   latestEventSummary,
   heartbeat,
   tradingPolicy,
@@ -320,6 +489,8 @@ export function buildExecutionLifecyclePanelModel({
   t: Translate
   signal?: StrategySignal
   persistenceStatus?: PersistenceStatus
+  orderEvents?: OrderTimelineEvent[]
+  selectedSymbol?: string
   latestEventSummary: string
   heartbeat?: string
   tradingPolicy?: TradingPolicy
@@ -329,10 +500,27 @@ export function buildExecutionLifecyclePanelModel({
   const state = domainStatus.state
   const stateLabel = lifecycleStateLabel(t, state)
   const matchingStats = persistenceStatus?.matching?.stats
+  const filteredEvents = (orderEvents ?? []).filter((item) =>
+    selectedSymbol ? item.symbol === selectedSymbol : true,
+  )
+  const latestLifecycleEvent = filteredEvents[0]
+  const partialFillCount = filteredEvents.filter((item) =>
+    ['partial_fill', 'partially_filled'].includes(`${item.status ?? ''}`.toLowerCase()),
+  ).length
+  const filledCount = filteredEvents.filter(
+    (item) => `${item.status ?? ''}`.toLowerCase() === 'filled',
+  ).length
+  const canceledCount = filteredEvents.filter((item) =>
+    ['canceled', 'cancelled'].includes(`${item.status ?? ''}`.toLowerCase()),
+  ).length
+  const rejectedCount = filteredEvents.filter(
+    (item) => `${item.status ?? ''}`.toLowerCase() === 'rejected',
+  ).length
   const summary = latestEventSummary === t('common.heartbeat') && heartbeat
     ? heartbeat
     : latestEventSummary
   const dispatchState = signal?.dispatch_state ?? 'idle'
+  const portfolioGate = signal?.portfolio?.execution_gate
   const stages: ExecutionLifecycleStageModel[] = [
     {
       id: 'dispatch',
@@ -350,8 +538,22 @@ export function buildExecutionLifecyclePanelModel({
     {
       id: 'policy',
       label: t('workspace.execution.lifecycleStagePolicy'),
-      detail: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
-      state: tradingPolicy?.enforced ? 'ready' : 'degraded',
+      detail:
+        portfolioGate
+          ? executionGateLabel(t, portfolioGate)
+          : tradingPolicy?.enforced
+            ? t('common.ready')
+            : t('common.disabled'),
+      state:
+        portfolioGate === 'ready'
+          ? 'ready'
+          : portfolioGate === 'review'
+            ? 'degraded'
+            : portfolioGate === 'hold'
+              ? 'idle'
+              : tradingPolicy?.enforced
+                ? 'ready'
+                : 'degraded',
     },
     {
       id: 'venue',
@@ -362,18 +564,8 @@ export function buildExecutionLifecyclePanelModel({
     {
       id: 'execution',
       label: t('workspace.execution.lifecycleStageExecution'),
-      detail:
-        (matchingStats?.rejected_orders ?? 0) > 0
-          ? t('health.state.degraded')
-          : (matchingStats?.live_orders ?? 0) > 0 || (persistenceStatus?.worker.forwarded_executions ?? 0) > 0
-            ? t('health.state.ready')
-            : t('health.state.idle'),
-      state:
-        (matchingStats?.rejected_orders ?? 0) > 0
-          ? 'degraded'
-          : (matchingStats?.live_orders ?? 0) > 0 || (persistenceStatus?.worker.forwarded_executions ?? 0) > 0
-            ? 'ready'
-            : 'idle',
+      detail: lifecycleStatusLabel(t, latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
+      state: lifecycleStateFromStatus(latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
     },
   ]
 
@@ -397,8 +589,13 @@ export function buildExecutionLifecyclePanelModel({
       {
         id: 'policy',
         label: t('workspace.execution.lifecyclePolicy'),
-        value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
-        tone: tradingPolicy?.enforced ? 'accent' : 'muted',
+        value:
+          portfolioGate
+            ? executionGateLabel(t, portfolioGate)
+            : tradingPolicy?.enforced
+              ? t('common.ready')
+              : t('common.disabled'),
+        tone: portfolioGate === 'ready' || tradingPolicy?.enforced ? 'accent' : 'muted',
       },
       {
         id: 'ruleReady',
@@ -406,9 +603,44 @@ export function buildExecutionLifecyclePanelModel({
         value: binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule'),
       },
       {
+        id: 'latestLifecycle',
+        label: t('workspace.execution.lifecycleLatest'),
+        value: lifecycleStatusLabel(t, latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
+      },
+      {
+        id: 'latestRequestId',
+        label: t('workspace.execution.lifecycleRequestId'),
+        value: latestLifecycleEvent?.request_id ?? t('common.na'),
+      },
+      {
+        id: 'latestOrderId',
+        label: t('workspace.execution.lifecycleOrderId'),
+        value: latestLifecycleEvent?.order_id ?? t('common.na'),
+      },
+      {
+        id: 'latestExecutionId',
+        label: t('workspace.execution.lifecycleExecutionId'),
+        value: latestLifecycleEvent?.execution_id ?? t('common.na'),
+      },
+      {
         id: 'forwardedExecutions',
         label: t('workspace.execution.lifecycleForwarded'),
         value: formatInteger(persistenceStatus?.worker.forwarded_executions),
+      },
+      {
+        id: 'partialFills',
+        label: t('workspace.execution.lifecyclePartialFills'),
+        value: formatInteger(partialFillCount),
+      },
+      {
+        id: 'filledCount',
+        label: t('workspace.execution.lifecycleFilledCount'),
+        value: formatInteger(filledCount),
+      },
+      {
+        id: 'canceledCount',
+        label: t('workspace.execution.lifecycleCanceledCount'),
+        value: formatInteger(canceledCount),
       },
       {
         id: 'lastExecutionId',
@@ -423,7 +655,7 @@ export function buildExecutionLifecyclePanelModel({
       {
         id: 'rejectedOrders',
         label: t('workspace.execution.lifecycleRejectedOrders'),
-        value: formatInteger(matchingStats?.rejected_orders),
+        value: formatInteger(rejectedCount || matchingStats?.rejected_orders),
       },
     ],
   }

@@ -175,6 +175,8 @@ async def test_signal_application_ingest_tick_runs_full_dispatch_flow() -> None:
     assert decision.context.metadata["portfolio"]["tracked_symbols"] == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
     assert decision.context.metadata["portfolio"]["execution_gate"] == "ready"
     assert decision.context.metadata["portfolio"]["consensus_level"] == "high"
+    assert decision.context.metadata["strategy_registry"]["entries"][0]["label"] == "Rule engine"
+    assert decision.context.metadata["strategy_registry"]["entries"][0]["enabled"] is True
     assert runtime.stored_signal is not None
     assert runtime.stored_decision is not None
     assert runtime.processed_count == 1
@@ -259,6 +261,7 @@ async def test_signal_application_uses_inference_as_primary_when_enabled() -> No
     assert decision.context.metadata["decision_source"] == "inference"
     assert decision.context.metadata["portfolio"]["execution_gate"] == "review"
     assert decision.context.metadata["portfolio"]["lead_strategy_label"] == "Inference model"
+    assert decision.context.metadata["strategy_registry"]["entries"][1]["configured_weight"] == pytest.approx(0.58)
     assert runtime.stored_signal is not None
     assert runtime.stored_signal.signal == "SELL"
     assert inference.calls
@@ -289,6 +292,7 @@ async def test_signal_application_keeps_rule_signal_when_inference_is_observe_on
     assert decision.context.metadata["inference"]["engine"] == "shadow-model"
     assert len(decision.context.metadata["strategy_basket"]) == 2
     assert decision.context.metadata["portfolio"]["dominant_signal"] == "BUY"
+    assert decision.context.metadata["strategy_registry"]["entries"][1]["source"] == "inference"
 
 
 @pytest.mark.asyncio

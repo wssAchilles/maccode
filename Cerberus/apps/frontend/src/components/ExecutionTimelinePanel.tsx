@@ -160,7 +160,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
                     <p className="timeline-row-title">{row.title}</p>
                     <p className="timeline-row-subtitle">{row.subtitle}</p>
                     <p className="timeline-row-meta">
-                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'}
+                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'} · {t('workspace.execution.lifecycleExecutionId')}: {event.execution_id ?? '—'}
                     </p>
                   </div>
                   <div className="timeline-row-side">

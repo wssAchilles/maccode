@@ -7,6 +7,7 @@ import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
+import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
 
 type Props = {
   active?: boolean
@@ -85,6 +86,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame title={t('workspace.strategy.title')} description={t('workspace.strategy.description')}>
           <div className="stack">
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+            <StrategyRegistryPanel model={model.strategyRegistry} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
           </div>
         </SectionFrame>

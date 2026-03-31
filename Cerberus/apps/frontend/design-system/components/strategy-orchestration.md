@@ -1,9 +1,10 @@
 # Strategy Orchestration Component
 
-This component family covers the read-only strategy basket, portfolio signal summary, and execution lifecycle panels inside the authenticated workbench.
+This component family covers the read-only strategy basket, portfolio signal summary, strategy registry, and execution lifecycle panels inside the authenticated workbench.
 
 ## Intent
 - Show how the effective signal is formed from multiple strategies without exposing raw debugging noise.
+- Show which strategies are enabled, what weights and priorities they are configured with, and which symbol coverage they currently own.
 - Keep orchestration detail close to market and execution context, not as a detached admin screen.
 - Emphasize operator comprehension over decorative flourish.
 - Surface whether the current basket is executable, contested, or still in a hold posture.
@@ -18,6 +19,7 @@ This component family covers the read-only strategy basket, portfolio signal sum
 ## Layout Rules
 - `StrategyDecisionMatrix` is a dense vertical list of strategy cards with stable spacing.
 - `StrategyPortfolioPanel` is concise and should sit in the side rail on desktop.
+- `StrategyRegistryPanel` sits near the portfolio summary and explains why a strategy can dominate or be downgraded.
 - `StrategyPortfolioPanel` may expose tracked symbol chips, but those chips must reuse the global chip treatment and never look like a primary CTA.
 - `ExecutionLifecyclePanel` belongs above the trade ticket so operators see constraints before action.
 - `ExecutionLifecyclePanel` includes a four-step stage rail before the detail list: dispatch, policy, venue rule, execution feedback.

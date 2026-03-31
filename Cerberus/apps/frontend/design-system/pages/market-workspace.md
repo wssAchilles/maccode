@@ -13,6 +13,7 @@ This page inherits the global Cerberus design system and adds market-monitoring 
 - Keep the strategy basket under the chart so the operator can read market context before deeper diagnostics.
 - Keep the portfolio summary and order book in a stable side rail on desktop and collapse them below the chart on narrow viewports.
 - The portfolio summary may expose tracked symbol chips; those chips should let the operator pivot the whole market context without opening another workspace.
+- The symbol execution rail under the chart should mirror the same selected symbol, so chart, latest execution feedback, and downstream execution filters stay in sync.
 
 ## Visual Override
 - Preserve the existing light glass tokens from the global master.
@@ -24,6 +25,7 @@ This page inherits the global Cerberus design system and adds market-monitoring 
 - Symbol toggles must feel immediate and expose hover, active, and focus-visible states.
 - Market metric tiles may animate content opacity, but must not shift layout on refresh.
 - Chart and order-book refresh cues should be subtle and respect `prefers-reduced-motion`.
+- When the operator pivots the symbol from portfolio chips or market header chips, the linked execution context should refresh without requiring a second click.
 - Strategy cards must behave like read-only diagnostic surfaces, not pseudo-buttons.
 
 ## Accessibility Override

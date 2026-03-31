@@ -26,6 +26,19 @@ export type MarketChartStateModel = {
   hint: string
 }
 
+export type MarketExecutionRailModel = {
+  summary: string
+  items: {
+    id: string
+    title: string
+    subtitle: string
+    status: string
+    time: string
+  }[]
+  emptyTitle?: string
+  emptyHint?: string
+}
+
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
 type BuildMarketMetricTilesParams = {
@@ -40,6 +53,17 @@ type BuildMarketChartStateParams = {
   candlesCount: number
   candlesFetching: boolean
   marketStatus: UIState
+}
+
+function formatDateTime(value?: string | number): string {
+  if (!value) {
+    return '—'
+  }
+  const parsed = typeof value === 'number' ? value : Date.parse(value)
+  if (Number.isNaN(parsed)) {
+    return typeof value === 'string' ? value : '—'
+  }
+  return new Date(parsed).toLocaleString()
 }
 
 export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChipModel[] {
@@ -117,5 +141,40 @@ export function buildMarketChartStateModel({
     state: 'empty',
     title: t('market.chartEmptyTitle'),
     hint: t('market.chartRetryHint'),
+  }
+}
+
+export function buildMarketExecutionRailModel({
+  t,
+  orderEvents,
+  selectedSymbol,
+}: {
+  t: Translate
+  orderEvents: OrderTimelineEvent[]
+  selectedSymbol: string
+}): MarketExecutionRailModel {
+  const items = orderEvents
+    .filter((item) => item.symbol === selectedSymbol)
+    .slice(0, 4)
+    .map((item) => ({
+      id: item.id,
+      title: item.event_type,
+      subtitle: `${item.symbol ?? selectedSymbol} · ${item.request_id ?? '—'} · ${item.execution_id ?? '—'}`,
+      status: item.status ?? '—',
+      time: formatDateTime(item.event_time ?? item.received_at),
+    }))
+
+  if (items.length === 0) {
+    return {
+      summary: selectedSymbol,
+      items: [],
+      emptyTitle: t('workspace.market.executionRailEmpty'),
+      emptyHint: t('workspace.market.executionRailDescription'),
+    }
+  }
+
+  return {
+    summary: `${selectedSymbol} · ${items.length}`,
+    items,
   }
 }

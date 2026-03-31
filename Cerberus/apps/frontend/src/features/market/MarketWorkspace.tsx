@@ -4,6 +4,8 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
+import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
+import { SymbolExecutionRail } from './components/SymbolExecutionRail'
 import { useMarketWorkspaceModel } from './useMarketWorkspaceModel'
 
 type Props = {
@@ -71,6 +73,13 @@ export function MarketWorkspace({ active = true }: Props) {
           </div>
         </SectionFrame>
 
+        <SectionFrame
+          title={t('workspace.market.executionRailTitle')}
+          description={t('workspace.market.executionRailDescription')}
+        >
+          <SymbolExecutionRail model={model.executionRail} />
+        </SectionFrame>
+
         {model.summaryError ? (
           <DiagnosticDrawer title={t('workspace.market.diagnostics')} summary={model.summaryError.message}>
             <pre className="diagnostic-pre">{JSON.stringify(model.summaryError, null, 2)}</pre>
@@ -91,6 +100,12 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.strategy.portfolioDescription')}
         >
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+        </SectionFrame>
+        <SectionFrame
+          title={t('workspace.strategy.registryTitle')}
+          description={t('workspace.strategy.registryDescription')}
+        >
+          <StrategyRegistryPanel model={model.strategyRegistry} />
         </SectionFrame>
         <MatchingOrderBookPanel orderbook={model.orderbook} />
       </div>

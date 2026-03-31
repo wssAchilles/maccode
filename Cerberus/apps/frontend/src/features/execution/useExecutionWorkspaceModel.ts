@@ -11,7 +11,9 @@ import {
   buildExecutionLifecyclePanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
+  buildStrategyRegistryPanelModel,
 } from '../strategy-orchestration/view-models'
+import { buildExecutionOperationsPanel } from './view-models'
 
 type Params = {
   active: boolean
@@ -26,6 +28,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
   const orderbook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
+  const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
   const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const tradingPolicy = useCerberusStore((state) => state.executionTrading.trading_policy)
@@ -34,6 +37,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
 
   const displayQuote = latestBySymbol[selectedSymbol] ?? latest
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
+  const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
 
   const metricTiles = useMemo(
     () => [
@@ -72,13 +76,27 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
         t,
         signal: strategySignal,
         persistenceStatus,
+        orderEvents,
+        selectedSymbol,
         latestEventSummary: summarizeLatestFeedback(latestEvent, heartbeat, t),
         heartbeat,
         tradingPolicy,
         binanceRule,
         domainStatus: executionStatus,
       }),
-    [binanceRule, executionStatus, heartbeat, latestEvent, persistenceStatus, strategySignal, t, tradingPolicy],
+    [binanceRule, executionStatus, heartbeat, latestEvent, orderEvents, persistenceStatus, selectedSymbol, strategySignal, t, tradingPolicy],
+  )
+
+  const operationsPanel = useMemo(
+    () =>
+      buildExecutionOperationsPanel({
+        t,
+        selectedSymbol,
+        orderEvents,
+        persistenceStatus,
+        domainStatus: executionStatus,
+      }),
+    [executionStatus, orderEvents, persistenceStatus, selectedSymbol, t],
   )
 
   const strategyMatrix = useMemo(
@@ -91,15 +109,27 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     [selectedSymbol, strategySignal, t],
   )
 
+  const strategyRegistry = useMemo(
+    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol }),
+    [selectedSymbol, strategySignal, t],
+  )
+
+  const selectSymbol = (symbol: string) => {
+    setSelectedSymbol(symbol)
+    syncExecutionFilters({ symbol })
+  }
+
   return {
     selectedSymbol,
-    selectSymbol: setSelectedSymbol,
+    selectSymbol,
     displayQuote,
     orderbook,
     summaryError,
     metricTiles,
     lifecyclePanel,
+    operationsPanel,
     strategyMatrix,
     portfolioPanel,
+    strategyRegistry,
   }
 }

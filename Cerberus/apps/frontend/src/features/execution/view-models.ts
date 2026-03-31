@@ -1,6 +1,6 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
-import type { TradingPolicy } from '../../types/contracts'
+import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
 
@@ -36,6 +36,16 @@ export type ExecutionProgressItem = {
   requestId?: string
 }
 
+export type ExecutionOperationsPanelModel = {
+  state: UIState['state']
+  stateLabel: string
+  summary: string
+  anomalies: string[]
+  items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  emptyTitle?: string
+  emptyHint?: string
+}
+
 type BuildExecutionSummaryParams = {
   t: Translate
   broker: 'binance' | 'alpaca'
@@ -44,6 +54,25 @@ type BuildExecutionSummaryParams = {
   tradingPolicy?: TradingPolicy
   latestBid?: string
   latestAsk?: string
+}
+
+type BuildExecutionOperationsParams = {
+  t: Translate
+  selectedSymbol: string
+  orderEvents: OrderTimelineEvent[]
+  persistenceStatus?: PersistenceStatus
+  domainStatus: UIState
+}
+
+function formatInteger(value?: number | null): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+  return String(value)
+}
+
+function normalizeOrderStatus(value?: string): string {
+  return `${value ?? ''}`.trim().toLowerCase()
 }
 
 export function buildExecutionSummary({
@@ -91,4 +120,107 @@ export function buildExecutionProgressItems(coreFlow: CoreFlowMap, t: Translate)
       requestId: item.request_id,
     }
   })
+}
+
+export function buildExecutionOperationsPanel({
+  t,
+  selectedSymbol,
+  orderEvents,
+  persistenceStatus,
+  domainStatus,
+}: BuildExecutionOperationsParams): ExecutionOperationsPanelModel {
+  const filteredEvents = orderEvents.filter((item) => item.symbol === selectedSymbol)
+  const activeOrders = filteredEvents.filter((item) =>
+    ['submitted', 'accepted', 'partial_fill', 'partially_filled'].includes(normalizeOrderStatus(item.status)),
+  ).length
+  const filledCount = filteredEvents.filter(
+    (item) => normalizeOrderStatus(item.status) === 'filled',
+  ).length
+  const rejectedCount = filteredEvents.filter(
+    (item) => normalizeOrderStatus(item.status) === 'rejected',
+  ).length
+  const canceledCount = filteredEvents.filter((item) =>
+    ['canceled', 'cancelled'].includes(normalizeOrderStatus(item.status)),
+  ).length
+  const latestAnomaly = filteredEvents.find((item) =>
+    ['rejected', 'canceled', 'cancelled'].includes(normalizeOrderStatus(item.status)),
+  )
+  const matchingStats = persistenceStatus?.matching?.stats
+  const anomalies: string[] = []
+
+  if (rejectedCount > 0) {
+    anomalies.push(`${t('workspace.execution.operationsRejected')}: ${rejectedCount}`)
+  }
+  if (canceledCount > 0) {
+    anomalies.push(`${t('workspace.execution.operationsCanceled')}: ${canceledCount}`)
+  }
+  if (latestAnomaly?.status) {
+    anomalies.push(
+      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.status} · ${latestAnomaly.request_id ?? '—'}`,
+    )
+  }
+
+  if (filteredEvents.length === 0) {
+    return {
+      state: domainStatus.state,
+      stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
+      summary: selectedSymbol,
+      anomalies,
+      items: [],
+      emptyTitle: t('workspace.execution.operationsEmpty'),
+      emptyHint: t('workspace.execution.operationsDescription'),
+    }
+  }
+
+  return {
+    state: domainStatus.state,
+    stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
+    summary: `${selectedSymbol} · ${filteredEvents.length} ${t('workspace.execution.operationsSummarySuffix')}`,
+    anomalies,
+    items: [
+      {
+        id: 'observed',
+        label: t('workspace.execution.operationsObserved'),
+        value: String(filteredEvents.length),
+      },
+      {
+        id: 'active',
+        label: t('workspace.execution.operationsActive'),
+        value: String(activeOrders),
+        tone: activeOrders > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'filled',
+        label: t('workspace.execution.operationsFilled'),
+        value: String(filledCount),
+      },
+      {
+        id: 'rejected',
+        label: t('workspace.execution.operationsRejected'),
+        value: String(rejectedCount),
+        tone: rejectedCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'canceled',
+        label: t('workspace.execution.operationsCanceled'),
+        value: String(canceledCount),
+        tone: canceledCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'matchingLive',
+        label: t('workspace.execution.operationsMatchingLive'),
+        value: formatInteger(matchingStats?.live_orders),
+      },
+      {
+        id: 'tradeCount',
+        label: t('workspace.execution.operationsTrades'),
+        value: formatInteger(matchingStats?.trade_count),
+      },
+      {
+        id: 'latestStatus',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: filteredEvents[0]?.status ?? '—',
+      },
+    ],
+  }
 }

@@ -3,9 +3,11 @@ import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
 import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
+import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
+import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
 import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
 
 type Props = {
@@ -45,6 +47,13 @@ export function ExecutionWorkspace({ active = true }: Props) {
           <ExecutionLifecyclePanel model={model.lifecyclePanel} />
         </SectionFrame>
 
+        <SectionFrame
+          title={t('workspace.execution.operationsTitle')}
+          description={t('workspace.execution.operationsDescription')}
+        >
+          <ExecutionOperationsPanel model={model.operationsPanel} />
+        </SectionFrame>
+
         <SectionFrame title={t('workspace.execution.ticketTitle')} description={t('workspace.execution.ticketDescription')}>
           <ExecutionConsole
             active={active}
@@ -62,6 +71,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         >
           <div className="stack">
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+            <StrategyRegistryPanel model={model.strategyRegistry} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
           </div>
         </SectionFrame>

@@ -45,6 +45,7 @@ export type OrderTimelineEvent = {
   symbol?: string
   account_id?: string
   order_id?: string
+  execution_id?: string
   status?: string
   request_id?: string
 }
@@ -64,6 +65,7 @@ export type StrategySignal = {
   signal_id?: string
   strategy_basket?: StrategyDecisionContribution[]
   portfolio?: PortfolioSignalSummary
+  strategy_registry?: StrategyRegistrySummary
 }
 
 export type StrategyDecisionContribution = {
@@ -101,6 +103,30 @@ export type PortfolioSignalSummary = {
   tracked_symbols: string[]
   updated_at?: string | null
   latest_price?: number | null
+}
+
+export type StrategyRegistryEntry = {
+  strategy_id: string
+  label: string
+  engine: string
+  source: string
+  role: string
+  enabled: boolean
+  priority: number
+  configured_weight: number
+  effective_weight: number
+  symbol_coverage: string[]
+  conflict_policy: string
+  downgrade_policy: string
+  metadata: Record<string, unknown>
+}
+
+export type StrategyRegistrySummary = {
+  symbol: string
+  tracked_symbols: string[]
+  conflict_policy: string
+  downgrade_policy: string
+  entries: StrategyRegistryEntry[]
 }
 
 export type SignalRecord = {

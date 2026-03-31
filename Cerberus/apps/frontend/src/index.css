@@ -696,7 +696,9 @@ button {
 
 .strategy-panel,
 .strategy-portfolio-panel,
-.execution-lifecycle-panel {
+.strategy-registry-panel,
+.execution-lifecycle-panel,
+.execution-operations-panel {
   display: grid;
   gap: 12px;
 }
@@ -749,6 +751,69 @@ button {
   gap: 8px;
 }
 
+.strategy-registry-policies {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.strategy-registry-policy,
+.strategy-registry-downgrade {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.strategy-registry-list {
+  display: grid;
+  gap: 10px;
+}
+
+.strategy-registry-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.strategy-registry-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.strategy-registry-engine {
+  margin: 4px 0 0;
+  color: var(--color-accent-strong);
+  font: 700 1rem/1.2 var(--font-heading);
+}
+
+.strategy-registry-state {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strategy-registry-state-accent {
+  color: var(--color-success);
+  border-color: rgba(15, 118, 110, 0.22);
+}
+
+.strategy-registry-state-muted {
+  color: var(--color-text-muted);
+}
+
 .strategy-panel-hint,
 .strategy-panel-signal-id,
 .strategy-decision-engine,
@@ -761,9 +826,71 @@ button {
   line-height: 1.45;
 }
 
+.execution-operations-alerts {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(122, 151, 169, 0.18);
+}
+
+.execution-operations-alert-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.execution-operations-alert,
+.execution-operations-empty {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(122, 151, 169, 0.18);
+  background: rgba(238, 243, 248, 0.76);
+  color: var(--color-text-soft);
+}
+
+.execution-operations-alert {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .strategy-decision-list {
   display: grid;
   gap: 12px;
+}
+
+.market-execution-rail {
+  display: grid;
+  gap: 12px;
+}
+
+.market-execution-rail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.market-execution-rail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.market-execution-rail-main,
+.market-execution-rail-side {
+  display: grid;
+  gap: 4px;
+}
+
+.market-execution-rail-side {
+  justify-items: end;
+  text-align: right;
 }
 
 .execution-lifecycle-stages {
@@ -1499,12 +1626,17 @@ button {
   }
 
   .strategy-panel-head,
-  .strategy-decision-head {
+  .strategy-decision-head,
+  .strategy-registry-row-head,
+  .market-execution-rail-row {
     flex-direction: column;
   }
 
-  .strategy-portfolio-status {
+  .strategy-portfolio-status,
+  .strategy-registry-policies,
+  .market-execution-rail-side {
     justify-items: start;
+    text-align: left;
   }
 
   .execution-lifecycle-stages,

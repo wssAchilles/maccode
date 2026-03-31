@@ -93,6 +93,7 @@ class SummaryApplicationService:
                     signal_id=decision.signal_id,
                     strategy_basket=decision.strategies,
                     portfolio=decision.portfolio,
+                    strategy_registry=decision.registry,
                 )
             )
 
