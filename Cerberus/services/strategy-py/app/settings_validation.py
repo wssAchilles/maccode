@@ -33,11 +33,15 @@ def validate_runtime_settings() -> None:
 
     if settings.strategy_downgrade_policy not in {"review", "hold"}:
         errors.append("strategy_downgrade_policy must be one of: review, hold")
+    if settings.strategy_state_enabled and not settings.strategy_state_key.strip():
+        errors.append("strategy_state_key must be non-empty when strategy_state_enabled=true")
 
     if settings.strategy_rule_priority <= 0:
         errors.append("strategy_rule_priority must be > 0")
     if settings.strategy_inference_priority <= 0:
         errors.append("strategy_inference_priority must be > 0")
+    if not settings.strategy_rule_enabled and not settings.strategy_inference_enabled:
+        errors.append("at least one strategy source must be enabled")
 
     for name, value in {
         "strategy_rule_weight_observe": settings.strategy_rule_weight_observe,
@@ -47,6 +51,13 @@ def validate_runtime_settings() -> None:
     }.items():
         if value < 0:
             errors.append(f"{name} must be >= 0")
+
+    for name, value in {
+        "strategy_rule_symbol_coverage": settings.strategy_rule_symbol_coverage,
+        "strategy_inference_symbol_coverage": settings.strategy_inference_symbol_coverage,
+    }.items():
+        if not _symbol_coverage_is_valid(value):
+            errors.append(f"{name} must be '*' or a comma-separated symbol list")
 
     if settings.inference_mode not in {"disabled", "observe", "primary"}:
         errors.append("inference_mode must be one of: disabled, observe, primary")
@@ -122,3 +133,10 @@ def validate_runtime_settings() -> None:
 
 def _is_production_env() -> bool:
     return settings.app_env.strip().lower() == "production"
+
+
+def _symbol_coverage_is_valid(raw: str) -> bool:
+    normalized = raw.strip()
+    if not normalized or normalized == "*":
+        return True
+    return all(item.strip().upper() == item.strip() for item in normalized.split(",") if item.strip())

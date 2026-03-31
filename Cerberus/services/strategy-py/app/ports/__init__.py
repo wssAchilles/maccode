@@ -30,6 +30,11 @@ from app.ports.signal import (
     SignalStorePort,
     SignalStoreSource,
 )
+from app.ports.strategy_orchestration import (
+    StrategyOrchestrationEntry,
+    StrategyOrchestrationPort,
+    StrategyOrchestrationSnapshot,
+)
 from app.ports.system_status import (
     MatchingObservabilityPort,
     RuntimeStatusPort,
@@ -66,6 +71,9 @@ __all__ = [
     "SignalStoreSource",
     "StoreStatusPort",
     "StrategyDecisionSnapshot",
+    "StrategyOrchestrationEntry",
+    "StrategyOrchestrationPort",
+    "StrategyOrchestrationSnapshot",
     "StrategyRegistryEntrySnapshot",
     "StrategyRegistrySnapshot",
 ]

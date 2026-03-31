@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useId, useMemo, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 
 import { useRecentEventsResource } from '../app/bootstrap/useResourceQueries'
@@ -24,6 +24,7 @@ type Props = {
 
 export function ExecutionTimelinePanel({ active = true }: Props) {
   const { t } = useI18n()
+  const inputId = useId()
   const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
   const filterSymbol = useCerberusStore((state) => state.executionTrading.filter_symbol)
   const filterAccountId = useCerberusStore((state) => state.executionTrading.filter_account_id)
@@ -85,7 +86,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <label className="field-label">
           {t('execution.filterSymbol')}
           <select
-            id="timeline-filter-symbol"
+            id={`${inputId}-timeline-filter-symbol`}
             name="timeline_filter_symbol"
             className="field-input"
             value={filterSymbol}
@@ -101,7 +102,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <label className="field-label">
           {t('execution.filterAccount')}
           <select
-            id="timeline-filter-account"
+            id={`${inputId}-timeline-filter-account`}
             name="timeline_filter_account"
             className="field-input"
             value={filterAccountId}
@@ -117,7 +118,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <label className="field-label">
           {t('execution.filterStatus')}
           <select
-            id="timeline-filter-status"
+            id={`${inputId}-timeline-filter-status`}
             name="timeline_filter_status"
             className="field-input"
             value={filterStatus}
@@ -133,7 +134,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <label className="field-label">
           {t('workspace.execution.search')}
           <input
-            id="timeline-search"
+            id={`${inputId}-timeline-search`}
             name="timeline_search"
             className="field-input"
             value={search}
@@ -160,7 +161,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
                     <p className="timeline-row-title">{row.title}</p>
                     <p className="timeline-row-subtitle">{row.subtitle}</p>
                     <p className="timeline-row-meta">
-                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'} · {t('workspace.execution.lifecycleExecutionId')}: {event.execution_id ?? '—'}
+                      {t('execution.orderId')}: {event.order_id ?? '—'} · {t('execution.requestId')}: {event.request_id ?? '—'} · CID: {event.client_order_id ?? '—'} · {t('workspace.execution.lifecycleExecutionId')}: {event.execution_id ?? '—'}
                     </p>
                   </div>
                   <div className="timeline-row-side">

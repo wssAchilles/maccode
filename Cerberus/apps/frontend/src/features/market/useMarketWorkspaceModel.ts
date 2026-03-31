@@ -10,6 +10,7 @@ import {
 } from '../strategy-orchestration/view-models'
 import {
   buildMarketChartStateModel,
+  buildMarketChartMarkersModel,
   buildMarketExecutionRailModel,
   buildMarketMetricTiles,
   buildMarketSymbolChips,
@@ -85,6 +86,11 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [orderEvents, selectedSymbol, t],
   )
 
+  const chartMarkers = useMemo(
+    () => buildMarketChartMarkersModel({ orderEvents, selectedSymbol }),
+    [orderEvents, selectedSymbol],
+  )
+
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
     syncExecutionFilters({ symbol })
@@ -93,6 +99,7 @@ export function useMarketWorkspaceModel({ active }: Params) {
   return {
     activeSymbol: selectedSymbol,
     candles,
+    chartMarkers,
     chartState,
     summaryError,
     orderbook,

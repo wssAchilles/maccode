@@ -18,6 +18,8 @@ from app.ports import (
     SignalStorePort,
     SignalStoreSource,
     StrategyDecisionSnapshot,
+    StrategyOrchestrationPort,
+    StrategyOrchestrationSnapshot,
     StrategyRegistryEntrySnapshot,
     StrategyRegistrySnapshot,
 )
@@ -50,6 +52,7 @@ class SignalApplicationService:
         inference_engine: InferenceEnginePort | None = None,
         inference_mode: str = "disabled",
         inference_rollout: InferenceRolloutPort | None = None,
+        strategy_orchestration: StrategyOrchestrationPort | None = None,
     ) -> None:
         self._runtime = runtime
         self._signal_store = signal_store
@@ -60,6 +63,17 @@ class SignalApplicationService:
         self._inference_engine = inference_engine
         self._inference_mode = inference_mode
         self._inference_rollout = inference_rollout
+        self._strategy_orchestration = strategy_orchestration
+
+    async def startup(self) -> None:
+        if self._strategy_orchestration is None:
+            return
+        await self._strategy_orchestration.startup()
+
+    async def shutdown(self) -> None:
+        if self._strategy_orchestration is None:
+            return
+        await self._strategy_orchestration.shutdown()
 
     def current_signal(self) -> SignalDecision | None:
         snapshot = self._runtime.read_current_decision()
@@ -84,12 +98,27 @@ class SignalApplicationService:
             inference_decision=inference_decision,
         )
         effective_inference_mode = self._effective_inference_mode()
-        final_source = "rule_engine"
+        orchestration = self._strategy_snapshot(
+            symbol=tick.symbol,
+            inference_decision=inference_decision,
+        )
+        strategies = self._strategy_snapshots(
+            rule_signal=rule_signal,
+            inference_decision=inference_decision,
+            effective_mode=effective_inference_mode,
+            orchestration=orchestration,
+        )
+        selected_strategy = self._resolve_selected_strategy(
+            strategies=strategies,
+            effective_mode=effective_inference_mode,
+            conflict_policy=orchestration.conflict_policy,
+        )
 
+        final_source = selected_strategy.source if selected_strategy is not None else "rule_engine"
         signal = rule_signal
         signal_id = rule_signal_id
         engine_name = self._default_engine_name
-        if inference_decision is not None and effective_inference_mode == "primary":
+        if selected_strategy is not None and selected_strategy.source == "inference" and inference_decision is not None:
             signal = Signal(
                 strategy_id=inference_decision.strategy_id,
                 symbol=tick.symbol,
@@ -98,14 +127,7 @@ class SignalApplicationService:
             )
             signal_id = self._runtime.build_signal_id(tick, signal)
             engine_name = inference_decision.engine
-            final_source = "inference"
 
-        strategies = self._strategy_snapshots(
-            rule_signal=rule_signal,
-            inference_decision=inference_decision,
-            effective_mode=effective_inference_mode,
-            final_source=final_source,
-        )
         portfolio = self._portfolio_snapshot(
             symbol=tick.symbol,
             price=tick.price,
@@ -113,12 +135,15 @@ class SignalApplicationService:
             final_signal=signal.signal,
             final_source=final_source,
             strategies=strategies,
+            conflict_policy=orchestration.conflict_policy,
+            downgrade_policy=orchestration.downgrade_policy,
         )
         registry = self._strategy_registry_snapshot(
             symbol=tick.symbol,
             strategies=strategies,
             effective_mode=effective_inference_mode,
             inference_decision=inference_decision,
+            orchestration=orchestration,
         )
         metadata = self._decision_metadata(
             tick,
@@ -293,55 +318,105 @@ class SignalApplicationService:
         rule_signal: Signal,
         inference_decision: InferenceDecision | None,
         effective_mode: str,
-        final_source: str,
+        orchestration: StrategyOrchestrationSnapshot,
     ) -> tuple[StrategyDecisionSnapshot, ...]:
-        has_inference = inference_decision is not None
-        rule_weight, inference_weight = self._weight_profile(
-            effective_mode=effective_mode,
-            has_inference=has_inference,
-        )
+        symbol = rule_signal.symbol
+        provisional: list[StrategyDecisionSnapshot] = []
+        for entry in orchestration.entries:
+            configured_weight = entry.configured_weight(mode=effective_mode)
+            if entry.source == "rule_engine":
+                eligible = entry.enabled and entry.covers_symbol(symbol)
+                provisional.append(
+                    StrategyDecisionSnapshot(
+                        strategy_id=rule_signal.strategy_id,
+                        label=entry.label,
+                        engine=self._default_engine_name,
+                        signal=rule_signal.signal,
+                        confidence=rule_signal.confidence,
+                        weight=configured_weight if eligible else 0.0,
+                        priority=entry.priority,
+                        role=entry.role,
+                        active=False,
+                        source=entry.source,
+                        reason=self._strategy_reason(
+                            source=entry.source,
+                            enabled=entry.enabled,
+                            eligible=eligible,
+                            effective_mode=effective_mode,
+                        ),
+                        metadata={
+                            **dict(entry.metadata),
+                            "configured_weight": configured_weight,
+                            "eligible_for_symbol": eligible,
+                            "state_backend": orchestration.state_backend,
+                            "state_restored": orchestration.state_restored,
+                        },
+                    )
+                )
+                continue
 
-        snapshots = [
-            StrategyDecisionSnapshot(
-                strategy_id=rule_signal.strategy_id,
-                label="Rule engine",
-                engine=self._default_engine_name,
-                signal=rule_signal.signal,
-                confidence=rule_signal.confidence,
-                weight=rule_weight,
-                priority=settings.strategy_rule_priority,
-                role="baseline",
-                active=final_source == "rule_engine",
-                source="rule_engine",
-                reason="effective output" if final_source == "rule_engine" else "shadowed by rollout mode",
-            )
-        ]
-        if inference_decision is not None:
-            snapshots.append(
+            if inference_decision is None:
+                continue
+
+            eligible = entry.enabled and entry.covers_symbol(symbol)
+            provisional.append(
                 StrategyDecisionSnapshot(
                     strategy_id=inference_decision.strategy_id,
-                    label="Inference model",
+                    label=entry.label,
                     engine=inference_decision.engine,
                     signal=inference_decision.signal,
                     confidence=inference_decision.confidence,
-                    weight=inference_weight,
-                    priority=settings.strategy_inference_priority,
-                    role="adaptive",
-                    active=final_source == "inference",
-                    source="inference",
-                    reason=(
-                        "effective output"
-                        if final_source == "inference"
-                        else f"running in {effective_mode}"
+                    weight=configured_weight if eligible else 0.0,
+                    priority=entry.priority,
+                    role=entry.role,
+                    active=False,
+                    source=entry.source,
+                    reason=self._strategy_reason(
+                        source=entry.source,
+                        enabled=entry.enabled,
+                        eligible=eligible,
+                        effective_mode=effective_mode,
                     ),
                     metadata={
+                        **dict(entry.metadata),
+                        **dict(inference_decision.metadata),
                         "model_id": inference_decision.model_id,
                         "model_version": inference_decision.model_version,
-                        **dict(inference_decision.metadata),
+                        "configured_weight": configured_weight,
+                        "eligible_for_symbol": eligible,
+                        "state_backend": orchestration.state_backend,
+                        "state_restored": orchestration.state_restored,
                     },
                 )
             )
-        return tuple(snapshots)
+
+        selected = self._resolve_selected_strategy(
+            strategies=tuple(provisional),
+            effective_mode=effective_mode,
+            conflict_policy=orchestration.conflict_policy,
+        )
+        selected_key = (selected.strategy_id, selected.source) if selected is not None else None
+        return tuple(
+            StrategyDecisionSnapshot(
+                strategy_id=item.strategy_id,
+                label=item.label,
+                engine=item.engine,
+                signal=item.signal,
+                confidence=item.confidence,
+                weight=item.weight,
+                priority=item.priority,
+                role=item.role,
+                active=(item.strategy_id, item.source) == selected_key,
+                source=item.source,
+                reason=(
+                    "effective output"
+                    if (item.strategy_id, item.source) == selected_key
+                    else item.reason
+                ),
+                metadata=dict(item.metadata),
+            )
+            for item in provisional
+        )
 
     def _portfolio_snapshot(
         self,
@@ -352,6 +427,8 @@ class SignalApplicationService:
         final_signal: str,
         final_source: str,
         strategies: tuple[StrategyDecisionSnapshot, ...],
+        conflict_policy: str,
+        downgrade_policy: str,
     ) -> PortfolioSignalSnapshot:
         weighted_scores = {"BUY": 0.0, "SELL": 0.0, "HOLD": 0.0}
         for strategy in strategies:
@@ -402,17 +479,17 @@ class SignalApplicationService:
         elif (
             agreement_ratio is not None
             and agreement_ratio <= 0.5
-            and settings.strategy_conflict_policy == "review_on_conflict"
+            and conflict_policy == "review_on_conflict"
         ):
             execution_ready = False
-            execution_gate = settings.strategy_downgrade_policy
+            execution_gate = downgrade_policy
             execution_gate_reason = "strategy basket is still contested"
         else:
             execution_ready = True
             execution_gate = "ready"
-            if settings.strategy_conflict_policy == "review_on_conflict":
+            if conflict_policy == "review_on_conflict":
                 execution_gate_reason = "basket supports live execution"
-            elif settings.strategy_conflict_policy == "prefer_priority":
+            elif conflict_policy == "prefer_priority":
                 execution_gate_reason = "priority policy resolved the contested basket"
             else:
                 execution_gate_reason = "weighted score policy resolved the contested basket"
@@ -485,78 +562,55 @@ class SignalApplicationService:
         strategies: tuple[StrategyDecisionSnapshot, ...],
         effective_mode: str,
         inference_decision: InferenceDecision | None,
+        orchestration: StrategyOrchestrationSnapshot,
     ) -> StrategyRegistrySnapshot:
-        tracked_symbols = self._runtime.tracked_symbols()
-        has_configured_inference = self._inference_engine is not None and self._inference_mode != "disabled"
         strategy_by_source = {item.source: item for item in strategies}
-        rule_strategy = strategy_by_source.get("rule_engine")
-        inference_strategy = strategy_by_source.get("inference")
-        rule_configured_weight, inference_configured_weight = self._weight_profile(
-            effective_mode=effective_mode,
-            has_inference=has_configured_inference,
-        )
-        inference_coverage = self._inference_symbol_coverage(inference_decision, tracked_symbols)
-
-        entries: list[StrategyRegistryEntrySnapshot] = [
-            StrategyRegistryEntrySnapshot(
-                strategy_id=rule_strategy.strategy_id if rule_strategy is not None else "default",
-                label="Rule engine",
-                engine=self._default_engine_name,
-                source="rule_engine",
-                role="baseline",
-                enabled=True,
-                priority=settings.strategy_rule_priority,
-                configured_weight=rule_configured_weight if has_configured_inference else 1.0,
-                effective_weight=rule_strategy.weight if rule_strategy is not None else 1.0,
-                symbol_coverage=tracked_symbols,
-                conflict_policy=settings.strategy_conflict_policy,
-                downgrade_policy=settings.strategy_downgrade_policy,
-                metadata={
-                    "active_symbol": symbol,
-                    "effective_source": "rule_engine",
-                },
-            )
-        ]
-        if has_configured_inference:
-            entries.append(
-                StrategyRegistryEntrySnapshot(
-                    strategy_id=(
-                        inference_strategy.strategy_id
-                        if inference_strategy is not None
-                        else settings.inference_model_id
-                    ),
-                    label="Inference model",
-                    engine=(
-                        inference_strategy.engine
-                        if inference_strategy is not None
-                        else settings.inference_engine_name
-                    ),
-                    source="inference",
-                    role="adaptive",
-                    enabled=symbol in inference_coverage,
-                    priority=settings.strategy_inference_priority,
-                    configured_weight=inference_configured_weight,
-                    effective_weight=inference_strategy.weight if inference_strategy is not None else 0.0,
-                    symbol_coverage=inference_coverage,
-                    conflict_policy=settings.strategy_conflict_policy,
-                    downgrade_policy=settings.strategy_downgrade_policy,
-                    metadata={
-                        "mode": effective_mode,
+        entries: list[StrategyRegistryEntrySnapshot] = []
+        for entry in orchestration.entries:
+            active_strategy = strategy_by_source.get(entry.source)
+            effective_enabled = entry.enabled and entry.covers_symbol(symbol)
+            metadata = {
+                **dict(entry.metadata),
+                "active_symbol": symbol,
+                "configured_mode": effective_mode,
+                "eligible_for_symbol": effective_enabled,
+                "state_backend": orchestration.state_backend,
+                "state_restored": orchestration.state_restored,
+            }
+            if entry.source == "inference":
+                metadata.update(
+                    {
                         "model_id": inference_decision.model_id if inference_decision is not None else settings.inference_model_id,
                         "model_version": (
                             inference_decision.model_version
                             if inference_decision is not None
                             else settings.inference_model_version
                         ),
-                    },
+                    }
+                )
+            entries.append(
+                StrategyRegistryEntrySnapshot(
+                    strategy_id=active_strategy.strategy_id if active_strategy is not None else entry.strategy_id,
+                    label=entry.label,
+                    engine=active_strategy.engine if active_strategy is not None else entry.engine,
+                    source=entry.source,
+                    role=entry.role,
+                    enabled=effective_enabled,
+                    priority=entry.priority,
+                    configured_weight=entry.configured_weight(mode=effective_mode),
+                    effective_weight=active_strategy.weight if active_strategy is not None else 0.0,
+                    symbol_coverage=entry.symbol_coverage if entry.symbol_coverage else orchestration.tracked_symbols,
+                    conflict_policy=orchestration.conflict_policy,
+                    downgrade_policy=orchestration.downgrade_policy,
+                    metadata=metadata,
                 )
             )
 
         return StrategyRegistrySnapshot(
             symbol=symbol,
-            tracked_symbols=tracked_symbols,
-            conflict_policy=settings.strategy_conflict_policy,
-            downgrade_policy=settings.strategy_downgrade_policy,
+            tracked_symbols=orchestration.tracked_symbols,
+            conflict_policy=orchestration.conflict_policy,
+            downgrade_policy=orchestration.downgrade_policy,
             entries=tuple(entries),
         )
 
@@ -586,34 +640,98 @@ class SignalApplicationService:
             ],
         }
 
-    def _weight_profile(self, *, effective_mode: str, has_inference: bool) -> tuple[float, float]:
-        if effective_mode == "primary" and has_inference:
-            return (
-                settings.strategy_rule_weight_primary,
-                settings.strategy_inference_weight_primary,
-            )
-        if has_inference:
-            return (
-                settings.strategy_rule_weight_observe,
-                settings.strategy_inference_weight_observe,
-            )
-        return (1.0, 0.0)
-
-    def _inference_symbol_coverage(
+    def _strategy_snapshot(
         self,
+        *,
+        symbol: str,
         inference_decision: InferenceDecision | None,
-        tracked_symbols: tuple[str, ...],
-    ) -> tuple[str, ...]:
-        from_decision = inference_decision.metadata.get("symbols") if inference_decision is not None else None
-        if isinstance(from_decision, (list, tuple)):
-            values = [str(item).strip().upper() for item in from_decision if str(item).strip()]
-            if values:
-                return tuple(values)
-        configured = [
-            item.strip().upper()
-            for item in settings.inference_model_symbols.split(",")
-            if item.strip()
-        ]
-        if configured:
-            return tuple(configured)
-        return tracked_symbols
+    ) -> StrategyOrchestrationSnapshot:
+        tracked_symbols = self._runtime.tracked_symbols()
+        inference_model_symbols: tuple[str, ...] = ()
+        if inference_decision is not None:
+            candidate_symbols = inference_decision.metadata.get("symbols")
+            if isinstance(candidate_symbols, (list, tuple)):
+                inference_model_symbols = tuple(
+                    str(item).strip().upper() for item in candidate_symbols if str(item).strip()
+                )
+        if not inference_model_symbols:
+            inference_model_symbols = tuple(
+                item.strip().upper()
+                for item in settings.inference_model_symbols.split(",")
+                if item.strip()
+            )
+        if self._strategy_orchestration is None:
+            from app.infrastructure.strategy_orchestration import RuntimeStrategyOrchestrationManager
+
+            return RuntimeStrategyOrchestrationManager().snapshot(
+                tracked_symbols=tracked_symbols,
+                inference_runtime_enabled=self._inference_engine is not None and self._inference_mode != "disabled",
+                inference_model_symbols=inference_model_symbols,
+                inference_engine_name=inference_decision.engine if inference_decision is not None else None,
+            )
+        return self._strategy_orchestration.snapshot(
+            tracked_symbols=tracked_symbols,
+            inference_runtime_enabled=self._inference_engine is not None and self._inference_mode != "disabled",
+            inference_model_symbols=inference_model_symbols,
+            inference_engine_name=inference_decision.engine if inference_decision is not None else None,
+        )
+
+    def _resolve_selected_strategy(
+        self,
+        *,
+        strategies: tuple[StrategyDecisionSnapshot, ...],
+        effective_mode: str,
+        conflict_policy: str,
+    ) -> StrategyDecisionSnapshot | None:
+        eligible = tuple(item for item in strategies if item.weight > 0)
+        if not eligible:
+            return next((item for item in strategies if item.source == "rule_engine"), None)
+        if effective_mode != "primary":
+            return next((item for item in eligible if item.source == "rule_engine"), eligible[0])
+
+        distinct_signals = {item.signal for item in eligible}
+        if len(eligible) == 1 or len(distinct_signals) == 1:
+            return self._select_by_policy(eligible, policy="prefer_priority")
+        if conflict_policy == "review_on_conflict":
+            return next((item for item in eligible if item.source == "inference"), eligible[0])
+        return self._select_by_policy(eligible, policy=conflict_policy)
+
+    def _select_by_policy(
+        self,
+        strategies: tuple[StrategyDecisionSnapshot, ...],
+        *,
+        policy: str,
+    ) -> StrategyDecisionSnapshot:
+        if policy == "prefer_weighted_score":
+            return max(
+                strategies,
+                key=lambda item: (
+                    item.weight * item.confidence,
+                    -item.priority,
+                    item.source == "inference",
+                ),
+            )
+        return min(
+            strategies,
+            key=lambda item: (
+                item.priority,
+                -(item.weight * item.confidence),
+                item.source != "inference",
+            ),
+        )
+
+    def _strategy_reason(
+        self,
+        *,
+        source: str,
+        enabled: bool,
+        eligible: bool,
+        effective_mode: str,
+    ) -> str:
+        if not enabled:
+            return "disabled by orchestration state"
+        if not eligible:
+            return "symbol not covered by orchestration state"
+        if source == "inference":
+            return f"running in {effective_mode}"
+        return "eligible baseline strategy"

@@ -35,6 +35,15 @@ export type OrderEvent = {
   received_at: number
 }
 
+export type ExecutionLifecyclePhase =
+  | 'submit'
+  | 'accepted'
+  | 'rejected'
+  | 'partial_fill'
+  | 'fill'
+  | 'cancel_requested'
+  | 'canceled'
+
 export type OrderTimelineEvent = {
   id: string
   channel: string
@@ -45,9 +54,17 @@ export type OrderTimelineEvent = {
   symbol?: string
   account_id?: string
   order_id?: string
+  client_order_id?: string
   execution_id?: string
   status?: string
   request_id?: string
+  side?: string
+  reason?: string
+  price?: number
+  quantity?: number
+  filled_quantity?: number
+  lifecycle_phase: ExecutionLifecyclePhase
+  correlation_key: string
 }
 
 export type Candle = [number, string, string, string, string, string]

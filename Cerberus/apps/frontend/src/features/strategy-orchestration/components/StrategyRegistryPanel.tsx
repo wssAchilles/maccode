@@ -26,6 +26,7 @@ export function StrategyRegistryPanel({ model }: Props) {
         <div>
           <p className="subtle-label">{t('workspace.strategy.registryTitle')}</p>
           <p className="strategy-panel-summary">{model.summary}</p>
+          {model.stateSummary ? <p className="strategy-panel-hint">{model.stateSummary}</p> : null}
         </div>
         <div className="strategy-registry-policies">
           <p className="strategy-registry-policy">{model.policyLabel}</p>

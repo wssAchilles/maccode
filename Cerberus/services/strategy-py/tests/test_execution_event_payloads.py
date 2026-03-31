@@ -11,8 +11,11 @@ def test_build_matching_submission_payload_sets_status_and_ids() -> None:
         order_event={
             "accepted": True,
             "order_id": "ord-1",
+            "client_order_id": "cid-1",
             "symbol": "BTCUSDT",
             "signal": "BUY",
+            "price": 100.25,
+            "quantity": 0.4,
             "reason": "",
             "request_id": "rid-1",
         },
@@ -23,10 +26,13 @@ def test_build_matching_submission_payload_sets_status_and_ids() -> None:
     assert payload["strategy_id"] == "default"
     assert payload["account_id"] == "acc-1"
     assert payload["order_id"] == "ord-1"
+    assert payload["client_order_id"] == "cid-1"
     assert payload["symbol"] == "BTCUSDT"
     assert payload["side"] == "BUY"
-    assert payload["status"] == "submitted"
+    assert payload["status"] == "accepted"
     assert payload["accepted"] is True
+    assert payload["price"] == 100.25
+    assert payload["quantity"] == 0.4
     assert payload["request_id"] == "rid-1"
 
 
@@ -42,6 +48,7 @@ def test_build_matching_submission_payload_rejected_defaults() -> None:
 
     assert payload["status"] == "rejected"
     assert payload["order_id"] == ""
+    assert payload["client_order_id"] == ""
     assert payload["symbol"] == ""
     assert payload["request_id"] is None
     assert payload["reason"] == "insufficient liquidity"

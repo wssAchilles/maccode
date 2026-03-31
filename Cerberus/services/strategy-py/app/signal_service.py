@@ -12,6 +12,12 @@ class SignalService:
     def __init__(self, *, application: SignalApplicationService) -> None:
         self._application = application
 
+    async def startup(self) -> None:
+        await self._application.startup()
+
+    async def shutdown(self) -> None:
+        await self._application.shutdown()
+
     def current_signal(self) -> dict[str, Any]:
         decision = self._application.current_signal()
         if decision is None:
@@ -63,6 +69,7 @@ class SignalService:
             "signal_id",
             "strategy_basket",
             "portfolio",
+            "strategy_registry",
         ):
             if key in decision.context.metadata:
                 payload[key] = decision.context.metadata[key]

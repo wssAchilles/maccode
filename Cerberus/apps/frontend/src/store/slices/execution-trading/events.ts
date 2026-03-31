@@ -10,6 +10,19 @@ function asString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
+}
+
 function asObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null
@@ -44,6 +57,13 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     asString(nestedExecution?.order_id) ??
     undefined
 
+  const clientOrderId =
+    asString(payload.client_order_id) ??
+    asString(payload.clientOrderId) ??
+    asString(nestedOrder?.client_order_id) ??
+    asString(nestedOrder?.clientOrderId) ??
+    undefined
+
   const executionId =
     asString(payload.execution_id) ??
     asString(payload.executionId) ??
@@ -72,12 +92,48 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     asString(nestedOrder?.status) ??
     asString(nestedExecution?.status) ??
     undefined
+  const reason =
+    asString(payload.reason) ??
+    asString(payload.message) ??
+    asString((asObject(payload.error) ?? {}).message) ??
+    undefined
+  const side =
+    asString(payload.side) ??
+    asString(payload.signal) ??
+    asString(nestedOrder?.side) ??
+    undefined
+  const price =
+    asNumber(payload.price) ??
+    asNumber(nestedOrder?.price) ??
+    asNumber(nestedExecution?.price) ??
+    undefined
+  const quantity =
+    asNumber(payload.quantity) ??
+    asNumber(nestedOrder?.quantity) ??
+    asNumber(nestedExecution?.quantity) ??
+    undefined
+  const filledQuantity =
+    asNumber(payload.filled_quantity) ??
+    asNumber(payload.filledQuantity) ??
+    asNumber(nestedOrder?.filled_quantity) ??
+    undefined
   const eventTime =
     asString(payload.event_time) ??
     asString(payload.eventTime) ??
     asString(nestedExecution?.event_time) ??
     asString(nestedExecution?.eventTime) ??
     undefined
+  const lifecyclePhase = deriveLifecyclePhase({
+    eventType,
+    status,
+    reason,
+  })
+  const correlationKey =
+    executionId ??
+    orderId ??
+    clientOrderId ??
+    requestId ??
+    `${raw.channel}-${raw.received_at}`
 
   eventCounter += 1
   return {
@@ -90,10 +146,52 @@ export function normalizeOrderEvent(raw: OrderEvent): OrderTimelineEvent {
     symbol,
     account_id: accountId,
     order_id: orderId,
+    client_order_id: clientOrderId,
     execution_id: executionId,
     status,
     request_id: requestId,
+    side,
+    reason,
+    price,
+    quantity,
+    filled_quantity: filledQuantity,
+    lifecycle_phase: lifecyclePhase,
+    correlation_key: correlationKey,
   }
+}
+
+function deriveLifecyclePhase({
+  eventType,
+  status,
+  reason,
+}: {
+  eventType?: string
+  status?: string
+  reason?: string
+}) {
+  const normalizedStatus = `${status ?? ''}`.trim().toLowerCase()
+  const normalizedType = `${eventType ?? ''}`.trim().toLowerCase()
+  const normalizedReason = `${reason ?? ''}`.trim().toLowerCase()
+
+  if (normalizedType.includes('cancel.requested') || normalizedStatus === 'cancel_requested') {
+    return 'cancel_requested' as const
+  }
+  if (normalizedStatus === 'filled' || normalizedType.includes('execution.filled')) {
+    return 'fill' as const
+  }
+  if (normalizedStatus === 'partial_fill' || normalizedStatus === 'partially_filled') {
+    return 'partial_fill' as const
+  }
+  if (normalizedStatus === 'canceled' || normalizedStatus === 'cancelled') {
+    return 'canceled' as const
+  }
+  if (normalizedStatus === 'rejected' || normalizedReason.length > 0) {
+    return 'rejected' as const
+  }
+  if (normalizedStatus === 'accepted') {
+    return 'accepted' as const
+  }
+  return 'submit' as const
 }
 
 type RawSocketPayload = {

@@ -1,4 +1,5 @@
 import { CandlesChart } from '../../components/CandlesChart'
+import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
 import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
@@ -59,7 +60,7 @@ export function MarketWorkspace({ active = true }: Props) {
             aria-busy={model.chartState.state === 'loading'}
             data-state={model.chartState.state}
           >
-            <CandlesChart candles={model.candles} />
+            <CandlesChart candles={model.candles} markers={model.chartMarkers} />
             {model.chartState.state !== 'ready' ? (
               <div
                 className={`chart-overlay chart-overlay-${model.chartState.state}`}
@@ -91,6 +92,14 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.strategy.description')}
         >
           <StrategyDecisionMatrix model={model.strategyMatrix} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('execution.timeline')}
+          description={t('workspace.market.executionRailDescription')}
+          className="timeline-section"
+        >
+          <ExecutionTimelinePanel active={active} />
         </SectionFrame>
       </div>
 

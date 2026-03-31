@@ -10,6 +10,7 @@ import type {
   UIState,
 } from '../../types/contracts'
 import { formatConfidence } from '../../view-models/workbench'
+import { buildExecutionOrderReadModels } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -61,6 +62,7 @@ export type StrategyRegistryPanelModel = {
   summary: string
   policyLabel: string
   downgradeLabel: string
+  stateSummary?: string
   rows: StrategyRegistryRowModel[]
   emptyTitle?: string
   emptyHint?: string
@@ -191,7 +193,13 @@ function lifecycleStatusLabel(t: Translate, value?: string, eventType?: string):
   if (normalized === 'partial_fill' || normalized === 'partially_filled') {
     return t('workspace.execution.lifecycleStatus.partialFill')
   }
+  if (normalized === 'fill') {
+    return t('workspace.execution.lifecycleStatus.filled')
+  }
   if (normalized === 'submitted' || normalized === 'accepted') {
+    return t('workspace.execution.lifecycleStatus.submitted')
+  }
+  if (normalized === 'submit') {
     return t('workspace.execution.lifecycleStatus.submitted')
   }
   if (normalized === 'rejected') {
@@ -199,6 +207,9 @@ function lifecycleStatusLabel(t: Translate, value?: string, eventType?: string):
   }
   if (normalized === 'canceled' || normalized === 'cancelled') {
     return t('workspace.execution.lifecycleStatus.canceled')
+  }
+  if (normalized === 'cancel_requested') {
+    return t('workspace.execution.lifecycleStatus.cancelRequested')
   }
   if ((eventType ?? '').includes('execution.filled')) {
     return t('workspace.execution.lifecycleStatus.filled')
@@ -211,10 +222,10 @@ function lifecycleStateFromStatus(
   eventType?: string,
 ): ExecutionLifecycleStageModel['state'] {
   const normalized = `${status ?? ''}`.trim().toLowerCase()
-  if (normalized === 'filled' || normalized === 'submitted' || normalized === 'accepted') {
+  if (normalized === 'filled' || normalized === 'fill' || normalized === 'submitted' || normalized === 'submit' || normalized === 'accepted') {
     return 'ready'
   }
-  if (normalized === 'partial_fill' || normalized === 'partially_filled' || normalized === 'canceled' || normalized === 'cancelled') {
+  if (normalized === 'partial_fill' || normalized === 'partially_filled' || normalized === 'cancel_requested' || normalized === 'canceled' || normalized === 'cancelled') {
     return 'degraded'
   }
   if (normalized === 'rejected') {
@@ -414,6 +425,7 @@ export function buildStrategyRegistryPanelModel({
       summary: t('workspace.strategy.registryEmpty'),
       policyLabel: t('common.na'),
       downgradeLabel: t('common.na'),
+      stateSummary: t('common.na'),
       rows: [],
       emptyTitle: t('workspace.strategy.registryEmpty'),
       emptyHint: t('workspace.strategy.noDecisionsHint'),
@@ -431,6 +443,16 @@ export function buildStrategyRegistryPanelModel({
         stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
         stateTone,
         items: [
+          {
+            id: 'runtimeState',
+            label: t('workspace.strategy.runtimeState'),
+            value: entry.metadata.state_restored
+              ? t('workspace.strategy.runtimeStateRestored')
+              : entry.enabled
+                ? t('common.ready')
+                : t('common.disabled'),
+            tone: entry.metadata.state_restored ? 'accent' : 'default',
+          },
           {
             id: 'priority',
             label: t('workspace.strategy.priority'),
@@ -470,6 +492,7 @@ export function buildStrategyRegistryPanelModel({
     summary: `${registry.entries.length} ${t('workspace.strategy.registrySummarySuffix')} · ${registry.symbol}`,
     policyLabel: conflictPolicyLabel(t, registry.conflict_policy),
     downgradeLabel: downgradePolicyLabel(t, registry.downgrade_policy),
+    stateSummary: `${registry.entries.some((entry) => entry.metadata.state_restored) ? t('workspace.strategy.runtimeStateSummaryRestored') : t('workspace.strategy.runtimeStateSummaryLive')} · ${registry.tracked_symbols.length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
     rows,
   }
 }
@@ -503,19 +526,12 @@ export function buildExecutionLifecyclePanelModel({
   const filteredEvents = (orderEvents ?? []).filter((item) =>
     selectedSymbol ? item.symbol === selectedSymbol : true,
   )
-  const latestLifecycleEvent = filteredEvents[0]
-  const partialFillCount = filteredEvents.filter((item) =>
-    ['partial_fill', 'partially_filled'].includes(`${item.status ?? ''}`.toLowerCase()),
-  ).length
-  const filledCount = filteredEvents.filter(
-    (item) => `${item.status ?? ''}`.toLowerCase() === 'filled',
-  ).length
-  const canceledCount = filteredEvents.filter((item) =>
-    ['canceled', 'cancelled'].includes(`${item.status ?? ''}`.toLowerCase()),
-  ).length
-  const rejectedCount = filteredEvents.filter(
-    (item) => `${item.status ?? ''}`.toLowerCase() === 'rejected',
-  ).length
+  const orderModels = buildExecutionOrderReadModels(filteredEvents, selectedSymbol)
+  const latestLifecycleEvent = orderModels[0]
+  const partialFillCount = orderModels.filter((item) => item.latestPhase === 'partial_fill').length
+  const filledCount = orderModels.filter((item) => item.latestPhase === 'fill').length
+  const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
+  const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
   const summary = latestEventSummary === t('common.heartbeat') && heartbeat
     ? heartbeat
     : latestEventSummary
@@ -564,8 +580,8 @@ export function buildExecutionLifecyclePanelModel({
     {
       id: 'execution',
       label: t('workspace.execution.lifecycleStageExecution'),
-      detail: lifecycleStatusLabel(t, latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
-      state: lifecycleStateFromStatus(latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
+      detail: lifecycleStatusLabel(t, latestLifecycleEvent?.latestStatus, latestLifecycleEvent?.latestPhase),
+      state: lifecycleStateFromStatus(latestLifecycleEvent?.latestStatus, latestLifecycleEvent?.latestPhase),
     },
   ]
 
@@ -605,22 +621,27 @@ export function buildExecutionLifecyclePanelModel({
       {
         id: 'latestLifecycle',
         label: t('workspace.execution.lifecycleLatest'),
-        value: lifecycleStatusLabel(t, latestLifecycleEvent?.status, latestLifecycleEvent?.event_type),
+        value: lifecycleStatusLabel(t, latestLifecycleEvent?.latestStatus, latestLifecycleEvent?.latestPhase),
       },
       {
         id: 'latestRequestId',
         label: t('workspace.execution.lifecycleRequestId'),
-        value: latestLifecycleEvent?.request_id ?? t('common.na'),
+        value: latestLifecycleEvent?.requestId ?? t('common.na'),
       },
       {
         id: 'latestOrderId',
         label: t('workspace.execution.lifecycleOrderId'),
-        value: latestLifecycleEvent?.order_id ?? t('common.na'),
+        value: latestLifecycleEvent?.orderId ?? t('common.na'),
       },
       {
         id: 'latestExecutionId',
         label: t('workspace.execution.lifecycleExecutionId'),
-        value: latestLifecycleEvent?.execution_id ?? t('common.na'),
+        value: latestLifecycleEvent?.executionIds[0] ?? t('common.na'),
+      },
+      {
+        id: 'latestClientOrderId',
+        label: t('workspace.execution.lifecycleClientOrderId'),
+        value: latestLifecycleEvent?.clientOrderId ?? t('common.na'),
       },
       {
         id: 'forwardedExecutions',

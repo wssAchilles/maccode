@@ -1,22 +1,28 @@
 import {
   CandlestickSeries,
+  createSeriesMarkers,
   createChart,
   type IChartApi,
   type ISeriesApi,
+  type SeriesMarker,
+  type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
 import type { Candle } from '../types/contracts'
+import type { MarketChartMarkerModel } from '../features/market/view-models'
 
 type Props = {
   candles: Candle[]
+  markers?: MarketChartMarkerModel[]
 }
 
-export function CandlesChart({ candles }: Props) {
+export function CandlesChart({ candles, markers = [] }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const markersRef = useRef<ReturnType<typeof createSeriesMarkers<Time>> | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -65,6 +71,7 @@ export function CandlesChart({ candles }: Props) {
 
     chartRef.current = chart
     seriesRef.current = series
+    markersRef.current = createSeriesMarkers(series, [])
     chart.timeScale().fitContent()
 
     const resizeObserver = new ResizeObserver(() => {
@@ -76,6 +83,7 @@ export function CandlesChart({ candles }: Props) {
       resizeObserver.disconnect()
       chartRef.current = null
       seriesRef.current = null
+      markersRef.current = null
       chart.remove()
     }
   }, [])
@@ -99,6 +107,37 @@ export function CandlesChart({ candles }: Props) {
       chartRef.current?.timeScale().fitContent()
     }
   }, [candles])
+
+  useEffect(() => {
+    if (!markersRef.current) {
+      return
+    }
+    const markerPayload: SeriesMarker<Time>[] = markers.map((item) => ({
+      time: Math.floor(item.time / 1000) as UTCTimestamp,
+      position:
+        item.phase === 'fill'
+          ? 'belowBar'
+          : item.phase === 'rejected'
+            ? 'aboveBar'
+            : 'inBar',
+      shape:
+        item.phase === 'fill'
+          ? 'arrowUp'
+          : item.phase === 'rejected'
+            ? 'arrowDown'
+            : 'circle',
+      color:
+        item.tone === 'positive'
+          ? '#15803d'
+          : item.tone === 'negative'
+            ? '#b91c1c'
+            : item.tone === 'accent'
+              ? '#0369a1'
+              : '#64748b',
+      text: item.label,
+    }))
+    markersRef.current.setMarkers(markerPayload)
+  }, [markers])
 
   return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />
 }

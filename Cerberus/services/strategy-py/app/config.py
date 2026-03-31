@@ -37,8 +37,14 @@ class Settings(BaseSettings):
     slow_window: int = 20
     strategy_conflict_policy: str = "review_on_conflict"
     strategy_downgrade_policy: str = "review"
+    strategy_state_enabled: bool = True
+    strategy_state_key: str = "cerberus:strategy:orchestration"
+    strategy_rule_enabled: bool = True
     strategy_rule_priority: int = 1
+    strategy_rule_symbol_coverage: str = "*"
     strategy_inference_priority: int = 2
+    strategy_inference_enabled: bool = True
+    strategy_inference_symbol_coverage: str = ""
     strategy_rule_weight_observe: float = 0.62
     strategy_inference_weight_observe: float = 0.38
     strategy_rule_weight_primary: float = 0.42

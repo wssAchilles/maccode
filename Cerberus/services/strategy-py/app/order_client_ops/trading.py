@@ -65,8 +65,10 @@ async def submit_limit_order(
             response=response,
             account_id=account_id,
             symbol=symbol,
+            side=side,
             price=price,
             quantity=quantity,
+            client_order_id=client_order_id,
             request_id=request_token,
         )
     except grpc.aio.AioRpcError as exc:
@@ -79,8 +81,10 @@ async def submit_limit_order(
             exc=exc,
             account_id=account_id,
             symbol=symbol,
+            side=side,
             price=price,
             quantity=quantity,
+            client_order_id=client_order_id,
             request_id=request_token,
         )
 

@@ -26,6 +26,8 @@ from app.infrastructure.inference_rollout_state import RedisInferenceRolloutStat
 from app.infrastructure.matching_gateway import MatchingGatewayAdapter
 from app.infrastructure.persistence_status import WorkerPersistenceStatusAdapter
 from app.infrastructure.portfolio_optimizer import GurobiPortfolioOptimizer
+from app.infrastructure.strategy_orchestration import RuntimeStrategyOrchestrationManager
+from app.infrastructure.strategy_orchestration_state import RedisStrategyOrchestrationStateStore
 from app.infrastructure.signal_runtime import (
     WorkerSignalClaimsAdapter,
     WorkerSignalEventFlowAdapter,
@@ -110,6 +112,16 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         model_registry=inference_registry,
         rollout=inference_rollout,
     )
+    strategy_orchestration = RuntimeStrategyOrchestrationManager(
+        state_store=(
+            RedisStrategyOrchestrationStateStore(
+                redis_getter=lambda: worker.redis_client,
+                state_key=settings.strategy_state_key,
+            )
+            if settings.strategy_state_enabled
+            else None
+        ),
+    )
     signal_application = SignalApplicationService(
         runtime=signal_runtime,
         signal_store=signal_store,
@@ -119,6 +131,7 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         inference_engine=inference_engine,
         inference_mode=settings.inference_mode,
         inference_rollout=inference_rollout,
+        strategy_orchestration=strategy_orchestration,
     )
     worker.attach_signal_application(signal_application)
     system_status_application = SystemStatusApplicationService(

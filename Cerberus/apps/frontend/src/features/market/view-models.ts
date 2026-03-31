@@ -1,6 +1,7 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
 import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
+import { buildExecutionMarkers, buildExecutionOrderReadModels, type ExecutionMarker } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -35,9 +36,12 @@ export type MarketExecutionRailModel = {
     status: string
     time: string
   }[]
+  staleHint?: string
   emptyTitle?: string
   emptyHint?: string
 }
+
+export type MarketChartMarkerModel = ExecutionMarker
 
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
@@ -153,15 +157,13 @@ export function buildMarketExecutionRailModel({
   orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
 }): MarketExecutionRailModel {
-  const items = orderEvents
-    .filter((item) => item.symbol === selectedSymbol)
-    .slice(0, 4)
-    .map((item) => ({
+  const orderModels = buildExecutionOrderReadModels(orderEvents, selectedSymbol)
+  const items = orderModels.slice(0, 4).map((item) => ({
       id: item.id,
-      title: item.event_type,
-      subtitle: `${item.symbol ?? selectedSymbol} · ${item.request_id ?? '—'} · ${item.execution_id ?? '—'}`,
-      status: item.status ?? '—',
-      time: formatDateTime(item.event_time ?? item.received_at),
+      title: `${item.latestPhase} · ${item.side ?? '—'}`,
+      subtitle: `${item.symbol ?? selectedSymbol} · ${item.requestId ?? '—'} · ${item.executionIds[0] ?? item.orderId ?? '—'}`,
+      status: item.latestStatus ?? item.latestPhase,
+      time: formatDateTime(item.fillAt ?? item.canceledAt ?? item.rejectedAt ?? item.acceptedAt ?? item.submitAt),
     }))
 
   if (items.length === 0) {
@@ -174,7 +176,17 @@ export function buildMarketExecutionRailModel({
   }
 
   return {
-    summary: `${selectedSymbol} · ${items.length}`,
+    summary: `${selectedSymbol} · ${items.length} · ${orderModels.filter((item) => item.latestPhase === 'fill').length} fills`,
     items,
   }
+}
+
+export function buildMarketChartMarkersModel({
+  orderEvents,
+  selectedSymbol,
+}: {
+  orderEvents: OrderTimelineEvent[]
+  selectedSymbol: string
+}): MarketChartMarkerModel[] {
+  return buildExecutionMarkers(orderEvents, selectedSymbol)
 }

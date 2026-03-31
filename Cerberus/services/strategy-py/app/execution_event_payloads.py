@@ -22,6 +22,7 @@ def build_matching_submission_payload(
     signal_side = _as_text(order_event.get("signal"))
     request_id = _as_text(order_event.get("request_id"))
     reason = _as_text(order_event.get("reason"))
+    client_order_id = _as_text(order_event.get("client_order_id"))
 
     return {
         "event": "matching.order.submitted",
@@ -29,11 +30,14 @@ def build_matching_submission_payload(
         "strategy_id": strategy_id,
         "account_id": account_id,
         "order_id": order_id,
+        "client_order_id": client_order_id or order_id,
         "symbol": symbol,
         "side": signal_side,
-        "status": "submitted" if accepted else "rejected",
+        "status": "accepted" if accepted else "rejected",
         "accepted": accepted,
         "reason": reason or "",
+        "price": order_event.get("price"),
+        "quantity": order_event.get("quantity"),
         "request_id": request_id,
     }
 

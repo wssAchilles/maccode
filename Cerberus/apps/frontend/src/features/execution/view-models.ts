@@ -1,6 +1,7 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
 import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
+import { buildExecutionAnomalySummary, buildExecutionOrderReadModels } from './read-models'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
 
@@ -130,20 +131,18 @@ export function buildExecutionOperationsPanel({
   domainStatus,
 }: BuildExecutionOperationsParams): ExecutionOperationsPanelModel {
   const filteredEvents = orderEvents.filter((item) => item.symbol === selectedSymbol)
-  const activeOrders = filteredEvents.filter((item) =>
-    ['submitted', 'accepted', 'partial_fill', 'partially_filled'].includes(normalizeOrderStatus(item.status)),
+  const orderModels = buildExecutionOrderReadModels(filteredEvents, selectedSymbol)
+  const activeOrders = orderModels.filter((item) =>
+    ['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(item.latestPhase),
   ).length
-  const filledCount = filteredEvents.filter(
-    (item) => normalizeOrderStatus(item.status) === 'filled',
-  ).length
-  const rejectedCount = filteredEvents.filter(
-    (item) => normalizeOrderStatus(item.status) === 'rejected',
-  ).length
-  const canceledCount = filteredEvents.filter((item) =>
-    ['canceled', 'cancelled'].includes(normalizeOrderStatus(item.status)),
-  ).length
-  const latestAnomaly = filteredEvents.find((item) =>
-    ['rejected', 'canceled', 'cancelled'].includes(normalizeOrderStatus(item.status)),
+  const acceptedCount = orderModels.filter((item) => item.latestPhase === 'accepted').length
+  const partialFillCount = orderModels.filter((item) => item.latestPhase === 'partial_fill').length
+  const filledCount = orderModels.filter((item) => item.latestPhase === 'fill').length
+  const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
+  const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
+  const anomalySummary = buildExecutionAnomalySummary(orderModels)
+  const latestAnomaly = orderModels.find((item) =>
+    ['rejected', 'canceled'].includes(item.latestPhase),
   )
   const matchingStats = persistenceStatus?.matching?.stats
   const anomalies: string[] = []
@@ -154,9 +153,17 @@ export function buildExecutionOperationsPanel({
   if (canceledCount > 0) {
     anomalies.push(`${t('workspace.execution.operationsCanceled')}: ${canceledCount}`)
   }
-  if (latestAnomaly?.status) {
+  if (anomalySummary.rejectionReasons[0]) {
     anomalies.push(
-      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.status} · ${latestAnomaly.request_id ?? '—'}`,
+      `${t('workspace.execution.operationsLatestAnomaly')}: ${anomalySummary.rejectionReasons[0].reason} · ${anomalySummary.rejectionReasons[0].count}`,
+    )
+  }
+  if (anomalySummary.cancelFailures > 0) {
+    anomalies.push(`${t('workspace.execution.operationsCancelHoldbacks')}: ${anomalySummary.cancelFailures}`)
+  }
+  if (latestAnomaly?.latestStatus) {
+    anomalies.push(
+      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.requestId ?? '—'}`,
     )
   }
 
@@ -175,19 +182,29 @@ export function buildExecutionOperationsPanel({
   return {
     state: domainStatus.state,
     stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
-    summary: `${selectedSymbol} · ${filteredEvents.length} ${t('workspace.execution.operationsSummarySuffix')}`,
+    summary: `${selectedSymbol} · ${orderModels.length} ${t('workspace.execution.operationsSummarySuffix')}`,
     anomalies,
     items: [
       {
         id: 'observed',
         label: t('workspace.execution.operationsObserved'),
-        value: String(filteredEvents.length),
+        value: String(orderModels.length),
       },
       {
         id: 'active',
         label: t('workspace.execution.operationsActive'),
         value: String(activeOrders),
         tone: activeOrders > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'accepted',
+        label: t('workspace.execution.operationsAccepted'),
+        value: String(acceptedCount),
+      },
+      {
+        id: 'partialFill',
+        label: t('workspace.execution.operationsPartialFills'),
+        value: String(partialFillCount),
       },
       {
         id: 'filled',
@@ -207,6 +224,22 @@ export function buildExecutionOperationsPanel({
         tone: canceledCount > 0 ? 'accent' : 'default',
       },
       {
+        id: 'submitToAccepted',
+        label: t('workspace.execution.operationsSubmitToAccepted'),
+        value: formatInteger(anomalySummary.avgSubmitToAcceptedMs ? Math.round(anomalySummary.avgSubmitToAcceptedMs) : undefined),
+      },
+      {
+        id: 'submitToFill',
+        label: t('workspace.execution.operationsSubmitToFill'),
+        value: formatInteger(anomalySummary.avgSubmitToFillMs ? Math.round(anomalySummary.avgSubmitToFillMs) : undefined),
+      },
+      {
+        id: 'slippage',
+        label: t('workspace.execution.operationsSlippage'),
+        value: anomalySummary.fillSlippageBps !== undefined ? anomalySummary.fillSlippageBps.toFixed(1) : '—',
+        tone: anomalySummary.fillSlippageBps !== undefined && Math.abs(anomalySummary.fillSlippageBps) > 5 ? 'accent' : 'default',
+      },
+      {
         id: 'matchingLive',
         label: t('workspace.execution.operationsMatchingLive'),
         value: formatInteger(matchingStats?.live_orders),
@@ -219,7 +252,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latestStatus',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: filteredEvents[0]?.status ?? '—',
+        value: orderModels[0]?.latestStatus ?? orderModels[0]?.latestPhase ?? '—',
       },
     ],
   }

@@ -117,9 +117,9 @@ export function buildHealthCards(domainStatus: DomainStatusMap, t: Translate): H
 export function buildExecutionRows(events: OrderTimelineEvent[], t: Translate): ExecutionFeedRowModel[] {
   return events.map((event) => ({
     id: event.id,
-    title: event.event_type,
-    subtitle: [event.symbol ?? '—', event.account_id ?? '—'].join(' · '),
-    rightTop: event.status ?? '—',
+    title: `${event.event_type} · ${event.lifecycle_phase}`,
+    subtitle: [event.symbol ?? '—', event.account_id ?? '—', event.client_order_id ?? event.request_id ?? '—'].join(' · '),
+    rightTop: event.status ?? event.lifecycle_phase,
     rightBottom: `${t('execution.receivedAt')}: ${formatDateTime(event.received_at)}`,
   }))
 }

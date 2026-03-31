@@ -570,6 +570,18 @@ button {
   color: var(--color-accent-strong);
 }
 
+.data-list-value-positive {
+  color: var(--color-success);
+}
+
+.data-list-value-negative {
+  color: var(--color-danger);
+}
+
+.data-list-value-muted {
+  color: var(--color-text-muted);
+}
+
 .data-list {
   display: grid;
   gap: 10px;
@@ -584,6 +596,13 @@ button {
   justify-content: space-between;
   gap: 16px;
   align-items: baseline;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(122, 151, 169, 0.14);
+}
+
+.data-list-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .data-list-value {
@@ -833,6 +852,10 @@ button {
   border-top: 1px solid rgba(122, 151, 169, 0.18);
 }
 
+.execution-operations-panel .data-list {
+  gap: 9px;
+}
+
 .execution-operations-alert-list {
   margin: 0;
   padding: 0;
@@ -891,6 +914,10 @@ button {
 .market-execution-rail-side {
   justify-items: end;
   text-align: right;
+}
+
+.timeline-section .execution-timeline {
+  min-height: 360px;
 }
 
 .execution-lifecycle-stages {
