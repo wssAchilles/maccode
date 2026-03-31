@@ -1201,6 +1201,10 @@ button {
   font-weight: 700;
 }
 
+.flow-card-index {
+  color: var(--color-text);
+}
+
 .flow-card-reason,
 .timeline-row-subtitle,
 .signal-card-symbol {
@@ -1212,6 +1216,10 @@ button {
   margin: 0;
   color: var(--color-text-soft);
   font: 500 0.78rem/1.4 var(--font-mono);
+}
+
+.flow-card-updated {
+  color: var(--color-text-muted);
 }
 
 .signal-card-symbol,
