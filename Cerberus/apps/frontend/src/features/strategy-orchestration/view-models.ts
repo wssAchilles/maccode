@@ -57,6 +57,8 @@ export type StrategyRegistryRowModel = {
   engine: string
   stateLabel: string
   stateTone: 'default' | 'muted' | 'accent'
+  impactLabel?: string
+  detailHint?: string
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
 }
 
@@ -93,8 +95,13 @@ export type StrategyOrchestrationOperationsRowModel = {
   roleLabel: string
   stateLabel: string
   coverageLabel: string
+  coverageScopeLabel: string
   conflictTargetsLabel: string
   downgradeActionLabel: string
+  impactLabel: string
+  lastUpdatedLabel: string
+  lastActorLabel: string
+  lastReasonLabel: string
 }
 
 export type StrategyOrchestrationOperationsModel = {
@@ -225,6 +232,94 @@ function downgradePolicyLabel(t: Translate, value?: string): string {
   }
   const key = `workspace.strategy.downgrade.${value}` as TranslationKey
   return t(key)
+}
+
+function coverageScopeLabel(t: Translate, value?: string): string {
+  if (!value || value === 'all') {
+    return t('workspace.strategy.coverageScopeAll')
+  }
+  if (value === 'selected') {
+    return t('workspace.strategy.coverageScopeSelected')
+  }
+  return value
+}
+
+function impactLabel(
+  t: Translate,
+  {
+    enabled,
+    selectedSymbol,
+    symbolCoverage,
+    executionReady,
+  }: {
+    enabled: boolean
+    selectedSymbol?: string
+    symbolCoverage: string[]
+    executionReady?: boolean
+  },
+): string {
+  if (!enabled) {
+    return t('workspace.strategy.impactDisabled')
+  }
+  if (selectedSymbol && symbolCoverage.length > 0 && !symbolCoverage.includes(selectedSymbol)) {
+    return t('workspace.strategy.impactExcluded')
+  }
+  if (executionReady === false) {
+    return t('workspace.strategy.impactReview')
+  }
+  return t('workspace.strategy.impactActive')
+}
+
+function changedFieldLabel(t: Translate, field: string): string {
+  switch (field) {
+    case 'enabled':
+      return t('workspace.strategy.runtimeState')
+    case 'priority':
+      return t('workspace.strategy.priority')
+    case 'observe_weight':
+      return t('workspace.strategy.observeWeight')
+    case 'primary_weight':
+      return t('workspace.strategy.primaryWeight')
+    case 'symbol_coverage':
+      return t('workspace.strategy.symbolCoverage')
+    case 'conflict_targets':
+      return t('workspace.strategy.conflictTargets')
+    case 'downgrade_action':
+      return t('workspace.strategy.downgradeAction')
+    case 'conflict_policy':
+      return t('workspace.strategy.conflictPolicy')
+    case 'downgrade_policy':
+      return t('workspace.strategy.downgradePolicy')
+    default:
+      return field
+  }
+}
+
+function toStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : []
+}
+
+function auditDiffLabel(t: Translate, field: string, metadata: Record<string, unknown>): string | undefined {
+  const previous = metadata.previous
+  const current = metadata.current
+  if (!previous || !current || typeof previous !== 'object' || typeof current !== 'object') {
+    return undefined
+  }
+  const previousValue = (previous as Record<string, unknown>)[field]
+  const currentValue = (current as Record<string, unknown>)[field]
+  const normalize = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return value.length > 0 ? value.map((item) => String(item)).join(' · ') : '—'
+    }
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false'
+    }
+    if (value === null || value === undefined || value === '') {
+      return '—'
+    }
+    return String(value)
+  }
+  return `${changedFieldLabel(t, field)}: ${normalize(previousValue)} → ${normalize(currentValue)}`
 }
 
 function auditEventLabel(t: Translate, eventType?: string): string {
@@ -502,12 +597,27 @@ export function buildStrategyRegistryPanelModel({
         entry.downgrade_action ||
         (typeof entry.metadata.downgrade_action === 'string' ? entry.metadata.downgrade_action : undefined)
       const stateTone: StrategyRegistryRowModel['stateTone'] = entry.enabled ? 'accent' : 'muted'
+      const entryCoverage = entry.symbol_coverage
+      const currentSelectedSymbol = selectedSymbol ?? registry?.symbol
+      const registryImpact = impactLabel(t, {
+        enabled: entry.enabled,
+        selectedSymbol: currentSelectedSymbol,
+        symbolCoverage: entryCoverage,
+        executionReady: signal?.portfolio?.execution_ready,
+      })
+      const detailParts = [
+        coverageScopeLabel(t, entry.coverage_scope),
+        entry.last_actor ?? null,
+        entry.last_reason ?? null,
+      ].filter(Boolean)
       return {
         id: `${entry.strategy_id}-${entry.engine}-${entry.source}`,
         label: entry.label,
         engine: entry.engine,
         stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
         stateTone,
+        impactLabel: registryImpact,
+        detailHint: detailParts.join(' · ') || undefined,
         items: [
           {
             id: 'runtimeState',
@@ -613,12 +723,33 @@ export function buildStrategyOrchestrationAuditTimelineModel({
       title: auditEventLabel(t, item.event_type),
       message: item.message,
       createdAt: formatDateTime(item.created_at),
-      detail:
-        typeof item.metadata.strategy_id === 'string'
-          ? `${item.metadata.strategy_id} · ${item.metadata.actor ?? t('common.na')}`
-          : typeof item.metadata.actor === 'string'
-            ? `${item.metadata.actor}`
-            : undefined,
+      detail: (() => {
+        const details: string[] = []
+        if (typeof item.metadata.strategy_id === 'string') {
+          details.push(`${t('workspace.strategy.auditStrategy')}: ${item.metadata.strategy_id}`)
+        }
+        if (typeof item.metadata.actor === 'string') {
+          details.push(`${t('workspace.strategy.auditActor')}: ${item.metadata.actor}`)
+        }
+        if (typeof item.metadata.reason === 'string' && item.metadata.reason.trim()) {
+          details.push(`${t('workspace.strategy.auditReason')}: ${item.metadata.reason}`)
+        }
+        const changedFields = toStringList(item.metadata.changed_fields)
+        if (changedFields.length > 0) {
+          details.push(
+            `${t('workspace.strategy.auditChangedFields')}: ${changedFields
+              .map((field) => changedFieldLabel(t, field))
+              .join(' · ')}`,
+          )
+          const firstDiff = changedFields
+            .map((field) => auditDiffLabel(t, field, item.metadata))
+            .find(Boolean)
+          if (firstDiff) {
+            details.push(firstDiff)
+          }
+        }
+        return details.length > 0 ? details.join(' · ') : undefined
+      })(),
     })),
   }
 }
@@ -663,6 +794,7 @@ export function buildStrategyOrchestrationOperationsModel({
       const downgradeAction =
         entry.downgrade_action ||
         (typeof entry.metadata.downgrade_action === 'string' ? entry.metadata.downgrade_action : undefined)
+      const currentSelectedSymbol = orchestrationStatus.tracked_symbols[0]
       return {
         id: entry.strategy_id,
         label: entry.label,
@@ -671,8 +803,18 @@ export function buildStrategyOrchestrationOperationsModel({
         roleLabel: roleLabel(t, entry.role),
         stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
         coverageLabel: summarizeCoverage(undefined, entry.symbol_coverage),
+        coverageScopeLabel: coverageScopeLabel(t, entry.coverage_scope),
         conflictTargetsLabel: conflictTargets.length > 0 ? conflictTargets.join(' · ') : t('common.na'),
         downgradeActionLabel: downgradePolicyLabel(t, downgradeAction ?? orchestrationStatus.downgrade_policy),
+        impactLabel: impactLabel(t, {
+          enabled: entry.enabled,
+          selectedSymbol: currentSelectedSymbol,
+          symbolCoverage: entry.symbol_coverage,
+          executionReady: true,
+        }),
+        lastUpdatedLabel: formatDateTime(entry.last_updated_at),
+        lastActorLabel: entry.last_actor ?? t('common.na'),
+        lastReasonLabel: entry.last_reason ?? t('common.na'),
       }
     }),
     conflictOptions: [

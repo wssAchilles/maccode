@@ -39,10 +39,13 @@ export type ExecutionAnomalySummary = {
 export type ExecutionAccountSummary = {
   accountId: string
   observed: number
+  accepted: number
+  partialFill: number
   filled: number
   rejected: number
   canceled: number
   active: number
+  latestPhase?: ExecutionLifecyclePhase
 }
 
 export type ExecutionLifecycleDistribution = Record<ExecutionLifecyclePhase, number>
@@ -195,6 +198,7 @@ export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]):
 
 export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]): ExecutionAccountSummary[] {
   const groups = new Map<string, ExecutionAccountSummary>()
+  const latestTimestamps = new Map<string, number>()
   for (const model of models) {
     const key = model.accountId ?? 'unknown'
     const current =
@@ -202,12 +206,21 @@ export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]
       {
         accountId: key,
         observed: 0,
+        accepted: 0,
+        partialFill: 0,
         filled: 0,
         rejected: 0,
         canceled: 0,
         active: 0,
+        latestPhase: undefined,
       }
     current.observed += 1
+    if (model.latestPhase === 'accepted') {
+      current.accepted += 1
+    }
+    if (model.latestPhase === 'partial_fill') {
+      current.partialFill += 1
+    }
     if (model.latestPhase === 'fill') {
       current.filled += 1
     }
@@ -219,6 +232,12 @@ export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]
     }
     if (['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(model.latestPhase)) {
       current.active += 1
+    }
+    const candidateTimestamp = rightMostTimestamp(model.events)
+    const knownTimestamp = latestTimestamps.get(key) ?? -1
+    if (candidateTimestamp >= knownTimestamp) {
+      current.latestPhase = model.latestPhase
+      latestTimestamps.set(key, candidateTimestamp)
     }
     groups.set(key, current)
   }

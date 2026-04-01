@@ -40,9 +40,7 @@ export function StrategyOrchestrationOperationsPanel({
   onSavePolicies,
 }: Props) {
   const { t } = useI18n()
-  const downgradeOptions = [
-    ...model.downgradeOptions,
-  ]
+  const downgradeOptions = [...model.downgradeOptions]
 
   if (model.rows.length === 0) {
     return (
@@ -71,6 +69,8 @@ export function StrategyOrchestrationOperationsPanel({
         <label className="field-label">
           {t('workspace.strategy.conflictPolicy')}
           <select
+            id="strategy-conflict-policy"
+            name="strategy_conflict_policy"
             className="field-input"
             value={conflictPolicy}
             onChange={(event) => onConflictPolicyChange(event.target.value)}
@@ -85,6 +85,8 @@ export function StrategyOrchestrationOperationsPanel({
         <label className="field-label">
           {t('workspace.strategy.downgradePolicy')}
           <select
+            id="strategy-downgrade-policy"
+            name="strategy_downgrade_policy"
             className="field-input"
             value={downgradePolicy}
             onChange={(event) => onDowngradePolicyChange(event.target.value)}
@@ -101,6 +103,8 @@ export function StrategyOrchestrationOperationsPanel({
       <label className="field-label">
         {t('workspace.strategy.operatorNote')}
         <textarea
+          id="strategy-operator-note"
+          name="strategy_operator_note"
           className="field-input inference-reason-input"
           rows={3}
           value={reason}
@@ -112,6 +116,7 @@ export function StrategyOrchestrationOperationsPanel({
         {model.rows.map((row) => {
           const draft = drafts[row.id]
           const entryPending = model.pendingAction === `update_entry:${row.id}`
+          const fieldBaseId = `strategy-${row.id}`
           return (
             <article key={row.id} className="strategy-orchestration-row" role="listitem">
               <div className="strategy-orchestration-row-head">
@@ -121,9 +126,12 @@ export function StrategyOrchestrationOperationsPanel({
                   <p className="strategy-panel-hint">
                     {row.sourceLabel} · {row.roleLabel}
                   </p>
+                  <p className="strategy-registry-impact">{row.impactLabel}</p>
                 </div>
                 <label className="toggle-chip">
                   <input
+                    id={`${fieldBaseId}-enabled`}
+                    name={`${fieldBaseId}_enabled`}
                     type="checkbox"
                     checked={draft?.enabled ?? false}
                     onChange={(event) => onDraftFieldChange(row.id, 'enabled', event.target.checked)}
@@ -136,6 +144,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label">
                   {t('workspace.strategy.priority')}
                   <input
+                    id={`${fieldBaseId}-priority`}
+                    name={`${fieldBaseId}_priority`}
                     className="field-input"
                     type="number"
                     min="1"
@@ -147,6 +157,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label">
                   {t('workspace.strategy.observeWeight')}
                   <input
+                    id={`${fieldBaseId}-observe-weight`}
+                    name={`${fieldBaseId}_observe_weight`}
                     className="field-input"
                     type="number"
                     min="0"
@@ -158,6 +170,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label">
                   {t('workspace.strategy.primaryWeight')}
                   <input
+                    id={`${fieldBaseId}-primary-weight`}
+                    name={`${fieldBaseId}_primary_weight`}
                     className="field-input"
                     type="number"
                     min="0"
@@ -169,6 +183,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label strategy-orchestration-coverage-field">
                   {t('workspace.strategy.symbolCoverage')}
                   <input
+                    id={`${fieldBaseId}-symbol-coverage`}
+                    name={`${fieldBaseId}_symbol_coverage`}
                     className="field-input"
                     value={draft?.symbolCoverage ?? ''}
                     onChange={(event) => onDraftFieldChange(row.id, 'symbolCoverage', event.target.value)}
@@ -178,6 +194,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label strategy-orchestration-coverage-field">
                   {t('workspace.strategy.conflictTargets')}
                   <input
+                    id={`${fieldBaseId}-conflict-targets`}
+                    name={`${fieldBaseId}_conflict_targets`}
                     className="field-input"
                     value={draft?.conflictTargets ?? ''}
                     onChange={(event) => onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}
@@ -187,6 +205,8 @@ export function StrategyOrchestrationOperationsPanel({
                 <label className="field-label">
                   {t('workspace.strategy.downgradeAction')}
                   <select
+                    id={`${fieldBaseId}-downgrade-action`}
+                    name={`${fieldBaseId}_downgrade_action`}
                     className="field-input"
                     value={draft?.downgradeAction ?? downgradePolicy}
                     onChange={(event) => onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}
@@ -202,9 +222,14 @@ export function StrategyOrchestrationOperationsPanel({
 
               <div className="strategy-orchestration-row-meta">
                 <p>{t('workspace.strategy.runtimeState')}: {row.stateLabel}</p>
+                <p>{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}</p>
                 <p>{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}</p>
                 <p>{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}</p>
                 <p>{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}</p>
+                <p>{t('workspace.strategy.impactTitle')}: {row.impactLabel}</p>
+                <p>{t('workspace.strategy.lastUpdated')}: {row.lastUpdatedLabel}</p>
+                <p>{t('workspace.strategy.lastActor')}: {row.lastActorLabel}</p>
+                <p>{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}</p>
               </div>
 
               <div className="workspace-actions strategy-orchestration-actions">

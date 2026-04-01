@@ -41,6 +41,8 @@ export function StrategyRegistryPanel({ model }: Props) {
               <div>
                 <p className="subtle-label">{row.label}</p>
                 <p className="strategy-registry-engine">{row.engine}</p>
+                {row.impactLabel ? <p className="strategy-registry-impact">{row.impactLabel}</p> : null}
+                {row.detailHint ? <p className="strategy-panel-hint">{row.detailHint}</p> : null}
               </div>
               <p
                 className={

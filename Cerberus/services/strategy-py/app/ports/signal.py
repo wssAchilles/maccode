@@ -41,6 +41,10 @@ class StrategyRegistryEntrySnapshot:
     conflict_policy: str = "review_on_conflict"
     downgrade_policy: str = "review"
     downgrade_action: str = "review"
+    coverage_scope: str = "all"
+    last_updated_at: str | None = None
+    last_actor: str | None = None
+    last_reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

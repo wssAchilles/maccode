@@ -39,6 +39,13 @@ export function ExecutionOperationsPanel({ model }: Props) {
         </div>
       ) : null}
 
+      {model.reasonSummary.length > 0 ? (
+        <div className="execution-operations-lifecycle">
+          <p className="subtle-label">{t('workspace.execution.reasonDistributionTitle')}</p>
+          <DataList items={model.reasonSummary} dense />
+        </div>
+      ) : null}
+
       <div className="execution-operations-diagnosis">
         <div className="strategy-panel-head">
           <div>

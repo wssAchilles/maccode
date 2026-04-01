@@ -604,6 +604,10 @@ class SignalApplicationService:
                     conflict_policy=orchestration.conflict_policy,
                     downgrade_policy=orchestration.downgrade_policy,
                     downgrade_action=entry.downgrade_action,
+                    coverage_scope=entry.coverage_scope,
+                    last_updated_at=entry.last_updated_at,
+                    last_actor=entry.last_actor,
+                    last_reason=entry.last_reason,
                     metadata=metadata,
                 )
             )
@@ -638,6 +642,10 @@ class SignalApplicationService:
                     "conflict_policy": item.conflict_policy,
                     "downgrade_policy": item.downgrade_policy,
                     "downgrade_action": item.downgrade_action,
+                    "coverage_scope": item.coverage_scope,
+                    "last_updated_at": item.last_updated_at,
+                    "last_actor": item.last_actor,
+                    "last_reason": item.last_reason,
                     "metadata": dict(item.metadata),
                 }
                 for item in registry.entries

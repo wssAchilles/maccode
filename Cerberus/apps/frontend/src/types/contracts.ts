@@ -137,6 +137,10 @@ export type StrategyRegistryEntry = {
   conflict_policy: string
   downgrade_policy: string
   downgrade_action: string
+  coverage_scope?: string
+  last_updated_at?: string | null
+  last_actor?: string | null
+  last_reason?: string | null
   metadata: Record<string, unknown>
 }
 
@@ -160,6 +164,10 @@ export type StrategyOrchestrationEntry = {
   symbol_coverage: string[]
   conflict_targets: string[]
   downgrade_action: string
+  coverage_scope?: string
+  last_updated_at?: string | null
+  last_actor?: string | null
+  last_reason?: string | null
   metadata: Record<string, unknown>
 }
 

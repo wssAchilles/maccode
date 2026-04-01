@@ -36,6 +36,9 @@ class _MutableStrategyEntry:
     symbol_coverage: tuple[str, ...]
     conflict_targets: tuple[str, ...]
     downgrade_action: str
+    last_updated_at: str | None
+    last_actor: str | None
+    last_reason: str | None
     metadata: dict[str, Any]
 
 
@@ -112,6 +115,10 @@ class RuntimeStrategyOrchestrationManager:
                     symbol_coverage=resolved_coverage,
                     conflict_targets=self._resolve_conflict_targets(entry.strategy_id, entry.conflict_targets),
                     downgrade_action=entry.downgrade_action,
+                    coverage_scope="all" if not entry.symbol_coverage else "selected",
+                    last_updated_at=entry.last_updated_at,
+                    last_actor=entry.last_actor,
+                    last_reason=entry.last_reason,
                     metadata={
                         **dict(entry.metadata),
                         "state_backend": self._state_store.backend_name if self._state_store is not None else None,
@@ -170,6 +177,8 @@ class RuntimeStrategyOrchestrationManager:
         entry = self._find_entry(strategy_id)
         if entry is None:
             raise KeyError(f"unknown strategy_id: {strategy_id}")
+        previous = self._entry_control_state(entry)
+        timestamp = _utc_now()
 
         if enabled is not None:
             entry.enabled = enabled
@@ -194,12 +203,17 @@ class RuntimeStrategyOrchestrationManager:
                 allowed={"review", "hold"},
             )
 
+        entry.last_updated_at = timestamp
+        entry.last_actor = actor or "system"
+        entry.last_reason = reason.strip() if isinstance(reason, str) and reason.strip() else None
         entry.metadata.update(
             {
-                "last_updated_at": _utc_now(),
-                "last_actor": actor or "system",
+                "last_updated_at": entry.last_updated_at,
+                "last_actor": entry.last_actor,
+                "last_reason": entry.last_reason,
             }
         )
+        current = self._entry_control_state(entry)
         self._append_audit(
             "strategy_entry_updated",
             f"{strategy_id} orchestration entry updated",
@@ -214,6 +228,9 @@ class RuntimeStrategyOrchestrationManager:
                 "symbol_coverage": list(entry.symbol_coverage),
                 "conflict_targets": list(entry.conflict_targets),
                 "downgrade_action": entry.downgrade_action,
+                "changed_fields": [key for key, value in current.items() if previous.get(key) != value],
+                "previous": previous,
+                "current": current,
             },
         )
         await self._persist_state()
@@ -244,6 +261,10 @@ class RuntimeStrategyOrchestrationManager:
         actor: str | None = None,
         reason: str | None = None,
     ) -> StrategyOrchestrationControlResult:
+        previous = {
+            "conflict_policy": self._state["conflict_policy"],
+            "downgrade_policy": self._state["downgrade_policy"],
+        }
         if conflict_policy is not None:
             self._state["conflict_policy"] = _coerce_policy(
                 conflict_policy,
@@ -256,6 +277,10 @@ class RuntimeStrategyOrchestrationManager:
                 self._state["downgrade_policy"],
                 allowed={"review", "hold"},
             )
+        current = {
+            "conflict_policy": self._state["conflict_policy"],
+            "downgrade_policy": self._state["downgrade_policy"],
+        }
         self._append_audit(
             "orchestration_policies_updated",
             "strategy orchestration policies updated",
@@ -264,6 +289,9 @@ class RuntimeStrategyOrchestrationManager:
                 "reason": reason,
                 "conflict_policy": self._state["conflict_policy"],
                 "downgrade_policy": self._state["downgrade_policy"],
+                "changed_fields": [key for key, value in current.items() if previous.get(key) != value],
+                "previous": previous,
+                "current": current,
             },
         )
         await self._persist_state()
@@ -300,6 +328,9 @@ class RuntimeStrategyOrchestrationManager:
                     symbol_coverage=_normalize_symbol_list(settings.strategy_rule_symbol_coverage),
                     conflict_targets=("inference",),
                     downgrade_action=settings.strategy_downgrade_policy,
+                    last_updated_at=None,
+                    last_actor=None,
+                    last_reason=None,
                     metadata={"configured_source": "settings"},
                 ),
                 _MutableStrategyEntry(
@@ -315,6 +346,9 @@ class RuntimeStrategyOrchestrationManager:
                     symbol_coverage=_normalize_symbol_list(settings.strategy_inference_symbol_coverage),
                     conflict_targets=("default",),
                     downgrade_action=settings.strategy_downgrade_policy,
+                    last_updated_at=None,
+                    last_actor=None,
+                    last_reason=None,
                     metadata={"configured_source": "settings"},
                 ),
             ],
@@ -339,6 +373,9 @@ class RuntimeStrategyOrchestrationManager:
                     "symbol_coverage": list(entry.symbol_coverage),
                     "conflict_targets": list(entry.conflict_targets),
                     "downgrade_action": entry.downgrade_action,
+                    "last_updated_at": entry.last_updated_at,
+                    "last_actor": entry.last_actor,
+                    "last_reason": entry.last_reason,
                     "metadata": dict(entry.metadata),
                 }
                 for entry in self._state["entries"]
@@ -383,6 +420,9 @@ class RuntimeStrategyOrchestrationManager:
                         default_entry.downgrade_action,
                         allowed={"review", "hold"},
                     ),
+                    last_updated_at=_coerce_optional_text(loaded, "last_updated_at"),
+                    last_actor=_coerce_optional_text(loaded, "last_actor"),
+                    last_reason=_coerce_optional_text(loaded, "last_reason"),
                     metadata=_coerce_metadata(loaded, default_entry.metadata),
                 )
             )
@@ -444,6 +484,17 @@ class RuntimeStrategyOrchestrationManager:
         resolved = tuple(target for target in configured_targets if target in available)
         return resolved or tuple(available)
 
+    def _entry_control_state(self, entry: _MutableStrategyEntry) -> dict[str, Any]:
+        return {
+            "enabled": entry.enabled,
+            "priority": entry.priority,
+            "observe_weight": entry.observe_weight,
+            "primary_weight": entry.primary_weight,
+            "symbol_coverage": list(entry.symbol_coverage),
+            "conflict_targets": list(entry.conflict_targets),
+            "downgrade_action": entry.downgrade_action,
+        }
+
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -472,6 +523,15 @@ def _coerce_text(payload: dict[str, Any] | None, key: str, default: str) -> str:
     if isinstance(value, str) and value.strip():
         return value.strip()
     return default
+
+
+def _coerce_optional_text(payload: dict[str, Any] | None, key: str) -> str | None:
+    if not payload:
+        return None
+    value = payload.get(key)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
 
 
 def _coerce_bool(payload: dict[str, Any] | None, key: str, default: bool) -> bool:

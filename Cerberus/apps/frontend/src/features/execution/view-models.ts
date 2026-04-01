@@ -51,6 +51,7 @@ export type ExecutionOperationsPanelModel = {
   diagnosisTone: 'default' | 'accent' | 'danger'
   diagnosisHint: string
   lifecycleSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  reasonSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   accountSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   emptyTitle?: string
@@ -211,6 +212,7 @@ export function buildExecutionOperationsPanel({
       diagnosisTone: 'default',
       diagnosisHint: t('workspace.execution.operationsDescription'),
       lifecycleSummary: [],
+      reasonSummary: [],
       accountSummary: [],
       items: [],
       emptyTitle: t('workspace.execution.operationsEmpty'),
@@ -228,6 +230,12 @@ export function buildExecutionOperationsPanel({
             anomalySummary.rejectionReasons[0]?.reason ??
             t('workspace.execution.diagnosisHintHold'),
         }
+      : activeOrders > 0 && filledCount === 0 && partialFillCount === 0
+        ? {
+            label: t('workspace.execution.diagnosisCaution'),
+            tone: 'accent' as const,
+            hint: t('workspace.execution.diagnosisHintPending'),
+          }
       : partialFillCount > 0 ||
           (anomalySummary.fillSlippageBps !== undefined && Math.abs(anomalySummary.fillSlippageBps) > 5)
         ? {
@@ -290,11 +298,25 @@ export function buildExecutionOperationsPanel({
         value: String(lifecycleDistribution.canceled),
       },
     ],
+    reasonSummary: [
+      ...anomalySummary.rejectionReasons.map((item) => ({
+        id: `reject-${item.reason}`,
+        label: t('workspace.execution.reasonDistributionRejected'),
+        value: `${item.reason} · ${item.count}`,
+        tone: 'accent' as const,
+      })),
+      ...anomalySummary.cancelFailureReasons.map((item) => ({
+        id: `cancel-${item.reason}`,
+        label: t('workspace.execution.reasonDistributionCanceled'),
+        value: `${item.reason} · ${item.count}`,
+        tone: 'accent' as const,
+      })),
+    ],
     accountSummary: accountSummary.slice(0, 3).map((item) => ({
       id: item.accountId,
       label: item.accountId,
-      value: `${item.observed} ${t('workspace.execution.accountObservedShort')} · ${item.active} ${t('workspace.execution.accountActiveShort')} · ${item.filled} ${t('workspace.execution.accountFilledShort')}`,
-      tone: item.rejected > 0 || item.canceled > 0 ? 'accent' : 'default',
+      value: `${item.observed} ${t('workspace.execution.accountObservedShort')} · ${item.accepted} ${t('workspace.execution.accountAcceptedShort')} · ${item.partialFill} ${t('workspace.execution.accountPartialShort')} · ${item.filled} ${t('workspace.execution.accountFilledShort')}`,
+      tone: item.rejected > 0 || item.canceled > 0 ? 'accent' : item.active > 0 ? 'accent' : 'default',
     })),
     items: [
       {

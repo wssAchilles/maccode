@@ -18,6 +18,10 @@ class StrategyOrchestrationEntry:
     symbol_coverage: tuple[str, ...] = ()
     conflict_targets: tuple[str, ...] = ()
     downgrade_action: str = "review"
+    coverage_scope: str = "all"
+    last_updated_at: str | None = None
+    last_actor: str | None = None
+    last_reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def configured_weight(self, *, mode: str) -> float:
@@ -76,6 +80,10 @@ class StrategyOrchestrationSnapshot:
                     "symbol_coverage": list(item.symbol_coverage),
                     "conflict_targets": list(item.conflict_targets),
                     "downgrade_action": item.downgrade_action,
+                    "coverage_scope": item.coverage_scope,
+                    "last_updated_at": item.last_updated_at,
+                    "last_actor": item.last_actor,
+                    "last_reason": item.last_reason,
                     "metadata": dict(item.metadata),
                 }
                 for item in self.entries
