@@ -56,6 +56,10 @@ export function MatchingOrderBookPanel({ model }: Props) {
           <p className="obs-value obs-value-ask">{model.bestAskLabel}</p>
         </GlassPanel>
         <GlassPanel className="obs-card" tone="subtle">
+          <p className="subtle-label">{model.midPriceTitle}</p>
+          <p className="obs-value">{model.midPriceLabel}</p>
+        </GlassPanel>
+        <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{model.spreadTitle}</p>
           <p className="obs-value">{model.spreadLabel}</p>
         </GlassPanel>
@@ -81,6 +85,8 @@ export function MatchingOrderBookPanel({ model }: Props) {
         <div className="obfc">
           <p className="obu">{model.updatedTitle}: {model.updatedAtLabel}</p>
           <p className="obu">{model.depthBalanceTitle}: {model.depthBalanceLabel}</p>
+          <p className="obu">{model.totalDepthTitle}: {model.totalDepthLabel}</p>
+          <p className="obu">{model.liquidityBiasTitle}: {model.liquidityBiasLabel}</p>
         </div>
         {model.stale && model.staleHint ? <p className="obst">{model.staleHint}</p> : null}
       </GlassPanel>

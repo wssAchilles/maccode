@@ -7,7 +7,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceSpotlight } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
@@ -63,10 +63,7 @@ export function MarketWorkspace({ active = true }: Props) {
           title={t('workspace.market.linkageTitle')}
           description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
         >
-          <GlassPanel tone="subtle" className="mlb">
-            <p className="sp-summary">{model.activeSymbol}</p>
-            <p className="sp-hint">{t('workspace.market.linkageDetail')}</p>
-          </GlassPanel>
+          <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
 
         <SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}>

@@ -38,8 +38,19 @@ export default defineConfig({
     allowedHosts,
   },
   build: {
+    minify: 'terser',
+    cssMinify: 'lightningcss',
     sourcemap: true,
     chunkSizeWarningLimit: 380,
+    terserOptions: {
+      compress: {
+        passes: 2,
+        pure_getters: true,
+      },
+      format: {
+        comments: false,
+      },
+    },
     modulePreload: {
       resolveDependencies(_filename, deps, context) {
         if (context.hostType !== 'html') {

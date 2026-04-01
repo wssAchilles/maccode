@@ -19,6 +19,7 @@ import {
   buildMarketChartMarkersModel,
   buildMarketExecutionRailModel,
   buildMarketMetricTiles,
+  buildMarketSpotlightModel,
   buildMarketSymbolChips,
 } from './view-models'
 
@@ -137,6 +138,17 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [orderbook, t],
   )
 
+  const spotlight = useMemo(
+    () =>
+      buildMarketSpotlightModel({
+        t,
+        snapshot: tradingSnapshot,
+        executionRail,
+        orderbookPanel,
+      }),
+    [executionRail, orderbookPanel, t, tradingSnapshot],
+  )
+
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
     syncExecutionFilters({ symbol })
@@ -151,6 +163,7 @@ export function useMarketWorkspaceModel({ active }: Params) {
     orderbookPanel,
     symbolChips,
     metricTiles,
+    spotlight,
     portfolioPanel,
     strategyRegistry,
     strategyMatrix,

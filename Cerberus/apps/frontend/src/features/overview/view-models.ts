@@ -5,6 +5,7 @@ import type {
 } from '../../types/contracts'
 import {
   type PreparedTradingSnapshot,
+  type WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
@@ -31,11 +32,6 @@ type BuildOverviewMetricTilesParams = {
 type BuildOverviewPersistenceItemsParams = {
   t: Translate
   persistenceStatus?: PersistenceStatus
-}
-
-type BuildOverviewExecutionSummaryParams = {
-  t: Translate
-  tradingPolicy?: TradingPolicy
 }
 
 export function buildOverviewMetricTiles({
@@ -73,6 +69,49 @@ export function buildOverviewMetricTiles({
   ]
 }
 
+export function buildOverviewSpotlightModel({
+  t,
+  snapshot,
+  readyCount,
+  attentionCount,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  readyCount: number
+  attentionCount: number
+}): WorkspaceSpotlightModel {
+  return {
+    summary: `${snapshot.selectedSymbol} · ${snapshot.signalValue} · ${snapshot.feedbackValue ?? t('common.heartbeat')}`,
+    hint: `${t('common.updatedAt')}: ${snapshot.feedbackAtValue}`,
+    chips: [snapshot.selectedSymbol, snapshot.signalValue],
+    metrics: [
+      {
+        id: 'mid-price',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'services-ready',
+        label: t('common.ready'),
+        value: String(readyCount),
+        tone: readyCount > 0 ? 'positive' : 'default',
+      },
+      {
+        id: 'services-attention',
+        label: t('workspace.overview.attention'),
+        value: String(attentionCount),
+        tone: attentionCount > 0 ? 'negative' : 'default',
+      },
+    ],
+  }
+}
+
 export function buildOverviewPersistenceItems({
   t,
   persistenceStatus,
@@ -92,19 +131,6 @@ export function buildOverviewPersistenceItems({
       id: 'firebase',
       label: 'Firestore',
       value: String(persistenceStatus?.stores.firebase_enabled ?? false),
-    },
-  ]
-}
-
-export function buildOverviewExecutionSummary({
-  t,
-  tradingPolicy,
-}: BuildOverviewExecutionSummaryParams): OverviewDataItem[] {
-  return [
-    {
-      id: 'policy',
-      label: t('execution.policy'),
-      value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
     },
   ]
 }

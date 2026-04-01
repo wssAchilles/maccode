@@ -29,15 +29,33 @@ export type ExecutionFeedRowModel = {
   rightBottom: string
 }
 
+export type WorkspaceSpotlightMetricModel = {
+  id: string
+  label: string
+  value: string
+  hint?: string
+  tone?: 'default' | 'positive' | 'negative' | 'accent'
+}
+
+export type WorkspaceSpotlightModel = {
+  summary: string
+  hint?: string
+  chips: string[]
+  metrics: WorkspaceSpotlightMetricModel[]
+}
+
 export type PreparedTradingSnapshot = {
   selectedSymbol: string
   displayQuote?: MarketMessage
   bestBidValue: string
   bestAskValue: string
+  midPriceValue: string
+  spreadValue: string
   signalValue: string
   confidenceValue: string
   feedbackValue?: string
   feedbackAtValue: string
+  quoteUpdatedAtValue: string
 }
 
 export const WORKSPACE_MODELS: WorkspaceSummaryModel[] = [
@@ -89,11 +107,26 @@ export function formatPrice(value?: string | null): string {
   return value?.trim() ? value : '—'
 }
 
+export function formatDerivedPrice(value?: number | null, digits = 6): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+  return value.toFixed(digits)
+}
+
 export function formatConfidence(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '0.000000'
   }
   return value.toFixed(6)
+}
+
+export function parseNumericString(value?: string | null): number | undefined {
+  if (!value?.trim()) {
+    return undefined
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 export function selectDisplayQuote(
@@ -154,6 +187,27 @@ export function summarizeLatestEventAt(event: OrderTimelineEvent | undefined) {
   return formatDateTime(event?.event_time ?? event?.received_at)
 }
 
+export function summarizeDomainStates(domainStatus: DomainStatusMap) {
+  let readyCount = 0
+  let attentionCount = 0
+
+  for (const status of Object.values(domainStatus)) {
+    if (status.state === 'ready' && !status.stale) {
+      readyCount += 1
+      continue
+    }
+    if (status.state === 'degraded' || status.state === 'error' || status.stale) {
+      attentionCount += 1
+    }
+  }
+
+  return {
+    readyCount,
+    attentionCount,
+    totalCount: Object.keys(domainStatus).length,
+  }
+}
+
 export function buildPreparedTradingSnapshot({
   selectedSymbol,
   latest,
@@ -170,17 +224,24 @@ export function buildPreparedTradingSnapshot({
   heartbeat?: string
 }): PreparedTradingSnapshot {
   const displayQuote = selectDisplayQuote(selectedSymbol, latest, latestBySymbol)
+  const bid = parseNumericString(displayQuote?.bid_price)
+  const ask = parseNumericString(displayQuote?.ask_price)
+  const spread = bid !== undefined && ask !== undefined ? ask - bid : undefined
+  const midPrice = bid !== undefined && ask !== undefined ? (bid + ask) / 2 : undefined
 
   return {
     selectedSymbol,
     displayQuote,
     bestBidValue: formatPrice(displayQuote?.bid_price),
     bestAskValue: formatPrice(displayQuote?.ask_price),
+    midPriceValue: formatDerivedPrice(midPrice),
+    spreadValue: formatDerivedPrice(spread),
     signalValue: strategySignal?.signal ?? 'HOLD',
     confidenceValue: formatConfidence(strategySignal?.confidence),
     feedbackValue: latestEvent
       ? `${latestEvent.event_type} · ${latestEvent.symbol ?? '—'} · ${latestEvent.status ?? '—'}`
       : heartbeat,
     feedbackAtValue: summarizeLatestEventAt(latestEvent),
+    quoteUpdatedAtValue: formatDateTime(displayQuote?.event_time),
   }
 }

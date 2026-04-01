@@ -704,6 +704,10 @@ button {
   color: var(--a1);
 }
 
+.execution-desk-spotlight {
+  margin-bottom: 14px;
+}
+
 .spf-status {
   display: grid;
   gap: 8px;
@@ -1414,7 +1418,7 @@ button {
 
 .obs-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }

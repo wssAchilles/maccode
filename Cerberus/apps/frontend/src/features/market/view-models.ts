@@ -2,8 +2,9 @@ import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
 import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
-import { type PreparedTradingSnapshot, formatPrice } from '../../view-models/workbench'
+import { type PreparedTradingSnapshot, type WorkspaceSpotlightModel, formatPrice } from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
+import type { MatchingOrderBookPanelModel } from '../../view-models/orderbook'
 
 type Translate = (key: TranslationKey) => string
 
@@ -168,6 +169,57 @@ export function buildMarketMetricTiles({
       value: snapshot.feedbackValue ?? t('common.heartbeat'),
     },
   ]
+}
+
+export function buildMarketSpotlightModel({
+  t,
+  snapshot,
+  executionRail,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  executionRail: MarketExecutionRailModel
+  orderbookPanel: MatchingOrderBookPanelModel
+}): WorkspaceSpotlightModel {
+  const latestPulse = executionRail.items[0]
+
+  return {
+    summary: t('workspace.market.linkageHint').replace('{symbol}', snapshot.selectedSymbol),
+    hint: t('workspace.market.linkageDetail'),
+    chips: [
+      snapshot.selectedSymbol,
+      snapshot.signalValue,
+      orderbookPanel.stale ? t('health.stale') : t('health.fresh'),
+    ],
+    metrics: [
+      {
+        id: 'mid-price',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+        hint: `${t('common.updatedAt')}: ${snapshot.quoteUpdatedAtValue}`,
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'depth-balance',
+        label: t('orderbook.depthBalance'),
+        value: orderbookPanel.depthBalanceLabel,
+        hint: orderbookPanel.liquidityBiasLabel,
+      },
+      {
+        id: 'execution-pulse',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestPulse?.status ?? t('common.na'),
+        hint: latestPulse?.time ?? executionRail.emptyHint ?? executionRail.staleHint,
+        tone: executionRail.state === 'stale' ? 'negative' : 'default',
+      },
+    ],
+  }
 }
 
 export function buildMarketChartStateModel({

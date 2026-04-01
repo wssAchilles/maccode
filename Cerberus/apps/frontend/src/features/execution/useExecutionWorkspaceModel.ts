@@ -16,7 +16,7 @@ import {
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
 } from '../strategy-orchestration/view-models'
-import { buildExecutionOperationsPanel } from './view-models'
+import { buildExecutionOperationsPanel, buildExecutionSpotlightModel } from './view-models'
 
 type Params = {
   active: boolean
@@ -161,6 +161,18 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     [orderbook, t],
   )
 
+  const spotlight = useMemo(
+    () =>
+      buildExecutionSpotlightModel({
+        t,
+        snapshot: tradingSnapshot,
+        preparedSelection: preparedExecutionSelection,
+        tradingPolicy,
+        binanceRule,
+      }),
+    [binanceRule, preparedExecutionSelection, t, tradingPolicy, tradingSnapshot],
+  )
+
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
     syncExecutionFilters({ symbol })
@@ -172,6 +184,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     displayQuote: tradingSnapshot.displayQuote,
     orderbookPanel,
     summaryError,
+    spotlight,
     metricTiles,
     lifecyclePanel,
     operationsPanel,

@@ -1,6 +1,7 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
-import type { PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
+import type { BinanceRule, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
+import { formatDerivedPrice, parseNumericString, type PreparedTradingSnapshot, type WorkspaceSpotlightModel } from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from './read-models'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
@@ -51,6 +52,14 @@ export type ExecutionOperationsPanelModel = {
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   emptyTitle?: string
   emptyHint?: string
+}
+
+type BuildExecutionSpotlightParams = {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  preparedSelection: PreparedExecutionSelection
+  tradingPolicy?: TradingPolicy
+  binanceRule?: BinanceRule
 }
 
 type BuildExecutionSummaryParams = {
@@ -130,6 +139,116 @@ export function buildExecutionProgressItems(coreFlow: CoreFlowMap, t: Translate)
       requestId: item.request_id,
     }
   })
+}
+
+export function buildExecutionSpotlightModel({
+  t,
+  snapshot,
+  preparedSelection,
+  tradingPolicy,
+  binanceRule,
+}: BuildExecutionSpotlightParams): WorkspaceSpotlightModel {
+  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+
+  return {
+    summary: t('workspace.execution.linkageHint').replace('{symbol}', snapshot.selectedSymbol),
+    hint: t('workspace.execution.linkageDetail'),
+    chips: [
+      snapshot.selectedSymbol,
+      snapshot.signalValue,
+      tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+      binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule'),
+    ],
+    metrics: [
+      {
+        id: 'mid-price',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+        hint: `${t('common.updatedAt')}: ${snapshot.quoteUpdatedAtValue}`,
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'active-orders',
+        label: t('workspace.execution.operationsActive'),
+        value: String(preparedSelection.activeOrderCount),
+        tone: preparedSelection.activeOrderCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'latest-lifecycle',
+        label: t('workspace.execution.lifecycleLatest'),
+        value: latestLifecycle,
+        hint: preparedSelection.latestOrder?.requestId ?? t('common.na'),
+      },
+    ],
+  }
+}
+
+export function buildExecutionDeskSpotlightModel({
+  t,
+  broker,
+  selectedSymbol,
+  alpacaSymbol,
+  tradingPolicy,
+  latestBid,
+  latestAsk,
+  binanceRule,
+}: {
+  t: Translate
+  broker: 'binance' | 'alpaca'
+  selectedSymbol: string
+  alpacaSymbol: string
+  tradingPolicy?: TradingPolicy
+  latestBid?: string
+  latestAsk?: string
+  binanceRule?: BinanceRule
+}): WorkspaceSpotlightModel {
+  const symbol = broker === 'binance' ? selectedSymbol : alpacaSymbol.toUpperCase()
+  const bid = parseNumericString(latestBid)
+  const ask = parseNumericString(latestAsk)
+  const spread = bid !== undefined && ask !== undefined ? ask - bid : undefined
+
+  return {
+    summary: broker === 'binance' ? t('execution.binanceTest') : t('execution.alpacaPaper'),
+    hint: symbol,
+    chips: [
+      symbol,
+      tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+      broker === 'binance' && binanceRule ? t('common.ready') : broker === 'binance' ? t('workspace.execution.lifecycleWaitingRule') : 'Paper',
+    ],
+    metrics: [
+      {
+        id: 'best-bid',
+        label: t('market.bestBid'),
+        value: latestBid ?? '—',
+        tone: 'positive',
+      },
+      {
+        id: 'best-ask',
+        label: t('market.bestAsk'),
+        value: latestAsk ?? '—',
+        tone: 'negative',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: formatDerivedPrice(spread),
+      },
+      {
+        id: 'policy',
+        label: t('execution.policy'),
+        value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+        hint:
+          broker === 'binance'
+            ? `${t('execution.submit')}: ${binanceRule?.symbol ?? symbol}`
+            : t('execution.accountSnapshot'),
+      },
+    ],
+  }
 }
 
 export function buildExecutionOperationsPanel({

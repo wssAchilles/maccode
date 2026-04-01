@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">82.45% </span>
+                <span class="strong">84.25% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>94/114</span>
+                <span class='fraction'>107/127</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">82.45% </span>
+                <span class="strong">84.25% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>94/114</span>
+                <span class='fraction'>107/127</span>
             </div>
         
             
@@ -197,7 +197,24 @@
 <a name='L132'></a><a href='#L132'>132</a>
 <a name='L133'></a><a href='#L133'>133</a>
 <a name='L134'></a><a href='#L134'>134</a>
-<a name='L135'></a><a href='#L135'>135</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -259,6 +276,13 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -287,6 +311,16 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -333,7 +367,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { DataList, GlassPanel, InlineAlert, MetricTile, SectionFrame, StatusPill } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, InlineAlert, MetricTile, SectionFrame, StatusPill, WorkspaceSpotlight } from '../../ui'
 import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
@@ -391,6 +425,13 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       ) : null}
 &nbsp;
       &lt;div className="ws-main"&gt;
+        &lt;SectionFrame
+          title={t('workspace.overview.healthDigest')}
+          description={t('workspace.overview.description')}
+        &gt;
+          &lt;WorkspaceSpotlight model={model.spotlight} /&gt;
+        &lt;/SectionFrame&gt;
+&nbsp;
         &lt;CoreFlowPanel active={_active} /&gt;
       &lt;/div&gt;
 &nbsp;
@@ -420,9 +461,19 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         &lt;SectionFrame title={t('workspace.strategy.title')} description={t('workspace.strategy.description')}&gt;
           &lt;div className="stack"&gt;
             &lt;StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} /&gt;
-            &lt;StrategyRegistryPanel model={model.strategyRegistry} /&gt;
             &lt;StrategyDecisionMatrix model={model.strategyMatrix} /&gt;
-            &lt;StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} /&gt;
+            &lt;DiagnosticDrawer
+              title={t('workspace.strategy.registryTitle')}
+              summary={t('workspace.strategy.registryDescription')}
+            &gt;
+              &lt;StrategyRegistryPanel model={model.strategyRegistry} /&gt;
+            &lt;/DiagnosticDrawer&gt;
+            &lt;DiagnosticDrawer
+              title={t('workspace.strategy.auditTimelineTitle')}
+              summary={t('workspace.strategy.auditTimelineHint')}
+            &gt;
+              &lt;StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} /&gt;
+            &lt;/DiagnosticDrawer&gt;
           &lt;/div&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
@@ -472,7 +523,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T10:14:17.661Z
+                at 2026-04-01T10:57:05.507Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -7,6 +7,7 @@ import { useInferenceOperationsModel } from '../inference-observability/useInfer
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
+  buildHealthSpotlightModel,
   buildServiceHealthPanelModel,
   buildHealthStoreItems,
   buildHealthWorkerItems,
@@ -50,9 +51,21 @@ export function useHealthWorkspaceModel(active = true) {
     [inferenceStatus, t],
   )
 
+  const spotlight = useMemo(
+    () =>
+      buildHealthSpotlightModel({
+        t,
+        domainStatus,
+        persistenceStatus,
+        inferenceStatus,
+      }),
+    [domainStatus, inferenceStatus, persistenceStatus, t],
+  )
+
   return {
     domainStatus,
     persistenceStatus,
+    spotlight,
     serviceHealthPanel,
     inferenceDiagnostics,
     inferenceOperations,

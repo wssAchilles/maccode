@@ -93,6 +93,7 @@ test.describe('deploy gate', () => {
 
     await page.getByTestId('submit-binance-order-button').click()
     await page.waitForResponse((response) => response.url().includes('/api/v1/binance/order/test'))
+    await page.getByTestId('binance-response-drawer').click()
     await expect(page.getByTestId('binance-response')).toContainText('{')
 
     await page.getByTestId('submit-alpaca-order-button').click()

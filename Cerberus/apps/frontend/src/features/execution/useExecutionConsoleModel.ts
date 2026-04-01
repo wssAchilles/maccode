@@ -8,7 +8,7 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { useAlpacaPaperTrading } from '../../components/execution/useAlpacaPaperTrading'
 import { useBinanceOrderTest } from '../../components/execution/useBinanceOrderTest'
 
-import { buildExecutionProgressItems, buildExecutionSummary } from './view-models'
+import { buildExecutionDeskSpotlightModel, buildExecutionProgressItems, buildExecutionSummary } from './view-models'
 
 type Params = {
   active: boolean
@@ -87,6 +87,21 @@ export function useExecutionConsoleModel({
     [coreFlow, t],
   )
 
+  const deskSpotlight = useMemo(
+    () =>
+      buildExecutionDeskSpotlightModel({
+        t,
+        broker,
+        selectedSymbol,
+        alpacaSymbol: alpacaModel.symbol,
+        tradingPolicy,
+        latestBid,
+        latestAsk,
+        binanceRule,
+      }),
+    [alpacaModel.symbol, binanceRule, broker, latestAsk, latestBid, selectedSymbol, t, tradingPolicy],
+  )
+
   return {
     broker,
     setBroker: (nextBroker: 'binance' | 'alpaca') => {
@@ -96,6 +111,7 @@ export function useExecutionConsoleModel({
     binanceRule,
     binanceModel,
     alpacaModel,
+    deskSpotlight,
     executionSummary,
     progressItems,
   }

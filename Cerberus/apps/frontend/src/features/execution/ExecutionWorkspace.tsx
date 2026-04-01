@@ -7,7 +7,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceSpotlight } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
@@ -50,10 +50,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
 
       <div className="ws-main stack">
         <SectionFrame title={t('workspace.execution.linkageTitle')} description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}>
-          <GlassPanel tone="subtle" className="elb">
-            <p className="sp-summary">{model.selectedSymbol}</p>
-            <p className="sp-hint">{t('workspace.execution.linkageDetail')}</p>
-          </GlassPanel>
+          <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
 
         <SectionFrame
@@ -108,9 +105,19 @@ export function ExecutionWorkspace({ active = true }: Props) {
         >
           <div className="stack">
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
-            <StrategyRegistryPanel model={model.strategyRegistry} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
-            <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
+            <DiagnosticDrawer
+              title={t('workspace.strategy.registryTitle')}
+              summary={t('workspace.strategy.registryDescription')}
+            >
+              <StrategyRegistryPanel model={model.strategyRegistry} />
+            </DiagnosticDrawer>
+            <DiagnosticDrawer
+              title={t('workspace.strategy.auditTimelineTitle')}
+              summary={t('workspace.strategy.auditTimelineHint')}
+            >
+              <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
+            </DiagnosticDrawer>
           </div>
         </SectionFrame>
 

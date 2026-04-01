@@ -1,8 +1,8 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { DomainStatusMap } from '../../store/slices/shared'
-import type { AppError, PersistenceStatus, UIState } from '../../types/contracts'
-import type { HealthCardModel } from '../../view-models/workbench'
-import { buildHealthCards } from '../../view-models/workbench'
+import type { AppError, InferenceStatusPayload, PersistenceStatus, UIState } from '../../types/contracts'
+import type { HealthCardModel, WorkspaceSpotlightModel } from '../../view-models/workbench'
+import { buildHealthCards, summarizeDomainStates } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
 
@@ -134,6 +134,69 @@ export function buildServiceHealthPanelModel({
     updatedAtLabel: t('common.updatedAt'),
     requestIdLabel: t('health.requestId'),
     persistenceGroups,
+  }
+}
+
+function formatInferenceMode(t: Translate, inferenceStatus?: InferenceStatusPayload): string {
+  const mode = inferenceStatus?.rollout?.effective_mode ?? inferenceStatus?.mode
+  if (mode === 'observe') {
+    return t('workspace.inference.mode.observe')
+  }
+  if (mode === 'primary') {
+    return t('workspace.inference.mode.primary')
+  }
+  if (mode === 'disabled') {
+    return t('workspace.inference.mode.disabled')
+  }
+  return mode ?? t('common.na')
+}
+
+export function buildHealthSpotlightModel({
+  t,
+  domainStatus,
+  persistenceStatus,
+  inferenceStatus,
+}: {
+  t: Translate
+  domainStatus: DomainStatusMap
+  persistenceStatus?: PersistenceStatus
+  inferenceStatus?: InferenceStatusPayload
+}): WorkspaceSpotlightModel {
+  const domainSummary = summarizeDomainStates(domainStatus)
+  const matchingStatus = persistenceStatus?.matching?.health?.status ?? t('common.disabled')
+
+  return {
+    summary: `${persistenceStatus?.status ?? t('common.disabled')} · ${matchingStatus}`,
+    hint: t('workspace.health.description'),
+    chips: [matchingStatus, formatInferenceMode(t, inferenceStatus)],
+    metrics: [
+      {
+        id: 'ready-services',
+        label: t('common.ready'),
+        value: String(domainSummary.readyCount),
+        tone: domainSummary.readyCount > 0 ? 'positive' : 'default',
+      },
+      {
+        id: 'attention-services',
+        label: t('workspace.overview.attention'),
+        value: String(domainSummary.attentionCount),
+        tone: domainSummary.attentionCount > 0 ? 'negative' : 'default',
+      },
+      {
+        id: 'processed-ticks',
+        label: t('strategy.ticksProcessed'),
+        value: String(persistenceStatus?.worker.processed_ticks ?? 0),
+      },
+      {
+        id: 'rollout-mode',
+        label: t('workspace.inference.rolloutMode'),
+        value: formatInferenceMode(t, inferenceStatus),
+        tone:
+          inferenceStatus?.rollout?.effective_mode === 'primary' || inferenceStatus?.mode === 'primary'
+            ? 'accent'
+            : 'default',
+      },
+    ],
   }
 }
 

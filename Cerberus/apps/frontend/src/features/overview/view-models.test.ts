@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
+  buildOverviewSpotlightModel,
 } from './view-models'
 import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
 
@@ -79,5 +80,50 @@ describe('overview view models', () => {
       { id: 'supabase', label: 'Supabase', value: 'true' },
       { id: 'firebase', label: 'Firestore', value: 'true' },
     ])
+  })
+
+  it('builds an overview spotlight from snapshot and domain counts', () => {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
+        symbol: 'BTCUSDT',
+        bid_price: '100.0',
+        ask_price: '100.4',
+        event_time: 1_000,
+      },
+      latestBySymbol: {},
+      strategySignal: {
+        status: 'ready',
+        signal: 'HOLD',
+        confidence: 0.42,
+      },
+      latestEvent: {
+        id: 'evt-2',
+        channel: 'trade.executions.default',
+        payload: {},
+        received_at: 1_000,
+        event_type: 'strategy.signal.generated',
+        symbol: 'BTCUSDT',
+        status: 'HOLD',
+        lifecycle_phase: 'submit',
+        correlation_key: 'corr-2',
+      },
+    })
+
+    const spotlight = buildOverviewSpotlightModel({
+      t,
+      snapshot,
+      readyCount: 2,
+      attentionCount: 1,
+    })
+
+    expect(spotlight.summary).toContain('BTCUSDT')
+    expect(spotlight.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'mid-price', value: '100.200000' }),
+        expect.objectContaining({ id: 'services-ready', value: '2' }),
+        expect.objectContaining({ id: 'services-attention', value: '1' }),
+      ]),
+    )
   })
 })

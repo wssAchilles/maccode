@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/159</span>
+                <span class='fraction'>0/171</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/159</span>
+                <span class='fraction'>0/171</span>
             </div>
         
             
@@ -246,7 +246,20 @@
 <a name='L181'></a><a href='#L181'>181</a>
 <a name='L182'></a><a href='#L182'>182</a>
 <a name='L183'></a><a href='#L183'>183</a>
-<a name='L184'></a><a href='#L184'>184</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -413,7 +426,20 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -447,7 +473,7 @@
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
 } from '../strategy-orchestration/view-models'
-<span class="cstat-no" title="statement not covered" >import { buildExecutionOperationsPanel } from './view-models'</span>
+<span class="cstat-no" title="statement not covered" >import { buildExecutionOperationsPanel, buildExecutionSpotlightModel } from './view-models'</span>
 &nbsp;
 type Params = {
   active: boolean
@@ -592,6 +618,18 @@ type Params = {
 <span class="cstat-no" title="statement not covered" >    [orderbook, t],</span>
 <span class="cstat-no" title="statement not covered" >  )</span>
 &nbsp;
+<span class="cstat-no" title="statement not covered" >  const spotlight = useMemo(</span>
+<span class="cstat-no" title="statement not covered" >    () =&gt;</span>
+<span class="cstat-no" title="statement not covered" >      buildExecutionSpotlightModel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >        binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >    [binanceRule, preparedExecutionSelection, t, tradingPolicy, tradingSnapshot],</span>
+<span class="cstat-no" title="statement not covered" >  )</span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  const selectSymbol = (symbol: string) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >    setSelectedSymbol(symbol)</span>
 <span class="cstat-no" title="statement not covered" >    syncExecutionFilters({ symbol })</span>
@@ -603,6 +641,7 @@ type Params = {
 <span class="cstat-no" title="statement not covered" >    displayQuote: tradingSnapshot.displayQuote,</span>
 <span class="cstat-no" title="statement not covered" >    orderbookPanel,</span>
 <span class="cstat-no" title="statement not covered" >    summaryError,</span>
+<span class="cstat-no" title="statement not covered" >    spotlight,</span>
 <span class="cstat-no" title="statement not covered" >    metricTiles,</span>
 <span class="cstat-no" title="statement not covered" >    lifecyclePanel,</span>
 <span class="cstat-no" title="statement not covered" >    operationsPanel,</span>
@@ -619,7 +658,7 @@ type Params = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T10:14:17.661Z
+                at 2026-04-01T10:57:05.507Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

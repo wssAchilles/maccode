@@ -8,9 +8,11 @@ import type { WorkspaceId } from '../../store/slices/shared'
 import {
   buildPreparedTradingSnapshot,
   buildHealthCards,
+  summarizeDomainStates,
 } from '../../view-models/workbench'
 import {
   buildOverviewMetricTiles,
+  buildOverviewSpotlightModel,
   buildOverviewPersistenceItems,
 } from './view-models'
 import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
@@ -84,6 +86,7 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
   )
 
   const healthCards = useMemo(() => buildHealthCards(domainStatus, t), [domainStatus, t])
+  const domainSummary = useMemo(() => summarizeDomainStates(domainStatus), [domainStatus])
 
   const persistenceItems = useMemo(
     () => buildOverviewPersistenceItems({ t, persistenceStatus }),
@@ -114,6 +117,18 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
     [orchestrationStatus, t],
   )
+  const recentSignalRows = useMemo(() => recentSignals.slice(0, 4), [recentSignals])
+
+  const spotlight = useMemo(
+    () =>
+      buildOverviewSpotlightModel({
+        t,
+        snapshot: tradingSnapshot,
+        readyCount: domainSummary.readyCount,
+        attentionCount: domainSummary.attentionCount,
+      }),
+    [domainSummary.attentionCount, domainSummary.readyCount, t, tradingSnapshot],
+  )
 
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
@@ -129,8 +144,9 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     strategyRegistry,
     strategyAuditTimeline,
     metricTiles,
+    spotlight,
     persistenceItems,
-    recentSignals: recentSignals.slice(0, 4),
+    recentSignals: recentSignalRows,
     selectSymbol,
     openExecution: () => onSelectWorkspace('execution'),
     openHealth: () => onSelectWorkspace('health'),

@@ -1,6 +1,6 @@
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 import { InferenceOperationsPanel } from '../inference-observability/components/InferenceOperationsPanel'
@@ -25,6 +25,10 @@ export function HealthWorkspace({ active: _active = true }: Props) {
       </SectionFrame>
 
       <div className="ws-main stack">
+        <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')}>
+          <WorkspaceSpotlight model={model.spotlight} />
+        </SectionFrame>
+
         <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')}>
           <div className="health-grid">
             <GlassPanel tone="subtle">

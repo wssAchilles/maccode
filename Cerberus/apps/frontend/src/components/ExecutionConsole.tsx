@@ -2,7 +2,7 @@ import { useI18n } from '../i18n/I18nProvider'
 
 import { AlpacaPaperPanel } from './execution/AlpacaPaperPanel'
 import { BinanceTestPanel } from './execution/BinanceTestPanel'
-import { DataList, GlassPanel, StatusPill } from '../ui'
+import { DataList, GlassPanel, StatusPill, WorkspaceSpotlight } from '../ui'
 import { useExecutionConsoleModel } from '../features/execution/useExecutionConsoleModel'
 
 type Props = {
@@ -21,6 +21,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
     binanceRule,
     binanceModel,
     alpacaModel,
+    deskSpotlight,
     executionSummary,
     progressItems,
   } = useExecutionConsoleModel({
@@ -32,6 +33,8 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
 
   return (
     <section className="execution-orchestrator" data-testid="execution-console">
+      <WorkspaceSpotlight model={deskSpotlight} compact className="execution-desk-spotlight" />
+
       <div className="broker-tabs" role="tablist" aria-label={t('workspace.execution.ticketTitle')}>
         <button
           type="button"
