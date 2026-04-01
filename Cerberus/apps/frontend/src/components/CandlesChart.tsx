@@ -4,25 +4,52 @@ import {
   createChart,
   type IChartApi,
   type ISeriesApi,
-  type SeriesMarker,
   type Time,
-  type UTCTimestamp,
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
-import type { Candle } from '../types/contracts'
-import type { MarketChartMarkerModel } from '../features/market/view-models'
+import type { MarketChartCandleModel, MarketChartMarkerModel } from '../features/market/view-models'
 
 type Props = {
-  candles: Candle[]
+  series: MarketChartCandleModel[]
   markers?: MarketChartMarkerModel[]
 }
 
-export function CandlesChart({ candles, markers = [] }: Props) {
+function sameCandle(left: MarketChartCandleModel | undefined, right: MarketChartCandleModel | undefined): boolean {
+  return (
+    left?.time === right?.time &&
+    left?.open === right?.open &&
+    left?.high === right?.high &&
+    left?.low === right?.low &&
+    left?.close === right?.close
+  )
+}
+
+function canIncrementallyReplay(previous: MarketChartCandleModel[], next: MarketChartCandleModel[]): boolean {
+  if (previous.length === 0 || next.length === 0 || next.length < previous.length) {
+    return false
+  }
+
+  if (previous[0]?.time !== next[0]?.time) {
+    return false
+  }
+
+  const sharedCount = previous.length - 1
+  for (let index = 0; index < sharedCount; index += 1) {
+    if (!sameCandle(previous[index], next[index])) {
+      return false
+    }
+  }
+
+  return true
+}
+
+export function CandlesChart({ series, markers = [] }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const markersRef = useRef<ReturnType<typeof createSeriesMarkers<Time>> | null>(null)
+  const dataRef = useRef<MarketChartCandleModel[]>([])
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -84,6 +111,7 @@ export function CandlesChart({ candles, markers = [] }: Props) {
       chartRef.current = null
       seriesRef.current = null
       markersRef.current = null
+      dataRef.current = []
       chart.remove()
     }
   }, [])
@@ -93,50 +121,40 @@ export function CandlesChart({ candles, markers = [] }: Props) {
       return
     }
 
-    seriesRef.current.setData(
-      candles.map((k) => ({
-        time: Math.floor(k[0] / 1000) as UTCTimestamp,
-        open: Number(k[1]),
-        high: Number(k[2]),
-        low: Number(k[3]),
-        close: Number(k[4]),
-      })),
-    )
+    const previous = dataRef.current
 
-    if (candles.length > 0) {
-      chartRef.current?.timeScale().fitContent()
+    if (series.length === 0) {
+      if (previous.length > 0) {
+        seriesRef.current.setData([])
+        dataRef.current = []
+      }
+      return
     }
-  }, [candles])
+
+    if (!canIncrementallyReplay(previous, series)) {
+      seriesRef.current.setData(series)
+      dataRef.current = series
+      chartRef.current?.timeScale().fitContent()
+      return
+    }
+
+    const startIndex = Math.max(0, previous.length - 1)
+    for (let index = startIndex; index < series.length; index += 1) {
+      if (sameCandle(previous[index], series[index])) {
+        continue
+      }
+      seriesRef.current.update(series[index])
+    }
+
+    dataRef.current = series
+  }, [series])
 
   useEffect(() => {
     if (!markersRef.current) {
       return
     }
-    const markerPayload: SeriesMarker<Time>[] = markers.map((item) => ({
-      time: Math.floor(item.time / 1000) as UTCTimestamp,
-      position:
-        item.phase === 'fill'
-          ? 'belowBar'
-          : item.phase === 'rejected'
-            ? 'aboveBar'
-            : 'inBar',
-      shape:
-        item.phase === 'fill'
-          ? 'arrowUp'
-          : item.phase === 'rejected'
-            ? 'arrowDown'
-            : 'circle',
-      color:
-        item.tone === 'positive'
-          ? '#15803d'
-          : item.tone === 'negative'
-            ? '#b91c1c'
-            : item.tone === 'accent'
-              ? '#0369a1'
-              : '#64748b',
-      text: item.label,
-    }))
-    markersRef.current.setMarkers(markerPayload)
+
+    markersRef.current.setMarkers(markers)
   }, [markers])
 
   return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />

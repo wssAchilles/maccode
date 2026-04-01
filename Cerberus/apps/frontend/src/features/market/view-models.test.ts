@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMarketChartStateModel, buildMarketMetricTiles, buildMarketSymbolChips } from './view-models'
+import type { Candle } from '../../types/contracts'
+import {
+  buildMarketChartMarkersModel,
+  buildMarketChartSeriesModel,
+  buildMarketChartStateModel,
+  buildMarketMetricTiles,
+  buildMarketSymbolChips,
+} from './view-models'
 
 const t = (key: string) => key
 
@@ -88,5 +95,53 @@ describe('market view models', () => {
       title: 'market.chartErrorTitle',
       hint: 'market_candles_failed',
     })
+  })
+
+  it('prepares normalized candle points once per candle batch', () => {
+    const candles: Candle[] = [
+      [1712000000000, '100.1', '101.2', '99.8', '100.9', '12.5'],
+      [1712000060000, '100.9', '102.0', '100.5', '101.7', '18.4'],
+    ]
+
+    const first = buildMarketChartSeriesModel(candles)
+    const second = buildMarketChartSeriesModel(candles)
+
+    expect(first).toBe(second)
+    expect(first).toEqual([
+      { time: 1712000000, open: 100.1, high: 101.2, low: 99.8, close: 100.9 },
+      { time: 1712000060, open: 100.9, high: 102, low: 100.5, close: 101.7 },
+    ])
+  })
+
+  it('prepares chart markers from execution events', () => {
+    const markers = buildMarketChartMarkersModel({
+      selectedSymbol: 'BTCUSDT',
+      orderEvents: [
+        {
+          id: 'fill-1',
+          channel: 'trade.executions.default',
+          payload: {},
+          received_at: 1712000000000,
+          event_time: '2024-04-02T12:00:00.000Z',
+          event_type: 'execution.fill',
+          symbol: 'BTCUSDT',
+          status: 'FILLED',
+          execution_id: 'exec-1',
+          lifecycle_phase: 'fill',
+          correlation_key: 'corr-1',
+        },
+      ],
+    })
+
+    expect(markers).toEqual([
+      {
+        id: 'fill-1',
+        time: 1712059200,
+        position: 'belowBar',
+        shape: 'arrowUp',
+        color: '#15803d',
+        text: 'exec-1',
+      },
+    ])
   })
 })

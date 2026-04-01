@@ -3,6 +3,7 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 import { formatAppError } from '../../lib/http'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildStrategyOrchestrationOperationsModel } from './view-models'
 
 type EntryDraft = {
@@ -21,10 +22,10 @@ function coverageToDraft(value: string[]): string {
 
 export function useStrategyOrchestrationOperationsModel(enabled = true) {
   const { t } = useI18n()
-  const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
-  const lastResult = useCerberusStore((state) => state.strategySummary.orchestration_last_result)
-  const pendingAction = useCerberusStore((state) => state.strategySummary.orchestration_pending_action)
-  const lastError = useCerberusStore((state) => state.strategySummary.last_error)
+  const orchestrationStatus = useDormantSelector(enabled, (state) => state.strategySummary.orchestration_status)
+  const lastResult = useDormantSelector(enabled, (state) => state.strategySummary.orchestration_last_result)
+  const pendingAction = useDormantSelector(enabled, (state) => state.strategySummary.orchestration_pending_action)
+  const lastError = useDormantSelector(enabled, (state) => state.strategySummary.last_error)
   const loadStrategyOrchestration = useCerberusStore((state) => state.strategySummaryActions.loadStrategyOrchestration)
   const updateEntry = useCerberusStore((state) => state.strategySummaryActions.updateStrategyOrchestrationEntry)
   const updatePolicies = useCerberusStore((state) => state.strategySummaryActions.updateStrategyOrchestrationPolicies)

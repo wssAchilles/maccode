@@ -48,6 +48,7 @@ export default defineConfig({
             id.includes('/src/components/ServiceHealthPanel.tsx') ||
             id.includes('/src/store/useDormantSelector.ts') ||
             id.includes('/src/ui/DiagnosticDrawer.tsx') ||
+            id.includes('/src/view-models/orderbook.ts') ||
             id.includes('/src/view-models/workbench.ts') ||
             id.includes('/src/features/inference-observability/view-models.ts') ||
             id.includes('/src/features/strategy-orchestration/components/StrategyRegistryPanel.tsx') ||

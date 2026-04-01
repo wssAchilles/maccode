@@ -50,12 +50,30 @@ export type ExecutionAccountSummary = {
 
 export type ExecutionLifecycleDistribution = Record<ExecutionLifecyclePhase, number>
 
+export type PreparedExecutionSelection = {
+  orderModels: ExecutionOrderReadModel[]
+  latestOrder?: ExecutionOrderReadModel
+  latestTimestamp?: number
+  latestAnomaly?: ExecutionOrderReadModel
+  lifecycleDistribution: ExecutionLifecycleDistribution
+  anomalySummary: ExecutionAnomalySummary
+  accountSummary: ExecutionAccountSummary[]
+  activeOrderCount: number
+  acceptedCount: number
+  partialFillCount: number
+  filledCount: number
+  rejectedCount: number
+  canceledCount: number
+}
+
 type PreparedOrderReadModels = {
   all: ExecutionOrderReadModel[]
   bySymbol: Map<string, ExecutionOrderReadModel[]>
 }
 
 const preparedOrderReadModelsCache = new WeakMap<OrderTimelineEvent[], PreparedOrderReadModels>()
+const preparedExecutionSelectionCache = new WeakMap<OrderTimelineEvent[], Map<string, PreparedExecutionSelection>>()
+const preparedExecutionSummaryCache = new WeakMap<ExecutionOrderReadModel[], Omit<PreparedExecutionSelection, 'orderModels'>>()
 const preparedMarkersCache = new WeakMap<OrderTimelineEvent[], Map<string, ExecutionMarker[]>>()
 
 function eventTimestamp(event: OrderTimelineEvent): number {
@@ -65,7 +83,19 @@ function eventTimestamp(event: OrderTimelineEvent): number {
       return parsed
     }
   }
-  return event.received_at
+  const receivedAt = event.received_at as number | string
+  if (typeof receivedAt === 'string') {
+    const parsed = Date.parse(receivedAt)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+    const fallback = Number(receivedAt)
+    if (!Number.isNaN(fallback)) {
+      return fallback
+    }
+    return 0
+  }
+  return receivedAt
 }
 
 function latestPhase(events: OrderTimelineEvent[]): ExecutionLifecyclePhase {
@@ -159,42 +189,63 @@ function average(values: number[]): number | undefined {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-function timestampForFirstPhase(events: OrderTimelineEvent[], ...phases: ExecutionLifecyclePhase[]): number | undefined {
-  const hit = events.find((item) => phases.includes(item.lifecycle_phase))
-  return hit ? eventTimestamp(hit) : undefined
-}
-
-function timestampForLastPhase(events: OrderTimelineEvent[], ...phases: ExecutionLifecyclePhase[]): number | undefined {
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    if (phases.includes(events[index].lifecycle_phase)) {
-      return eventTimestamp(events[index])
-    }
+function prepareExecutionSelectionSummary(
+  orderModels: ExecutionOrderReadModel[],
+): Omit<PreparedExecutionSelection, 'orderModels'> {
+  const cached = preparedExecutionSummaryCache.get(orderModels)
+  if (cached) {
+    return cached
   }
-  return undefined
-}
 
-export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]): ExecutionAnomalySummary {
+  const lifecycleDistribution: ExecutionLifecycleDistribution = {
+    submit: 0,
+    accepted: 0,
+    rejected: 0,
+    partial_fill: 0,
+    fill: 0,
+    cancel_requested: 0,
+    canceled: 0,
+  }
   const rejectionCounts = new Map<string, number>()
   const cancelFailureCounts = new Map<string, number>()
-  let cancelFailures = 0
+  const accountGroups = new Map<string, ExecutionAccountSummary>()
+  const latestAccountTimestamps = new Map<string, number>()
   const submitToAccepted: number[] = []
   const submitToFill: number[] = []
   const slippageBps: number[] = []
-  let partialFillOrders = 0
 
-  for (const model of models) {
+  let latestOrder: ExecutionOrderReadModel | undefined
+  let latestTimestamp: number | undefined
+  let latestAnomaly: ExecutionOrderReadModel | undefined
+  let activeOrderCount = 0
+  let partialFillCount = 0
+  let cancelFailures = 0
+
+  for (const model of orderModels) {
+    lifecycleDistribution[model.latestPhase] += 1
+
+    if (!latestOrder) {
+      latestOrder = model
+      latestTimestamp = rightMostTimestamp(model.events)
+    }
+
+    if (!latestAnomaly && (model.latestPhase === 'rejected' || model.latestPhase === 'canceled')) {
+      latestAnomaly = model
+    }
+
     if (model.latestPhase === 'rejected' && model.latestReason) {
       rejectionCounts.set(model.latestReason, (rejectionCounts.get(model.latestReason) ?? 0) + 1)
     }
     if (model.latestPhase === 'partial_fill') {
-      partialFillOrders += 1
+      partialFillCount += 1
+    }
+    if (['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(model.latestPhase)) {
+      activeOrderCount += 1
     }
     if (model.cancelRequestedAt && !model.canceledAt) {
       cancelFailures += 1
-      cancelFailureCounts.set(
-        model.latestReason ?? 'cancel_pending',
-        (cancelFailureCounts.get(model.latestReason ?? 'cancel_pending') ?? 0) + 1,
-      )
+      const reason = model.latestReason ?? 'cancel_pending'
+      cancelFailureCounts.set(reason, (cancelFailureCounts.get(reason) ?? 0) + 1)
     }
     if (model.submitAt && model.acceptedAt && model.acceptedAt >= model.submitAt) {
       submitToAccepted.push(model.acceptedAt - model.submitAt)
@@ -205,34 +256,12 @@ export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]):
     if (model.price && model.averageExecutionPrice && model.price > 0) {
       slippageBps.push(((model.averageExecutionPrice - model.price) / model.price) * 10_000)
     }
-  }
 
-  return {
-    rejectionReasons: [...rejectionCounts.entries()]
-      .map(([reason, count]) => ({ reason, count }))
-      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
-      .slice(0, 3),
-    cancelFailureReasons: [...cancelFailureCounts.entries()]
-      .map(([reason, count]) => ({ reason, count }))
-      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
-      .slice(0, 3),
-    cancelFailures,
-    avgSubmitToAcceptedMs: average(submitToAccepted),
-    avgSubmitToFillMs: average(submitToFill),
-    fillSlippageBps: average(slippageBps),
-    partialFillRatio: models.length > 0 ? partialFillOrders / models.length : undefined,
-  }
-}
-
-export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]): ExecutionAccountSummary[] {
-  const groups = new Map<string, ExecutionAccountSummary>()
-  const latestTimestamps = new Map<string, number>()
-  for (const model of models) {
-    const key = model.accountId ?? 'unknown'
+    const accountId = model.accountId ?? 'unknown'
     const current =
-      groups.get(key) ??
+      accountGroups.get(accountId) ??
       {
-        accountId: key,
+        accountId,
         observed: 0,
         accepted: 0,
         partialFill: 0,
@@ -261,35 +290,102 @@ export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]
     if (['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(model.latestPhase)) {
       current.active += 1
     }
+
     const candidateTimestamp = rightMostTimestamp(model.events)
-    const knownTimestamp = latestTimestamps.get(key) ?? -1
+    const knownTimestamp = latestAccountTimestamps.get(accountId) ?? -1
     if (candidateTimestamp >= knownTimestamp) {
       current.latestPhase = model.latestPhase
-      latestTimestamps.set(key, candidateTimestamp)
+      latestAccountTimestamps.set(accountId, candidateTimestamp)
     }
-    groups.set(key, current)
+    accountGroups.set(accountId, current)
   }
-  return [...groups.values()].sort(
-    (left, right) => right.observed - left.observed || left.accountId.localeCompare(right.accountId),
-  )
+
+  const prepared = {
+    latestOrder,
+    latestTimestamp,
+    latestAnomaly,
+    lifecycleDistribution,
+    anomalySummary: {
+      rejectionReasons: [...rejectionCounts.entries()]
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
+        .slice(0, 3),
+      cancelFailureReasons: [...cancelFailureCounts.entries()]
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
+        .slice(0, 3),
+      cancelFailures,
+      avgSubmitToAcceptedMs: average(submitToAccepted),
+      avgSubmitToFillMs: average(submitToFill),
+      fillSlippageBps: average(slippageBps),
+      partialFillRatio: orderModels.length > 0 ? partialFillCount / orderModels.length : undefined,
+    },
+    accountSummary: [...accountGroups.values()].sort(
+      (left, right) => right.observed - left.observed || left.accountId.localeCompare(right.accountId),
+    ),
+    activeOrderCount,
+    acceptedCount: lifecycleDistribution.accepted,
+    partialFillCount,
+    filledCount: lifecycleDistribution.fill,
+    rejectedCount: lifecycleDistribution.rejected,
+    canceledCount: lifecycleDistribution.canceled,
+  }
+
+  preparedExecutionSummaryCache.set(orderModels, prepared)
+  return prepared
+}
+
+function timestampForFirstPhase(events: OrderTimelineEvent[], ...phases: ExecutionLifecyclePhase[]): number | undefined {
+  const hit = events.find((item) => phases.includes(item.lifecycle_phase))
+  return hit ? eventTimestamp(hit) : undefined
+}
+
+function timestampForLastPhase(events: OrderTimelineEvent[], ...phases: ExecutionLifecyclePhase[]): number | undefined {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (phases.includes(events[index].lifecycle_phase)) {
+      return eventTimestamp(events[index])
+    }
+  }
+  return undefined
+}
+
+export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]): ExecutionAnomalySummary {
+  return prepareExecutionSelectionSummary(models).anomalySummary
+}
+
+export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]): ExecutionAccountSummary[] {
+  return prepareExecutionSelectionSummary(models).accountSummary
 }
 
 export function buildExecutionLifecycleDistribution(
   models: ExecutionOrderReadModel[],
 ): ExecutionLifecycleDistribution {
-  const distribution: ExecutionLifecycleDistribution = {
-    submit: 0,
-    accepted: 0,
-    rejected: 0,
-    partial_fill: 0,
-    fill: 0,
-    cancel_requested: 0,
-    canceled: 0,
+  return prepareExecutionSelectionSummary(models).lifecycleDistribution
+}
+
+export function buildPreparedExecutionSelection(
+  events: OrderTimelineEvent[],
+  symbol?: string,
+): PreparedExecutionSelection {
+  let preparedBySymbol = preparedExecutionSelectionCache.get(events)
+  if (!preparedBySymbol) {
+    preparedBySymbol = new Map<string, PreparedExecutionSelection>()
+    preparedExecutionSelectionCache.set(events, preparedBySymbol)
   }
-  for (const model of models) {
-    distribution[model.latestPhase] += 1
+
+  const symbolKey = symbol ?? '__all__'
+  const cached = preparedBySymbol.get(symbolKey)
+  if (cached) {
+    return cached
   }
-  return distribution
+
+  const orderModels = buildExecutionOrderReadModels(events, symbol)
+  const prepared = {
+    orderModels,
+    ...prepareExecutionSelectionSummary(orderModels),
+  }
+  preparedBySymbol.set(symbolKey, prepared)
+  return prepared
 }
 
 export type ExecutionMarker = {
@@ -327,10 +423,19 @@ export function buildExecutionMarkers(events: OrderTimelineEvent[], symbol: stri
       })
       prepared.set(item.symbol, current)
     }
+
+    for (const [preparedSymbol, current] of prepared.entries()) {
+      prepared.set(
+        preparedSymbol,
+        current
+          .slice()
+          .sort((left, right) => left.time - right.time)
+          .slice(0, 8),
+      )
+    }
+
     preparedMarkersCache.set(events, prepared)
   }
 
-  return [...(prepared.get(symbol) ?? [])]
-    .slice(0, 8)
-    .sort((left, right) => left.time - right.time)
+  return prepared.get(symbol) ?? []
 }

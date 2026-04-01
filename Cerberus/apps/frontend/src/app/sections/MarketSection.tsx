@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 
 import { LazyCandlesChart, PanelSkeleton } from '../lazyPanels'
+import { buildMarketChartSeriesModel } from '../../features/market/view-models'
 import type { MarketSectionProps } from './types'
 
 export function MarketSection({
@@ -54,7 +55,7 @@ export function MarketSection({
         </div>
         <div className="min-h-[340px]">
           <Suspense fallback={<PanelSkeleton height="h-[340px]" />}>
-            <LazyCandlesChart candles={candles} />
+            <LazyCandlesChart series={buildMarketChartSeriesModel(candles)} />
           </Suspense>
         </div>
       </article>

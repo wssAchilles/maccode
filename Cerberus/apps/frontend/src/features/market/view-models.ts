@@ -1,7 +1,8 @@
+import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
-import type { MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
+import type { Candle, MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
 import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
-import { buildExecutionMarkers, buildExecutionOrderReadModels, type ExecutionMarker } from '../execution/read-models'
+import { buildExecutionMarkers, buildPreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -42,9 +43,27 @@ export type MarketExecutionRailModel = {
   emptyHint?: string
 }
 
-export type MarketChartMarkerModel = ExecutionMarker
+export type MarketChartCandleModel = {
+  time: UTCTimestamp
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+export type MarketChartMarkerModel = {
+  id: string
+  time: UTCTimestamp
+  position: 'belowBar' | 'aboveBar' | 'inBar'
+  shape: 'arrowUp' | 'arrowDown' | 'circle'
+  color: string
+  text: string
+}
 
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
+
+const preparedCandleCache = new WeakMap<Candle[], MarketChartCandleModel[]>()
+const preparedMarkerCache = new WeakMap<object, MarketChartMarkerModel[]>()
 
 type BuildMarketMetricTilesParams = {
   t: Translate
@@ -91,6 +110,19 @@ function executionPhaseLabel(t: Translate, phase?: string): string {
     return t('workspace.execution.lifecycleStatus.canceled')
   }
   return phase ?? '—'
+}
+
+function markerColor(tone: 'positive' | 'negative' | 'accent' | 'muted'): string {
+  if (tone === 'positive') {
+    return '#15803d'
+  }
+  if (tone === 'negative') {
+    return '#b91c1c'
+  }
+  if (tone === 'accent') {
+    return '#0369a1'
+  }
+  return '#64748b'
 }
 
 export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChipModel[] {
@@ -171,6 +203,24 @@ export function buildMarketChartStateModel({
   }
 }
 
+export function buildMarketChartSeriesModel(candles: Candle[]): MarketChartCandleModel[] {
+  const cached = preparedCandleCache.get(candles)
+  if (cached) {
+    return cached
+  }
+
+  const prepared = candles.map((item) => ({
+    time: Math.floor(item[0] / 1000) as UTCTimestamp,
+    open: Number(item[1]),
+    high: Number(item[2]),
+    low: Number(item[3]),
+    close: Number(item[4]),
+  }))
+
+  preparedCandleCache.set(candles, prepared)
+  return prepared
+}
+
 export function buildMarketExecutionRailModel({
   t,
   orderEvents,
@@ -180,7 +230,8 @@ export function buildMarketExecutionRailModel({
   orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
 }): MarketExecutionRailModel {
-  const orderModels = buildExecutionOrderReadModels(orderEvents, selectedSymbol)
+  const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
+  const { orderModels, latestTimestamp, filledCount } = prepared
   const items = orderModels.slice(0, 4).map((item) => ({
       id: item.id,
       title: `${executionPhaseLabel(t, item.latestPhase)} · ${item.side ?? '—'}`,
@@ -199,17 +250,10 @@ export function buildMarketExecutionRailModel({
     }
   }
 
-  const latestTimestamp = orderModels[0]
-    ? orderModels[0].fillAt ??
-      orderModels[0].canceledAt ??
-      orderModels[0].rejectedAt ??
-      orderModels[0].acceptedAt ??
-      orderModels[0].submitAt
-    : undefined
   const stale = typeof latestTimestamp === 'number' ? Date.now() - latestTimestamp > 120_000 : false
 
   return {
-    summary: `${selectedSymbol} · ${items.length} · ${orderModels.filter((item) => item.latestPhase === 'fill').length} fills`,
+    summary: `${selectedSymbol} · ${items.length} · ${filledCount} fills`,
     state: stale ? 'stale' : 'ready',
     items,
     staleHint: stale ? t('workspace.market.executionRailStale') : undefined,
@@ -223,5 +267,31 @@ export function buildMarketChartMarkersModel({
   orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
 }): MarketChartMarkerModel[] {
-  return buildExecutionMarkers(orderEvents, selectedSymbol)
+  const executionMarkers = buildExecutionMarkers(orderEvents, selectedSymbol)
+  const cached = preparedMarkerCache.get(executionMarkers)
+  if (cached) {
+    return cached
+  }
+
+  const prepared: MarketChartMarkerModel[] = executionMarkers.map((item) => ({
+    id: item.id,
+    time: Math.floor(item.time / 1000) as UTCTimestamp,
+    position:
+      item.phase === 'fill'
+        ? 'belowBar'
+        : item.phase === 'rejected'
+          ? 'aboveBar'
+          : 'inBar',
+    shape:
+      item.phase === 'fill'
+        ? 'arrowUp'
+        : item.phase === 'rejected'
+          ? 'arrowDown'
+          : 'circle',
+    color: markerColor(item.tone),
+    text: item.label,
+  }))
+
+  preparedMarkerCache.set(executionMarkers, prepared)
+  return prepared
 }

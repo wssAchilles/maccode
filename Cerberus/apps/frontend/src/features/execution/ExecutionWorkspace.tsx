@@ -115,7 +115,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </SectionFrame>
 
         <Suspense fallback={<PanelSkeleton height="300px" />}>
-          <LazyMatchingOrderBookPanel orderbook={model.orderbook} />
+          <LazyMatchingOrderBookPanel model={model.orderbookPanel} />
         </Suspense>
 
         {model.summaryError ? (

@@ -76,7 +76,7 @@ export function MarketWorkspace({ active = true }: Props) {
             data-state={model.chartState.state}
           >
             <Suspense fallback={<PanelSkeleton height="340px" />}>
-              <LazyCandlesChart candles={model.candles} markers={model.chartMarkers} />
+              <LazyCandlesChart series={model.chartSeries} markers={model.chartMarkers} />
             </Suspense>
             {model.chartState.state !== 'ready' ? (
               <div
@@ -136,7 +136,7 @@ export function MarketWorkspace({ active = true }: Props) {
           <StrategyRegistryPanel model={model.strategyRegistry} />
         </SectionFrame>
         <Suspense fallback={<PanelSkeleton height="300px" />}>
-          <LazyMatchingOrderBookPanel orderbook={model.orderbook} />
+          <LazyMatchingOrderBookPanel model={model.orderbookPanel} />
         </Suspense>
       </div>
     </div>

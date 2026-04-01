@@ -21,7 +21,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         eyebrow={t('workspace.health.eyebrow')}
         className="ws-span-full"
       >
-        <ServiceHealthPanel domainStatus={model.domainStatus} persistence={model.persistenceStatus} />
+        <ServiceHealthPanel model={model.serviceHealthPanel} />
       </SectionFrame>
 
       <div className="ws-main stack">

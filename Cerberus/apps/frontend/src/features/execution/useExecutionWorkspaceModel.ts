@@ -8,6 +8,7 @@ import {
   summarizeLatestEventAt,
   summarizeLatestFeedback,
 } from '../../view-models/workbench'
+import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
   buildStrategyOrchestrationAuditTimelineModel,
   buildExecutionLifecyclePanelModel,
@@ -122,6 +123,11 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     [orchestrationStatus, t],
   )
 
+  const orderbookPanel = useMemo(
+    () => buildMatchingOrderBookPanelModel({ t, orderbook }),
+    [orderbook, t],
+  )
+
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
     syncExecutionFilters({ symbol })
@@ -131,7 +137,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     selectedSymbol,
     selectSymbol,
     displayQuote,
-    orderbook,
+    orderbookPanel,
     summaryError,
     metricTiles,
     lifecyclePanel,

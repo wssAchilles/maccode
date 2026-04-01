@@ -4,6 +4,7 @@ import { useCandlesResource } from '../../app/bootstrap/useResourceQueries'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import { useDormantSelector } from '../../store/useDormantSelector'
+import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
   buildStrategyRegistryPanelModel,
   buildStrategyDecisionMatrixModel,
@@ -11,6 +12,7 @@ import {
 } from '../strategy-orchestration/view-models'
 import {
   buildMarketChartStateModel,
+  buildMarketChartSeriesModel,
   buildMarketChartMarkersModel,
   buildMarketExecutionRailModel,
   buildMarketMetricTiles,
@@ -68,6 +70,11 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [candles.length, candlesQuery.isFetching, candlesQuery.isLoading, marketStatus, t],
   )
 
+  const chartSeries = useMemo(
+    () => buildMarketChartSeriesModel(candles),
+    [candles],
+  )
+
   const strategyMatrix = useMemo(
     () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
     [strategySignal, t],
@@ -93,6 +100,11 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [orderEvents, selectedSymbol],
   )
 
+  const orderbookPanel = useMemo(
+    () => buildMatchingOrderBookPanelModel({ t, orderbook }),
+    [orderbook, t],
+  )
+
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
     syncExecutionFilters({ symbol })
@@ -100,11 +112,11 @@ export function useMarketWorkspaceModel({ active }: Params) {
 
   return {
     activeSymbol: selectedSymbol,
-    candles,
+    chartSeries,
     chartMarkers,
     chartState,
     summaryError,
-    orderbook,
+    orderbookPanel,
     symbolChips,
     metricTiles,
     portfolioPanel,

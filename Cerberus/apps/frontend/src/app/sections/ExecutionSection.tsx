@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 
 import { AppErrorNotice } from '../../components/common/AppErrorNotice'
+import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
   LazyCoreFlowPanel,
   LazyExecutionTimelinePanel,
@@ -20,6 +21,7 @@ export function ExecutionSection({
   matchingOrderBook,
 }: ExecutionSectionProps) {
   const sectionClassName = className ?? 'mt-6'
+  const orderbookPanel = buildMatchingOrderBookPanelModel({ t, orderbook: matchingOrderBook })
 
   return (
     <section className={sectionClassName} aria-label={t('section.execution')}>
@@ -69,7 +71,7 @@ export function ExecutionSection({
 
         <div className="min-h-[300px]">
           <Suspense fallback={<PanelSkeleton height="h-[300px]" />}>
-            <LazyMatchingOrderBookPanel orderbook={matchingOrderBook} />
+            <LazyMatchingOrderBookPanel model={orderbookPanel} />
           </Suspense>
         </div>
         <div className="min-h-[320px] lg:col-span-2">

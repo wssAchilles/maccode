@@ -2,10 +2,7 @@ import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
 import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
 import {
-  buildExecutionAccountSummaries,
-  buildExecutionAnomalySummary,
-  buildExecutionLifecycleDistribution,
-  buildExecutionOrderReadModels,
+  buildPreparedExecutionSelection,
 } from './read-models'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
@@ -148,21 +145,20 @@ export function buildExecutionOperationsPanel({
   persistenceStatus,
   domainStatus,
 }: BuildExecutionOperationsParams): ExecutionOperationsPanelModel {
-  const orderModels = buildExecutionOrderReadModels(orderEvents, selectedSymbol)
-  const activeOrders = orderModels.filter((item) =>
-    ['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(item.latestPhase),
-  ).length
-  const acceptedCount = orderModels.filter((item) => item.latestPhase === 'accepted').length
-  const partialFillCount = orderModels.filter((item) => item.latestPhase === 'partial_fill').length
-  const filledCount = orderModels.filter((item) => item.latestPhase === 'fill').length
-  const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
-  const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
-  const anomalySummary = buildExecutionAnomalySummary(orderModels)
-  const lifecycleDistribution = buildExecutionLifecycleDistribution(orderModels)
-  const accountSummary = buildExecutionAccountSummaries(orderModels)
-  const latestAnomaly = orderModels.find((item) =>
-    ['rejected', 'canceled'].includes(item.latestPhase),
-  )
+  const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
+  const {
+    orderModels,
+    activeOrderCount,
+    acceptedCount,
+    partialFillCount,
+    filledCount,
+    rejectedCount,
+    canceledCount,
+    anomalySummary,
+    lifecycleDistribution,
+    accountSummary,
+    latestAnomaly,
+  } = prepared
   const matchingStats = persistenceStatus?.matching?.stats
   const anomalies: string[] = []
 
@@ -229,7 +225,7 @@ export function buildExecutionOperationsPanel({
             anomalySummary.rejectionReasons[0]?.reason ??
             t('workspace.execution.diagnosisHintHold'),
         }
-      : activeOrders > 0 && filledCount === 0 && partialFillCount === 0
+      : activeOrderCount > 0 && filledCount === 0 && partialFillCount === 0
         ? {
             label: t('workspace.execution.diagnosisCaution'),
             tone: 'accent' as const,
@@ -242,11 +238,11 @@ export function buildExecutionOperationsPanel({
             tone: 'accent' as const,
             hint: t('workspace.execution.diagnosisHintCaution'),
           }
-        : {
-            label: t('workspace.execution.diagnosisReady'),
-            tone: 'accent' as const,
-            hint: t('workspace.execution.diagnosisHintReady'),
-          }
+      : {
+          label: t('workspace.execution.diagnosisReady'),
+          tone: 'accent' as const,
+          hint: t('workspace.execution.diagnosisHintReady'),
+        }
 
   return {
     state: domainStatus.state,
@@ -326,8 +322,8 @@ export function buildExecutionOperationsPanel({
       {
         id: 'active',
         label: t('workspace.execution.operationsActive'),
-        value: String(activeOrders),
-        tone: activeOrders > 0 ? 'accent' : 'default',
+        value: String(activeOrderCount),
+        tone: activeOrderCount > 0 ? 'accent' : 'default',
       },
       {
         id: 'accepted',

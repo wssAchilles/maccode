@@ -1,11 +1,8 @@
-import { useMemo } from 'react'
-
-import { useI18n } from '../i18n/I18nProvider'
-import type { MatchingOrderBook, MatchingOrderBookLevel } from '../types/contracts'
+import type { MatchingOrderBookLevelRowModel, MatchingOrderBookPanelModel } from '../view-models/orderbook'
 import { EmptyState, GlassPanel, SectionFrame } from '../ui'
 
 type Props = {
-  orderbook?: MatchingOrderBook
+  model: MatchingOrderBookPanelModel
 }
 
 function LevelGroup({
@@ -16,7 +13,7 @@ function LevelGroup({
   emptyBody,
 }: {
   title: string
-  levels: MatchingOrderBookLevel[]
+  levels: MatchingOrderBookLevelRowModel[]
   tone: 'bid' | 'ask'
   emptyTitle: string
   emptyBody: string
@@ -29,12 +26,12 @@ function LevelGroup({
       ) : (
         <div className="stack-sm">
           {levels.map((level, index) => (
-            <div key={`${tone}-${index}-${level.price}`} className="obr">
+            <div key={level.id ?? `${tone}-${index}`} className="obr">
               <span className={tone === 'bid' ? 'orderbook-price obp-bid' : 'orderbook-price obp-ask'}>
-                {level.price.toFixed(6)}
+                {level.priceLabel}
               </span>
-              <span>{level.total_quantity.toFixed(6)}</span>
-              <span>{level.order_count}</span>
+              <span>{level.quantityLabel}</span>
+              <span>{level.orderCountLabel}</span>
             </div>
           ))}
         </div>
@@ -43,97 +40,49 @@ function LevelGroup({
   )
 }
 
-export function MatchingOrderBookPanel({ orderbook }: Props) {
-  const { t } = useI18n()
-  const bids = orderbook?.bids ?? []
-  const asks = orderbook?.asks ?? []
-  const bestBid = bids[0]?.price
-  const bestAsk = asks[0]?.price
-  const spread = bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined
-  const totalBidDepth = bids.reduce((sum, level) => sum + level.total_quantity, 0)
-  const totalAskDepth = asks.reduce((sum, level) => sum + level.total_quantity, 0)
-  const stale = useMemo(() => {
-    if (!orderbook?.generated_at_ms) {
-      return true
-    }
-    return Date.now() - orderbook.generated_at_ms > 8_000
-  }, [orderbook?.generated_at_ms])
-
-  const emptyState = useMemo(() => {
-    if (!orderbook || orderbook.enabled === false || (orderbook.reason ?? '').includes('matching disabled')) {
-      return {
-        title: t('orderbook.emptyDisabledTitle'),
-        body: t('orderbook.emptyDisabledHint'),
-      }
-    }
-    if (orderbook.degraded && (orderbook.reason ?? '').includes('orderbook_empty')) {
-      return {
-        title: t('orderbook.empty'),
-        body: t('orderbook.emptyNoOrdersHint'),
-      }
-    }
-    if (orderbook.degraded) {
-      return {
-        title: t('orderbook.emptyDegradedTitle'),
-        body: orderbook.reason ?? t('orderbook.emptyDegradedHint'),
-      }
-    }
-    return {
-      title: t('orderbook.empty'),
-      body: t('orderbook.emptyNoOrdersHint'),
-    }
-  }, [orderbook, t])
-
+export function MatchingOrderBookPanel({ model }: Props) {
   return (
     <SectionFrame
-      title={t('orderbook.title')}
-      description={orderbook ? `${orderbook.symbol} · depth ${orderbook.depth}` : t('common.disabled')}
+      title={model.title}
+      description={model.description}
     >
       <div className="obs-grid">
         <GlassPanel className="obs-card" tone="subtle">
-          <p className="subtle-label">{t('market.bestBid')}</p>
-          <p className="obs-value obs-value-bid">
-            {bestBid !== undefined ? bestBid.toFixed(6) : '—'}
-          </p>
+          <p className="subtle-label">{model.bestBidTitle}</p>
+          <p className="obs-value obs-value-bid">{model.bestBidLabel}</p>
         </GlassPanel>
         <GlassPanel className="obs-card" tone="subtle">
-          <p className="subtle-label">{t('market.bestAsk')}</p>
-          <p className="obs-value obs-value-ask">
-            {bestAsk !== undefined ? bestAsk.toFixed(6) : '—'}
-          </p>
+          <p className="subtle-label">{model.bestAskTitle}</p>
+          <p className="obs-value obs-value-ask">{model.bestAskLabel}</p>
         </GlassPanel>
         <GlassPanel className="obs-card" tone="subtle">
-          <p className="subtle-label">{t('orderbook.spread')}</p>
-          <p className="obs-value">{spread !== undefined ? spread.toFixed(6) : '—'}</p>
+          <p className="subtle-label">{model.spreadTitle}</p>
+          <p className="obs-value">{model.spreadLabel}</p>
         </GlassPanel>
       </div>
 
       <div className="obgrid" data-testid="matching-orderbook-panel">
         <LevelGroup
-          title={t('orderbook.bids')}
-          levels={bids}
+          title={model.bidsTitle}
+          levels={model.bids}
           tone="bid"
-          emptyTitle={emptyState.title}
-          emptyBody={emptyState.body}
+          emptyTitle={model.emptyTitle}
+          emptyBody={model.emptyBody}
         />
         <LevelGroup
-          title={t('orderbook.asks')}
-          levels={asks}
+          title={model.asksTitle}
+          levels={model.asks}
           tone="ask"
-          emptyTitle={emptyState.title}
-          emptyBody={emptyState.body}
+          emptyTitle={model.emptyTitle}
+          emptyBody={model.emptyBody}
         />
       </div>
       <GlassPanel className="obf" tone="subtle" padded={false}>
         <div className="obfc">
-          <p className="obu">
-            {t('orderbook.updated')}: {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
-          </p>
-          <p className="obu">
-            {t('orderbook.depthBalance')}: {totalBidDepth.toFixed(3)} / {totalAskDepth.toFixed(3)}
-          </p>
+          <p className="obu">{model.updatedTitle}: {model.updatedAtLabel}</p>
+          <p className="obu">{model.depthBalanceTitle}: {model.depthBalanceLabel}</p>
         </div>
-        {stale ? <p className="obst">{t('orderbook.staleHint')}</p> : null}
+        {model.stale && model.staleHint ? <p className="obst">{model.staleHint}</p> : null}
       </GlassPanel>
     </SectionFrame>
   )

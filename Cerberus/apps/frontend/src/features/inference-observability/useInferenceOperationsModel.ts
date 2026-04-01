@@ -3,6 +3,7 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 import { formatAppError } from '../../lib/http'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildInferenceOperationsModel } from './view-models'
 
 function inferActiveModelId(catalog: { active_model?: { model_id: string; version: string } | null } | undefined) {
@@ -14,11 +15,11 @@ function inferActiveModelId(catalog: { active_model?: { model_id: string; versio
 
 export function useInferenceOperationsModel(enabled = true) {
   const { t } = useI18n()
-  const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
-  const inferenceCatalog = useCerberusStore((state) => state.strategySummary.inference_catalog)
-  const pendingAction = useCerberusStore((state) => state.strategySummary.inference_pending_action)
-  const lastResult = useCerberusStore((state) => state.strategySummary.inference_last_result)
-  const lastError = useCerberusStore((state) => state.strategySummary.last_error)
+  const inferenceStatus = useDormantSelector(enabled, (state) => state.strategySummary.inference_status)
+  const inferenceCatalog = useDormantSelector(enabled, (state) => state.strategySummary.inference_catalog)
+  const pendingAction = useDormantSelector(enabled, (state) => state.strategySummary.inference_pending_action)
+  const lastResult = useDormantSelector(enabled, (state) => state.strategySummary.inference_last_result)
+  const lastError = useDormantSelector(enabled, (state) => state.strategySummary.last_error)
   const loadInferenceCatalog = useCerberusStore((state) => state.strategySummaryActions.loadInferenceCatalog)
   const requestPromotion = useCerberusStore((state) => state.strategySummaryActions.requestInferencePromotion)
   const requestRollback = useCerberusStore((state) => state.strategySummaryActions.requestInferenceRollback)

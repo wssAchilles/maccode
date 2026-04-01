@@ -6,6 +6,7 @@ import { useInferenceOperationsModel } from '../inference-observability/useInfer
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
+  buildServiceHealthPanelModel,
   buildHealthStoreItems,
   buildHealthWorkerItems,
 } from './view-models'
@@ -33,6 +34,11 @@ export function useHealthWorkspaceModel(active = true) {
     [domainStatus, summaryError],
   )
 
+  const serviceHealthPanel = useMemo(
+    () => buildServiceHealthPanelModel({ t, domainStatus, persistenceStatus }),
+    [domainStatus, persistenceStatus, t],
+  )
+
   const inferenceDiagnostics = useMemo(
     () => buildInferenceDiagnosticsModel({ t, inferenceStatus }),
     [inferenceStatus, t],
@@ -41,6 +47,7 @@ export function useHealthWorkspaceModel(active = true) {
   return {
     domainStatus,
     persistenceStatus,
+    serviceHealthPanel,
     inferenceDiagnostics,
     inferenceOperations,
     workerItems,

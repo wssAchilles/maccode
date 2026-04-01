@@ -12,7 +12,7 @@ import type {
   UIState,
 } from '../../types/contracts'
 import { formatConfidence } from '../../view-models/workbench'
-import { buildExecutionOrderReadModels } from '../execution/read-models'
+import { buildPreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -858,12 +858,12 @@ export function buildExecutionLifecyclePanelModel({
   const state = domainStatus.state
   const stateLabel = lifecycleStateLabel(t, state)
   const matchingStats = persistenceStatus?.matching?.stats
-  const orderModels = buildExecutionOrderReadModels(orderEvents ?? [], selectedSymbol)
-  const latestLifecycleEvent = orderModels[0]
-  const partialFillCount = orderModels.filter((item) => item.latestPhase === 'partial_fill').length
-  const filledCount = orderModels.filter((item) => item.latestPhase === 'fill').length
-  const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
-  const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
+  const prepared = buildPreparedExecutionSelection(orderEvents ?? [], selectedSymbol)
+  const latestLifecycleEvent = prepared.latestOrder
+  const partialFillCount = prepared.partialFillCount
+  const filledCount = prepared.filledCount
+  const canceledCount = prepared.canceledCount
+  const rejectedCount = prepared.rejectedCount
   const summary = latestEventSummary === t('common.heartbeat') && heartbeat
     ? heartbeat
     : latestEventSummary
