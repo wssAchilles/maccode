@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Candle } from '../../types/contracts'
+import { buildPreparedExecutionSelection } from '../execution/read-models'
 import {
   buildMarketChartMarkersModel,
   buildMarketChartSeriesModel,
@@ -11,6 +12,7 @@ import {
   getMarketChartReplayStartIndex,
   isSameMarketChartCandle,
 } from './view-models'
+import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
 
 const t = (key: string) => key
 
@@ -23,14 +25,15 @@ describe('market view models', () => {
   })
 
   it('builds market metric tiles from current quote and signal', () => {
-    const tiles = buildMarketMetricTiles({
-      t,
-      displayQuote: {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
         symbol: 'BTCUSDT',
         bid_price: '100.12',
         ask_price: '100.56',
         event_time: 1000,
       },
+      latestBySymbol: {},
       strategySignal: {
         status: 'ready',
         signal: 'BUY',
@@ -46,6 +49,11 @@ describe('market view models', () => {
         symbol: 'BTCUSDT',
         status: 'FILLED',
       },
+    })
+
+    const tiles = buildMarketMetricTiles({
+      t,
+      snapshot,
     })
 
     expect(tiles[0]).toMatchObject({ id: 'best-bid', value: '100.12' })
@@ -190,11 +198,8 @@ describe('market view models', () => {
   })
 
   it('marks the execution rail stale with shared freshness semantics', () => {
-    const model = buildMarketExecutionRailModel({
-      t,
-      selectedSymbol: 'BTCUSDT',
-      nowMs: 1_000_000,
-      orderEvents: [
+    const preparedSelection = buildPreparedExecutionSelection(
+      [
         {
           id: 'evt-1',
           channel: 'trade.executions.default',
@@ -210,6 +215,13 @@ describe('market view models', () => {
           execution_id: 'exec-1',
         },
       ],
+      'BTCUSDT',
+    )
+    const model = buildMarketExecutionRailModel({
+      t,
+      selectedSymbol: 'BTCUSDT',
+      nowMs: 1_000_000,
+      preparedSelection,
     })
 
     expect(model.state).toBe('stale')

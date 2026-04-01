@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import { useDormantSelector } from '../../store/useDormantSelector'
 import type { WorkspaceId } from '../../store/slices/shared'
 import {
+  buildPreparedTradingSnapshot,
   buildHealthCards,
 } from '../../view-models/workbench'
 import {
@@ -26,34 +28,59 @@ type Params = {
 
 export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params) {
   const { t } = useI18n()
-  const selectedSymbol = useDormantSelector(active, (state) => state.marketStream.selected_symbol)
-  const latest = useDormantSelector(active, (state) => state.marketStream.latest)
-  const latestBySymbol = useDormantSelector(active, (state) => state.marketStream.latest_by_symbol)
-  const strategySignal = useDormantSelector(active, (state) => state.strategySummary.signal)
-  const recentSignals = useDormantSelector(active, (state) => state.strategySummary.recent_signals)
-  const persistenceStatus = useDormantSelector(active, (state) => state.strategySummary.persistence_status)
-  const inferenceStatus = useDormantSelector(active, (state) => state.strategySummary.inference_status)
-  const orchestrationStatus = useDormantSelector(active, (state) => state.strategySummary.orchestration_status)
-  const summaryError = useDormantSelector(active, (state) => state.strategySummary.last_error)
-  const latestEvent = useDormantSelector(active, (state) => state.executionTrading.latest_event)
-  const heartbeat = useDormantSelector(active, (state) => state.executionTrading.heartbeat)
-  const domainStatus = useDormantSelector(active, (state) => state.uiState.domain_status)
+  const {
+    selectedSymbol,
+    latest,
+    latestBySymbol,
+    strategySignal,
+    recentSignals,
+    persistenceStatus,
+    inferenceStatus,
+    orchestrationStatus,
+    summaryError,
+    latestEvent,
+    heartbeat,
+    domainStatus,
+  } = useDormantSelector(
+    active,
+    useShallow((state) => ({
+      selectedSymbol: state.marketStream.selected_symbol,
+      latest: state.marketStream.latest,
+      latestBySymbol: state.marketStream.latest_by_symbol,
+      strategySignal: state.strategySummary.signal,
+      recentSignals: state.strategySummary.recent_signals,
+      persistenceStatus: state.strategySummary.persistence_status,
+      inferenceStatus: state.strategySummary.inference_status,
+      orchestrationStatus: state.strategySummary.orchestration_status,
+      summaryError: state.strategySummary.last_error,
+      latestEvent: state.executionTrading.latest_event,
+      heartbeat: state.executionTrading.heartbeat,
+      domainStatus: state.uiState.domain_status,
+    })),
+  )
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
 
-  const displayQuote = latestBySymbol[selectedSymbol] ?? latest
+  const tradingSnapshot = useMemo(
+    () =>
+      buildPreparedTradingSnapshot({
+        selectedSymbol,
+        latest,
+        latestBySymbol,
+        strategySignal,
+        latestEvent,
+        heartbeat,
+      }),
+    [heartbeat, latest, latestBySymbol, latestEvent, selectedSymbol, strategySignal],
+  )
 
   const metricTiles = useMemo(
     () =>
       buildOverviewMetricTiles({
         t,
-        selectedSymbol,
-        displayQuote,
-        strategySignal,
-        latestEvent,
-        heartbeat,
+        snapshot: tradingSnapshot,
       }),
-    [displayQuote, heartbeat, latestEvent, selectedSymbol, strategySignal, t],
+    [t, tradingSnapshot],
   )
 
   const healthCards = useMemo(() => buildHealthCards(domainStatus, t), [domainStatus, t])

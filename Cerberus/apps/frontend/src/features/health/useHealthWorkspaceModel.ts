@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useDormantSelector } from '../../store/useDormantSelector'
@@ -14,10 +15,15 @@ import {
 export function useHealthWorkspaceModel(active = true) {
   const { t } = useI18n()
   const inferenceOperations = useInferenceOperationsModel(active)
-  const domainStatus = useDormantSelector(active, (state) => state.uiState.domain_status)
-  const persistenceStatus = useDormantSelector(active, (state) => state.strategySummary.persistence_status)
-  const inferenceStatus = useDormantSelector(active, (state) => state.strategySummary.inference_status)
-  const summaryError = useDormantSelector(active, (state) => state.strategySummary.last_error)
+  const { domainStatus, persistenceStatus, inferenceStatus, summaryError } = useDormantSelector(
+    active,
+    useShallow((state) => ({
+      domainStatus: state.uiState.domain_status,
+      persistenceStatus: state.strategySummary.persistence_status,
+      inferenceStatus: state.strategySummary.inference_status,
+      summaryError: state.strategySummary.last_error,
+    })),
+  )
 
   const workerItems = useMemo(
     () => buildHealthWorkerItems({ t, persistenceStatus }),

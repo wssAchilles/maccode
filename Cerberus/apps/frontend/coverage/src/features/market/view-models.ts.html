@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.59% </span>
+                <span class="strong">78.35% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>213/271</span>
+                <span class='fraction'>210/268</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.59% </span>
+                <span class="strong">78.35% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>213/271</span>
+                <span class='fraction'>210/268</span>
             </div>
         
             
@@ -448,15 +448,11 @@
 <a name='L383'></a><a href='#L383'>383</a>
 <a name='L384'></a><a href='#L384'>384</a>
 <a name='L385'></a><a href='#L385'>385</a>
-<a name='L386'></a><a href='#L386'>386</a>
-<a name='L387'></a><a href='#L387'>387</a>
-<a name='L388'></a><a href='#L388'>388</a>
-<a name='L389'></a><a href='#L389'>389</a>
-<a name='L390'></a><a href='#L390'>390</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L386'></a><a href='#L386'>386</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -526,8 +522,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -595,8 +589,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -843,10 +835,10 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
-import type { Candle, MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
+import type { Candle, OrderTimelineEvent, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
-import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
-import { buildExecutionMarkers, buildPreparedExecutionSelection } from '../execution/read-models'
+import { type PreparedTradingSnapshot, formatPrice } from '../../view-models/workbench'
+import { buildExecutionMarkers, type PreparedExecutionSelection } from '../execution/read-models'
 &nbsp;
 type Translate = (key: TranslationKey) =&gt; string
 &nbsp;
@@ -918,9 +910,7 @@ const preparedMarkerCache = new WeakMap&lt;object, MarketChartMarkerModel[]&gt;(
 &nbsp;
 type BuildMarketMetricTilesParams = {
   t: Translate
-  displayQuote?: MarketMessage
-  strategySignal?: StrategySignal
-  latestEvent?: OrderTimelineEvent
+  snapshot: PreparedTradingSnapshot
 }
 &nbsp;
 type BuildMarketChartStateParams = {
@@ -986,33 +976,31 @@ export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChip
 &nbsp;
 export function buildMarketMetricTiles({
   t,
-  displayQuote,
-  strategySignal,
-  latestEvent,
+  snapshot,
 }: BuildMarketMetricTilesParams): MarketMetricTileModel[] {
   return [
     {
       id: 'best-bid',
       label: t('market.bestBid'),
-      value: formatPrice(displayQuote?.bid_price),
+      value: snapshot.bestBidValue,
       tone: 'positive',
     },
     {
       id: 'best-ask',
       label: t('market.bestAsk'),
-      value: formatPrice(displayQuote?.ask_price),
+      value: snapshot.bestAskValue,
       tone: 'negative',
     },
     {
       id: 'signal',
       label: t('strategy.signal'),
-      value: strategySignal?.<span class="branch-0 cbranch-no" title="branch not covered" >signal ?? 'HOLD',</span>
-      hint: `${t('strategy.confidence')}: ${formatConfidence(strategySignal?.confidence)}`,
+      value: snapshot.signalValue,
+      hint: `${t('strategy.confidence')}: ${snapshot.confidenceValue}`,
     },
     {
       id: 'execution-stream',
       label: t('market.orderStream'),
-      value: summarizeLatestFeedback(latestEvent, undefined, t),
+      value: snapshot.<span class="branch-0 cbranch-no" title="branch not covered" >feedbackValue ?? t('common.heartbeat'),</span>
     },
   ]
 }
@@ -1156,16 +1144,16 @@ export function getMarketChartReplayStartIndex(
 &nbsp;
 export function buildMarketExecutionRailModel({
   t,
-  orderEvents,
   selectedSymbol,
+  preparedSelection,
   nowMs,
 }: {
   t: Translate
-  orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
+  preparedSelection: PreparedExecutionSelection
   nowMs?: number
 }): MarketExecutionRailModel {
-  const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
+  const prepared = preparedSelection
   const { orderModels, latestTimestamp, filledCount } = prepared
   const items = orderModels.slice(0, 4).map((item) =&gt; ({
       id: item.id,
@@ -1237,7 +1225,7 @@ export function buildMarketChartMarkersModel({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:43:54.595Z
+                at 2026-04-01T09:17:35.083Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

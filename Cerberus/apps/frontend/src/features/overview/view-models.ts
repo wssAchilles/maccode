@@ -1,16 +1,10 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type {
-  MarketMessage,
-  OrderTimelineEvent,
   PersistenceStatus,
-  StrategySignal,
   TradingPolicy,
 } from '../../types/contracts'
 import {
-  formatConfidence,
-  formatPrice,
-  summarizeLatestEventAt,
-  summarizeLatestFeedback,
+  type PreparedTradingSnapshot,
 } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
@@ -31,11 +25,7 @@ export type OverviewDataItem = {
 
 type BuildOverviewMetricTilesParams = {
   t: Translate
-  selectedSymbol: string
-  displayQuote?: MarketMessage
-  strategySignal?: StrategySignal
-  latestEvent?: OrderTimelineEvent
-  heartbeat?: string
+  snapshot: PreparedTradingSnapshot
 }
 
 type BuildOverviewPersistenceItemsParams = {
@@ -50,39 +40,35 @@ type BuildOverviewExecutionSummaryParams = {
 
 export function buildOverviewMetricTiles({
   t,
-  selectedSymbol,
-  displayQuote,
-  strategySignal,
-  latestEvent,
-  heartbeat,
+  snapshot,
 }: BuildOverviewMetricTilesParams): OverviewMetricTileModel[] {
   return [
     {
       id: 'best-bid',
       label: t('market.bestBid'),
-      value: formatPrice(displayQuote?.bid_price),
+      value: snapshot.bestBidValue,
       tone: 'positive',
-      hint: selectedSymbol,
+      hint: snapshot.selectedSymbol,
     },
     {
       id: 'best-ask',
       label: t('market.bestAsk'),
-      value: formatPrice(displayQuote?.ask_price),
+      value: snapshot.bestAskValue,
       tone: 'negative',
-      hint: selectedSymbol,
+      hint: snapshot.selectedSymbol,
     },
     {
       id: 'signal',
       label: t('strategy.signal'),
-      value: strategySignal?.signal ?? 'HOLD',
+      value: snapshot.signalValue,
       tone: 'accent',
-      hint: `${t('strategy.confidence')}: ${formatConfidence(strategySignal?.confidence)}`,
+      hint: `${t('strategy.confidence')}: ${snapshot.confidenceValue}`,
     },
     {
       id: 'feedback',
       label: t('workspace.overview.feedback'),
-      value: summarizeLatestFeedback(latestEvent, heartbeat, t),
-      hint: summarizeLatestEventAt(latestEvent),
+      value: snapshot.feedbackValue ?? t('common.heartbeat'),
+      hint: snapshot.feedbackAtValue,
     },
   ]
 }

@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import { useDormantSelector } from '../../store/useDormantSelector'
 import {
-  formatConfidence,
-  summarizeLatestEventAt,
-  summarizeLatestFeedback,
+  buildPreparedTradingSnapshot,
 } from '../../view-models/workbench'
+import { buildPreparedExecutionSelection } from './read-models'
 import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
   buildStrategyOrchestrationAuditTimelineModel,
@@ -24,54 +24,88 @@ type Params = {
 
 export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   const { t } = useI18n()
-  const selectedSymbol = useDormantSelector(_active, (state) => state.marketStream.selected_symbol)
-  const latest = useDormantSelector(_active, (state) => state.marketStream.latest)
-  const latestBySymbol = useDormantSelector(_active, (state) => state.marketStream.latest_by_symbol)
-  const strategySignal = useDormantSelector(_active, (state) => state.strategySummary.signal)
-  const persistenceStatus = useDormantSelector(_active, (state) => state.strategySummary.persistence_status)
-  const orchestrationStatus = useDormantSelector(_active, (state) => state.strategySummary.orchestration_status)
-  const orderbook = useDormantSelector(_active, (state) => state.strategySummary.matching_orderbook)
-  const latestEvent = useDormantSelector(_active, (state) => state.executionTrading.latest_event)
-  const orderEvents = useDormantSelector(_active, (state) => state.executionTrading.order_events)
-  const heartbeat = useDormantSelector(_active, (state) => state.executionTrading.heartbeat)
-  const summaryError = useDormantSelector(_active, (state) => state.strategySummary.last_error)
-  const tradingPolicy = useDormantSelector(_active, (state) => state.executionTrading.trading_policy)
-  const binanceRule = useDormantSelector(_active, (state) => state.executionTrading.binance_rule)
-  const executionStatus = useDormantSelector(_active, (state) => state.uiState.domain_status['execution-trading'])
-
-  const displayQuote = latestBySymbol[selectedSymbol] ?? latest
+  const {
+    selectedSymbol,
+    latest,
+    latestBySymbol,
+    strategySignal,
+    persistenceStatus,
+    orchestrationStatus,
+    orderbook,
+    latestEvent,
+    orderEvents,
+    heartbeat,
+    summaryError,
+    tradingPolicy,
+    binanceRule,
+    executionStatus,
+  } = useDormantSelector(
+    _active,
+    useShallow((state) => ({
+      selectedSymbol: state.marketStream.selected_symbol,
+      latest: state.marketStream.latest,
+      latestBySymbol: state.marketStream.latest_by_symbol,
+      strategySignal: state.strategySummary.signal,
+      persistenceStatus: state.strategySummary.persistence_status,
+      orchestrationStatus: state.strategySummary.orchestration_status,
+      orderbook: state.strategySummary.matching_orderbook,
+      latestEvent: state.executionTrading.latest_event,
+      orderEvents: state.executionTrading.order_events,
+      heartbeat: state.executionTrading.heartbeat,
+      summaryError: state.strategySummary.last_error,
+      tradingPolicy: state.executionTrading.trading_policy,
+      binanceRule: state.executionTrading.binance_rule,
+      executionStatus: state.uiState.domain_status['execution-trading'],
+    })),
+  )
+  const tradingSnapshot = useMemo(
+    () =>
+      buildPreparedTradingSnapshot({
+        selectedSymbol,
+        latest,
+        latestBySymbol,
+        strategySignal,
+        latestEvent,
+        heartbeat,
+      }),
+    [heartbeat, latest, latestBySymbol, latestEvent, selectedSymbol, strategySignal],
+  )
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
+  const preparedExecutionSelection = useMemo(
+    () => buildPreparedExecutionSelection(orderEvents, selectedSymbol),
+    [orderEvents, selectedSymbol],
+  )
 
   const metricTiles = useMemo(
     () => [
       {
         id: 'signal',
         label: t('strategy.signal'),
-        value: strategySignal?.signal ?? 'HOLD',
-        hint: `${t('strategy.confidence')}: ${formatConfidence(strategySignal?.confidence)}`,
+        value: tradingSnapshot.signalValue,
+        hint: `${t('strategy.confidence')}: ${tradingSnapshot.confidenceValue}`,
         tone: 'accent' as const,
       },
       {
         id: 'best-bid',
         label: t('market.bestBid'),
-        value: displayQuote?.bid_price ?? '—',
+        value: tradingSnapshot.bestBidValue,
         tone: 'positive' as const,
       },
       {
         id: 'best-ask',
         label: t('market.bestAsk'),
-        value: displayQuote?.ask_price ?? '—',
+        value: tradingSnapshot.bestAskValue,
         tone: 'negative' as const,
       },
       {
         id: 'execution-stream',
         label: t('execution.timeline'),
-        value: summarizeLatestFeedback(latestEvent, heartbeat, t),
-        hint: summarizeLatestEventAt(latestEvent),
+        value: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
+        hint: tradingSnapshot.feedbackAtValue,
       },
     ],
-    [displayQuote?.ask_price, displayQuote?.bid_price, heartbeat, latestEvent, strategySignal?.confidence, strategySignal?.signal, t],
+    [t, tradingSnapshot],
   )
 
   const lifecyclePanel = useMemo(
@@ -80,15 +114,14 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
         t,
         signal: strategySignal,
         persistenceStatus,
-        orderEvents,
-        selectedSymbol,
-        latestEventSummary: summarizeLatestFeedback(latestEvent, heartbeat, t),
+        preparedSelection: preparedExecutionSelection,
+        latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
         heartbeat,
         tradingPolicy,
         binanceRule,
         domainStatus: executionStatus,
       }),
-    [binanceRule, executionStatus, heartbeat, latestEvent, orderEvents, persistenceStatus, selectedSymbol, strategySignal, t, tradingPolicy],
+    [binanceRule, executionStatus, heartbeat, persistenceStatus, preparedExecutionSelection, strategySignal, t, tradingPolicy, tradingSnapshot.feedbackValue],
   )
 
   const operationsPanel = useMemo(
@@ -96,11 +129,11 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
       buildExecutionOperationsPanel({
         t,
         selectedSymbol,
-        orderEvents,
+        preparedSelection: preparedExecutionSelection,
         persistenceStatus,
         domainStatus: executionStatus,
       }),
-    [executionStatus, orderEvents, persistenceStatus, selectedSymbol, t],
+    [executionStatus, persistenceStatus, preparedExecutionSelection, selectedSymbol, t],
   )
 
   const strategyMatrix = useMemo(
@@ -136,7 +169,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   return {
     selectedSymbol,
     selectSymbol,
-    displayQuote,
+    displayQuote: tradingSnapshot.displayQuote,
     orderbookPanel,
     summaryError,
     metricTiles,

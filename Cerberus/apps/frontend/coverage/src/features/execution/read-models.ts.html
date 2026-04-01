@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">91.04% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>295/324</span>
+                <span class='fraction'>315/346</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">82.24% </span>
+                <span class="strong">80.99% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>88/107</span>
+                <span class='fraction'>98/121</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">91.04% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>295/324</span>
+                <span class='fraction'>315/346</span>
             </div>
         
             
@@ -504,7 +504,34 @@
 <a name='L439'></a><a href='#L439'>439</a>
 <a name='L440'></a><a href='#L440'>440</a>
 <a name='L441'></a><a href='#L441'>441</a>
-<a name='L442'></a><a href='#L442'>442</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L442'></a><a href='#L442'>442</a>
+<a name='L443'></a><a href='#L443'>443</a>
+<a name='L444'></a><a href='#L444'>444</a>
+<a name='L445'></a><a href='#L445'>445</a>
+<a name='L446'></a><a href='#L446'>446</a>
+<a name='L447'></a><a href='#L447'>447</a>
+<a name='L448'></a><a href='#L448'>448</a>
+<a name='L449'></a><a href='#L449'>449</a>
+<a name='L450'></a><a href='#L450'>450</a>
+<a name='L451'></a><a href='#L451'>451</a>
+<a name='L452'></a><a href='#L452'>452</a>
+<a name='L453'></a><a href='#L453'>453</a>
+<a name='L454'></a><a href='#L454'>454</a>
+<a name='L455'></a><a href='#L455'>455</a>
+<a name='L456'></a><a href='#L456'>456</a>
+<a name='L457'></a><a href='#L457'>457</a>
+<a name='L458'></a><a href='#L458'>458</a>
+<a name='L459'></a><a href='#L459'>459</a>
+<a name='L460'></a><a href='#L460'>460</a>
+<a name='L461'></a><a href='#L461'>461</a>
+<a name='L462'></a><a href='#L462'>462</a>
+<a name='L463'></a><a href='#L463'>463</a>
+<a name='L464'></a><a href='#L464'>464</a>
+<a name='L465'></a><a href='#L465'>465</a>
+<a name='L466'></a><a href='#L466'>466</a>
+<a name='L467'></a><a href='#L467'>467</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -821,6 +848,15 @@
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
@@ -835,6 +871,20 @@
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
@@ -1011,6 +1061,8 @@ export type PreparedExecutionSelection = {
   filledCount: number
   rejectedCount: number
   canceledCount: number
+  diagnosisState: 'unavailable' | 'hold' | 'caution-pending' | 'caution-anomaly' | 'ready'
+  diagnosisReason?: string
 }
 &nbsp;
 type PreparedOrderReadModels = {
@@ -1247,24 +1299,42 @@ function prepareExecutionSelectionSummary(
     accountGroups.set(accountId, current)
   }
 &nbsp;
+  const rejectionReasons = [...rejectionCounts.entries()]
+    .map(([reason, count]) =&gt; ({ reason, count }))
+    .sort((left, right) =&gt; right.count - left.count || left.reason.localeCompare(right.reason))
+    .slice(0, 3)
+  const cancelFailureReasons = [...cancelFailureCounts.entries()]
+    .map(([reason, count]) =&gt; ({ reason, count }))
+    .sort((left, right) =&gt; right.count - left.count || left.reason.localeCompare(right.reason))
+    .slice(0, 3)
+  const avgSubmitToAcceptedMs = average(submitToAccepted)
+  const avgSubmitToFillMs = average(submitToFill)
+  const fillSlippageBps = average(slippageBps)
+  const rejectedCount = lifecycleDistribution.rejected
+  const filledCount = lifecycleDistribution.fill
+  const diagnosisState: PreparedExecutionSelection['diagnosisState'] =
+    orderModels.length === <span class="branch-0 cbranch-no" title="branch not covered" >0</span>
+<span class="cstat-no" title="statement not covered" >      ? 'unavailable'</span>
+      : rejectedCount &gt; 0 || cancelFailures &gt; 0
+        ? 'hold'
+        : activeOrderCount &gt; 0 &amp;&amp; filledCount === 0 &amp;&amp; partialFillCount === 0
+          ? 'caution-pending'
+          : partialFillCount &gt; 0 || (fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(fillSlippageBps) &gt; <span class="branch-0 cbranch-no" title="branch not covered" >5)</span></span>
+<span class="cstat-no" title="statement not covered" >            ? 'caution-anomaly'</span>
+            : 'ready'
+&nbsp;
   const prepared = {
     latestOrder,
     latestTimestamp,
     latestAnomaly,
     lifecycleDistribution,
     anomalySummary: {
-      rejectionReasons: [...rejectionCounts.entries()]
-        .map(([reason, count]) =&gt; ({ reason, count }))
-        .sort((left, right) =&gt; right.count - left.count || left.reason.localeCompare(right.reason))
-        .slice(0, 3),
-      cancelFailureReasons: [...cancelFailureCounts.entries()]
-        .map(([reason, count]) =&gt; ({ reason, count }))
-        .sort((left, right) =&gt; right.count - left.count || left.reason.localeCompare(right.reason))
-        .slice(0, 3),
+      rejectionReasons,
+      cancelFailureReasons,
       cancelFailures,
-      avgSubmitToAcceptedMs: average(submitToAccepted),
-      avgSubmitToFillMs: average(submitToFill),
-      fillSlippageBps: average(slippageBps),
+      avgSubmitToAcceptedMs,
+      avgSubmitToFillMs,
+      fillSlippageBps,
       partialFillRatio: orderModels.length &gt; 0 ? partialFillCount / orderModels.<span class="branch-0 cbranch-no" title="branch not covered" >length : undefined,</span>
     },
     accountSummary: [...accountGroups.values()].sort(
@@ -1273,9 +1343,14 @@ function prepareExecutionSelectionSummary(
     activeOrderCount,
     acceptedCount: lifecycleDistribution.accepted,
     partialFillCount,
-    filledCount: lifecycleDistribution.fill,
-    rejectedCount: lifecycleDistribution.rejected,
+    filledCount,
+    rejectedCount,
     canceledCount: lifecycleDistribution.canceled,
+    diagnosisState,
+    diagnosisReason:
+      diagnosisState === 'hold'
+        ? latestAnomaly?.latestReason ?? rejectionReasons[0<span class="branch-0 cbranch-no" title="branch not covered" >]?.reason</span>
+        : undefined,
   }
 &nbsp;
   preparedExecutionSummaryCache.set(orderModels, prepared)
@@ -1393,7 +1468,7 @@ export function buildExecutionMarkers(events: OrderTimelineEvent[], symbol: stri
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:43:54.595Z
+                at 2026-04-01T09:17:35.083Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

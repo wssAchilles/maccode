@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useCandlesResource } from '../../app/bootstrap/useResourceQueries'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
 import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
+import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
+import { buildPreparedExecutionSelection } from '../execution/read-models'
 import {
   buildStrategyRegistryPanelModel,
   buildStrategyDecisionMatrixModel,
@@ -25,23 +28,54 @@ type Params = {
 
 export function useMarketWorkspaceModel({ active }: Params) {
   const { t } = useI18n()
-  const selectedSymbol = useDormantSelector(active, (state) => state.marketStream.selected_symbol)
-  const latest = useDormantSelector(active, (state) => state.marketStream.latest)
-  const latestBySymbol = useDormantSelector(active, (state) => state.marketStream.latest_by_symbol)
-  const latestEvent = useDormantSelector(active, (state) => state.executionTrading.latest_event)
-  const orderEvents = useDormantSelector(active, (state) => state.executionTrading.order_events)
-  const candles = useDormantSelector(active, (state) => state.marketStream.candles)
-  const marketStatus = useDormantSelector(active, (state) => state.uiState.domain_status['market-stream'])
-  const summaryError = useDormantSelector(active, (state) => state.strategySummary.last_error)
-  const strategySignal = useDormantSelector(active, (state) => state.strategySummary.signal)
-  const orchestrationStatus = useDormantSelector(active, (state) => state.strategySummary.orchestration_status)
-  const orderbook = useDormantSelector(active, (state) => state.strategySummary.matching_orderbook)
+  const {
+    selectedSymbol,
+    latest,
+    latestBySymbol,
+    latestEvent,
+    orderEvents,
+    candles,
+    marketStatus,
+    summaryError,
+    strategySignal,
+    orchestrationStatus,
+    orderbook,
+  } = useDormantSelector(
+    active,
+    useShallow((state) => ({
+      selectedSymbol: state.marketStream.selected_symbol,
+      latest: state.marketStream.latest,
+      latestBySymbol: state.marketStream.latest_by_symbol,
+      latestEvent: state.executionTrading.latest_event,
+      orderEvents: state.executionTrading.order_events,
+      candles: state.marketStream.candles,
+      marketStatus: state.uiState.domain_status['market-stream'],
+      summaryError: state.strategySummary.last_error,
+      strategySignal: state.strategySummary.signal,
+      orchestrationStatus: state.strategySummary.orchestration_status,
+      orderbook: state.strategySummary.matching_orderbook,
+    })),
+  )
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
 
   const candlesQuery = useCandlesResource(active)
+  const preparedExecutionSelection = useMemo(
+    () => buildPreparedExecutionSelection(orderEvents, selectedSymbol),
+    [orderEvents, selectedSymbol],
+  )
 
-  const displayQuote = latestBySymbol[selectedSymbol] ?? latest
+  const tradingSnapshot = useMemo(
+    () =>
+      buildPreparedTradingSnapshot({
+        selectedSymbol,
+        latest,
+        latestBySymbol,
+        strategySignal,
+        latestEvent,
+      }),
+    [latest, latestBySymbol, latestEvent, selectedSymbol, strategySignal],
+  )
 
   const symbolChips = useMemo(
     () => buildMarketSymbolChips(selectedSymbol),
@@ -52,11 +86,9 @@ export function useMarketWorkspaceModel({ active }: Params) {
     () =>
       buildMarketMetricTiles({
         t,
-        displayQuote,
-        strategySignal,
-        latestEvent,
+        snapshot: tradingSnapshot,
       }),
-    [displayQuote, latestEvent, strategySignal, t],
+    [t, tradingSnapshot],
   )
 
   const chartState = useMemo(
@@ -91,8 +123,8 @@ export function useMarketWorkspaceModel({ active }: Params) {
   )
 
   const executionRail = useMemo(
-    () => buildMarketExecutionRailModel({ t, orderEvents, selectedSymbol }),
-    [orderEvents, selectedSymbol, t],
+    () => buildMarketExecutionRailModel({ t, selectedSymbol, preparedSelection: preparedExecutionSelection }),
+    [preparedExecutionSelection, selectedSymbol, t],
   )
 
   const chartMarkers = useMemo(

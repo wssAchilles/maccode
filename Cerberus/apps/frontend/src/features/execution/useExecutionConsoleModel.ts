@@ -1,4 +1,5 @@
 import { startTransition, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useTradingPolicyResource, useBinanceRuleResource } from '../../app/bootstrap/useResourceQueries'
 import { useCerberusStore } from '../../store'
@@ -24,10 +25,15 @@ export function useExecutionConsoleModel({
 }: Params) {
   const { t } = useI18n()
   const [broker, setBrokerState] = useState<'binance' | 'alpaca'>('binance')
-  const gatewayBase = useDormantSelector(active, (state) => state.env.gateway_base)
-  const tradingPolicy = useDormantSelector(active, (state) => state.executionTrading.trading_policy)
-  const binanceRule = useDormantSelector(active, (state) => state.executionTrading.binance_rule)
-  const coreFlow = useDormantSelector(active, (state) => state.uiState.core_flow)
+  const { gatewayBase, tradingPolicy, binanceRule, coreFlow } = useDormantSelector(
+    active,
+    useShallow((state) => ({
+      gatewayBase: state.env.gateway_base,
+      tradingPolicy: state.executionTrading.trading_policy,
+      binanceRule: state.executionTrading.binance_rule,
+      coreFlow: state.uiState.core_flow,
+    })),
+  )
   const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
   useTradingPolicyResource(active)

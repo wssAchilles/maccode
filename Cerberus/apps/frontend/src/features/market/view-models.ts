@@ -1,9 +1,9 @@
 import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
-import type { Candle, MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
+import type { Candle, OrderTimelineEvent, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
-import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
-import { buildExecutionMarkers, buildPreparedExecutionSelection } from '../execution/read-models'
+import { type PreparedTradingSnapshot, formatPrice } from '../../view-models/workbench'
+import { buildExecutionMarkers, type PreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -75,9 +75,7 @@ const preparedMarkerCache = new WeakMap<object, MarketChartMarkerModel[]>()
 
 type BuildMarketMetricTilesParams = {
   t: Translate
-  displayQuote?: MarketMessage
-  strategySignal?: StrategySignal
-  latestEvent?: OrderTimelineEvent
+  snapshot: PreparedTradingSnapshot
 }
 
 type BuildMarketChartStateParams = {
@@ -143,33 +141,31 @@ export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChip
 
 export function buildMarketMetricTiles({
   t,
-  displayQuote,
-  strategySignal,
-  latestEvent,
+  snapshot,
 }: BuildMarketMetricTilesParams): MarketMetricTileModel[] {
   return [
     {
       id: 'best-bid',
       label: t('market.bestBid'),
-      value: formatPrice(displayQuote?.bid_price),
+      value: snapshot.bestBidValue,
       tone: 'positive',
     },
     {
       id: 'best-ask',
       label: t('market.bestAsk'),
-      value: formatPrice(displayQuote?.ask_price),
+      value: snapshot.bestAskValue,
       tone: 'negative',
     },
     {
       id: 'signal',
       label: t('strategy.signal'),
-      value: strategySignal?.signal ?? 'HOLD',
-      hint: `${t('strategy.confidence')}: ${formatConfidence(strategySignal?.confidence)}`,
+      value: snapshot.signalValue,
+      hint: `${t('strategy.confidence')}: ${snapshot.confidenceValue}`,
     },
     {
       id: 'execution-stream',
       label: t('market.orderStream'),
-      value: summarizeLatestFeedback(latestEvent, undefined, t),
+      value: snapshot.feedbackValue ?? t('common.heartbeat'),
     },
   ]
 }
@@ -313,16 +309,16 @@ export function getMarketChartReplayStartIndex(
 
 export function buildMarketExecutionRailModel({
   t,
-  orderEvents,
   selectedSymbol,
+  preparedSelection,
   nowMs,
 }: {
   t: Translate
-  orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
+  preparedSelection: PreparedExecutionSelection
   nowMs?: number
 }): MarketExecutionRailModel {
-  const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
+  const prepared = preparedSelection
   const { orderModels, latestTimestamp, filledCount } = prepared
   const items = orderModels.slice(0, 4).map((item) => ({
       id: item.id,

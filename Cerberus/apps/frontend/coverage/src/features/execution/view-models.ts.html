@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.32% </span>
+                <span class="strong">80.79% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>257/324</span>
+                <span class='fraction'>265/328</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">31.25% </span>
+                <span class="strong">32.6% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>15/48</span>
+                <span class='fraction'>15/46</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">83.33% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>5/6</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.32% </span>
+                <span class="strong">80.79% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>257/324</span>
+                <span class='fraction'>265/328</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -456,10 +456,10 @@
 <a name='L391'></a><a href='#L391'>391</a>
 <a name='L392'></a><a href='#L392'>392</a>
 <a name='L393'></a><a href='#L393'>393</a>
-<a name='L394'></a><a href='#L394'>394</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L394'></a><a href='#L394'>394</a>
+<a name='L395'></a><a href='#L395'>395</a>
+<a name='L396'></a><a href='#L396'>396</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -545,10 +545,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
@@ -619,6 +615,18 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -680,10 +688,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -851,10 +855,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
-import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
-import {
-  buildPreparedExecutionSelection,
-} from './read-models'
+import type { PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
+import { type PreparedExecutionSelection } from './read-models'
 &nbsp;
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
 &nbsp;
@@ -919,7 +921,7 @@ type BuildExecutionSummaryParams = {
 type BuildExecutionOperationsParams = {
   t: Translate
   selectedSymbol: string
-  orderEvents: OrderTimelineEvent[]
+  preparedSelection: PreparedExecutionSelection
   persistenceStatus?: PersistenceStatus
   domainStatus: UIState
 }
@@ -937,10 +939,6 @@ function formatPercent(value?: number | null): string {
 <span class="cstat-no" title="statement not covered" >  }</span>
   return `${(value * 100).toFixed(1)}%`
 }
-&nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function normalizeOrderStatus(value?: string): string {</span></span>
-<span class="cstat-no" title="statement not covered" >  return `${value ?? ''}`.trim().toLowerCase()</span>
-<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
 export function buildExecutionSummary({
   t,
@@ -992,11 +990,10 @@ export function buildExecutionProgressItems(coreFlow: CoreFlowMap, t: Translate)
 export function buildExecutionOperationsPanel({
   t,
   selectedSymbol,
-  orderEvents,
+  preparedSelection,
   persistenceStatus,
   domainStatus,
 }: BuildExecutionOperationsParams): ExecutionOperationsPanelModel {
-  const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
   const {
     orderModels,
     activeOrderCount,
@@ -1005,11 +1002,24 @@ export function buildExecutionOperationsPanel({
     filledCount,
     rejectedCount,
     canceledCount,
-    anomalySummary,
     lifecycleDistribution,
     accountSummary,
     latestAnomaly,
-  } = prepared
+    diagnosisState,
+    diagnosisReason,
+    latestOrder,
+    anomalySummary,
+  } = preparedSelection
+  const orderCount = orderModels.length
+  const {
+    rejectionReasons,
+    cancelFailureReasons,
+    cancelFailures,
+    avgSubmitToAcceptedMs,
+    avgSubmitToFillMs,
+    fillSlippageBps,
+    partialFillRatio,
+  } = anomalySummary
   const matchingStats = persistenceStatus?.matching?.stats
   const anomalies: string[] = []
 &nbsp;
@@ -1019,17 +1029,17 @@ export function buildExecutionOperationsPanel({
   if (canceledCount &gt; 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    anomalies.push(`${t('workspace.execution.operationsCanceled')}: ${canceledCount}`)</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-  if (anomalySummary.rejectionReasons[0]) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+  if (rejectionReasons[0]) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    anomalies.push(</span>
-<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsLatestAnomaly')}: ${anomalySummary.rejectionReasons[0].reason} · ${anomalySummary.rejectionReasons[0].count}`,</span>
+<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsLatestAnomaly')}: ${rejectionReasons[0].reason} · ${rejectionReasons[0].count}`,</span>
 <span class="cstat-no" title="statement not covered" >    )</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-  if (anomalySummary.cancelFailures &gt; 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >    anomalies.push(`${t('workspace.execution.operationsCancelHoldbacks')}: ${anomalySummary.cancelFailures}`)</span>
+  if (cancelFailures &gt; 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+<span class="cstat-no" title="statement not covered" >    anomalies.push(`${t('workspace.execution.operationsCancelHoldbacks')}: ${cancelFailures}`)</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-  if (anomalySummary.cancelFailureReasons[0]) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+  if (cancelFailureReasons[0]) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    anomalies.push(</span>
-<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsCancelFailureReason')}: ${anomalySummary.cancelFailureReasons[0].reason} · ${anomalySummary.cancelFailureReasons[0].count}`,</span>
+<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsCancelFailureReason')}: ${cancelFailureReasons[0].reason} · ${cancelFailureReasons[0].count}`,</span>
 <span class="cstat-no" title="statement not covered" >    )</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
   if (latestAnomaly?.latestStatus) {
@@ -1037,18 +1047,18 @@ export function buildExecutionOperationsPanel({
       `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.<span class="branch-0 cbranch-no" title="branch not covered" >requestId ?? '—'}</span>`,
     )
   }
-  if (anomalySummary.fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(anomalySummary.fillSlippageBps) &gt; 5) <span class="branch-0 cbranch-no" title="branch not covered" >{</span></span>
+  if (fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(fillSlippageBps) &gt; 5) <span class="branch-0 cbranch-no" title="branch not covered" >{</span></span>
 <span class="cstat-no" title="statement not covered" >    anomalies.push(</span>
-<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsSlippage')}: ${anomalySummary.fillSlippageBps.toFixed(1)} bps`,</span>
+<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsSlippage')}: ${fillSlippageBps.toFixed(1)} bps`,</span>
 <span class="cstat-no" title="statement not covered" >    )</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
-  if (anomalySummary.avgSubmitToAcceptedMs !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; anomalySummary.avgSubmitToAcceptedMs &gt; 10_000) <span class="branch-0 cbranch-no" title="branch not covered" >{</span></span>
+  if (avgSubmitToAcceptedMs !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; avgSubmitToAcceptedMs &gt; 10_000) <span class="branch-0 cbranch-no" title="branch not covered" >{</span></span>
 <span class="cstat-no" title="statement not covered" >    anomalies.push(</span>
-<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsSubmitToAccepted')}: ${Math.round(anomalySummary.avgSubmitToAcceptedMs)} ms`,</span>
+<span class="cstat-no" title="statement not covered" >      `${t('workspace.execution.operationsSubmitToAccepted')}: ${Math.round(avgSubmitToAcceptedMs)} ms`,</span>
 <span class="cstat-no" title="statement not covered" >    )</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
-  if (orderModels.length === 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+  if (orderCount === 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    return {</span>
 <span class="cstat-no" title="statement not covered" >      state: domainStatus.state,</span>
 <span class="cstat-no" title="statement not covered" >      stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),</span>
@@ -1067,38 +1077,34 @@ export function buildExecutionOperationsPanel({
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
   const diagnosis =
-    rejectedCount &gt; <span class="branch-0 cbranch-no" title="branch not covered" >0 || anomalySummary.cancelFailures &gt; 0</span>
+    diagnosisState === 'hold'
       ? {
           label: t('workspace.execution.diagnosisHold'),
           tone: 'danger' as const,
-          hint:
-            latestAnomaly?.latestReason ??
-            anomalySummary.rejectionReasons[0<span class="branch-0 cbranch-no" title="branch not covered" >]?.reason ??</span>
-            t('workspace.execution.diagnosisHintHold'),
+          hint: diagnosisReason ?? t('workspace.execution.diagnosisHintHold'),
 <span class="branch-0 cbranch-no" title="branch not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >      : activeOrderCount &gt; 0 &amp;&amp; filledCount === 0 &amp;&amp; partialFillCount === 0</span>
+<span class="cstat-no" title="statement not covered" >      : diagnosisState === 'caution-pending'</span>
 <span class="cstat-no" title="statement not covered" >        ? {</span>
 <span class="cstat-no" title="statement not covered" >            label: t('workspace.execution.diagnosisCaution'),</span>
 <span class="cstat-no" title="statement not covered" >            tone: 'accent' as const,</span>
 <span class="cstat-no" title="statement not covered" >            hint: t('workspace.execution.diagnosisHintPending'),</span>
 <span class="cstat-no" title="statement not covered" >          }</span>
-<span class="cstat-no" title="statement not covered" >      : partialFillCount &gt; 0 ||</span>
-<span class="cstat-no" title="statement not covered" >          (anomalySummary.fillSlippageBps !== undefined &amp;&amp; Math.abs(anomalySummary.fillSlippageBps) &gt; 5)</span>
-<span class="cstat-no" title="statement not covered" >        ? {</span>
-<span class="cstat-no" title="statement not covered" >            label: t('workspace.execution.diagnosisCaution'),</span>
-<span class="cstat-no" title="statement not covered" >            tone: 'accent' as const,</span>
-<span class="cstat-no" title="statement not covered" >            hint: t('workspace.execution.diagnosisHintCaution'),</span>
-<span class="cstat-no" title="statement not covered" >          }</span>
-<span class="cstat-no" title="statement not covered" >      : {</span>
-<span class="cstat-no" title="statement not covered" >          label: t('workspace.execution.diagnosisReady'),</span>
-<span class="cstat-no" title="statement not covered" >          tone: 'accent' as const,</span>
-<span class="cstat-no" title="statement not covered" >          hint: t('workspace.execution.diagnosisHintReady'),</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        : diagnosisState === 'caution-anomaly'</span>
+<span class="cstat-no" title="statement not covered" >          ? {</span>
+<span class="cstat-no" title="statement not covered" >              label: t('workspace.execution.diagnosisCaution'),</span>
+<span class="cstat-no" title="statement not covered" >              tone: 'accent' as const,</span>
+<span class="cstat-no" title="statement not covered" >              hint: t('workspace.execution.diagnosisHintCaution'),</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
+<span class="cstat-no" title="statement not covered" >          : {</span>
+<span class="cstat-no" title="statement not covered" >              label: t('workspace.execution.diagnosisReady'),</span>
+<span class="cstat-no" title="statement not covered" >              tone: 'accent' as const,</span>
+<span class="cstat-no" title="statement not covered" >              hint: t('workspace.execution.diagnosisHintReady'),</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
 &nbsp;
   return {
     state: domainStatus.state,
     stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
-    summary: `${selectedSymbol} · ${orderModels.length} ${t('workspace.execution.operationsSummarySuffix')}`,
+    summary: `${selectedSymbol} · ${orderCount} ${t('workspace.execution.operationsSummarySuffix')}`,
     anomalies,
     diagnosisLabel: diagnosis.label,
     diagnosisTone: diagnosis.tone,
@@ -1145,13 +1151,13 @@ export function buildExecutionOperationsPanel({
       },
     ],
     reasonSummary: [
-      ...anomalySummary.rejectionReasons.map((item) =&gt; ({
+      ...rejectionReasons.map((item) =&gt; ({
 <span class="cstat-no" title="statement not covered" >        id: `reject-${item.reason}`,</span>
 <span class="cstat-no" title="statement not covered" >        label: t('workspace.execution.reasonDistributionRejected'),</span>
 <span class="cstat-no" title="statement not covered" >        value: `${item.reason} · ${item.count}`,</span>
 <span class="cstat-no" title="statement not covered" >        tone: 'accent' as const,</span>
       })),
-      ...anomalySummary.cancelFailureReasons.map((item) =&gt; ({
+      ...cancelFailureReasons.map((item) =&gt; ({
 <span class="cstat-no" title="statement not covered" >        id: `cancel-${item.reason}`,</span>
 <span class="cstat-no" title="statement not covered" >        label: t('workspace.execution.reasonDistributionCanceled'),</span>
 <span class="cstat-no" title="statement not covered" >        value: `${item.reason} · ${item.count}`,</span>
@@ -1168,7 +1174,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'observed',
         label: t('workspace.execution.operationsObserved'),
-        value: String(orderModels.length),
+        value: String(orderCount),
       },
       {
         id: 'active',
@@ -1206,23 +1212,23 @@ export function buildExecutionOperationsPanel({
       {
         id: 'submitToAccepted',
         label: t('workspace.execution.operationsSubmitToAccepted'),
-        value: formatInteger(anomalySummary.<span class="branch-0 cbranch-no" title="branch not covered" >avgSubmitToAcceptedMs ? Math.round(anomalySummary.avgSubmitToAcceptedMs) : u</span>ndefined),
+        value: formatInteger(<span class="branch-0 cbranch-no" title="branch not covered" >avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : u</span>ndefined),
       },
       {
         id: 'submitToFill',
         label: t('workspace.execution.operationsSubmitToFill'),
-        value: formatInteger(anomalySummary.<span class="branch-0 cbranch-no" title="branch not covered" >avgSubmitToFillMs ? Math.round(anomalySummary.avgSubmitToFillMs) : u</span>ndefined),
+        value: formatInteger(<span class="branch-0 cbranch-no" title="branch not covered" >avgSubmitToFillMs ? Math.round(avgSubmitToFillMs) : u</span>ndefined),
       },
       {
         id: 'partialFillRatio',
         label: t('workspace.execution.operationsPartialFillRatio'),
-        value: formatPercent(anomalySummary.partialFillRatio),
+        value: formatPercent(partialFillRatio),
       },
       {
         id: 'slippage',
         label: t('workspace.execution.operationsSlippage'),
-        value: anomalySummary.fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined ? anomalySummary.fillSlippageBps.toFixed(1) : '</span>—',
-        tone: anomalySummary.fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(anomalySummary.fillSlippageBps) &gt; <span class="branch-0 cbranch-no" title="branch not covered" >5 ? '</span>accent' : '</span>default',
+        value: fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined ? fillSlippageBps.toFixed(1) : '</span>—',
+        tone: fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(fillSlippageBps) &gt; <span class="branch-0 cbranch-no" title="branch not covered" >5 ? '</span>accent' : '</span>default',
       },
       {
         id: 'matchingLive',
@@ -1237,7 +1243,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latestStatus',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: orderModels[0]?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? orderModels[0]?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? '</span>—',</span>
+        value: latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? '</span>—',</span>
       },
     ],
   }
@@ -1249,7 +1255,7 @@ export function buildExecutionOperationsPanel({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:43:54.595Z
+                at 2026-04-01T09:17:35.083Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

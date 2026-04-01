@@ -64,6 +64,8 @@ export type PreparedExecutionSelection = {
   filledCount: number
   rejectedCount: number
   canceledCount: number
+  diagnosisState: 'unavailable' | 'hold' | 'caution-pending' | 'caution-anomaly' | 'ready'
+  diagnosisReason?: string
 }
 
 type PreparedOrderReadModels = {
@@ -300,24 +302,42 @@ function prepareExecutionSelectionSummary(
     accountGroups.set(accountId, current)
   }
 
+  const rejectionReasons = [...rejectionCounts.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
+    .slice(0, 3)
+  const cancelFailureReasons = [...cancelFailureCounts.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
+    .slice(0, 3)
+  const avgSubmitToAcceptedMs = average(submitToAccepted)
+  const avgSubmitToFillMs = average(submitToFill)
+  const fillSlippageBps = average(slippageBps)
+  const rejectedCount = lifecycleDistribution.rejected
+  const filledCount = lifecycleDistribution.fill
+  const diagnosisState: PreparedExecutionSelection['diagnosisState'] =
+    orderModels.length === 0
+      ? 'unavailable'
+      : rejectedCount > 0 || cancelFailures > 0
+        ? 'hold'
+        : activeOrderCount > 0 && filledCount === 0 && partialFillCount === 0
+          ? 'caution-pending'
+          : partialFillCount > 0 || (fillSlippageBps !== undefined && Math.abs(fillSlippageBps) > 5)
+            ? 'caution-anomaly'
+            : 'ready'
+
   const prepared = {
     latestOrder,
     latestTimestamp,
     latestAnomaly,
     lifecycleDistribution,
     anomalySummary: {
-      rejectionReasons: [...rejectionCounts.entries()]
-        .map(([reason, count]) => ({ reason, count }))
-        .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
-        .slice(0, 3),
-      cancelFailureReasons: [...cancelFailureCounts.entries()]
-        .map(([reason, count]) => ({ reason, count }))
-        .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
-        .slice(0, 3),
+      rejectionReasons,
+      cancelFailureReasons,
       cancelFailures,
-      avgSubmitToAcceptedMs: average(submitToAccepted),
-      avgSubmitToFillMs: average(submitToFill),
-      fillSlippageBps: average(slippageBps),
+      avgSubmitToAcceptedMs,
+      avgSubmitToFillMs,
+      fillSlippageBps,
       partialFillRatio: orderModels.length > 0 ? partialFillCount / orderModels.length : undefined,
     },
     accountSummary: [...accountGroups.values()].sort(
@@ -326,9 +346,14 @@ function prepareExecutionSelectionSummary(
     activeOrderCount,
     acceptedCount: lifecycleDistribution.accepted,
     partialFillCount,
-    filledCount: lifecycleDistribution.fill,
-    rejectedCount: lifecycleDistribution.rejected,
+    filledCount,
+    rejectedCount,
     canceledCount: lifecycleDistribution.canceled,
+    diagnosisState,
+    diagnosisReason:
+      diagnosisState === 'hold'
+        ? latestAnomaly?.latestReason ?? rejectionReasons[0]?.reason
+        : undefined,
   }
 
   preparedExecutionSummaryCache.set(orderModels, prepared)

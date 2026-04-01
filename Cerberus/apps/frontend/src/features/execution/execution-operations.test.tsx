@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { buildPreparedExecutionSelection } from './read-models'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { buildExecutionOperationsPanel } from './view-models'
 
 describe('Execution operations panel', () => {
   it('builds OMS/EMS summary for the active symbol', () => {
-    const model = buildExecutionOperationsPanel({
-      t: (key) => key,
-      selectedSymbol: 'BTCUSDT',
-      orderEvents: [
+    const preparedSelection = buildPreparedExecutionSelection(
+      [
         {
           id: 'evt-1',
           event_type: 'matching.order.submitted',
@@ -35,6 +34,13 @@ describe('Execution operations panel', () => {
           received_at: '2026-03-31T08:01:00Z',
         },
       ],
+      'BTCUSDT',
+    )
+
+    const model = buildExecutionOperationsPanel({
+      t: (key) => key,
+      selectedSymbol: 'BTCUSDT',
+      preparedSelection,
       persistenceStatus: {
         status: 'ok',
         worker: {

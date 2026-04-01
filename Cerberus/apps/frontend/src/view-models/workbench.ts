@@ -1,6 +1,6 @@
 import type { TranslationKey } from '../i18n/messages'
 import type { DomainStatusMap, WorkspaceId } from '../store/slices/shared'
-import type { OrderTimelineEvent } from '../types/contracts'
+import type { MarketMessage, OrderTimelineEvent, StrategySignal } from '../types/contracts'
 
 type Translate = (key: TranslationKey) => string
 
@@ -27,6 +27,17 @@ export type ExecutionFeedRowModel = {
   subtitle: string
   rightTop: string
   rightBottom: string
+}
+
+export type PreparedTradingSnapshot = {
+  selectedSymbol: string
+  displayQuote?: MarketMessage
+  bestBidValue: string
+  bestAskValue: string
+  signalValue: string
+  confidenceValue: string
+  feedbackValue?: string
+  feedbackAtValue: string
 }
 
 export const WORKSPACE_MODELS: WorkspaceSummaryModel[] = [
@@ -85,6 +96,14 @@ export function formatConfidence(value?: number | null): string {
   return value.toFixed(6)
 }
 
+export function selectDisplayQuote(
+  selectedSymbol: string,
+  latest: MarketMessage | undefined,
+  latestBySymbol: Record<string, MarketMessage | undefined>,
+): MarketMessage | undefined {
+  return latestBySymbol[selectedSymbol] ?? latest
+}
+
 export function buildHealthCards(domainStatus: DomainStatusMap, t: Translate): HealthCardModel[] {
   return (Object.entries(domainStatus) as Array<[keyof DomainStatusMap, DomainStatusMap[keyof DomainStatusMap]]>).map(
     ([id, value]) => ({
@@ -133,4 +152,35 @@ export function summarizeLatestFeedback(event: OrderTimelineEvent | undefined, h
 
 export function summarizeLatestEventAt(event: OrderTimelineEvent | undefined) {
   return formatDateTime(event?.event_time ?? event?.received_at)
+}
+
+export function buildPreparedTradingSnapshot({
+  selectedSymbol,
+  latest,
+  latestBySymbol,
+  strategySignal,
+  latestEvent,
+  heartbeat,
+}: {
+  selectedSymbol: string
+  latest?: MarketMessage
+  latestBySymbol: Record<string, MarketMessage | undefined>
+  strategySignal?: StrategySignal
+  latestEvent?: OrderTimelineEvent
+  heartbeat?: string
+}): PreparedTradingSnapshot {
+  const displayQuote = selectDisplayQuote(selectedSymbol, latest, latestBySymbol)
+
+  return {
+    selectedSymbol,
+    displayQuote,
+    bestBidValue: formatPrice(displayQuote?.bid_price),
+    bestAskValue: formatPrice(displayQuote?.ask_price),
+    signalValue: strategySignal?.signal ?? 'HOLD',
+    confidenceValue: formatConfidence(strategySignal?.confidence),
+    feedbackValue: latestEvent
+      ? `${latestEvent.event_type} · ${latestEvent.symbol ?? '—'} · ${latestEvent.status ?? '—'}`
+      : heartbeat,
+    feedbackAtValue: summarizeLatestEventAt(latestEvent),
+  }
 }

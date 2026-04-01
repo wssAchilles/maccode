@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { buildPreparedExecutionSelection } from '../execution/read-models'
 import { ExecutionLifecyclePanel } from './components/ExecutionLifecyclePanel'
 import { StrategyPortfolioPanel } from './components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from './components/StrategyRegistryPanel'
@@ -61,9 +62,25 @@ describe('strategy orchestration module', () => {
   })
 
   it('renders execution lifecycle stages with progression context', () => {
+    const preparedSelection = buildPreparedExecutionSelection(
+      [
+        {
+          id: 'evt-1',
+          channel: 'trade.executions.default',
+          payload: {},
+          received_at: Date.now(),
+          event_type: 'matching.execution.filled',
+          symbol: 'BTCUSDT',
+          order_id: 'ord-1',
+          execution_id: 'exec-1',
+          request_id: 'rid-1',
+          status: 'filled',
+        },
+      ],
+      'BTCUSDT',
+    )
     const model = buildExecutionLifecyclePanelModel({
       t: (key) => key,
-      selectedSymbol: 'BTCUSDT',
       signal: {
         status: 'ready',
         signal: 'BUY',
@@ -87,20 +104,7 @@ describe('strategy orchestration module', () => {
           tracked_symbols: ['BTCUSDT'],
         },
       },
-      orderEvents: [
-        {
-          id: 'evt-1',
-          channel: 'trade.executions.default',
-          payload: {},
-          received_at: Date.now(),
-          event_type: 'matching.execution.filled',
-          symbol: 'BTCUSDT',
-          order_id: 'ord-1',
-          execution_id: 'exec-1',
-          request_id: 'rid-1',
-          status: 'filled',
-        },
-      ],
+      preparedSelection,
       persistenceStatus: {
         status: 'ok',
         worker: {

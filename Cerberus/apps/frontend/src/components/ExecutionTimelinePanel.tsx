@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useRecentEventsResource } from '../app/bootstrap/useResourceQueries'
 import { useI18n } from '../i18n/I18nProvider'
@@ -25,12 +26,17 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const scrollFrameRef = useRef<number | null>(null)
   const windowAnchorRef = useRef(0)
-  const orderEvents = useDormantSelector(active, (state) => state.executionTrading.order_events)
-  const filterSymbol = useDormantSelector(active, (state) => state.executionTrading.filter_symbol)
-  const filterAccountId = useDormantSelector(active, (state) => state.executionTrading.filter_account_id)
-  const filterStatus = useDormantSelector(active, (state) => state.executionTrading.filter_status)
+  const { orderEvents, filterSymbol, filterAccountId, filterStatus, executionStatus } = useDormantSelector(
+    active,
+    useShallow((state) => ({
+      orderEvents: state.executionTrading.order_events,
+      filterSymbol: state.executionTrading.filter_symbol,
+      filterAccountId: state.executionTrading.filter_account_id,
+      filterStatus: state.executionTrading.filter_status,
+      executionStatus: state.uiState.domain_status['execution-trading'],
+    })),
+  )
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
-  const executionStatus = useDormantSelector(active, (state) => state.uiState.domain_status['execution-trading'])
   const [search, setSearch] = useState('')
   const [windowAnchor, setWindowAnchor] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(360)

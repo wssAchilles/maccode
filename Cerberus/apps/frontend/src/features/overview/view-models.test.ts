@@ -4,20 +4,21 @@ import {
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
 } from './view-models'
+import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
 
 const t = (key: string) => key
 
 describe('overview view models', () => {
   it('builds overview metric tiles from workspace state', () => {
-    const tiles = buildOverviewMetricTiles({
-      t,
+    const snapshot = buildPreparedTradingSnapshot({
       selectedSymbol: 'BTCUSDT',
-      displayQuote: {
+      latest: {
         symbol: 'BTCUSDT',
         bid_price: '99.1',
         ask_price: '99.4',
         event_time: 1000,
       },
+      latestBySymbol: {},
       strategySignal: {
         status: 'ready',
         signal: 'SELL',
@@ -35,6 +36,11 @@ describe('overview view models', () => {
         status: 'PARTIALLY_FILLED',
       },
       heartbeat: 'hb',
+    })
+
+    const tiles = buildOverviewMetricTiles({
+      t,
+      snapshot,
     })
 
     expect(tiles[0]).toMatchObject({ id: 'best-bid', value: '99.1', hint: 'BTCUSDT' })

@@ -1,7 +1,6 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type {
   BinanceRule,
-  OrderTimelineEvent,
   PersistenceStatus,
   StrategyDecisionContribution,
   StrategyOrchestrationControlResult,
@@ -12,7 +11,7 @@ import type {
   UIState,
 } from '../../types/contracts'
 import { formatConfidence } from '../../view-models/workbench'
-import { buildPreparedExecutionSelection } from '../execution/read-models'
+import { type PreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -836,8 +835,7 @@ export function buildExecutionLifecyclePanelModel({
   t,
   signal,
   persistenceStatus,
-  orderEvents,
-  selectedSymbol,
+  preparedSelection,
   latestEventSummary,
   heartbeat,
   tradingPolicy,
@@ -847,8 +845,7 @@ export function buildExecutionLifecyclePanelModel({
   t: Translate
   signal?: StrategySignal
   persistenceStatus?: PersistenceStatus
-  orderEvents?: OrderTimelineEvent[]
-  selectedSymbol?: string
+  preparedSelection: PreparedExecutionSelection
   latestEventSummary: string
   heartbeat?: string
   tradingPolicy?: TradingPolicy
@@ -858,12 +855,11 @@ export function buildExecutionLifecyclePanelModel({
   const state = domainStatus.state
   const stateLabel = lifecycleStateLabel(t, state)
   const matchingStats = persistenceStatus?.matching?.stats
-  const prepared = buildPreparedExecutionSelection(orderEvents ?? [], selectedSymbol)
-  const latestLifecycleEvent = prepared.latestOrder
-  const partialFillCount = prepared.partialFillCount
-  const filledCount = prepared.filledCount
-  const canceledCount = prepared.canceledCount
-  const rejectedCount = prepared.rejectedCount
+  const latestLifecycleEvent = preparedSelection.latestOrder
+  const partialFillCount = preparedSelection.partialFillCount
+  const filledCount = preparedSelection.filledCount
+  const canceledCount = preparedSelection.canceledCount
+  const rejectedCount = preparedSelection.rejectedCount
   const summary = latestEventSummary === t('common.heartbeat') && heartbeat
     ? heartbeat
     : latestEventSummary

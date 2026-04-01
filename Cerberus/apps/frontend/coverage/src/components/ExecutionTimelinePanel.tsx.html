@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/222</span>
+                <span class='fraction'>0/228</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/222</span>
+                <span class='fraction'>0/228</span>
             </div>
         
             
@@ -318,7 +318,14 @@
 <a name='L253'></a><a href='#L253'>253</a>
 <a name='L254'></a><a href='#L254'>254</a>
 <a name='L255'></a><a href='#L255'>255</a>
-<a name='L256'></a><a href='#L256'>256</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -339,6 +346,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -574,6 +586,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cstat-no" title="statement not covered" >import { useShallow } from 'zustand/react/shallow'</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >import { useRecentEventsResource } from '../app/bootstrap/useResourceQueries'</span>
 <span class="cstat-no" title="statement not covered" >import { useI18n } from '../i18n/I18nProvider'</span>
@@ -600,12 +613,17 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >  const viewportRef = useRef&lt;HTMLDivElement | null&gt;(null)</span>
 <span class="cstat-no" title="statement not covered" >  const scrollFrameRef = useRef&lt;number | null&gt;(null)</span>
 <span class="cstat-no" title="statement not covered" >  const windowAnchorRef = useRef(0)</span>
-<span class="cstat-no" title="statement not covered" >  const orderEvents = useDormantSelector(active, (state) =&gt; state.executionTrading.order_events)</span>
-<span class="cstat-no" title="statement not covered" >  const filterSymbol = useDormantSelector(active, (state) =&gt; state.executionTrading.filter_symbol)</span>
-<span class="cstat-no" title="statement not covered" >  const filterAccountId = useDormantSelector(active, (state) =&gt; state.executionTrading.filter_account_id)</span>
-<span class="cstat-no" title="statement not covered" >  const filterStatus = useDormantSelector(active, (state) =&gt; state.executionTrading.filter_status)</span>
+<span class="cstat-no" title="statement not covered" >  const { orderEvents, filterSymbol, filterAccountId, filterStatus, executionStatus } = useDormantSelector(</span>
+<span class="cstat-no" title="statement not covered" >    active,</span>
+<span class="cstat-no" title="statement not covered" >    useShallow((state) =&gt; ({</span>
+<span class="cstat-no" title="statement not covered" >      orderEvents: state.executionTrading.order_events,</span>
+<span class="cstat-no" title="statement not covered" >      filterSymbol: state.executionTrading.filter_symbol,</span>
+<span class="cstat-no" title="statement not covered" >      filterAccountId: state.executionTrading.filter_account_id,</span>
+<span class="cstat-no" title="statement not covered" >      filterStatus: state.executionTrading.filter_status,</span>
+<span class="cstat-no" title="statement not covered" >      executionStatus: state.uiState.domain_status['execution-trading'],</span>
+<span class="cstat-no" title="statement not covered" >    })),</span>
+<span class="cstat-no" title="statement not covered" >  )</span>
 <span class="cstat-no" title="statement not covered" >  const setFilters = useCerberusStore((state) =&gt; state.executionTradingActions.setFilters)</span>
-<span class="cstat-no" title="statement not covered" >  const executionStatus = useDormantSelector(active, (state) =&gt; state.uiState.domain_status['execution-trading'])</span>
 <span class="cstat-no" title="statement not covered" >  const [search, setSearch] = useState('')</span>
 <span class="cstat-no" title="statement not covered" >  const [windowAnchor, setWindowAnchor] = useState(0)</span>
 <span class="cstat-no" title="statement not covered" >  const [viewportHeight, setViewportHeight] = useState(360)</span>
@@ -835,7 +853,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T08:43:54.595Z
+                at 2026-04-01T09:17:35.083Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
