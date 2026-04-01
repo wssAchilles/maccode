@@ -1,15 +1,42 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const allowedHosts = ['lvh.me', '.lvh.me']
+const deferredEntryChunks = [
+  'WorkbenchShell',
+  'OverviewWorkspace',
+  'MarketWorkspace',
+  'ExecutionWorkspace',
+  'HealthWorkspace',
+  'workspace-panels',
+  'workspace-shared',
+  'charts',
+]
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     host: true,
+    allowedHosts,
+  },
+  preview: {
+    host: true,
+    allowedHosts,
   },
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 380,
+    modulePreload: {
+      resolveDependencies(_filename, deps, context) {
+        if (context.hostType !== 'html') {
+          return deps
+        }
+        return deps.filter(
+          (dependency) => !deferredEntryChunks.some((chunkName) => dependency.includes(chunkName)),
+        )
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

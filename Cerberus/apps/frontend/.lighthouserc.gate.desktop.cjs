@@ -1,13 +1,11 @@
-const collectUrl = process.env.LHCI_COLLECT_URL || process.env.E2E_BASE_URL || 'http://localhost:4173'
-const localCollect =
-  collectUrl.startsWith('http://localhost:4173') || collectUrl.startsWith('http://127.0.0.1:4173')
+const { collectUrl, managedPreview } = require('./scripts/lhci-runtime.cjs')
 
 module.exports = {
   ci: {
     collect: {
       url: [collectUrl],
       numberOfRuns: 2,
-      ...(localCollect
+      ...(managedPreview
         ? {
             startServerCommand: 'node scripts/preview-for-lighthouse.mjs',
             startServerReadyPattern: 'LHCI_PREVIEW_READY',

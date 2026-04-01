@@ -1,8 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Josefin+Sans:wght@400;600;700&family=Noto+Sans+SC:wght@400;600&display=swap');
-
 :root {
-  --fh: 'Cinzel', 'Noto Sans SC', serif;
-  --fb: 'Josefin Sans', 'Noto Sans SC', sans-serif;
+  --fh: Iowan Old Style, Palatino Linotype, Book Antiqua, Georgia, Noto Serif SC, serif;
+  --fb: Avenir Next, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif;
   --fm: ui-monospace, SFMono-Regular, Menlo, monospace;
   --bg0: #f0fdfa;
   --bg1: #ecfeff;
@@ -87,6 +85,7 @@ button {
 
 .auth-panel {
   width: min(520px, 100%);
+  min-height: 540px;
 }
 
 .auth-title {

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.35% </span>
+                <span class="strong">78.11% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>210/268</span>
+                <span class='fraction'>207/265</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.35% </span>
+                <span class="strong">78.11% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>210/268</span>
+                <span class='fraction'>207/265</span>
             </div>
         
             
@@ -445,15 +445,12 @@
 <a name='L380'></a><a href='#L380'>380</a>
 <a name='L381'></a><a href='#L381'>381</a>
 <a name='L382'></a><a href='#L382'>382</a>
-<a name='L383'></a><a href='#L383'>383</a>
-<a name='L384'></a><a href='#L384'>384</a>
-<a name='L385'></a><a href='#L385'>385</a>
-<a name='L386'></a><a href='#L386'>386</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L383'></a><a href='#L383'>383</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -801,10 +798,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -835,10 +829,10 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
-import type { Candle, OrderTimelineEvent, UIState } from '../../types/contracts'
+import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
 import { type PreparedTradingSnapshot, formatPrice } from '../../view-models/workbench'
-import { buildExecutionMarkers, type PreparedExecutionSelection } from '../execution/read-models'
+import { type PreparedExecutionSelection } from '../execution/read-models'
 &nbsp;
 type Translate = (key: TranslationKey) =&gt; string
 &nbsp;
@@ -906,7 +900,7 @@ export type MarketChartMarkerModel = {
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 &nbsp;
 const preparedCandleCache = new WeakMap&lt;Candle[], MarketChartSeriesModel&gt;()
-const preparedMarkerCache = new WeakMap&lt;object, MarketChartMarkerModel[]&gt;()
+const preparedMarkerCache = new WeakMap&lt;PreparedExecutionSelection, MarketChartMarkerModel[]&gt;()
 &nbsp;
 type BuildMarketMetricTilesParams = {
   t: Translate
@@ -1184,19 +1178,16 @@ export function buildMarketExecutionRailModel({
 }
 &nbsp;
 export function buildMarketChartMarkersModel({
-  orderEvents,
-  selectedSymbol,
+  preparedSelection,
 }: {
-  orderEvents: OrderTimelineEvent[]
-  selectedSymbol: string
+  preparedSelection: PreparedExecutionSelection
 }): MarketChartMarkerModel[] {
-  const executionMarkers = buildExecutionMarkers(orderEvents, selectedSymbol)
-  const cached = preparedMarkerCache.get(executionMarkers)
+  const cached = preparedMarkerCache.get(preparedSelection)
   if (cached) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    return cached</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
-  const prepared: MarketChartMarkerModel[] = executionMarkers.map((item) =&gt; ({
+  const prepared: MarketChartMarkerModel[] = preparedSelection.markers.map((item) =&gt; ({
     id: item.id,
     time: Math.floor(item.time / 1000) as UTCTimestamp,
     position:
@@ -1215,7 +1206,7 @@ export function buildMarketChartMarkersModel({
     text: item.label,
   }))
 &nbsp;
-  preparedMarkerCache.set(executionMarkers, prepared)
+  preparedMarkerCache.set(preparedSelection, prepared)
   return prepared
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -1225,7 +1216,7 @@ export function buildMarketChartMarkersModel({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T09:17:35.083Z
+                at 2026-04-01T10:03:48.786Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

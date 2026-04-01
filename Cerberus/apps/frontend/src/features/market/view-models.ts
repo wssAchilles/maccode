@@ -1,9 +1,9 @@
 import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
-import type { Candle, OrderTimelineEvent, UIState } from '../../types/contracts'
+import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
 import { type PreparedTradingSnapshot, formatPrice } from '../../view-models/workbench'
-import { buildExecutionMarkers, type PreparedExecutionSelection } from '../execution/read-models'
+import { type PreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
 
@@ -71,7 +71,7 @@ export type MarketChartMarkerModel = {
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
 const preparedCandleCache = new WeakMap<Candle[], MarketChartSeriesModel>()
-const preparedMarkerCache = new WeakMap<object, MarketChartMarkerModel[]>()
+const preparedMarkerCache = new WeakMap<PreparedExecutionSelection, MarketChartMarkerModel[]>()
 
 type BuildMarketMetricTilesParams = {
   t: Translate
@@ -349,19 +349,16 @@ export function buildMarketExecutionRailModel({
 }
 
 export function buildMarketChartMarkersModel({
-  orderEvents,
-  selectedSymbol,
+  preparedSelection,
 }: {
-  orderEvents: OrderTimelineEvent[]
-  selectedSymbol: string
+  preparedSelection: PreparedExecutionSelection
 }): MarketChartMarkerModel[] {
-  const executionMarkers = buildExecutionMarkers(orderEvents, selectedSymbol)
-  const cached = preparedMarkerCache.get(executionMarkers)
+  const cached = preparedMarkerCache.get(preparedSelection)
   if (cached) {
     return cached
   }
 
-  const prepared: MarketChartMarkerModel[] = executionMarkers.map((item) => ({
+  const prepared: MarketChartMarkerModel[] = preparedSelection.markers.map((item) => ({
     id: item.id,
     time: Math.floor(item.time / 1000) as UTCTimestamp,
     position:
@@ -380,6 +377,6 @@ export function buildMarketChartMarkersModel({
     text: item.label,
   }))
 
-  preparedMarkerCache.set(executionMarkers, prepared)
+  preparedMarkerCache.set(preparedSelection, prepared)
   return prepared
 }

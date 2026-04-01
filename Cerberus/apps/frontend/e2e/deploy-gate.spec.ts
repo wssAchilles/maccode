@@ -38,29 +38,16 @@ async function ensureAuthenticated(page: Page): Promise<void> {
   }
 }
 
-async function assertWorkbenchLayout(page: Page, projectName: string): Promise<void> {
-  const leftColumn = page.getByTestId('workbench-left-column')
-  const rightColumn = page.getByTestId('workbench-right-column')
-  await expect(leftColumn).toBeVisible()
-  await expect(rightColumn).toBeVisible()
-
-  const leftBox = await leftColumn.boundingBox()
-  const rightBox = await rightColumn.boundingBox()
-  if (!leftBox || !rightBox) {
-    throw new Error('failed to measure workbench layout')
-  }
+async function assertWorkbenchChrome(page: Page, projectName: string): Promise<void> {
+  await expect(page.locator('.wb-header')).toBeVisible()
 
   const isMobile = projectName.toLowerCase().includes('mobile')
   if (isMobile) {
-    if (rightBox.y <= leftBox.y + leftBox.height * 0.6) {
-      throw new Error('mobile layout gate failed: right column is not stacked below left column')
-    }
+    await expect(page.locator('.ws-mobile-nav')).toBeVisible()
     return
   }
 
-  if (rightBox.x <= leftBox.x + leftBox.width * 0.65) {
-    throw new Error('desktop layout gate failed: right column is not rendered as a separate column')
-  }
+  await expect(page.locator('.ws-nav')).toBeVisible()
 }
 
 async function assertCoreFlowHealthy(page: Page): Promise<void> {
@@ -84,8 +71,11 @@ test.describe('deploy gate', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await ensureAuthenticated(page)
     await expect(page.getByTestId('app-shell')).toBeVisible()
-    await assertWorkbenchLayout(page, testInfo.project.name)
+    await assertWorkbenchChrome(page, testInfo.project.name)
     await expect(page.getByTestId('core-flow-panel')).toBeVisible()
+
+    await page.goto('/?workspace=execution', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('app-shell')).toBeVisible()
     await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
     await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
 
@@ -120,6 +110,8 @@ test.describe('deploy gate', () => {
       (response) => response.url().includes('/api/v1/alpaca/orders/') && response.url().includes('/cancel'),
     )
 
+    await page.goto('/?workspace=overview', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('core-flow-panel')).toBeVisible()
     await assertCoreFlowHealthy(page)
     observer.assertNoFailures()
   })

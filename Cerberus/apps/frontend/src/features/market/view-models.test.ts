@@ -129,9 +129,8 @@ describe('market view models', () => {
   })
 
   it('prepares chart markers from execution events', () => {
-    const markers = buildMarketChartMarkersModel({
-      selectedSymbol: 'BTCUSDT',
-      orderEvents: [
+    const preparedSelection = buildPreparedExecutionSelection(
+      [
         {
           id: 'fill-1',
           channel: 'trade.executions.default',
@@ -146,6 +145,10 @@ describe('market view models', () => {
           correlation_key: 'corr-1',
         },
       ],
+      'BTCUSDT',
+    )
+    const markers = buildMarketChartMarkersModel({
+      preparedSelection,
     })
 
     expect(markers).toEqual([

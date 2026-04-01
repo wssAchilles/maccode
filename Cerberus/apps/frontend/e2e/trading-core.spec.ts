@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
     if (url.includes('/api/v1/strategy/summary')) {
       return json({
         request_id: 'req-summary-001',
-        strategy_base_url: 'http://127.0.0.1:8001',
+        strategy_base_url: 'https://strategy.example.com',
         symbol: 'BTCUSDT',
         source: 'auto',
         recent_limit: 8,

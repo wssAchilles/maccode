@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Cerberus Terminal</title>
+  <desc id="desc">Layered trading terminal mark with three signal bars.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f4efe5"/>
+      <stop offset="100%" stop-color="#e5dcc7"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <rect x="22" y="24" width="84" height="80" rx="18" fill="#15202b"/>
+  <rect x="34" y="38" width="60" height="10" rx="5" fill="#e8f0ff" opacity="0.9"/>
+  <rect x="34" y="58" width="46" height="10" rx="5" fill="#8bd3dd"/>
+  <rect x="34" y="78" width="26" height="10" rx="5" fill="#f97316"/>
+  <circle cx="95" cy="82" r="8" fill="#16a34a"/>
+</svg>

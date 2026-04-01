@@ -1,7 +1,27 @@
+import os from 'node:os'
+
 import { defineConfig, devices } from '@playwright/test'
 
 const deployedMode = process.env.E2E_USE_DEPLOYED === 'true'
-const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173'
+const devBindHost = process.env.E2E_DEV_BIND_HOST ?? '0.0.0.0'
+const devPort = Number(process.env.E2E_DEV_PORT ?? '4173')
+
+function resolveDevHost(): string {
+  if (process.env.E2E_DEV_HOST) {
+    return process.env.E2E_DEV_HOST
+  }
+
+  const candidates = Object.values(os.networkInterfaces())
+    .flatMap((entries) => entries ?? [])
+    .filter((entry) => entry.family === 'IPv4' && !entry.internal)
+    .map((entry) => entry.address)
+
+  return candidates[0] ?? devBindHost
+}
+
+const devHost = resolveDevHost()
+const devOrigin = process.env.E2E_DEV_ORIGIN ?? `http://${devHost}:${devPort}`
+const baseURL = process.env.E2E_BASE_URL ?? devOrigin
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,14 +36,14 @@ export default defineConfig({
   webServer: deployedMode
     ? undefined
     : {
-        command: 'npm run dev -- --host 127.0.0.1 --port 4173',
-        port: 4173,
+        command: `npm run dev -- --host ${devBindHost} --port ${devPort}`,
+        port: devPort,
         reuseExistingServer: true,
         env: {
           VITE_DISABLE_LIVE_STREAM: 'true',
           VITE_AUTH_REQUIRED: 'false',
-          VITE_GATEWAY_BASE: 'http://127.0.0.1:8080',
-          VITE_STRATEGY_BASE: 'http://127.0.0.1:8001',
+          VITE_GATEWAY_BASE: '',
+          VITE_STRATEGY_BASE: '',
         },
       },
   projects: [

@@ -128,8 +128,8 @@ export function useMarketWorkspaceModel({ active }: Params) {
   )
 
   const chartMarkers = useMemo(
-    () => buildMarketChartMarkersModel({ orderEvents, selectedSymbol }),
-    [orderEvents, selectedSymbol],
+    () => buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
+    [preparedExecutionSelection],
   )
 
   const orderbookPanel = useMemo(

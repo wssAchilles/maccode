@@ -1,8 +1,27 @@
 import { spawn } from 'node:child_process'
+import os from 'node:os'
 import process from 'node:process'
 
-const previewHost = process.env.LHCI_PREVIEW_HOST || 'localhost'
-const previewPort = process.env.LHCI_PREVIEW_PORT || '4173'
+const previewBindHost = process.env.LHCI_PREVIEW_BIND_HOST || process.env.E2E_DEV_BIND_HOST || '0.0.0.0'
+const previewPort = process.env.LHCI_PREVIEW_PORT || process.env.E2E_DEV_PORT || '4173'
+
+function resolveDevHost() {
+  if (process.env.LHCI_PREVIEW_HOST) {
+    return process.env.LHCI_PREVIEW_HOST
+  }
+  if (process.env.E2E_DEV_HOST) {
+    return process.env.E2E_DEV_HOST
+  }
+
+  const candidates = Object.values(os.networkInterfaces())
+    .flatMap((entries) => entries ?? [])
+    .filter((entry) => entry.family === 'IPv4' && !entry.internal)
+    .map((entry) => entry.address)
+
+  return candidates[0] ?? previewBindHost
+}
+
+const previewHost = resolveDevHost()
 const previewUrl = `http://${previewHost}:${previewPort}/`
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 
@@ -11,7 +30,7 @@ let shuttingDown = false
 
 const preview = spawn(
   npmCommand,
-  ['run', 'preview', '--', '--host', previewHost, '--port', previewPort, '--strictPort'],
+  ['run', 'preview', '--', '--host', previewBindHost, '--port', previewPort, '--strictPort'],
   {
     cwd: process.cwd(),
     env: process.env,

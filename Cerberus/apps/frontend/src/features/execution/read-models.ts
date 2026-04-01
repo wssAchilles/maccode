@@ -52,6 +52,7 @@ export type ExecutionLifecycleDistribution = Record<ExecutionLifecyclePhase, num
 
 export type PreparedExecutionSelection = {
   orderModels: ExecutionOrderReadModel[]
+  markers: ExecutionMarker[]
   latestOrder?: ExecutionOrderReadModel
   latestTimestamp?: number
   latestAnomaly?: ExecutionOrderReadModel
@@ -75,7 +76,10 @@ type PreparedOrderReadModels = {
 
 const preparedOrderReadModelsCache = new WeakMap<OrderTimelineEvent[], PreparedOrderReadModels>()
 const preparedExecutionSelectionCache = new WeakMap<OrderTimelineEvent[], Map<string, PreparedExecutionSelection>>()
-const preparedExecutionSummaryCache = new WeakMap<ExecutionOrderReadModel[], Omit<PreparedExecutionSelection, 'orderModels'>>()
+const preparedExecutionSummaryCache = new WeakMap<
+  ExecutionOrderReadModel[],
+  Omit<PreparedExecutionSelection, 'orderModels' | 'markers'>
+>()
 const preparedMarkersCache = new WeakMap<OrderTimelineEvent[], Map<string, ExecutionMarker[]>>()
 
 function eventTimestamp(event: OrderTimelineEvent): number {
@@ -193,7 +197,7 @@ function average(values: number[]): number | undefined {
 
 function prepareExecutionSelectionSummary(
   orderModels: ExecutionOrderReadModel[],
-): Omit<PreparedExecutionSelection, 'orderModels'> {
+): Omit<PreparedExecutionSelection, 'orderModels' | 'markers'> {
   const cached = preparedExecutionSummaryCache.get(orderModels)
   if (cached) {
     return cached
@@ -407,6 +411,7 @@ export function buildPreparedExecutionSelection(
   const orderModels = buildExecutionOrderReadModels(events, symbol)
   const prepared = {
     orderModels,
+    markers: symbol ? buildExecutionMarkers(events, symbol) : [],
     ...prepareExecutionSelectionSummary(orderModels),
   }
   preparedBySymbol.set(symbolKey, prepared)

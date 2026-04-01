@@ -33,6 +33,17 @@ const WORKSPACE_COMPONENTS: Record<WorkspaceId, ComponentType<any>> = {
   health: LazyHealthWorkspace,
 }
 
+function formatEndpointChip(url: string): string {
+  if (!url.trim().length) {
+    return 'same-origin'
+  }
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
+
 function nextWorkspaceFromUrl(): WorkspaceId {
   const params = new URLSearchParams(window.location.search)
   const workspace = params.get('workspace')
@@ -104,8 +115,14 @@ export function WorkbenchShell({ auth }: Props) {
           </div>
           <div className="wb-header-actions">
             <div className="env-chip-group">
-              <span className="env-chip">{t('env.gateway')}: {env.gateway_base}</span>
-              <span className="env-chip">{t('env.strategy')}: {env.strategy_base}</span>
+              <span className="env-chip">
+                {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}
+              </span>
+              {env.strategy_base ? (
+                <span className="env-chip">
+                  {t('env.strategy')}: {formatEndpointChip(env.strategy_base)}
+                </span>
+              ) : null}
             </div>
             {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
             {auth.required ? (

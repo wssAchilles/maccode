@@ -145,16 +145,11 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
         request_id: undefined,
       })
 
-      const [response, orchestrationResponse] = await Promise.all([
-        requestEnvelope<StrategySummaryResponse>(
-          `${env.gateway_base}/api/v1/strategy/summary?symbol=${encodeURIComponent(
-            symbol,
-          )}&recent_limit=8&source=auto&orderbook_depth=10`,
-        ),
-        requestEnvelope<StrategyOrchestrationStatus>(
-          `${env.gateway_base}/api/v1/strategy/orchestration/status`,
-        ),
-      ])
+      const response = await requestEnvelope<StrategySummaryResponse>(
+        `${env.gateway_base}/api/v1/strategy/summary?symbol=${encodeURIComponent(
+          symbol,
+        )}&recent_limit=8&source=auto&orderbook_depth=10`,
+      )
 
       if (!response.ok || !response.payload) {
         const error = toAppError(response.error, 'strategy_summary_failed')
@@ -192,7 +187,7 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
           inference_status: summary.inference_status.ok
             ? summary.inference_status.payload
             : undefined,
-          orchestration_status: orchestrationResponse.ok ? orchestrationResponse.payload : state.strategySummary.orchestration_status,
+          orchestration_status: state.strategySummary.orchestration_status,
           inference_last_result: state.strategySummary.inference_last_result,
           inference_catalog: state.strategySummary.inference_catalog,
           inference_pending_action: state.strategySummary.inference_pending_action,

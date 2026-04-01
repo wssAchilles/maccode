@@ -71,11 +71,32 @@ function resolveLocale(): Locale {
   return browserLocale.startsWith('zh') ? 'zh-CN' : 'en-US'
 }
 
-const gatewayBase = import.meta.env.VITE_GATEWAY_BASE ?? 'http://localhost:8080'
-const strategyBase = import.meta.env.VITE_STRATEGY_BASE ?? 'http://localhost:8001'
-const wsBase = gatewayBase.startsWith('https')
-  ? gatewayBase.replace(/^https/, 'wss')
-  : gatewayBase.replace(/^http/, 'ws')
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '')
+}
+
+function resolveConfiguredBase(raw: string | undefined): string {
+  const trimmed = raw?.trim()
+  if (!trimmed) {
+    return ''
+  }
+  return trimTrailingSlash(trimmed)
+}
+
+function resolveWebSocketBase(httpBase: string): string {
+  if (httpBase) {
+    return httpBase.replace(/^http/, 'ws')
+  }
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}`
+  }
+  return ''
+}
+
+const gatewayBase = resolveConfiguredBase(import.meta.env.VITE_GATEWAY_BASE)
+const strategyBase = resolveConfiguredBase(import.meta.env.VITE_STRATEGY_BASE)
+const wsBase = resolveWebSocketBase(gatewayBase)
 const liveStreamEnabled = import.meta.env.VITE_DISABLE_LIVE_STREAM !== 'true'
 
 function isWorkspaceId(value: string | null): value is WorkspaceId {

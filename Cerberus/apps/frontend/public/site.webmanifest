@@ -1,0 +1,17 @@
+{
+  "name": "Cerberus Terminal",
+  "short_name": "Cerberus",
+  "description": "Industrial trading workspace for live market stream, execution orchestration, and service health.",
+  "start_url": "/?workspace=overview",
+  "display": "standalone",
+  "background_color": "#f4efe5",
+  "theme_color": "#f4efe5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

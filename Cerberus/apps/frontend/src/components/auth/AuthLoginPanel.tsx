@@ -22,24 +22,15 @@ type Props = {
 }
 
 export function AuthLoginPanel({ t, auth }: Props) {
-  if (auth.status === 'loading') {
-    return (
-      <main className="auth-shell">
-        <GlassPanel className="auth-panel" tone="hero">
-          <p className="wb-eyebrow">{t('app.kicker')}</p>
-          <h1 className="auth-title">{t('auth.loading')}</h1>
-          <p className="auth-subtitle">{t('auth.loadingHint')}</p>
-        </GlassPanel>
-      </main>
-    )
-  }
+  const loading = auth.status === 'loading'
+  const formDisabled = loading || auth.signingIn
 
   return (
-    <main className="auth-shell">
+    <main className="auth-shell" aria-busy={loading}>
       <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
         <p className="wb-eyebrow">{t('app.kicker')}</p>
         <h1 className="auth-title">{t('auth.title')}</h1>
-        <p className="auth-subtitle">{t('auth.subtitle')}</p>
+        <p className="auth-subtitle">{loading ? t('auth.loadingHint') : t('auth.subtitle')}</p>
 
         {auth.error ? (
           <InlineAlert title={t('common.error')} tone="danger" className="auth-error" data-testid="auth-error">
@@ -65,6 +56,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
               inputMode="email"
               type="email"
               value={auth.email}
+              disabled={formDisabled}
               onChange={(event) => auth.setEmail(event.target.value)}
               required
             />
@@ -79,6 +71,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
               autoComplete="current-password"
               type="password"
               value={auth.password}
+              disabled={formDisabled}
               onChange={(event) => auth.setPassword(event.target.value)}
               required
             />
@@ -88,15 +81,15 @@ export function AuthLoginPanel({ t, auth }: Props) {
             <button
               type="submit"
               className="soft-button sbp auth-submit"
-              disabled={auth.signingIn}
+              disabled={formDisabled}
               data-testid="auth-email-submit"
             >
-              {auth.signingIn ? t('auth.signingIn') : t('auth.signInEmail')}
+              {formDisabled ? t('auth.signingIn') : t('auth.signInEmail')}
             </button>
             <button
               type="button"
               className="soft-button auth-submit"
-              disabled={auth.signingIn}
+              disabled={formDisabled}
               data-testid="auth-email-signup"
               onClick={() => {
                 void auth.signUpWithEmail()
@@ -113,7 +106,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
           onClick={() => {
             void auth.signInWithGoogle()
           }}
-          disabled={auth.signingIn}
+          disabled={formDisabled}
           data-testid="auth-google-submit"
         >
           {t('auth.signInGoogle')}

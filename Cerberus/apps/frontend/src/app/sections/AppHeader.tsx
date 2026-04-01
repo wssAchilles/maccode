@@ -1,5 +1,9 @@
 import type { HeaderProps } from './types'
 
+function displayEndpoint(url: string): string {
+  return url.trim().length ? url : 'same-origin'
+}
+
 export function AppHeader({
   t,
   env,
@@ -16,11 +20,13 @@ export function AppHeader({
           <h1 className="text-2xl font-bold tracking-tight text-cyan-300">{t('app.title')}</h1>
           <p className="mt-1 text-sm text-slate-300">{t('app.subtitle')}</p>
           <p className="mt-1 text-xs text-slate-400">
-            {t('env.gateway')}: {env.gateway_base}
+            {t('env.gateway')}: {displayEndpoint(env.gateway_base)}
           </p>
-          <p className="text-xs text-slate-400">
-            {t('env.strategy')}: {env.strategy_base}
-          </p>
+          {env.strategy_base ? (
+            <p className="text-xs text-slate-400">
+              {t('env.strategy')}: {displayEndpoint(env.strategy_base)}
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 text-xs">
           {authUserLabel ? (
