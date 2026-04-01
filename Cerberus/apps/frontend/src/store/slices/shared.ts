@@ -12,6 +12,8 @@ import type {
   PersistenceStatus,
   SignalRecord,
   StrategySignal,
+  StrategyOrchestrationControlResult,
+  StrategyOrchestrationStatus,
   TradingPolicy,
   UIState,
 } from '../../types/contracts'
@@ -70,6 +72,9 @@ export type StrategySummarySlice = {
     inference_catalog?: InferenceCatalogResponse
     inference_last_result?: InferenceControlResult
     inference_pending_action?: string
+    orchestration_status?: StrategyOrchestrationStatus
+    orchestration_last_result?: StrategyOrchestrationControlResult
+    orchestration_pending_action?: string
     last_error?: AppError
   }
   strategySummaryActions: {
@@ -78,6 +83,25 @@ export type StrategySummarySlice = {
     requestInferencePromotion: (reason?: string) => Promise<void>
     requestInferenceRollback: (reason?: string) => Promise<void>
     activateInferenceModel: (modelId: string, version?: string, reason?: string) => Promise<void>
+    loadStrategyOrchestration: () => Promise<void>
+    updateStrategyOrchestrationEntry: (
+      strategyId: string,
+      patch: {
+        enabled?: boolean
+        priority?: number
+        observe_weight?: number
+        primary_weight?: number
+        symbol_coverage?: string[]
+      },
+      reason?: string,
+    ) => Promise<void>
+    updateStrategyOrchestrationPolicies: (
+      patch: {
+        conflict_policy?: string
+        downgrade_policy?: string
+      },
+      reason?: string,
+    ) => Promise<void>
   }
 }
 

@@ -833,6 +833,127 @@ button {
   color: var(--color-text-muted);
 }
 
+.strategy-orchestration-operations-panel,
+.strategy-orchestration-audit-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.strategy-orchestration-policy-grid,
+.strategy-orchestration-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.strategy-orchestration-coverage-field {
+  grid-column: 1 / -1;
+}
+
+.strategy-orchestration-row-list {
+  display: grid;
+  gap: 12px;
+}
+
+.strategy-orchestration-row {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.strategy-orchestration-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.strategy-orchestration-row-meta {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+}
+
+.strategy-orchestration-row-meta p {
+  margin: 0;
+}
+
+.strategy-orchestration-actions {
+  justify-content: flex-start;
+}
+
+.strategy-orchestration-audit-list {
+  display: grid;
+  gap: 10px;
+}
+
+.strategy-orchestration-audit-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(122, 151, 169, 0.16);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.strategy-orchestration-audit-main {
+  display: grid;
+  gap: 4px;
+}
+
+.strategy-orchestration-audit-title,
+.strategy-orchestration-audit-message,
+.strategy-orchestration-audit-detail,
+.strategy-orchestration-audit-time {
+  margin: 0;
+}
+
+.strategy-orchestration-audit-title {
+  font: 700 0.95rem/1.2 var(--font-heading);
+  color: var(--color-accent-strong);
+}
+
+.strategy-orchestration-audit-message,
+.strategy-orchestration-audit-detail,
+.strategy-orchestration-audit-time {
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+}
+
+.strategy-orchestration-audit-time {
+  white-space: nowrap;
+}
+
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--color-text-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.toggle-chip input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.toggle-chip:focus-within {
+  outline: 2px solid rgba(3, 105, 161, 0.42);
+  outline-offset: 2px;
+}
+
 .strategy-panel-hint,
 .strategy-panel-signal-id,
 .strategy-decision-engine,
@@ -854,6 +975,14 @@ button {
 
 .execution-operations-panel .data-list {
   gap: 9px;
+}
+
+.execution-operations-diagnosis,
+.execution-account-summary,
+.execution-linkage-banner,
+.market-linkage-banner {
+  display: grid;
+  gap: 10px;
 }
 
 .execution-operations-alert-list {
@@ -914,6 +1043,14 @@ button {
 .market-execution-rail-side {
   justify-items: end;
   text-align: right;
+}
+
+.execution-timeline-linkage {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  background: rgba(255, 255, 255, 0.64);
 }
 
 .timeline-section .execution-timeline {
@@ -1663,7 +1800,9 @@ button {
   .strategy-panel-head,
   .strategy-decision-head,
   .strategy-registry-row-head,
-  .market-execution-rail-row {
+  .market-execution-rail-row,
+  .strategy-orchestration-row-head,
+  .strategy-orchestration-audit-row {
     flex-direction: column;
   }
 
@@ -1672,6 +1811,11 @@ button {
   .market-execution-rail-side {
     justify-items: start;
     text-align: left;
+  }
+
+  .strategy-orchestration-policy-grid,
+  .strategy-orchestration-editor-grid {
+    grid-template-columns: 1fr;
   }
 
   .execution-lifecycle-stages,

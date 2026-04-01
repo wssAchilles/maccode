@@ -12,18 +12,20 @@ function LevelGroup({
   title,
   levels,
   tone,
-  emptyText,
+  emptyTitle,
+  emptyBody,
 }: {
   title: string
   levels: MatchingOrderBookLevel[]
   tone: 'bid' | 'ask'
-  emptyText: string
+  emptyTitle: string
+  emptyBody: string
 }) {
   return (
     <div className="orderbook-group">
       <p className="subtle-label">{title}</p>
       {levels.length === 0 ? (
-        <EmptyState title={emptyText} body="" />
+        <EmptyState title={emptyTitle} body={emptyBody} />
       ) : (
         <div className="stack-sm">
           {levels.map((level, index) => (
@@ -57,6 +59,31 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
     return Date.now() - orderbook.generated_at_ms > 8_000
   }, [orderbook?.generated_at_ms])
 
+  const emptyState = useMemo(() => {
+    if (!orderbook || orderbook.enabled === false || (orderbook.reason ?? '').includes('matching disabled')) {
+      return {
+        title: t('orderbook.emptyDisabledTitle'),
+        body: t('orderbook.emptyDisabledHint'),
+      }
+    }
+    if (orderbook.degraded && (orderbook.reason ?? '').includes('orderbook_empty')) {
+      return {
+        title: t('orderbook.empty'),
+        body: t('orderbook.emptyNoOrdersHint'),
+      }
+    }
+    if (orderbook.degraded) {
+      return {
+        title: t('orderbook.emptyDegradedTitle'),
+        body: orderbook.reason ?? t('orderbook.emptyDegradedHint'),
+      }
+    }
+    return {
+      title: t('orderbook.empty'),
+      body: t('orderbook.emptyNoOrdersHint'),
+    }
+  }, [orderbook, t])
+
   return (
     <SectionFrame
       title={t('orderbook.title')}
@@ -82,8 +109,20 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
       </div>
 
       <div className="orderbook-grid" data-testid="matching-orderbook-panel">
-        <LevelGroup title={t('orderbook.bids')} levels={bids} tone="bid" emptyText={t('orderbook.empty')} />
-        <LevelGroup title={t('orderbook.asks')} levels={asks} tone="ask" emptyText={t('orderbook.empty')} />
+        <LevelGroup
+          title={t('orderbook.bids')}
+          levels={bids}
+          tone="bid"
+          emptyTitle={emptyState.title}
+          emptyBody={emptyState.body}
+        />
+        <LevelGroup
+          title={t('orderbook.asks')}
+          levels={asks}
+          tone="ask"
+          emptyTitle={emptyState.title}
+          emptyBody={emptyState.body}
+        />
       </div>
       <GlassPanel className="orderbook-foot" tone="subtle" padded={false}>
         <div className="orderbook-foot-copy">
@@ -94,7 +133,7 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
             {t('orderbook.depthBalance')}: {totalBidDepth.toFixed(3)} / {totalAskDepth.toFixed(3)}
           </p>
         </div>
-        {stale ? <p className="orderbook-stale">{t('orderbook.stale')}</p> : null}
+        {stale ? <p className="orderbook-stale">{t('orderbook.staleHint')}</p> : null}
       </GlassPanel>
     </SectionFrame>
   )

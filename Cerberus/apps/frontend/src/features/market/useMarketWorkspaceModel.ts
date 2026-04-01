@@ -31,6 +31,7 @@ export function useMarketWorkspaceModel({ active }: Params) {
   const marketStatus = useCerberusStore((state) => state.uiState.domain_status['market-stream'])
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
+  const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
   const orderbook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
@@ -77,8 +78,8 @@ export function useMarketWorkspaceModel({ active }: Params) {
   )
 
   const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
+    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+    [orchestrationStatus, selectedSymbol, strategySignal, t],
   )
 
   const executionRail = useMemo(

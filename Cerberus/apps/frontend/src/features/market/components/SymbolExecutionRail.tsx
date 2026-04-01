@@ -26,6 +26,7 @@ export function SymbolExecutionRail({ model }: Props) {
         <div>
           <p className="subtle-label">{t('workspace.market.executionRailTitle')}</p>
           <p className="strategy-panel-summary">{model.summary}</p>
+          {model.staleHint ? <p className="strategy-panel-hint">{model.staleHint}</p> : null}
         </div>
       </div>
       <div className="market-execution-rail-list" role="list" aria-label={t('workspace.market.executionRailTitle')}>

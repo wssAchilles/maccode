@@ -12,6 +12,7 @@ import {
 } from './view-models'
 import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
 import {
+  buildStrategyOrchestrationAuditTimelineModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
@@ -30,6 +31,7 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
   const recentSignals = useCerberusStore((state) => state.strategySummary.recent_signals)
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
   const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
+  const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
   const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
   const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
@@ -75,8 +77,13 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
   )
 
   const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
+    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+    [orchestrationStatus, selectedSymbol, strategySignal, t],
+  )
+
+  const strategyAuditTimeline = useMemo(
+    () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+    [orchestrationStatus, t],
   )
 
   const selectSymbol = (symbol: string) => {
@@ -91,6 +98,7 @@ export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
     strategyMatrix,
     portfolioPanel,
     strategyRegistry,
+    strategyAuditTimeline,
     metricTiles,
     persistenceItems,
     recentSignals: recentSignals.slice(0, 4),

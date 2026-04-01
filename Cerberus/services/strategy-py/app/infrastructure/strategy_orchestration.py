@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.config import settings
 from app.ports import (
+    StrategyOrchestrationAuditEvent,
+    StrategyOrchestrationControlResult,
     StrategyOrchestrationEntry,
     StrategyOrchestrationSnapshot,
 )
@@ -49,16 +52,24 @@ class RuntimeStrategyOrchestrationManager:
             return
         payload = await self._state_store.load_state()
         if payload is None:
-            await self._state_store.save_state(self._serialize_state())
+            self._append_audit(
+                "orchestration_initialized",
+                "strategy orchestration initialized from runtime defaults",
+                metadata={"backend": self._state_store.backend_name},
+            )
+            await self._persist_state()
             return
         self._state = self._merge_state(payload)
         self._state_restored = True
-        await self._state_store.save_state(self._serialize_state())
+        self._append_audit(
+            "orchestration_state_restored",
+            "strategy orchestration restored from persistent storage",
+            metadata={"backend": self._state_store.backend_name},
+        )
+        await self._persist_state()
 
     async def shutdown(self) -> None:
-        if self._state_store is None:
-            return
-        await self._state_store.save_state(self._serialize_state())
+        await self._persist_state()
 
     def snapshot(
         self,
@@ -101,6 +112,10 @@ class RuntimeStrategyOrchestrationManager:
                         **dict(entry.metadata),
                         "state_backend": self._state_store.backend_name if self._state_store is not None else None,
                         "state_restored": self._state_restored,
+                        "conflict_targets": self._conflict_targets_for(entry.strategy_id),
+                        "downgrade_action": self._state["downgrade_policy"],
+                        "conflict_resolution": self._state["conflict_policy"],
+                        "coverage_scope": "all" if not entry.symbol_coverage else "selected",
                     },
                 )
             )
@@ -111,6 +126,140 @@ class RuntimeStrategyOrchestrationManager:
             state_backend=self._state_store.backend_name if self._state_store is not None else None,
             state_restored=self._state_restored,
             entries=tuple(entries),
+            audit=self.audit(limit=settings.inference_audit_max_events),
+        )
+
+    def audit(self, *, limit: int = 20) -> tuple[StrategyOrchestrationAuditEvent, ...]:
+        events = self._state.get("audit", [])
+        if not isinstance(events, list):
+            return ()
+        normalized = tuple(
+            StrategyOrchestrationAuditEvent(
+                event_type=str(item.get("event_type", "unknown")),
+                created_at=str(item.get("created_at", "")),
+                message=str(item.get("message", "")),
+                metadata=dict(item.get("metadata", {})) if isinstance(item, dict) else {},
+            )
+            for item in reversed(events[-max(limit, 0):])
+            if isinstance(item, dict)
+        )
+        return normalized
+
+    async def update_entry(
+        self,
+        *,
+        strategy_id: str,
+        tracked_symbols: tuple[str, ...],
+        inference_runtime_enabled: bool,
+        inference_model_symbols: tuple[str, ...] = (),
+        inference_engine_name: str | None = None,
+        enabled: bool | None = None,
+        priority: int | None = None,
+        observe_weight: float | None = None,
+        primary_weight: float | None = None,
+        symbol_coverage: tuple[str, ...] | None = None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> StrategyOrchestrationControlResult:
+        entry = self._find_entry(strategy_id)
+        if entry is None:
+            raise KeyError(f"unknown strategy_id: {strategy_id}")
+
+        if enabled is not None:
+            entry.enabled = enabled
+        if priority is not None:
+            entry.priority = max(priority, 1)
+        if observe_weight is not None:
+            entry.observe_weight = max(observe_weight, 0.0)
+        if primary_weight is not None:
+            entry.primary_weight = max(primary_weight, 0.0)
+        if symbol_coverage is not None:
+            entry.symbol_coverage = tuple(dict.fromkeys(symbol_coverage))
+
+        entry.metadata.update(
+            {
+                "last_updated_at": _utc_now(),
+                "last_actor": actor or "system",
+            }
+        )
+        self._append_audit(
+            "strategy_entry_updated",
+            f"{strategy_id} orchestration entry updated",
+            metadata={
+                "strategy_id": strategy_id,
+                "actor": actor,
+                "reason": reason,
+                "enabled": entry.enabled,
+                "priority": entry.priority,
+                "observe_weight": entry.observe_weight,
+                "primary_weight": entry.primary_weight,
+                "symbol_coverage": list(entry.symbol_coverage),
+            },
+        )
+        await self._persist_state()
+        snapshot = self.snapshot(
+            tracked_symbols=tracked_symbols,
+            inference_runtime_enabled=inference_runtime_enabled,
+            inference_model_symbols=inference_model_symbols,
+            inference_engine_name=inference_engine_name,
+        )
+        return StrategyOrchestrationControlResult(
+            accepted=True,
+            action="update_entry",
+            message=f"{strategy_id} orchestration entry updated",
+            actor=actor,
+            reason=reason,
+            snapshot=snapshot,
+        )
+
+    async def update_policies(
+        self,
+        *,
+        tracked_symbols: tuple[str, ...],
+        inference_runtime_enabled: bool,
+        inference_model_symbols: tuple[str, ...] = (),
+        inference_engine_name: str | None = None,
+        conflict_policy: str | None = None,
+        downgrade_policy: str | None = None,
+        actor: str | None = None,
+        reason: str | None = None,
+    ) -> StrategyOrchestrationControlResult:
+        if conflict_policy is not None:
+            self._state["conflict_policy"] = _coerce_policy(
+                conflict_policy,
+                self._state["conflict_policy"],
+                allowed={"review_on_conflict", "prefer_priority", "prefer_weighted_score"},
+            )
+        if downgrade_policy is not None:
+            self._state["downgrade_policy"] = _coerce_policy(
+                downgrade_policy,
+                self._state["downgrade_policy"],
+                allowed={"review", "hold"},
+            )
+        self._append_audit(
+            "orchestration_policies_updated",
+            "strategy orchestration policies updated",
+            metadata={
+                "actor": actor,
+                "reason": reason,
+                "conflict_policy": self._state["conflict_policy"],
+                "downgrade_policy": self._state["downgrade_policy"],
+            },
+        )
+        await self._persist_state()
+        snapshot = self.snapshot(
+            tracked_symbols=tracked_symbols,
+            inference_runtime_enabled=inference_runtime_enabled,
+            inference_model_symbols=inference_model_symbols,
+            inference_engine_name=inference_engine_name,
+        )
+        return StrategyOrchestrationControlResult(
+            accepted=True,
+            action="update_policies",
+            message="strategy orchestration policies updated",
+            actor=actor,
+            reason=reason,
+            snapshot=snapshot,
         )
 
     def _default_state(self) -> dict[str, Any]:
@@ -145,6 +294,7 @@ class RuntimeStrategyOrchestrationManager:
                     metadata={"configured_source": "settings"},
                 ),
             ],
+            "audit": [],
         }
 
     def _serialize_state(self) -> dict[str, Any]:
@@ -167,6 +317,7 @@ class RuntimeStrategyOrchestrationManager:
                 }
                 for entry in self._state["entries"]
             ],
+            "audit": [dict(item) for item in self._state.get("audit", [])],
         }
 
     def _merge_state(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -215,7 +366,47 @@ class RuntimeStrategyOrchestrationManager:
                 allowed={"review", "hold"},
             ),
             "entries": merged_entries,
+            "audit": _coerce_audit(payload.get("audit")),
         }
+
+    def _find_entry(self, strategy_id: str) -> _MutableStrategyEntry | None:
+        for entry in self._state["entries"]:
+            if entry.strategy_id == strategy_id:
+                return entry
+        return None
+
+    async def _persist_state(self) -> None:
+        if self._state_store is None:
+            return
+        await self._state_store.save_state(self._serialize_state())
+
+    def _append_audit(self, event_type: str, message: str, *, metadata: dict[str, Any] | None = None) -> None:
+        audit = self._state.setdefault("audit", [])
+        if not isinstance(audit, list):
+            audit = []
+            self._state["audit"] = audit
+        audit.append(
+            {
+                "event_type": event_type,
+                "created_at": _utc_now(),
+                "message": message,
+                "metadata": dict(metadata or {}),
+            }
+        )
+        max_events = max(settings.inference_audit_max_events, 20)
+        if len(audit) > max_events:
+            del audit[:-max_events]
+
+    def _conflict_targets_for(self, strategy_id: str) -> list[str]:
+        return [
+            entry.strategy_id
+            for entry in self._state["entries"]
+            if entry.strategy_id != strategy_id
+        ]
+
+
+def _utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _normalize_symbol_list(value: str) -> tuple[str, ...]:
@@ -280,7 +471,7 @@ def _coerce_symbol_coverage(
     if not isinstance(raw, list):
         return default
     values = [str(item).strip().upper() for item in raw if str(item).strip()]
-    if values == ["*"]:
+    if values == ["*"] or values == []:
         return ()
     return tuple(dict.fromkeys(values))
 
@@ -298,3 +489,23 @@ def _coerce_policy(value: Any, default: str, *, allowed: set[str]) -> str:
     if isinstance(value, str) and value in allowed:
         return value
     return default
+
+
+def _coerce_audit(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        normalized.append(
+            {
+                "event_type": str(item.get("event_type", "unknown")),
+                "created_at": str(item.get("created_at", "")),
+                "message": str(item.get("message", "")),
+                "metadata": dict(item.get("metadata", {}))
+                if isinstance(item.get("metadata"), dict)
+                else {},
+            }
+        )
+    return normalized

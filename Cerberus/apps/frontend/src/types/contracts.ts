@@ -138,6 +138,46 @@ export type StrategyRegistryEntry = {
   metadata: Record<string, unknown>
 }
 
+export type StrategyOrchestrationAuditEvent = {
+  event_type: string
+  created_at: string
+  message: string
+  metadata: Record<string, unknown>
+}
+
+export type StrategyOrchestrationEntry = {
+  strategy_id: string
+  label: string
+  engine: string
+  source: string
+  role: string
+  enabled: boolean
+  priority: number
+  observe_weight: number
+  primary_weight: number
+  symbol_coverage: string[]
+  metadata: Record<string, unknown>
+}
+
+export type StrategyOrchestrationStatus = {
+  conflict_policy: string
+  downgrade_policy: string
+  tracked_symbols: string[]
+  state_backend?: string | null
+  state_restored: boolean
+  entries: StrategyOrchestrationEntry[]
+  audit: StrategyOrchestrationAuditEvent[]
+}
+
+export type StrategyOrchestrationControlResult = {
+  accepted: boolean
+  action: string
+  message: string
+  actor?: string | null
+  reason?: string | null
+  snapshot?: StrategyOrchestrationStatus | null
+}
+
 export type StrategyRegistrySummary = {
   symbol: string
   tracked_symbols: string[]
@@ -208,12 +248,14 @@ export type MatchingOrderBookLevel = {
 
 export type MatchingOrderBook = {
   enabled: boolean
+  degraded: boolean
   symbol: string
   depth: number
   bids: MatchingOrderBookLevel[]
   asks: MatchingOrderBookLevel[]
   generated_at_ms: number
   request_id?: string
+  reason?: string | null
 }
 
 export type InferenceModelDescriptor = {

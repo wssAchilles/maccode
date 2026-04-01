@@ -6,6 +6,8 @@ import type {
   Envelope,
   InferenceCatalogResponse,
   InferenceControlResult,
+  StrategyOrchestrationControlResult,
+  StrategyOrchestrationStatus,
   StrategySummaryResponse,
 } from '../../types/contracts'
 import type { RootStore, StrategySummarySlice } from './shared'
@@ -50,6 +52,14 @@ function operatorBody(reason?: string): string {
   })
 }
 
+function operatorPatchBody<T extends Record<string, unknown>>(patch: T, reason?: string): string {
+  return JSON.stringify({
+    ...patch,
+    actor: 'workspace.operator',
+    reason: reason?.trim() || undefined,
+  })
+}
+
 function withInferencePending(
   set: Parameters<StateCreator<RootStore, [], [], StrategySummarySlice>>[0],
   pendingAction?: string,
@@ -77,6 +87,34 @@ function withInferenceResult(
   }))
 }
 
+function withOrchestrationPending(
+  set: Parameters<StateCreator<RootStore, [], [], StrategySummarySlice>>[0],
+  pendingAction?: string,
+) {
+  set((state) => ({
+    strategySummary: {
+      ...state.strategySummary,
+      orchestration_pending_action: pendingAction,
+    },
+  }))
+}
+
+function withOrchestrationResult(
+  set: Parameters<StateCreator<RootStore, [], [], StrategySummarySlice>>[0],
+  result?: StrategyOrchestrationControlResult,
+  error?: AppError,
+) {
+  set((state) => ({
+    strategySummary: {
+      ...state.strategySummary,
+      orchestration_last_result: result,
+      orchestration_pending_action: undefined,
+      last_error: error ?? state.strategySummary.last_error,
+      orchestration_status: result?.snapshot ?? state.strategySummary.orchestration_status,
+    },
+  }))
+}
+
 export const createStrategySummarySlice: StateCreator<RootStore, [], [], StrategySummarySlice> = (
   set,
   get,
@@ -90,6 +128,9 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
     inference_catalog: undefined,
     inference_last_result: undefined,
     inference_pending_action: undefined,
+    orchestration_status: undefined,
+    orchestration_last_result: undefined,
+    orchestration_pending_action: undefined,
     last_error: undefined,
   },
   strategySummaryActions: {
@@ -104,11 +145,16 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
         request_id: undefined,
       })
 
-      const response = await requestEnvelope<StrategySummaryResponse>(
-        `${env.gateway_base}/api/v1/strategy/summary?symbol=${encodeURIComponent(
-          symbol,
-        )}&recent_limit=8&source=auto&orderbook_depth=10`,
-      )
+      const [response, orchestrationResponse] = await Promise.all([
+        requestEnvelope<StrategySummaryResponse>(
+          `${env.gateway_base}/api/v1/strategy/summary?symbol=${encodeURIComponent(
+            symbol,
+          )}&recent_limit=8&source=auto&orderbook_depth=10`,
+        ),
+        requestEnvelope<StrategyOrchestrationStatus>(
+          `${env.gateway_base}/api/v1/strategy/orchestration/status`,
+        ),
+      ])
 
       if (!response.ok || !response.payload) {
         const error = toAppError(response.error, 'strategy_summary_failed')
@@ -146,9 +192,12 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
           inference_status: summary.inference_status.ok
             ? summary.inference_status.payload
             : undefined,
+          orchestration_status: orchestrationResponse.ok ? orchestrationResponse.payload : state.strategySummary.orchestration_status,
           inference_last_result: state.strategySummary.inference_last_result,
           inference_catalog: state.strategySummary.inference_catalog,
           inference_pending_action: state.strategySummary.inference_pending_action,
+          orchestration_last_result: state.strategySummary.orchestration_last_result,
+          orchestration_pending_action: state.strategySummary.orchestration_pending_action,
           last_error: mergedError,
         },
       }))
@@ -172,6 +221,21 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
         strategySummary: {
           ...state.strategySummary,
           inference_catalog: response.payload,
+        },
+      }))
+    },
+    loadStrategyOrchestration: async () => {
+      const { env } = get()
+      const response = await requestEnvelope<StrategyOrchestrationStatus>(
+        `${env.gateway_base}/api/v1/strategy/orchestration/status`,
+      )
+      if (!response.ok || !response.payload) {
+        return
+      }
+      set((state) => ({
+        strategySummary: {
+          ...state.strategySummary,
+          orchestration_status: response.payload,
         },
       }))
     },
@@ -212,6 +276,42 @@ export const createStrategySummarySlice: StateCreator<RootStore, [], [], Strateg
       withInferenceResult(set, response.payload)
       await get().strategySummaryActions.refreshSummary()
       await get().strategySummaryActions.loadInferenceCatalog()
+    },
+    updateStrategyOrchestrationEntry: async (strategyId, patch, reason) => {
+      const { env } = get()
+      withOrchestrationPending(set, `update_entry:${strategyId}`)
+      const response = await requestEnvelope<StrategyOrchestrationControlResult>(
+        `${env.gateway_base}/api/v1/strategy/orchestration/entries/${encodeURIComponent(strategyId)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: operatorPatchBody(patch, reason),
+        },
+      )
+      if (!response.ok || !response.payload) {
+        withOrchestrationResult(set, undefined, toAppError(response.error, 'strategy_orchestration_update_failed'))
+        return
+      }
+      withOrchestrationResult(set, response.payload)
+      await get().strategySummaryActions.refreshSummary()
+    },
+    updateStrategyOrchestrationPolicies: async (patch, reason) => {
+      const { env } = get()
+      withOrchestrationPending(set, 'update_policies')
+      const response = await requestEnvelope<StrategyOrchestrationControlResult>(
+        `${env.gateway_base}/api/v1/strategy/orchestration/policies`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: operatorPatchBody(patch, reason),
+        },
+      )
+      if (!response.ok || !response.payload) {
+        withOrchestrationResult(set, undefined, toAppError(response.error, 'strategy_orchestration_policy_failed'))
+        return
+      }
+      withOrchestrationResult(set, response.payload)
+      await get().strategySummaryActions.refreshSummary()
     },
     activateInferenceModel: async (modelId: string, version?: string, reason?: string) => {
       const { env } = get()

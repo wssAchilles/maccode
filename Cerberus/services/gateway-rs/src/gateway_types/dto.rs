@@ -82,6 +82,25 @@ pub(crate) struct InferenceActivateModelRequest {
     pub(crate) reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct StrategyOrchestrationEntryUpdateRequest {
+    pub(crate) enabled: Option<bool>,
+    pub(crate) priority: Option<i32>,
+    pub(crate) observe_weight: Option<f64>,
+    pub(crate) primary_weight: Option<f64>,
+    pub(crate) symbol_coverage: Option<Vec<String>>,
+    pub(crate) actor: Option<String>,
+    pub(crate) reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct StrategyOrchestrationPolicyUpdateRequest {
+    pub(crate) conflict_policy: Option<String>,
+    pub(crate) downgrade_policy: Option<String>,
+    pub(crate) actor: Option<String>,
+    pub(crate) reason: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct BinanceTestOrderRequest {
     pub(crate) symbol: String,

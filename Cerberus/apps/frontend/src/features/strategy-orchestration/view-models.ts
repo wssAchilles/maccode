@@ -4,6 +4,8 @@ import type {
   OrderTimelineEvent,
   PersistenceStatus,
   StrategyDecisionContribution,
+  StrategyOrchestrationControlResult,
+  StrategyOrchestrationStatus,
   StrategyRegistrySummary,
   StrategySignal,
   TradingPolicy,
@@ -64,6 +66,45 @@ export type StrategyRegistryPanelModel = {
   downgradeLabel: string
   stateSummary?: string
   rows: StrategyRegistryRowModel[]
+  emptyTitle?: string
+  emptyHint?: string
+}
+
+export type StrategyOrchestrationAuditTimelineEntry = {
+  id: string
+  title: string
+  message: string
+  createdAt: string
+  detail?: string
+}
+
+export type StrategyOrchestrationAuditTimelineModel = {
+  summary: string
+  items: StrategyOrchestrationAuditTimelineEntry[]
+  emptyTitle?: string
+  emptyHint?: string
+}
+
+export type StrategyOrchestrationOperationsRowModel = {
+  id: string
+  label: string
+  engine: string
+  sourceLabel: string
+  roleLabel: string
+  stateLabel: string
+  coverageLabel: string
+  conflictTargetsLabel: string
+}
+
+export type StrategyOrchestrationOperationsModel = {
+  summary: string
+  policySummary: string
+  rows: StrategyOrchestrationOperationsRowModel[]
+  conflictOptions: { id: string; label: string }[]
+  downgradeOptions: { id: string; label: string }[]
+  pendingAction?: string
+  statusMessage?: string
+  statusTone?: 'default' | 'accent' | 'danger'
   emptyTitle?: string
   emptyHint?: string
 }
@@ -182,6 +223,14 @@ function downgradePolicyLabel(t: Translate, value?: string): string {
     return t('common.na')
   }
   const key = `workspace.strategy.downgrade.${value}` as TranslationKey
+  return t(key)
+}
+
+function auditEventLabel(t: Translate, eventType?: string): string {
+  if (!eventType) {
+    return t('common.na')
+  }
+  const key = `workspace.strategy.auditEvent.${eventType}` as TranslationKey
   return t(key)
 }
 
@@ -414,13 +463,16 @@ export function buildStrategyRegistryPanelModel({
   t,
   signal,
   selectedSymbol,
+  orchestrationStatus,
 }: {
   t: Translate
   signal?: StrategySignal
   selectedSymbol?: string
+  orchestrationStatus?: StrategyOrchestrationStatus
 }): StrategyRegistryPanelModel {
   const registry = signal?.strategy_registry
-  if (!registry || registry.entries.length === 0) {
+  const runtimeEntries = orchestrationStatus?.entries ?? registry?.entries ?? []
+  if (runtimeEntries.length === 0) {
     return {
       summary: t('workspace.strategy.registryEmpty'),
       policyLabel: t('common.na'),
@@ -432,12 +484,17 @@ export function buildStrategyRegistryPanelModel({
     }
   }
 
-  const rows: StrategyRegistryRowModel[] = [...registry.entries]
+  const registryEntriesByStrategy = new Map(
+    (registry?.entries ?? []).map((entry) => [entry.strategy_id, entry]),
+  )
+
+  const rows: StrategyRegistryRowModel[] = [...runtimeEntries]
     .sort((left, right) => left.priority - right.priority)
     .map((entry) => {
+      const activeEntry = registryEntriesByStrategy.get(entry.strategy_id)
       const stateTone: StrategyRegistryRowModel['stateTone'] = entry.enabled ? 'accent' : 'muted'
       return {
-        id: `${entry.strategy_id}-${entry.engine}`,
+        id: `${entry.strategy_id}-${entry.engine}-${entry.source}`,
         label: entry.label,
         engine: entry.engine,
         stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
@@ -461,12 +518,25 @@ export function buildStrategyRegistryPanelModel({
           {
             id: 'configuredWeight',
             label: t('workspace.strategy.configuredWeight'),
-            value: formatPercent(entry.configured_weight),
+            value: formatPercent(
+              activeEntry?.configured_weight ??
+                ('observe_weight' in entry ? entry.observe_weight : entry.configured_weight),
+            ),
+          },
+          {
+            id: 'observeWeight',
+            label: t('workspace.strategy.observeWeight'),
+            value: formatPercent('observe_weight' in entry ? entry.observe_weight : entry.configured_weight),
+          },
+          {
+            id: 'primaryWeight',
+            label: t('workspace.strategy.primaryWeight'),
+            value: formatPercent('primary_weight' in entry ? entry.primary_weight : entry.configured_weight),
           },
           {
             id: 'effectiveWeight',
             label: t('workspace.strategy.effectiveWeight'),
-            value: formatPercent(entry.effective_weight),
+            value: formatPercent(activeEntry?.effective_weight ?? ('effective_weight' in entry ? (entry as { effective_weight?: number }).effective_weight : undefined)),
             tone: 'accent',
           },
           {
@@ -484,16 +554,127 @@ export function buildStrategyRegistryPanelModel({
             label: t('workspace.strategy.lifecycleSource'),
             value: sourceLabel(t, entry.source),
           },
+          {
+            id: 'conflictTargets',
+            label: t('workspace.strategy.conflictTargets'),
+            value:
+              Array.isArray(entry.metadata.conflict_targets) && entry.metadata.conflict_targets.length > 0
+                ? entry.metadata.conflict_targets.join(' · ')
+                : t('common.na'),
+          },
+          {
+            id: 'downgradeAction',
+            label: t('workspace.strategy.downgradeAction'),
+            value: downgradePolicyLabel(
+              t,
+              typeof entry.metadata.downgrade_action === 'string'
+                ? entry.metadata.downgrade_action
+                : orchestrationStatus?.downgrade_policy ?? registry?.downgrade_policy,
+            ),
+          },
         ],
       }
     })
 
   return {
-    summary: `${registry.entries.length} ${t('workspace.strategy.registrySummarySuffix')} · ${registry.symbol}`,
-    policyLabel: conflictPolicyLabel(t, registry.conflict_policy),
-    downgradeLabel: downgradePolicyLabel(t, registry.downgrade_policy),
-    stateSummary: `${registry.entries.some((entry) => entry.metadata.state_restored) ? t('workspace.strategy.runtimeStateSummaryRestored') : t('workspace.strategy.runtimeStateSummaryLive')} · ${registry.tracked_symbols.length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
+    summary: `${runtimeEntries.length} ${t('workspace.strategy.registrySummarySuffix')} · ${orchestrationStatus?.tracked_symbols?.[0] ?? registry?.symbol ?? t('common.na')}`,
+    policyLabel: conflictPolicyLabel(t, orchestrationStatus?.conflict_policy ?? registry?.conflict_policy),
+    downgradeLabel: downgradePolicyLabel(t, orchestrationStatus?.downgrade_policy ?? registry?.downgrade_policy),
+    stateSummary: `${orchestrationStatus?.state_restored ? t('workspace.strategy.runtimeStateSummaryRestored') : t('workspace.strategy.runtimeStateSummaryLive')} · ${(orchestrationStatus?.tracked_symbols ?? registry?.tracked_symbols ?? []).length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
     rows,
+  }
+}
+
+export function buildStrategyOrchestrationAuditTimelineModel({
+  t,
+  orchestrationStatus,
+}: {
+  t: Translate
+  orchestrationStatus?: StrategyOrchestrationStatus
+}): StrategyOrchestrationAuditTimelineModel {
+  const audit = orchestrationStatus?.audit ?? []
+  if (audit.length === 0) {
+    return {
+      summary: t('workspace.strategy.auditTimelineEmpty'),
+      items: [],
+      emptyTitle: t('workspace.strategy.auditTimelineEmpty'),
+      emptyHint: t('workspace.strategy.auditTimelineHint'),
+    }
+  }
+
+  return {
+    summary: `${audit.length} ${t('workspace.strategy.auditTimelineSummarySuffix')}`,
+    items: audit.map((item, index) => ({
+      id: `${item.event_type}-${item.created_at}-${index}`,
+      title: auditEventLabel(t, item.event_type),
+      message: item.message,
+      createdAt: formatDateTime(item.created_at),
+      detail:
+        typeof item.metadata.strategy_id === 'string'
+          ? `${item.metadata.strategy_id} · ${item.metadata.actor ?? t('common.na')}`
+          : typeof item.metadata.actor === 'string'
+            ? `${item.metadata.actor}`
+            : undefined,
+    })),
+  }
+}
+
+export function buildStrategyOrchestrationOperationsModel({
+  t,
+  orchestrationStatus,
+  lastResult,
+}: {
+  t: Translate
+  orchestrationStatus?: StrategyOrchestrationStatus
+  lastResult?: StrategyOrchestrationControlResult
+}): StrategyOrchestrationOperationsModel {
+  if (!orchestrationStatus || orchestrationStatus.entries.length === 0) {
+    return {
+      summary: t('workspace.strategy.registryEmpty'),
+      policySummary: t('common.na'),
+      rows: [],
+      conflictOptions: [],
+      downgradeOptions: [],
+      emptyTitle: t('workspace.strategy.registryEmpty'),
+      emptyHint: t('workspace.strategy.noDecisionsHint'),
+    }
+  }
+
+  const statusTone =
+    lastResult?.accepted === false
+      ? 'danger'
+      : lastResult?.accepted
+        ? 'accent'
+        : undefined
+
+  return {
+    summary: `${orchestrationStatus.entries.length} ${t('workspace.strategy.operationsSummarySuffix')}`,
+    policySummary: `${conflictPolicyLabel(t, orchestrationStatus.conflict_policy)} · ${downgradePolicyLabel(t, orchestrationStatus.downgrade_policy)} · ${orchestrationStatus.tracked_symbols.length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
+    rows: orchestrationStatus.entries.map((entry) => ({
+      id: entry.strategy_id,
+      label: entry.label,
+      engine: entry.engine,
+      sourceLabel: sourceLabel(t, entry.source),
+      roleLabel: roleLabel(t, entry.role),
+      stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
+      coverageLabel: summarizeCoverage(undefined, entry.symbol_coverage),
+      conflictTargetsLabel:
+        Array.isArray(entry.metadata.conflict_targets) && entry.metadata.conflict_targets.length > 0
+          ? entry.metadata.conflict_targets.join(' · ')
+          : t('common.na'),
+    })),
+    conflictOptions: [
+      { id: 'review_on_conflict', label: conflictPolicyLabel(t, 'review_on_conflict') },
+      { id: 'prefer_priority', label: conflictPolicyLabel(t, 'prefer_priority') },
+      { id: 'prefer_weighted_score', label: conflictPolicyLabel(t, 'prefer_weighted_score') },
+    ],
+    downgradeOptions: [
+      { id: 'review', label: downgradePolicyLabel(t, 'review') },
+      { id: 'hold', label: downgradePolicyLabel(t, 'hold') },
+    ],
+    pendingAction: undefined,
+    statusMessage: lastResult?.message,
+    statusTone,
   }
 }
 

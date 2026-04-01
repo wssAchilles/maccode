@@ -2,12 +2,15 @@ import { ExecutionConsole } from '../../components/ExecutionConsole'
 import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
 import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
+import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
+import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
+import { StrategyOrchestrationOperationsPanel } from '../strategy-orchestration/components/StrategyOrchestrationOperationsPanel'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
+import { useStrategyOrchestrationOperationsModel } from '../strategy-orchestration/useStrategyOrchestrationOperationsModel'
 import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
 
 type Props = {
@@ -17,6 +20,7 @@ type Props = {
 export function ExecutionWorkspace({ active = true }: Props) {
   const { t } = useI18n()
   const model = useExecutionWorkspaceModel({ active })
+  const orchestrationOps = useStrategyOrchestrationOperationsModel()
 
   return (
     <div className="workspace-grid">
@@ -40,6 +44,13 @@ export function ExecutionWorkspace({ active = true }: Props) {
       </SectionFrame>
 
       <div className="workspace-main stack">
+        <SectionFrame title={t('workspace.execution.linkageTitle')} description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}>
+          <GlassPanel tone="subtle" className="execution-linkage-banner">
+            <p className="strategy-panel-summary">{model.selectedSymbol}</p>
+            <p className="strategy-panel-hint">{t('workspace.execution.linkageDetail')}</p>
+          </GlassPanel>
+        </SectionFrame>
+
         <SectionFrame
           title={t('workspace.execution.lifecycleTitle')}
           description={t('workspace.execution.lifecycleDescription')}
@@ -52,6 +63,25 @@ export function ExecutionWorkspace({ active = true }: Props) {
           description={t('workspace.execution.operationsDescription')}
         >
           <ExecutionOperationsPanel model={model.operationsPanel} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.strategy.operationsTitle')}
+          description={t('workspace.strategy.operationsDescription')}
+        >
+          <StrategyOrchestrationOperationsPanel
+            model={orchestrationOps.model}
+            drafts={orchestrationOps.drafts}
+            reason={orchestrationOps.reason}
+            conflictPolicy={orchestrationOps.conflictPolicy}
+            downgradePolicy={orchestrationOps.downgradePolicy}
+            onReasonChange={orchestrationOps.setReason}
+            onConflictPolicyChange={orchestrationOps.setConflictPolicy}
+            onDowngradePolicyChange={orchestrationOps.setDowngradePolicy}
+            onDraftFieldChange={orchestrationOps.setDraftField}
+            onSaveEntry={orchestrationOps.onSaveEntry}
+            onSavePolicies={orchestrationOps.onSavePolicies}
+          />
         </SectionFrame>
 
         <SectionFrame title={t('workspace.execution.ticketTitle')} description={t('workspace.execution.ticketDescription')}>
@@ -73,6 +103,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
             <StrategyRegistryPanel model={model.strategyRegistry} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
+            <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
           </div>
         </SectionFrame>
 

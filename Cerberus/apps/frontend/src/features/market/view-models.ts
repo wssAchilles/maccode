@@ -29,6 +29,7 @@ export type MarketChartStateModel = {
 
 export type MarketExecutionRailModel = {
   summary: string
+  state: 'ready' | 'empty' | 'stale'
   items: {
     id: string
     title: string
@@ -169,15 +170,27 @@ export function buildMarketExecutionRailModel({
   if (items.length === 0) {
     return {
       summary: selectedSymbol,
+      state: 'empty',
       items: [],
       emptyTitle: t('workspace.market.executionRailEmpty'),
       emptyHint: t('workspace.market.executionRailDescription'),
     }
   }
 
+  const latestTimestamp = orderModels[0]
+    ? orderModels[0].fillAt ??
+      orderModels[0].canceledAt ??
+      orderModels[0].rejectedAt ??
+      orderModels[0].acceptedAt ??
+      orderModels[0].submitAt
+    : undefined
+  const stale = typeof latestTimestamp === 'number' ? Date.now() - latestTimestamp > 120_000 : false
+
   return {
     summary: `${selectedSymbol} · ${items.length} · ${orderModels.filter((item) => item.latestPhase === 'fill').length} fills`,
+    state: stale ? 'stale' : 'ready',
     items,
+    staleHint: stale ? t('workspace.market.executionRailStale') : undefined,
   }
 }
 

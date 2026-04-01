@@ -1,7 +1,11 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
 import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
-import { buildExecutionAnomalySummary, buildExecutionOrderReadModels } from './read-models'
+import {
+  buildExecutionAccountSummaries,
+  buildExecutionAnomalySummary,
+  buildExecutionOrderReadModels,
+} from './read-models'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
 
@@ -42,6 +46,10 @@ export type ExecutionOperationsPanelModel = {
   stateLabel: string
   summary: string
   anomalies: string[]
+  diagnosisLabel: string
+  diagnosisTone: 'default' | 'accent' | 'danger'
+  diagnosisHint: string
+  accountSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   emptyTitle?: string
   emptyHint?: string
@@ -70,6 +78,13 @@ function formatInteger(value?: number | null): string {
     return '—'
   }
   return String(value)
+}
+
+function formatPercent(value?: number | null): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+  return `${(value * 100).toFixed(1)}%`
 }
 
 function normalizeOrderStatus(value?: string): string {
@@ -141,6 +156,7 @@ export function buildExecutionOperationsPanel({
   const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
   const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
   const anomalySummary = buildExecutionAnomalySummary(orderModels)
+  const accountSummary = buildExecutionAccountSummaries(orderModels)
   const latestAnomaly = orderModels.find((item) =>
     ['rejected', 'canceled'].includes(item.latestPhase),
   )
@@ -161,6 +177,11 @@ export function buildExecutionOperationsPanel({
   if (anomalySummary.cancelFailures > 0) {
     anomalies.push(`${t('workspace.execution.operationsCancelHoldbacks')}: ${anomalySummary.cancelFailures}`)
   }
+  if (anomalySummary.cancelFailureReasons[0]) {
+    anomalies.push(
+      `${t('workspace.execution.operationsCancelFailureReason')}: ${anomalySummary.cancelFailureReasons[0].reason} · ${anomalySummary.cancelFailureReasons[0].count}`,
+    )
+  }
   if (latestAnomaly?.latestStatus) {
     anomalies.push(
       `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.requestId ?? '—'}`,
@@ -173,17 +194,53 @@ export function buildExecutionOperationsPanel({
       stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
       summary: selectedSymbol,
       anomalies,
+      diagnosisLabel: t('workspace.execution.diagnosisUnavailable'),
+      diagnosisTone: 'default',
+      diagnosisHint: t('workspace.execution.operationsDescription'),
+      accountSummary: [],
       items: [],
       emptyTitle: t('workspace.execution.operationsEmpty'),
       emptyHint: t('workspace.execution.operationsDescription'),
     }
   }
 
+  const diagnosis =
+    rejectedCount > 0 || anomalySummary.cancelFailures > 0
+      ? {
+          label: t('workspace.execution.diagnosisHold'),
+          tone: 'danger' as const,
+          hint:
+            latestAnomaly?.latestReason ??
+            anomalySummary.rejectionReasons[0]?.reason ??
+            t('workspace.execution.diagnosisHintHold'),
+        }
+      : partialFillCount > 0 ||
+          (anomalySummary.fillSlippageBps !== undefined && Math.abs(anomalySummary.fillSlippageBps) > 5)
+        ? {
+            label: t('workspace.execution.diagnosisCaution'),
+            tone: 'accent' as const,
+            hint: t('workspace.execution.diagnosisHintCaution'),
+          }
+        : {
+            label: t('workspace.execution.diagnosisReady'),
+            tone: 'accent' as const,
+            hint: t('workspace.execution.diagnosisHintReady'),
+          }
+
   return {
     state: domainStatus.state,
     stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
     summary: `${selectedSymbol} · ${orderModels.length} ${t('workspace.execution.operationsSummarySuffix')}`,
     anomalies,
+    diagnosisLabel: diagnosis.label,
+    diagnosisTone: diagnosis.tone,
+    diagnosisHint: diagnosis.hint,
+    accountSummary: accountSummary.slice(0, 3).map((item) => ({
+      id: item.accountId,
+      label: item.accountId,
+      value: `${item.observed} / ${item.active} / ${item.filled}`,
+      tone: item.rejected > 0 ? 'accent' : 'default',
+    })),
     items: [
       {
         id: 'observed',
@@ -232,6 +289,11 @@ export function buildExecutionOperationsPanel({
         id: 'submitToFill',
         label: t('workspace.execution.operationsSubmitToFill'),
         value: formatInteger(anomalySummary.avgSubmitToFillMs ? Math.round(anomalySummary.avgSubmitToFillMs) : undefined),
+      },
+      {
+        id: 'partialFillRatio',
+        label: t('workspace.execution.operationsPartialFillRatio'),
+        value: formatPercent(anomalySummary.partialFillRatio),
       },
       {
         id: 'slippage',

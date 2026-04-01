@@ -28,10 +28,21 @@ export type ExecutionOrderReadModel = {
 
 export type ExecutionAnomalySummary = {
   rejectionReasons: { reason: string; count: number }[]
+  cancelFailureReasons: { reason: string; count: number }[]
   cancelFailures: number
   avgSubmitToAcceptedMs?: number
   avgSubmitToFillMs?: number
   fillSlippageBps?: number
+  partialFillRatio?: number
+}
+
+export type ExecutionAccountSummary = {
+  accountId: string
+  observed: number
+  filled: number
+  rejected: number
+  canceled: number
+  active: number
 }
 
 function eventTimestamp(event: OrderTimelineEvent): number {
@@ -131,17 +142,26 @@ function timestampForLastPhase(events: OrderTimelineEvent[], ...phases: Executio
 
 export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]): ExecutionAnomalySummary {
   const rejectionCounts = new Map<string, number>()
+  const cancelFailureCounts = new Map<string, number>()
   let cancelFailures = 0
   const submitToAccepted: number[] = []
   const submitToFill: number[] = []
   const slippageBps: number[] = []
+  let partialFillOrders = 0
 
   for (const model of models) {
     if (model.latestPhase === 'rejected' && model.latestReason) {
       rejectionCounts.set(model.latestReason, (rejectionCounts.get(model.latestReason) ?? 0) + 1)
     }
+    if (model.latestPhase === 'partial_fill') {
+      partialFillOrders += 1
+    }
     if (model.cancelRequestedAt && !model.canceledAt) {
       cancelFailures += 1
+      cancelFailureCounts.set(
+        model.latestReason ?? 'cancel_pending',
+        (cancelFailureCounts.get(model.latestReason ?? 'cancel_pending') ?? 0) + 1,
+      )
     }
     if (model.submitAt && model.acceptedAt && model.acceptedAt >= model.submitAt) {
       submitToAccepted.push(model.acceptedAt - model.submitAt)
@@ -159,11 +179,50 @@ export function buildExecutionAnomalySummary(models: ExecutionOrderReadModel[]):
       .map(([reason, count]) => ({ reason, count }))
       .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
       .slice(0, 3),
+    cancelFailureReasons: [...cancelFailureCounts.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason))
+      .slice(0, 3),
     cancelFailures,
     avgSubmitToAcceptedMs: average(submitToAccepted),
     avgSubmitToFillMs: average(submitToFill),
     fillSlippageBps: average(slippageBps),
+    partialFillRatio: models.length > 0 ? partialFillOrders / models.length : undefined,
   }
+}
+
+export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]): ExecutionAccountSummary[] {
+  const groups = new Map<string, ExecutionAccountSummary>()
+  for (const model of models) {
+    const key = model.accountId ?? 'unknown'
+    const current =
+      groups.get(key) ??
+      {
+        accountId: key,
+        observed: 0,
+        filled: 0,
+        rejected: 0,
+        canceled: 0,
+        active: 0,
+      }
+    current.observed += 1
+    if (model.latestPhase === 'fill') {
+      current.filled += 1
+    }
+    if (model.latestPhase === 'rejected') {
+      current.rejected += 1
+    }
+    if (model.latestPhase === 'canceled') {
+      current.canceled += 1
+    }
+    if (['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(model.latestPhase)) {
+      current.active += 1
+    }
+    groups.set(key, current)
+  }
+  return [...groups.values()].sort(
+    (left, right) => right.observed - left.observed || left.accountId.localeCompare(right.accountId),
+  )
 }
 
 export type ExecutionMarker = {

@@ -32,6 +32,28 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
       <DataList items={model.items} dense />
 
+      <div className="execution-operations-diagnosis">
+        <div className="strategy-panel-head">
+          <div>
+            <p className="subtle-label">{t('workspace.execution.diagnosisTitle')}</p>
+            <p className="strategy-panel-summary">{model.diagnosisLabel}</p>
+          </div>
+          <StatusPill
+            state={model.diagnosisTone === 'danger' ? 'error' : model.diagnosisTone === 'accent' ? 'degraded' : 'idle'}
+            label={model.diagnosisLabel}
+            compact
+          />
+        </div>
+        <p className="strategy-panel-hint">{model.diagnosisHint}</p>
+      </div>
+
+      {model.accountSummary.length > 0 ? (
+        <div className="execution-account-summary">
+          <p className="subtle-label">{t('workspace.execution.accountSummary')}</p>
+          <DataList items={model.accountSummary} dense />
+        </div>
+      ) : null}
+
       <div className="execution-operations-alerts">
         <p className="subtle-label">{t('workspace.execution.operationsAnomalies')}</p>
         {model.anomalies.length > 0 ? (

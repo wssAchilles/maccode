@@ -6,6 +6,7 @@ from app.application import (
     InferenceApplicationService,
     OptimizationApplicationService,
     SignalApplicationService,
+    StrategyOrchestrationApplicationService,
     SummaryApplicationService,
     SystemStatusApplicationService,
 )
@@ -43,6 +44,7 @@ from app.matching_service import MatchingService
 from app.ports import RegisteredModel
 from app.redis_worker import RedisMarketWorker
 from app.signal_service import SignalService
+from app.strategy_orchestration_service import StrategyOrchestrationService
 from app.signal_store import SignalStore
 from app.summary_service import StrategySummaryService
 from app.system_status_service import SystemStatusService
@@ -55,6 +57,7 @@ class RuntimeContainer:
     signal_service: SignalService
     inference_service: InferenceService
     optimization_service: OptimizationApplicationService
+    strategy_orchestration_service: StrategyOrchestrationService
     summary_service: StrategySummaryService
     matching_service: MatchingService
     system_status_service: SystemStatusService
@@ -134,6 +137,11 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         strategy_orchestration=strategy_orchestration,
     )
     worker.attach_signal_application(signal_application)
+    strategy_orchestration_application = StrategyOrchestrationApplicationService(
+        orchestration=strategy_orchestration,
+        signal_runtime=signal_runtime,
+        inference_application=inference_application,
+    )
     system_status_application = SystemStatusApplicationService(
         runtime_status=runtime_status,
         signal_store_status=signal_store_status,
@@ -156,6 +164,9 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
     optimization_service = OptimizationApplicationService(
         optimizer=GurobiPortfolioOptimizer(),
     )
+    strategy_orchestration_service = StrategyOrchestrationService(
+        application=strategy_orchestration_application,
+    )
     summary_service = StrategySummaryService(
         application=summary_application,
     )
@@ -169,6 +180,7 @@ def build_runtime_container(*, started_at: float) -> RuntimeContainer:
         signal_service=signal_service,
         inference_service=inference_service,
         optimization_service=optimization_service,
+        strategy_orchestration_service=strategy_orchestration_service,
         summary_service=summary_service,
         matching_service=matching_service,
         system_status_service=system_status_service,

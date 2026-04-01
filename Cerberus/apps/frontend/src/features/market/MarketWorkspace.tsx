@@ -2,7 +2,7 @@ import { CandlesChart } from '../../components/CandlesChart'
 import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
 import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame } from '../../ui'
+import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
@@ -54,6 +54,16 @@ export function MarketWorkspace({ active = true }: Props) {
       </SectionFrame>
 
       <div className="workspace-main stack">
+        <SectionFrame
+          title={t('workspace.market.linkageTitle')}
+          description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
+        >
+          <GlassPanel tone="subtle" className="market-linkage-banner">
+            <p className="strategy-panel-summary">{model.activeSymbol}</p>
+            <p className="strategy-panel-hint">{t('workspace.market.linkageDetail')}</p>
+          </GlassPanel>
+        </SectionFrame>
+
         <SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}>
           <div
             className="chart-shell"

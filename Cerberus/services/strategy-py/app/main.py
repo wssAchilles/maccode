@@ -11,6 +11,7 @@ from app.api import (
     build_matching_router,
     build_optimize_router,
     build_signal_router,
+    build_strategy_orchestration_router,
     build_summary_router,
     build_system_router,
 )
@@ -30,6 +31,7 @@ signal_store = runtime.signal_store
 signal_service = runtime.signal_service
 inference_service = runtime.inference_service
 optimization_service = runtime.optimization_service
+strategy_orchestration_service = runtime.strategy_orchestration_service
 summary_service = runtime.summary_service
 matching_service = runtime.matching_service
 system_status_service = runtime.system_status_service
@@ -76,6 +78,7 @@ register_error_handlers(app, logger)
 app.include_router(build_system_router(system_status_service))
 app.include_router(build_signal_router(signal_service))
 app.include_router(build_inference_router(inference_service))
+app.include_router(build_strategy_orchestration_router(strategy_orchestration_service))
 app.include_router(build_summary_router(summary_service))
 app.include_router(build_optimize_router(optimization_service))
 app.include_router(build_matching_router(matching_service))

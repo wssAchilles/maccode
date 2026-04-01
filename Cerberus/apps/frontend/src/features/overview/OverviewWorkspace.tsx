@@ -5,6 +5,7 @@ import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
+import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
@@ -88,6 +89,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
             <StrategyRegistryPanel model={model.strategyRegistry} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
+            <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
           </div>
         </SectionFrame>
 

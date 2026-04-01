@@ -31,6 +31,8 @@ from app.ports.signal import (
     SignalStoreSource,
 )
 from app.ports.strategy_orchestration import (
+    StrategyOrchestrationAuditEvent,
+    StrategyOrchestrationControlResult,
     StrategyOrchestrationEntry,
     StrategyOrchestrationPort,
     StrategyOrchestrationSnapshot,
@@ -71,6 +73,8 @@ __all__ = [
     "SignalStoreSource",
     "StoreStatusPort",
     "StrategyDecisionSnapshot",
+    "StrategyOrchestrationAuditEvent",
+    "StrategyOrchestrationControlResult",
     "StrategyOrchestrationEntry",
     "StrategyOrchestrationPort",
     "StrategyOrchestrationSnapshot",

@@ -30,6 +30,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   const filterAccountId = useCerberusStore((state) => state.executionTrading.filter_account_id)
   const filterStatus = useCerberusStore((state) => state.executionTrading.filter_status)
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
+  const executionStatus = useCerberusStore((state) => state.uiState.domain_status['execution-trading'])
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
 
@@ -82,6 +83,12 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
 
   return (
     <article data-testid="execution-timeline-panel" className="execution-timeline">
+      {filterSymbol !== 'ALL' ? (
+        <div className="execution-timeline-linkage">
+          <p className="subtle-label">{t('workspace.execution.linkageTitle')}</p>
+          <p className="strategy-panel-hint">{t('workspace.execution.linkageHint').replace('{symbol}', filterSymbol)}</p>
+        </div>
+      ) : null}
       <div className="timeline-toolbar">
         <label className="field-label">
           {t('execution.filterSymbol')}
@@ -146,7 +153,24 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
 
       {filteredEvents.length === 0 ? (
         <div className="execution-timeline-empty">
-          <EmptyState title={t('execution.noEvents')} body={t('workspace.execution.timelineDescription')} />
+          <EmptyState
+            title={
+              executionStatus.state === 'error'
+                ? t('execution.timelineErrorTitle')
+                : orderEvents.length > 0
+                  ? t('execution.timelineFilteredEmptyTitle')
+                  : t('execution.noEvents')
+            }
+            body={
+              executionStatus.state === 'error'
+                ? executionStatus.reason ?? t('execution.timelineRetryHint')
+                : executionStatus.stale
+                  ? t('execution.timelineStaleHint')
+                  : orderEvents.length > 0
+                    ? t('execution.timelineFilteredEmptyHint')
+                    : t('workspace.execution.timelineDescription')
+            }
+          />
         </div>
       ) : (
         <div className="execution-timeline-list">

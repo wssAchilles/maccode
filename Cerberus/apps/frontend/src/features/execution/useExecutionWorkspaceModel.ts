@@ -8,6 +8,7 @@ import {
   summarizeLatestFeedback,
 } from '../../view-models/workbench'
 import {
+  buildStrategyOrchestrationAuditTimelineModel,
   buildExecutionLifecyclePanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
@@ -26,6 +27,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
   const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
   const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
+  const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
   const orderbook = useCerberusStore((state) => state.strategySummary.matching_orderbook)
   const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
   const orderEvents = useCerberusStore((state) => state.executionTrading.order_events)
@@ -110,8 +112,13 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   )
 
   const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
+    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+    [orchestrationStatus, selectedSymbol, strategySignal, t],
+  )
+
+  const strategyAuditTimeline = useMemo(
+    () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+    [orchestrationStatus, t],
   )
 
   const selectSymbol = (symbol: string) => {
@@ -131,5 +138,6 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     strategyMatrix,
     portfolioPanel,
     strategyRegistry,
+    strategyAuditTimeline,
   }
 }
