@@ -663,6 +663,7 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 会执行：
 
 - 构建并部署 `gateway-rs` 与 `strategy-py` 到 Cloud Run。
 - 构建前端并部署到 Firebase Hosting。
+- 对 Firebase Hosting 做安全头 / 缓存策略校验（`scripts/validate_frontend_hosting.sh`）。
 - 针对线上 Firebase URL 执行已部署 e2e / lighthouse gate。
 - 针对已部署 gateway 运行后端 deploy gate，校验延迟 / 吞吐 / 单位成本阈值（`scripts/gateway_perf_gate.py`）。
 - 认证门禁依赖 GitHub Secrets：`FIREBASE_E2E_EMAIL` 与 `FIREBASE_E2E_PASSWORD`。
@@ -693,6 +694,25 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 会执行：
    - LCP <= 2.0s
    - INP <= 150ms（通过交互 trace / field probe 测量）
    - CLS < 0.1
+
+## 前端云端发布入口
+
+推荐使用仓库根目录脚本统一构建、发布并执行前端云端门禁：
+
+```bash
+E2E_AUTH_EMAIL="gate-user@example.com" \
+E2E_AUTH_PASSWORD="replace_me" \
+./scripts/deploy_frontend_hosting.sh
+```
+
+脚本会完成：
+
+- 解析 Firebase Web SDK 配置
+- 以 Cloud Run gateway 为上游构建前端
+- 发布到 Firebase Hosting live channel
+- 校验 Hosting 安全头、缓存策略与产物中不存在本地地址
+- 针对已部署 URL 执行 Lighthouse gate
+- 当提供 `E2E_AUTH_EMAIL` / `E2E_AUTH_PASSWORD` 时，再执行 deployed e2e gate
 
 鉴权态验收补充：
 

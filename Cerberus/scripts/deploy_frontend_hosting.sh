@@ -9,6 +9,7 @@ PROJECT_ID="${PROJECT_ID:-cerberus-9d94f}"
 REGION="${REGION:-asia-east2}"
 FIREBASE_APP_ID="${FIREBASE_APP_ID:-1:836238907711:web:c3fc58bfbd45d370c51b8a}"
 HOSTING_URL="${HOSTING_URL:-https://${PROJECT_ID}.web.app}"
+RUN_POST_DEPLOY_GATES="${RUN_POST_DEPLOY_GATES:-true}"
 
 if ! command -v firebase >/dev/null 2>&1; then
   echo "firebase CLI is required" >&2
@@ -42,6 +43,7 @@ echo "building frontend against cloud endpoints"
 (
   cd "${FRONTEND_DIR}"
   VITE_GATEWAY_BASE="${GATEWAY_URL}" \
+  VITE_PUBLIC_APP_URL="${HOSTING_URL}" \
   VITE_AUTH_REQUIRED="true" \
   VITE_FIREBASE_API_KEY="${API_KEY}" \
   VITE_FIREBASE_AUTH_DOMAIN="${AUTH_DOMAIN}" \
@@ -59,6 +61,32 @@ echo "deploying frontend to Firebase Hosting"
   cd "${ROOT_DIR}"
   firebase deploy --project "${PROJECT_ID}" --only hosting --non-interactive
 )
+
+echo "validating deployed frontend"
+"${ROOT_DIR}/scripts/validate_frontend_hosting.sh" "${HOSTING_URL}"
+
+if [[ "${RUN_POST_DEPLOY_GATES}" == "true" ]]; then
+  echo "running deploy lighthouse gate against ${HOSTING_URL}"
+  (
+    cd "${FRONTEND_DIR}"
+    LHCI_COLLECT_URL="${HOSTING_URL}" npm run lighthouse:gate
+  )
+
+  if [[ -n "${E2E_AUTH_EMAIL:-}" && -n "${E2E_AUTH_PASSWORD:-}" ]]; then
+    echo "running deployed e2e gate against ${HOSTING_URL}"
+    (
+      cd "${FRONTEND_DIR}"
+      E2E_BASE_URL="${HOSTING_URL}" \
+      E2E_GATE_MODE="true" \
+      E2E_USE_DEPLOYED="true" \
+      E2E_AUTH_EMAIL="${E2E_AUTH_EMAIL}" \
+      E2E_AUTH_PASSWORD="${E2E_AUTH_PASSWORD}" \
+      npm run test:e2e:gate
+    )
+  else
+    echo "skipping deployed e2e gate because E2E_AUTH_EMAIL / E2E_AUTH_PASSWORD are not set"
+  fi
+fi
 
 printf '\nfrontend_url=%s\n' "${HOSTING_URL}"
 printf 'gateway_url=%s\n' "${GATEWAY_URL}"

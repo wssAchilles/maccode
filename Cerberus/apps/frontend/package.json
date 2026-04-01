@@ -15,6 +15,7 @@
     "lighthouse:gate:mobile": "lhci autorun --config=.lighthouserc.gate.mobile.cjs",
     "lighthouse:gate": "npm run lighthouse:gate:desktop && npm run lighthouse:gate:mobile",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
+    "validate:hosting": "../../scripts/validate_frontend_hosting.sh",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

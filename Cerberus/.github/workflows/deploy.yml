@@ -209,7 +209,7 @@ jobs:
       - name: Build frontend for Firebase Hosting
         env:
           VITE_GATEWAY_BASE: ${{ steps.tf_outputs.outputs.cloud_run_gateway_url }}
-          VITE_STRATEGY_BASE: ${{ steps.tf_outputs.outputs.cloud_run_strategy_url }}
+          VITE_PUBLIC_APP_URL: ${{ secrets.FIREBASE_HOSTING_URL || format('https://{0}.web.app', env.PROJECT_ID) }}
           VITE_AUTH_REQUIRED: "true"
           VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -262,6 +262,11 @@ jobs:
 
       - name: Install Playwright browser
         run: cd apps/frontend && npx playwright install --with-deps chromium
+
+      - name: Deploy gate hosting security and asset policy
+        env:
+          FRONTEND_URL: ${{ steps.resolve_url.outputs.frontend_url }}
+        run: ./scripts/validate_frontend_hosting.sh
 
       - name: Deploy gate e2e (desktop + mobile)
         env:

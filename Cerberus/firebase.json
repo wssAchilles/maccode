@@ -19,6 +19,57 @@
     ],
     "headers": [
       {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=0,must-revalidate"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com https://*.run.app wss://*.run.app https://*.web.app wss://*.web.app https://*.firebaseapp.com wss://*.firebaseapp.com"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=63072000; includeSubDomains; preload"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "source": "/robots.txt",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=3600,must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/site.webmanifest",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=3600,must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|webp|woff|woff2)",
         "headers": [
           {

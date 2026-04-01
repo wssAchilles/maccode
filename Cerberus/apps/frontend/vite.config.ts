@@ -12,9 +12,22 @@ const deferredEntryChunks = [
   'workspace-shared',
   'charts',
 ]
+const publicAppUrl = (process.env.VITE_PUBLIC_APP_URL ?? '').trim().replace(/\/+$/, '')
+const resolvedPublicAppUrl = publicAppUrl ? `${publicAppUrl}/` : '/'
+const resolvedOgImageUrl = publicAppUrl ? `${publicAppUrl}/og-card.svg` : '/og-card.svg'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'cerberus-html-runtime-metadata',
+      transformIndexHtml(html) {
+        return html
+          .replaceAll('__APP_PUBLIC_URL__', resolvedPublicAppUrl)
+          .replaceAll('__APP_OG_IMAGE_URL__', resolvedOgImageUrl)
+      },
+    },
+  ],
   server: {
     port: 5173,
     host: true,
