@@ -10,7 +10,7 @@ import type {
   TradingPolicy,
   UIState,
 } from '../../types/contracts'
-import { formatConfidence } from '../../view-models/workbench'
+import { formatConfidence, formatDateTimeLabel } from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
@@ -130,17 +130,6 @@ export type ExecutionLifecyclePanelModel = {
   reason?: string
   stages: ExecutionLifecycleStageModel[]
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) {
-    return '—'
-  }
-  const parsed = Date.parse(value)
-  if (Number.isNaN(parsed)) {
-    return value
-  }
-  return new Date(parsed).toLocaleString()
 }
 
 function formatPercent(value?: number | null): string {
@@ -548,7 +537,7 @@ export function buildStrategyPortfolioPanelModel({
       {
         id: 'updatedAt',
         label: t('workspace.strategy.updatedAt'),
-        value: formatDateTime(portfolio.updated_at),
+        value: formatDateTimeLabel(portfolio.updated_at),
       },
     ],
   }
@@ -721,7 +710,7 @@ export function buildStrategyOrchestrationAuditTimelineModel({
       id: `${item.event_type}-${item.created_at}-${index}`,
       title: auditEventLabel(t, item.event_type),
       message: item.message,
-      createdAt: formatDateTime(item.created_at),
+      createdAt: formatDateTimeLabel(item.created_at),
       detail: (() => {
         const details: string[] = []
         if (typeof item.metadata.strategy_id === 'string') {
@@ -811,7 +800,7 @@ export function buildStrategyOrchestrationOperationsModel({
           symbolCoverage: entry.symbol_coverage,
           executionReady: true,
         }),
-        lastUpdatedLabel: formatDateTime(entry.last_updated_at),
+        lastUpdatedLabel: formatDateTimeLabel(entry.last_updated_at),
         lastActorLabel: entry.last_actor ?? t('common.na'),
         lastReasonLabel: entry.last_reason ?? t('common.na'),
       }

@@ -24,6 +24,12 @@ export const LazyExecutionTimelinePanel = lazy(() =>
   })),
 )
 
+export const LazyHealthInferenceOperationsDrawerContent = lazy(() =>
+  import('../features/health/HealthInferenceOperationsDrawerContent').then((module) => ({
+    default: module.HealthInferenceOperationsDrawerContent,
+  })),
+)
+
 export const LazyMatchingOrderBookPanel = lazy(() =>
   import('../components/MatchingOrderBookPanel').then((module) => ({
     default: module.MatchingOrderBookPanel,
@@ -33,6 +39,12 @@ export const LazyMatchingOrderBookPanel = lazy(() =>
 export const LazyServiceHealthPanel = lazy(() =>
   import('../components/ServiceHealthPanel').then((module) => ({
     default: module.ServiceHealthPanel,
+  })),
+)
+
+export const LazyExecutionStrategyOperationsDrawerContent = lazy(() =>
+  import('../features/execution/components/ExecutionStrategyOperationsDrawerContent').then((module) => ({
+    default: module.ExecutionStrategyOperationsDrawerContent,
   })),
 )
 

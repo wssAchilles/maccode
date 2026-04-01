@@ -37,6 +37,25 @@ describe('execution timeline view model', () => {
     expect(first.statusOptions).toEqual(['ALL', 'accepted', 'rejected'])
   })
 
+  it('prepares formatted timestamps and compact labels for long identifiers', () => {
+    const prepared = buildPreparedExecutionTimeline([
+      event({
+        id: 'evt-compact',
+        event_time: '1775036445252',
+        order_id: 'default-order-0000000442-order-id',
+        request_id: '143e0a7e49624402b69f5ed59d53e19c-request-id',
+        client_order_id: 'default-BTCUSDT-1775024608568-BUY-client-order-id',
+        execution_id: 'p784af461abd47bea136bd7c4391f4dc-execution-id',
+      }),
+    ])
+
+    expect(prepared.rows[0]?.eventTimeLabel).toMatch(/2026/)
+    expect(prepared.rows[0]?.orderIdLabel).toContain('…')
+    expect(prepared.rows[0]?.requestIdLabel).toContain('…')
+    expect(prepared.rows[0]?.clientOrderIdLabel).toContain('…')
+    expect(prepared.rows[0]?.executionIdLabel).toContain('…')
+  })
+
   it('replays filtered candidates from prepared indexes before keyword search', () => {
     const events = [
       event({

@@ -2,7 +2,7 @@ import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
 import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
-import { type PreparedTradingSnapshot, type WorkspaceSpotlightModel, formatPrice } from '../../view-models/workbench'
+import { type PreparedTradingSnapshot, type WorkspaceSpotlightModel, formatDateTimeLabel, formatPrice } from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
 import type { MatchingOrderBookPanelModel } from '../../view-models/orderbook'
 
@@ -84,17 +84,6 @@ type BuildMarketChartStateParams = {
   candlesCount: number
   candlesFetching: boolean
   marketStatus: UIState
-}
-
-function formatDateTime(value?: string | number): string {
-  if (!value) {
-    return '—'
-  }
-  const parsed = typeof value === 'number' ? value : Date.parse(value)
-  if (Number.isNaN(parsed)) {
-    return typeof value === 'string' ? value : '—'
-  }
-  return new Date(parsed).toLocaleString()
 }
 
 function executionPhaseLabel(t: Translate, phase?: string): string {
@@ -377,7 +366,7 @@ export function buildMarketExecutionRailModel({
       title: `${executionPhaseLabel(t, item.latestPhase)} · ${item.side ?? '—'}`,
       subtitle: `${item.symbol ?? selectedSymbol} · ${item.requestId ?? '—'} · ${item.executionIds[0] ?? item.orderId ?? '—'}`,
       status: executionPhaseLabel(t, item.latestStatus ?? item.latestPhase),
-      time: formatDateTime(item.fillAt ?? item.canceledAt ?? item.rejectedAt ?? item.acceptedAt ?? item.submitAt),
+      time: formatDateTimeLabel(item.fillAt ?? item.canceledAt ?? item.rejectedAt ?? item.acceptedAt ?? item.submitAt),
     }))
 
   if (items.length === 0) {

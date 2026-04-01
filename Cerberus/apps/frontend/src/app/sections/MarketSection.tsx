@@ -17,8 +17,8 @@ export function MarketSection({
   const sectionClassName = className ?? 'mt-6'
 
   return (
-    <section className={sectionClassName} aria-label={t('section.market')}>
-      <h2 className="section-title">{t('section.market')}</h2>
+    <section className={sectionClassName} aria-label={t('workspace.market.title')}>
+      <h2 className="section-title">{t('workspace.market.title')}</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <article className="metric-card">
           <p className="metric-label">{t('market.bestBid')}</p>

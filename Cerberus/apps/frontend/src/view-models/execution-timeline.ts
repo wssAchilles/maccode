@@ -1,4 +1,5 @@
 import type { OrderTimelineEvent } from '../types/contracts'
+import { formatDateTimeLabel, formatRequestLabel } from './workbench'
 
 export type PreparedExecutionTimelineRow = {
   id: string
@@ -8,6 +9,10 @@ export type PreparedExecutionTimelineRow = {
   rightTop: string
   receivedAtLabel: string
   eventTimeLabel: string
+  orderIdLabel: string
+  requestIdLabel: string
+  clientOrderIdLabel: string
+  executionIdLabel: string
   searchText: string
 }
 
@@ -31,17 +36,6 @@ export type PreparedExecutionTimelineWindow = {
 }
 
 const preparedExecutionTimelineCache = new WeakMap<OrderTimelineEvent[], PreparedExecutionTimeline>()
-
-function formatOptionalIso(value: string | number | undefined): string {
-  if (value === undefined || value === null) {
-    return '—'
-  }
-  const parsed = typeof value === 'number' ? value : Date.parse(value)
-  if (Number.isNaN(parsed)) {
-    return String(value)
-  }
-  return new Date(parsed).toLocaleString()
-}
 
 function pushIndex(map: Map<string, number[]>, key: string | undefined, index: number) {
   if (!key) {
@@ -78,6 +72,14 @@ function intersectSorted(left: number[], right: number[]): number[] {
   }
 
   return intersection
+}
+
+function formatCompactIdentifier(value?: string | null): string {
+  const normalized = formatRequestLabel(value)
+  if (normalized === '—' || normalized.length <= 28) {
+    return normalized
+  }
+  return `${normalized.slice(0, 16)}…${normalized.slice(-8)}`
 }
 
 export function buildPreparedExecutionTimeline(orderEvents: OrderTimelineEvent[]): PreparedExecutionTimeline {
@@ -120,8 +122,12 @@ export function buildPreparedExecutionTimeline(orderEvents: OrderTimelineEvent[]
         event.client_order_id ?? event.request_id ?? '—',
       ].join(' · '),
       rightTop: event.status ?? event.lifecycle_phase,
-      receivedAtLabel: formatOptionalIso(event.received_at),
-      eventTimeLabel: formatOptionalIso(event.event_time),
+      receivedAtLabel: formatDateTimeLabel(event.received_at),
+      eventTimeLabel: formatDateTimeLabel(event.event_time),
+      orderIdLabel: formatCompactIdentifier(event.order_id),
+      requestIdLabel: formatCompactIdentifier(event.request_id),
+      clientOrderIdLabel: formatCompactIdentifier(event.client_order_id),
+      executionIdLabel: formatCompactIdentifier(event.execution_id),
       searchText: [
         event.symbol,
         event.account_id,

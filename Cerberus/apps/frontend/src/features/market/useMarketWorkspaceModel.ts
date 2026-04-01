@@ -78,76 +78,53 @@ export function useMarketWorkspaceModel({ active }: Params) {
     [latest, latestBySymbol, latestEvent, selectedSymbol, strategySignal],
   )
 
-  const symbolChips = useMemo(
-    () => buildMarketSymbolChips(selectedSymbol),
-    [selectedSymbol],
-  )
+  const model = useMemo(() => {
+    const orderbookPanel = buildMatchingOrderBookPanelModel({ t, orderbook })
+    const executionRail = buildMarketExecutionRailModel({
+      t,
+      selectedSymbol,
+      preparedSelection: preparedExecutionSelection,
+    })
 
-  const metricTiles = useMemo(
-    () =>
-      buildMarketMetricTiles({
+    return {
+      symbolChips: buildMarketSymbolChips(selectedSymbol),
+      metricTiles: buildMarketMetricTiles({
         t,
         snapshot: tradingSnapshot,
       }),
-    [t, tradingSnapshot],
-  )
-
-  const chartState = useMemo(
-    () =>
-      buildMarketChartStateModel({
+      chartState: buildMarketChartStateModel({
         t,
         candlesCount: candles.length,
         candlesFetching: candlesQuery.isLoading || candlesQuery.isFetching,
         marketStatus,
       }),
-    [candles.length, candlesQuery.isFetching, candlesQuery.isLoading, marketStatus, t],
-  )
-
-  const chartSeries = useMemo(
-    () => buildMarketChartSeriesModel(candles),
-    [candles],
-  )
-
-  const strategyMatrix = useMemo(
-    () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
-    [strategySignal, t],
-  )
-
-  const portfolioPanel = useMemo(
-    () => buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
-  )
-
-  const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-    [orchestrationStatus, selectedSymbol, strategySignal, t],
-  )
-
-  const executionRail = useMemo(
-    () => buildMarketExecutionRailModel({ t, selectedSymbol, preparedSelection: preparedExecutionSelection }),
-    [preparedExecutionSelection, selectedSymbol, t],
-  )
-
-  const chartMarkers = useMemo(
-    () => buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
-    [preparedExecutionSelection],
-  )
-
-  const orderbookPanel = useMemo(
-    () => buildMatchingOrderBookPanelModel({ t, orderbook }),
-    [orderbook, t],
-  )
-
-  const spotlight = useMemo(
-    () =>
-      buildMarketSpotlightModel({
+      chartSeries: buildMarketChartSeriesModel(candles),
+      strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+      portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+      strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+      executionRail,
+      chartMarkers: buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
+      orderbookPanel,
+      spotlight: buildMarketSpotlightModel({
         t,
         snapshot: tradingSnapshot,
         executionRail,
         orderbookPanel,
       }),
-    [executionRail, orderbookPanel, t, tradingSnapshot],
-  )
+    }
+  }, [
+    candles,
+    candlesQuery.isFetching,
+    candlesQuery.isLoading,
+    marketStatus,
+    orchestrationStatus,
+    orderbook,
+    preparedExecutionSelection,
+    selectedSymbol,
+    strategySignal,
+    t,
+    tradingSnapshot,
+  ])
 
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
@@ -156,18 +133,8 @@ export function useMarketWorkspaceModel({ active }: Params) {
 
   return {
     activeSymbol: selectedSymbol,
-    chartSeries,
-    chartMarkers,
-    chartState,
     summaryError,
-    orderbookPanel,
-    symbolChips,
-    metricTiles,
-    spotlight,
-    portfolioPanel,
-    strategyRegistry,
-    strategyMatrix,
-    executionRail,
+    ...model,
     selectSymbol,
   }
 }

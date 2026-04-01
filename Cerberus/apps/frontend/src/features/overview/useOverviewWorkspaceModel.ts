@@ -77,62 +77,40 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     [heartbeat, latest, latestBySymbol, latestEvent, selectedSymbol, strategySignal],
   )
 
-  const metricTiles = useMemo(
-    () =>
-      buildOverviewMetricTiles({
+  const model = useMemo(() => {
+    const domainSummary = summarizeDomainStates(domainStatus)
+
+    return {
+      metricTiles: buildOverviewMetricTiles({
         t,
         snapshot: tradingSnapshot,
       }),
-    [t, tradingSnapshot],
-  )
-
-  const healthCards = useMemo(() => buildHealthCards(domainStatus, t), [domainStatus, t])
-  const domainSummary = useMemo(() => summarizeDomainStates(domainStatus), [domainStatus])
-
-  const persistenceItems = useMemo(
-    () => buildOverviewPersistenceItems({ t, persistenceStatus }),
-    [persistenceStatus, t],
-  )
-
-  const inferenceCard = useMemo(
-    () => buildInferenceStatusCardModel({ t, inferenceStatus }),
-    [inferenceStatus, t],
-  )
-
-  const strategyMatrix = useMemo(
-    () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
-    [strategySignal, t],
-  )
-
-  const portfolioPanel = useMemo(
-    () => buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
-  )
-
-  const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-    [orchestrationStatus, selectedSymbol, strategySignal, t],
-  )
-
-  const strategyAuditTimeline = useMemo(
-    () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
-    [orchestrationStatus, t],
-  )
-  const recentSignalCards = useMemo(
-    () => buildOverviewRecentSignalCards({ t, recentSignals }),
-    [recentSignals, t],
-  )
-
-  const spotlight = useMemo(
-    () =>
-      buildOverviewSpotlightModel({
+      healthCards: buildHealthCards(domainStatus, t),
+      persistenceItems: buildOverviewPersistenceItems({ t, persistenceStatus }),
+      inferenceCard: buildInferenceStatusCardModel({ t, inferenceStatus }),
+      strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+      portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+      strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+      strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+      recentSignals: buildOverviewRecentSignalCards({ t, recentSignals }),
+      spotlight: buildOverviewSpotlightModel({
         t,
         snapshot: tradingSnapshot,
         readyCount: domainSummary.readyCount,
         attentionCount: domainSummary.attentionCount,
       }),
-    [domainSummary.attentionCount, domainSummary.readyCount, t, tradingSnapshot],
-  )
+    }
+  }, [
+    domainStatus,
+    inferenceStatus,
+    orchestrationStatus,
+    persistenceStatus,
+    recentSignals,
+    selectedSymbol,
+    strategySignal,
+    t,
+    tradingSnapshot,
+  ])
 
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
@@ -141,16 +119,7 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
 
   return {
     summaryError,
-    healthCards,
-    inferenceCard,
-    strategyMatrix,
-    portfolioPanel,
-    strategyRegistry,
-    strategyAuditTimeline,
-    metricTiles,
-    spotlight,
-    persistenceItems,
-    recentSignals: recentSignalCards,
+    ...model,
     selectSymbol,
     openExecution: () => onSelectWorkspace('execution'),
     openHealth: () => onSelectWorkspace('health'),

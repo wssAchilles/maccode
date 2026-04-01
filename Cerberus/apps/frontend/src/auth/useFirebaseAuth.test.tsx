@@ -6,6 +6,8 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { useFirebaseAuth } from './useFirebaseAuth'
 
 const {
+  mockLoadFirebaseAuthServices,
+  mockLoadFirebaseAuthModule,
   mockSignInWithEmailAndPassword,
   mockCreateUserWithEmailAndPassword,
   mockSignInWithPopup,
@@ -13,6 +15,8 @@ const {
   mockOnAuthStateChanged,
   mockSetAuthTokenProvider,
 } = vi.hoisted(() => ({
+  mockLoadFirebaseAuthServices: vi.fn(),
+  mockLoadFirebaseAuthModule: vi.fn(),
   mockSignInWithEmailAndPassword: vi.fn(),
   mockCreateUserWithEmailAndPassword: vi.fn(),
   mockSignInWithPopup: vi.fn(),
@@ -30,19 +34,8 @@ vi.mock('firebase/auth', () => ({
 }))
 
 vi.mock('../lib/firebase-services', () => ({
-  loadFirebaseAuthServices: async () => ({
-    auth: {
-      currentUser: null,
-    },
-  }),
-  loadFirebaseAuthModule: async () => ({
-    signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
-    createUserWithEmailAndPassword: mockCreateUserWithEmailAndPassword,
-    signInWithPopup: mockSignInWithPopup,
-    signOut: mockSignOut,
-    onAuthStateChanged: mockOnAuthStateChanged,
-    GoogleAuthProvider: class {},
-  }),
+  loadFirebaseAuthServices: mockLoadFirebaseAuthServices,
+  loadFirebaseAuthModule: mockLoadFirebaseAuthModule,
 }))
 
 vi.mock('../lib/auth-session', () => ({
@@ -86,12 +79,29 @@ function Harness() {
 describe('useFirebaseAuth', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_AUTH_REQUIRED', 'true')
+    vi.stubEnv('VITE_FIREBASE_API_KEY', 'demo-api-key')
+    vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'demo-project')
     window.localStorage.setItem('cerberus.locale', 'zh-CN')
 
     mockOnAuthStateChanged.mockImplementation((_auth, callback: (user: null) => void) => {
       callback(null)
       return vi.fn()
     })
+    mockLoadFirebaseAuthServices.mockResolvedValue({
+      auth: {
+        currentUser: null,
+      },
+    })
+    mockLoadFirebaseAuthModule.mockResolvedValue({
+      signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
+      createUserWithEmailAndPassword: mockCreateUserWithEmailAndPassword,
+      signInWithPopup: mockSignInWithPopup,
+      signOut: mockSignOut,
+      onAuthStateChanged: mockOnAuthStateChanged,
+      GoogleAuthProvider: class {},
+    })
+    mockLoadFirebaseAuthServices.mockClear()
+    mockLoadFirebaseAuthModule.mockClear()
     mockSignInWithEmailAndPassword.mockReset()
     mockCreateUserWithEmailAndPassword.mockReset()
     mockSignInWithPopup.mockReset()
@@ -130,6 +140,33 @@ describe('useFirebaseAuth', () => {
     })
 
     expect(mockCreateUserWithEmailAndPassword).not.toHaveBeenCalled()
+  })
+
+  it('keeps the login shell ready when there is no persisted session hint', async () => {
+    render(
+      <I18nProvider>
+        <Harness />
+      </I18nProvider>,
+    )
+
+    expect(screen.getByTestId('auth-status').textContent).toBe('ready')
+    expect(mockLoadFirebaseAuthServices).not.toHaveBeenCalled()
+  })
+
+  it('shows loading when a persisted Firebase session hint exists', async () => {
+    window.localStorage.setItem('firebase:authUser:demo-api-key:[DEFAULT]', '{"uid":"user-1"}')
+
+    render(
+      <I18nProvider>
+        <Harness />
+      </I18nProvider>,
+    )
+
+    expect(screen.getByTestId('auth-status').textContent).toBe('loading')
+
+    await waitFor(() => {
+      expect(mockLoadFirebaseAuthServices).toHaveBeenCalled()
+    })
   })
 
   it('uses email sign-up for the create-account action', async () => {

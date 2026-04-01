@@ -68,39 +68,28 @@ export function useExecutionConsoleModel({
     },
   })
 
-  const executionSummary = useMemo(
-    () =>
-      buildExecutionSummary({
-        t,
-        broker,
-        selectedSymbol,
-        alpacaSymbol: alpacaModel.symbol,
-        tradingPolicy,
-        latestBid,
-        latestAsk,
-      }),
-    [alpacaModel.symbol, broker, latestAsk, latestBid, selectedSymbol, t, tradingPolicy],
-  )
-
-  const progressItems = useMemo(
-    () => buildExecutionProgressItems(coreFlow, t),
-    [coreFlow, t],
-  )
-
-  const deskSpotlight = useMemo(
-    () =>
-      buildExecutionDeskSpotlightModel({
-        t,
-        broker,
-        selectedSymbol,
-        alpacaSymbol: alpacaModel.symbol,
-        tradingPolicy,
-        latestBid,
-        latestAsk,
-        binanceRule,
-      }),
-    [alpacaModel.symbol, binanceRule, broker, latestAsk, latestBid, selectedSymbol, t, tradingPolicy],
-  )
+  const consoleModel = useMemo(() => ({
+    executionSummary: buildExecutionSummary({
+      t,
+      broker,
+      selectedSymbol,
+      alpacaSymbol: alpacaModel.symbol,
+      tradingPolicy,
+      latestBid,
+      latestAsk,
+    }),
+    progressItems: buildExecutionProgressItems(coreFlow, t),
+    deskSpotlight: buildExecutionDeskSpotlightModel({
+      t,
+      broker,
+      selectedSymbol,
+      alpacaSymbol: alpacaModel.symbol,
+      tradingPolicy,
+      latestBid,
+      latestAsk,
+      binanceRule,
+    }),
+  }), [alpacaModel.symbol, binanceRule, broker, coreFlow, latestAsk, latestBid, selectedSymbol, t, tradingPolicy])
 
   return {
     broker,
@@ -111,8 +100,6 @@ export function useExecutionConsoleModel({
     binanceRule,
     binanceModel,
     alpacaModel,
-    deskSpotlight,
-    executionSummary,
-    progressItems,
+    ...consoleModel,
   }
 }

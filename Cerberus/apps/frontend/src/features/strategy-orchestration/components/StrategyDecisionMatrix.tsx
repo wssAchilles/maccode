@@ -28,11 +28,12 @@ export function StrategyDecisionMatrix({ model }: Props) {
         {model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
       </div>
 
-      <div className="sd-list">
+      <div className="sd-list" role="list" aria-label={t('workspace.strategy.matrixTitle')}>
         {model.items.map((item) => (
           <article
             key={item.id}
             className={item.active ? 'sd-card sd-card-active' : 'sd-card'}
+            role="listitem"
           >
             <div className="sd-head">
               <div>

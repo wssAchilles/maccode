@@ -233,7 +233,8 @@ describe('inference observability module', () => {
     expect(screen.getByText(/最近信号|Recent Signals/i)).toBeTruthy()
   })
 
-  it('integrates into health workspace with a read-only diagnostics section', () => {
+  it('integrates into health workspace with a read-only diagnostics section', async () => {
+    const user = userEvent.setup()
     renderWithI18n(<HealthWorkspace />)
 
     expect(screen.getByText(/推理可观测|Inference observability/i)).toBeTruthy()
@@ -243,7 +244,10 @@ describe('inference observability module', () => {
     expect(screen.getByText(/标的级对照|Symbol-level comparison/i)).toBeTruthy()
     expect(screen.getByText(/审计时间线|Audit timeline/i)).toBeTruthy()
     expect(screen.getByText(/受控操作|Controlled operations/i)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /申请晋升为 Primary|Request primary promotion/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /回退到 Observe|Rollback to observe/i })).toBeTruthy()
+
+    await user.click(screen.getByTestId('health-inference-operations-drawer-trigger'))
+
+    expect(await screen.findByRole('button', { name: /申请晋升为 Primary|Request primary promotion/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /回退到 Observe|Rollback to observe/i })).toBeTruthy()
   })
 })

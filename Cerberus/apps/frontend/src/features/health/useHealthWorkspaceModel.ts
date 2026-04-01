@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useDormantSelector } from '../../store/useDormantSelector'
-import { useInferenceOperationsModel } from '../inference-observability/useInferenceOperationsModel'
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
@@ -15,7 +14,6 @@ import {
 
 export function useHealthWorkspaceModel(active = true) {
   const { t } = useI18n()
-  const inferenceOperations = useInferenceOperationsModel(active)
   const { domainStatus, persistenceStatus, inferenceStatus, summaryError } = useDormantSelector(
     active,
     useShallow((state) => ({
@@ -26,52 +24,28 @@ export function useHealthWorkspaceModel(active = true) {
     })),
   )
 
-  const workerItems = useMemo(
-    () => buildHealthWorkerItems({ t, persistenceStatus }),
-    [persistenceStatus, t],
-  )
+  const model = useMemo(() => {
+    const inferenceDiagnostics = buildInferenceDiagnosticsModel({ t, inferenceStatus })
 
-  const storeItems = useMemo(
-    () => buildHealthStoreItems({ t, persistenceStatus }),
-    [persistenceStatus, t],
-  )
-
-  const diagnostics = useMemo(
-    () => buildHealthDiagnostics(summaryError, domainStatus),
-    [domainStatus, summaryError],
-  )
-
-  const serviceHealthPanel = useMemo(
-    () => buildServiceHealthPanelModel({ t, domainStatus, persistenceStatus }),
-    [domainStatus, persistenceStatus, t],
-  )
-
-  const inferenceDiagnostics = useMemo(
-    () => buildInferenceDiagnosticsModel({ t, inferenceStatus }),
-    [inferenceStatus, t],
-  )
-
-  const spotlight = useMemo(
-    () =>
-      buildHealthSpotlightModel({
+    return {
+      workerItems: buildHealthWorkerItems({ t, persistenceStatus }),
+      storeItems: buildHealthStoreItems({ t, persistenceStatus }),
+      diagnostics: buildHealthDiagnostics(summaryError, domainStatus),
+      serviceHealthPanel: buildServiceHealthPanelModel({ t, domainStatus, persistenceStatus }),
+      inferenceDiagnostics,
+      spotlight: buildHealthSpotlightModel({
         t,
         domainStatus,
         persistenceStatus,
         inferenceStatus,
       }),
-    [domainStatus, inferenceStatus, persistenceStatus, t],
-  )
+      hasDiagnosticsAlert: Boolean(summaryError),
+    }
+  }, [domainStatus, inferenceStatus, persistenceStatus, summaryError, t])
 
   return {
     domainStatus,
     persistenceStatus,
-    spotlight,
-    serviceHealthPanel,
-    inferenceDiagnostics,
-    inferenceOperations,
-    workerItems,
-    storeItems,
-    diagnostics,
-    hasDiagnosticsAlert: Boolean(summaryError),
+    ...model,
   }
 }

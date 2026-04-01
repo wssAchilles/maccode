@@ -61,6 +61,42 @@ describe('strategy orchestration module', () => {
     expect(onSelectSymbol).toHaveBeenCalledWith('ETHUSDT')
   })
 
+  it('formats numeric portfolio timestamps into human-readable labels', () => {
+    const model = buildStrategyPortfolioPanelModel({
+      t: (key) => key,
+      selectedSymbol: 'BTCUSDT',
+      signal: {
+        status: 'ready',
+        signal: 'BUY',
+        confidence: 0.82,
+        portfolio: {
+          symbol: 'BTCUSDT',
+          dominant_signal: 'BUY',
+          final_signal: 'BUY',
+          final_source: 'rule_engine',
+          signal_bias: 'bullish',
+          consensus_level: 'moderate',
+          execution_ready: false,
+          execution_gate: 'review',
+          execution_gate_reason: 'strategy basket is still contested',
+          lead_strategy_id: 'default',
+          lead_strategy_label: 'Rule engine',
+          aligned_count: 1,
+          contested_count: 1,
+          agreement_ratio: 0.5,
+          weighted_score: 0.564,
+          active_strategy_count: 2,
+          tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+          updated_at: Date.parse('2026-04-01T10:00:00Z') as unknown as string,
+          latest_price: 101.25,
+        },
+      },
+    })
+
+    expect(model.items.find((item) => item.id === 'updatedAt')?.value).not.toBe('1775037600000')
+    expect(model.items.find((item) => item.id === 'updatedAt')?.value).toMatch(/2026/)
+  })
+
   it('renders execution lifecycle stages with progression context', () => {
     const preparedSelection = buildPreparedExecutionSelection(
       [

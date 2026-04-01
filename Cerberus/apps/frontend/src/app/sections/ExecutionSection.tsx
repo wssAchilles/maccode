@@ -24,8 +24,8 @@ export function ExecutionSection({
   const orderbookPanel = buildMatchingOrderBookPanelModel({ t, orderbook: matchingOrderBook })
 
   return (
-    <section className={sectionClassName} aria-label={t('section.execution')}>
-      <h2 className="section-title">{t('section.execution')}</h2>
+    <section className={sectionClassName} aria-label={t('workspace.execution.title')}>
+      <h2 className="section-title">{t('workspace.execution.title')}</h2>
       <div className="mt-3 grid gap-4 lg:grid-cols-3">
         <div className="min-h-[180px] lg:col-span-3">
           <Suspense fallback={<PanelSkeleton height="h-[180px]" />}>

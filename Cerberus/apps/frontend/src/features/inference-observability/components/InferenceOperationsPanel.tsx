@@ -64,6 +64,8 @@ export function InferenceOperationsPanel({
           <label className="field-label">
             {t('workspace.inference.operationReason')}
             <textarea
+              id="inference-operation-reason"
+              name="inference_operation_reason"
               className="field-input ifr"
               value={reason}
               onChange={(event) => onReasonChange(event.target.value)}
@@ -74,6 +76,8 @@ export function InferenceOperationsPanel({
             <label className="field-label">
               {t('workspace.inference.registryTitle')}
               <select
+                id="inference-model-select"
+                name="inference_model_select"
                 className="field-input"
                 value={selectedModelId}
                 onChange={(event) => onSelectedModelIdChange(event.target.value)}

@@ -117,12 +117,31 @@ const CORE_FLOW_STATE_LABEL_MAP: Record<CoreFlowStepState, TranslationKey> = {
   error: 'health.state.error',
 }
 
+export function parseDateTimeValue(value?: number | string | null): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return undefined
+  }
+  const numeric = Number(trimmed)
+  if (Number.isFinite(numeric) && /^\d+(\.\d+)?$/.test(trimmed)) {
+    return numeric
+  }
+  const parsed = Date.parse(trimmed)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
 export function formatDateTimeLabel(value?: number | string | null): string {
-  if (!value) {
+  if (value === undefined || value === null || value === '') {
     return '—'
   }
-  const parsed = typeof value === 'number' ? value : Date.parse(value)
-  if (Number.isNaN(parsed)) {
+  const parsed = parseDateTimeValue(value)
+  if (parsed === undefined) {
     return typeof value === 'string' ? value : '—'
   }
   return new Date(parsed).toLocaleString()

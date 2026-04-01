@@ -11,12 +11,18 @@ function LevelGroup({
   tone,
   emptyTitle,
   emptyBody,
+  priceColumnTitle,
+  quantityColumnTitle,
+  orderCountColumnTitle,
 }: {
   title: string
   levels: MatchingOrderBookLevelRowModel[]
   tone: 'bid' | 'ask'
   emptyTitle: string
   emptyBody: string
+  priceColumnTitle: string
+  quantityColumnTitle: string
+  orderCountColumnTitle: string
 }) {
   return (
     <div className="obg">
@@ -24,16 +30,23 @@ function LevelGroup({
       {levels.length === 0 ? (
         <EmptyState title={emptyTitle} body={emptyBody} />
       ) : (
-        <div className="stack-sm">
-          {levels.map((level, index) => (
-            <div key={level.id ?? `${tone}-${index}`} className="obr">
-              <span className={tone === 'bid' ? 'orderbook-price obp-bid' : 'orderbook-price obp-ask'}>
-                {level.priceLabel}
-              </span>
-              <span>{level.quantityLabel}</span>
-              <span>{level.orderCountLabel}</span>
-            </div>
-          ))}
+        <div className="obg-viewport">
+          <div className="obr obr-head" aria-hidden="true">
+            <span className="obc obc-price">{priceColumnTitle}</span>
+            <span className="obc obc-qty">{quantityColumnTitle}</span>
+            <span className="obc obc-count">{orderCountColumnTitle}</span>
+          </div>
+          <div className="obg-list" role="list" aria-label={title}>
+            {levels.map((level, index) => (
+              <div key={level.id ?? `${tone}-${index}`} className="obr" role="listitem">
+                <span className={tone === 'bid' ? 'obc obc-price orderbook-price obp-bid' : 'obc obc-price orderbook-price obp-ask'}>
+                  {level.priceLabel}
+                </span>
+                <span className="obc obc-qty">{level.quantityLabel}</span>
+                <span className="obc obc-count">{level.orderCountLabel}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -72,6 +85,9 @@ export function MatchingOrderBookPanel({ model }: Props) {
           tone="bid"
           emptyTitle={model.emptyTitle}
           emptyBody={model.emptyBody}
+          priceColumnTitle={model.priceColumnTitle}
+          quantityColumnTitle={model.quantityColumnTitle}
+          orderCountColumnTitle={model.orderCountColumnTitle}
         />
         <LevelGroup
           title={model.asksTitle}
@@ -79,14 +95,29 @@ export function MatchingOrderBookPanel({ model }: Props) {
           tone="ask"
           emptyTitle={model.emptyTitle}
           emptyBody={model.emptyBody}
+          priceColumnTitle={model.priceColumnTitle}
+          quantityColumnTitle={model.quantityColumnTitle}
+          orderCountColumnTitle={model.orderCountColumnTitle}
         />
       </div>
       <GlassPanel className="obf" tone="subtle" padded={false}>
         <div className="obfc">
-          <p className="obu">{model.updatedTitle}: {model.updatedAtLabel}</p>
-          <p className="obu">{model.depthBalanceTitle}: {model.depthBalanceLabel}</p>
-          <p className="obu">{model.totalDepthTitle}: {model.totalDepthLabel}</p>
-          <p className="obu">{model.liquidityBiasTitle}: {model.liquidityBiasLabel}</p>
+          <div className="obs-card obu">
+            <p className="subtle-label">{model.updatedTitle}</p>
+            <p className="obu-value">{model.updatedAtLabel}</p>
+          </div>
+          <div className="obs-card obu">
+            <p className="subtle-label">{model.depthBalanceTitle}</p>
+            <p className="obu-value">{model.depthBalanceLabel}</p>
+          </div>
+          <div className="obs-card obu">
+            <p className="subtle-label">{model.totalDepthTitle}</p>
+            <p className="obu-value">{model.totalDepthLabel}</p>
+          </div>
+          <div className="obs-card obu">
+            <p className="subtle-label">{model.liquidityBiasTitle}</p>
+            <p className="obu-value">{model.liquidityBiasLabel}</p>
+          </div>
         </div>
         {model.stale && model.staleHint ? <p className="obst">{model.staleHint}</p> : null}
       </GlassPanel>

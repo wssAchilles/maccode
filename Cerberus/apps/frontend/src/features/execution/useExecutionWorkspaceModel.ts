@@ -77,8 +77,8 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     [orderEvents, selectedSymbol],
   )
 
-  const metricTiles = useMemo(
-    () => [
+  const model = useMemo(() => ({
+    metricTiles: [
       {
         id: 'signal',
         label: t('strategy.signal'),
@@ -105,73 +105,50 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
         hint: tradingSnapshot.feedbackAtValue,
       },
     ],
-    [t, tradingSnapshot],
-  )
-
-  const lifecyclePanel = useMemo(
-    () =>
-      buildExecutionLifecyclePanelModel({
-        t,
-        signal: strategySignal,
-        persistenceStatus,
-        preparedSelection: preparedExecutionSelection,
-        latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
-        heartbeat,
-        tradingPolicy,
-        binanceRule,
-        domainStatus: executionStatus,
-      }),
-    [binanceRule, executionStatus, heartbeat, persistenceStatus, preparedExecutionSelection, strategySignal, t, tradingPolicy, tradingSnapshot.feedbackValue],
-  )
-
-  const operationsPanel = useMemo(
-    () =>
-      buildExecutionOperationsPanel({
-        t,
-        selectedSymbol,
-        preparedSelection: preparedExecutionSelection,
-        persistenceStatus,
-        domainStatus: executionStatus,
-      }),
-    [executionStatus, persistenceStatus, preparedExecutionSelection, selectedSymbol, t],
-  )
-
-  const strategyMatrix = useMemo(
-    () => buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
-    [strategySignal, t],
-  )
-
-  const portfolioPanel = useMemo(
-    () => buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    [selectedSymbol, strategySignal, t],
-  )
-
-  const strategyRegistry = useMemo(
-    () => buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-    [orchestrationStatus, selectedSymbol, strategySignal, t],
-  )
-
-  const strategyAuditTimeline = useMemo(
-    () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
-    [orchestrationStatus, t],
-  )
-
-  const orderbookPanel = useMemo(
-    () => buildMatchingOrderBookPanelModel({ t, orderbook }),
-    [orderbook, t],
-  )
-
-  const spotlight = useMemo(
-    () =>
-      buildExecutionSpotlightModel({
-        t,
-        snapshot: tradingSnapshot,
-        preparedSelection: preparedExecutionSelection,
-        tradingPolicy,
-        binanceRule,
-      }),
-    [binanceRule, preparedExecutionSelection, t, tradingPolicy, tradingSnapshot],
-  )
+    lifecyclePanel: buildExecutionLifecyclePanelModel({
+      t,
+      signal: strategySignal,
+      persistenceStatus,
+      preparedSelection: preparedExecutionSelection,
+      latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
+      heartbeat,
+      tradingPolicy,
+      binanceRule,
+      domainStatus: executionStatus,
+    }),
+    operationsPanel: buildExecutionOperationsPanel({
+      t,
+      selectedSymbol,
+      preparedSelection: preparedExecutionSelection,
+      persistenceStatus,
+      domainStatus: executionStatus,
+    }),
+    strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+    portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+    strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+    strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+    orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),
+    spotlight: buildExecutionSpotlightModel({
+      t,
+      snapshot: tradingSnapshot,
+      preparedSelection: preparedExecutionSelection,
+      tradingPolicy,
+      binanceRule,
+    }),
+  }), [
+    binanceRule,
+    executionStatus,
+    heartbeat,
+    orchestrationStatus,
+    orderbook,
+    persistenceStatus,
+    preparedExecutionSelection,
+    selectedSymbol,
+    strategySignal,
+    t,
+    tradingPolicy,
+    tradingSnapshot,
+  ])
 
   const selectSymbol = (symbol: string) => {
     setSelectedSymbol(symbol)
@@ -182,15 +159,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     selectedSymbol,
     selectSymbol,
     displayQuote: tradingSnapshot.displayQuote,
-    orderbookPanel,
     summaryError,
-    spotlight,
-    metricTiles,
-    lifecyclePanel,
-    operationsPanel,
-    strategyMatrix,
-    portfolioPanel,
-    strategyRegistry,
-    strategyAuditTimeline,
+    ...model,
   }
 }

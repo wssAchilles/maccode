@@ -1,4 +1,5 @@
 import type { ExecutionLifecyclePhase, OrderTimelineEvent } from '../../types/contracts'
+import { parseDateTimeValue } from '../../view-models/workbench'
 
 export type ExecutionOrderReadModel = {
   id: string
@@ -83,25 +84,11 @@ const preparedExecutionSummaryCache = new WeakMap<
 const preparedMarkersCache = new WeakMap<OrderTimelineEvent[], Map<string, ExecutionMarker[]>>()
 
 function eventTimestamp(event: OrderTimelineEvent): number {
-  if (event.event_time) {
-    const parsed = Date.parse(event.event_time)
-    if (!Number.isNaN(parsed)) {
-      return parsed
-    }
+  const eventTime = parseDateTimeValue(event.event_time)
+  if (eventTime !== undefined) {
+    return eventTime
   }
-  const receivedAt = event.received_at as number | string
-  if (typeof receivedAt === 'string') {
-    const parsed = Date.parse(receivedAt)
-    if (!Number.isNaN(parsed)) {
-      return parsed
-    }
-    const fallback = Number(receivedAt)
-    if (!Number.isNaN(fallback)) {
-      return fallback
-    }
-    return 0
-  }
-  return receivedAt
+  return parseDateTimeValue(event.received_at as number | string | undefined) ?? 0
 }
 
 function latestPhase(events: OrderTimelineEvent[]): ExecutionLifecyclePhase {

@@ -96,6 +96,8 @@ test.describe('deploy gate', () => {
     await page.getByTestId('binance-response-drawer').click()
     await expect(page.getByTestId('binance-response')).toContainText('{')
 
+    await page.getByRole('tab', { name: 'Alpaca' }).click()
+    await expect(page.getByTestId('submit-alpaca-order-button')).toBeVisible()
     await page.getByTestId('submit-alpaca-order-button').click()
     await page.waitForResponse(
       (response) =>

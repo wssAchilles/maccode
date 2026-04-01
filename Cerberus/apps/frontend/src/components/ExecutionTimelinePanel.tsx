@@ -17,7 +17,7 @@ type Props = {
   active?: boolean
 }
 
-const TIMELINE_ROW_ESTIMATE_PX = 156
+const TIMELINE_ROW_ESTIMATE_PX = 168
 const TIMELINE_OVERSCAN_ROWS = 6
 
 export function ExecutionTimelinePanel({ active = true }: Props) {
@@ -238,9 +238,32 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
               <div className="tr-main">
                 <p className="tr-title">{row.title}</p>
                 <p className="tr-subtitle">{row.subtitle}</p>
-                <p className="tr-meta">
-                  {t('execution.orderId')}: {row.event.order_id ?? '—'} · {t('execution.requestId')}: {row.event.request_id ?? '—'} · CID: {row.event.client_order_id ?? '—'} · {t('workspace.execution.lifecycleExecutionId')}: {row.event.execution_id ?? '—'}
-                </p>
+                <div className="tr-meta-grid">
+                  <div className="tr-meta-line">
+                    <span className="tr-meta-key">{t('execution.orderId')}</span>
+                    <span className="tr-meta-value" title={row.event.order_id ?? '—'}>
+                      {row.orderIdLabel}
+                    </span>
+                  </div>
+                  <div className="tr-meta-line">
+                    <span className="tr-meta-key">{t('execution.requestId')}</span>
+                    <span className="tr-meta-value" title={row.event.request_id ?? '—'}>
+                      {row.requestIdLabel}
+                    </span>
+                  </div>
+                  <div className="tr-meta-line">
+                    <span className="tr-meta-key">CID</span>
+                    <span className="tr-meta-value" title={row.event.client_order_id ?? '—'}>
+                      {row.clientOrderIdLabel}
+                    </span>
+                  </div>
+                  <div className="tr-meta-line">
+                    <span className="tr-meta-key">{t('workspace.execution.lifecycleExecutionId')}</span>
+                    <span className="tr-meta-value" title={row.event.execution_id ?? '—'}>
+                      {row.executionIdLabel}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="tr-side">
                 <p className="tr-status">{row.rightTop}</p>

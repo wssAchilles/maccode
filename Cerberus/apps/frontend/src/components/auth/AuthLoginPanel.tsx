@@ -24,13 +24,19 @@ type Props = {
 export function AuthLoginPanel({ t, auth }: Props) {
   const loading = auth.status === 'loading'
   const formDisabled = loading || auth.signingIn
+  const statusMessage = auth.signingIn ? t('auth.signingIn') : undefined
 
   return (
     <main className="auth-shell" aria-busy={loading}>
       <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
         <p className="wb-eyebrow">{t('app.kicker')}</p>
-        <h1 className="auth-title">{t('auth.title')}</h1>
-        <p className="auth-subtitle">{loading ? t('auth.loadingHint') : t('auth.subtitle')}</p>
+        <h1 className="auth-title">{t('app.title')}</h1>
+        <p className="auth-subtitle">{t('app.subtitle')}</p>
+        <p className="subtle-label auth-intent">{t('auth.title')}</p>
+        <p className="panel-caption">{t('auth.subtitle')}</p>
+        <p className="auth-statusline" role="status" aria-live="polite">
+          {statusMessage ?? '\u00A0'}
+        </p>
 
         {auth.error ? (
           <InlineAlert title={t('common.error')} tone="danger" className="auth-error" data-testid="auth-error">
@@ -84,7 +90,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
               disabled={formDisabled}
               data-testid="auth-email-submit"
             >
-              {formDisabled ? t('auth.signingIn') : t('auth.signInEmail')}
+              {t('auth.signInEmail')}
             </button>
             <button
               type="button"

@@ -33,6 +33,9 @@ export type MatchingOrderBookPanelModel = {
   description: string
   bidsTitle: string
   asksTitle: string
+  priceColumnTitle: string
+  quantityColumnTitle: string
+  orderCountColumnTitle: string
   bestBidTitle: string
   bestAskTitle: string
   midPriceTitle: string
@@ -196,6 +199,9 @@ export function buildMatchingOrderBookPanelModel({
         : t('common.disabled'),
     bidsTitle: t('orderbook.bids'),
     asksTitle: t('orderbook.asks'),
+    priceColumnTitle: t('orderbook.priceColumn'),
+    quantityColumnTitle: t('orderbook.quantityColumn'),
+    orderCountColumnTitle: t('orderbook.orderCountColumn'),
     bestBidTitle: t('market.bestBid'),
     bestAskTitle: t('market.bestAsk'),
     midPriceTitle: t('orderbook.midPrice'),

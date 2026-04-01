@@ -9,10 +9,19 @@ type Props = {
   children: ReactNode
   defaultOpen?: boolean
   className?: string
+  contentClassName?: string
   testId?: string
 }
 
-export function DiagnosticDrawer({ title, summary, children, defaultOpen = false, className, testId }: Props) {
+export function DiagnosticDrawer({
+  title,
+  summary,
+  children,
+  defaultOpen = false,
+  className,
+  contentClassName,
+  testId,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen)
   const contentId = useId()
 
@@ -41,7 +50,11 @@ export function DiagnosticDrawer({ title, summary, children, defaultOpen = false
         </span>
       </button>
       {open ? (
-        <div id={contentId} className="dd-content" data-testid={testId ? `${testId}-content` : undefined}>
+        <div
+          id={contentId}
+          className={cn('dd-content', contentClassName)}
+          data-testid={testId ? `${testId}-content` : undefined}
+        >
           {children}
         </div>
       ) : null}

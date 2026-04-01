@@ -102,6 +102,18 @@ button {
   line-height: 1.5;
 }
 
+.auth-statusline {
+  min-height: 1.25rem;
+  margin: 8px 0 0;
+  color: var(--t2);
+  font: 600 0.78rem/1.4 var(--fm);
+  letter-spacing: 0.02em;
+}
+
+.auth-intent {
+  margin-top: 24px;
+}
+
 .auth-form {
   display: grid;
   gap: 14px;
@@ -199,6 +211,7 @@ button {
 
 .sf-body {
   min-width: 0;
+  min-height: 0;
 }
 
 .wb-header {
@@ -446,6 +459,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
   gap: 18px;
+  align-items: start;
 }
 
 .ws-main,
@@ -563,6 +577,12 @@ button {
   color: var(--t0);
   font-weight: 600;
   text-align: right;
+}
+
+.dl-label,
+.dl-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .idt-head {
@@ -1213,6 +1233,9 @@ button {
 
 .dd-content {
   padding: 0 18px 18px;
+  max-height: min(34rem, 48vh);
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .diagnostic-pre {
@@ -1265,6 +1288,12 @@ button {
 .timeline-section .sf-body,
 .execution-timeline,
 .execution-timeline-list {
+  min-height: 0;
+}
+
+.execution-side .sf-body,
+.execution-side .stack,
+.execution-side .stack > * {
   min-height: 0;
 }
 
@@ -1414,6 +1443,7 @@ button {
 
 .obgrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .obs-grid {
@@ -1447,26 +1477,96 @@ button {
   gap: 10px;
 }
 
+.obg-viewport {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.obg-list,
+.sd-list,
+.srg-list,
+.so-audit-list {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.obg-list {
+  max-height: min(15.5rem, 28vh);
+  padding-right: 2px;
+}
+
 .obr {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(11ch, 1.1fr) minmax(9ch, 0.95fr) minmax(4ch, 5ch);
   gap: 10px;
-  padding: 12px 14px;
-  font: 500 0.84rem/1.4 var(--fm);
+  align-items: center;
+  padding: 10px 12px;
+  font: 600 0.8rem/1.35 var(--fm);
+  font-variant-numeric: tabular-nums;
+}
+
+.obr-head {
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--t2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.obc {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obc-price {
+  text-align: right;
+  justify-self: end;
+}
+
+.obc-qty,
+.obc-count {
+  text-align: right;
+  justify-self: end;
 }
 
 .obf {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   gap: 10px;
   margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--b0);
+  padding-top: 0;
+  border-top: 0;
 }
 
 .obfc {
   display: grid;
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+
+.obu-value {
+  margin: 0;
+  color: var(--t0);
+  font: 600 0.94rem/1.3 var(--fm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-list {
+  max-height: min(36rem, 48vh);
+  padding-right: 2px;
+}
+
+.srg-list,
+.so-audit-list {
+  max-height: min(32rem, 42vh);
+  padding-right: 2px;
 }
 
 .pcs {
@@ -1597,10 +1697,21 @@ button {
 
 .execution-side {
   min-height: 0;
+  align-content: start;
+}
+
+.execution-strategy-frame-body {
+  min-height: 0;
+  max-height: clamp(28rem, 64vh, 43rem);
+  overflow: auto;
 }
 
 .timeline-section {
   height: 100%;
+}
+
+.timeline-section .sf-body {
+  overflow: hidden;
 }
 
 .execution-timeline {
@@ -1617,29 +1728,75 @@ button {
 
 .execution-timeline-list {
   flex: 1 1 auto;
-  min-height: 360px;
+  min-height: clamp(18rem, 34vh, 22rem);
+  max-height: clamp(20rem, 38vh, 27rem);
   overflow: auto;
   contain: layout paint style;
+  scrollbar-gutter: stable;
 }
 
 .timeline-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.9fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(152px, 184px);
+  gap: 16px;
   padding: 14px;
   margin-bottom: 12px;
   content-visibility: auto;
-  contain-intrinsic-size: 156px;
+  contain-intrinsic-size: 168px;
 }
 
 .tr-main,
 .tr-side {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .tr-side {
   text-align: right;
+  justify-items: end;
+  align-content: start;
+}
+
+.tr-title {
+  line-height: 1.3;
+}
+
+.tr-subtitle {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.tr-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  min-width: 0;
+}
+
+.tr-meta-line {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+
+.tr-meta-key {
+  color: var(--t2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tr-meta-value {
+  min-width: 0;
+  color: var(--t1);
+  font: 500 0.78rem/1.45 var(--fm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ws-loading {
@@ -1766,6 +1923,14 @@ button {
   .sd-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .obfc {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-meta-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 540px) {
@@ -1776,6 +1941,27 @@ button {
 
   .sd-meta {
     grid-template-columns: 1fr;
+  }
+
+  .obr {
+    grid-template-columns: minmax(9ch, 1fr) minmax(8ch, 0.9fr) minmax(3ch, 4.5ch);
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .execution-strategy-frame-body {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .execution-timeline-list {
+    min-height: 18rem;
+    max-height: 22rem;
+  }
+
+  .tr-meta-line {
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 }
 

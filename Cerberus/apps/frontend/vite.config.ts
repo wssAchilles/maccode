@@ -93,9 +93,15 @@ export default defineConfig({
             id.includes('/src/components/execution/') ||
             id.includes('/src/components/MatchingOrderBookPanel.tsx') ||
             id.includes('/src/components/ExecutionTimelinePanel.tsx') ||
+            id.includes('/src/features/execution/components/ExecutionStrategyOperationsDrawerContent.tsx') ||
+            id.includes('/src/features/health/HealthInferenceOperationsDrawerContent.tsx') ||
             id.includes('/src/features/execution/useExecutionConsoleModel.ts') ||
             id.includes('/src/features/execution/read-models.ts') ||
-            id.includes('/src/features/market/view-models.ts')
+            id.includes('/src/features/market/view-models.ts') ||
+            id.includes('/src/features/inference-observability/components/InferenceOperationsPanel.tsx') ||
+            id.includes('/src/features/inference-observability/useInferenceOperationsModel.ts') ||
+            id.includes('/src/features/strategy-orchestration/components/StrategyOrchestrationOperationsPanel.tsx') ||
+            id.includes('/src/features/strategy-orchestration/useStrategyOrchestrationOperationsModel.ts')
           ) {
             return 'workspace-panels'
           }

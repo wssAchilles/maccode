@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 
 import {
+  LazyExecutionStrategyOperationsDrawerContent,
   LazyExecutionConsole,
   LazyExecutionTimelinePanel,
   LazyMatchingOrderBookPanel,
@@ -12,10 +13,8 @@ import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
-import { StrategyOrchestrationOperationsPanel } from '../strategy-orchestration/components/StrategyOrchestrationOperationsPanel'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
-import { useStrategyOrchestrationOperationsModel } from '../strategy-orchestration/useStrategyOrchestrationOperationsModel'
 import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
 
 type Props = {
@@ -25,7 +24,6 @@ type Props = {
 export function ExecutionWorkspace({ active = true }: Props) {
   const { t } = useI18n()
   const model = useExecutionWorkspaceModel({ active })
-  const orchestrationOps = useStrategyOrchestrationOperationsModel(active)
 
   return (
     <div className="ws-grid">
@@ -49,7 +47,10 @@ export function ExecutionWorkspace({ active = true }: Props) {
       </SectionFrame>
 
       <div className="ws-main stack">
-        <SectionFrame title={t('workspace.execution.linkageTitle')} description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}>
+        <SectionFrame
+          title={t('workspace.execution.linkageTitle')}
+          description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}
+        >
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
 
@@ -71,22 +72,21 @@ export function ExecutionWorkspace({ active = true }: Props) {
           title={t('workspace.strategy.operationsTitle')}
           description={t('workspace.strategy.operationsDescription')}
         >
-          <StrategyOrchestrationOperationsPanel
-            model={orchestrationOps.model}
-            drafts={orchestrationOps.drafts}
-            reason={orchestrationOps.reason}
-            conflictPolicy={orchestrationOps.conflictPolicy}
-            downgradePolicy={orchestrationOps.downgradePolicy}
-            onReasonChange={orchestrationOps.setReason}
-            onConflictPolicyChange={orchestrationOps.setConflictPolicy}
-            onDowngradePolicyChange={orchestrationOps.setDowngradePolicy}
-            onDraftFieldChange={orchestrationOps.setDraftField}
-            onSaveEntry={orchestrationOps.onSaveEntry}
-            onSavePolicies={orchestrationOps.onSavePolicies}
-          />
+          <DiagnosticDrawer
+            title={t('workspace.strategy.operationsTitle')}
+            summary={t('workspace.strategy.operationsDescription')}
+            testId="execution-strategy-operations-drawer"
+          >
+            <Suspense fallback={<PanelSkeleton height="420px" />}>
+              <LazyExecutionStrategyOperationsDrawerContent active={active} />
+            </Suspense>
+          </DiagnosticDrawer>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.execution.ticketTitle')} description={t('workspace.execution.ticketDescription')}>
+        <SectionFrame
+          title={t('workspace.execution.ticketTitle')}
+          description={t('workspace.execution.ticketDescription')}
+        >
           <Suspense fallback={<PanelSkeleton height="540px" />}>
             <LazyExecutionConsole
               active={active}
@@ -102,6 +102,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
+          bodyClassName="execution-strategy-frame-body"
         >
           <div className="stack">
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />

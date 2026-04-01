@@ -29,6 +29,9 @@ describe('orderbook view models', () => {
     expect(model).toMatchObject({
       title: 'orderbook.title',
       description: 'BTCUSDT · depth 10',
+      priceColumnTitle: 'orderbook.priceColumn',
+      quantityColumnTitle: 'orderbook.quantityColumn',
+      orderCountColumnTitle: 'orderbook.orderCountColumn',
       bestBidTitle: 'market.bestBid',
       bestBidLabel: '100.123456',
       bestAskLabel: '100.223456',

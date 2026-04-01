@@ -15,7 +15,7 @@ export function HealthSection({ className, domainStatus, persistenceStatus }: He
   })
 
   return (
-    <section className={sectionClassName}>
+    <section className={sectionClassName} aria-label={t('workspace.health.title')}>
       <div className="min-h-[180px]">
         <Suspense fallback={<PanelSkeleton height="h-[180px]" />}>
           <LazyServiceHealthPanel model={panelModel} />

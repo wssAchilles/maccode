@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useI18n } from '../i18n/I18nProvider'
 import {
@@ -28,6 +28,34 @@ export type FirebaseAuthState = {
   signOutCurrentUser: () => Promise<void>
 }
 
+function hasPersistedFirebaseSessionHint(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY
+  if (!apiKey) {
+    return false
+  }
+
+  try {
+    const prefix = `firebase:authUser:${apiKey}:`
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (!key || !key.startsWith(prefix)) {
+        continue
+      }
+      if (window.localStorage.getItem(key)) {
+        return true
+      }
+    }
+  } catch {
+    return false
+  }
+
+  return false
+}
+
 export function useFirebaseAuth(): FirebaseAuthState {
   const { locale } = useI18n()
   const authRequiredOverride = import.meta.env.VITE_AUTH_REQUIRED
@@ -37,71 +65,111 @@ export function useFirebaseAuth(): FirebaseAuthState {
   const required =
     authRequiredOverride === 'true' ||
     (import.meta.env.PROD && authRequiredOverride !== 'false' && hasFirebaseConfig)
-  const [status, setStatus] = useState<AuthStatus>(required ? 'loading' : 'disabled')
+  const sessionHintRef = useRef(required ? hasPersistedFirebaseSessionHint() : false)
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    required ? (sessionHintRef.current ? 'loading' : 'ready') : 'disabled',
+  )
   const [user, setUser] = useState<User | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)
   const [signingIn, setSigningIn] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [services, setServices] = useState<FirebaseAuthServices | null>(null)
+  const localeRef = useRef(locale)
+  const mountedRef = useRef(true)
+  const servicesRef = useRef<FirebaseAuthServices | null>(null)
+  const initializePromiseRef = useRef<Promise<FirebaseAuthServices | null> | null>(null)
+  const unsubscribeRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
+    localeRef.current = locale
+  }, [locale])
+
+  const ensureServices = useCallback(async (): Promise<FirebaseAuthServices | null> => {
+    if (!required) {
+      return null
+    }
+
+    if (servicesRef.current) {
+      return servicesRef.current
+    }
+
+    if (!initializePromiseRef.current) {
+      initializePromiseRef.current = (async () => {
+        try {
+          const [nextServices, authModule] = await Promise.all([
+            loadFirebaseAuthServices(),
+            loadFirebaseAuthModule(),
+          ])
+
+          if (!mountedRef.current) {
+            return nextServices
+          }
+
+          if (!nextServices) {
+            setStatus('error')
+            setError(getAuthMessage(localeRef.current, 'missingConfig'))
+            setAuthTokenProvider(null)
+            return null
+          }
+
+          servicesRef.current = nextServices
+          setAuthTokenProvider(async () => {
+            const current = nextServices.auth.currentUser
+            if (!current) {
+              return undefined
+            }
+            return current.getIdToken()
+          })
+
+          if (!unsubscribeRef.current) {
+            unsubscribeRef.current = authModule.onAuthStateChanged(nextServices.auth, (nextUser) => {
+              if (!mountedRef.current) {
+                return
+              }
+              setUser(nextUser)
+              setStatus('ready')
+              setError(undefined)
+            })
+          }
+
+          return nextServices
+        } finally {
+          initializePromiseRef.current = null
+        }
+      })()
+    }
+
+    return initializePromiseRef.current
+  }, [required])
+
+  useEffect(() => {
+    mountedRef.current = true
+
     if (!required) {
       setAuthTokenProvider(null)
       setStatus('disabled')
-      setServices(null)
+      servicesRef.current = null
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
       return
     }
 
-    let cancelled = false
-    let unsubscribe: (() => void) | undefined
-
-    const initializeServices = async () => {
-      const [nextServices, authModule] = await Promise.all([
-        loadFirebaseAuthServices(),
-        loadFirebaseAuthModule(),
-      ])
-
-      if (cancelled) {
-        return
-      }
-
-      if (!nextServices) {
-        setStatus('error')
-        setError(getAuthMessage(locale, 'missingConfig'))
-        setAuthTokenProvider(null)
-        return
-      }
-
-      setServices(nextServices)
-      setAuthTokenProvider(async () => {
-        const current = nextServices.auth.currentUser
-        if (!current) {
-          return undefined
-        }
-        return current.getIdToken()
-      })
-
-      unsubscribe = authModule.onAuthStateChanged(nextServices.auth, (nextUser) => {
-        setUser(nextUser)
-        setStatus('ready')
-        setError(undefined)
-      })
+    if (sessionHintRef.current) {
+      setStatus('loading')
+      void ensureServices()
+    } else {
+      setStatus('ready')
     }
-
-    void initializeServices()
 
     return () => {
-      cancelled = true
-      unsubscribe?.()
+      mountedRef.current = false
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
       setAuthTokenProvider(null)
     }
-  }, [locale, required])
+  }, [ensureServices, required])
 
   const signInWithEmail = useCallback(async () => {
-    if (!services) {
-      return
-    }
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || !password) {
       setError(getAuthMessage(locale, 'missingCredentials'))
@@ -111,19 +179,20 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
+      const nextServices = (await ensureServices()) ?? servicesRef.current
+      if (!nextServices) {
+        return
+      }
       const authModule = await loadFirebaseAuthModule()
-      await authModule.signInWithEmailAndPassword(services.auth, normalizedEmail, password)
+      await authModule.signInWithEmailAndPassword(nextServices.auth, normalizedEmail, password)
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
       setSigningIn(false)
     }
-  }, [email, locale, password, services])
+  }, [email, ensureServices, locale, password])
 
   const signUpWithEmail = useCallback(async () => {
-    if (!services) {
-      return
-    }
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || !password) {
       setError(getAuthMessage(locale, 'missingCredentials'))
@@ -133,38 +202,44 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
+      const nextServices = (await ensureServices()) ?? servicesRef.current
+      if (!nextServices) {
+        return
+      }
       const authModule = await loadFirebaseAuthModule()
-      await authModule.createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
+      await authModule.createUserWithEmailAndPassword(nextServices.auth, normalizedEmail, password)
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
       setSigningIn(false)
     }
-  }, [email, locale, password, services])
+  }, [email, ensureServices, locale, password])
 
   const signInWithGoogle = useCallback(async () => {
-    if (!services) {
-      return
-    }
     setSigningIn(true)
     setError(undefined)
     try {
+      const nextServices = (await ensureServices()) ?? servicesRef.current
+      if (!nextServices) {
+        return
+      }
       const authModule = await loadFirebaseAuthModule()
-      await authModule.signInWithPopup(services.auth, new authModule.GoogleAuthProvider())
+      await authModule.signInWithPopup(nextServices.auth, new authModule.GoogleAuthProvider())
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
       setSigningIn(false)
     }
-  }, [locale, services])
+  }, [ensureServices, locale])
 
   const signOutCurrentUser = useCallback(async () => {
-    if (!services) {
+    const nextServices = servicesRef.current ?? (await ensureServices())
+    if (!nextServices) {
       return
     }
     const authModule = await loadFirebaseAuthModule()
-    await authModule.signOut(services.auth)
-  }, [services])
+    await authModule.signOut(nextServices.auth)
+  }, [ensureServices])
 
   return {
     required,

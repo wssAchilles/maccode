@@ -10,6 +10,7 @@ type Props = {
   aside?: ReactNode
   children: ReactNode
   className?: string
+  bodyClassName?: string
   tone?: 'default' | 'hero' | 'subtle'
 }
 
@@ -20,6 +21,7 @@ export function SectionFrame({
   aside,
   children,
   className,
+  bodyClassName,
   tone = 'default',
 }: Props) {
   return (
@@ -32,7 +34,7 @@ export function SectionFrame({
         </div>
         {aside ? <div className="sf-aside">{aside}</div> : null}
       </div>
-      <div className="sf-body">{children}</div>
+      <div className={cn('sf-body', bodyClassName)}>{children}</div>
     </GlassPanel>
   )
 }
