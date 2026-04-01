@@ -71,6 +71,28 @@ function formatDateTime(value?: string | number): string {
   return new Date(parsed).toLocaleString()
 }
 
+function executionPhaseLabel(t: Translate, phase?: string): string {
+  if (phase === 'accepted' || phase === 'submit') {
+    return t('workspace.execution.lifecycleStatus.submitted')
+  }
+  if (phase === 'partial_fill') {
+    return t('workspace.execution.lifecycleStatus.partialFill')
+  }
+  if (phase === 'fill') {
+    return t('workspace.execution.lifecycleStatus.filled')
+  }
+  if (phase === 'rejected') {
+    return t('workspace.execution.lifecycleStatus.rejected')
+  }
+  if (phase === 'cancel_requested') {
+    return t('workspace.execution.lifecycleStatus.cancelRequested')
+  }
+  if (phase === 'canceled') {
+    return t('workspace.execution.lifecycleStatus.canceled')
+  }
+  return phase ?? '—'
+}
+
 export function buildMarketSymbolChips(selectedSymbol: string): MarketSymbolChipModel[] {
   return MARKET_SYMBOLS.map((symbol) => ({
     id: symbol,
@@ -161,9 +183,9 @@ export function buildMarketExecutionRailModel({
   const orderModels = buildExecutionOrderReadModels(orderEvents, selectedSymbol)
   const items = orderModels.slice(0, 4).map((item) => ({
       id: item.id,
-      title: `${item.latestPhase} · ${item.side ?? '—'}`,
+      title: `${executionPhaseLabel(t, item.latestPhase)} · ${item.side ?? '—'}`,
       subtitle: `${item.symbol ?? selectedSymbol} · ${item.requestId ?? '—'} · ${item.executionIds[0] ?? item.orderId ?? '—'}`,
-      status: item.latestStatus ?? item.latestPhase,
+      status: executionPhaseLabel(t, item.latestStatus ?? item.latestPhase),
       time: formatDateTime(item.fillAt ?? item.canceledAt ?? item.rejectedAt ?? item.acceptedAt ?? item.submitAt),
     }))
 

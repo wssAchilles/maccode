@@ -89,6 +89,8 @@ pub(crate) struct StrategyOrchestrationEntryUpdateRequest {
     pub(crate) observe_weight: Option<f64>,
     pub(crate) primary_weight: Option<f64>,
     pub(crate) symbol_coverage: Option<Vec<String>>,
+    pub(crate) conflict_targets: Option<Vec<String>>,
+    pub(crate) downgrade_action: Option<String>,
     pub(crate) actor: Option<String>,
     pub(crate) reason: Option<String>,
 }

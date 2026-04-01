@@ -32,6 +32,13 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
       <DataList items={model.items} dense />
 
+      {model.lifecycleSummary.length > 0 ? (
+        <div className="execution-operations-lifecycle">
+          <p className="subtle-label">{t('workspace.execution.lifecycleDistributionTitle')}</p>
+          <DataList items={model.lifecycleSummary} dense />
+        </div>
+      ) : null}
+
       <div className="execution-operations-diagnosis">
         <div className="strategy-panel-head">
           <div>

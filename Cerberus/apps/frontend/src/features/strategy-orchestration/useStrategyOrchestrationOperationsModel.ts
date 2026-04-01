@@ -11,6 +11,8 @@ type EntryDraft = {
   observeWeight: string
   primaryWeight: string
   symbolCoverage: string
+  conflictTargets: string
+  downgradeAction: string
 }
 
 function coverageToDraft(value: string[]): string {
@@ -55,6 +57,8 @@ export function useStrategyOrchestrationOperationsModel() {
               observeWeight: String(entry.observe_weight),
               primaryWeight: String(entry.primary_weight),
               symbolCoverage: coverageToDraft(entry.symbol_coverage),
+              conflictTargets: coverageToDraft(entry.conflict_targets),
+              downgradeAction: entry.downgrade_action,
             },
           ]),
         ),
@@ -101,6 +105,8 @@ export function useStrategyOrchestrationOperationsModel() {
             observeWeight: '0.5',
             primaryWeight: '0.5',
             symbolCoverage: '',
+            conflictTargets: '',
+            downgradeAction: 'review',
           }),
           [field]: value,
         },
@@ -122,6 +128,11 @@ export function useStrategyOrchestrationOperationsModel() {
             .split(',')
             .map((item) => item.trim().toUpperCase())
             .filter(Boolean),
+          conflict_targets: draft.conflictTargets
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          downgrade_action: draft.downgradeAction || undefined,
         },
         reason,
       )

@@ -92,6 +92,8 @@ export type StrategySummarySlice = {
         observe_weight?: number
         primary_weight?: number
         symbol_coverage?: string[]
+        conflict_targets?: string[]
+        downgrade_action?: string
       },
       reason?: string,
     ) => Promise<void>

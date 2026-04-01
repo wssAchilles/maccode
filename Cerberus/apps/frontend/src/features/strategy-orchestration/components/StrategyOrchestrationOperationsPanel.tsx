@@ -8,6 +8,8 @@ type EntryDraft = {
   observeWeight: string
   primaryWeight: string
   symbolCoverage: string
+  conflictTargets: string
+  downgradeAction: string
 }
 
 type Props = {
@@ -38,6 +40,9 @@ export function StrategyOrchestrationOperationsPanel({
   onSavePolicies,
 }: Props) {
   const { t } = useI18n()
+  const downgradeOptions = [
+    ...model.downgradeOptions,
+  ]
 
   if (model.rows.length === 0) {
     return (
@@ -170,12 +175,36 @@ export function StrategyOrchestrationOperationsPanel({
                     placeholder="BTCUSDT, ETHUSDT"
                   />
                 </label>
+                <label className="field-label strategy-orchestration-coverage-field">
+                  {t('workspace.strategy.conflictTargets')}
+                  <input
+                    className="field-input"
+                    value={draft?.conflictTargets ?? ''}
+                    onChange={(event) => onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}
+                    placeholder="default, inference"
+                  />
+                </label>
+                <label className="field-label">
+                  {t('workspace.strategy.downgradeAction')}
+                  <select
+                    className="field-input"
+                    value={draft?.downgradeAction ?? downgradePolicy}
+                    onChange={(event) => onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}
+                  >
+                    {downgradeOptions.map((option) => (
+                      <option key={`${row.id}-${option.id}`} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
               <div className="strategy-orchestration-row-meta">
                 <p>{t('workspace.strategy.runtimeState')}: {row.stateLabel}</p>
                 <p>{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}</p>
                 <p>{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}</p>
+                <p>{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}</p>
               </div>
 
               <div className="workspace-actions strategy-orchestration-actions">

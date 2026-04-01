@@ -133,8 +133,10 @@ export type StrategyRegistryEntry = {
   configured_weight: number
   effective_weight: number
   symbol_coverage: string[]
+  conflict_targets: string[]
   conflict_policy: string
   downgrade_policy: string
+  downgrade_action: string
   metadata: Record<string, unknown>
 }
 
@@ -156,6 +158,8 @@ export type StrategyOrchestrationEntry = {
   observe_weight: number
   primary_weight: number
   symbol_coverage: string[]
+  conflict_targets: string[]
+  downgrade_action: string
   metadata: Record<string, unknown>
 }
 

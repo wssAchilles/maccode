@@ -37,8 +37,10 @@ class StrategyRegistryEntrySnapshot:
     configured_weight: float
     effective_weight: float
     symbol_coverage: tuple[str, ...] = ()
+    conflict_targets: tuple[str, ...] = ()
     conflict_policy: str = "review_on_conflict"
     downgrade_policy: str = "review"
+    downgrade_action: str = "review"
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

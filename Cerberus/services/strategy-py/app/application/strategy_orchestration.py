@@ -50,6 +50,8 @@ class StrategyOrchestrationApplicationService:
         observe_weight: float | None = None,
         primary_weight: float | None = None,
         symbol_coverage: tuple[str, ...] | None = None,
+        conflict_targets: tuple[str, ...] | None = None,
+        downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
     ) -> StrategyOrchestrationControlResult:
@@ -61,6 +63,8 @@ class StrategyOrchestrationApplicationService:
             observe_weight=observe_weight,
             primary_weight=primary_weight,
             symbol_coverage=symbol_coverage,
+            conflict_targets=conflict_targets,
+            downgrade_action=downgrade_action,
             actor=actor,
             reason=reason,
             **context,

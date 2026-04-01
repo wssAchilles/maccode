@@ -600,8 +600,10 @@ class SignalApplicationService:
                     configured_weight=entry.configured_weight(mode=effective_mode),
                     effective_weight=active_strategy.weight if active_strategy is not None else 0.0,
                     symbol_coverage=entry.symbol_coverage if entry.symbol_coverage else orchestration.tracked_symbols,
+                    conflict_targets=entry.conflict_targets,
                     conflict_policy=orchestration.conflict_policy,
                     downgrade_policy=orchestration.downgrade_policy,
+                    downgrade_action=entry.downgrade_action,
                     metadata=metadata,
                 )
             )
@@ -632,8 +634,10 @@ class SignalApplicationService:
                     "configured_weight": item.configured_weight,
                     "effective_weight": item.effective_weight,
                     "symbol_coverage": list(item.symbol_coverage),
+                    "conflict_targets": list(item.conflict_targets),
                     "conflict_policy": item.conflict_policy,
                     "downgrade_policy": item.downgrade_policy,
+                    "downgrade_action": item.downgrade_action,
                     "metadata": dict(item.metadata),
                 }
                 for item in registry.entries

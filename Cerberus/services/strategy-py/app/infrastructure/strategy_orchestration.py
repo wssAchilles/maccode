@@ -34,6 +34,8 @@ class _MutableStrategyEntry:
     observe_weight: float
     primary_weight: float
     symbol_coverage: tuple[str, ...]
+    conflict_targets: tuple[str, ...]
+    downgrade_action: str
     metadata: dict[str, Any]
 
 
@@ -108,12 +110,14 @@ class RuntimeStrategyOrchestrationManager:
                     observe_weight=entry.observe_weight,
                     primary_weight=entry.primary_weight,
                     symbol_coverage=resolved_coverage,
+                    conflict_targets=self._resolve_conflict_targets(entry.strategy_id, entry.conflict_targets),
+                    downgrade_action=entry.downgrade_action,
                     metadata={
                         **dict(entry.metadata),
                         "state_backend": self._state_store.backend_name if self._state_store is not None else None,
                         "state_restored": self._state_restored,
-                        "conflict_targets": self._conflict_targets_for(entry.strategy_id),
-                        "downgrade_action": self._state["downgrade_policy"],
+                        "conflict_targets": list(self._resolve_conflict_targets(entry.strategy_id, entry.conflict_targets)),
+                        "downgrade_action": entry.downgrade_action,
                         "conflict_resolution": self._state["conflict_policy"],
                         "coverage_scope": "all" if not entry.symbol_coverage else "selected",
                     },
@@ -158,6 +162,8 @@ class RuntimeStrategyOrchestrationManager:
         observe_weight: float | None = None,
         primary_weight: float | None = None,
         symbol_coverage: tuple[str, ...] | None = None,
+        conflict_targets: tuple[str, ...] | None = None,
+        downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
     ) -> StrategyOrchestrationControlResult:
@@ -175,6 +181,18 @@ class RuntimeStrategyOrchestrationManager:
             entry.primary_weight = max(primary_weight, 0.0)
         if symbol_coverage is not None:
             entry.symbol_coverage = tuple(dict.fromkeys(symbol_coverage))
+        if conflict_targets is not None:
+            entry.conflict_targets = tuple(
+                dict.fromkeys(
+                    target for target in conflict_targets if target and target != strategy_id
+                )
+            )
+        if downgrade_action is not None:
+            entry.downgrade_action = _coerce_policy(
+                downgrade_action,
+                entry.downgrade_action,
+                allowed={"review", "hold"},
+            )
 
         entry.metadata.update(
             {
@@ -194,6 +212,8 @@ class RuntimeStrategyOrchestrationManager:
                 "observe_weight": entry.observe_weight,
                 "primary_weight": entry.primary_weight,
                 "symbol_coverage": list(entry.symbol_coverage),
+                "conflict_targets": list(entry.conflict_targets),
+                "downgrade_action": entry.downgrade_action,
             },
         )
         await self._persist_state()
@@ -278,6 +298,8 @@ class RuntimeStrategyOrchestrationManager:
                     observe_weight=settings.strategy_rule_weight_observe,
                     primary_weight=settings.strategy_rule_weight_primary,
                     symbol_coverage=_normalize_symbol_list(settings.strategy_rule_symbol_coverage),
+                    conflict_targets=("inference",),
+                    downgrade_action=settings.strategy_downgrade_policy,
                     metadata={"configured_source": "settings"},
                 ),
                 _MutableStrategyEntry(
@@ -291,6 +313,8 @@ class RuntimeStrategyOrchestrationManager:
                     observe_weight=settings.strategy_inference_weight_observe,
                     primary_weight=settings.strategy_inference_weight_primary,
                     symbol_coverage=_normalize_symbol_list(settings.strategy_inference_symbol_coverage),
+                    conflict_targets=("default",),
+                    downgrade_action=settings.strategy_downgrade_policy,
                     metadata={"configured_source": "settings"},
                 ),
             ],
@@ -313,6 +337,8 @@ class RuntimeStrategyOrchestrationManager:
                     "observe_weight": entry.observe_weight,
                     "primary_weight": entry.primary_weight,
                     "symbol_coverage": list(entry.symbol_coverage),
+                    "conflict_targets": list(entry.conflict_targets),
+                    "downgrade_action": entry.downgrade_action,
                     "metadata": dict(entry.metadata),
                 }
                 for entry in self._state["entries"]
@@ -351,6 +377,12 @@ class RuntimeStrategyOrchestrationManager:
                     observe_weight=max(_coerce_float(loaded, "observe_weight", default_entry.observe_weight), 0.0),
                     primary_weight=max(_coerce_float(loaded, "primary_weight", default_entry.primary_weight), 0.0),
                     symbol_coverage=_coerce_symbol_coverage(loaded, default_entry.symbol_coverage),
+                    conflict_targets=_coerce_conflict_targets(loaded, default_entry.conflict_targets),
+                    downgrade_action=_coerce_policy(
+                        loaded.get("downgrade_action") if isinstance(loaded, dict) else None,
+                        default_entry.downgrade_action,
+                        allowed={"review", "hold"},
+                    ),
                     metadata=_coerce_metadata(loaded, default_entry.metadata),
                 )
             )
@@ -397,12 +429,20 @@ class RuntimeStrategyOrchestrationManager:
         if len(audit) > max_events:
             del audit[:-max_events]
 
-    def _conflict_targets_for(self, strategy_id: str) -> list[str]:
-        return [
+    def _resolve_conflict_targets(
+        self,
+        strategy_id: str,
+        configured_targets: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        available = [
             entry.strategy_id
             for entry in self._state["entries"]
             if entry.strategy_id != strategy_id
         ]
+        if not configured_targets:
+            return tuple(available)
+        resolved = tuple(target for target in configured_targets if target in available)
+        return resolved or tuple(available)
 
 
 def _utc_now() -> str:
@@ -473,6 +513,19 @@ def _coerce_symbol_coverage(
     values = [str(item).strip().upper() for item in raw if str(item).strip()]
     if values == ["*"] or values == []:
         return ()
+    return tuple(dict.fromkeys(values))
+
+
+def _coerce_conflict_targets(
+    payload: dict[str, Any] | None,
+    default: tuple[str, ...],
+) -> tuple[str, ...]:
+    if not payload:
+        return default
+    raw = payload.get("conflict_targets")
+    if not isinstance(raw, list):
+        return default
+    values = [str(item).strip() for item in raw if str(item).strip()]
     return tuple(dict.fromkeys(values))
 
 

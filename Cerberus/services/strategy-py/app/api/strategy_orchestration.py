@@ -15,6 +15,8 @@ class StrategyOrchestrationEntryUpdateRequest(StrategyOrchestrationActionRequest
     observe_weight: float | None = Field(default=None, ge=0)
     primary_weight: float | None = Field(default=None, ge=0)
     symbol_coverage: list[str] | None = None
+    conflict_targets: list[str] | None = None
+    downgrade_action: str | None = Field(default=None, max_length=80)
 
 
 class StrategyOrchestrationPolicyUpdateRequest(StrategyOrchestrationActionRequest):
@@ -50,6 +52,12 @@ def build_strategy_orchestration_router(service: StrategyOrchestrationService) -
                     if body.symbol_coverage is not None
                     else None
                 ),
+                conflict_targets=(
+                    tuple(str(item).strip() for item in body.conflict_targets if str(item).strip())
+                    if body.conflict_targets is not None
+                    else None
+                ),
+                downgrade_action=body.downgrade_action,
                 actor=body.actor,
                 reason=body.reason,
             )

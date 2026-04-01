@@ -94,6 +94,7 @@ export type StrategyOrchestrationOperationsRowModel = {
   stateLabel: string
   coverageLabel: string
   conflictTargetsLabel: string
+  downgradeActionLabel: string
 }
 
 export type StrategyOrchestrationOperationsModel = {
@@ -492,6 +493,14 @@ export function buildStrategyRegistryPanelModel({
     .sort((left, right) => left.priority - right.priority)
     .map((entry) => {
       const activeEntry = registryEntriesByStrategy.get(entry.strategy_id)
+      const conflictTargets = Array.isArray(entry.conflict_targets)
+        ? entry.conflict_targets
+        : Array.isArray(entry.metadata.conflict_targets)
+          ? (entry.metadata.conflict_targets as string[])
+          : []
+      const downgradeAction =
+        entry.downgrade_action ||
+        (typeof entry.metadata.downgrade_action === 'string' ? entry.metadata.downgrade_action : undefined)
       const stateTone: StrategyRegistryRowModel['stateTone'] = entry.enabled ? 'accent' : 'muted'
       return {
         id: `${entry.strategy_id}-${entry.engine}-${entry.source}`,
@@ -557,19 +566,14 @@ export function buildStrategyRegistryPanelModel({
           {
             id: 'conflictTargets',
             label: t('workspace.strategy.conflictTargets'),
-            value:
-              Array.isArray(entry.metadata.conflict_targets) && entry.metadata.conflict_targets.length > 0
-                ? entry.metadata.conflict_targets.join(' · ')
-                : t('common.na'),
+            value: conflictTargets.length > 0 ? conflictTargets.join(' · ') : t('common.na'),
           },
           {
             id: 'downgradeAction',
             label: t('workspace.strategy.downgradeAction'),
             value: downgradePolicyLabel(
               t,
-              typeof entry.metadata.downgrade_action === 'string'
-                ? entry.metadata.downgrade_action
-                : orchestrationStatus?.downgrade_policy ?? registry?.downgrade_policy,
+              downgradeAction ?? orchestrationStatus?.downgrade_policy ?? registry?.downgrade_policy,
             ),
           },
         ],
@@ -650,19 +654,27 @@ export function buildStrategyOrchestrationOperationsModel({
   return {
     summary: `${orchestrationStatus.entries.length} ${t('workspace.strategy.operationsSummarySuffix')}`,
     policySummary: `${conflictPolicyLabel(t, orchestrationStatus.conflict_policy)} · ${downgradePolicyLabel(t, orchestrationStatus.downgrade_policy)} · ${orchestrationStatus.tracked_symbols.length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
-    rows: orchestrationStatus.entries.map((entry) => ({
-      id: entry.strategy_id,
-      label: entry.label,
-      engine: entry.engine,
-      sourceLabel: sourceLabel(t, entry.source),
-      roleLabel: roleLabel(t, entry.role),
-      stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
-      coverageLabel: summarizeCoverage(undefined, entry.symbol_coverage),
-      conflictTargetsLabel:
-        Array.isArray(entry.metadata.conflict_targets) && entry.metadata.conflict_targets.length > 0
-          ? entry.metadata.conflict_targets.join(' · ')
-          : t('common.na'),
-    })),
+    rows: orchestrationStatus.entries.map((entry) => {
+      const conflictTargets = Array.isArray(entry.conflict_targets)
+        ? entry.conflict_targets
+        : Array.isArray(entry.metadata.conflict_targets)
+          ? (entry.metadata.conflict_targets as string[])
+          : []
+      const downgradeAction =
+        entry.downgrade_action ||
+        (typeof entry.metadata.downgrade_action === 'string' ? entry.metadata.downgrade_action : undefined)
+      return {
+        id: entry.strategy_id,
+        label: entry.label,
+        engine: entry.engine,
+        sourceLabel: sourceLabel(t, entry.source),
+        roleLabel: roleLabel(t, entry.role),
+        stateLabel: entry.enabled ? t('common.ready') : t('common.disabled'),
+        coverageLabel: summarizeCoverage(undefined, entry.symbol_coverage),
+        conflictTargetsLabel: conflictTargets.length > 0 ? conflictTargets.join(' · ') : t('common.na'),
+        downgradeActionLabel: downgradePolicyLabel(t, downgradeAction ?? orchestrationStatus.downgrade_policy),
+      }
+    }),
     conflictOptions: [
       { id: 'review_on_conflict', label: conflictPolicyLabel(t, 'review_on_conflict') },
       { id: 'prefer_priority', label: conflictPolicyLabel(t, 'prefer_priority') },

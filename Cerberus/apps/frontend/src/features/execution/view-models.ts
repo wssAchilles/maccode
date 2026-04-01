@@ -4,6 +4,7 @@ import type { OrderTimelineEvent, PersistenceStatus, TradingPolicy, UIState } fr
 import {
   buildExecutionAccountSummaries,
   buildExecutionAnomalySummary,
+  buildExecutionLifecycleDistribution,
   buildExecutionOrderReadModels,
 } from './read-models'
 
@@ -49,6 +50,7 @@ export type ExecutionOperationsPanelModel = {
   diagnosisLabel: string
   diagnosisTone: 'default' | 'accent' | 'danger'
   diagnosisHint: string
+  lifecycleSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   accountSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   emptyTitle?: string
@@ -156,6 +158,7 @@ export function buildExecutionOperationsPanel({
   const rejectedCount = orderModels.filter((item) => item.latestPhase === 'rejected').length
   const canceledCount = orderModels.filter((item) => item.latestPhase === 'canceled').length
   const anomalySummary = buildExecutionAnomalySummary(orderModels)
+  const lifecycleDistribution = buildExecutionLifecycleDistribution(orderModels)
   const accountSummary = buildExecutionAccountSummaries(orderModels)
   const latestAnomaly = orderModels.find((item) =>
     ['rejected', 'canceled'].includes(item.latestPhase),
@@ -187,6 +190,16 @@ export function buildExecutionOperationsPanel({
       `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.requestId ?? '—'}`,
     )
   }
+  if (anomalySummary.fillSlippageBps !== undefined && Math.abs(anomalySummary.fillSlippageBps) > 5) {
+    anomalies.push(
+      `${t('workspace.execution.operationsSlippage')}: ${anomalySummary.fillSlippageBps.toFixed(1)} bps`,
+    )
+  }
+  if (anomalySummary.avgSubmitToAcceptedMs !== undefined && anomalySummary.avgSubmitToAcceptedMs > 10_000) {
+    anomalies.push(
+      `${t('workspace.execution.operationsSubmitToAccepted')}: ${Math.round(anomalySummary.avgSubmitToAcceptedMs)} ms`,
+    )
+  }
 
   if (filteredEvents.length === 0) {
     return {
@@ -197,6 +210,7 @@ export function buildExecutionOperationsPanel({
       diagnosisLabel: t('workspace.execution.diagnosisUnavailable'),
       diagnosisTone: 'default',
       diagnosisHint: t('workspace.execution.operationsDescription'),
+      lifecycleSummary: [],
       accountSummary: [],
       items: [],
       emptyTitle: t('workspace.execution.operationsEmpty'),
@@ -235,11 +249,52 @@ export function buildExecutionOperationsPanel({
     diagnosisLabel: diagnosis.label,
     diagnosisTone: diagnosis.tone,
     diagnosisHint: diagnosis.hint,
+    lifecycleSummary: [
+      {
+        id: 'submit',
+        label: t('workspace.execution.lifecycleStatus.submitted'),
+        value: String(lifecycleDistribution.submit),
+      },
+      {
+        id: 'accepted',
+        label: t('workspace.execution.operationsAccepted'),
+        value: String(lifecycleDistribution.accepted),
+        tone: lifecycleDistribution.accepted > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'partialFill',
+        label: t('workspace.execution.lifecycleStatus.partialFill'),
+        value: String(lifecycleDistribution.partial_fill),
+        tone: lifecycleDistribution.partial_fill > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'fill',
+        label: t('workspace.execution.lifecycleStatus.filled'),
+        value: String(lifecycleDistribution.fill),
+        tone: lifecycleDistribution.fill > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'rejected',
+        label: t('workspace.execution.lifecycleStatus.rejected'),
+        value: String(lifecycleDistribution.rejected),
+        tone: lifecycleDistribution.rejected > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'cancelRequested',
+        label: t('workspace.execution.lifecycleStatus.cancelRequested'),
+        value: String(lifecycleDistribution.cancel_requested),
+      },
+      {
+        id: 'canceled',
+        label: t('workspace.execution.lifecycleStatus.canceled'),
+        value: String(lifecycleDistribution.canceled),
+      },
+    ],
     accountSummary: accountSummary.slice(0, 3).map((item) => ({
       id: item.accountId,
       label: item.accountId,
-      value: `${item.observed} / ${item.active} / ${item.filled}`,
-      tone: item.rejected > 0 ? 'accent' : 'default',
+      value: `${item.observed} ${t('workspace.execution.accountObservedShort')} · ${item.active} ${t('workspace.execution.accountActiveShort')} · ${item.filled} ${t('workspace.execution.accountFilledShort')}`,
+      tone: item.rejected > 0 || item.canceled > 0 ? 'accent' : 'default',
     })),
     items: [
       {

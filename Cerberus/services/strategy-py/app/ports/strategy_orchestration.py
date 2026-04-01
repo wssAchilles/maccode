@@ -16,6 +16,8 @@ class StrategyOrchestrationEntry:
     observe_weight: float
     primary_weight: float
     symbol_coverage: tuple[str, ...] = ()
+    conflict_targets: tuple[str, ...] = ()
+    downgrade_action: str = "review"
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def configured_weight(self, *, mode: str) -> float:
@@ -72,6 +74,8 @@ class StrategyOrchestrationSnapshot:
                     "observe_weight": item.observe_weight,
                     "primary_weight": item.primary_weight,
                     "symbol_coverage": list(item.symbol_coverage),
+                    "conflict_targets": list(item.conflict_targets),
+                    "downgrade_action": item.downgrade_action,
                     "metadata": dict(item.metadata),
                 }
                 for item in self.entries
@@ -129,6 +133,8 @@ class StrategyOrchestrationPort(Protocol):
         observe_weight: float | None = None,
         primary_weight: float | None = None,
         symbol_coverage: tuple[str, ...] | None = None,
+        conflict_targets: tuple[str, ...] | None = None,
+        downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
     ) -> StrategyOrchestrationControlResult: ...

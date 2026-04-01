@@ -45,6 +45,8 @@ export type ExecutionAccountSummary = {
   active: number
 }
 
+export type ExecutionLifecycleDistribution = Record<ExecutionLifecyclePhase, number>
+
 function eventTimestamp(event: OrderTimelineEvent): number {
   if (event.event_time) {
     const parsed = Date.parse(event.event_time)
@@ -223,6 +225,24 @@ export function buildExecutionAccountSummaries(models: ExecutionOrderReadModel[]
   return [...groups.values()].sort(
     (left, right) => right.observed - left.observed || left.accountId.localeCompare(right.accountId),
   )
+}
+
+export function buildExecutionLifecycleDistribution(
+  models: ExecutionOrderReadModel[],
+): ExecutionLifecycleDistribution {
+  const distribution: ExecutionLifecycleDistribution = {
+    submit: 0,
+    accepted: 0,
+    rejected: 0,
+    partial_fill: 0,
+    fill: 0,
+    cancel_requested: 0,
+    canceled: 0,
+  }
+  for (const model of models) {
+    distribution[model.latestPhase] += 1
+  }
+  return distribution
 }
 
 export type ExecutionMarker = {
