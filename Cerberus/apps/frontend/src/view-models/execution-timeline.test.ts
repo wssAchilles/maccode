@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import type { OrderTimelineEvent } from '../types/contracts'
 import {
+  buildPreparedExecutionTimelineWindow,
   buildPreparedExecutionTimeline,
   filterPreparedExecutionTimeline,
+  getExecutionTimelineWindowAnchor,
 } from './execution-timeline'
 
 function event(overrides: Partial<OrderTimelineEvent>): OrderTimelineEvent {
@@ -82,5 +84,27 @@ describe('execution timeline view model', () => {
         keyword: 'risk_limit',
       }),
     ).toEqual([1])
+  })
+
+  it('derives a stable window anchor from scroll offsets', () => {
+    expect(getExecutionTimelineWindowAnchor(0, 156, 6)).toBe(0)
+    expect(getExecutionTimelineWindowAnchor(155, 156, 6)).toBe(0)
+    expect(getExecutionTimelineWindowAnchor(1_560, 156, 6)).toBe(4)
+  })
+
+  it('builds a virtual window from prepared row indexes', () => {
+    const window = buildPreparedExecutionTimelineWindow({
+      rowIndexes: [0, 1, 2, 3, 4, 5, 6, 7],
+      viewportHeight: 312,
+      rowHeight: 156,
+      overscanRows: 1,
+      anchorIndex: 2,
+    })
+
+    expect(window.startIndex).toBe(2)
+    expect(window.endIndex).toBe(6)
+    expect(window.topSpacerHeight).toBe(312)
+    expect(window.bottomSpacerHeight).toBe(312)
+    expect(window.visibleRowIndexes).toEqual([2, 3, 4, 5])
   })
 })

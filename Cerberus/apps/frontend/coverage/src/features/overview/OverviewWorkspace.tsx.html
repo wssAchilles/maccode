@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.81% </span>
+                <span class="strong">82.45% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>90/110</span>
+                <span class='fraction'>94/114</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.81% </span>
+                <span class="strong">82.45% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>90/110</span>
+                <span class='fraction'>94/114</span>
             </div>
         
             
@@ -193,8 +193,14 @@
 <a name='L128'></a><a href='#L128'>128</a>
 <a name='L129'></a><a href='#L129'>129</a>
 <a name='L130'></a><a href='#L130'>130</a>
-<a name='L131'></a><a href='#L131'>131</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -277,6 +283,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -330,8 +338,10 @@ import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
+import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
+import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
 &nbsp;
 type Props = {
   active?: boolean
@@ -340,17 +350,17 @@ type Props = {
 &nbsp;
 export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
-  const model = useOverviewWorkspaceModel({ onSelectWorkspace })
+  const model = useOverviewWorkspaceModel({ active: _active, onSelectWorkspace })
 &nbsp;
   return (
-    &lt;div className="workspace-grid"&gt;
+    &lt;div className="ws-grid"&gt;
       &lt;SectionFrame
         title={t('workspace.overview.title')}
         description={t('workspace.overview.description')}
         eyebrow={t('workspace.overview.eyebrow')}
         aside={
-          &lt;div className="workspace-actions"&gt;
-            &lt;button type="button" className="soft-button soft-button-primary" onClick={model.openExecution}&gt;
+          &lt;div className="ws-actions"&gt;
+            &lt;button type="button" className="soft-button sbp" onClick={model.openExecution}&gt;
               {t('workspace.cta.execution')}
             &lt;/button&gt;
             &lt;button type="button" className="soft-button" onClick={model.openHealth}&gt;
@@ -358,7 +368,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             &lt;/button&gt;
           &lt;/div&gt;
         }
-        className="workspace-span-full"
+        className="ws-span-full"
         tone="hero"
       &gt;
         &lt;div className="metric-grid"&gt;
@@ -375,29 +385,29 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       &lt;/SectionFrame&gt;
 &nbsp;
       {model.<span class="branch-0 cbranch-no" title="branch not covered" >summaryError ? (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;InlineAlert title={t('workspace.overview.attention')} tone="warning" className="workspace-span-full"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;InlineAlert title={t('workspace.overview.attention')} tone="warning" className="ws-span-full"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {model.summaryError.message}</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/InlineAlert&gt;</span>
       ) : null}
 &nbsp;
-      &lt;div className="workspace-main"&gt;
-        &lt;CoreFlowPanel /&gt;
+      &lt;div className="ws-main"&gt;
+        &lt;CoreFlowPanel active={_active} /&gt;
       &lt;/div&gt;
 &nbsp;
-      &lt;div className="workspace-side stack"&gt;
+      &lt;div className="ws-side stack"&gt;
         &lt;SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')}&gt;
           &lt;div className="stack-sm"&gt;
             {model.healthCards.map((card) =&gt; (
-              &lt;GlassPanel key={card.id} className="health-digest-card" tone="subtle"&gt;
-                &lt;div className="health-digest-head"&gt;
+              &lt;GlassPanel key={card.id} className="hd-card" tone="subtle"&gt;
+                &lt;div className="hd-head"&gt;
                   &lt;div&gt;
                     &lt;p className="subtle-label"&gt;{card.title}&lt;/p&gt;
-                    &lt;p className="health-digest-meta"&gt;{card.staleLabel}&lt;/p&gt;
+                    &lt;p className="hd-meta"&gt;{card.staleLabel}&lt;/p&gt;
                   &lt;/div&gt;
                   &lt;StatusPill state={card.state} label={card.stateLabel} compact /&gt;
                 &lt;/div&gt;
-                &lt;p className="health-digest-updated"&gt;{t('common.updatedAt')}: {card.updatedAt}&lt;/p&gt;
-                {card.<span class="branch-0 cbranch-no" title="branch not covered" >reason ? &lt;p className="health-digest-reason"&gt;{card.reason}&lt;/p&gt; : n</span>ull}
+                &lt;p className="hd-updated"&gt;{t('common.updatedAt')}: {card.updatedAt}&lt;/p&gt;
+                {card.<span class="branch-0 cbranch-no" title="branch not covered" >reason ? &lt;p className="hd-reason"&gt;{card.reason}&lt;/p&gt; : n</span>ull}
               &lt;/GlassPanel&gt;
             ))}
           &lt;/div&gt;
@@ -410,7 +420,9 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         &lt;SectionFrame title={t('workspace.strategy.title')} description={t('workspace.strategy.description')}&gt;
           &lt;div className="stack"&gt;
             &lt;StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} /&gt;
+            &lt;StrategyRegistryPanel model={model.strategyRegistry} /&gt;
             &lt;StrategyDecisionMatrix model={model.strategyMatrix} /&gt;
+            &lt;StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} /&gt;
           &lt;/div&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
@@ -421,9 +433,9 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
 <span class="cstat-no" title="statement not covered" >            &lt;div className="stack-sm"&gt;</span>
 <span class="cstat-no" title="statement not covered" >              {model.recentSignals.map((signal) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >                &lt;GlassPanel key={`${signal.created_at}-${signal.strategy_id}`} className="signal-card" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;div className="signal-card-head"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;p className="signal-card-title"&gt;{signal.signal}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;p className="signal-card-symbol"&gt;{signal.symbol}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;div className="sig-head"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="sig-title"&gt;{signal.signal}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className="sig-symbol"&gt;{signal.symbol}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;DataList</span>
 <span class="cstat-no" title="statement not covered" >                    dense</span>
@@ -436,7 +448,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
 <span class="cstat-no" title="statement not covered" >              ))}</span>
 <span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
           )}
-          &lt;div className="workspace-actions"&gt;
+          &lt;div className="ws-actions"&gt;
             &lt;button type="button" className="soft-button" onClick={model.openMarket}&gt;
               {t('workspace.cta.market')}
             &lt;/button&gt;
@@ -460,7 +472,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-30T15:32:01.714Z
+                at 2026-04-01T08:43:54.595Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

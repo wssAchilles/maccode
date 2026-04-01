@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.22% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/31</span>
+                <span class='fraction'>31/31</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.22% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/31</span>
+                <span class='fraction'>31/31</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -119,40 +119,40 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { requestEnvelope } from '../../../lib/http'
 import type { BinanceRule, OrderEvent, TradingPolicy } from '../../../types/contracts'
 &nbsp;
@@ -164,40 +164,40 @@ export type RecentOrderFilters = {
   request_id?: string
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function appendFilter(params: URLSearchParams, key: keyof RecentOrderFilters, value?: string) {</span></span>
-<span class="cstat-no" title="statement not covered" >  const normalized = value?.trim()</span>
-<span class="cstat-no" title="statement not covered" >  if (!normalized || normalized === 'ALL') {</span>
-<span class="cstat-no" title="statement not covered" >    return</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-<span class="cstat-no" title="statement not covered" >  params.set(key, normalized)</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+function appendFilter(params: URLSearchParams, key: keyof RecentOrderFilters, value?: string) {
+  const normalized = value?.trim()
+  if (!normalized || normalized === 'ALL') {
+    return
+  }
+  params.set(key, normalized)
+}
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadRecentOrderEventsEnvelope(</span></span>
-<span class="cstat-no" title="statement not covered" >  gatewayBase: string,</span>
-<span class="cstat-no" title="statement not covered" >  filters?: RecentOrderFilters,</span>
-<span class="cstat-no" title="statement not covered" >) {</span>
-<span class="cstat-no" title="statement not covered" >  const params = new URLSearchParams()</span>
-<span class="cstat-no" title="statement not covered" >  params.set('limit', '200')</span>
-<span class="cstat-no" title="statement not covered" >  appendFilter(params, 'symbol', filters?.symbol)</span>
-<span class="cstat-no" title="statement not covered" >  appendFilter(params, 'account_id', filters?.account_id)</span>
-<span class="cstat-no" title="statement not covered" >  appendFilter(params, 'order_id', filters?.order_id)</span>
-<span class="cstat-no" title="statement not covered" >  appendFilter(params, 'status', filters?.status)</span>
-<span class="cstat-no" title="statement not covered" >  appendFilter(params, 'request_id', filters?.request_id)</span>
+export async function loadRecentOrderEventsEnvelope(
+  gatewayBase: string,
+  filters?: RecentOrderFilters,
+) {
+  const params = new URLSearchParams()
+  params.set('limit', '200')
+  appendFilter(params, 'symbol', filters?.symbol)
+  appendFilter(params, 'account_id', filters?.account_id)
+  appendFilter(params, 'order_id', filters?.order_id)
+  appendFilter(params, 'status', filters?.status)
+  appendFilter(params, 'request_id', filters?.request_id)
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return requestEnvelope&lt;{ count: number; events: OrderEvent[]; request_id?: string }&gt;(</span>
-<span class="cstat-no" title="statement not covered" >    `${gatewayBase}/api/v1/orders/events/recent?${params.toString()}`,</span>
-<span class="cstat-no" title="statement not covered" >  )</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+  return requestEnvelope&lt;{ count: number; events: OrderEvent[]; request_id?: string }&gt;(
+    `${gatewayBase}/api/v1/orders/events/recent?${params.toString()}`,
+  )
+}
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadTradingPolicyEnvelope(gatewayBase: string) {</span></span>
-<span class="cstat-no" title="statement not covered" >  return requestEnvelope&lt;{ policy?: TradingPolicy }&gt;(`${gatewayBase}/api/v1/trading/policy`)</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export async function loadTradingPolicyEnvelope(gatewayBase: string) {
+  return requestEnvelope&lt;{ policy?: TradingPolicy }&gt;(`${gatewayBase}/api/v1/trading/policy`)
+}
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadBinanceRuleEnvelope(gatewayBase: string, symbol: string) {</span></span>
-<span class="cstat-no" title="statement not covered" >  return requestEnvelope&lt;{ rule?: BinanceRule }&gt;(</span>
-<span class="cstat-no" title="statement not covered" >    `${gatewayBase}/api/v1/binance/symbol-rules?symbol=${encodeURIComponent(symbol)}`,</span>
-<span class="cstat-no" title="statement not covered" >  )</span>
-<span class="cstat-no" title="statement not covered" >}</span>
+export async function loadBinanceRuleEnvelope(gatewayBase: string, symbol: string) {
+  return requestEnvelope&lt;{ rule?: BinanceRule }&gt;(
+    `${gatewayBase}/api/v1/binance/symbol-rules?symbol=${encodeURIComponent(symbol)}`,
+  )
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -205,7 +205,7 @@ export type RecentOrderFilters = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-30T15:32:01.714Z
+                at 2026-04-01T08:43:54.595Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

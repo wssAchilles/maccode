@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80.48% </span>
+                <span class="strong">77.52% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>66/82</span>
+                <span class='fraction'>69/89</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">70.83% </span>
+                <span class="strong">65.38% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>17/24</span>
+                <span class='fraction'>17/26</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80.48% </span>
+                <span class="strong">77.52% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>66/82</span>
+                <span class='fraction'>69/89</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -154,8 +154,16 @@
 <a name='L89'></a><a href='#L89'>89</a>
 <a name='L90'></a><a href='#L90'>90</a>
 <a name='L91'></a><a href='#L91'>91</a>
-<a name='L92'></a><a href='#L92'>92</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -187,9 +195,15 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -250,6 +264,7 @@
 import { formatAppError } from '../../lib/http'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildInferenceOperationsModel } from './view-models'
 &nbsp;
 function inferActiveModelId(catalog: { active_model?: { model_id: string; version: string } | null } | undefined) {
@@ -259,13 +274,13 @@ function inferActiveModelId(catalog: { active_model?: { model_id: string; versio
   return `${catalog.active_model.model_id}:${catalog.active_model.version}`
 }
 &nbsp;
-export function useInferenceOperationsModel() {
+export function useInferenceOperationsModel(enabled = true) {
   const { t } = useI18n()
-  const inferenceStatus = useCerberusStore((state) =&gt; state.strategySummary.inference_status)
-  const inferenceCatalog = useCerberusStore((state) =&gt; state.strategySummary.inference_catalog)
-  const pendingAction = useCerberusStore((state) =&gt; state.strategySummary.inference_pending_action)
-  const lastResult = useCerberusStore((state) =&gt; state.strategySummary.inference_last_result)
-  const lastError = useCerberusStore((state) =&gt; state.strategySummary.last_error)
+  const inferenceStatus = useDormantSelector(enabled, (state) =&gt; state.strategySummary.inference_status)
+  const inferenceCatalog = useDormantSelector(enabled, (state) =&gt; state.strategySummary.inference_catalog)
+  const pendingAction = useDormantSelector(enabled, (state) =&gt; state.strategySummary.inference_pending_action)
+  const lastResult = useDormantSelector(enabled, (state) =&gt; state.strategySummary.inference_last_result)
+  const lastError = useDormantSelector(enabled, (state) =&gt; state.strategySummary.last_error)
   const loadInferenceCatalog = useCerberusStore((state) =&gt; state.strategySummaryActions.loadInferenceCatalog)
   const requestPromotion = useCerberusStore((state) =&gt; state.strategySummaryActions.requestInferencePromotion)
   const requestRollback = useCerberusStore((state) =&gt; state.strategySummaryActions.requestInferenceRollback)
@@ -275,12 +290,18 @@ export function useInferenceOperationsModel() {
   const [selectedModelId, setSelectedModelId] = useState('')
 &nbsp;
   useEffect(() =&gt; {
+    if (!enabled) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+<span class="cstat-no" title="statement not covered" >      return</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
     if (!inferenceCatalog) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >      void loadInferenceCatalog()</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-  }, [inferenceCatalog, loadInferenceCatalog])
+  }, [enabled, inferenceCatalog, loadInferenceCatalog])
 &nbsp;
   useEffect(() =&gt; {
+    if (!enabled) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
+<span class="cstat-no" title="statement not covered" >      return</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
     const activeId = inferActiveModelId(inferenceCatalog)
     if (!activeId) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >      return</span>
@@ -288,7 +309,7 @@ export function useInferenceOperationsModel() {
     startTransition(() =&gt; {
       setSelectedModelId((current) =&gt; current || activeId)
     })
-  }, [inferenceCatalog])
+  }, [enabled, inferenceCatalog])
 &nbsp;
   const baseModel = useMemo(
     () =&gt;
@@ -343,7 +364,7 @@ export function useInferenceOperationsModel() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-30T15:32:01.714Z
+                at 2026-04-01T08:43:54.595Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

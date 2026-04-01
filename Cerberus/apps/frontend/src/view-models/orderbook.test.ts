@@ -63,4 +63,24 @@ describe('orderbook view models', () => {
     expect(model.emptyTitle).toBe('orderbook.emptyDegradedTitle')
     expect(model.emptyBody).toBe('matching backend timeout')
   })
+
+  it('reuses prepared level rows and computes stale from explicit freshness input', () => {
+    const orderbook: MatchingOrderBook = {
+      enabled: true,
+      degraded: false,
+      symbol: 'BTCUSDT',
+      depth: 5,
+      generated_at_ms: 1_000,
+      bids: [{ price: 100.1, total_quantity: 2.25, order_count: 1 }],
+      asks: [{ price: 100.2, total_quantity: 3.5, order_count: 2 }],
+    }
+
+    const first = buildMatchingOrderBookPanelModel({ t, orderbook, nowMs: 5_000 })
+    const second = buildMatchingOrderBookPanelModel({ t, orderbook, nowMs: 12_000 })
+
+    expect(first.bids).toBe(second.bids)
+    expect(first.asks).toBe(second.asks)
+    expect(first.stale).toBe(false)
+    expect(second.stale).toBe(true)
+  })
 })

@@ -7,7 +7,9 @@ import { useDormantSelector } from '../store/useDormantSelector'
 import { EmptyState, GlassPanel } from '../ui'
 import {
   buildPreparedExecutionTimeline,
+  buildPreparedExecutionTimelineWindow,
   filterPreparedExecutionTimeline,
+  getExecutionTimelineWindowAnchor,
 } from '../view-models/execution-timeline'
 
 type Props = {
@@ -21,6 +23,8 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   const { t } = useI18n()
   const inputId = useId()
   const viewportRef = useRef<HTMLDivElement | null>(null)
+  const scrollFrameRef = useRef<number | null>(null)
+  const windowAnchorRef = useRef(0)
   const orderEvents = useDormantSelector(active, (state) => state.executionTrading.order_events)
   const filterSymbol = useDormantSelector(active, (state) => state.executionTrading.filter_symbol)
   const filterAccountId = useDormantSelector(active, (state) => state.executionTrading.filter_account_id)
@@ -28,7 +32,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
   const executionStatus = useDormantSelector(active, (state) => state.uiState.domain_status['execution-trading'])
   const [search, setSearch] = useState('')
-  const [scrollTop, setScrollTop] = useState(0)
+  const [windowAnchor, setWindowAnchor] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(360)
   const deferredSearch = useDeferredValue(search)
 
@@ -47,6 +51,14 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
       }),
     [deferredSearch, filterAccountId, filterStatus, filterSymbol, preparedTimeline],
   )
+
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!active) {
@@ -69,7 +81,8 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   }, [active, filteredRowIndexes.length])
 
   useEffect(() => {
-    setScrollTop(0)
+    windowAnchorRef.current = 0
+    setWindowAnchor(0)
     const viewport = viewportRef.current
     if (viewport && typeof viewport.scrollTo === 'function') {
       viewport.scrollTo({ top: 0 })
@@ -77,19 +90,42 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   }, [filterAccountId, filterStatus, filterSymbol, deferredSearch])
 
   const virtualWindow = useMemo(() => {
-    const visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_ESTIMATE_PX) + TIMELINE_OVERSCAN_ROWS * 2
-    const startIndex = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_ESTIMATE_PX) - TIMELINE_OVERSCAN_ROWS)
-    const endIndex = Math.min(filteredRowIndexes.length, startIndex + visibleCount)
+    const window = buildPreparedExecutionTimelineWindow({
+      rowIndexes: filteredRowIndexes,
+      viewportHeight,
+      rowHeight: TIMELINE_ROW_ESTIMATE_PX,
+      overscanRows: TIMELINE_OVERSCAN_ROWS,
+      anchorIndex: windowAnchor,
+    })
+
     return {
-      startIndex,
-      endIndex,
-      topSpacerHeight: startIndex * TIMELINE_ROW_ESTIMATE_PX,
-      bottomSpacerHeight: Math.max(0, (filteredRowIndexes.length - endIndex) * TIMELINE_ROW_ESTIMATE_PX),
-      visibleRows: filteredRowIndexes
-        .slice(startIndex, endIndex)
-        .map((rowIndex) => preparedTimeline.rows[rowIndex]),
+      ...window,
+      visibleRows: window.visibleRowIndexes.map((rowIndex) => preparedTimeline.rows[rowIndex]),
     }
-  }, [filteredRowIndexes, preparedTimeline.rows, scrollTop, viewportHeight])
+  }, [filteredRowIndexes, preparedTimeline.rows, viewportHeight, windowAnchor])
+
+  const handleScroll = (scrollTop: number) => {
+    const nextAnchor = getExecutionTimelineWindowAnchor(
+      scrollTop,
+      TIMELINE_ROW_ESTIMATE_PX,
+      TIMELINE_OVERSCAN_ROWS,
+    )
+    if (nextAnchor === windowAnchorRef.current) {
+      return
+    }
+    windowAnchorRef.current = nextAnchor
+    setWindowAnchor(nextAnchor)
+  }
+
+  const scheduleScrollWindowUpdate = (scrollTop: number) => {
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current)
+    }
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null
+      handleScroll(scrollTop)
+    })
+  }
 
   return (
     <article data-testid="execution-timeline-panel" className="execution-timeline">
@@ -186,7 +222,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         <div
           ref={viewportRef}
           className="execution-timeline-list"
-          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+          onScroll={(event) => scheduleScrollWindowUpdate(event.currentTarget.scrollTop)}
         >
           {virtualWindow.topSpacerHeight > 0 ? (
             <div style={{ height: `${virtualWindow.topSpacerHeight}px` }} aria-hidden="true" />

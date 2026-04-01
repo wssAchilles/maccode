@@ -8,40 +8,16 @@ import {
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 
-import type { MarketChartCandleModel, MarketChartMarkerModel } from '../features/market/view-models'
+import {
+  type MarketChartMarkerModel,
+  type MarketChartSeriesModel,
+  getMarketChartReplayStartIndex,
+  isSameMarketChartCandle,
+} from '../features/market/view-models'
 
 type Props = {
-  series: MarketChartCandleModel[]
+  series: MarketChartSeriesModel
   markers?: MarketChartMarkerModel[]
-}
-
-function sameCandle(left: MarketChartCandleModel | undefined, right: MarketChartCandleModel | undefined): boolean {
-  return (
-    left?.time === right?.time &&
-    left?.open === right?.open &&
-    left?.high === right?.high &&
-    left?.low === right?.low &&
-    left?.close === right?.close
-  )
-}
-
-function canIncrementallyReplay(previous: MarketChartCandleModel[], next: MarketChartCandleModel[]): boolean {
-  if (previous.length === 0 || next.length === 0 || next.length < previous.length) {
-    return false
-  }
-
-  if (previous[0]?.time !== next[0]?.time) {
-    return false
-  }
-
-  const sharedCount = previous.length - 1
-  for (let index = 0; index < sharedCount; index += 1) {
-    if (!sameCandle(previous[index], next[index])) {
-      return false
-    }
-  }
-
-  return true
 }
 
 export function CandlesChart({ series, markers = [] }: Props) {
@@ -49,7 +25,12 @@ export function CandlesChart({ series, markers = [] }: Props) {
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const markersRef = useRef<ReturnType<typeof createSeriesMarkers<Time>> | null>(null)
-  const dataRef = useRef<MarketChartCandleModel[]>([])
+  const dataRef = useRef<MarketChartSeriesModel>({
+    points: [],
+    prefixHashes: new Uint32Array(0),
+    firstTime: undefined,
+    lastTime: undefined,
+  })
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -111,7 +92,12 @@ export function CandlesChart({ series, markers = [] }: Props) {
       chartRef.current = null
       seriesRef.current = null
       markersRef.current = null
-      dataRef.current = []
+      dataRef.current = {
+        points: [],
+        prefixHashes: new Uint32Array(0),
+        firstTime: undefined,
+        lastTime: undefined,
+      }
       chart.remove()
     }
   }, [])
@@ -122,28 +108,29 @@ export function CandlesChart({ series, markers = [] }: Props) {
     }
 
     const previous = dataRef.current
+    const nextPoints = series.points
 
-    if (series.length === 0) {
-      if (previous.length > 0) {
+    if (nextPoints.length === 0) {
+      if (previous.points.length > 0) {
         seriesRef.current.setData([])
-        dataRef.current = []
+        dataRef.current = series
       }
       return
     }
 
-    if (!canIncrementallyReplay(previous, series)) {
-      seriesRef.current.setData(series)
+    const startIndex = getMarketChartReplayStartIndex(previous, series)
+    if (startIndex < 0) {
+      seriesRef.current.setData(nextPoints)
       dataRef.current = series
       chartRef.current?.timeScale().fitContent()
       return
     }
 
-    const startIndex = Math.max(0, previous.length - 1)
-    for (let index = startIndex; index < series.length; index += 1) {
-      if (sameCandle(previous[index], series[index])) {
+    for (let index = startIndex; index < nextPoints.length; index += 1) {
+      if (isSameMarketChartCandle(previous.points[index], nextPoints[index])) {
         continue
       }
-      seriesRef.current.update(series[index])
+      seriesRef.current.update(nextPoints[index])
     }
 
     dataRef.current = series

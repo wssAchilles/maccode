@@ -558,14 +558,14 @@ type Props = {
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return (</span>
 <span class="cstat-no" title="statement not covered" >    &lt;main className="app-shell" data-testid="app-shell"&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;GlassPanel className="workbench-header" tone="hero"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="workbench-header-top"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="workbench-brand"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="workbench-eyebrow"&gt;{t('app.kicker')}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;GlassPanel className="wb-header" tone="hero"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="wb-header-top"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div className="wb-brand"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;p className="wb-eyebrow"&gt;{t('app.kicker')}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;h1&gt;{t('app.title')}&lt;/h1&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;p&gt;{t('app.subtitle')}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="workbench-header-actions"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div className="wb-header-actions"&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;div className="env-chip-group"&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;span className="env-chip"&gt;{t('env.gateway')}: {env.gateway_base}&lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;span className="env-chip"&gt;{t('env.strategy')}: {env.strategy_base}&lt;/span&gt;</span>
@@ -587,44 +587,44 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        &lt;div className="workbench-status-strip"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="wb-status-strip"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {healthCards.map((card) =&gt; (</span>
-<span class="cstat-no" title="statement not covered" >            &lt;GlassPanel key={card.id} className="status-strip-card" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="status-strip-head"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;GlassPanel key={card.id} className="ss-card" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="ss-head"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                &lt;div&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;p className="subtle-label"&gt;{card.title}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;p className="status-strip-meta"&gt;{card.staleLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p className="ss-meta"&gt;{card.staleLabel}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >                &lt;StatusPill state={card.state} label={card.stateLabel} compact /&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;p className="status-strip-updated"&gt;{card.updatedAt}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;p className="ss-updated"&gt;{card.updatedAt}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;/GlassPanel&gt;</span>
 <span class="cstat-no" title="statement not covered" >          ))}</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/GlassPanel&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      &lt;nav className="workspace-nav" aria-label={t('workspace.nav')}&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;nav className="ws-nav" aria-label={t('workspace.nav')}&gt;</span>
 <span class="cstat-no" title="statement not covered" >        {WORKSPACE_MODELS.map((item) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >          &lt;button</span>
 <span class="cstat-no" title="statement not covered" >            key={item.id}</span>
 <span class="cstat-no" title="statement not covered" >            type="button"</span>
-<span class="cstat-no" title="statement not covered" >            className={workspace === item.id ? 'workspace-nav-button workspace-nav-button-active' : 'workspace-nav-button'}</span>
+<span class="cstat-no" title="statement not covered" >            className={workspace === item.id ? 'ws-nav-button ws-nav-button-active' : 'ws-nav-button'}</span>
 <span class="cstat-no" title="statement not covered" >            onClick={() =&gt; handleWorkspaceChange(item.id)}</span>
           &gt;
-<span class="cstat-no" title="statement not covered" >            &lt;span className="workspace-nav-title"&gt;{t(item.titleKey)}&lt;/span&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;span className="workspace-nav-description"&gt;{t(item.descriptionKey)}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span className="ws-nav-title"&gt;{t(item.titleKey)}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;span className="ws-nav-description"&gt;{t(item.descriptionKey)}&lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/button&gt;</span>
 <span class="cstat-no" title="statement not covered" >        ))}</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/nav&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      &lt;section className="workspace-stage"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;Suspense fallback={&lt;GlassPanel className="workspace-loading"&gt;{t('workspace.loading')}&lt;/GlassPanel&gt;}&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;section className="ws-stage"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;Suspense fallback={&lt;GlassPanel className="ws-loading"&gt;{t('workspace.loading')}&lt;/GlassPanel&gt;}&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {visited.map((visitedWorkspace) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >            const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]</span>
 <span class="cstat-no" title="statement not covered" >            return (</span>
 <span class="cstat-no" title="statement not covered" >              &lt;div</span>
 <span class="cstat-no" title="statement not covered" >                key={visitedWorkspace}</span>
-<span class="cstat-no" title="statement not covered" >                className={cn('workspace-host', workspace === visitedWorkspace ? 'workspace-host-active' : 'workspace-host-hidden')}</span>
+<span class="cstat-no" title="statement not covered" >                className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}</span>
 <span class="cstat-no" title="statement not covered" >                aria-hidden={workspace !== visitedWorkspace}</span>
               &gt;
 <span class="cstat-no" title="statement not covered" >                {visitedWorkspace === 'overview' ? (</span>
@@ -641,12 +641,12 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;/Suspense&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/section&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      &lt;nav className="workspace-mobile-nav" aria-label={t('workspace.nav')}&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;nav className="ws-mobile-nav" aria-label={t('workspace.nav')}&gt;</span>
 <span class="cstat-no" title="statement not covered" >        {WORKSPACE_MODELS.map((item) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >          &lt;button</span>
 <span class="cstat-no" title="statement not covered" >            key={item.id}</span>
 <span class="cstat-no" title="statement not covered" >            type="button"</span>
-<span class="cstat-no" title="statement not covered" >            className={workspace === item.id ? 'workspace-mobile-button workspace-mobile-button-active' : 'workspace-mobile-button'}</span>
+<span class="cstat-no" title="statement not covered" >            className={workspace === item.id ? 'ws-mobile-button ws-mobile-button-active' : 'ws-mobile-button'}</span>
 <span class="cstat-no" title="statement not covered" >            onClick={() =&gt; handleWorkspaceChange(item.id)}</span>
           &gt;
 <span class="cstat-no" title="statement not covered" >            {t(item.titleKey)}</span>
@@ -667,7 +667,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-30T15:32:01.714Z
+                at 2026-04-01T08:43:54.595Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

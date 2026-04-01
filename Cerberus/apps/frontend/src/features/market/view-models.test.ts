@@ -5,8 +5,11 @@ import {
   buildMarketChartMarkersModel,
   buildMarketChartSeriesModel,
   buildMarketChartStateModel,
+  buildMarketExecutionRailModel,
   buildMarketMetricTiles,
   buildMarketSymbolChips,
+  getMarketChartReplayStartIndex,
+  isSameMarketChartCandle,
 } from './view-models'
 
 const t = (key: string) => key
@@ -107,10 +110,14 @@ describe('market view models', () => {
     const second = buildMarketChartSeriesModel(candles)
 
     expect(first).toBe(second)
-    expect(first).toEqual([
+    expect(first.points).toEqual([
       { time: 1712000000, open: 100.1, high: 101.2, low: 99.8, close: 100.9 },
       { time: 1712000060, open: 100.9, high: 102, low: 100.5, close: 101.7 },
     ])
+    expect(first.firstTime).toBe(1712000000)
+    expect(first.lastTime).toBe(1712000060)
+    expect(Array.from(first.prefixHashes)).toHaveLength(2)
+    expect(first.prefixHashes[1]).not.toBe(first.prefixHashes[0])
   })
 
   it('prepares chart markers from execution events', () => {
@@ -143,5 +150,69 @@ describe('market view models', () => {
         text: 'exec-1',
       },
     ])
+  })
+
+  it('builds a replay plan for trailing candle updates', () => {
+    const previous = buildMarketChartSeriesModel([
+      [1712000000000, '100', '101', '99', '100.5', '12'],
+      [1712000060000, '100.5', '102', '100', '101.7', '18'],
+    ])
+    const next = buildMarketChartSeriesModel([
+      [1712000000000, '100', '101', '99', '100.5', '12'],
+      [1712000060000, '100.5', '102', '100', '102.1', '18'],
+      [1712000120000, '102.1', '103', '101.8', '102.8', '15'],
+    ])
+
+    expect(getMarketChartReplayStartIndex(previous, next)).toBe(1)
+  })
+
+  it('forces a chart reset when historical candles change', () => {
+    const previous = buildMarketChartSeriesModel([
+      [1712000000000, '100', '101', '99', '100.5', '12'],
+      [1712000060000, '100.5', '102', '100', '101.7', '18'],
+    ])
+    const next = buildMarketChartSeriesModel([
+      [1712000000000, '100', '104', '99', '100.5', '12'],
+      [1712000060000, '100.5', '102', '100', '101.7', '18'],
+    ])
+
+    expect(getMarketChartReplayStartIndex(previous, next)).toBe(-1)
+  })
+
+  it('compares chart candles by normalized point values', () => {
+    const series = buildMarketChartSeriesModel([
+      [1712000000000, '100', '101', '99', '100.5', '12'],
+      [1712000060000, '100.5', '102', '100', '101.7', '18'],
+    ])
+
+    expect(isSameMarketChartCandle(series.points[0], series.points[0])).toBe(true)
+    expect(isSameMarketChartCandle(series.points[0], series.points[1])).toBe(false)
+  })
+
+  it('marks the execution rail stale with shared freshness semantics', () => {
+    const model = buildMarketExecutionRailModel({
+      t,
+      selectedSymbol: 'BTCUSDT',
+      nowMs: 1_000_000,
+      orderEvents: [
+        {
+          id: 'evt-1',
+          channel: 'trade.executions.default',
+          payload: {},
+          received_at: 1000,
+          event_time: '1970-01-01T00:10:00.000Z',
+          event_type: 'execution.fill',
+          symbol: 'BTCUSDT',
+          status: 'FILLED',
+          lifecycle_phase: 'fill',
+          correlation_key: 'corr-1',
+          request_id: 'req-1',
+          execution_id: 'exec-1',
+        },
+      ],
+    })
+
+    expect(model.state).toBe('stale')
+    expect(model.staleHint).toBe('workspace.market.executionRailStale')
   })
 })

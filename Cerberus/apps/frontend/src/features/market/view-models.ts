@@ -1,6 +1,7 @@
 import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
 import type { Candle, MarketMessage, OrderTimelineEvent, StrategySignal, UIState } from '../../types/contracts'
+import { isRealtimeSnapshotStale } from '../../view-models/realtime'
 import { formatConfidence, formatPrice, summarizeLatestFeedback } from '../../view-models/workbench'
 import { buildExecutionMarkers, buildPreparedExecutionSelection } from '../execution/read-models'
 
@@ -51,6 +52,13 @@ export type MarketChartCandleModel = {
   close: number
 }
 
+export type MarketChartSeriesModel = {
+  points: MarketChartCandleModel[]
+  prefixHashes: Uint32Array
+  firstTime?: UTCTimestamp
+  lastTime?: UTCTimestamp
+}
+
 export type MarketChartMarkerModel = {
   id: string
   time: UTCTimestamp
@@ -62,7 +70,7 @@ export type MarketChartMarkerModel = {
 
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
-const preparedCandleCache = new WeakMap<Candle[], MarketChartCandleModel[]>()
+const preparedCandleCache = new WeakMap<Candle[], MarketChartSeriesModel>()
 const preparedMarkerCache = new WeakMap<object, MarketChartMarkerModel[]>()
 
 type BuildMarketMetricTilesParams = {
@@ -203,32 +211,116 @@ export function buildMarketChartStateModel({
   }
 }
 
-export function buildMarketChartSeriesModel(candles: Candle[]): MarketChartCandleModel[] {
+function hashPart(hash: number, value: string | number): number {
+  const text = String(value)
+  let nextHash = hash
+  for (let index = 0; index < text.length; index += 1) {
+    nextHash ^= text.charCodeAt(index)
+    nextHash = Math.imul(nextHash, 16777619)
+  }
+  return nextHash >>> 0
+}
+
+export function buildMarketChartSeriesModel(candles: Candle[]): MarketChartSeriesModel {
   const cached = preparedCandleCache.get(candles)
   if (cached) {
     return cached
   }
 
-  const prepared = candles.map((item) => ({
-    time: Math.floor(item[0] / 1000) as UTCTimestamp,
-    open: Number(item[1]),
-    high: Number(item[2]),
-    low: Number(item[3]),
-    close: Number(item[4]),
-  }))
+  const points: MarketChartCandleModel[] = []
+  const prefixHashes = new Uint32Array(candles.length)
+  let rollingHash = 2166136261
+
+  for (let index = 0; index < candles.length; index += 1) {
+    const item = candles[index]
+    rollingHash = hashPart(rollingHash, item[0])
+    rollingHash = hashPart(rollingHash, item[1])
+    rollingHash = hashPart(rollingHash, item[2])
+    rollingHash = hashPart(rollingHash, item[3])
+    rollingHash = hashPart(rollingHash, item[4])
+    prefixHashes[index] = rollingHash
+
+    points.push({
+      time: Math.floor(item[0] / 1000) as UTCTimestamp,
+      open: Number(item[1]),
+      high: Number(item[2]),
+      low: Number(item[3]),
+      close: Number(item[4]),
+    })
+  }
+
+  const prepared = {
+    points,
+    prefixHashes,
+    firstTime: points[0]?.time,
+    lastTime: points[points.length - 1]?.time,
+  }
 
   preparedCandleCache.set(candles, prepared)
   return prepared
+}
+
+function prefixHashAt(series: MarketChartSeriesModel, index: number): number {
+  if (index < 0 || index >= series.prefixHashes.length) {
+    return 0
+  }
+  return series.prefixHashes[index] ?? 0
+}
+
+export function isSameMarketChartCandle(
+  left: MarketChartSeriesModel['points'][number] | undefined,
+  right: MarketChartSeriesModel['points'][number] | undefined,
+): boolean {
+  return (
+    left?.time === right?.time &&
+    left?.open === right?.open &&
+    left?.high === right?.high &&
+    left?.low === right?.low &&
+    left?.close === right?.close
+  )
+}
+
+export function getMarketChartReplayStartIndex(
+  previous: MarketChartSeriesModel,
+  next: MarketChartSeriesModel,
+): number {
+  if (
+    previous.points.length === 0 ||
+    next.points.length === 0 ||
+    next.points.length < previous.points.length ||
+    previous.firstTime !== next.firstTime
+  ) {
+    return -1
+  }
+
+  if (next.points.length === previous.points.length) {
+    const previousStablePrefixHash = prefixHashAt(previous, previous.points.length - 2)
+    const nextStablePrefixHash = prefixHashAt(next, next.points.length - 2)
+    if (previousStablePrefixHash !== nextStablePrefixHash) {
+      return -1
+    }
+    return previous.points.length - 1
+  }
+
+  const previousStablePrefixHash = prefixHashAt(previous, previous.points.length - 2)
+  const nextStablePrefixHash = prefixHashAt(next, previous.points.length - 2)
+  if (previousStablePrefixHash !== nextStablePrefixHash) {
+    return -1
+  }
+
+  return Math.max(0, previous.points.length - 1)
 }
 
 export function buildMarketExecutionRailModel({
   t,
   orderEvents,
   selectedSymbol,
+  nowMs,
 }: {
   t: Translate
   orderEvents: OrderTimelineEvent[]
   selectedSymbol: string
+  nowMs?: number
 }): MarketExecutionRailModel {
   const prepared = buildPreparedExecutionSelection(orderEvents, selectedSymbol)
   const { orderModels, latestTimestamp, filledCount } = prepared
@@ -250,7 +342,7 @@ export function buildMarketExecutionRailModel({
     }
   }
 
-  const stale = typeof latestTimestamp === 'number' ? Date.now() - latestTimestamp > 120_000 : false
+  const stale = isRealtimeSnapshotStale(latestTimestamp, 120_000, nowMs)
 
   return {
     summary: `${selectedSymbol} · ${items.length} · ${filledCount} fills`,

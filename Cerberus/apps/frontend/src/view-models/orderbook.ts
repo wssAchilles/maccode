@@ -1,18 +1,18 @@
 import type { TranslationKey } from '../i18n/messages'
 import type { MatchingOrderBook, MatchingOrderBookLevel } from '../types/contracts'
+import { formatOptionalTimeLabel, isRealtimeSnapshotStale } from './realtime'
 
 type Translate = (key: TranslationKey) => string
 
 type PreparedMatchingOrderBook = {
   symbol?: string
   depth?: number
-  bids: MatchingOrderBookLevel[]
-  asks: MatchingOrderBookLevel[]
-  bestBid?: number
-  bestAsk?: number
-  spread?: number
-  totalBidDepth: number
-  totalAskDepth: number
+  bids: MatchingOrderBookLevelRowModel[]
+  asks: MatchingOrderBookLevelRowModel[]
+  bestBidLabel: string
+  bestAskLabel: string
+  spreadLabel: string
+  depthBalanceLabel: string
   generatedAtMs?: number
   emptyKind: 'disabled' | 'no-orders' | 'degraded' | 'empty'
   degradedReason?: string
@@ -63,8 +63,10 @@ function prepareMatchingOrderBook(orderbook?: MatchingOrderBook): PreparedMatchi
     return {
       bids: [],
       asks: [],
-      totalBidDepth: 0,
-      totalAskDepth: 0,
+      bestBidLabel: '—',
+      bestAskLabel: '—',
+      spreadLabel: '—',
+      depthBalanceLabel: '0.000 / 0.000',
       emptyKind: 'disabled',
     }
   }
@@ -91,13 +93,12 @@ function prepareMatchingOrderBook(orderbook?: MatchingOrderBook): PreparedMatchi
   const prepared = {
     symbol: orderbook.symbol,
     depth: orderbook.depth,
-    bids,
-    asks,
-    bestBid,
-    bestAsk,
-    spread: bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined,
-    totalBidDepth: bids.reduce((sum, level) => sum + level.total_quantity, 0),
-    totalAskDepth: asks.reduce((sum, level) => sum + level.total_quantity, 0),
+    bids: buildLevelRows(bids, 'bid'),
+    asks: buildLevelRows(asks, 'ask'),
+    bestBidLabel: formatPrice(bestBid),
+    bestAskLabel: formatPrice(bestAsk),
+    spreadLabel: formatPrice(bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined),
+    depthBalanceLabel: `${bids.reduce((sum, level) => sum + level.total_quantity, 0).toFixed(3)} / ${asks.reduce((sum, level) => sum + level.total_quantity, 0).toFixed(3)}`,
     generatedAtMs: orderbook.generated_at_ms,
     emptyKind,
     degradedReason: orderbook.reason ?? undefined,
@@ -150,13 +151,15 @@ function resolveEmptyState(
 export function buildMatchingOrderBookPanelModel({
   t,
   orderbook,
+  nowMs,
 }: {
   t: Translate
   orderbook?: MatchingOrderBook
+  nowMs?: number
 }): MatchingOrderBookPanelModel {
   const prepared = prepareMatchingOrderBook(orderbook)
   const emptyState = resolveEmptyState(prepared, t)
-  const stale = !prepared.generatedAtMs || Date.now() - prepared.generatedAtMs > 8_000
+  const stale = isRealtimeSnapshotStale(prepared.generatedAtMs, 8_000, nowMs)
 
   return {
     title: t('orderbook.title'),
@@ -171,13 +174,13 @@ export function buildMatchingOrderBookPanelModel({
     spreadTitle: t('orderbook.spread'),
     updatedTitle: t('orderbook.updated'),
     depthBalanceTitle: t('orderbook.depthBalance'),
-    bids: buildLevelRows(prepared.bids, 'bid'),
-    asks: buildLevelRows(prepared.asks, 'ask'),
-    bestBidLabel: formatPrice(prepared.bestBid),
-    bestAskLabel: formatPrice(prepared.bestAsk),
-    spreadLabel: formatPrice(prepared.spread),
-    updatedAtLabel: prepared.generatedAtMs ? new Date(prepared.generatedAtMs).toLocaleTimeString() : t('common.na'),
-    depthBalanceLabel: `${prepared.totalBidDepth.toFixed(3)} / ${prepared.totalAskDepth.toFixed(3)}`,
+    bids: prepared.bids,
+    asks: prepared.asks,
+    bestBidLabel: prepared.bestBidLabel,
+    bestAskLabel: prepared.bestAskLabel,
+    spreadLabel: prepared.spreadLabel,
+    updatedAtLabel: formatOptionalTimeLabel(prepared.generatedAtMs, t('common.na')),
+    depthBalanceLabel: prepared.depthBalanceLabel,
     emptyTitle: emptyState.emptyTitle,
     emptyBody: emptyState.emptyBody,
     stale,

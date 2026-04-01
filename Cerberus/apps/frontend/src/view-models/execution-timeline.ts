@@ -22,6 +22,14 @@ export type PreparedExecutionTimeline = {
   byStatus: Map<string, number[]>
 }
 
+export type PreparedExecutionTimelineWindow = {
+  startIndex: number
+  endIndex: number
+  topSpacerHeight: number
+  bottomSpacerHeight: number
+  visibleRowIndexes: number[]
+}
+
 const preparedExecutionTimelineCache = new WeakMap<OrderTimelineEvent[], PreparedExecutionTimeline>()
 
 function formatOptionalIso(value: string | number | undefined): string {
@@ -180,4 +188,41 @@ export function filterPreparedExecutionTimeline({
   }
 
   return candidates.filter((index) => prepared.rows[index]?.searchText.includes(trimmedKeyword))
+}
+
+export function getExecutionTimelineWindowAnchor(
+  scrollTop: number,
+  rowHeight: number,
+  overscanRows: number,
+): number {
+  if (rowHeight <= 0) {
+    return 0
+  }
+  return Math.max(0, Math.floor(scrollTop / rowHeight) - overscanRows)
+}
+
+export function buildPreparedExecutionTimelineWindow({
+  rowIndexes,
+  viewportHeight,
+  rowHeight,
+  overscanRows,
+  anchorIndex,
+}: {
+  rowIndexes: number[]
+  viewportHeight: number
+  rowHeight: number
+  overscanRows: number
+  anchorIndex: number
+}): PreparedExecutionTimelineWindow {
+  const visibleCount = Math.ceil(viewportHeight / rowHeight) + overscanRows * 2
+  const startIndex = Math.max(0, Math.min(anchorIndex, rowIndexes.length))
+  const endIndex = Math.min(rowIndexes.length, startIndex + visibleCount)
+
+  return {
+    startIndex,
+    endIndex,
+    topSpacerHeight: startIndex * rowHeight,
+    bottomSpacerHeight: Math.max(0, (rowIndexes.length - endIndex) * rowHeight),
+    visibleRowIndexes: rowIndexes.slice(startIndex, endIndex),
+  }
 }
