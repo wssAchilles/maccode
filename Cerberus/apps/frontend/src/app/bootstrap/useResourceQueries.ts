@@ -1,19 +1,82 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useCerberusStore } from '../../store'
 
-export function useStrategySummaryResource(enabled: boolean) {
+type ResourceStatus = {
+  isLoading: boolean
+  isFetching: boolean
+}
+
+function useStoreRefresh({
+  enabled,
+  intervalMs,
+  refresh,
+  refreshKey,
+}: {
+  enabled: boolean
+  intervalMs?: number
+  refresh: () => Promise<void>
+  refreshKey?: string
+}): ResourceStatus {
+  const [isFetching, setIsFetching] = useState(false)
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+
+  useEffect(() => {
+    if (!enabled) {
+      setIsFetching(false)
+      return
+    }
+
+    let disposed = false
+
+    const runRefresh = async () => {
+      setIsFetching(true)
+      try {
+        await refreshRef.current()
+      } finally {
+        if (!disposed) {
+          setIsFetching(false)
+        }
+      }
+    }
+
+    void runRefresh()
+
+    if (!intervalMs) {
+      return () => {
+        disposed = true
+      }
+    }
+
+    const handle = window.setInterval(() => {
+      void runRefresh()
+    }, intervalMs)
+
+    return () => {
+      disposed = true
+      window.clearInterval(handle)
+    }
+  }, [enabled, intervalMs, refreshKey])
+
+  return useMemo(
+    () => ({
+      isLoading: enabled && isFetching,
+      isFetching,
+    }),
+    [enabled, isFetching],
+  )
+}
+
+export function useStrategySummaryResource(enabled: boolean): void {
   const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
 
-  return useQuery({
-    queryKey: ['strategy-summary', selectedSymbol],
+  useStoreRefresh({
     enabled,
-    staleTime: 4_000,
-    refetchInterval: enabled ? 4_000 : false,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
+    intervalMs: 4_000,
+    refreshKey: selectedSymbol,
+    refresh: async () => {
       await useCerberusStore.getState().strategySummaryActions.refreshSummary()
-      return useCerberusStore.getState().strategySummary
     },
   })
 }
@@ -21,62 +84,54 @@ export function useStrategySummaryResource(enabled: boolean) {
 export function useCandlesResource(enabled: boolean) {
   const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
 
-  return useQuery({
-    queryKey: ['candles', selectedSymbol],
+  const status = useStoreRefresh({
     enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? 45_000 : false,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
+    intervalMs: 45_000,
+    refreshKey: selectedSymbol,
+    refresh: async () => {
       await useCerberusStore.getState().marketStreamActions.loadCandles()
-      return useCerberusStore.getState().marketStream.candles
     },
   })
+
+  return status
 }
 
-export function useTradingPolicyResource(enabled: boolean) {
-  return useQuery({
-    queryKey: ['trading-policy'],
+export function useTradingPolicyResource(enabled: boolean): void {
+  useStoreRefresh({
     enabled,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
+    intervalMs: 60_000,
+    refresh: async () => {
       await useCerberusStore.getState().executionTradingActions.loadTradingPolicy()
-      return useCerberusStore.getState().executionTrading.trading_policy
     },
   })
 }
 
-export function useBinanceRuleResource(enabled: boolean, symbol: string) {
-  return useQuery({
-    queryKey: ['binance-rule', symbol],
+export function useBinanceRuleResource(enabled: boolean, symbol: string): void {
+  useStoreRefresh({
     enabled,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
+    intervalMs: 60_000,
+    refreshKey: symbol,
+    refresh: async () => {
       await useCerberusStore.getState().executionTradingActions.loadBinanceRule(symbol)
-      return useCerberusStore.getState().executionTrading.binance_rule
     },
   })
 }
 
-export function useRecentEventsResource(enabled: boolean) {
+export function useRecentEventsResource(enabled: boolean): void {
   const filterSymbol = useCerberusStore((state) => state.executionTrading.filter_symbol)
   const filterAccountId = useCerberusStore((state) => state.executionTrading.filter_account_id)
   const filterStatus = useCerberusStore((state) => state.executionTrading.filter_status)
 
-  return useQuery({
-    queryKey: ['recent-events', filterSymbol, filterAccountId, filterStatus],
+  useStoreRefresh({
     enabled,
-    staleTime: 15_000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
+    intervalMs: 15_000,
+    refreshKey: `${filterSymbol}:${filterAccountId}:${filterStatus}`,
+    refresh: async () => {
       await useCerberusStore.getState().executionTradingActions.loadRecentOrderEvents({
         symbol: filterSymbol,
         account_id: filterAccountId,
         status: filterStatus,
       })
-      return useCerberusStore.getState().executionTrading.order_events
     },
   })
 }

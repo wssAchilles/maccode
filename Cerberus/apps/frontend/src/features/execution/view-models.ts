@@ -148,8 +148,7 @@ export function buildExecutionOperationsPanel({
   persistenceStatus,
   domainStatus,
 }: BuildExecutionOperationsParams): ExecutionOperationsPanelModel {
-  const filteredEvents = orderEvents.filter((item) => item.symbol === selectedSymbol)
-  const orderModels = buildExecutionOrderReadModels(filteredEvents, selectedSymbol)
+  const orderModels = buildExecutionOrderReadModels(orderEvents, selectedSymbol)
   const activeOrders = orderModels.filter((item) =>
     ['submit', 'accepted', 'partial_fill', 'cancel_requested'].includes(item.latestPhase),
   ).length
@@ -202,7 +201,7 @@ export function buildExecutionOperationsPanel({
     )
   }
 
-  if (filteredEvents.length === 0) {
+  if (orderModels.length === 0) {
     return {
       state: domainStatus.state,
       stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),

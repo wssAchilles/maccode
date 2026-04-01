@@ -50,6 +50,14 @@ export type ExecutionAccountSummary = {
 
 export type ExecutionLifecycleDistribution = Record<ExecutionLifecyclePhase, number>
 
+type PreparedOrderReadModels = {
+  all: ExecutionOrderReadModel[]
+  bySymbol: Map<string, ExecutionOrderReadModel[]>
+}
+
+const preparedOrderReadModelsCache = new WeakMap<OrderTimelineEvent[], PreparedOrderReadModels>()
+const preparedMarkersCache = new WeakMap<OrderTimelineEvent[], Map<string, ExecutionMarker[]>>()
+
 function eventTimestamp(event: OrderTimelineEvent): number {
   if (event.event_time) {
     const parsed = Date.parse(event.event_time)
@@ -66,58 +74,78 @@ function latestPhase(events: OrderTimelineEvent[]): ExecutionLifecyclePhase {
 }
 
 export function buildExecutionOrderReadModels(events: OrderTimelineEvent[], symbol?: string): ExecutionOrderReadModel[] {
-  const filtered = symbol ? events.filter((item) => item.symbol === symbol) : events
-  const groups = new Map<string, OrderTimelineEvent[]>()
-  for (const event of filtered) {
-    const current = groups.get(event.correlation_key) ?? []
-    current.push(event)
-    groups.set(event.correlation_key, current)
+  let prepared = preparedOrderReadModelsCache.get(events)
+
+  if (!prepared) {
+    const groups = new Map<string, OrderTimelineEvent[]>()
+    for (const event of events) {
+      const current = groups.get(event.correlation_key) ?? []
+      current.push(event)
+      groups.set(event.correlation_key, current)
+    }
+
+    const all = [...groups.entries()]
+      .map(([id, items]) => {
+        const sorted = [...items].sort((left, right) => eventTimestamp(left) - eventTimestamp(right))
+        const first = sorted[0]
+        const latest = sorted[sorted.length - 1]
+        const fills = sorted.filter((item) => item.lifecycle_phase === 'fill' || item.lifecycle_phase === 'partial_fill')
+        const filledQuantity = fills.reduce((sum, item) => sum + (item.quantity ?? item.filled_quantity ?? 0), 0)
+        const fillPriceWeight = fills.reduce(
+          (sum, item) => sum + ((item.price ?? 0) * (item.quantity ?? item.filled_quantity ?? 0)),
+          0,
+        )
+        const fillVolume = fills.reduce((sum, item) => sum + (item.quantity ?? item.filled_quantity ?? 0), 0)
+
+        return {
+          id,
+          symbol: latest.symbol ?? first.symbol,
+          accountId: latest.account_id ?? first.account_id,
+          requestId: latest.request_id ?? first.request_id,
+          orderId: latest.order_id ?? first.order_id,
+          clientOrderId: latest.client_order_id ?? first.client_order_id,
+          executionIds: sorted.map((item) => item.execution_id).filter((value): value is string => Boolean(value)),
+          side: latest.side ?? first.side,
+          price: latest.price ?? first.price,
+          quantity: latest.quantity ?? first.quantity,
+          filledQuantity,
+          latestPhase: latestPhase(sorted),
+          latestStatus: latest.status,
+          latestReason: latest.reason,
+          submitAt: timestampForFirstPhase(sorted, 'submit'),
+          acceptedAt: timestampForFirstPhase(sorted, 'accepted'),
+          fillAt: timestampForLastPhase(sorted, 'fill', 'partial_fill'),
+          cancelRequestedAt: timestampForFirstPhase(sorted, 'cancel_requested'),
+          canceledAt: timestampForLastPhase(sorted, 'canceled'),
+          rejectedAt: timestampForLastPhase(sorted, 'rejected'),
+          averageExecutionPrice: fillVolume > 0 ? fillPriceWeight / fillVolume : undefined,
+          eventCount: sorted.length,
+          events: sorted,
+        }
+      })
+      .sort((left, right) => {
+        const leftTime = rightMostTimestamp(left.events)
+        const rightTime = rightMostTimestamp(right.events)
+        return rightTime - leftTime
+      })
+
+    const bySymbol = new Map<string, ExecutionOrderReadModel[]>()
+    for (const model of all) {
+      const key = model.symbol ?? ''
+      const current = bySymbol.get(key) ?? []
+      current.push(model)
+      bySymbol.set(key, current)
+    }
+
+    prepared = { all, bySymbol }
+    preparedOrderReadModelsCache.set(events, prepared)
   }
 
-  return [...groups.entries()]
-    .map(([id, items]) => {
-      const sorted = [...items].sort((left, right) => eventTimestamp(left) - eventTimestamp(right))
-      const first = sorted[0]
-      const latest = sorted[sorted.length - 1]
-      const fills = sorted.filter((item) => item.lifecycle_phase === 'fill' || item.lifecycle_phase === 'partial_fill')
-      const filledQuantity = fills.reduce((sum, item) => sum + (item.quantity ?? item.filled_quantity ?? 0), 0)
-      const fillPriceWeight = fills.reduce(
-        (sum, item) => sum + ((item.price ?? 0) * (item.quantity ?? item.filled_quantity ?? 0)),
-        0,
-      )
-      const fillVolume = fills.reduce((sum, item) => sum + (item.quantity ?? item.filled_quantity ?? 0), 0)
+  if (!symbol) {
+    return prepared.all
+  }
 
-      return {
-        id,
-        symbol: latest.symbol ?? first.symbol,
-        accountId: latest.account_id ?? first.account_id,
-        requestId: latest.request_id ?? first.request_id,
-        orderId: latest.order_id ?? first.order_id,
-        clientOrderId: latest.client_order_id ?? first.client_order_id,
-        executionIds: sorted.map((item) => item.execution_id).filter((value): value is string => Boolean(value)),
-        side: latest.side ?? first.side,
-        price: latest.price ?? first.price,
-        quantity: latest.quantity ?? first.quantity,
-        filledQuantity,
-        latestPhase: latestPhase(sorted),
-        latestStatus: latest.status,
-        latestReason: latest.reason,
-        submitAt: timestampForFirstPhase(sorted, 'submit'),
-        acceptedAt: timestampForFirstPhase(sorted, 'accepted'),
-        fillAt: timestampForLastPhase(sorted, 'fill', 'partial_fill'),
-        cancelRequestedAt: timestampForFirstPhase(sorted, 'cancel_requested'),
-        canceledAt: timestampForLastPhase(sorted, 'canceled'),
-        rejectedAt: timestampForLastPhase(sorted, 'rejected'),
-        averageExecutionPrice: fillVolume > 0 ? fillPriceWeight / fillVolume : undefined,
-        eventCount: sorted.length,
-        events: sorted,
-      }
-    })
-    .sort((left, right) => {
-      const leftTime = rightMostTimestamp(left.events)
-      const rightTime = rightMostTimestamp(right.events)
-      return rightTime - leftTime
-    })
+  return prepared.bySymbol.get(symbol) ?? []
 }
 
 function rightMostTimestamp(events: OrderTimelineEvent[]): number {
@@ -273,10 +301,14 @@ export type ExecutionMarker = {
 }
 
 export function buildExecutionMarkers(events: OrderTimelineEvent[], symbol: string): ExecutionMarker[] {
-  return events
-    .filter((item) => item.symbol === symbol)
-    .slice(0, 8)
-    .map((item) => {
+  let prepared = preparedMarkersCache.get(events)
+
+  if (!prepared) {
+    prepared = new Map<string, ExecutionMarker[]>()
+    for (const item of events) {
+      if (!item.symbol) {
+        continue
+      }
       const tone: ExecutionMarker['tone'] =
         item.lifecycle_phase === 'fill'
           ? 'positive'
@@ -285,13 +317,20 @@ export function buildExecutionMarkers(events: OrderTimelineEvent[], symbol: stri
             : item.lifecycle_phase === 'partial_fill'
               ? 'accent'
               : 'muted'
-      return {
+      const current = prepared.get(item.symbol) ?? []
+      current.push({
         id: item.id,
         time: eventTimestamp(item),
         phase: item.lifecycle_phase,
         label: item.execution_id ?? item.request_id ?? item.status ?? item.lifecycle_phase,
         tone,
-      }
-    })
+      })
+      prepared.set(item.symbol, current)
+    }
+    preparedMarkersCache.set(events, prepared)
+  }
+
+  return [...(prepared.get(symbol) ?? [])]
+    .slice(0, 8)
     .sort((left, right) => left.time - right.time)
 }

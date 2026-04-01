@@ -95,14 +95,14 @@ export function WorkbenchShell({ auth }: Props) {
 
   return (
     <main className="app-shell" data-testid="app-shell">
-      <GlassPanel className="workbench-header" tone="hero">
-        <div className="workbench-header-top">
-          <div className="workbench-brand">
-            <p className="workbench-eyebrow">{t('app.kicker')}</p>
+      <GlassPanel className="wb-header" tone="hero">
+        <div className="wb-header-top">
+          <div className="wb-brand">
+            <p className="wb-eyebrow">{t('app.kicker')}</p>
             <h1>{t('app.title')}</h1>
             <p>{t('app.subtitle')}</p>
           </div>
-          <div className="workbench-header-actions">
+          <div className="wb-header-actions">
             <div className="env-chip-group">
               <span className="env-chip">{t('env.gateway')}: {env.gateway_base}</span>
               <span className="env-chip">{t('env.strategy')}: {env.strategy_base}</span>
@@ -124,44 +124,44 @@ export function WorkbenchShell({ auth }: Props) {
           </div>
         </div>
 
-        <div className="workbench-status-strip">
+        <div className="wb-status-strip">
           {healthCards.map((card) => (
-            <GlassPanel key={card.id} className="status-strip-card" tone="subtle">
-              <div className="status-strip-head">
+            <GlassPanel key={card.id} className="ss-card" tone="subtle">
+              <div className="ss-head">
                 <div>
                   <p className="subtle-label">{card.title}</p>
-                  <p className="status-strip-meta">{card.staleLabel}</p>
+                  <p className="ss-meta">{card.staleLabel}</p>
                 </div>
                 <StatusPill state={card.state} label={card.stateLabel} compact />
               </div>
-              <p className="status-strip-updated">{card.updatedAt}</p>
+              <p className="ss-updated">{card.updatedAt}</p>
             </GlassPanel>
           ))}
         </div>
       </GlassPanel>
 
-      <nav className="workspace-nav" aria-label={t('workspace.nav')}>
+      <nav className="ws-nav" aria-label={t('workspace.nav')}>
         {WORKSPACE_MODELS.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={workspace === item.id ? 'workspace-nav-button workspace-nav-button-active' : 'workspace-nav-button'}
+            className={workspace === item.id ? 'ws-nav-button ws-nav-button-active' : 'ws-nav-button'}
             onClick={() => handleWorkspaceChange(item.id)}
           >
-            <span className="workspace-nav-title">{t(item.titleKey)}</span>
-            <span className="workspace-nav-description">{t(item.descriptionKey)}</span>
+            <span className="ws-nav-title">{t(item.titleKey)}</span>
+            <span className="ws-nav-description">{t(item.descriptionKey)}</span>
           </button>
         ))}
       </nav>
 
-      <section className="workspace-stage">
-        <Suspense fallback={<GlassPanel className="workspace-loading">{t('workspace.loading')}</GlassPanel>}>
+      <section className="ws-stage">
+        <Suspense fallback={<GlassPanel className="ws-loading">{t('workspace.loading')}</GlassPanel>}>
           {visited.map((visitedWorkspace) => {
             const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]
             return (
               <div
                 key={visitedWorkspace}
-                className={cn('workspace-host', workspace === visitedWorkspace ? 'workspace-host-active' : 'workspace-host-hidden')}
+                className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}
                 aria-hidden={workspace !== visitedWorkspace}
               >
                 {visitedWorkspace === 'overview' ? (
@@ -178,12 +178,12 @@ export function WorkbenchShell({ auth }: Props) {
         </Suspense>
       </section>
 
-      <nav className="workspace-mobile-nav" aria-label={t('workspace.nav')}>
+      <nav className="ws-mobile-nav" aria-label={t('workspace.nav')}>
         {WORKSPACE_MODELS.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={workspace === item.id ? 'workspace-mobile-button workspace-mobile-button-active' : 'workspace-mobile-button'}
+            className={workspace === item.id ? 'ws-mobile-button ws-mobile-button-active' : 'ws-mobile-button'}
             onClick={() => handleWorkspaceChange(item.id)}
           >
             {t(item.titleKey)}

@@ -12,29 +12,29 @@ export function StrategyPortfolioPanel({ model, onSelectSymbol }: Props) {
 
   if (model.items.length === 0) {
     return (
-      <GlassPanel className="strategy-portfolio-panel" tone="subtle">
+      <GlassPanel className="spf-panel" tone="subtle">
         <EmptyState title={model.emptyTitle ?? model.summary} body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')} />
       </GlassPanel>
     )
   }
 
   return (
-    <GlassPanel className="strategy-portfolio-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="spf-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.strategy.portfolioTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
+          <p className="sp-summary">{model.summary}</p>
         </div>
-        <div className="strategy-portfolio-status">
-          <p className="strategy-portfolio-bias">{model.biasLabel}</p>
-          <p className={model.gateTone === 'accent' ? 'strategy-portfolio-gate strategy-portfolio-gate-accent' : model.gateTone === 'muted' ? 'strategy-portfolio-gate strategy-portfolio-gate-muted' : 'strategy-portfolio-gate'}>
+        <div className="spf-status">
+          <p className="spf-bias">{model.biasLabel}</p>
+          <p className={model.gateTone === 'accent' ? 'spf-gate spf-gate-accent' : model.gateTone === 'muted' ? 'spf-gate spf-gate-muted' : 'spf-gate'}>
             {model.gateLabel}
           </p>
         </div>
       </div>
 
       {model.symbolChips.length > 0 ? (
-        <div className="strategy-portfolio-chips" role="list" aria-label={t('workspace.strategy.coverage')}>
+        <div className="spf-chips" role="list" aria-label={t('workspace.strategy.coverage')}>
           {model.symbolChips.map((chip) => (
             <div key={chip.id} role="listitem">
               <button

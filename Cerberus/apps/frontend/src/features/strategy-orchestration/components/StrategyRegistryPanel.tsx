@@ -11,7 +11,7 @@ export function StrategyRegistryPanel({ model }: Props) {
 
   if (model.rows.length === 0) {
     return (
-      <GlassPanel className="strategy-registry-panel" tone="subtle">
+      <GlassPanel className="srg-panel" tone="subtle">
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}
@@ -21,36 +21,36 @@ export function StrategyRegistryPanel({ model }: Props) {
   }
 
   return (
-    <GlassPanel className="strategy-registry-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="srg-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.strategy.registryTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
-          {model.stateSummary ? <p className="strategy-panel-hint">{model.stateSummary}</p> : null}
+          <p className="sp-summary">{model.summary}</p>
+          {model.stateSummary ? <p className="sp-hint">{model.stateSummary}</p> : null}
         </div>
-        <div className="strategy-registry-policies">
-          <p className="strategy-registry-policy">{model.policyLabel}</p>
-          <p className="strategy-registry-downgrade">{model.downgradeLabel}</p>
+        <div className="srg-policies">
+          <p className="srg-policy">{model.policyLabel}</p>
+          <p className="srg-downgrade">{model.downgradeLabel}</p>
         </div>
       </div>
 
-      <div className="strategy-registry-list" role="list" aria-label={t('workspace.strategy.registryTitle')}>
+      <div className="srg-list" role="list" aria-label={t('workspace.strategy.registryTitle')}>
         {model.rows.map((row) => (
-          <article key={row.id} role="listitem" className="strategy-registry-row">
-            <div className="strategy-registry-row-head">
+          <article key={row.id} role="listitem" className="srg-row">
+            <div className="srg-row-head">
               <div>
                 <p className="subtle-label">{row.label}</p>
-                <p className="strategy-registry-engine">{row.engine}</p>
-                {row.impactLabel ? <p className="strategy-registry-impact">{row.impactLabel}</p> : null}
-                {row.detailHint ? <p className="strategy-panel-hint">{row.detailHint}</p> : null}
+                <p className="srg-engine">{row.engine}</p>
+                {row.impactLabel ? <p className="srg-impact">{row.impactLabel}</p> : null}
+                {row.detailHint ? <p className="sp-hint">{row.detailHint}</p> : null}
               </div>
               <p
                 className={
                   row.stateTone === 'accent'
-                    ? 'strategy-registry-state strategy-registry-state-accent'
+                    ? 'srg-state srg-state-accent'
                     : row.stateTone === 'muted'
-                      ? 'strategy-registry-state strategy-registry-state-muted'
-                      : 'strategy-registry-state'
+                      ? 'srg-state srg-state-muted'
+                      : 'srg-state'
                 }
               >
                 {row.stateLabel}

@@ -1,15 +1,12 @@
-import {
-  createUserWithEmailAndPassword,
-  type User,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { User } from 'firebase/auth'
+import { useCallback, useEffect, useState } from 'react'
 
 import { useI18n } from '../i18n/I18nProvider'
-import { getFirebaseServices } from '../lib/firebase-services'
+import {
+  loadFirebaseAuthModule,
+  loadFirebaseAuthServices,
+  type FirebaseAuthServices,
+} from '../lib/firebase-services'
 import { setAuthTokenProvider } from '../lib/auth-session'
 import { describeAuthError, getAuthMessage } from './errors'
 
@@ -46,47 +43,60 @@ export function useFirebaseAuth(): FirebaseAuthState {
   const [signingIn, setSigningIn] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
-  const services = useMemo(() => {
-    if (!required) {
-      return null
-    }
-    return getFirebaseServices()
-  }, [required])
+  const [services, setServices] = useState<FirebaseAuthServices | null>(null)
 
   useEffect(() => {
     if (!required) {
       setAuthTokenProvider(null)
       setStatus('disabled')
+      setServices(null)
       return
     }
 
-    if (!services) {
-      setStatus('error')
-      setError(getAuthMessage(locale, 'missingConfig'))
-      setAuthTokenProvider(null)
-      return
-    }
+    let cancelled = false
+    let unsubscribe: (() => void) | undefined
 
-    setAuthTokenProvider(async () => {
-      const current = services.auth.currentUser
-      if (!current) {
-        return undefined
+    const initializeServices = async () => {
+      const [nextServices, authModule] = await Promise.all([
+        loadFirebaseAuthServices(),
+        loadFirebaseAuthModule(),
+      ])
+
+      if (cancelled) {
+        return
       }
-      return current.getIdToken()
-    })
 
-    const unsubscribe = onAuthStateChanged(services.auth, (nextUser) => {
-      setUser(nextUser)
-      setStatus('ready')
-      setError(undefined)
-    })
+      if (!nextServices) {
+        setStatus('error')
+        setError(getAuthMessage(locale, 'missingConfig'))
+        setAuthTokenProvider(null)
+        return
+      }
+
+      setServices(nextServices)
+      setAuthTokenProvider(async () => {
+        const current = nextServices.auth.currentUser
+        if (!current) {
+          return undefined
+        }
+        return current.getIdToken()
+      })
+
+      unsubscribe = authModule.onAuthStateChanged(nextServices.auth, (nextUser) => {
+        setUser(nextUser)
+        setStatus('ready')
+        setError(undefined)
+      })
+    }
+
+    void initializeServices()
 
     return () => {
-      unsubscribe()
+      cancelled = true
+      unsubscribe?.()
       setAuthTokenProvider(null)
     }
-  }, [locale, required, services])
+  }, [locale, required])
 
   const signInWithEmail = useCallback(async () => {
     if (!services) {
@@ -101,7 +111,8 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
-      await signInWithEmailAndPassword(services.auth, normalizedEmail, password)
+      const authModule = await loadFirebaseAuthModule()
+      await authModule.signInWithEmailAndPassword(services.auth, normalizedEmail, password)
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
@@ -122,7 +133,8 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
-      await createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
+      const authModule = await loadFirebaseAuthModule()
+      await authModule.createUserWithEmailAndPassword(services.auth, normalizedEmail, password)
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
@@ -137,8 +149,8 @@ export function useFirebaseAuth(): FirebaseAuthState {
     setSigningIn(true)
     setError(undefined)
     try {
-      const { GoogleAuthProvider } = await import('firebase/auth')
-      await signInWithPopup(services.auth, new GoogleAuthProvider())
+      const authModule = await loadFirebaseAuthModule()
+      await authModule.signInWithPopup(services.auth, new authModule.GoogleAuthProvider())
     } catch (error) {
       setError(describeAuthError(error, locale))
     } finally {
@@ -150,7 +162,8 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!services) {
       return
     }
-    await signOut(services.auth)
+    const authModule = await loadFirebaseAuthModule()
+    await authModule.signOut(services.auth)
   }, [services])
 
   return {

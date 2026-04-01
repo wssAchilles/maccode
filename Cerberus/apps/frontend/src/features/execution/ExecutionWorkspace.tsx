@@ -1,6 +1,11 @@
-import { ExecutionConsole } from '../../components/ExecutionConsole'
-import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
-import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
+import { Suspense } from 'react'
+
+import {
+  LazyExecutionConsole,
+  LazyExecutionTimelinePanel,
+  LazyMatchingOrderBookPanel,
+  PanelSkeleton,
+} from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
@@ -20,15 +25,15 @@ type Props = {
 export function ExecutionWorkspace({ active = true }: Props) {
   const { t } = useI18n()
   const model = useExecutionWorkspaceModel({ active })
-  const orchestrationOps = useStrategyOrchestrationOperationsModel()
+  const orchestrationOps = useStrategyOrchestrationOperationsModel(active)
 
   return (
-    <div className="workspace-grid">
+    <div className="ws-grid">
       <SectionFrame
         title={t('workspace.execution.title')}
         description={t('workspace.execution.description')}
         eyebrow={t('workspace.execution.eyebrow')}
-        className="workspace-span-full"
+        className="ws-span-full"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -43,11 +48,11 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="workspace-main stack">
+      <div className="ws-main stack">
         <SectionFrame title={t('workspace.execution.linkageTitle')} description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}>
-          <GlassPanel tone="subtle" className="execution-linkage-banner">
-            <p className="strategy-panel-summary">{model.selectedSymbol}</p>
-            <p className="strategy-panel-hint">{t('workspace.execution.linkageDetail')}</p>
+          <GlassPanel tone="subtle" className="elb">
+            <p className="sp-summary">{model.selectedSymbol}</p>
+            <p className="sp-hint">{t('workspace.execution.linkageDetail')}</p>
           </GlassPanel>
         </SectionFrame>
 
@@ -85,16 +90,18 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </SectionFrame>
 
         <SectionFrame title={t('workspace.execution.ticketTitle')} description={t('workspace.execution.ticketDescription')}>
-          <ExecutionConsole
-            active={active}
-            selectedSymbol={model.selectedSymbol}
-            latestBid={model.displayQuote?.bid_price}
-            latestAsk={model.displayQuote?.ask_price}
-          />
+          <Suspense fallback={<PanelSkeleton height="540px" />}>
+            <LazyExecutionConsole
+              active={active}
+              selectedSymbol={model.selectedSymbol}
+              latestBid={model.displayQuote?.bid_price}
+              latestAsk={model.displayQuote?.ask_price}
+            />
+          </Suspense>
         </SectionFrame>
       </div>
 
-      <div className="workspace-side stack execution-side">
+      <div className="ws-side stack execution-side">
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
@@ -107,7 +114,9 @@ export function ExecutionWorkspace({ active = true }: Props) {
           </div>
         </SectionFrame>
 
-        <MatchingOrderBookPanel orderbook={model.orderbook} />
+        <Suspense fallback={<PanelSkeleton height="300px" />}>
+          <LazyMatchingOrderBookPanel orderbook={model.orderbook} />
+        </Suspense>
 
         {model.summaryError ? (
           <DiagnosticDrawer title={t('workspace.execution.diagnostics')} summary={model.summaryError.message}>
@@ -119,7 +128,9 @@ export function ExecutionWorkspace({ active = true }: Props) {
           description={t('workspace.execution.timelineDescription')}
           className="timeline-section"
         >
-          <ExecutionTimelinePanel active={active} />
+          <Suspense fallback={<PanelSkeleton height="320px" />}>
+            <LazyExecutionTimelinePanel active={active} />
+          </Suspense>
         </SectionFrame>
       </div>
     </div>

@@ -23,16 +23,16 @@ export function SectionFrame({
   tone = 'default',
 }: Props) {
   return (
-    <GlassPanel className={cn('section-frame', className)} tone={tone}>
-      <div className="section-frame-header">
-        <div className="section-frame-copy">
-          {eyebrow ? <p className="section-frame-eyebrow">{eyebrow}</p> : null}
-          <h2 className="section-frame-title">{title}</h2>
-          {description ? <p className="section-frame-description">{description}</p> : null}
+    <GlassPanel className={cn('sf', className)} tone={tone}>
+      <div className="sf-header">
+        <div className="sf-copy">
+          {eyebrow ? <p className="sf-eyebrow">{eyebrow}</p> : null}
+          <h2 className="sf-title">{title}</h2>
+          {description ? <p className="sf-description">{description}</p> : null}
         </div>
-        {aside ? <div className="section-frame-aside">{aside}</div> : null}
+        {aside ? <div className="sf-aside">{aside}</div> : null}
       </div>
-      <div className="section-frame-body">{children}</div>
+      <div className="sf-body">{children}</div>
     </GlassPanel>
   )
 }

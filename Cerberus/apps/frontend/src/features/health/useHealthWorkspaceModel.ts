@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 import { useI18n } from '../../i18n/I18nProvider'
-import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import { useInferenceOperationsModel } from '../inference-observability/useInferenceOperationsModel'
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
@@ -10,13 +10,13 @@ import {
   buildHealthWorkerItems,
 } from './view-models'
 
-export function useHealthWorkspaceModel() {
+export function useHealthWorkspaceModel(active = true) {
   const { t } = useI18n()
-  const inferenceOperations = useInferenceOperationsModel()
-  const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
-  const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
-  const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
-  const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
+  const inferenceOperations = useInferenceOperationsModel(active)
+  const domainStatus = useDormantSelector(active, (state) => state.uiState.domain_status)
+  const persistenceStatus = useDormantSelector(active, (state) => state.strategySummary.persistence_status)
+  const inferenceStatus = useDormantSelector(active, (state) => state.strategySummary.inference_status)
+  const summaryError = useDormantSelector(active, (state) => state.strategySummary.last_error)
 
   const workerItems = useMemo(
     () => buildHealthWorkerItems({ t, persistenceStatus }),

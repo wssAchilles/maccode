@@ -2,6 +2,7 @@ import { startTransition, useMemo, useState } from 'react'
 
 import { useTradingPolicyResource, useBinanceRuleResource } from '../../app/bootstrap/useResourceQueries'
 import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import { useI18n } from '../../i18n/I18nProvider'
 import { useAlpacaPaperTrading } from '../../components/execution/useAlpacaPaperTrading'
 import { useBinanceOrderTest } from '../../components/execution/useBinanceOrderTest'
@@ -23,10 +24,10 @@ export function useExecutionConsoleModel({
 }: Params) {
   const { t } = useI18n()
   const [broker, setBrokerState] = useState<'binance' | 'alpaca'>('binance')
-  const gatewayBase = useCerberusStore((state) => state.env.gateway_base)
-  const tradingPolicy = useCerberusStore((state) => state.executionTrading.trading_policy)
-  const binanceRule = useCerberusStore((state) => state.executionTrading.binance_rule)
-  const coreFlow = useCerberusStore((state) => state.uiState.core_flow)
+  const gatewayBase = useDormantSelector(active, (state) => state.env.gateway_base)
+  const tradingPolicy = useDormantSelector(active, (state) => state.executionTrading.trading_policy)
+  const binanceRule = useDormantSelector(active, (state) => state.executionTrading.binance_rule)
+  const coreFlow = useDormantSelector(active, (state) => state.uiState.core_flow)
   const setCoreFlowStep = useCerberusStore((state) => state.uiActions.setCoreFlowStep)
 
   useTradingPolicyResource(active)
@@ -49,6 +50,7 @@ export function useExecutionConsoleModel({
   })
 
   const alpacaModel = useAlpacaPaperTrading({
+    active: active && broker === 'alpaca',
     gatewayBase,
     tradingPolicy: tradingPolicy ?? null,
     onFlowEvent: (event) => {

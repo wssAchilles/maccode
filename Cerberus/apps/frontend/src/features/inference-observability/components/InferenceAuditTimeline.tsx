@@ -10,24 +10,24 @@ export function InferenceAuditTimeline({ model }: Props) {
   const { t } = useI18n()
 
   return (
-    <GlassPanel tone="subtle" className="inference-panel inference-panel-detail">
-      <div className="inference-detail-head">
+    <GlassPanel tone="subtle" className="ifp ip-detail">
+      <div className="idt-head">
         <div>
           <p className="subtle-label">{t('workspace.inference.auditTimeline')}</p>
-          <p className="inference-card-summary">{t('workspace.inference.recentAudit')}</p>
+          <p className="ifc-summary">{t('workspace.inference.recentAudit')}</p>
         </div>
       </div>
 
       {model.auditTimeline.length > 0 ? (
-        <div className="inference-audit-list">
+        <div className="iad-list">
           {model.auditTimeline.map((entry) => (
-            <div key={entry.id} className="inference-audit-row">
-              <div className="inference-audit-copy">
-                <p className="inference-audit-title">{entry.title}</p>
-                <p className="inference-audit-message">{entry.message}</p>
-                {entry.detail ? <p className="inference-audit-detail">{entry.detail}</p> : null}
+            <div key={entry.id} className="iad-row">
+              <div className="iad-copy">
+                <p className="iad-title">{entry.title}</p>
+                <p className="iad-message">{entry.message}</p>
+                {entry.detail ? <p className="iad-detail">{entry.detail}</p> : null}
               </div>
-              <p className="inference-audit-time">{entry.createdAt}</p>
+              <p className="iad-time">{entry.createdAt}</p>
             </div>
           ))}
         </div>

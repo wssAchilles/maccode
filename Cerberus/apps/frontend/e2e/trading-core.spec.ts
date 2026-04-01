@@ -158,6 +158,8 @@ test('core trading chain remains usable', async ({ page }) => {
 
   await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByText(/Cerberus/)).toBeVisible()
+  await page.goto('/?workspace=execution')
+  await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
   await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
 
@@ -167,9 +169,12 @@ test('core trading chain remains usable', async ({ page }) => {
   await expect(page.getByTestId('binance-precheck-result')).toBeVisible()
 
   await page.getByTestId('submit-binance-order-button').click()
-  await expect(page.getByTestId('binance-response')).toContainText('binance-demo-order')
+  await page.getByTestId('binance-response-drawer-trigger').click()
+  await expect(page.getByTestId('binance-response-drawer-content')).toContainText('binance-demo-order')
 
+  await page.getByRole('tab', { name: 'Alpaca' }).click()
   await page.getByTestId('submit-alpaca-order-button').click()
   await page.getByTestId('cancel-alpaca-order-button').click()
-  await expect(page.locator('pre').filter({ hasText: 'canceled' }).first()).toBeVisible()
+  await page.getByTestId('alpaca-response-drawer-trigger').click()
+  await expect(page.getByTestId('alpaca-response-drawer-content')).toContainText('canceled')
 })

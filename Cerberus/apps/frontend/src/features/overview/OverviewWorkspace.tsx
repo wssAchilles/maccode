@@ -17,17 +17,17 @@ type Props = {
 
 export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
-  const model = useOverviewWorkspaceModel({ onSelectWorkspace })
+  const model = useOverviewWorkspaceModel({ active: _active, onSelectWorkspace })
 
   return (
-    <div className="workspace-grid">
+    <div className="ws-grid">
       <SectionFrame
         title={t('workspace.overview.title')}
         description={t('workspace.overview.description')}
         eyebrow={t('workspace.overview.eyebrow')}
         aside={
-          <div className="workspace-actions">
-            <button type="button" className="soft-button soft-button-primary" onClick={model.openExecution}>
+          <div className="ws-actions">
+            <button type="button" className="soft-button sbp" onClick={model.openExecution}>
               {t('workspace.cta.execution')}
             </button>
             <button type="button" className="soft-button" onClick={model.openHealth}>
@@ -35,7 +35,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             </button>
           </div>
         }
-        className="workspace-span-full"
+        className="ws-span-full"
         tone="hero"
       >
         <div className="metric-grid">
@@ -52,29 +52,29 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       </SectionFrame>
 
       {model.summaryError ? (
-        <InlineAlert title={t('workspace.overview.attention')} tone="warning" className="workspace-span-full">
+        <InlineAlert title={t('workspace.overview.attention')} tone="warning" className="ws-span-full">
           {model.summaryError.message}
         </InlineAlert>
       ) : null}
 
-      <div className="workspace-main">
-        <CoreFlowPanel />
+      <div className="ws-main">
+        <CoreFlowPanel active={_active} />
       </div>
 
-      <div className="workspace-side stack">
+      <div className="ws-side stack">
         <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')}>
           <div className="stack-sm">
             {model.healthCards.map((card) => (
-              <GlassPanel key={card.id} className="health-digest-card" tone="subtle">
-                <div className="health-digest-head">
+              <GlassPanel key={card.id} className="hd-card" tone="subtle">
+                <div className="hd-head">
                   <div>
                     <p className="subtle-label">{card.title}</p>
-                    <p className="health-digest-meta">{card.staleLabel}</p>
+                    <p className="hd-meta">{card.staleLabel}</p>
                   </div>
                   <StatusPill state={card.state} label={card.stateLabel} compact />
                 </div>
-                <p className="health-digest-updated">{t('common.updatedAt')}: {card.updatedAt}</p>
-                {card.reason ? <p className="health-digest-reason">{card.reason}</p> : null}
+                <p className="hd-updated">{t('common.updatedAt')}: {card.updatedAt}</p>
+                {card.reason ? <p className="hd-reason">{card.reason}</p> : null}
               </GlassPanel>
             ))}
           </div>
@@ -100,9 +100,9 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             <div className="stack-sm">
               {model.recentSignals.map((signal) => (
                 <GlassPanel key={`${signal.created_at}-${signal.strategy_id}`} className="signal-card" tone="subtle">
-                  <div className="signal-card-head">
-                    <p className="signal-card-title">{signal.signal}</p>
-                    <p className="signal-card-symbol">{signal.symbol}</p>
+                  <div className="sig-head">
+                    <p className="sig-title">{signal.signal}</p>
+                    <p className="sig-symbol">{signal.symbol}</p>
                   </div>
                   <DataList
                     dense
@@ -115,7 +115,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
               ))}
             </div>
           )}
-          <div className="workspace-actions">
+          <div className="ws-actions">
             <button type="button" className="soft-button" onClick={model.openMarket}>
               {t('workspace.cta.market')}
             </button>

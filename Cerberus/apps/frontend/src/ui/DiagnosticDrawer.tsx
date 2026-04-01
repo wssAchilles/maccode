@@ -1,6 +1,5 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 import { cn } from '../lib/cn'
 
@@ -10,10 +9,12 @@ type Props = {
   children: ReactNode
   defaultOpen?: boolean
   className?: string
+  testId?: string
 }
 
-export function DiagnosticDrawer({ title, summary, children, defaultOpen = false, className }: Props) {
+export function DiagnosticDrawer({ title, summary, children, defaultOpen = false, className, testId }: Props) {
   const [open, setOpen] = useState(defaultOpen)
+  const contentId = useId()
 
   useEffect(() => {
     if (defaultOpen) {
@@ -22,34 +23,28 @@ export function DiagnosticDrawer({ title, summary, children, defaultOpen = false
   }, [defaultOpen])
 
   return (
-    <section className={cn('diagnostic-drawer', className)}>
+    <section className={cn('dd', className)} data-testid={testId}>
       <button
         type="button"
-        className="diagnostic-drawer-trigger"
+        className="dd-trigger"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-controls={contentId}
+        data-testid={testId ? `${testId}-trigger` : undefined}
       >
         <div>
-          <p className="diagnostic-drawer-title">{title}</p>
-          {summary ? <p className="diagnostic-drawer-summary">{summary}</p> : null}
+          <p className="dd-title">{title}</p>
+          {summary ? <p className="dd-summary">{summary}</p> : null}
         </div>
-        <span className={open ? 'diagnostic-drawer-chevron diagnostic-drawer-chevron-open' : 'diagnostic-drawer-chevron'}>
+        <span className={open ? 'dd-chevron dd-chevron-open' : 'dd-chevron'}>
           {open ? '−' : '+'}
         </span>
       </button>
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.div
-            className="diagnostic-drawer-content"
-            initial={{ opacity: 0, height: 0, y: -6 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -6 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-          >
-            {children}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {open ? (
+        <div id={contentId} className="dd-content" data-testid={testId ? `${testId}-content` : undefined}>
+          {children}
+        </div>
+      ) : null}
     </section>
   )
 }

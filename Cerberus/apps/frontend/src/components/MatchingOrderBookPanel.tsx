@@ -22,15 +22,15 @@ function LevelGroup({
   emptyBody: string
 }) {
   return (
-    <div className="orderbook-group">
+    <div className="obg">
       <p className="subtle-label">{title}</p>
       {levels.length === 0 ? (
         <EmptyState title={emptyTitle} body={emptyBody} />
       ) : (
         <div className="stack-sm">
           {levels.map((level, index) => (
-            <div key={`${tone}-${index}-${level.price}`} className="orderbook-row">
-              <span className={tone === 'bid' ? 'orderbook-price orderbook-price-bid' : 'orderbook-price orderbook-price-ask'}>
+            <div key={`${tone}-${index}-${level.price}`} className="obr">
+              <span className={tone === 'bid' ? 'orderbook-price obp-bid' : 'orderbook-price obp-ask'}>
                 {level.price.toFixed(6)}
               </span>
               <span>{level.total_quantity.toFixed(6)}</span>
@@ -89,26 +89,26 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
       title={t('orderbook.title')}
       description={orderbook ? `${orderbook.symbol} · depth ${orderbook.depth}` : t('common.disabled')}
     >
-      <div className="orderbook-summary-grid">
-        <GlassPanel className="orderbook-summary-card" tone="subtle">
+      <div className="obs-grid">
+        <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{t('market.bestBid')}</p>
-          <p className="orderbook-summary-value orderbook-summary-value-bid">
+          <p className="obs-value obs-value-bid">
             {bestBid !== undefined ? bestBid.toFixed(6) : '—'}
           </p>
         </GlassPanel>
-        <GlassPanel className="orderbook-summary-card" tone="subtle">
+        <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{t('market.bestAsk')}</p>
-          <p className="orderbook-summary-value orderbook-summary-value-ask">
+          <p className="obs-value obs-value-ask">
             {bestAsk !== undefined ? bestAsk.toFixed(6) : '—'}
           </p>
         </GlassPanel>
-        <GlassPanel className="orderbook-summary-card" tone="subtle">
+        <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{t('orderbook.spread')}</p>
-          <p className="orderbook-summary-value">{spread !== undefined ? spread.toFixed(6) : '—'}</p>
+          <p className="obs-value">{spread !== undefined ? spread.toFixed(6) : '—'}</p>
         </GlassPanel>
       </div>
 
-      <div className="orderbook-grid" data-testid="matching-orderbook-panel">
+      <div className="obgrid" data-testid="matching-orderbook-panel">
         <LevelGroup
           title={t('orderbook.bids')}
           levels={bids}
@@ -124,16 +124,16 @@ export function MatchingOrderBookPanel({ orderbook }: Props) {
           emptyBody={emptyState.body}
         />
       </div>
-      <GlassPanel className="orderbook-foot" tone="subtle" padded={false}>
-        <div className="orderbook-foot-copy">
-          <p className="orderbook-updated">
+      <GlassPanel className="obf" tone="subtle" padded={false}>
+        <div className="obfc">
+          <p className="obu">
             {t('orderbook.updated')}: {orderbook?.generated_at_ms ? new Date(orderbook.generated_at_ms).toLocaleTimeString() : t('common.na')}
           </p>
-          <p className="orderbook-updated">
+          <p className="obu">
             {t('orderbook.depthBalance')}: {totalBidDepth.toFixed(3)} / {totalAskDepth.toFixed(3)}
           </p>
         </div>
-        {stale ? <p className="orderbook-stale">{t('orderbook.staleHint')}</p> : null}
+        {stale ? <p className="obst">{t('orderbook.staleHint')}</p> : null}
       </GlassPanel>
     </SectionFrame>
   )

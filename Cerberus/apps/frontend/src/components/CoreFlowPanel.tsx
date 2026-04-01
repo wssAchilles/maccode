@@ -1,6 +1,6 @@
 import type { TranslationKey } from '../i18n/messages'
 import { useI18n } from '../i18n/I18nProvider'
-import { useCerberusStore } from '../store'
+import { useDormantSelector } from '../store/useDormantSelector'
 import type { CoreFlowStepId, CoreFlowStepState } from '../store/slices/shared'
 import { GlassPanel, SectionFrame, StatusPill } from '../ui'
 
@@ -25,20 +25,20 @@ const STATE_LABEL_MAP: Record<CoreFlowStepState, TranslationKey> = {
 
 function toneClass(state: CoreFlowStepState): string {
   if (state === 'error') {
-    return 'flow-card flow-card-error'
+    return 'flow-card fc-error'
   }
   if (state === 'degraded') {
-    return 'flow-card flow-card-warning'
+    return 'flow-card fc-warning'
   }
   if (state === 'success') {
-    return 'flow-card flow-card-success'
+    return 'flow-card fc-success'
   }
   return 'flow-card'
 }
 
-export function CoreFlowPanel() {
+export function CoreFlowPanel({ active = true }: { active?: boolean }) {
   const { t } = useI18n()
-  const flow = useCerberusStore((state) => state.uiState.core_flow)
+  const flow = useDormantSelector(active, (state) => state.uiState.core_flow)
 
   return (
     <SectionFrame title={t('flow.title')} description={t('workspace.overview.description')} className="core-flow-frame">
@@ -47,17 +47,17 @@ export function CoreFlowPanel() {
           const item = flow[step]
           return (
             <GlassPanel key={step} className={toneClass(item.state)} tone="subtle" data-testid={`core-flow-step-${step}`}>
-              <div className="flow-card-head">
+              <div className="fc-head">
                 <div>
-                  <p className="flow-card-index">{index + 1}. {t(STEP_LABEL_MAP[step])}</p>
-                  <p className="flow-card-updated">
+                  <p className="fc-index">{index + 1}. {t(STEP_LABEL_MAP[step])}</p>
+                  <p className="fc-updated">
                     {t('common.updatedAt')}: {item.last_update_ms ? new Date(item.last_update_ms).toLocaleTimeString() : t('common.na')}
                   </p>
                 </div>
                 <StatusPill state={item.state} label={t(STATE_LABEL_MAP[item.state])} compact />
               </div>
-              <p className="flow-card-reason">{item.reason?.trim().length ? item.reason : t('common.na')}</p>
-              {item.request_id ? <p className="flow-card-request">rid: {item.request_id}</p> : null}
+              <p className="fc-reason">{item.reason?.trim().length ? item.reason : t('common.na')}</p>
+              {item.request_id ? <p className="fc-request">rid: {item.request_id}</p> : null}
             </GlassPanel>
           )
         })}

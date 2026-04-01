@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { I18nProvider } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
@@ -99,20 +98,10 @@ describe('ExecutionConsole', () => {
   })
 
   it('runs precheck then submits binance test order', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-
     render(
-      <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
-        </I18nProvider>
-      </QueryClientProvider>,
+      <I18nProvider>
+        <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
+      </I18nProvider>,
     )
 
     const precheckButton = await screen.findByTestId('run-precheck-button')
@@ -151,20 +140,10 @@ describe('ExecutionConsole', () => {
   })
 
   it('tracks market price updates until the operator edits the price manually', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-
     const view = render(
-      <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
-        </I18nProvider>
-      </QueryClientProvider>,
+      <I18nProvider>
+        <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="50000" latestAsk="50010" />
+      </I18nProvider>,
     )
 
     const priceInput = (await screen.findByTestId('binance-price-input')) as HTMLInputElement
@@ -174,11 +153,9 @@ describe('ExecutionConsole', () => {
     })
 
     view.rerender(
-      <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70005.2" latestAsk="70005.3" />
-        </I18nProvider>
-      </QueryClientProvider>,
+      <I18nProvider>
+        <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70005.2" latestAsk="70005.3" />
+      </I18nProvider>,
     )
 
     await waitFor(() => {
@@ -189,11 +166,9 @@ describe('ExecutionConsole', () => {
     await userEvent.type(priceInput, '70006.1')
 
     view.rerender(
-      <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70008.4" latestAsk="70008.5" />
-        </I18nProvider>
-      </QueryClientProvider>,
+      <I18nProvider>
+        <ExecutionConsole selectedSymbol="BTCUSDT" latestBid="70008.4" latestAsk="70008.5" />
+      </I18nProvider>,
     )
 
     await waitFor(() => {

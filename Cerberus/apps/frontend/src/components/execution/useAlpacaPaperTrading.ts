@@ -13,6 +13,7 @@ type FlowEvent = {
 }
 
 type Params = {
+  active: boolean
   gatewayBase: string
   tradingPolicy: TradingPolicy | null
   onFlowEvent?: (event: FlowEvent) => void
@@ -50,6 +51,7 @@ function readLastOrderId(result: GatewayResponse | null): string | null {
 }
 
 export function useAlpacaPaperTrading({
+  active,
   gatewayBase,
   tradingPolicy,
   onFlowEvent,
@@ -66,12 +68,15 @@ export function useAlpacaPaperTrading({
   const [account, setAccount] = useState<GatewayResponse | null>(null)
 
   useEffect(() => {
+    if (!active) {
+      return
+    }
     const loadAccount = async () => {
       const accountPayload = await callGateway('/api/v1/alpaca/account', gatewayBase, { method: 'GET' })
       setAccount(accountPayload)
     }
     void loadAccount()
-  }, [gatewayBase])
+  }, [active, gatewayBase])
 
   const canCancel = useMemo(() => Boolean(readLastOrderId(result)), [result])
 

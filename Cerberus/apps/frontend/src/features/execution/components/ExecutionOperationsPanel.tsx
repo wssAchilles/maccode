@@ -11,7 +11,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
   if (model.items.length === 0) {
     return (
-      <GlassPanel className="execution-operations-panel" tone="subtle">
+      <GlassPanel className="xo-panel" tone="subtle">
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.execution.operationsDescription')}
@@ -21,11 +21,11 @@ export function ExecutionOperationsPanel({ model }: Props) {
   }
 
   return (
-    <GlassPanel className="execution-operations-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="xo-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.execution.operationsTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
+          <p className="sp-summary">{model.summary}</p>
         </div>
         <StatusPill state={model.state} label={model.stateLabel} compact />
       </div>
@@ -33,24 +33,24 @@ export function ExecutionOperationsPanel({ model }: Props) {
       <DataList items={model.items} dense />
 
       {model.lifecycleSummary.length > 0 ? (
-        <div className="execution-operations-lifecycle">
+        <div className="xo-lifecycle">
           <p className="subtle-label">{t('workspace.execution.lifecycleDistributionTitle')}</p>
           <DataList items={model.lifecycleSummary} dense />
         </div>
       ) : null}
 
       {model.reasonSummary.length > 0 ? (
-        <div className="execution-operations-lifecycle">
+        <div className="xo-lifecycle">
           <p className="subtle-label">{t('workspace.execution.reasonDistributionTitle')}</p>
           <DataList items={model.reasonSummary} dense />
         </div>
       ) : null}
 
-      <div className="execution-operations-diagnosis">
-        <div className="strategy-panel-head">
+      <div className="xo-diagnosis">
+        <div className="sp-head">
           <div>
             <p className="subtle-label">{t('workspace.execution.diagnosisTitle')}</p>
-            <p className="strategy-panel-summary">{model.diagnosisLabel}</p>
+            <p className="sp-summary">{model.diagnosisLabel}</p>
           </div>
           <StatusPill
             state={model.diagnosisTone === 'danger' ? 'error' : model.diagnosisTone === 'accent' ? 'degraded' : 'idle'}
@@ -58,28 +58,28 @@ export function ExecutionOperationsPanel({ model }: Props) {
             compact
           />
         </div>
-        <p className="strategy-panel-hint">{model.diagnosisHint}</p>
+        <p className="sp-hint">{model.diagnosisHint}</p>
       </div>
 
       {model.accountSummary.length > 0 ? (
-        <div className="execution-account-summary">
+        <div className="eas">
           <p className="subtle-label">{t('workspace.execution.accountSummary')}</p>
           <DataList items={model.accountSummary} dense />
         </div>
       ) : null}
 
-      <div className="execution-operations-alerts">
+      <div className="xo-alerts">
         <p className="subtle-label">{t('workspace.execution.operationsAnomalies')}</p>
         {model.anomalies.length > 0 ? (
-          <ul className="execution-operations-alert-list">
+          <ul className="xo-alert-list">
             {model.anomalies.map((item) => (
-              <li key={item} className="execution-operations-alert">
+              <li key={item} className="xo-alert">
                 {item}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="execution-operations-empty">{t('workspace.execution.operationsNoAnomalies')}</p>
+          <p className="xo-empty">{t('workspace.execution.operationsNoAnomalies')}</p>
         )}
       </div>
     </GlassPanel>

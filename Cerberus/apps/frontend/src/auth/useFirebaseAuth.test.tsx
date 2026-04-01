@@ -30,10 +30,18 @@ vi.mock('firebase/auth', () => ({
 }))
 
 vi.mock('../lib/firebase-services', () => ({
-  getFirebaseServices: () => ({
+  loadFirebaseAuthServices: async () => ({
     auth: {
       currentUser: null,
     },
+  }),
+  loadFirebaseAuthModule: async () => ({
+    signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
+    createUserWithEmailAndPassword: mockCreateUserWithEmailAndPassword,
+    signInWithPopup: mockSignInWithPopup,
+    signOut: mockSignOut,
+    onAuthStateChanged: mockOnAuthStateChanged,
+    GoogleAuthProvider: class {},
   }),
 }))
 

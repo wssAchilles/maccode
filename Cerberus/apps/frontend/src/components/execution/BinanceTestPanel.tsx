@@ -58,7 +58,7 @@ export function BinanceTestPanel({
         </p>
       </div>
 
-      <div className="execution-form-grid">
+      <div className="xf-grid">
         <label className="field-label">
           Symbol
           <input id="binance-symbol" name="binance_symbol" className="field-input" value={selectedSymbol} disabled />
@@ -114,7 +114,7 @@ export function BinanceTestPanel({
         />
       </GlassPanel>
 
-      <div className="workspace-actions">
+      <div className="ws-actions">
         <button
           type="button"
           onClick={onRunPrecheck}
@@ -127,7 +127,7 @@ export function BinanceTestPanel({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="soft-button soft-button-primary"
+          className="soft-button sbp"
           data-testid="submit-binance-order-button"
         >
           {submitting ? 'Submitting...' : t('execution.submit')}
@@ -137,7 +137,7 @@ export function BinanceTestPanel({
       {precheck ? (
         <GlassPanel tone="subtle" data-testid="binance-precheck-result">
           <p
-            className={precheckPass ? 'precheck-status precheck-status-pass' : 'precheck-status precheck-status-fail'}
+            className={precheckPass ? 'pcs pcsp' : 'pcs pcsf'}
             aria-live="polite"
             data-testid="binance-precheck-status"
           >
@@ -164,7 +164,12 @@ export function BinanceTestPanel({
 
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
 
-      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result?.error)}>
+      <DiagnosticDrawer
+        title={t('execution.response')}
+        summary={result ? String(result.status) : '—'}
+        defaultOpen={Boolean(result?.error)}
+        testId="binance-response-drawer"
+      >
         <pre className="diagnostic-pre" data-testid="binance-response">
           {JSON.stringify(result, null, 2)}
         </pre>

@@ -1,5 +1,6 @@
-const collectUrl = process.env.LHCI_COLLECT_URL || process.env.E2E_BASE_URL || 'http://127.0.0.1:4173'
-const localCollect = collectUrl.startsWith('http://127.0.0.1:4173')
+const collectUrl = process.env.LHCI_COLLECT_URL || process.env.E2E_BASE_URL || 'http://localhost:4173'
+const localCollect =
+  collectUrl.startsWith('http://localhost:4173') || collectUrl.startsWith('http://127.0.0.1:4173')
 
 module.exports = {
   ci: {
@@ -8,8 +9,8 @@ module.exports = {
       numberOfRuns: 2,
       ...(localCollect
         ? {
-            startServerCommand: 'npm run preview -- --host 127.0.0.1 --port 4173',
-            startServerReadyPattern: 'Local',
+            startServerCommand: 'node scripts/preview-for-lighthouse.mjs',
+            startServerReadyPattern: 'LHCI_PREVIEW_READY',
           }
         : {}),
       settings: {

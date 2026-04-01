@@ -10,24 +10,24 @@ export function ExecutionLifecyclePanel({ model }: Props) {
   const { t } = useI18n()
 
   return (
-    <GlassPanel className="execution-lifecycle-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="xl-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.execution.lifecycleTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
+          <p className="sp-summary">{model.summary}</p>
         </div>
         <StatusPill state={model.state} label={model.stateLabel} compact />
       </div>
 
-      <div className="execution-lifecycle-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}>
+      <div className="xl-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}>
         {model.stages.map((stage) => (
           <article
             key={stage.id}
             role="listitem"
-            className={`execution-lifecycle-stage execution-lifecycle-stage-${stage.state}`}
+            className={`xl-stage xl-stage-${stage.state}`}
           >
-            <p className="execution-lifecycle-stage-label">{stage.label}</p>
-            <p className="execution-lifecycle-stage-detail">{stage.detail}</p>
+            <p className="xl-stage-label">{stage.label}</p>
+            <p className="xl-stage-detail">{stage.detail}</p>
           </article>
         ))}
       </div>
@@ -35,7 +35,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
       <DataList items={model.items} />
 
       {model.reason ? (
-        <p className="execution-lifecycle-reason" role="alert">
+        <p className="xl-reason" role="alert">
           {model.reason}
         </p>
       ) : null}

@@ -12,7 +12,7 @@ function inferActiveModelId(catalog: { active_model?: { model_id: string; versio
   return `${catalog.active_model.model_id}:${catalog.active_model.version}`
 }
 
-export function useInferenceOperationsModel() {
+export function useInferenceOperationsModel(enabled = true) {
   const { t } = useI18n()
   const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
   const inferenceCatalog = useCerberusStore((state) => state.strategySummary.inference_catalog)
@@ -28,12 +28,18 @@ export function useInferenceOperationsModel() {
   const [selectedModelId, setSelectedModelId] = useState('')
 
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
     if (!inferenceCatalog) {
       void loadInferenceCatalog()
     }
-  }, [inferenceCatalog, loadInferenceCatalog])
+  }, [enabled, inferenceCatalog, loadInferenceCatalog])
 
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
     const activeId = inferActiveModelId(inferenceCatalog)
     if (!activeId) {
       return
@@ -41,7 +47,7 @@ export function useInferenceOperationsModel() {
     startTransition(() => {
       setSelectedModelId((current) => current || activeId)
     })
-  }, [inferenceCatalog])
+  }, [enabled, inferenceCatalog])
 
   const baseModel = useMemo(
     () =>

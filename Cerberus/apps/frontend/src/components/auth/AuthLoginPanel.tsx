@@ -26,7 +26,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
     return (
       <main className="auth-shell">
         <GlassPanel className="auth-panel" tone="hero">
-          <p className="workbench-eyebrow">{t('app.kicker')}</p>
+          <p className="wb-eyebrow">{t('app.kicker')}</p>
           <h1 className="auth-title">{t('auth.loading')}</h1>
           <p className="auth-subtitle">{t('auth.loadingHint')}</p>
         </GlassPanel>
@@ -37,7 +37,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
   return (
     <main className="auth-shell">
       <GlassPanel className="auth-panel" tone="hero" data-testid="auth-login-panel">
-        <p className="workbench-eyebrow">{t('app.kicker')}</p>
+        <p className="wb-eyebrow">{t('app.kicker')}</p>
         <h1 className="auth-title">{t('auth.title')}</h1>
         <p className="auth-subtitle">{t('auth.subtitle')}</p>
 
@@ -87,7 +87,7 @@ export function AuthLoginPanel({ t, auth }: Props) {
           <div className="auth-actions">
             <button
               type="submit"
-              className="soft-button soft-button-primary auth-submit"
+              className="soft-button sbp auth-submit"
               disabled={auth.signingIn}
               data-testid="auth-email-submit"
             >

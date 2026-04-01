@@ -14,48 +14,48 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
   return (
     <div className="stack">
       <div className="health-grid">
-        <GlassPanel tone="subtle" className="inference-panel">
-          <div className="inference-card-head">
+        <GlassPanel tone="subtle" className="ifp">
+          <div className="ifc-head">
             <div>
               <p className="subtle-label">{t('workspace.inference.runtimeStatus')}</p>
-              <p className="inference-card-summary">{model.summary}</p>
+              <p className="ifc-summary">{model.summary}</p>
             </div>
             <StatusPill state={model.state} label={model.stateLabel} compact />
           </div>
           <DataList items={model.runtimeItems} />
           {model.reason ? (
-            <p className="inference-panel-reason" role="alert">
+            <p className="ip-reason" role="alert">
               {t('workspace.inference.reason')}: {model.reason}
             </p>
           ) : null}
         </GlassPanel>
 
-        <GlassPanel tone="subtle" className="inference-panel">
+        <GlassPanel tone="subtle" className="ifp">
           <p className="subtle-label">{t('workspace.inference.rolloutSummary')}</p>
-          <p className="inference-card-summary">{t('workspace.inference.description')}</p>
+          <p className="ifc-summary">{t('workspace.inference.description')}</p>
           <DataList items={model.rolloutItems} />
         </GlassPanel>
 
-        <GlassPanel tone="subtle" className="inference-panel">
+        <GlassPanel tone="subtle" className="ifp">
           <p className="subtle-label">{t('workspace.inference.comparisonSummary')}</p>
-          <p className="inference-card-summary">{model.summary}</p>
+          <p className="ifc-summary">{model.summary}</p>
           <DataList items={model.comparisonItems} />
         </GlassPanel>
 
-        <GlassPanel tone="subtle" className="inference-panel">
+        <GlassPanel tone="subtle" className="ifp">
           <p className="subtle-label">{t('workspace.inference.model')}</p>
-          <p className="inference-card-summary">{model.summary}</p>
+          <p className="ifc-summary">{model.summary}</p>
           <DataList items={model.modelItems} />
         </GlassPanel>
 
-        <GlassPanel tone="subtle" className="inference-panel">
+        <GlassPanel tone="subtle" className="ifp">
           <p className="subtle-label">{t('workspace.inference.recentAudit')}</p>
-          <p className="inference-card-summary">{t('workspace.inference.gateBlockers')}</p>
+          <p className="ifc-summary">{t('workspace.inference.gateBlockers')}</p>
           <DataList items={model.auditItems} />
         </GlassPanel>
       </div>
 
-      <div className="inference-detail-grid">
+      <div className="idt-grid">
         <InferenceSymbolComparisonPanel model={model} />
         <InferenceAuditTimeline model={model} />
       </div>

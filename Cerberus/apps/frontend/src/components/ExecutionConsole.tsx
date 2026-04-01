@@ -54,7 +54,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
       </div>
 
       <div className="execution-layout">
-        <div className="execution-layout-main">
+        <div className="xlay-main">
           {broker === 'binance' ? (
             <BinanceTestPanel
               t={t}
@@ -109,36 +109,36 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
           )}
         </div>
 
-        <GlassPanel className="execution-layout-side" tone="subtle">
-          <div className="execution-side-copy">
+        <GlassPanel className="xlay-side" tone="subtle">
+          <div className="xs-copy">
             <p className="subtle-label">{t('workspace.execution.diagnostics')}</p>
             <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
           </div>
           <DataList items={executionSummary} />
-          <div className="execution-progress">
+          <div className="xp">
             {progressItems.map((item, index) => (
-              <div key={item.id} className="execution-progress-item">
-                <div className="execution-progress-rail" aria-hidden="true">
+              <div key={item.id} className="xp-item">
+                <div className="xp-rail" aria-hidden="true">
                   <span
                     className={
                       item.state === 'success'
-                        ? 'execution-progress-dot execution-progress-dot-success'
+                        ? 'xp-dot xp-dot-success'
                         : item.state === 'error'
-                          ? 'execution-progress-dot execution-progress-dot-error'
+                          ? 'xp-dot xp-dot-error'
                           : item.state === 'active'
-                            ? 'execution-progress-dot execution-progress-dot-active'
-                            : 'execution-progress-dot'
+                            ? 'xp-dot xp-dot-active'
+                            : 'xp-dot'
                     }
                   />
-                  {index < progressItems.length - 1 ? <span className="execution-progress-line" /> : null}
+                  {index < progressItems.length - 1 ? <span className="xp-line" /> : null}
                 </div>
-                <div className="execution-progress-copy">
-                  <div className="execution-progress-head">
-                    <p className="execution-progress-title">{item.title}</p>
+                <div className="xp-copy">
+                  <div className="xp-head">
+                    <p className="xp-title">{item.title}</p>
                     <StatusPill state={item.state} label={item.stateLabel} compact />
                   </div>
-                  <p className="execution-progress-reason">{item.reason}</p>
-                  {item.requestId ? <p className="execution-progress-request">rid: {item.requestId}</p> : null}
+                  <p className="xp-reason">{item.reason}</p>
+                  {item.requestId ? <p className="xp-request">rid: {item.requestId}</p> : null}
                 </div>
               </div>
             ))}

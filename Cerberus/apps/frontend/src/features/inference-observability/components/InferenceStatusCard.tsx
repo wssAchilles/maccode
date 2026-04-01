@@ -11,11 +11,11 @@ export function InferenceStatusCard({ model, onOpenHealth }: Props) {
   const { t } = useI18n()
 
   return (
-    <GlassPanel className="inference-card" tone="subtle">
-      <div className="inference-card-head">
+    <GlassPanel className="ifc" tone="subtle">
+      <div className="ifc-head">
         <div>
           <p className="subtle-label">{t('workspace.inference.title')}</p>
-          <p className="inference-card-summary">{model.summary}</p>
+          <p className="ifc-summary">{model.summary}</p>
         </div>
         <StatusPill state={model.state} label={model.stateLabel} compact />
       </div>
@@ -23,12 +23,12 @@ export function InferenceStatusCard({ model, onOpenHealth }: Props) {
       <DataList dense items={model.items} />
 
       {model.reason ? (
-        <p className="inference-panel-reason" role="alert">
+        <p className="ip-reason" role="alert">
           {t('workspace.inference.reason')}: {model.reason}
         </p>
       ) : null}
 
-      <div className="workspace-actions">
+      <div className="ws-actions">
         <button type="button" className="soft-button" onClick={onOpenHealth}>
           {t('workspace.inference.healthCta')}
         </button>

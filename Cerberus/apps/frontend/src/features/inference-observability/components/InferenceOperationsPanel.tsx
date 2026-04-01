@@ -28,11 +28,11 @@ export function InferenceOperationsPanel({
   return (
     <div className="stack">
       <div className="health-grid">
-        <GlassPanel tone="subtle" className="inference-panel inference-operations-panel">
-          <div className="inference-card-head">
+        <GlassPanel tone="subtle" className="ifp iop-panel">
+          <div className="ifc-head">
             <div>
               <p className="subtle-label">{t('workspace.inference.operationsTitle')}</p>
-              <p className="inference-card-summary">{model.summary}</p>
+              <p className="ifc-summary">{model.summary}</p>
             </div>
           </div>
           <DataList
@@ -59,12 +59,12 @@ export function InferenceOperationsPanel({
           />
         </GlassPanel>
 
-        <GlassPanel tone="subtle" className="inference-panel inference-operations-panel">
+        <GlassPanel tone="subtle" className="ifp iop-panel">
           <p className="subtle-label">{t('workspace.inference.operatorNote')}</p>
           <label className="field-label">
             {t('workspace.inference.operationReason')}
             <textarea
-              className="field-input inference-reason-input"
+              className="field-input ifr"
               value={reason}
               onChange={(event) => onReasonChange(event.target.value)}
               rows={3}
@@ -86,10 +86,10 @@ export function InferenceOperationsPanel({
               </select>
             </label>
           ) : null}
-          <div className="workspace-actions inference-operations-actions">
+          <div className="ws-actions iop-actions">
             <button
               type="button"
-              className="soft-button soft-button-primary"
+              className="soft-button sbp"
               disabled={!model.canPromote}
               onClick={onPromote}
             >
@@ -124,7 +124,7 @@ export function InferenceOperationsPanel({
             <InlineAlert
               title={t('workspace.inference.operationStatus')}
               tone={model.statusTone === 'danger' ? 'danger' : 'info'}
-              className="inference-operation-alert"
+              className="iopn-alert"
             >
               {model.statusMessage}
             </InlineAlert>

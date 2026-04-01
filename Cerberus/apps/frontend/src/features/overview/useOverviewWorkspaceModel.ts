@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { useI18n } from '../../i18n/I18nProvider'
 import { useCerberusStore } from '../../store'
+import { useDormantSelector } from '../../store/useDormantSelector'
 import type { WorkspaceId } from '../../store/slices/shared'
 import {
   buildHealthCards,
@@ -19,23 +20,24 @@ import {
 } from '../strategy-orchestration/view-models'
 
 type Params = {
+  active: boolean
   onSelectWorkspace: (workspace: WorkspaceId) => void
 }
 
-export function useOverviewWorkspaceModel({ onSelectWorkspace }: Params) {
+export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params) {
   const { t } = useI18n()
-  const selectedSymbol = useCerberusStore((state) => state.marketStream.selected_symbol)
-  const latest = useCerberusStore((state) => state.marketStream.latest)
-  const latestBySymbol = useCerberusStore((state) => state.marketStream.latest_by_symbol)
-  const strategySignal = useCerberusStore((state) => state.strategySummary.signal)
-  const recentSignals = useCerberusStore((state) => state.strategySummary.recent_signals)
-  const persistenceStatus = useCerberusStore((state) => state.strategySummary.persistence_status)
-  const inferenceStatus = useCerberusStore((state) => state.strategySummary.inference_status)
-  const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
-  const summaryError = useCerberusStore((state) => state.strategySummary.last_error)
-  const latestEvent = useCerberusStore((state) => state.executionTrading.latest_event)
-  const heartbeat = useCerberusStore((state) => state.executionTrading.heartbeat)
-  const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
+  const selectedSymbol = useDormantSelector(active, (state) => state.marketStream.selected_symbol)
+  const latest = useDormantSelector(active, (state) => state.marketStream.latest)
+  const latestBySymbol = useDormantSelector(active, (state) => state.marketStream.latest_by_symbol)
+  const strategySignal = useDormantSelector(active, (state) => state.strategySummary.signal)
+  const recentSignals = useDormantSelector(active, (state) => state.strategySummary.recent_signals)
+  const persistenceStatus = useDormantSelector(active, (state) => state.strategySummary.persistence_status)
+  const inferenceStatus = useDormantSelector(active, (state) => state.strategySummary.inference_status)
+  const orchestrationStatus = useDormantSelector(active, (state) => state.strategySummary.orchestration_status)
+  const summaryError = useDormantSelector(active, (state) => state.strategySummary.last_error)
+  const latestEvent = useDormantSelector(active, (state) => state.executionTrading.latest_event)
+  const heartbeat = useDormantSelector(active, (state) => state.executionTrading.heartbeat)
+  const domainStatus = useDormantSelector(active, (state) => state.uiState.domain_status)
   const setSelectedSymbol = useCerberusStore((state) => state.marketStreamActions.setSelectedSymbol)
   const syncExecutionFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
 

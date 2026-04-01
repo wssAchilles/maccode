@@ -41,5 +41,10 @@ type SkeletonProps = {
 }
 
 export function PanelSkeleton({ height }: SkeletonProps) {
-  return <div className={`${height} animate-pulse rounded-xl border border-slate-700/60 bg-slate-900/40`} />
+  const normalizedHeight =
+    height.startsWith('h-[') && height.endsWith(']')
+      ? height.slice(3, -1)
+      : height
+
+  return <div className="panel-skeleton" style={{ minHeight: normalizedHeight }} />
 }

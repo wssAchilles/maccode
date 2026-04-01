@@ -858,10 +858,7 @@ export function buildExecutionLifecyclePanelModel({
   const state = domainStatus.state
   const stateLabel = lifecycleStateLabel(t, state)
   const matchingStats = persistenceStatus?.matching?.stats
-  const filteredEvents = (orderEvents ?? []).filter((item) =>
-    selectedSymbol ? item.symbol === selectedSymbol : true,
-  )
-  const orderModels = buildExecutionOrderReadModels(filteredEvents, selectedSymbol)
+  const orderModels = buildExecutionOrderReadModels(orderEvents ?? [], selectedSymbol)
   const latestLifecycleEvent = orderModels[0]
   const partialFillCount = orderModels.filter((item) => item.latestPhase === 'partial_fill').length
   const filledCount = orderModels.filter((item) => item.latestPhase === 'fill').length

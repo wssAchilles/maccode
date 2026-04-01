@@ -19,7 +19,7 @@ function coverageToDraft(value: string[]): string {
   return value.join(', ')
 }
 
-export function useStrategyOrchestrationOperationsModel() {
+export function useStrategyOrchestrationOperationsModel(enabled = true) {
   const { t } = useI18n()
   const orchestrationStatus = useCerberusStore((state) => state.strategySummary.orchestration_status)
   const lastResult = useCerberusStore((state) => state.strategySummary.orchestration_last_result)
@@ -35,13 +35,16 @@ export function useStrategyOrchestrationOperationsModel() {
   const [downgradePolicy, setDowngradePolicy] = useState('')
 
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
     if (!orchestrationStatus) {
       void loadStrategyOrchestration()
     }
-  }, [loadStrategyOrchestration, orchestrationStatus])
+  }, [enabled, loadStrategyOrchestration, orchestrationStatus])
 
   useEffect(() => {
-    if (!orchestrationStatus) {
+    if (!enabled || !orchestrationStatus) {
       return
     }
     startTransition(() => {
@@ -64,7 +67,7 @@ export function useStrategyOrchestrationOperationsModel() {
         ),
       )
     })
-  }, [orchestrationStatus])
+  }, [enabled, orchestrationStatus])
 
   const baseModel = useMemo(
     () =>

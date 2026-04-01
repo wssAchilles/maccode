@@ -1,6 +1,11 @@
-import { CandlesChart } from '../../components/CandlesChart'
-import { ExecutionTimelinePanel } from '../../components/ExecutionTimelinePanel'
-import { MatchingOrderBookPanel } from '../../components/MatchingOrderBookPanel'
+import { Suspense } from 'react'
+
+import {
+  LazyCandlesChart,
+  LazyExecutionTimelinePanel,
+  LazyMatchingOrderBookPanel,
+  PanelSkeleton,
+} from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
@@ -18,7 +23,7 @@ export function MarketWorkspace({ active = true }: Props) {
   const model = useMarketWorkspaceModel({ active })
 
   return (
-    <div className="workspace-grid">
+    <div className="ws-grid">
       <SectionFrame
         title={t('workspace.market.title')}
         description={t('workspace.market.description')}
@@ -38,7 +43,7 @@ export function MarketWorkspace({ active = true }: Props) {
             ))}
           </div>
         }
-        className="workspace-span-full"
+        className="ws-span-full"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -53,14 +58,14 @@ export function MarketWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="workspace-main stack">
+      <div className="ws-main stack">
         <SectionFrame
           title={t('workspace.market.linkageTitle')}
           description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
         >
-          <GlassPanel tone="subtle" className="market-linkage-banner">
-            <p className="strategy-panel-summary">{model.activeSymbol}</p>
-            <p className="strategy-panel-hint">{t('workspace.market.linkageDetail')}</p>
+          <GlassPanel tone="subtle" className="mlb">
+            <p className="sp-summary">{model.activeSymbol}</p>
+            <p className="sp-hint">{t('workspace.market.linkageDetail')}</p>
           </GlassPanel>
         </SectionFrame>
 
@@ -70,15 +75,17 @@ export function MarketWorkspace({ active = true }: Props) {
             aria-busy={model.chartState.state === 'loading'}
             data-state={model.chartState.state}
           >
-            <CandlesChart candles={model.candles} markers={model.chartMarkers} />
+            <Suspense fallback={<PanelSkeleton height="340px" />}>
+              <LazyCandlesChart candles={model.candles} markers={model.chartMarkers} />
+            </Suspense>
             {model.chartState.state !== 'ready' ? (
               <div
-                className={`chart-overlay chart-overlay-${model.chartState.state}`}
+                className={`co co-${model.chartState.state}`}
                 role={model.chartState.state === 'loading' ? 'status' : 'note'}
                 aria-live="polite"
               >
-                <p className="chart-overlay-title">{model.chartState.title}</p>
-                <p className="chart-overlay-hint">{model.chartState.hint}</p>
+                <p className="co-title">{model.chartState.title}</p>
+                <p className="co-hint">{model.chartState.hint}</p>
               </div>
             ) : null}
           </div>
@@ -109,11 +116,13 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.market.executionRailDescription')}
           className="timeline-section"
         >
-          <ExecutionTimelinePanel active={active} />
+          <Suspense fallback={<PanelSkeleton height="320px" />}>
+            <LazyExecutionTimelinePanel active={active} />
+          </Suspense>
         </SectionFrame>
       </div>
 
-      <div className="workspace-side stack">
+      <div className="ws-side stack">
         <SectionFrame
           title={t('workspace.strategy.portfolioTitle')}
           description={t('workspace.strategy.portfolioDescription')}
@@ -126,7 +135,9 @@ export function MarketWorkspace({ active = true }: Props) {
         >
           <StrategyRegistryPanel model={model.strategyRegistry} />
         </SectionFrame>
-        <MatchingOrderBookPanel orderbook={model.orderbook} />
+        <Suspense fallback={<PanelSkeleton height="300px" />}>
+          <LazyMatchingOrderBookPanel orderbook={model.orderbook} />
+        </Suspense>
       </div>
     </div>
   )

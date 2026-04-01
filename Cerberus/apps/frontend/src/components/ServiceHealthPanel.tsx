@@ -18,16 +18,16 @@ export function ServiceHealthPanel({ domainStatus, persistence }: Props) {
       <div className="health-grid">
         {cards.map((card) => (
           <GlassPanel key={card.id} className="health-card" tone="subtle">
-            <div className="health-card-head">
+            <div className="hc-head">
               <div>
-                <p className="health-card-title">{card.title}</p>
-                <p className="health-card-meta">{card.staleLabel}</p>
+                <p className="hc-title">{card.title}</p>
+                <p className="hc-meta">{card.staleLabel}</p>
               </div>
               <StatusPill state={card.state} label={card.stateLabel} compact />
             </div>
-            <p className="health-card-updated">{t('common.updatedAt')}: {card.updatedAt}</p>
-            {card.requestId ? <p className="health-card-request">{t('health.requestId')}: {card.requestId}</p> : null}
-            {card.reason ? <p className="health-card-reason">{card.reason}</p> : null}
+            <p className="hc-updated">{t('common.updatedAt')}: {card.updatedAt}</p>
+            {card.requestId ? <p className="hc-request">{t('health.requestId')}: {card.requestId}</p> : null}
+            {card.reason ? <p className="hc-reason">{card.reason}</p> : null}
           </GlassPanel>
         ))}
       </div>

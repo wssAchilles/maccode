@@ -44,7 +44,7 @@ export function StrategyOrchestrationOperationsPanel({
 
   if (model.rows.length === 0) {
     return (
-      <GlassPanel className="strategy-orchestration-operations-panel" tone="subtle">
+      <GlassPanel className="so-operations-panel" tone="subtle">
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}
@@ -56,16 +56,16 @@ export function StrategyOrchestrationOperationsPanel({
   const policyPending = model.pendingAction === 'update_policies'
 
   return (
-    <GlassPanel className="strategy-orchestration-operations-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="so-operations-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.strategy.operationsTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
-          <p className="strategy-panel-hint">{model.policySummary}</p>
+          <p className="sp-summary">{model.summary}</p>
+          <p className="sp-hint">{model.policySummary}</p>
         </div>
       </div>
 
-      <div className="strategy-orchestration-policy-grid">
+      <div className="so-policy-grid">
         <label className="field-label">
           {t('workspace.strategy.conflictPolicy')}
           <select
@@ -105,28 +105,28 @@ export function StrategyOrchestrationOperationsPanel({
         <textarea
           id="strategy-operator-note"
           name="strategy_operator_note"
-          className="field-input inference-reason-input"
+          className="field-input ifr"
           rows={3}
           value={reason}
           onChange={(event) => onReasonChange(event.target.value)}
         />
       </label>
 
-      <div className="strategy-orchestration-row-list" role="list" aria-label={t('workspace.strategy.operationsTitle')}>
+      <div className="so-row-list" role="list" aria-label={t('workspace.strategy.operationsTitle')}>
         {model.rows.map((row) => {
           const draft = drafts[row.id]
           const entryPending = model.pendingAction === `update_entry:${row.id}`
           const fieldBaseId = `strategy-${row.id}`
           return (
-            <article key={row.id} className="strategy-orchestration-row" role="listitem">
-              <div className="strategy-orchestration-row-head">
+            <article key={row.id} className="so-row" role="listitem">
+              <div className="so-row-head">
                 <div>
                   <p className="subtle-label">{row.label}</p>
-                  <p className="strategy-registry-engine">{row.engine}</p>
-                  <p className="strategy-panel-hint">
+                  <p className="srg-engine">{row.engine}</p>
+                  <p className="sp-hint">
                     {row.sourceLabel} · {row.roleLabel}
                   </p>
-                  <p className="strategy-registry-impact">{row.impactLabel}</p>
+                  <p className="srg-impact">{row.impactLabel}</p>
                 </div>
                 <label className="toggle-chip">
                   <input
@@ -140,7 +140,7 @@ export function StrategyOrchestrationOperationsPanel({
                 </label>
               </div>
 
-              <div className="strategy-orchestration-editor-grid">
+              <div className="so-editor-grid">
                 <label className="field-label">
                   {t('workspace.strategy.priority')}
                   <input
@@ -180,7 +180,7 @@ export function StrategyOrchestrationOperationsPanel({
                     onChange={(event) => onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}
                   />
                 </label>
-                <label className="field-label strategy-orchestration-coverage-field">
+                <label className="field-label so-coverage-field">
                   {t('workspace.strategy.symbolCoverage')}
                   <input
                     id={`${fieldBaseId}-symbol-coverage`}
@@ -191,7 +191,7 @@ export function StrategyOrchestrationOperationsPanel({
                     placeholder="BTCUSDT, ETHUSDT"
                   />
                 </label>
-                <label className="field-label strategy-orchestration-coverage-field">
+                <label className="field-label so-coverage-field">
                   {t('workspace.strategy.conflictTargets')}
                   <input
                     id={`${fieldBaseId}-conflict-targets`}
@@ -220,7 +220,7 @@ export function StrategyOrchestrationOperationsPanel({
                 </label>
               </div>
 
-              <div className="strategy-orchestration-row-meta">
+              <div className="so-row-meta">
                 <p>{t('workspace.strategy.runtimeState')}: {row.stateLabel}</p>
                 <p>{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}</p>
                 <p>{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}</p>
@@ -232,10 +232,10 @@ export function StrategyOrchestrationOperationsPanel({
                 <p>{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}</p>
               </div>
 
-              <div className="workspace-actions strategy-orchestration-actions">
+              <div className="ws-actions so-actions">
                 <button
                   type="button"
-                  className="soft-button soft-button-primary"
+                  className="soft-button sbp"
                   disabled={Boolean(model.pendingAction)}
                   onClick={() => onSaveEntry(row.id)}
                 >
@@ -247,7 +247,7 @@ export function StrategyOrchestrationOperationsPanel({
         })}
       </div>
 
-      <div className="workspace-actions strategy-orchestration-actions">
+      <div className="ws-actions so-actions">
         <button
           type="button"
           className="soft-button"

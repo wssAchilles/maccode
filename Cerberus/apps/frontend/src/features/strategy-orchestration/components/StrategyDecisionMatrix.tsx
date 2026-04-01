@@ -11,40 +11,40 @@ export function StrategyDecisionMatrix({ model }: Props) {
 
   if (model.items.length === 0) {
     return (
-      <GlassPanel className="strategy-panel strategy-panel-empty" tone="subtle">
+      <GlassPanel className="sp sp-empty" tone="subtle">
         <EmptyState title={model.emptyTitle ?? model.summary} body={model.emptyHint ?? model.hint} />
       </GlassPanel>
     )
   }
 
   return (
-    <GlassPanel className="strategy-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="sp" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.strategy.matrixTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
-          <p className="strategy-panel-hint">{model.hint}</p>
+          <p className="sp-summary">{model.summary}</p>
+          <p className="sp-hint">{model.hint}</p>
         </div>
-        {model.signalId ? <p className="strategy-panel-signal-id">rid: {model.signalId}</p> : null}
+        {model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
       </div>
 
-      <div className="strategy-decision-list">
+      <div className="sd-list">
         {model.items.map((item) => (
           <article
             key={item.id}
-            className={item.active ? 'strategy-decision-card strategy-decision-card-active' : 'strategy-decision-card'}
+            className={item.active ? 'sd-card sd-card-active' : 'sd-card'}
           >
-            <div className="strategy-decision-head">
+            <div className="sd-head">
               <div>
-                <p className="strategy-decision-title">{item.label}</p>
-                <p className="strategy-decision-engine">{item.engine}</p>
+                <p className="sd-title">{item.label}</p>
+                <p className="sd-engine">{item.engine}</p>
               </div>
-              <p className={item.tone ? `strategy-decision-signal strategy-decision-signal-${item.tone}` : 'strategy-decision-signal'}>
+              <p className={item.tone ? `sd-signal sd-signal-${item.tone}` : 'sd-signal'}>
                 {item.signal}
               </p>
             </div>
 
-            <dl className="strategy-decision-meta">
+            <dl className="sd-meta">
               <div>
                 <dt>{t('strategy.confidence')}</dt>
                 <dd>{item.confidence}</dd>
@@ -63,8 +63,8 @@ export function StrategyDecisionMatrix({ model }: Props) {
               </div>
             </dl>
 
-            <p className="strategy-decision-source">{item.source}</p>
-            {item.reason ? <p className="strategy-decision-reason">{item.reason}</p> : null}
+            <p className="sd-source">{item.source}</p>
+            {item.reason ? <p className="sd-reason">{item.reason}</p> : null}
           </article>
         ))}
       </div>

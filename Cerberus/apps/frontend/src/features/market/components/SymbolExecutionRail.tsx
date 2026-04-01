@@ -22,23 +22,23 @@ export function SymbolExecutionRail({ model }: Props) {
 
   return (
     <GlassPanel className="market-execution-rail" tone="subtle">
-      <div className="strategy-panel-head">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.market.executionRailTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
-          {model.staleHint ? <p className="strategy-panel-hint">{model.staleHint}</p> : null}
+          <p className="sp-summary">{model.summary}</p>
+          {model.staleHint ? <p className="sp-hint">{model.staleHint}</p> : null}
         </div>
       </div>
-      <div className="market-execution-rail-list" role="list" aria-label={t('workspace.market.executionRailTitle')}>
+      <div className="mer-list" role="list" aria-label={t('workspace.market.executionRailTitle')}>
         {model.items.map((item) => (
-          <article key={item.id} role="listitem" className="market-execution-rail-row">
-            <div className="market-execution-rail-main">
-              <p className="timeline-row-title">{item.title}</p>
-              <p className="timeline-row-subtitle">{item.subtitle}</p>
+          <article key={item.id} role="listitem" className="mer-row">
+            <div className="mer-main">
+              <p className="tr-title">{item.title}</p>
+              <p className="tr-subtitle">{item.subtitle}</p>
             </div>
-            <div className="market-execution-rail-side">
-              <p className="timeline-row-status">{item.status}</p>
-              <p className="timeline-row-time">{item.time}</p>
+            <div className="mer-side">
+              <p className="tr-status">{item.status}</p>
+              <p className="tr-time">{item.time}</p>
             </div>
           </article>
         ))}

@@ -59,7 +59,7 @@ export function AlpacaPaperPanel({
         <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
       </div>
 
-      <div className="execution-form-grid">
+      <div className="xf-grid">
         <label className="field-label">
           Symbol
           <input
@@ -149,12 +149,12 @@ export function AlpacaPaperPanel({
         />
       </GlassPanel>
 
-      <div className="workspace-actions">
+      <div className="ws-actions">
         <button
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="soft-button soft-button-primary"
+          className="soft-button sbp"
           data-testid="submit-alpaca-order-button"
         >
           {submitting ? 'Submitting...' : t('execution.submit')}
@@ -173,8 +173,13 @@ export function AlpacaPaperPanel({
       {result?.error ? <AppErrorNotice error={result.error} className="mt-2" /> : null}
       {account?.error ? <AppErrorNotice error={account.error} className="mt-2" /> : null}
 
-      <DiagnosticDrawer title={t('execution.response')} summary={result ? String(result.status) : '—'} defaultOpen={Boolean(result?.error)}>
-        <pre className="diagnostic-pre">{JSON.stringify(result, null, 2)}</pre>
+      <DiagnosticDrawer
+        title={t('execution.response')}
+        summary={result ? String(result.status) : '—'}
+        defaultOpen={Boolean(result?.error)}
+        testId="alpaca-response-drawer"
+      >
+        <pre className="diagnostic-pre" data-testid="alpaca-response">{JSON.stringify(result, null, 2)}</pre>
       </DiagnosticDrawer>
 
       <DiagnosticDrawer title={t('execution.accountSnapshot')} summary={account ? String(account.status) : '—'} defaultOpen={Boolean(account?.error)}>

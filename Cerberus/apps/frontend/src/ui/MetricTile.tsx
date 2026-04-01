@@ -14,18 +14,18 @@ type Props = {
 
 const TONE_CLASS: Record<NonNullable<Props['tone']>, string> = {
   default: '',
-  positive: 'metric-tile-positive',
-  negative: 'metric-tile-negative',
-  accent: 'metric-tile-accent',
+  positive: 'met-positive',
+  negative: 'met-negative',
+  accent: 'met-accent',
 }
 
 export function MetricTile({ label, value, hint, caption, tone = 'default', className }: Props) {
   return (
     <GlassPanel className={cn('metric-tile', TONE_CLASS[tone], className)} tone="subtle">
-      <p className="metric-tile-label">{label}</p>
-      <p className="metric-tile-value">{value}</p>
-      {hint ? <p className="metric-tile-hint">{hint}</p> : null}
-      {caption ? <div className="metric-tile-caption">{caption}</div> : null}
+      <p className="met-label">{label}</p>
+      <p className="met-value">{value}</p>
+      {hint ? <p className="met-hint">{hint}</p> : null}
+      {caption ? <div className="met-caption">{caption}</div> : null}
     </GlassPanel>
   )
 }

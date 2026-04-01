@@ -11,7 +11,7 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
 
   if (model.items.length === 0) {
     return (
-      <GlassPanel className="strategy-orchestration-audit-panel" tone="subtle">
+      <GlassPanel className="so-audit-panel" tone="subtle">
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.auditTimelineHint')}
@@ -21,23 +21,23 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
   }
 
   return (
-    <GlassPanel className="strategy-orchestration-audit-panel" tone="subtle">
-      <div className="strategy-panel-head">
+    <GlassPanel className="so-audit-panel" tone="subtle">
+      <div className="sp-head">
         <div>
           <p className="subtle-label">{t('workspace.strategy.auditTimelineTitle')}</p>
-          <p className="strategy-panel-summary">{model.summary}</p>
+          <p className="sp-summary">{model.summary}</p>
         </div>
       </div>
 
-      <div className="strategy-orchestration-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}>
+      <div className="so-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}>
         {model.items.map((item) => (
-          <article key={item.id} className="strategy-orchestration-audit-row" role="listitem">
-            <div className="strategy-orchestration-audit-main">
-              <p className="strategy-orchestration-audit-title">{item.title}</p>
-              <p className="strategy-orchestration-audit-message">{item.message}</p>
-              {item.detail ? <p className="strategy-orchestration-audit-detail">{item.detail}</p> : null}
+          <article key={item.id} className="so-audit-row" role="listitem">
+            <div className="so-audit-main">
+              <p className="so-audit-title">{item.title}</p>
+              <p className="so-audit-message">{item.message}</p>
+              {item.detail ? <p className="so-audit-detail">{item.detail}</p> : null}
             </div>
-            <p className="strategy-orchestration-audit-time">{item.createdAt}</p>
+            <p className="so-audit-time">{item.createdAt}</p>
           </article>
         ))}
       </div>
