@@ -1,41 +1,26 @@
-import { useDeferredValue, useId, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { useRecentEventsResource } from '../app/bootstrap/useResourceQueries'
 import { useI18n } from '../i18n/I18nProvider'
 import { useCerberusStore } from '../store'
 import { useDormantSelector } from '../store/useDormantSelector'
 import { EmptyState, GlassPanel } from '../ui'
-import type { OrderTimelineEvent } from '../types/contracts'
-
-function formatOptionalIso(value: string | number | undefined): string {
-  if (value === undefined || value === null) {
-    return '—'
-  }
-  const parsed = typeof value === 'number' ? value : Date.parse(value)
-  if (Number.isNaN(parsed)) {
-    return String(value)
-  }
-  return new Date(parsed).toLocaleString()
-}
+import {
+  buildPreparedExecutionTimeline,
+  filterPreparedExecutionTimeline,
+} from '../view-models/execution-timeline'
 
 type Props = {
   active?: boolean
 }
 
-type PreparedTimelineRow = {
-  id: string
-  event: OrderTimelineEvent
-  title: string
-  subtitle: string
-  rightTop: string
-  rightBottom: string
-  eventTimeLabel: string
-  searchText: string
-}
+const TIMELINE_ROW_ESTIMATE_PX = 156
+const TIMELINE_OVERSCAN_ROWS = 6
 
 export function ExecutionTimelinePanel({ active = true }: Props) {
   const { t } = useI18n()
   const inputId = useId()
+  const viewportRef = useRef<HTMLDivElement | null>(null)
   const orderEvents = useDormantSelector(active, (state) => state.executionTrading.order_events)
   const filterSymbol = useDormantSelector(active, (state) => state.executionTrading.filter_symbol)
   const filterAccountId = useDormantSelector(active, (state) => state.executionTrading.filter_account_id)
@@ -43,83 +28,68 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   const setFilters = useCerberusStore((state) => state.executionTradingActions.setFilters)
   const executionStatus = useDormantSelector(active, (state) => state.uiState.domain_status['execution-trading'])
   const [search, setSearch] = useState('')
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewportHeight, setViewportHeight] = useState(360)
   const deferredSearch = useDeferredValue(search)
 
   useRecentEventsResource(active)
 
-  const preparedTimeline = useMemo(() => {
-    const symbols = new Set<string>()
-    const accounts = new Set<string>()
-    const statuses = new Set<string>()
-    const rows: PreparedTimelineRow[] = []
+  const preparedTimeline = useMemo(() => buildPreparedExecutionTimeline(orderEvents), [orderEvents])
 
-    for (const event of orderEvents) {
-      if (event.symbol) {
-        symbols.add(event.symbol)
-      }
-      if (event.account_id) {
-        accounts.add(event.account_id)
-      }
-      if (event.status) {
-        statuses.add(event.status)
-      }
+  const filteredRowIndexes = useMemo(
+    () =>
+      filterPreparedExecutionTimeline({
+        prepared: preparedTimeline,
+        filterSymbol,
+        filterAccountId,
+        filterStatus,
+        keyword: deferredSearch,
+      }),
+    [deferredSearch, filterAccountId, filterStatus, filterSymbol, preparedTimeline],
+  )
 
-      const title = `${event.event_type} · ${event.lifecycle_phase}`
-      const subtitle = [
-        event.symbol ?? '—',
-        event.account_id ?? '—',
-        event.client_order_id ?? event.request_id ?? '—',
-      ].join(' · ')
-      const rightTop = event.status ?? event.lifecycle_phase
-      const rightBottom = `${t('execution.receivedAt')}: ${formatOptionalIso(event.received_at)}`
-      const eventTimeLabel = formatOptionalIso(event.event_time)
-      const searchText = [
-        event.symbol,
-        event.account_id,
-        event.status,
-        event.order_id,
-        event.request_id,
-        event.client_order_id,
-        event.execution_id,
-        event.lifecycle_phase,
-        event.event_type,
-        event.reason,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      rows.push({
-        id: event.id,
-        event,
-        title,
-        subtitle,
-        rightTop,
-        rightBottom,
-        eventTimeLabel,
-        searchText,
-      })
+  useEffect(() => {
+    if (!active) {
+      return
     }
+    const node = viewportRef.current
+    if (!node) {
+      return
+    }
+    const updateViewport = () => {
+      setViewportHeight(node.clientHeight || 360)
+    }
+    updateViewport()
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+    const observer = new ResizeObserver(updateViewport)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [active, filteredRowIndexes.length])
 
+  useEffect(() => {
+    setScrollTop(0)
+    const viewport = viewportRef.current
+    if (viewport && typeof viewport.scrollTo === 'function') {
+      viewport.scrollTo({ top: 0 })
+    }
+  }, [filterAccountId, filterStatus, filterSymbol, deferredSearch])
+
+  const virtualWindow = useMemo(() => {
+    const visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_ESTIMATE_PX) + TIMELINE_OVERSCAN_ROWS * 2
+    const startIndex = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_ESTIMATE_PX) - TIMELINE_OVERSCAN_ROWS)
+    const endIndex = Math.min(filteredRowIndexes.length, startIndex + visibleCount)
     return {
-      rows,
-      symbolOptions: ['ALL', ...Array.from(symbols).sort()],
-      accountOptions: ['ALL', ...Array.from(accounts).sort()],
-      statusOptions: ['ALL', ...Array.from(statuses).sort()],
+      startIndex,
+      endIndex,
+      topSpacerHeight: startIndex * TIMELINE_ROW_ESTIMATE_PX,
+      bottomSpacerHeight: Math.max(0, (filteredRowIndexes.length - endIndex) * TIMELINE_ROW_ESTIMATE_PX),
+      visibleRows: filteredRowIndexes
+        .slice(startIndex, endIndex)
+        .map((rowIndex) => preparedTimeline.rows[rowIndex]),
     }
-  }, [orderEvents, t])
-
-  const filteredRows = useMemo(() => {
-    const keyword = deferredSearch.trim().toLowerCase()
-    return preparedTimeline.rows.filter((row) => {
-      const { event } = row
-      const symbolMatched = filterSymbol === 'ALL' || event.symbol === filterSymbol
-      const accountMatched = filterAccountId === 'ALL' || event.account_id === filterAccountId
-      const statusMatched = filterStatus === 'ALL' || event.status === filterStatus
-      const searchMatched = keyword.length === 0 || row.searchText.includes(keyword)
-      return symbolMatched && accountMatched && statusMatched && searchMatched
-    })
-  }, [deferredSearch, filterAccountId, filterStatus, filterSymbol, preparedTimeline.rows])
+  }, [filteredRowIndexes, preparedTimeline.rows, scrollTop, viewportHeight])
 
   return (
     <article data-testid="execution-timeline-panel" className="execution-timeline">
@@ -191,7 +161,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
         </label>
       </div>
 
-      {filteredRows.length === 0 ? (
+      {filteredRowIndexes.length === 0 ? (
         <div className="execution-timeline-empty">
           <EmptyState
             title={
@@ -213,8 +183,15 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
           />
         </div>
       ) : (
-        <div className="execution-timeline-list">
-          {filteredRows.map((row) => (
+        <div
+          ref={viewportRef}
+          className="execution-timeline-list"
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+        >
+          {virtualWindow.topSpacerHeight > 0 ? (
+            <div style={{ height: `${virtualWindow.topSpacerHeight}px` }} aria-hidden="true" />
+          ) : null}
+          {virtualWindow.visibleRows.map((row) => (
             <GlassPanel key={row.id} className="timeline-row" tone="subtle">
               <div className="tr-main">
                 <p className="tr-title">{row.title}</p>
@@ -225,13 +202,16 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
               </div>
               <div className="tr-side">
                 <p className="tr-status">{row.rightTop}</p>
-                <p className="tr-time">{row.rightBottom}</p>
+                <p className="tr-time">{t('execution.receivedAt')}: {row.receivedAtLabel}</p>
                 <p className="tr-time">
                   {t('execution.eventTime')}: {row.eventTimeLabel}
                 </p>
               </div>
             </GlassPanel>
           ))}
+          {virtualWindow.bottomSpacerHeight > 0 ? (
+            <div style={{ height: `${virtualWindow.bottomSpacerHeight}px` }} aria-hidden="true" />
+          ) : null}
         </div>
       )}
     </article>

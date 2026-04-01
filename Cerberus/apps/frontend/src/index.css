@@ -1019,10 +1019,6 @@ button {
   background: rgba(255, 255, 255, 0.64);
 }
 
-.timeline-section .execution-timeline {
-  min-height: 360px;
-}
-
 .xl-stages {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1616,14 +1612,11 @@ button {
   display: flex;
 }
 
-.execution-timeline-empty .empty-state {
-  width: 100%;
-  align-content: center;
-}
-
 .execution-timeline-list {
   flex: 1 1 auto;
   min-height: 360px;
+  overflow: auto;
+  contain: layout paint style;
 }
 
 .timeline-row {
@@ -1632,6 +1625,8 @@ button {
   gap: 14px;
   padding: 14px;
   margin-bottom: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: 156px;
 }
 
 .tr-main,
