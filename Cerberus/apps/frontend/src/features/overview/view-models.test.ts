@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
+  buildOverviewRecentSignalCards,
   buildOverviewSpotlightModel,
 } from './view-models'
 import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
@@ -125,5 +126,32 @@ describe('overview view models', () => {
         expect.objectContaining({ id: 'services-attention', value: '1' }),
       ]),
     )
+  })
+
+  it('prepares recent signal cards for replay in overview', () => {
+    const cards = buildOverviewRecentSignalCards({
+      t,
+      recentSignals: [
+        {
+          strategy_id: 'mom-1',
+          symbol: 'BTCUSDT',
+          signal: 'BUY',
+          confidence: 0.77,
+          created_at: '2026-03-27T10:00:00Z',
+        },
+      ],
+    })
+
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({
+      signal: 'BUY',
+      symbol: 'BTCUSDT',
+      items: expect.arrayContaining([
+        { id: 'confidence', label: 'strategy.confidence', value: '0.770000' },
+        { id: 'strategy', label: 'workspace.strategy.auditStrategy', value: 'mom-1' },
+      ]),
+    })
+    expect(cards[0].items[2]?.label).toBe('common.updatedAt')
+    expect(cards[0].items[2]?.value).not.toBe('—')
   })
 })

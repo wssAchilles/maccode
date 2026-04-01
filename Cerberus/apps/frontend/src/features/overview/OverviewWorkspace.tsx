@@ -2,7 +2,6 @@ import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
 import { DataList, DiagnosticDrawer, GlassPanel, InlineAlert, MetricTile, SectionFrame, StatusPill, WorkspaceSpotlight } from '../../ui'
 import { CoreFlowPanel } from '../../components/CoreFlowPanel'
-import { formatConfidence } from '../../view-models/workbench'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
@@ -116,18 +115,12 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           ) : (
             <div className="stack-sm">
               {model.recentSignals.map((signal) => (
-                <GlassPanel key={`${signal.created_at}-${signal.strategy_id}`} className="signal-card" tone="subtle">
+                <GlassPanel key={signal.id} className="signal-card" tone="subtle">
                   <div className="sig-head">
                     <p className="sig-title">{signal.signal}</p>
                     <p className="sig-symbol">{signal.symbol}</p>
                   </div>
-                  <DataList
-                    dense
-                    items={[
-                      { id: 'confidence', label: t('strategy.confidence'), value: formatConfidence(signal.confidence) },
-                      { id: 'createdAt', label: t('common.updatedAt'), value: new Date(signal.created_at).toLocaleString() },
-                    ]}
-                  />
+                  <DataList dense items={signal.items} />
                 </GlassPanel>
               ))}
             </div>

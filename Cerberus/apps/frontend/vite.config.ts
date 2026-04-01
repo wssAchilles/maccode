@@ -43,9 +43,15 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 380,
     terserOptions: {
+      module: true,
+      toplevel: true,
       compress: {
-        passes: 2,
+        module: true,
+        passes: 3,
         pure_getters: true,
+      },
+      mangle: {
+        module: true,
       },
       format: {
         comments: false,

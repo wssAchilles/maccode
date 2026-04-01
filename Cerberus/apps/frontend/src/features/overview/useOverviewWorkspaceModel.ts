@@ -12,6 +12,7 @@ import {
 } from '../../view-models/workbench'
 import {
   buildOverviewMetricTiles,
+  buildOverviewRecentSignalCards,
   buildOverviewSpotlightModel,
   buildOverviewPersistenceItems,
 } from './view-models'
@@ -117,7 +118,10 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     () => buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
     [orchestrationStatus, t],
   )
-  const recentSignalRows = useMemo(() => recentSignals.slice(0, 4), [recentSignals])
+  const recentSignalCards = useMemo(
+    () => buildOverviewRecentSignalCards({ t, recentSignals }),
+    [recentSignals, t],
+  )
 
   const spotlight = useMemo(
     () =>
@@ -146,7 +150,7 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     metricTiles,
     spotlight,
     persistenceItems,
-    recentSignals: recentSignalRows,
+    recentSignals: recentSignalCards,
     selectSymbol,
     openExecution: () => onSelectWorkspace('execution'),
     openHealth: () => onSelectWorkspace('health'),

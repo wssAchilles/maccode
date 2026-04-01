@@ -1,5 +1,5 @@
 import type { TranslationKey } from '../i18n/messages'
-import type { DomainStatusMap, WorkspaceId } from '../store/slices/shared'
+import type { CoreFlowMap, CoreFlowStepId, CoreFlowStepState, DomainStatusMap, WorkspaceId } from '../store/slices/shared'
 import type { MarketMessage, OrderTimelineEvent, StrategySignal } from '../types/contracts'
 
 type Translate = (key: TranslationKey) => string
@@ -44,6 +44,23 @@ export type WorkspaceSpotlightModel = {
   metrics: WorkspaceSpotlightMetricModel[]
 }
 
+export type CoreFlowStepCardModel = {
+  id: CoreFlowStepId
+  title: string
+  indexLabel: string
+  updatedAt: string
+  state: CoreFlowStepState
+  stateLabel: string
+  reason: string
+  requestId?: string
+}
+
+export type CoreFlowPanelModel = {
+  summary: string
+  hint: string
+  steps: CoreFlowStepCardModel[]
+}
+
 export type PreparedTradingSnapshot = {
   selectedSymbol: string
   displayQuote?: MarketMessage
@@ -81,7 +98,26 @@ export const WORKSPACE_MODELS: WorkspaceSummaryModel[] = [
   },
 ]
 
-function formatDateTime(value?: number | string | null): string {
+const CORE_FLOW_STEP_ORDER: CoreFlowStepId[] = ['bootstrap', 'market', 'precheck', 'submit', 'feedback', 'cancel']
+
+const CORE_FLOW_STEP_LABEL_MAP: Record<CoreFlowStepId, TranslationKey> = {
+  bootstrap: 'flow.step.bootstrap',
+  market: 'flow.step.market',
+  precheck: 'flow.step.precheck',
+  submit: 'flow.step.submit',
+  feedback: 'flow.step.feedback',
+  cancel: 'flow.step.cancel',
+}
+
+const CORE_FLOW_STATE_LABEL_MAP: Record<CoreFlowStepState, TranslationKey> = {
+  idle: 'health.state.idle',
+  active: 'health.state.loading',
+  success: 'health.state.ready',
+  degraded: 'health.state.degraded',
+  error: 'health.state.error',
+}
+
+export function formatDateTimeLabel(value?: number | string | null): string {
   if (!value) {
     return '—'
   }
@@ -159,7 +195,7 @@ export function buildHealthCards(domainStatus: DomainStatusMap, t: Translate): H
                 ? t('health.state.error')
                 : t('health.state.idle'),
       staleLabel: value.stale ? t('health.stale') : t('health.fresh'),
-      updatedAt: formatDateTime(value.last_update_ms),
+      updatedAt: formatDateTimeLabel(value.last_update_ms),
       requestId: value.request_id,
       reason: value.reason,
     }),
@@ -172,7 +208,7 @@ export function buildExecutionRows(events: OrderTimelineEvent[], t: Translate): 
     title: `${event.event_type} · ${event.lifecycle_phase}`,
     subtitle: [event.symbol ?? '—', event.account_id ?? '—', event.client_order_id ?? event.request_id ?? '—'].join(' · '),
     rightTop: event.status ?? event.lifecycle_phase,
-    rightBottom: `${t('execution.receivedAt')}: ${formatDateTime(event.received_at)}`,
+    rightBottom: `${t('execution.receivedAt')}: ${formatDateTimeLabel(event.received_at)}`,
   }))
 }
 
@@ -184,7 +220,7 @@ export function summarizeLatestFeedback(event: OrderTimelineEvent | undefined, h
 }
 
 export function summarizeLatestEventAt(event: OrderTimelineEvent | undefined) {
-  return formatDateTime(event?.event_time ?? event?.received_at)
+  return formatDateTimeLabel(event?.event_time ?? event?.received_at)
 }
 
 export function summarizeDomainStates(domainStatus: DomainStatusMap) {
@@ -205,6 +241,54 @@ export function summarizeDomainStates(domainStatus: DomainStatusMap) {
     readyCount,
     attentionCount,
     totalCount: Object.keys(domainStatus).length,
+  }
+}
+
+export function buildCoreFlowPanelModel(flow: CoreFlowMap, t: Translate): CoreFlowPanelModel {
+  let readyCount = 0
+  let loadingCount = 0
+  let attentionCount = 0
+  let latestUpdateMs: number | null = null
+
+  const steps = CORE_FLOW_STEP_ORDER.map((step, index) => {
+    const item = flow[step]
+
+    if (item.state === 'success') {
+      readyCount += 1
+    } else if (item.state === 'active') {
+      loadingCount += 1
+    } else if (item.state === 'degraded' || item.state === 'error') {
+      attentionCount += 1
+    }
+
+    if (typeof item.last_update_ms === 'number' && Number.isFinite(item.last_update_ms)) {
+      latestUpdateMs = latestUpdateMs === null ? item.last_update_ms : Math.max(latestUpdateMs, item.last_update_ms)
+    }
+
+    return {
+      id: step,
+      title: t(CORE_FLOW_STEP_LABEL_MAP[step]),
+      indexLabel: `${index + 1}.`,
+      updatedAt: formatDateTimeLabel(item.last_update_ms),
+      state: item.state,
+      stateLabel: t(CORE_FLOW_STATE_LABEL_MAP[item.state]),
+      reason: item.reason?.trim() ? item.reason : t('common.na'),
+      requestId: item.request_id?.trim() ? item.request_id : undefined,
+    }
+  })
+
+  const summaryParts = [
+    `${readyCount} ${t('common.ready')}`,
+    `${loadingCount} ${t('health.state.loading')}`,
+  ]
+  if (attentionCount > 0) {
+    summaryParts.push(`${attentionCount} ${t('workspace.overview.attention')}`)
+  }
+
+  return {
+    summary: summaryParts.join(' · '),
+    hint: `${t('common.updatedAt')}: ${formatDateTimeLabel(latestUpdateMs)}`,
+    steps,
   }
 }
 
@@ -242,6 +326,6 @@ export function buildPreparedTradingSnapshot({
       ? `${latestEvent.event_type} · ${latestEvent.symbol ?? '—'} · ${latestEvent.status ?? '—'}`
       : heartbeat,
     feedbackAtValue: summarizeLatestEventAt(latestEvent),
-    quoteUpdatedAtValue: formatDateTime(displayQuote?.event_time),
+    quoteUpdatedAtValue: formatDateTimeLabel(displayQuote?.event_time),
   }
 }

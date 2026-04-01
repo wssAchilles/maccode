@@ -1,9 +1,11 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type {
   PersistenceStatus,
-  TradingPolicy,
+  SignalRecord,
 } from '../../types/contracts'
 import {
+  formatConfidence,
+  formatDateTimeLabel,
   type PreparedTradingSnapshot,
   type WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
@@ -22,6 +24,13 @@ export type OverviewDataItem = {
   id: string
   label: string
   value: string
+}
+
+export type OverviewRecentSignalCardModel = {
+  id: string
+  signal: string
+  symbol: string
+  items: OverviewDataItem[]
 }
 
 type BuildOverviewMetricTilesParams = {
@@ -110,6 +119,37 @@ export function buildOverviewSpotlightModel({
       },
     ],
   }
+}
+
+export function buildOverviewRecentSignalCards({
+  t,
+  recentSignals,
+}: {
+  t: Translate
+  recentSignals: SignalRecord[]
+}): OverviewRecentSignalCardModel[] {
+  return recentSignals.slice(0, 4).map((signal) => ({
+    id: `${signal.created_at}-${signal.strategy_id}-${signal.symbol}`,
+    signal: signal.signal,
+    symbol: signal.symbol,
+    items: [
+      {
+        id: 'confidence',
+        label: t('strategy.confidence'),
+        value: formatConfidence(signal.confidence),
+      },
+      {
+        id: 'strategy',
+        label: t('workspace.strategy.auditStrategy'),
+        value: signal.strategy_id || '—',
+      },
+      {
+        id: 'createdAt',
+        label: t('common.updatedAt'),
+        value: formatDateTimeLabel(signal.created_at),
+      },
+    ],
+  }))
 }
 
 export function buildOverviewPersistenceItems({

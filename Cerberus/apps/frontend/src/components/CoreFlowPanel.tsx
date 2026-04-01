@@ -1,27 +1,10 @@
-import type { TranslationKey } from '../i18n/messages'
+import { useMemo } from 'react'
+
 import { useI18n } from '../i18n/I18nProvider'
 import { useDormantSelector } from '../store/useDormantSelector'
-import type { CoreFlowStepId, CoreFlowStepState } from '../store/slices/shared'
+import type { CoreFlowStepState } from '../store/slices/shared'
+import { buildCoreFlowPanelModel } from '../view-models/workbench'
 import { GlassPanel, SectionFrame, StatusPill } from '../ui'
-
-const STEP_ORDER: CoreFlowStepId[] = ['bootstrap', 'market', 'precheck', 'submit', 'feedback', 'cancel']
-
-const STEP_LABEL_MAP: Record<CoreFlowStepId, TranslationKey> = {
-  bootstrap: 'flow.step.bootstrap',
-  market: 'flow.step.market',
-  precheck: 'flow.step.precheck',
-  submit: 'flow.step.submit',
-  feedback: 'flow.step.feedback',
-  cancel: 'flow.step.cancel',
-}
-
-const STATE_LABEL_MAP: Record<CoreFlowStepState, TranslationKey> = {
-  idle: 'health.state.idle',
-  active: 'health.state.loading',
-  success: 'health.state.ready',
-  degraded: 'health.state.degraded',
-  error: 'health.state.error',
-}
 
 function toneClass(state: CoreFlowStepState): string {
   if (state === 'error') {
@@ -39,25 +22,30 @@ function toneClass(state: CoreFlowStepState): string {
 export function CoreFlowPanel({ active = true }: { active?: boolean }) {
   const { t } = useI18n()
   const flow = useDormantSelector(active, (state) => state.uiState.core_flow)
+  const model = useMemo(() => buildCoreFlowPanelModel(flow, t), [flow, t])
 
   return (
-    <SectionFrame title={t('flow.title')} description={t('workspace.overview.description')} className="core-flow-frame">
+    <SectionFrame
+      title={t('flow.title')}
+      description={model.summary}
+      aside={<p className="panel-caption">{model.hint}</p>}
+      className="core-flow-frame"
+    >
       <div className="flow-grid" data-testid="core-flow-panel">
-        {STEP_ORDER.map((step, index) => {
-          const item = flow[step]
+        {model.steps.map((step) => {
           return (
-            <GlassPanel key={step} className={toneClass(item.state)} tone="subtle" data-testid={`core-flow-step-${step}`}>
+            <GlassPanel key={step.id} className={toneClass(step.state)} tone="subtle" data-testid={`core-flow-step-${step.id}`}>
               <div className="fc-head">
                 <div>
-                  <p className="fc-index">{index + 1}. {t(STEP_LABEL_MAP[step])}</p>
+                  <p className="fc-index">{step.indexLabel} {step.title}</p>
                   <p className="fc-updated">
-                    {t('common.updatedAt')}: {item.last_update_ms ? new Date(item.last_update_ms).toLocaleTimeString() : t('common.na')}
+                    {t('common.updatedAt')}: {step.updatedAt}
                   </p>
                 </div>
-                <StatusPill state={item.state} label={t(STATE_LABEL_MAP[item.state])} compact />
+                <StatusPill state={step.state} label={step.stateLabel} compact />
               </div>
-              <p className="fc-reason">{item.reason?.trim().length ? item.reason : t('common.na')}</p>
-              {item.request_id ? <p className="fc-request">rid: {item.request_id}</p> : null}
+              <p className="fc-reason">{step.reason}</p>
+              {step.requestId ? <p className="fc-request">rid: {step.requestId}</p> : null}
             </GlassPanel>
           )
         })}
