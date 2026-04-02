@@ -63,7 +63,7 @@ export function MarketWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="ws-main stack ws-main-shell">
+      <div className="ws-main stack wsm">
         <SectionFrame
           title={t('workspace.market.linkageTitle')}
           description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
@@ -88,25 +88,25 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="cyan"
           stage="feature"
         >
-          <div className="chart-context" data-phase={chartPhase}>
-            <div className="chart-context-copy">
+          <div className="cc" data-phase={chartPhase}>
+            <div className="cc-copy">
               <p className="subtle-label">{model.chartContext.eyebrow}</p>
-              <p className="chart-context-summary">{model.chartContext.summary}</p>
+              <p className="cc-summary">{model.chartContext.summary}</p>
               <p className="panel-caption">{model.chartContext.hint}</p>
             </div>
-            <div className="chart-context-side">
-              <div className="chart-context-chips">
+            <div className="cc-side">
+              <div className="cc-chips">
                 {model.chartContext.chips.map((chip, index) => (
                   <span key={`${chip}-${index}`} className="account-pill">
                     {chip}
                   </span>
                 ))}
               </div>
-              <div className="chart-context-metrics">
+              <div className="cc-metrics">
                 {model.chartContext.metrics.map((metric) => (
-                  <div key={metric.id} className="chart-context-metric">
+                  <div key={metric.id} className="cc-metric">
                     <p className="subtle-label">{metric.label}</p>
-                    <p className={metric.tone === 'negative' ? 'chart-context-value dl-value-negative' : metric.tone === 'positive' ? 'chart-context-value dl-value-positive' : metric.tone === 'accent' ? 'chart-context-value dl-value-accent' : 'chart-context-value'}>
+                    <p className={metric.tone === 'negative' ? 'cc-value dl-value-negative' : metric.tone === 'positive' ? 'cc-value dl-value-positive' : metric.tone === 'accent' ? 'cc-value dl-value-accent' : 'cc-value'}>
                       {metric.value}
                     </p>
                   </div>
@@ -163,7 +163,7 @@ export function MarketWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('execution.timeline')}
           description={t('workspace.market.executionRailDescription')}
-          className="timeline-section"
+          className="xts"
           accent="amber"
           stage="tail"
         >
@@ -173,7 +173,7 @@ export function MarketWorkspace({ active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack ws-side-shell">
+      <div className="ws-side stack wss">
         <SectionFrame
           title={t('workspace.strategy.portfolioTitle')}
           description={t('workspace.strategy.portfolioDescription')}

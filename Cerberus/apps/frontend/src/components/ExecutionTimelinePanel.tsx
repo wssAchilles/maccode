@@ -134,7 +134,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
   }
 
   return (
-    <article data-testid="execution-timeline-panel" className="execution-timeline">
+    <article data-testid="execution-timeline-panel" className="xtm">
       {filterSymbol !== 'ALL' ? (
         <div className="xtl">
           <p className="subtle-label">{t('workspace.execution.linkageTitle')}</p>
@@ -204,7 +204,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
       </div>
 
       {filteredRowIndexes.length === 0 ? (
-        <div className="execution-timeline-empty">
+        <div className="xtm-empty">
           <EmptyState
             title={
               executionStatus.state === 'error'
@@ -227,7 +227,7 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
       ) : (
         <div
           ref={viewportRef}
-          className="execution-timeline-list"
+          className="xtm-list"
           onScroll={(event) => scheduleScrollWindowUpdate(event.currentTarget.scrollTop)}
         >
           {virtualWindow.topSpacerHeight > 0 ? (

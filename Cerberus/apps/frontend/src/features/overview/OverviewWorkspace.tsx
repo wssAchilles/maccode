@@ -68,7 +68,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         </InlineAlert>
       ) : null}
 
-      <div className="ws-main ws-main-shell">
+      <div className="ws-main wsm">
         <SectionFrame
           title={t('workspace.overview.healthDigest')}
           description={t('workspace.overview.description')}
@@ -88,7 +88,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack ws-side-shell">
+      <div className="ws-side stack wss">
         <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')} accent="amber" stage="inspector">
           <div className="stack-sm">
             {model.healthCards.map((card) => (

@@ -1,5 +1,8 @@
+import type { CSSProperties } from 'react'
+
 import type { WorkspaceOperatorDeckSectionModel } from '../view-models/workbench'
 import { cn } from '../lib/cn'
+import { accentVar } from './accent'
 import { DataList } from './DataList'
 import { GlassPanel } from './GlassPanel'
 import { MotionSurface } from './MotionSurface'
@@ -28,14 +31,18 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
         <RevealGroup
           key={section.id}
           revealIndex={index}
-          className={cn(
-            'od-shell',
-            section.visualPriority === 'hero' ? 'od-shell-hero' : '',
-            layout === 'rail' && section.visualPriority === 'hero' ? 'od-shell-span' : '',
-          )}
+          className={cn('od-shell', layout === 'rail' && section.visualPriority === 'hero' ? 'od-shell-span' : '')}
+          data-priority={section.visualPriority === 'hero' ? 'hero' : 'secondary'}
+          style={
+            section.accent
+              ? ({
+                  '--pa': accentVar(section.accent),
+                } as CSSProperties)
+              : undefined
+          }
         >
-          <MotionSurface className={cn('od-surface', section.accent ? `od-surface-${section.accent}` : '')} mode="panel">
-            <GlassPanel className={cn('stack-sm od-card', section.accent ? `od-card-${section.accent}` : '')} tone="subtle">
+          <MotionSurface className="od-surface" mode="panel">
+            <GlassPanel className="stack-sm od-card" tone="subtle">
               <div className="ids-group">
                 <div className="sp-head">
                   <p className="subtle-label">{section.title}</p>

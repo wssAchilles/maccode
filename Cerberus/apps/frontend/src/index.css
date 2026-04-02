@@ -26,20 +26,20 @@
   --r1: 24px;
   --r0: 20px;
   --rm: 16px;
-  --dur-fast: 160ms;
-  --dur-base: 260ms;
-  --dur-slow: 560ms;
-  --ease-spring: cubic-bezier(0.18, 1, 0.32, 1);
-  --ease-glide: cubic-bezier(0.2, 0.7, 0.18, 1);
-  --ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
-  --reveal-distance: 22px;
-  --stagger-step: 70ms;
-  --hover-lift: -5px;
-  --focus-ring: 0 0 0 1px rgba(125, 211, 252, 0.32), 0 0 0 4px rgba(14, 165, 233, 0.16);
-  --color-chart-text: #b6d7d0;
-  --color-chart-grid: rgba(107, 171, 181, 0.1);
-  --color-chart-axis: rgba(90, 140, 149, 0.22);
-  --color-chart-crosshair: rgba(56, 189, 248, 0.24);
+  --df: 160ms;
+  --db: 260ms;
+  --ds: 560ms;
+  --es: cubic-bezier(0.18, 1, 0.32, 1);
+  --eg: cubic-bezier(0.2, 0.7, 0.18, 1);
+  --ee: cubic-bezier(0.22, 1, 0.36, 1);
+  --rd: 22px;
+  --sg: 70ms;
+  --hl: -5px;
+  --fr: 0 0 0 1px rgba(125, 211, 252, 0.32), 0 0 0 4px rgba(14, 165, 233, 0.16);
+  --ct: #b6d7d0;
+  --cg: rgba(107, 171, 181, 0.1);
+  --ca: rgba(90, 140, 149, 0.22);
+  --cc: rgba(56, 189, 248, 0.24);
   --color-success: #2dd4bf;
   --color-danger: #fb923c;
 }
@@ -109,27 +109,27 @@ button {
 
 .app-shell,
 .ws-grid {
-  --workspace-accent-rgb: var(--gl-teal);
+  --wa: var(--gl-teal);
 }
 
 .app-shell[data-workspace='overview'],
 .ws-grid-overview {
-  --workspace-accent-rgb: var(--gl-cyan);
+  --wa: var(--gl-cyan);
 }
 
 .app-shell[data-workspace='market'],
 .ws-grid-market {
-  --workspace-accent-rgb: var(--gl-cyan);
+  --wa: var(--gl-cyan);
 }
 
 .app-shell[data-workspace='execution'],
 .ws-grid-execution {
-  --workspace-accent-rgb: var(--gl-amber);
+  --wa: var(--gl-amber);
 }
 
 .app-shell[data-workspace='health'],
 .ws-grid-health {
-  --workspace-accent-rgb: var(--gl-teal);
+  --wa: var(--gl-teal);
 }
 
 .auth-shell {
@@ -230,12 +230,12 @@ button {
 .sp::before,
 .od-card::before,
 .xec-header::before,
-.chart-context::before {
+.cc::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.5), transparent 72%);
+  background: linear-gradient(90deg, rgba(var(--pa, var(--wa)), 0.5), transparent 72%);
   pointer-events: none;
 }
 
@@ -243,7 +243,7 @@ button {
 .sp::after,
 .od-card::after,
 .xec-header::after,
-.chart-context::after {
+.cc::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -252,62 +252,27 @@ button {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.sf-accent-teal,
-.sp-accent-teal,
-.od-card-teal,
-.sp-surface-teal,
-.od-surface-teal,
-.sf-surface-teal {
-  --panel-accent-rgb: var(--gl-teal);
-}
-
-.sf-accent-cyan,
-.sp-accent-cyan,
-.od-card-cyan,
-.sp-surface-cyan,
-.od-surface-cyan,
-.sf-surface-cyan {
-  --panel-accent-rgb: var(--gl-cyan);
-}
-
-.sf-accent-amber,
-.sp-accent-amber,
-.od-card-amber,
-.sp-surface-amber,
-.od-surface-amber,
-.sf-surface-amber {
-  --panel-accent-rgb: var(--gl-amber);
-}
-
-.sf-accent-teal,
-.sp-accent-teal,
-.od-card-teal,
+.sf,
+.sp,
+.od-card,
 .xec-header,
-.chart-context {
-  background-image: radial-gradient(circle at top right, rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.12), transparent 42%);
+.cc {
+  background-image: radial-gradient(circle at top right, rgba(var(--pa, var(--wa)), 0.12), transparent 42%);
 }
 
-.sf-shell-hero .glass-panel,
-.sf-shell-feature .glass-panel,
-.sf-shell-operator .glass-panel,
-.sf-shell-inspector .glass-panel,
-.sf-shell-tail .glass-panel {
+.sf.glass-panel {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 20px 56px -44px rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.3);
+    0 20px 56px -44px rgba(var(--pa, var(--wa)), 0.3);
 }
 
-.sf-shell-hero .glass-panel {
+.sf[data-stage='hero'].glass-panel {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 28px 72px -44px rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.36);
+    0 28px 72px -44px rgba(var(--pa, var(--wa)), 0.36);
 }
 
-.sf-hero .sf-title,
-.sf-feature .sf-title,
-.sf-operator .sf-title,
-.sf-inspector .sf-title,
-.sf-tail .sf-title {
+.sf-title {
   max-width: 18ch;
 }
 
@@ -459,7 +424,7 @@ button {
 .chip-button:hover,
 .ws-mobile-button:hover,
 .dd-trigger:hover {
-  transform: translateY(var(--hover-lift));
+  transform: translateY(var(--hl));
 }
 
 .soft-button:focus-visible,
@@ -469,7 +434,7 @@ button {
 .ws-mobile-button:focus-visible,
 .dd-trigger:focus-visible {
   outline: 0;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--fr);
 }
 
 .sbp,
@@ -638,8 +603,8 @@ button {
   gap: 18px;
 }
 
-.ws-main-shell,
-.ws-side-shell {
+.wsm,
+.wss {
   align-content: start;
 }
 
@@ -925,10 +890,6 @@ button {
   color: var(--a1);
 }
 
-.execution-desk-spotlight {
-  margin-bottom: 14px;
-}
-
 .spf-status {
   display: grid;
   gap: 8px;
@@ -1162,7 +1123,7 @@ button {
 
 .toggle-chip:focus-within {
   outline: 0;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--fr);
 }
 
 .sp-hint,
@@ -1195,9 +1156,7 @@ button {
   padding-right: 4px;
 }
 
-.xo-diagnosis,
-.elb,
-.mlb {
+.xo-diagnosis {
   display: grid;
   gap: 10px;
 }
@@ -1276,19 +1235,6 @@ button {
   padding: 12px;
 }
 
-.xl-stage-ready {
-  border-color: rgba(15, 118, 110, 0.2);
-}
-
-.xl-stage-degraded,
-.xl-stage-loading {
-  border-color: rgba(3, 105, 161, 0.18);
-}
-
-.xl-stage-error {
-  border-color: rgba(220, 38, 38, 0.18);
-}
-
 .xl-stage-label,
 .xl-stage-detail {
   margin: 0;
@@ -1332,18 +1278,6 @@ button {
   margin: 0;
   font: 700 1rem/1 var(--fh);
   color: var(--t0);
-}
-
-.sd-signal-positive {
-  color: var(--ok);
-}
-
-.sd-signal-negative {
-  color: var(--er);
-}
-
-.sd-signal-accent {
-  color: var(--a0);
 }
 
 .sd-meta {
@@ -1488,8 +1422,8 @@ button {
   padding: 0 14px;
 }
 
-.execution-orchestrator,
-.execution-layout,
+.xoc,
+.xly,
 .xlay-main,
 .xlay-side,
 .xf-grid,
@@ -1512,15 +1446,15 @@ button {
 
 .xec-copy,
 .xec-side,
-.chart-context-copy,
-.chart-context-side {
+.cc-copy,
+.cc-side {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
 
 .xec-summary,
-.chart-context-summary {
+.cc-summary {
   margin: 0;
   font: 700 clamp(1.08rem, 1.8vw, 1.35rem)/1.16 var(--fh);
   letter-spacing: -0.02em;
@@ -1528,21 +1462,21 @@ button {
 }
 
 .xec-chip-row,
-.chart-context-chips {
+.cc-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .xec-metrics,
-.chart-context-metrics {
+.cc-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .xec-metric,
-.chart-context-metric {
+.cc-metric {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
@@ -1552,29 +1486,29 @@ button {
 }
 
 .xec-metric-value,
-.chart-context-value {
+.cc-value {
   margin: 0;
   font: 700 0.95rem/1.2 var(--fm);
   font-variant-numeric: tabular-nums;
   color: var(--t0);
 }
 
-.execution-layout {
+.xly {
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
 }
 
 .xlay-main,
 .xlay-side,
-.timeline-section,
-.timeline-section .sf-body,
-.execution-timeline,
-.execution-timeline-list {
+.xts,
+.xts .sf-body,
+.xtm,
+.xtm-list {
   min-height: 0;
 }
 
-.execution-side .sf-body,
-.execution-side .stack,
-.execution-side .stack > * {
+.xsd .sf-body,
+.xsd .stack,
+.xsd .stack > * {
   min-height: 0;
 }
 
@@ -1690,7 +1624,7 @@ button {
   isolation: isolate;
 }
 
-.chart-context {
+.cc {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 0.94fr) minmax(320px, 1.06fr);
@@ -1701,12 +1635,12 @@ button {
   border: 1px solid rgba(124, 180, 192, 0.12);
   background:
     linear-gradient(180deg, rgba(8, 17, 26, 0.9), rgba(8, 17, 26, 0.7)),
-    radial-gradient(circle at top right, rgba(var(--workspace-accent-rgb), 0.15), transparent 46%);
+    radial-gradient(circle at top right, rgba(var(--wa), 0.15), transparent 46%);
   overflow: hidden;
 }
 
-.chart-context[data-phase='entering'] {
-  animation: ws-stage-enter 320ms var(--ease-emphasis);
+.cc[data-phase='entering'] {
+  animation: ws-stage-enter 320ms var(--ee);
 }
 
 .chart-frame {
@@ -1752,9 +1686,9 @@ button {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(var(--workspace-accent-rgb), 0.12), transparent 42%);
+  background: linear-gradient(135deg, rgba(var(--wa), 0.12), transparent 42%);
   pointer-events: none;
-  animation: chart-shell-wipe 420ms var(--ease-emphasis);
+  animation: chart-shell-wipe 420ms var(--ee);
 }
 
 @keyframes chart-shell-wipe {
@@ -2020,38 +1954,38 @@ button {
   font: 500 0.78rem/1.45 var(--fm);
 }
 
-.execution-side {
+.xsd {
   min-height: 0;
   align-content: start;
 }
 
-.execution-strategy-frame-body {
+.xsfb {
   min-height: 0;
   max-height: clamp(28rem, 64vh, 43rem);
   overflow: auto;
 }
 
-.timeline-section {
+.xts {
   height: 100%;
 }
 
-.timeline-section .sf-body {
+.xts .sf-body {
   overflow: hidden;
 }
 
-.execution-timeline {
+.xtm {
   display: flex;
   flex-direction: column;
   gap: 16px;
   height: 100%;
 }
 
-.execution-timeline-empty {
+.xtm-empty {
   flex: 1 1 auto;
   display: flex;
 }
 
-.execution-timeline-list {
+.xtm-list {
   flex: 1 1 auto;
   min-height: clamp(18rem, 34vh, 22rem);
   max-height: clamp(20rem, 38vh, 27rem);
@@ -2163,9 +2097,9 @@ button {
 
 @media (max-width: 1120px) {
   .ws-grid,
-  .execution-layout,
+  .xly,
   .xec-header,
-  .chart-context,
+  .cc,
   .timeline-row,
   .idt-grid,
   .so-row-grid,
@@ -2199,7 +2133,7 @@ button {
   .health-grid,
   .ids-grid,
   .xec-metrics,
-  .chart-context-metrics,
+  .cc-metrics,
   .obgrid,
   .xf-grid,
   .timeline-toolbar {
@@ -2245,7 +2179,7 @@ button {
 
   .sp-chip-row,
   .xec-chip-row,
-  .chart-context-chips {
+  .cc-chips {
     justify-content: flex-start;
   }
 
@@ -2288,13 +2222,13 @@ button {
     padding-inline: 12px;
   }
 
-  .execution-strategy-frame-body {
+  .xsfb {
     max-height: none;
     overflow: visible;
     padding-right: 0;
   }
 
-  .execution-timeline-list {
+  .xtm-list {
     min-height: 18rem;
     max-height: 22rem;
   }
@@ -2356,7 +2290,7 @@ button {
 .ms {
   position: relative;
   min-width: 0;
-  transition: transform var(--dur-base) var(--ease-emphasis);
+  transition: transform var(--db) var(--ee);
 }
 
 .ms::before {
@@ -2367,11 +2301,11 @@ button {
   pointer-events: none;
   opacity: 0;
   background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 58%);
-  transition: opacity var(--dur-fast) ease-out;
+  transition: opacity var(--df) ease-out;
 }
 
 .ms[data-motion-disabled='false']:hover {
-  transform: translateY(var(--hover-lift));
+  transform: translateY(var(--hl));
 }
 
 .ms[data-motion-disabled='false']:hover::before {
@@ -2381,11 +2315,11 @@ button {
 .rg {
   min-width: 0;
   opacity: 0;
-  transform: translate3d(0, var(--reveal-distance), 0) scale(0.985);
+  transform: translate3d(0, var(--rd), 0) scale(0.985);
   transition:
-    opacity var(--dur-slow) var(--ease-glide),
-    transform var(--dur-slow) var(--ease-emphasis);
-  transition-delay: calc(var(--reveal-index, 0) * var(--stagger-step));
+    opacity var(--ds) var(--eg),
+    transform var(--ds) var(--ee);
+  transition-delay: calc(var(--reveal-index, 0) * var(--sg));
 }
 
 .rg[data-reveal='visible'] {
@@ -2405,7 +2339,7 @@ button {
   inset: 0;
   opacity: 0;
   background: linear-gradient(120deg, rgba(45, 212, 191, 0.14), transparent 48%, rgba(56, 189, 248, 0.08));
-  transition: opacity var(--dur-base) ease-out;
+  transition: opacity var(--db) ease-out;
 }
 
 .ws-nav-button:hover::before,
@@ -2434,7 +2368,7 @@ button {
   box-shadow: 0 0 0 8px rgba(45, 212, 191, 0.12);
 }
 
-.od-shell-hero .glass-panel {
+.od-shell[data-priority='hero'] .glass-panel {
   border-color: rgba(45, 212, 191, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
@@ -2482,7 +2416,7 @@ button {
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(13, 148, 136, 0.92), rgba(8, 145, 178, 0.92));
   box-shadow: 0 16px 36px -24px rgba(45, 212, 191, 0.42);
-  transition: transform var(--dur-base) var(--ease-emphasis);
+  transition: transform var(--db) var(--ee);
 }
 
 .broker-tabs[data-broker='alpaca'] .broker-tabs-indicator {
@@ -2490,7 +2424,7 @@ button {
 }
 
 .ws-stage[data-phase='entering'] .ws-host-active {
-  animation: ws-stage-enter 520ms var(--ease-emphasis);
+  animation: ws-stage-enter 520ms var(--ee);
 }
 
 @keyframes ws-stage-enter {
@@ -2525,7 +2459,7 @@ button {
   .wb-header::after,
   .ws-stage[data-phase='entering'] .ws-host-active,
   .chart-shell[data-phase='entering']::after,
-  .chart-context[data-phase='entering'] {
+  .cc[data-phase='entering'] {
     transition: none;
     animation: none;
   }

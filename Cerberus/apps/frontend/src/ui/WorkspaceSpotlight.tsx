@@ -1,5 +1,8 @@
+import type { CSSProperties } from 'react'
+
 import { cn } from '../lib/cn'
 import type { WorkspaceSpotlightModel } from '../view-models/workbench'
+import { accentVar } from './accent'
 import { GlassPanel } from './GlassPanel'
 import { MotionSurface } from './MotionSurface'
 import { RevealGroup } from './RevealGroup'
@@ -12,11 +15,14 @@ type Props = {
 
 export function WorkspaceSpotlight({ model, compact = false, className }: Props) {
   const accent = model.accent ?? 'teal'
+  const style = {
+    '--pa': accentVar(accent),
+  } as CSSProperties
 
   return (
-    <RevealGroup className={cn('sp-shell', className)}>
-      <MotionSurface className={cn('sp-surface', `sp-surface-${accent}`)} mode={compact ? 'panel' : 'spotlight'}>
-        <GlassPanel className={cn(compact ? 'sp sp-compact' : 'sp', `sp-accent-${accent}`)} tone="subtle">
+    <RevealGroup className={cn('sp-shell', className)} style={style}>
+      <MotionSurface className="sp-surface" mode={compact ? 'panel' : 'spotlight'}>
+        <GlassPanel className={compact ? 'sp sp-compact' : 'sp'} tone="subtle">
           <div className="sp-head">
             <div className="sf-copy">
               {model.postureLabel ? <p className="subtle-label">{model.postureLabel}</p> : null}

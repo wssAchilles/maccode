@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import { cn } from '../lib/cn'
+import { accentVar, type AccentTone } from './accent'
 import { GlassPanel } from './GlassPanel'
 import { MotionSurface } from './MotionSurface'
 import { RevealGroup } from './RevealGroup'
@@ -14,7 +15,7 @@ type Props = {
   className?: string
   bodyClassName?: string
   tone?: 'default' | 'hero' | 'subtle'
-  accent?: 'teal' | 'cyan' | 'amber'
+  accent?: AccentTone
   stage?: 'hero' | 'feature' | 'operator' | 'inspector' | 'tail'
 }
 
@@ -30,10 +31,14 @@ export function SectionFrame({
   accent = 'teal',
   stage = 'feature',
 }: Props) {
+  const style = {
+    '--pa': accentVar(accent),
+  } as CSSProperties
+
   return (
-    <RevealGroup className={cn('sf-shell', `sf-shell-${stage}`, className)}>
-      <MotionSurface className={cn('sf-surface', `sf-surface-${accent}`)} mode={tone === 'hero' ? 'spotlight' : 'panel'}>
-        <GlassPanel className={cn('sf', `sf-${stage}`, `sf-accent-${accent}`)} tone={tone}>
+    <RevealGroup className={cn('sf-shell', className)} data-stage={stage} style={style}>
+      <MotionSurface className="sf-surface" mode={tone === 'hero' ? 'spotlight' : 'panel'}>
+        <GlassPanel className="sf" tone={tone} data-stage={stage}>
           <div className="sf-header">
             <div className="sf-copy">
               {eyebrow ? <p className="sf-eyebrow">{eyebrow}</p> : null}

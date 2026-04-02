@@ -50,10 +50,10 @@ export function CandlesChart({ series, markers }: Props) {
     }
 
     const styles = getComputedStyle(document.documentElement)
-    const chartText = styles.getPropertyValue('--color-chart-text').trim() || '#536275'
-    const chartGrid = styles.getPropertyValue('--color-chart-grid').trim() || 'rgba(120, 136, 157, 0.14)'
-    const chartAxis = styles.getPropertyValue('--color-chart-axis').trim() || 'rgba(103, 120, 145, 0.22)'
-    const chartCrosshair = styles.getPropertyValue('--color-chart-crosshair').trim() || 'rgba(53, 94, 147, 0.26)'
+    const chartText = styles.getPropertyValue('--ct').trim() || '#536275'
+    const chartGrid = styles.getPropertyValue('--cg').trim() || 'rgba(120, 136, 157, 0.14)'
+    const chartAxis = styles.getPropertyValue('--ca').trim() || 'rgba(103, 120, 145, 0.22)'
+    const chartCrosshair = styles.getPropertyValue('--cc').trim() || 'rgba(53, 94, 147, 0.26)'
     const upColor = styles.getPropertyValue('--color-success').trim() || '#15803d'
     const downColor = styles.getPropertyValue('--color-danger').trim() || '#b91c1c'
 

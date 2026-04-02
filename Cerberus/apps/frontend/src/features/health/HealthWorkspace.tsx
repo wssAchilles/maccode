@@ -29,7 +29,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         <ServiceHealthPanel model={model.serviceHealthPanel} />
       </SectionFrame>
 
-      <div className="ws-main stack ws-main-shell">
+      <div className="ws-main stack wsm">
         <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')} accent="teal" stage="feature">
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
@@ -68,7 +68,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack ws-side-shell">
+      <div className="ws-side stack wss">
         <DiagnosticDrawer
           title={t('workspace.health.requestIds')}
           summary={t('workspace.health.requestIdsDescription')}

@@ -526,7 +526,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/SectionFrame&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      &lt;div className="ws-main stack ws-main-shell"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div className="ws-main stack wsm"&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('workspace.market.linkageTitle')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}</span>
@@ -551,25 +551,25 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          accent="cyan"</span>
 <span class="cstat-no" title="statement not covered" >          stage="feature"</span>
         &gt;
-<span class="cstat-no" title="statement not covered" >          &lt;div className="chart-context" data-phase={chartPhase}&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="chart-context-copy"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div className="cc" data-phase={chartPhase}&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div className="cc-copy"&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;p className="subtle-label"&gt;{model.chartContext.eyebrow}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;p className="chart-context-summary"&gt;{model.chartContext.summary}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;p className="cc-summary"&gt;{model.chartContext.summary}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;p className="panel-caption"&gt;{model.chartContext.hint}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="chart-context-side"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="chart-context-chips"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div className="cc-side"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="cc-chips"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                {model.chartContext.chips.map((chip, index) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;span key={`${chip}-${index}`} className="account-pill"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    {chip}</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >                ))}</span>
 <span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="chart-context-metrics"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="cc-metrics"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                {model.chartContext.metrics.map((metric) =&gt; (</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;div key={metric.id} className="chart-context-metric"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;div key={metric.id} className="cc-metric"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;p className="subtle-label"&gt;{metric.label}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;p className={metric.tone === 'negative' ? 'chart-context-value dl-value-negative' : metric.tone === 'positive' ? 'chart-context-value dl-value-positive' : metric.tone === 'accent' ? 'chart-context-value dl-value-accent' : 'chart-context-value'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p className={metric.tone === 'negative' ? 'cc-value dl-value-negative' : metric.tone === 'positive' ? 'cc-value dl-value-positive' : metric.tone === 'accent' ? 'cc-value dl-value-accent' : 'cc-value'}&gt;</span>
 <span class="cstat-no" title="statement not covered" >                      {metric.value}</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;/div&gt;</span>
@@ -626,7 +626,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('execution.timeline')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.market.executionRailDescription')}</span>
-<span class="cstat-no" title="statement not covered" >          className="timeline-section"</span>
+<span class="cstat-no" title="statement not covered" >          className="xts"</span>
 <span class="cstat-no" title="statement not covered" >          accent="amber"</span>
 <span class="cstat-no" title="statement not covered" >          stage="tail"</span>
         &gt;
@@ -636,7 +636,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      &lt;div className="ws-side stack ws-side-shell"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div className="ws-side stack wss"&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('workspace.strategy.portfolioTitle')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.strategy.portfolioDescription')}</span>
@@ -667,7 +667,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T05:56:47.284Z
+                at 2026-04-02T07:04:07.596Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

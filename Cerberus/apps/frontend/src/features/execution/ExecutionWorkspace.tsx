@@ -49,7 +49,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="ws-main stack ws-main-shell">
+      <div className="ws-main stack wsm">
         <SectionFrame
           title={t('workspace.execution.linkageTitle')}
           description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}
@@ -78,11 +78,11 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack execution-side ws-side-shell">
+      <div className="ws-side stack xsd wss">
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
-          bodyClassName="execution-strategy-frame-body"
+          bodyClassName="xsfb"
           accent="teal"
           stage="inspector"
         >
@@ -116,7 +116,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('execution.timeline')}
           description={t('workspace.execution.timelineDescription')}
-          className="timeline-section"
+          className="xts"
           accent="cyan"
           stage="tail"
         >

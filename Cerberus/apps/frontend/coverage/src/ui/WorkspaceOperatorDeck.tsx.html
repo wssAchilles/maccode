@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">92.85% </span>
+                <span class="strong">91.3% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>39/42</span>
+                <span class='fraction'>42/46</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">60% </span>
+                <span class="strong">64.28% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>9/15</span>
+                <span class='fraction'>9/14</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">92.85% </span>
+                <span class="strong">91.3% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>39/42</span>
+                <span class='fraction'>42/46</span>
             </div>
         
             
@@ -116,7 +116,17 @@
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
 <a name='L53'></a><a href='#L53'>53</a>
-<a name='L54'></a><a href='#L54'>54</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -151,6 +161,10 @@
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
@@ -169,8 +183,11 @@
 <span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">24x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { WorkspaceOperatorDeckSectionModel } from '../view-models/workbench'
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { CSSProperties } from 'react'
+&nbsp;
+import type { WorkspaceOperatorDeckSectionModel } from '../view-models/workbench'
 import { cn } from '../lib/cn'
+import { accentVar } from './accent'
 import { DataList } from './DataList'
 import { GlassPanel } from './GlassPanel'
 import { MotionSurface } from './MotionSurface'
@@ -199,14 +216,18 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
         &lt;RevealGroup
           key={section.id}
           revealIndex={index}
-          className={cn(
-            'od-shell',
-            section.visualPriority === 'hero' ? 'od-shell-hero' : '',
-            layout === 'rail' &amp;&amp; section.visualPriority === 'hero' ? 'od-shell-span' : '',
-          )}
+          className={cn('od-shell', layout === 'rail' &amp;&amp; section.visualPriority === 'hero' ? 'od-shell-span' : '')}
+          data-priority={section.visualPriority === 'hero' ? 'hero' : 'secondary'}
+          style={
+            section.accent
+              ? ({
+                  '--pa': accentVar(section.accent),
+<span class="branch-0 cbranch-no" title="branch not covered" >                } as CSSProperties)</span>
+<span class="cstat-no" title="statement not covered" >              : undefined</span>
+          }
         &gt;
-          &lt;MotionSurface className={cn('od-surface', section.accent ? `od-surface-${section.accent<span class="branch-0 cbranch-no" title="branch not covered" >}` : '')</span>} mode="panel"&gt;
-            &lt;GlassPanel className={cn('stack-sm od-card', section.accent ? `od-card-${section.accent<span class="branch-0 cbranch-no" title="branch not covered" >}` : '')</span>} tone="subtle"&gt;
+          &lt;MotionSurface className="od-surface" mode="panel"&gt;
+            &lt;GlassPanel className="stack-sm od-card" tone="subtle"&gt;
               &lt;div className="ids-group"&gt;
                 &lt;div className="sp-head"&gt;
                   &lt;p className="subtle-label"&gt;{section.title}&lt;/p&gt;
@@ -229,7 +250,7 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T05:56:47.284Z
+                at 2026-04-02T07:04:07.596Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

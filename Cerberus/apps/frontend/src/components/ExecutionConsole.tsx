@@ -34,7 +34,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
   const brokerPhase = useRafPresenceTransition(broker, 320)
 
   return (
-    <section className="execution-orchestrator" data-testid="execution-console">
+    <section className="xoc" data-testid="execution-console">
       <MotionSurface className="xec-shell" mode="spotlight">
         <GlassPanel className="xec-header" tone="subtle">
           <div className="xec-copy">
@@ -103,7 +103,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
         </GlassPanel>
       </MotionSurface>
 
-      <div className="execution-layout">
+      <div className="xly">
         <div className="xlay-main">
           {broker === 'binance' ? (
             <BinanceTestPanel

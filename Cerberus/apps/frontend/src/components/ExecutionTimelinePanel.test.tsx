@@ -82,7 +82,7 @@ describe('ExecutionTimelinePanel', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('execution-timeline-panel')).toBeTruthy()
-      expect(container.querySelector('.execution-timeline-list')).toBeTruthy()
+      expect(container.querySelector('.xtm-list')).toBeTruthy()
       expect(container.querySelectorAll('.tr-meta-line')).toHaveLength(4)
       expect(screen.getByTitle('default-order-0000000442-order-id')).toBeTruthy()
       expect(screen.getByTitle('143e0a7e49624402b69f5ed59d53e19c-request-id')).toBeTruthy()
