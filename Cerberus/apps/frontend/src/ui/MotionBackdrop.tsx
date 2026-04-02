@@ -51,17 +51,24 @@ export function MotionBackdrop({
     let width = 0
     let height = 0
     let frame = 0
+    let lastPaint = 0
     let pointerX = 0.5
     let pointerY = 0.5
     let currentX = 0.5
     let currentY = 0.5
     let visible = document.visibilityState === 'visible'
+    let inViewport = true
+    const maxVisualHeight =
+      intensity === 'stage'
+        ? Math.max(520, Math.min(window.innerHeight * 1.18, 860))
+        : Number.POSITIVE_INFINITY
+    const targetFrameInterval = intensity === 'stage' ? 1000 / 18 : 1000 / 28
 
     const resize = () => {
       const rect = parent.getBoundingClientRect()
       width = Math.max(1, Math.floor(rect.width))
-      height = Math.max(1, Math.floor(rect.height))
-      const scale = Math.min(window.devicePixelRatio || 1, 1.5)
+      height = Math.max(1, Math.floor(Math.min(rect.height, maxVisualHeight)))
+      const scale = intensity === 'stage' ? 0.85 : Math.min(window.devicePixelRatio || 1, 1.2)
       canvas.width = Math.floor(width * scale)
       canvas.height = Math.floor(height * scale)
       canvas.style.width = `${width}px`
@@ -87,10 +94,16 @@ export function MotionBackdrop({
     }
 
     const render = (time: number) => {
-      if (!visible) {
+      if (!visible || !inViewport) {
         frame = window.requestAnimationFrame(render)
         return
       }
+
+      if (time - lastPaint < targetFrameInterval) {
+        frame = window.requestAnimationFrame(render)
+        return
+      }
+      lastPaint = time
 
       ctx.clearRect(0, 0, width, height)
 
@@ -103,7 +116,7 @@ export function MotionBackdrop({
       const driftY = (currentY - 0.5) * height * 0.18
 
       ctx.save()
-      ctx.filter = intensity === 'hero' ? 'blur(8px)' : 'blur(10px)'
+      ctx.filter = intensity === 'hero' ? 'blur(8px)' : 'blur(8px)'
 
       drawOrb(
         width * 0.22 + Math.sin(t * 1.8) * width * 0.08 + driftX,
@@ -166,20 +179,37 @@ export function MotionBackdrop({
       visible = document.visibilityState === 'visible'
     }
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        inViewport = entry?.isIntersecting ?? true
+      },
+      {
+        rootMargin: '160px 0px 160px 0px',
+        threshold: 0,
+      },
+    )
+
     resize()
     frame = window.requestAnimationFrame(render)
 
-    const observer = new ResizeObserver(resize)
-    observer.observe(parent)
+    const resizeObserver = new ResizeObserver(resize)
+    resizeObserver.observe(parent)
+    observer.observe(canvas)
     document.addEventListener('visibilitychange', handleVisibility)
-    parent.addEventListener('pointermove', handlePointerMove)
-    parent.addEventListener('pointerleave', handlePointerLeave)
+    if (intensity === 'hero') {
+      parent.addEventListener('pointermove', handlePointerMove)
+      parent.addEventListener('pointerleave', handlePointerLeave)
+    }
 
     return () => {
       observer.disconnect()
+      resizeObserver.disconnect()
       document.removeEventListener('visibilitychange', handleVisibility)
-      parent.removeEventListener('pointermove', handlePointerMove)
-      parent.removeEventListener('pointerleave', handlePointerLeave)
+      if (intensity === 'hero') {
+        parent.removeEventListener('pointermove', handlePointerMove)
+        parent.removeEventListener('pointerleave', handlePointerLeave)
+      }
       window.cancelAnimationFrame(frame)
     }
   }, [accent, intensity, reducedMotion])

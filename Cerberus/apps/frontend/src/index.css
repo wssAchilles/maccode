@@ -272,6 +272,9 @@ button {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(var(--pa, var(--wrgb)), 0.08), transparent 18%, transparent 82%, rgba(var(--pa, var(--wrgb)), 0.06)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 24%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -519,8 +522,11 @@ button {
   width: calc((100% - (var(--ws-nav-gap) * 3)) / 4);
   border-radius: var(--r0);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)),
-    linear-gradient(135deg, rgba(var(--wrgb), 0.2), rgba(var(--wrgb), 0.04));
+    linear-gradient(115deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0) 40%),
+    linear-gradient(135deg, rgba(var(--wrgb), 0.22), rgba(var(--wrgb), 0.05)),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  background-size: 100% 100%, 100% 100%, 180% 100%;
+  background-position: 0 0, 0 0, 100% 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.64),
     0 18px 38px -30px rgba(var(--wrgb), 0.42);
@@ -530,6 +536,7 @@ button {
     box-shadow var(--db) var(--ee),
     opacity var(--db) ease-out;
   opacity: 0.9;
+  animation: ws-rail-glide 7.4s linear infinite;
 }
 
 .ws-nav-button {
@@ -687,10 +694,10 @@ button {
 
 .ws-stage::after {
   inset: 14% -6% auto;
-  height: 40%;
+  height: 30%;
   background: radial-gradient(circle at center, rgba(var(--wrgb), 0.12), transparent 70%);
-  filter: blur(38px);
-  opacity: 0.72;
+  filter: blur(24px);
+  opacity: 0.46;
 }
 
 .ws-stage-stack {
@@ -701,20 +708,25 @@ button {
 .wb-backdrop,
 .ws-stage-backdrop {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
   z-index: 0;
   opacity: 0.94;
 }
 
 .wb-backdrop {
+  inset: 0;
+  width: 100%;
+  height: 100%;
   mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.94), rgba(0, 0, 0, 0.24) 72%, transparent);
 }
 
 .ws-stage-backdrop {
-  opacity: 0.7;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  width: 100%;
+  opacity: 0.56;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.56), rgba(0, 0, 0, 0.12) 44%, transparent);
 }
 
@@ -2442,10 +2454,14 @@ button {
     rotateX(var(--ms-rx))
     rotateY(var(--ms-ry));
   transform-style: preserve-3d;
-  will-change: transform;
+  will-change: auto;
   transition:
     transform var(--db) var(--ee),
     filter var(--db) var(--ee);
+}
+
+.ms[data-pointer-mode='reactive'] {
+  will-change: transform;
 }
 
 .ms-panel,
@@ -2466,8 +2482,8 @@ button {
   pointer-events: none;
   opacity: 0;
   background:
-    radial-gradient(circle at var(--ms-px) var(--ms-py), rgba(var(--pa, var(--wrgb)), 0.16), transparent 28%),
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.38), transparent 52%);
+    radial-gradient(circle at var(--ms-px) var(--ms-py), rgba(var(--pa, var(--wrgb)), 0.12), transparent 26%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.28), transparent 48%);
   transition: opacity var(--df) ease-out;
 }
 
@@ -2482,11 +2498,11 @@ button {
   background:
     conic-gradient(
       from 180deg at var(--ms-px) var(--ms-py),
-      rgba(var(--pa, var(--wrgb)), 0.12),
-      rgba(255, 255, 255, 0.62),
-      rgba(var(--pa, var(--wrgb)), 0.1),
+      rgba(var(--pa, var(--wrgb)), 0.08),
+      rgba(255, 255, 255, 0.46),
+      rgba(var(--pa, var(--wrgb)), 0.08),
       transparent 58%,
-      rgba(var(--pa, var(--wrgb)), 0.18)
+      rgba(var(--pa, var(--wrgb)), 0.14)
     );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -2506,25 +2522,22 @@ button {
 
 .ms[data-motion-disabled='false'][data-pointer-mode='reactive'][data-pointer-state='active']::after,
 .ms[data-motion-disabled='false']:hover::after {
-  opacity: 0.9;
+  opacity: 0.72;
 }
 
 .rg {
   min-width: 0;
   opacity: 0;
-  filter: blur(10px);
   transform: translate3d(0, var(--rd), 0) scale(0.982);
   transition:
     opacity var(--ds) var(--eg),
-    transform var(--ds) var(--ee),
-    filter var(--db) ease-out;
+    transform var(--ds) var(--ee);
   transition-delay: calc(var(--reveal-index, 0) * var(--sg));
 }
 
 .rg[data-reveal='visible'] {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
-  filter: blur(0);
 }
 
 .wb-header-top,
@@ -2692,6 +2705,16 @@ button {
   }
 }
 
+@keyframes ws-rail-glide {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 100% 0;
+  }
+  50% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rg {
     opacity: 1;
@@ -2711,6 +2734,7 @@ button {
   .broker-tabs-indicator,
   .wb-header::before,
   .wb-header::after,
+  .ws-nav::after,
   .ws-stage[data-phase='entering'] .ws-host-active,
   .chart-shell[data-phase='entering']::after,
   .cc[data-phase='entering'],
