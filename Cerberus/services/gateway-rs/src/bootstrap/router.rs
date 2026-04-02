@@ -1,6 +1,6 @@
 use axum::{
     http::{
-        header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN},
+        header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, ORIGIN, PRAGMA},
         HeaderName, HeaderValue,
     },
     middleware,
@@ -95,6 +95,8 @@ fn build_cors_layer(raw_origins: &str) -> CorsLayer {
         CONTENT_TYPE,
         ACCEPT,
         ORIGIN,
+        CACHE_CONTROL,
+        PRAGMA,
         HeaderName::from_static(REQUEST_ID_HEADER),
         HeaderName::from_static(IDEMPOTENCY_KEY_HEADER),
         HeaderName::from_static(IDEMPOTENCY_KEY_ALT_HEADER),

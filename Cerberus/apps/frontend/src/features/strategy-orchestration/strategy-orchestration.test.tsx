@@ -11,6 +11,9 @@ import { StrategyRegistryPanel } from './components/StrategyRegistryPanel'
 import {
   buildExecutionLifecyclePanelModel,
   buildStrategyContextBandModel,
+  buildStrategyDecisionMatrixModel,
+  buildStrategyOrchestrationAuditTimelineModel,
+  buildStrategyOrchestrationOperationsModel,
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
 } from './view-models'
@@ -55,6 +58,7 @@ describe('strategy orchestration module', () => {
 
     renderWithI18n(<StrategyPortfolioPanel model={model} onSelectSymbol={onSelectSymbol} />)
 
+    expect(model.band.title).toMatch(/BUY/i)
     expect(screen.getAllByText(/workspace\.strategy\.gate\.review/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/workspace\.strategy\.consensus\.moderate/i)).toBeTruthy()
 
@@ -96,6 +100,7 @@ describe('strategy orchestration module', () => {
 
     expect(model.items.find((item) => item.id === 'updatedAt')?.value).not.toBe('1775037600000')
     expect(model.items.find((item) => item.id === 'updatedAt')?.value).toMatch(/2026/)
+    expect(model.band.items.find((item) => item.id === 'gate')?.value).toBe('workspace.strategy.gate.review')
   })
 
   it('renders execution lifecycle stages with progression context', () => {
@@ -190,11 +195,12 @@ describe('strategy orchestration module', () => {
 
     renderWithI18n(<ExecutionLifecyclePanel model={model} />)
 
+    expect(model.band.items.find((item) => item.id === 'live-orders')?.value).toBe('2')
     expect(screen.getByText(/workspace\.execution\.lifecycleStageDispatch/i)).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleStageExecution/i)).toBeTruthy()
-    expect(screen.getByText('Recent identifiers')).toBeTruthy()
-    expect(screen.getByText('Execution telemetry')).toBeTruthy()
-    expect(screen.getByText(/workspace\.execution\.lifecycleLiveOrders/i)).toBeTruthy()
+    expect(screen.getAllByText('Recent identifiers').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Execution telemetry').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/workspace\.execution\.lifecycleLiveOrders/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/workspace\.execution\.lifecycleExecutionId/i)).toBeTruthy()
   })
 
@@ -288,5 +294,47 @@ describe('strategy orchestration module', () => {
       ]),
     )
     expect(band.items.find((item) => item.id === 'updated-at')?.value).not.toBe('1775124000000')
+  })
+
+  it('builds a strategy operations band even when orchestration entries are empty', () => {
+    const model = buildStrategyOrchestrationOperationsModel({
+      t: (key) => key,
+      orchestrationStatus: {
+        conflict_policy: 'review_on_conflict',
+        downgrade_policy: 'review',
+        tracked_symbols: ['BTCUSDT'],
+        state_restored: true,
+        entries: [],
+        audit: [],
+      },
+    })
+
+    expect(model.band.title).toBe('workspace.strategy.registryEmpty')
+    expect(model.band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'entries', value: '0' }),
+        expect.objectContaining({ id: 'tracked', value: '0' }),
+      ]),
+    )
+  })
+
+  it('builds empty-state bands for matrix, registry, and audit panels', () => {
+    const matrix = buildStrategyDecisionMatrixModel({ t: (key) => key })
+    const registry = buildStrategyRegistryPanelModel({ t: (key) => key })
+    const audit = buildStrategyOrchestrationAuditTimelineModel({ t: (key) => key })
+
+    expect(matrix.band?.title).toBe('workspace.strategy.noDecisions')
+    expect(registry.band?.title).toBe('workspace.strategy.registryEmpty')
+    expect(audit.band?.title).toBe('workspace.strategy.auditTimelineEmpty')
+
+    expect(matrix.band?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'rows', value: '0' })]),
+    )
+    expect(registry.band?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'enabled', value: '0' })]),
+    )
+    expect(audit.band?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'events', value: '0' })]),
+    )
   })
 })

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">8.1% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/36</span>
+                <span class='fraction'>3/37</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">8.1% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/36</span>
+                <span class='fraction'>3/37</span>
             </div>
         
             
@@ -110,7 +110,8 @@
 <a name='L45'></a><a href='#L45'>45</a>
 <a name='L46'></a><a href='#L46'>46</a>
 <a name='L47'></a><a href='#L47'>47</a>
-<a name='L48'></a><a href='#L48'>48</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -121,6 +122,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -158,7 +160,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
+import { EmptyState, GlassPanel, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyOrchestrationAuditTimelineModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -171,6 +173,7 @@ export <span class="fstat-no" title="function not covered" >function StrategyOrc
 <span class="cstat-no" title="statement not covered" >  if (model.items.length === 0) {</span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
 <span class="cstat-no" title="statement not covered" >      &lt;GlassPanel className="so-audit-panel" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        {model.band ? &lt;TerminalBand model={model.band} className="sp-band" /&gt; : null}</span>
 <span class="cstat-no" title="statement not covered" >        &lt;EmptyState</span>
 <span class="cstat-no" title="statement not covered" >          title={model.emptyTitle ?? model.summary}</span>
 <span class="cstat-no" title="statement not covered" >          body={model.emptyHint ?? t('workspace.strategy.auditTimelineHint')}</span>
@@ -181,13 +184,13 @@ export <span class="fstat-no" title="function not covered" >function StrategyOrc
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return (</span>
 <span class="cstat-no" title="statement not covered" >    &lt;GlassPanel className="so-audit-panel" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div className="sp-head"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;p className="subtle-label"&gt;{t('workspace.strategy.auditTimelineTitle')}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;p className="sp-summary"&gt;{model.summary}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      {model.band ? &lt;TerminalBand model={model.band} className="sp-band" /&gt; : null}</span>
+<span class="cstat-no" title="statement not covered" >      &lt;PanelSection</span>
+<span class="cstat-no" title="statement not covered" >        className="so-audit-section"</span>
+<span class="cstat-no" title="statement not covered" >        eyebrow={t('workspace.strategy.auditTimelineTitle')}</span>
+<span class="cstat-no" title="statement not covered" >        title={model.summary}</span>
+<span class="cstat-no" title="statement not covered" >        hint={t('workspace.strategy.auditTimelineHint')}</span>
+<span class="cstat-no" title="statement not covered" >      /&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;div className="so-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}&gt;</span>
 <span class="cstat-no" title="statement not covered" >        {model.items.map((item) =&gt; (</span>
@@ -211,7 +214,7 @@ export <span class="fstat-no" title="function not covered" >function StrategyOrc
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -4,6 +4,7 @@ import type { BinanceRule, PersistenceStatus, TradingPolicy, UIState } from '../
 import {
   formatDateTimeLabel,
   formatDerivedPrice,
+  formatEmptyStateLabel,
   parseNumericString,
   type PreparedTradingSnapshot,
   type WorkspaceContextBandModel,
@@ -105,14 +106,14 @@ type BuildExecutionOperationsParams = {
 
 function formatInteger(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return String(value)
 }
 
 function formatPercent(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return `${(value * 100).toFixed(1)}%`
 }
@@ -148,13 +149,13 @@ export function buildExecutionDeskSections({
     {
       id: 'best-bid',
       label: t('market.bestBid'),
-      value: latestBid ?? '—',
+      value: latestBid ?? formatEmptyStateLabel('bid'),
       tone: 'positive' as const,
     },
     {
       id: 'best-ask',
       label: t('market.bestAsk'),
-      value: latestAsk ?? '—',
+      value: latestAsk ?? formatEmptyStateLabel('ask'),
       tone: 'negative' as const,
     },
     {
@@ -178,7 +179,7 @@ export function buildExecutionDeskSections({
             value:
               tradingPolicy?.max_binance_order_qty !== undefined && tradingPolicy?.max_binance_order_qty !== null
                 ? String(tradingPolicy.max_binance_order_qty)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'max-notional',
@@ -187,7 +188,7 @@ export function buildExecutionDeskSections({
               tradingPolicy?.max_binance_order_notional_usd !== undefined &&
               tradingPolicy?.max_binance_order_notional_usd !== null
                 ? formatDerivedPrice(tradingPolicy.max_binance_order_notional_usd, 2)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'min-qty',
@@ -195,7 +196,7 @@ export function buildExecutionDeskSections({
             value:
               binanceRule?.min_qty !== undefined && binanceRule?.min_qty !== null
                 ? formatDerivedPrice(binanceRule.min_qty)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'min-notional',
@@ -203,7 +204,7 @@ export function buildExecutionDeskSections({
             value:
               binanceRule?.min_notional !== undefined && binanceRule?.min_notional !== null
                 ? formatDerivedPrice(binanceRule.min_notional, 2)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
         ]
       : [
@@ -218,7 +219,7 @@ export function buildExecutionDeskSections({
             value:
               tradingPolicy?.max_alpaca_order_qty !== undefined && tradingPolicy?.max_alpaca_order_qty !== null
                 ? String(tradingPolicy.max_alpaca_order_qty)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'max-notional',
@@ -227,12 +228,12 @@ export function buildExecutionDeskSections({
               tradingPolicy?.max_alpaca_limit_notional_usd !== undefined &&
               tradingPolicy?.max_alpaca_limit_notional_usd !== null
                 ? formatDerivedPrice(tradingPolicy.max_alpaca_limit_notional_usd, 2)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'account',
             label: t('workspace.execution.operatorAccount'),
-            value: alpacaAccountLabel ?? '—',
+            value: alpacaAccountLabel ?? formatEmptyStateLabel('generic'),
           },
         ]
 
@@ -278,7 +279,10 @@ export function buildExecutionSpotlightModel({
   tradingPolicy,
   binanceRule,
 }: BuildExecutionSpotlightParams): WorkspaceSpotlightModel {
-  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+  const latestLifecycle =
+    preparedSelection.latestOrder?.latestStatus ??
+    preparedSelection.latestOrder?.latestPhase ??
+    t('execution.noLifecycle')
 
   return {
     summary: t('workspace.execution.linkageHint').replace('{symbol}', snapshot.selectedSymbol),
@@ -359,13 +363,13 @@ export function buildExecutionDeskSpotlightModel({
       {
         id: 'best-bid',
         label: t('market.bestBid'),
-        value: latestBid ?? '—',
+        value: latestBid ?? formatEmptyStateLabel('bid'),
         tone: 'positive',
       },
       {
         id: 'best-ask',
         label: t('market.bestAsk'),
-        value: latestAsk ?? '—',
+        value: latestAsk ?? formatEmptyStateLabel('ask'),
         tone: 'negative',
       },
       {
@@ -429,13 +433,13 @@ export function buildExecutionDeskContextModel({
       {
         id: 'bid',
         label: t('market.bestBid'),
-        value: latestBid ?? '—',
+        value: latestBid ?? formatEmptyStateLabel('bid'),
         tone: 'positive',
       },
       {
         id: 'ask',
         label: t('market.bestAsk'),
-        value: latestAsk ?? '—',
+        value: latestAsk ?? formatEmptyStateLabel('ask'),
         tone: 'negative',
       },
       {
@@ -465,7 +469,10 @@ export function buildExecutionHeroBandModel({
   tradingPolicy,
   binanceRule,
 }: BuildExecutionHeroBandParams): WorkspaceContextBandModel {
-  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+  const latestLifecycle =
+    preparedSelection.latestOrder?.latestStatus ??
+    preparedSelection.latestOrder?.latestPhase ??
+    t('execution.noLifecycle')
 
   return {
     eyebrow: t('workspace.execution.description'),
@@ -523,7 +530,10 @@ export function buildExecutionOperatorSections({
   tradingPolicy,
   binanceRule,
 }: BuildExecutionOperatorSectionsParams): WorkspaceOperatorDeckSectionModel[] {
-  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+  const latestLifecycle =
+    preparedSelection.latestOrder?.latestStatus ??
+    preparedSelection.latestOrder?.latestPhase ??
+    t('execution.noLifecycle')
 
   return [
     {
@@ -659,7 +669,7 @@ export function buildExecutionOperationsPanel({
   }
   if (latestAnomaly?.latestStatus) {
     anomalies.push(
-      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.requestId ?? '—'}`,
+      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.requestId ?? formatEmptyStateLabel('request-id')}`,
     )
   }
   if (fillSlippageBps !== undefined && Math.abs(fillSlippageBps) > 5) {
@@ -693,7 +703,7 @@ export function buildExecutionOperationsPanel({
         {
           id: 'latest-status',
           label: t('workspace.execution.operationsLatestStatus'),
-          value: '—',
+          value: t('execution.noLifecycle'),
         },
         {
           id: 'matching-live',
@@ -768,7 +778,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latest-status',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? '—',
+        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? t('execution.noLifecycle'),
       },
       {
         id: 'latency',
@@ -847,7 +857,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'slippage',
         label: t('workspace.execution.operationsSlippage'),
-        value: fillSlippageBps !== undefined ? fillSlippageBps.toFixed(1) : '—',
+        value: fillSlippageBps !== undefined ? fillSlippageBps.toFixed(1) : t('execution.noLatencySample'),
         tone: fillSlippageBps !== undefined && Math.abs(fillSlippageBps) > 5 ? 'accent' : 'default',
       },
     ],
@@ -865,7 +875,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latestStatus',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? '—',
+        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? t('execution.noLifecycle'),
       },
     ],
     lifecycleSummary: [

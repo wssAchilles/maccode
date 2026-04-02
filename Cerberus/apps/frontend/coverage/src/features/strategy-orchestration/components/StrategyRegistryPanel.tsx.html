@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.24% </span>
+                <span class="strong">77.35% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>42/53</span>
+                <span class='fraction'>41/53</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">25% </span>
+                <span class="strong">28.57% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/8</span>
+                <span class='fraction'>2/7</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.24% </span>
+                <span class="strong">77.35% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>42/53</span>
+                <span class='fraction'>41/53</span>
             </div>
         
             
@@ -129,7 +129,10 @@
 <a name='L64'></a><a href='#L64'>64</a>
 <a name='L65'></a><a href='#L65'>65</a>
 <a name='L66'></a><a href='#L66'>66</a>
-<a name='L67'></a><a href='#L67'>67</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -148,6 +151,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -164,9 +168,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -187,6 +191,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -196,7 +202,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, EmptyState, GlassPanel, TerminalBand } from '../../../ui'
+import { DataList, EmptyState, GlassPanel, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyRegistryPanelModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -209,6 +215,7 @@ export function StrategyRegistryPanel({ model }: Props) {
   if (model.rows.length === 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
 <span class="cstat-no" title="statement not covered" >      &lt;GlassPanel className="srg-panel" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        {model.band ? &lt;TerminalBand model={model.band} className="sp-band" /&gt; : null}</span>
 <span class="cstat-no" title="statement not covered" >        &lt;EmptyState</span>
 <span class="cstat-no" title="statement not covered" >          title={model.emptyTitle ?? model.summary}</span>
 <span class="cstat-no" title="statement not covered" >          body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}</span>
@@ -219,29 +226,29 @@ export function StrategyRegistryPanel({ model }: Props) {
 &nbsp;
   return (
     &lt;GlassPanel className="srg-panel" tone="subtle"&gt;
-      &lt;div className="sp-head"&gt;
-        &lt;div&gt;
-          &lt;p className="subtle-label"&gt;{t('workspace.strategy.registryTitle')}&lt;/p&gt;
-          &lt;p className="sp-summary"&gt;{model.summary}&lt;/p&gt;
-          {model.stateSummary ? &lt;p className="sp-hint"&gt;{model.stateSummary}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
-        &lt;/div&gt;
-        &lt;div className="srg-policies"&gt;
-          &lt;p className="srg-policy"&gt;{model.policyLabel}&lt;/p&gt;
-          &lt;p className="srg-downgrade"&gt;{model.downgradeLabel}&lt;/p&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
       {model.band ? &lt;TerminalBand model={model.band} className="sp-band" <span class="branch-0 cbranch-no" title="branch not covered" >/&gt; : null}</span>
+      &lt;PanelSection
+        className="srg-summary-section"
+        eyebrow={t('workspace.strategy.registryTitle')}
+        title={model.summary}
+        hint={model.<span class="branch-0 cbranch-no" title="branch not covered" >stateSummary ?? t('workspace.strategy.registryDescription')}</span>
+        aside={
+          &lt;div className="srg-policies"&gt;
+            &lt;p className="srg-policy"&gt;{model.policyLabel}&lt;/p&gt;
+            &lt;p className="srg-downgrade"&gt;{model.downgradeLabel}&lt;/p&gt;
+          &lt;/div&gt;
+        }
+      /&gt;
 &nbsp;
       &lt;div className="srg-list" role="list" aria-label={t('workspace.strategy.registryTitle')}&gt;
         {model.rows.map((row) =&gt; (
-          &lt;article key={row.id} role="listitem" className="srg-row"&gt;
-            &lt;div className="srg-row-head"&gt;
-              &lt;div&gt;
-                &lt;p className="subtle-label"&gt;{row.label}&lt;/p&gt;
-                &lt;p className="srg-engine"&gt;{row.engine}&lt;/p&gt;
-                {row.impactLabel ? &lt;p className="srg-impact"&gt;{row.impactLabel}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
-                {row.detailHint ? &lt;p className="sp-hint"&gt;{row.detailHint}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
-              &lt;/div&gt;
+          &lt;PanelSection
+            key={row.id}
+            className="srg-row"
+            eyebrow={row.engine}
+            title={row.label}
+            hint={row.detailHint}
+            aside={
               &lt;p
                 className={
                   row.stateTone === 'accent'
@@ -253,9 +260,11 @@ export function StrategyRegistryPanel({ model }: Props) {
               &gt;
                 {row.stateLabel}
               &lt;/p&gt;
-            &lt;/div&gt;
+            }
+          &gt;
+            {row.impactLabel ? &lt;p className="srg-impact"&gt;{row.impactLabel}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
             &lt;DataList items={row.items} /&gt;
-          &lt;/article&gt;
+          &lt;/PanelSection&gt;
         ))}
       &lt;/div&gt;
     &lt;/GlassPanel&gt;
@@ -268,7 +277,7 @@ export function StrategyRegistryPanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

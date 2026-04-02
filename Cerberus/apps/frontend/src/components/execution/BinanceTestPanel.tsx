@@ -104,12 +104,12 @@ export function BinanceTestPanel({
       <GlassPanel tone="subtle">
         <DataList
           items={[
-            { id: 'notional', label: 'Notional', value: notional === null ? '—' : notional.toFixed(6) },
-            { id: 'minNotional', label: 'Min notional', value: String(rule?.min_notional ?? '—') },
-            { id: 'minQty', label: 'Min qty', value: String(rule?.min_qty ?? '—') },
-            { id: 'stepSize', label: 'Step size', value: String(rule?.step_size ?? '—') },
-            { id: 'tickSize', label: 'Tick size', value: String(rule?.tick_size ?? '—') },
-            { id: 'policyQty', label: 'Policy max qty', value: String(policy?.max_binance_order_qty ?? '—') },
+            { id: 'notional', label: 'Notional', value: notional === null ? t('common.na') : notional.toFixed(6) },
+            { id: 'minNotional', label: 'Min notional', value: String(rule?.min_notional ?? t('common.na')) },
+            { id: 'minQty', label: 'Min qty', value: String(rule?.min_qty ?? t('common.na')) },
+            { id: 'stepSize', label: 'Step size', value: String(rule?.step_size ?? t('common.na')) },
+            { id: 'tickSize', label: 'Tick size', value: String(rule?.tick_size ?? t('common.na')) },
+            { id: 'policyQty', label: 'Policy max qty', value: String(policy?.max_binance_order_qty ?? t('common.na')) },
           ]}
         />
       </GlassPanel>
@@ -166,7 +166,7 @@ export function BinanceTestPanel({
 
       <DiagnosticDrawer
         title={t('execution.response')}
-        summary={result ? String(result.status) : '—'}
+        summary={result ? String(result.status) : t('common.na')}
         defaultOpen={Boolean(result?.error)}
         testId="binance-response-drawer"
       >

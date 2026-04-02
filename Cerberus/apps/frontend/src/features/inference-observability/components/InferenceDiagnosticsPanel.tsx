@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, GlassPanel, StatusPill, TerminalBand } from '../../../ui'
+import { DataList, PanelSection, StatusPill, TerminalBand } from '../../../ui'
 import { InferenceAuditTimeline } from './InferenceAuditTimeline'
 import { InferenceSymbolComparisonPanel } from './InferenceSymbolComparisonPanel'
 import type { InferenceDiagnosticsModel } from '../view-models'
@@ -15,45 +15,56 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
     <div className="stack">
       <TerminalBand model={model.band} className="if-band" />
       <div className="health-grid">
-        <GlassPanel tone="subtle" className="ifp">
-          <div className="ifc-head">
-            <div>
-              <p className="subtle-label">{t('workspace.inference.runtimeStatus')}</p>
-              <p className="ifc-summary">{model.summary}</p>
-            </div>
-            <StatusPill state={model.state} label={model.stateLabel} compact />
-          </div>
+        <PanelSection
+          className="ifp"
+          eyebrow={t('workspace.inference.runtimeStatus')}
+          title={model.summary}
+          hint={model.reason ?? t('workspace.inference.description')}
+          aside={<StatusPill state={model.state} label={model.stateLabel} compact />}
+        >
           <DataList items={model.runtimeItems} />
           {model.reason ? (
             <p className="ip-reason" role="alert">
               {t('workspace.inference.reason')}: {model.reason}
             </p>
           ) : null}
-        </GlassPanel>
+        </PanelSection>
 
-        <GlassPanel tone="subtle" className="ifp">
-          <p className="subtle-label">{t('workspace.inference.rolloutSummary')}</p>
-          <p className="ifc-summary">{t('workspace.inference.description')}</p>
+        <PanelSection
+          className="ifp"
+          eyebrow={t('workspace.inference.rolloutSummary')}
+          title={model.rolloutItems[0]?.value ?? model.stateLabel}
+          hint={t('workspace.inference.description')}
+        >
           <DataList items={model.rolloutItems} />
-        </GlassPanel>
+        </PanelSection>
 
-        <GlassPanel tone="subtle" className="ifp">
-          <p className="subtle-label">{t('workspace.inference.comparisonSummary')}</p>
-          <p className="ifc-summary">{model.summary}</p>
+        <PanelSection
+          className="ifp"
+          eyebrow={t('workspace.inference.comparisonSummary')}
+          title={model.symbolBand.title}
+          hint={t('workspace.inference.symbolComparison')}
+        >
           <DataList items={model.comparisonItems} />
-        </GlassPanel>
+        </PanelSection>
 
-        <GlassPanel tone="subtle" className="ifp">
-          <p className="subtle-label">{t('workspace.inference.model')}</p>
-          <p className="ifc-summary">{model.summary}</p>
+        <PanelSection
+          className="ifp"
+          eyebrow={t('workspace.inference.model')}
+          title={model.summary}
+          hint={t('workspace.inference.model')}
+        >
           <DataList items={model.modelItems} />
-        </GlassPanel>
+        </PanelSection>
 
-        <GlassPanel tone="subtle" className="ifp">
-          <p className="subtle-label">{t('workspace.inference.recentAudit')}</p>
-          <p className="ifc-summary">{t('workspace.inference.gateBlockers')}</p>
+        <PanelSection
+          className="ifp"
+          eyebrow={t('workspace.inference.recentAudit')}
+          title={model.auditBand.title}
+          hint={model.auditBand.hint}
+        >
           <DataList items={model.auditItems} />
-        </GlassPanel>
+        </PanelSection>
       </div>
 
       <div className="idt-grid">

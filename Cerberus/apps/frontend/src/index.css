@@ -368,6 +368,66 @@ button {
   margin-bottom: 14px;
 }
 
+.if-sub-band .tb-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.psx {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--rm);
+  border: 1px solid rgba(124, 180, 192, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 252, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.psx-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.psx-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.psx-title,
+.ifc-summary {
+  margin: 0;
+  color: var(--t0);
+  font: 700 1rem/1.2 var(--fh);
+}
+
+.psx-hint {
+  margin: 0;
+  color: var(--t2);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.psx-aside {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.psx-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
 .diag-shell {
   padding-bottom: 0;
 }
@@ -605,6 +665,8 @@ button {
 }
 
 .ss-card,
+.overview-health-band,
+.ob-band,
 .hd-card,
 .signal-card,
 .health-card,
@@ -791,6 +853,17 @@ button {
   gap: 18px;
 }
 
+.tail-shell {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.tail-drawer {
+  display: grid;
+  gap: 14px;
+}
+
 .stack-sm {
   display: grid;
   gap: 12px;
@@ -805,6 +878,10 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.hp-tail-grid {
+  align-items: start;
 }
 
 .idt-grid {
@@ -1322,10 +1399,36 @@ button {
 }
 
 .hp-section,
+.spf-section,
+.tail-card,
+.hp-tail-section,
+.xl-stage-section,
+.xl-metrics-section,
+.xl-detail-section,
+.mer-section,
+.obf,
 .iop-panel,
 .xo-diagnosis,
 .xo-alerts {
   display: grid;
+  gap: 12px;
+}
+
+.tail-card .data-list,
+.spf-section .data-list,
+.xl-detail-section .data-list,
+.hp-tail-section .data-list {
+  gap: 9px;
+}
+
+.overview-health-band,
+.ob-band,
+.mer-band {
+  margin-bottom: 12px;
+}
+
+.hd-card .psx-body,
+.obf .psx-body {
   gap: 12px;
 }
 
@@ -1420,6 +1523,17 @@ button {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.xl-stage-section .psx-body,
+.xl-metrics-section .psx-body {
+  gap: 14px;
+}
+
+.xl-detail-section .psx-title,
+.signal-card .psx-title,
+.spf-section .psx-title {
+  font: 700 1rem/1.16 var(--fh);
 }
 
 .xl-stage {
@@ -1649,8 +1763,9 @@ button {
 
 .tb {
   display: grid;
-  grid-template-columns: minmax(0, 0.78fr) minmax(420px, 1.22fr);
+  grid-template-columns: minmax(180px, 0.92fr) minmax(0, 1.08fr);
   gap: 16px;
+  align-items: start;
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid rgba(124, 180, 192, 0.14);
@@ -1679,14 +1794,16 @@ button {
 
 .tb-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .tb-item {
   display: grid;
   gap: 6px;
   align-content: start;
+  min-width: 0;
   padding-left: 10px;
   border-left: 1px solid rgba(124, 180, 192, 0.12);
 }
@@ -1701,6 +1818,8 @@ button {
   font: 700 0.9rem/1.25 var(--fm);
   font-variant-numeric: tabular-nums;
   color: var(--t0);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .xec-summary,
@@ -2057,8 +2176,6 @@ button {
 }
 
 .obf {
-  display: grid;
-  gap: 10px;
   margin-top: 14px;
   padding-top: 0;
   border-top: 0;

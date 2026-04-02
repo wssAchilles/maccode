@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { normalizeError } from './http'
+import { normalizeError, requestEnvelope } from './http'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('normalizeError', () => {
   it('maps structured error payload', () => {
@@ -32,5 +36,24 @@ describe('normalizeError', () => {
     })
     expect(error.code).toBe('validation_error')
     expect(error.request_id).toBe('rid-shell-1')
+  })
+
+  it('treats html success responses as invalid api payloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/html' }),
+        text: async () => '<!doctype html><html><body>app shell</body></html>',
+      }),
+    )
+
+    const result = await requestEnvelope('https://api.example.com/test')
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      throw new Error('expected error envelope')
+    }
+    expect(result.error.code).toBe('invalid_html_response')
   })
 })

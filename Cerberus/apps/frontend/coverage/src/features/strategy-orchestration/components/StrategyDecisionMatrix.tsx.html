@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">31.14% </span>
+                <span class="strong">40.98% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>19/61</span>
+                <span class='fraction'>25/61</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">14.28% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/7</span>
+                <span class='fraction'>1/8</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">31.14% </span>
+                <span class="strong">40.98% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>19/61</span>
+                <span class='fraction'>25/61</span>
             </div>
         
             
@@ -154,17 +154,17 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -214,7 +214,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
+import { EmptyState, GlassPanel, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyDecisionMatrixModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -227,6 +227,7 @@ export function StrategyDecisionMatrix({ model }: Props) {
   if (model.items.length === 0) {
     return (
       &lt;GlassPanel className="sp sp-empty" tone="subtle"&gt;
+        {model.band ? &lt;TerminalBand model={model.band} className="sp-band" <span class="branch-0 cbranch-no" title="branch not covered" >/&gt; : null}</span>
         &lt;EmptyState title={model.<span class="branch-0 cbranch-no" title="branch not covered" >emptyTitle ?? model.summary} b</span>ody={model.<span class="branch-0 cbranch-no" title="branch not covered" >emptyHint ?? model.hint} /</span>&gt;
       &lt;/GlassPanel&gt;
     )
@@ -234,15 +235,14 @@ export function StrategyDecisionMatrix({ model }: Props) {
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return (</span>
 <span class="cstat-no" title="statement not covered" >    &lt;GlassPanel className="sp" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div className="sp-head"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;p className="subtle-label"&gt;{t('workspace.strategy.matrixTitle')}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;p className="sp-summary"&gt;{model.summary}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;p className="sp-hint"&gt;{model.hint}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-        {model.signalId ? &lt;p className="sp-signal-id"&gt;rid: {model.signalId}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
-      &lt;/div&gt;
-      {model.<span class="branch-0 cbranch-no" title="branch not covered" >band ? &lt;TerminalBand model={model.band} className="sp-band" <span class="branch-0 cbranch-no" title="branch not covered" >/&gt; : n</span>ull}</span>
+      {model.band ? &lt;TerminalBand model={model.band} className="sp-band" <span class="branch-0 cbranch-no" title="branch not covered" >/&gt; : null}</span>
+      &lt;PanelSection
+        className="sp-section"
+        eyebrow={t('workspace.strategy.matrixTitle')}
+        title={model.summary}
+        hint={model.hint}
+        aside={model.<span class="branch-0 cbranch-no" title="branch not covered" >signalId ? &lt;p className="sp-signal-id"&gt;rid: {model.signalId}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : n</span>ull}</span>
+      /&gt;
 &nbsp;
       &lt;div className="sd-list" role="list" aria-label={t('workspace.strategy.matrixTitle')}&gt;
         {model.items.map((item) =&gt; (
@@ -295,7 +295,7 @@ export function StrategyDecisionMatrix({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

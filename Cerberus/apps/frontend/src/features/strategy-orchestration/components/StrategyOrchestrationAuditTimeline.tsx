@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
+import { EmptyState, GlassPanel, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyOrchestrationAuditTimelineModel } from '../view-models'
 
 type Props = {
@@ -12,6 +12,7 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
   if (model.items.length === 0) {
     return (
       <GlassPanel className="so-audit-panel" tone="subtle">
+        {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.auditTimelineHint')}
@@ -22,13 +23,13 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
 
   return (
     <GlassPanel className="so-audit-panel" tone="subtle">
-      <div className="sp-head">
-        <div>
-          <p className="subtle-label">{t('workspace.strategy.auditTimelineTitle')}</p>
-          <p className="sp-summary">{model.summary}</p>
-        </div>
-      </div>
       {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
+      <PanelSection
+        className="so-audit-section"
+        eyebrow={t('workspace.strategy.auditTimelineTitle')}
+        title={model.summary}
+        hint={t('workspace.strategy.auditTimelineHint')}
+      />
 
       <div className="so-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}>
         {model.items.map((item) => (

@@ -1,5 +1,5 @@
 import type { OrderTimelineEvent } from '../types/contracts'
-import { formatDateTimeLabel, formatRequestLabel } from './workbench'
+import { formatDateTimeLabel, formatEmptyStateLabel, formatRequestLabel } from './workbench'
 
 export type PreparedExecutionTimelineRow = {
   id: string
@@ -74,9 +74,12 @@ function intersectSorted(left: number[], right: number[]): number[] {
   return intersection
 }
 
-function formatCompactIdentifier(value?: string | null): string {
-  const normalized = formatRequestLabel(value)
-  if (normalized === '—' || normalized.length <= 28) {
+function formatCompactIdentifier(
+  value: string | null | undefined,
+  kind: 'request-id' | 'order-id' | 'client-order-id' | 'execution-id' = 'request-id',
+): string {
+  const normalized = formatRequestLabel(value, formatEmptyStateLabel(kind))
+  if (normalized === formatEmptyStateLabel(kind) || normalized.length <= 28) {
     return normalized
   }
   return `${normalized.slice(0, 16)}…${normalized.slice(-8)}`
@@ -117,17 +120,17 @@ export function buildPreparedExecutionTimeline(orderEvents: OrderTimelineEvent[]
       event,
       title: `${event.event_type} · ${event.lifecycle_phase}`,
       subtitle: [
-        event.symbol ?? '—',
-        event.account_id ?? '—',
-        event.client_order_id ?? event.request_id ?? '—',
+        formatRequestLabel(event.symbol),
+        formatRequestLabel(event.account_id),
+        formatRequestLabel(event.client_order_id ?? event.request_id, formatEmptyStateLabel('request-id')),
       ].join(' · '),
       rightTop: event.status ?? event.lifecycle_phase,
       receivedAtLabel: formatDateTimeLabel(event.received_at),
       eventTimeLabel: formatDateTimeLabel(event.event_time),
-      orderIdLabel: formatCompactIdentifier(event.order_id),
-      requestIdLabel: formatCompactIdentifier(event.request_id),
-      clientOrderIdLabel: formatCompactIdentifier(event.client_order_id),
-      executionIdLabel: formatCompactIdentifier(event.execution_id),
+      orderIdLabel: formatCompactIdentifier(event.order_id, 'order-id'),
+      requestIdLabel: formatCompactIdentifier(event.request_id, 'request-id'),
+      clientOrderIdLabel: formatCompactIdentifier(event.client_order_id, 'client-order-id'),
+      executionIdLabel: formatCompactIdentifier(event.execution_id, 'execution-id'),
       searchText: [
         event.symbol,
         event.account_id,

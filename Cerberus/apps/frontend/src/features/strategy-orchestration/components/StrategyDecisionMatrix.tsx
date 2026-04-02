@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
+import { EmptyState, GlassPanel, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyDecisionMatrixModel } from '../view-models'
 
 type Props = {
@@ -12,6 +12,7 @@ export function StrategyDecisionMatrix({ model }: Props) {
   if (model.items.length === 0) {
     return (
       <GlassPanel className="sp sp-empty" tone="subtle">
+        {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
         <EmptyState title={model.emptyTitle ?? model.summary} body={model.emptyHint ?? model.hint} />
       </GlassPanel>
     )
@@ -19,15 +20,14 @@ export function StrategyDecisionMatrix({ model }: Props) {
 
   return (
     <GlassPanel className="sp" tone="subtle">
-      <div className="sp-head">
-        <div>
-          <p className="subtle-label">{t('workspace.strategy.matrixTitle')}</p>
-          <p className="sp-summary">{model.summary}</p>
-          <p className="sp-hint">{model.hint}</p>
-        </div>
-        {model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
-      </div>
       {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
+      <PanelSection
+        className="sp-section"
+        eyebrow={t('workspace.strategy.matrixTitle')}
+        title={model.summary}
+        hint={model.hint}
+        aside={model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
+      />
 
       <div className="sd-list" role="list" aria-label={t('workspace.strategy.matrixTitle')}>
         {model.items.map((item) => (

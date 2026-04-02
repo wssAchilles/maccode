@@ -12,6 +12,7 @@ import {
 } from '../../view-models/workbench'
 import {
   buildOverviewContextBandModel,
+  buildOverviewHealthDigestBandModel,
   buildOverviewMetricTiles,
   buildOverviewOperatorSections,
   buildOverviewRecentSignalCards,
@@ -109,6 +110,10 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
         readyCount: domainSummary.readyCount,
         attentionCount: domainSummary.attentionCount,
         recentSignalCount: recentSignals.length,
+      }),
+      healthDigestBand: buildOverviewHealthDigestBandModel({
+        t,
+        domainStatus,
       }),
       spotlight: buildOverviewSpotlightModel({
         t,

@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
@@ -45,22 +45,33 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         </SectionFrame>
 
         <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="feature">
-          <div className="health-grid">
-            <GlassPanel tone="subtle">
+          <div className="health-grid hp-tail-grid">
+            <PanelSection
+              className="hp-tail-section"
+              eyebrow={t('workspace.health.operatorPersistenceTitle')}
+              title={t('workspace.health.workerSnapshotTitle')}
+              hint={t('workspace.health.operatorPersistenceDescription')}
+            >
               <DataList items={model.workerItems} />
-            </GlassPanel>
-            <GlassPanel tone="subtle">
+            </PanelSection>
+            <PanelSection
+              className="hp-tail-section"
+              eyebrow={t('workspace.health.persistenceTitle')}
+              title={t('workspace.health.storeSnapshotTitle')}
+              hint={t('workspace.health.persistenceDescription')}
+            >
               <DataList items={model.storeItems} />
-            </GlassPanel>
+            </PanelSection>
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail">
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" bodyClassName="tail-shell">
           <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
           <DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
             summary={model.inferenceDiagnostics.summary}
             testId="health-inference-operations-drawer"
+            contentClassName="tail-drawer"
           >
             <Suspense fallback={<PanelSkeleton height="280px" />}>
               <LazyHealthInferenceOperationsDrawerContent active={_active} />

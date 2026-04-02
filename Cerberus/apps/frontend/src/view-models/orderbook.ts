@@ -1,5 +1,7 @@
 import type { TranslationKey } from '../i18n/messages'
 import type { MatchingOrderBook, MatchingOrderBookLevel } from '../types/contracts'
+import type { WorkspaceContextBandModel } from './workbench'
+import { formatEmptyStateLabel } from './workbench'
 import { formatOptionalTimeLabel, isRealtimeSnapshotStale } from './realtime'
 
 type Translate = (key: TranslationKey) => string
@@ -31,6 +33,7 @@ export type MatchingOrderBookLevelRowModel = {
 export type MatchingOrderBookPanelModel = {
   title: string
   description: string
+  band: WorkspaceContextBandModel
   bidsTitle: string
   asksTitle: string
   priceColumnTitle: string
@@ -62,8 +65,8 @@ export type MatchingOrderBookPanelModel = {
 
 const preparedOrderBookCache = new WeakMap<MatchingOrderBook, PreparedMatchingOrderBook>()
 
-function formatPrice(value?: number): string {
-  return value !== undefined ? value.toFixed(6) : '—'
+function formatPrice(value?: number, fallback = formatEmptyStateLabel('generic')): string {
+  return value !== undefined ? value.toFixed(6) : fallback
 }
 
 function formatQuantity(value: number): string {
@@ -75,13 +78,13 @@ function prepareMatchingOrderBook(orderbook?: MatchingOrderBook): PreparedMatchi
     return {
       bids: [],
       asks: [],
-      bestBidLabel: '—',
-      bestAskLabel: '—',
-      midPriceLabel: '—',
-      spreadLabel: '—',
+      bestBidLabel: formatEmptyStateLabel('bid'),
+      bestAskLabel: formatEmptyStateLabel('ask'),
+      midPriceLabel: formatEmptyStateLabel('mid'),
+      spreadLabel: formatEmptyStateLabel('spread'),
       depthBalanceLabel: '0.000 / 0.000',
       totalDepthLabel: '0.000',
-      liquidityBiasLabel: '—',
+      liquidityBiasLabel: formatEmptyStateLabel('mid'),
       emptyKind: 'disabled',
     }
   }
@@ -115,15 +118,18 @@ function prepareMatchingOrderBook(orderbook?: MatchingOrderBook): PreparedMatchi
     depth: orderbook.depth,
     bids: buildLevelRows(bids, 'bid'),
     asks: buildLevelRows(asks, 'ask'),
-    bestBidLabel: formatPrice(bestBid),
-    bestAskLabel: formatPrice(bestAsk),
-    midPriceLabel: formatPrice(midPrice),
-    spreadLabel: formatPrice(bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined),
+    bestBidLabel: formatPrice(bestBid, formatEmptyStateLabel('bid')),
+    bestAskLabel: formatPrice(bestAsk, formatEmptyStateLabel('ask')),
+    midPriceLabel: formatPrice(midPrice, formatEmptyStateLabel('mid')),
+    spreadLabel: formatPrice(
+      bestBid !== undefined && bestAsk !== undefined ? bestAsk - bestBid : undefined,
+      formatEmptyStateLabel('spread'),
+    ),
     depthBalanceLabel: `${totalBidDepth.toFixed(3)} / ${totalAskDepth.toFixed(3)}`,
     totalDepthLabel: totalDepth.toFixed(3),
     liquidityBiasLabel:
       depthBalanceRatio === undefined
-        ? '—'
+        ? formatEmptyStateLabel('mid')
         : depthBalanceRatio >= 0.58
           ? 'bid-heavy'
           : depthBalanceRatio <= 0.42
@@ -197,6 +203,42 @@ export function buildMatchingOrderBookPanelModel({
       prepared.symbol && prepared.depth !== undefined
         ? `${prepared.symbol} · depth ${prepared.depth}`
         : t('common.disabled'),
+    band: {
+      eyebrow: t('orderbook.title'),
+      title: prepared.symbol ?? t('orderbook.empty'),
+      hint: stale ? t('orderbook.staleHint') : prepared.symbol && prepared.depth !== undefined ? `${prepared.symbol} · depth ${prepared.depth}` : t('common.disabled'),
+      accent: stale ? 'amber' : 'cyan',
+      items: [
+        {
+          id: 'best-bid',
+          label: t('market.bestBid'),
+          value: prepared.bestBidLabel,
+          tone: 'positive',
+        },
+        {
+          id: 'best-ask',
+          label: t('market.bestAsk'),
+          value: prepared.bestAskLabel,
+          tone: 'negative',
+        },
+        {
+          id: 'mid-price',
+          label: t('orderbook.midPrice'),
+          value: prepared.midPriceLabel,
+          tone: 'accent',
+        },
+        {
+          id: 'spread',
+          label: t('orderbook.spread'),
+          value: prepared.spreadLabel,
+        },
+        {
+          id: 'updated',
+          label: t('orderbook.updated'),
+          value: formatOptionalTimeLabel(prepared.generatedAtMs, t('common.na')),
+        },
+      ],
+    },
     bidsTitle: t('orderbook.bids'),
     asksTitle: t('orderbook.asks'),
     priceColumnTitle: t('orderbook.priceColumn'),
@@ -226,7 +268,7 @@ export function buildMatchingOrderBookPanelModel({
           ? t('orderbook.liquidityBias.askHeavy')
           : prepared.liquidityBiasLabel === 'balanced'
             ? t('orderbook.liquidityBias.balanced')
-            : '—',
+            : t('orderbook.liquidityBiasPending'),
     emptyTitle: emptyState.emptyTitle,
     emptyBody: emptyState.emptyBody,
     stale,

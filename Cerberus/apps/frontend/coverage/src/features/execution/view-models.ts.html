@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.03% </span>
+                <span class="strong">67.4% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>547/804</span>
+                <span class='fraction'>548/813</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.03% </span>
+                <span class="strong">67.4% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>547/804</span>
+                <span class='fraction'>548/813</span>
             </div>
         
             
@@ -996,10 +996,21 @@
 <a name='L931'></a><a href='#L931'>931</a>
 <a name='L932'></a><a href='#L932'>932</a>
 <a name='L933'></a><a href='#L933'>933</a>
-<a name='L934'></a><a href='#L934'>934</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L934'></a><a href='#L934'>934</a>
+<a name='L935'></a><a href='#L935'>935</a>
+<a name='L936'></a><a href='#L936'>936</a>
+<a name='L937'></a><a href='#L937'>937</a>
+<a name='L938'></a><a href='#L938'>938</a>
+<a name='L939'></a><a href='#L939'>939</a>
+<a name='L940'></a><a href='#L940'>940</a>
+<a name='L941'></a><a href='#L941'>941</a>
+<a name='L942'></a><a href='#L942'>942</a>
+<a name='L943'></a><a href='#L943'>943</a>
+<a name='L944'></a><a href='#L944'>944</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1277,6 +1288,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1464,6 +1478,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -1515,6 +1532,9 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1935,6 +1955,7 @@ import type { BinanceRule, PersistenceStatus, TradingPolicy, UIState } from '../
 import {
   formatDateTimeLabel,
   formatDerivedPrice,
+  formatEmptyStateLabel,
   parseNumericString,
   type PreparedTradingSnapshot,
   type WorkspaceContextBandModel,
@@ -2036,14 +2057,14 @@ type BuildExecutionOperationsParams = {
 &nbsp;
 function formatInteger(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return String(value)
 }
 &nbsp;
 function formatPercent(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >    return '—'</span>
+<span class="cstat-no" title="statement not covered" >    return formatEmptyStateLabel('generic')</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
   return `${(value * 100).toFixed(1)}%`
 }
@@ -2079,13 +2100,13 @@ export function buildExecutionDeskSections({
     {
       id: 'best-bid',
       label: t('market.bestBid'),
-      value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? '—',</span>
+      value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? formatEmptyStateLabel('bid'),</span>
       tone: 'positive' as const,
     },
     {
       id: 'best-ask',
       label: t('market.bestAsk'),
-      value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? '—',</span>
+      value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? formatEmptyStateLabel('ask'),</span>
       tone: 'negative' as const,
     },
     {
@@ -2109,7 +2130,7 @@ export function buildExecutionDeskSections({
             value:
               tradingPolicy?.max_binance_order_qty !== undefined &amp;&amp; tradingPolicy?.max_binance_order_qty !== null
                 ? String(tradingPolicy.max_binance_order_qty)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'max-notional',
@@ -2118,7 +2139,7 @@ export function buildExecutionDeskSections({
               tradingPolicy?.max_binance_order_notional_usd !== undefined &amp;&amp;
               tradingPolicy?.max_binance_order_notional_usd !== null
                 ? formatDerivedPrice(tradingPolicy.max_binance_order_notional_usd, 2)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'min-qty',
@@ -2126,7 +2147,7 @@ export function buildExecutionDeskSections({
             value:
               binanceRule?.min_qty !== undefined &amp;&amp; binanceRule?.min_qty !== null
                 ? formatDerivedPrice(binanceRule.min_qty)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
           {
             id: 'min-notional',
@@ -2134,7 +2155,7 @@ export function buildExecutionDeskSections({
             value:
               binanceRule?.min_notional !== undefined &amp;&amp; binanceRule?.min_notional !== null
                 ? formatDerivedPrice(binanceRule.min_notional, 2)
-                : '—',
+                : formatEmptyStateLabel('generic'),
           },
 <span class="branch-0 cbranch-no" title="branch not covered" >        ]</span>
 <span class="cstat-no" title="statement not covered" >      : [</span>
@@ -2149,7 +2170,7 @@ export function buildExecutionDeskSections({
 <span class="cstat-no" title="statement not covered" >            value:</span>
 <span class="cstat-no" title="statement not covered" >              tradingPolicy?.max_alpaca_order_qty !== undefined &amp;&amp; tradingPolicy?.max_alpaca_order_qty !== null</span>
 <span class="cstat-no" title="statement not covered" >                ? String(tradingPolicy.max_alpaca_order_qty)</span>
-<span class="cstat-no" title="statement not covered" >                : '—',</span>
+<span class="cstat-no" title="statement not covered" >                : formatEmptyStateLabel('generic'),</span>
 <span class="cstat-no" title="statement not covered" >          },</span>
 <span class="cstat-no" title="statement not covered" >          {</span>
 <span class="cstat-no" title="statement not covered" >            id: 'max-notional',</span>
@@ -2158,12 +2179,12 @@ export function buildExecutionDeskSections({
 <span class="cstat-no" title="statement not covered" >              tradingPolicy?.max_alpaca_limit_notional_usd !== undefined &amp;&amp;</span>
 <span class="cstat-no" title="statement not covered" >              tradingPolicy?.max_alpaca_limit_notional_usd !== null</span>
 <span class="cstat-no" title="statement not covered" >                ? formatDerivedPrice(tradingPolicy.max_alpaca_limit_notional_usd, 2)</span>
-<span class="cstat-no" title="statement not covered" >                : '—',</span>
+<span class="cstat-no" title="statement not covered" >                : formatEmptyStateLabel('generic'),</span>
 <span class="cstat-no" title="statement not covered" >          },</span>
 <span class="cstat-no" title="statement not covered" >          {</span>
 <span class="cstat-no" title="statement not covered" >            id: 'account',</span>
 <span class="cstat-no" title="statement not covered" >            label: t('workspace.execution.operatorAccount'),</span>
-<span class="cstat-no" title="statement not covered" >            value: alpacaAccountLabel ?? '—',</span>
+<span class="cstat-no" title="statement not covered" >            value: alpacaAccountLabel ?? formatEmptyStateLabel('generic'),</span>
 <span class="cstat-no" title="statement not covered" >          },</span>
 <span class="cstat-no" title="statement not covered" >        ]</span>
 &nbsp;
@@ -2209,7 +2230,10 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >  tradingPolicy,</span>
 <span class="cstat-no" title="statement not covered" >  binanceRule,</span>
 <span class="cstat-no" title="statement not covered" >}: BuildExecutionSpotlightParams): WorkspaceSpotlightModel {</span>
-<span class="cstat-no" title="statement not covered" >  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'</span>
+<span class="cstat-no" title="statement not covered" >  const latestLifecycle =</span>
+<span class="cstat-no" title="statement not covered" >    preparedSelection.latestOrder?.latestStatus ??</span>
+<span class="cstat-no" title="statement not covered" >    preparedSelection.latestOrder?.latestPhase ??</span>
+<span class="cstat-no" title="statement not covered" >    t('execution.noLifecycle')</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
 <span class="cstat-no" title="statement not covered" >    summary: t('workspace.execution.linkageHint').replace('{symbol}', snapshot.selectedSymbol),</span>
@@ -2290,13 +2314,13 @@ export function buildExecutionDeskSpotlightModel({
       {
         id: 'best-bid',
         label: t('market.bestBid'),
-        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? '—',</span>
+        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? formatEmptyStateLabel('bid'),</span>
         tone: 'positive',
       },
       {
         id: 'best-ask',
         label: t('market.bestAsk'),
-        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? '—',</span>
+        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? formatEmptyStateLabel('ask'),</span>
         tone: 'negative',
       },
       {
@@ -2360,13 +2384,13 @@ export function buildExecutionDeskContextModel({
       {
         id: 'bid',
         label: t('market.bestBid'),
-        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? '—',</span>
+        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestBid ?? formatEmptyStateLabel('bid'),</span>
         tone: 'positive',
       },
       {
         id: 'ask',
         label: t('market.bestAsk'),
-        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? '—',</span>
+        value: <span class="branch-0 cbranch-no" title="branch not covered" >latestAsk ?? formatEmptyStateLabel('ask'),</span>
         tone: 'negative',
       },
       {
@@ -2396,7 +2420,10 @@ export function buildExecutionHeroBandModel({
   tradingPolicy,
   binanceRule,
 }: BuildExecutionHeroBandParams): WorkspaceContextBandModel {
-  const latestLifecycle = preparedSelection.latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? preparedSelection.latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? '</span>—'</span>
+  const latestLifecycle =
+    preparedSelection.latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ??</span>
+<span class="cstat-no" title="statement not covered" >    preparedSelection.latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ??</span></span>
+<span class="cstat-no" title="statement not covered" >    t('execution.noLifecycle')</span>
 &nbsp;
   return {
     eyebrow: t('workspace.execution.description'),
@@ -2454,7 +2481,10 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >  tradingPolicy,</span>
 <span class="cstat-no" title="statement not covered" >  binanceRule,</span>
 <span class="cstat-no" title="statement not covered" >}: BuildExecutionOperatorSectionsParams): WorkspaceOperatorDeckSectionModel[] {</span>
-<span class="cstat-no" title="statement not covered" >  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'</span>
+<span class="cstat-no" title="statement not covered" >  const latestLifecycle =</span>
+<span class="cstat-no" title="statement not covered" >    preparedSelection.latestOrder?.latestStatus ??</span>
+<span class="cstat-no" title="statement not covered" >    preparedSelection.latestOrder?.latestPhase ??</span>
+<span class="cstat-no" title="statement not covered" >    t('execution.noLifecycle')</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  return [</span>
 <span class="cstat-no" title="statement not covered" >    {</span>
@@ -2590,7 +2620,7 @@ export function buildExecutionOperationsPanel({
 <span class="cstat-no" title="statement not covered" >  }</span>
   if (latestAnomaly?.latestStatus) {
     anomalies.push(
-      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.<span class="branch-0 cbranch-no" title="branch not covered" >requestId ?? '—'}</span>`,
+      `${t('workspace.execution.operationsLatestAnomaly')}: ${latestAnomaly.latestStatus} · ${latestAnomaly.<span class="branch-0 cbranch-no" title="branch not covered" >requestId ?? formatEmptyStateLabel('request-id')}</span>`,
     )
   }
   if (fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(fillSlippageBps) &gt; 5) <span class="branch-0 cbranch-no" title="branch not covered" >{</span></span>
@@ -2624,7 +2654,7 @@ export function buildExecutionOperationsPanel({
 <span class="cstat-no" title="statement not covered" >        {</span>
 <span class="cstat-no" title="statement not covered" >          id: 'latest-status',</span>
 <span class="cstat-no" title="statement not covered" >          label: t('workspace.execution.operationsLatestStatus'),</span>
-<span class="cstat-no" title="statement not covered" >          value: '—',</span>
+<span class="cstat-no" title="statement not covered" >          value: t('execution.noLifecycle'),</span>
 <span class="cstat-no" title="statement not covered" >        },</span>
 <span class="cstat-no" title="statement not covered" >        {</span>
 <span class="cstat-no" title="statement not covered" >          id: 'matching-live',</span>
@@ -2699,7 +2729,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latest-status',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? '</span>—',</span>
+        value: latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? t</span>('execution.noLifecycle'),</span>
       },
       {
         id: 'latency',
@@ -2778,7 +2808,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'slippage',
         label: t('workspace.execution.operationsSlippage'),
-        value: fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined ? fillSlippageBps.toFixed(1) : '</span>—',
+        value: fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined ? fillSlippageBps.toFixed(1) : t</span>('execution.noLatencySample'),
         tone: fillSlippageBps !== <span class="branch-0 cbranch-no" title="branch not covered" >undefined &amp;&amp; Math.abs(fillSlippageBps) &gt; <span class="branch-0 cbranch-no" title="branch not covered" >5 ? '</span>accent' : '</span>default',
       },
     ],
@@ -2796,7 +2826,7 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latestStatus',
         label: t('workspace.execution.operationsLatestStatus'),
-        value: latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? '</span>—',</span>
+        value: latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestStatus ?? latestOrder?.<span class="branch-0 cbranch-no" title="branch not covered" >latestPhase ?? t</span>('execution.noLifecycle'),</span>
       },
     ],
     lifecycleSummary: [
@@ -2869,7 +2899,7 @@ export function buildExecutionOperationsPanel({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

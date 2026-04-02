@@ -118,7 +118,9 @@
 <a name='L53'></a><a href='#L53'>53</a>
 <a name='L54'></a><a href='#L54'>54</a>
 <a name='L55'></a><a href='#L55'>55</a>
-<a name='L56'></a><a href='#L56'>56</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -137,6 +139,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -161,6 +164,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -175,7 +179,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ServiceHealthPanelModel } from '../features/health/view-models'
 import { useI18n } from '../i18n/I18nProvider'
-import { DataList, GlassPanel, StatusPill, TerminalBand } from '../ui'
+import { DataList, GlassPanel, PanelSection, StatusPill, TerminalBand } from '../ui'
 &nbsp;
 type Props = {
   model: ServiceHealthPanelModel
@@ -187,11 +191,12 @@ export function ServiceHealthPanel({ model }: Props) {
   return (
     &lt;div className="stack" data-testid="service-health-panel"&gt;
       &lt;TerminalBand model={model.band} className="hp-band" /&gt;
-      &lt;section className="hp-section"&gt;
-        &lt;div className="ids-group"&gt;
-          &lt;p className="subtle-label"&gt;{t('workspace.health.title')}&lt;/p&gt;
-          &lt;p className="sp-hint"&gt;{model.updatedAtLabel}&lt;/p&gt;
-        &lt;/div&gt;
+      &lt;PanelSection
+        className="hp-section"
+        eyebrow={t('workspace.health.operatorServiceTitle')}
+        title={model.band.title}
+        hint={t('workspace.health.operatorServiceDescription')}
+      &gt;
         &lt;div className="health-grid"&gt;
           {model.cards.map((card) =&gt; (
             &lt;GlassPanel key={card.id} className="health-card" tone="subtle"&gt;
@@ -208,14 +213,15 @@ export function ServiceHealthPanel({ model }: Props) {
             &lt;/GlassPanel&gt;
           ))}
         &lt;/div&gt;
-      &lt;/section&gt;
+      &lt;/PanelSection&gt;
 &nbsp;
       {model.persistenceGroups.length &gt; <span class="branch-0 cbranch-no" title="branch not covered" >0 ? (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;section className="hp-section"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="ids-group"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="subtle-label"&gt;{t('workspace.health.persistenceTitle')}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="sp-hint"&gt;{model.band.hint}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;PanelSection</span>
+<span class="cstat-no" title="statement not covered" >          className="hp-section"</span>
+<span class="cstat-no" title="statement not covered" >          eyebrow={t('workspace.health.operatorPersistenceTitle')}</span>
+<span class="cstat-no" title="statement not covered" >          title={t('workspace.health.persistenceTitle')}</span>
+<span class="cstat-no" title="statement not covered" >          hint={t('workspace.health.operatorPersistenceDescription')}</span>
+        &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;div className="health-grid"&gt;</span>
 <span class="cstat-no" title="statement not covered" >            {model.persistenceGroups.map((items) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >              &lt;GlassPanel key={items[0]?.id ?? 'group'} tone="subtle" className="hp-persistence-card"&gt;</span>
@@ -223,7 +229,7 @@ export function ServiceHealthPanel({ model }: Props) {
 <span class="cstat-no" title="statement not covered" >              &lt;/GlassPanel&gt;</span>
 <span class="cstat-no" title="statement not covered" >            ))}</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/section&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/PanelSection&gt;</span>
       ) : null}
     &lt;/div&gt;
   )
@@ -235,7 +241,7 @@ export function ServiceHealthPanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

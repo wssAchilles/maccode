@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>46/46</span>
+                <span class='fraction'>50/50</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>46/46</span>
+                <span class='fraction'>50/50</span>
             </div>
         
             
@@ -121,7 +121,12 @@
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -173,14 +178,19 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, GlassPanel } from '../../../ui'
+import { DataList, PanelSection, TerminalBand } from '../../../ui'
 import type { InferenceDiagnosticsModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -191,50 +201,55 @@ export function InferenceSymbolComparisonPanel({ model }: Props) {
   const { t } = useI18n()
 &nbsp;
   return (
-    &lt;GlassPanel tone="subtle" className="ifp ip-detail"&gt;
-      &lt;div className="idt-head"&gt;
-        &lt;div&gt;
-          &lt;p className="subtle-label"&gt;{t('workspace.inference.symbolComparison')}&lt;/p&gt;
-          &lt;p className="ifc-summary"&gt;{t('workspace.inference.comparisonSummary')}&lt;/p&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-&nbsp;
-      {model.symbolComparisons.length &gt; 0 ? (
-        &lt;div className="isy-list"&gt;
-          {model.symbolComparisons.map((entry) =&gt; (
-            &lt;div key={entry.id} className="isy-row"&gt;
-              &lt;div&gt;
-                &lt;p className="isy-title"&gt;{entry.symbol}&lt;/p&gt;
-                &lt;p className="isy-meta"&gt;
-                  {t('workspace.inference.comparedTicks')}: {entry.comparedTicks}
-                &lt;/p&gt;
+    &lt;div className="stack ip-detail"&gt;
+      &lt;TerminalBand model={model.symbolBand} className="if-sub-band" /&gt;
+      &lt;PanelSection
+        className="ifp ip-detail-section"
+        eyebrow={t('workspace.inference.symbolComparison')}
+        title={model.symbolBand.title}
+        hint={t('workspace.inference.comparisonSummary')}
+      &gt;
+        {model.symbolComparisons.length &gt; 0 ? (
+          &lt;div className="isy-list"&gt;
+            {model.symbolComparisons.map((entry) =&gt; (
+              &lt;div key={entry.id} className="isy-row"&gt;
+                &lt;div&gt;
+                  &lt;p className="isy-title"&gt;{entry.symbol}&lt;/p&gt;
+                  &lt;p className="isy-meta"&gt;
+                    {t('workspace.inference.comparedTicks')}: {entry.comparedTicks}
+                  &lt;/p&gt;
+                &lt;/div&gt;
+                &lt;div className="isy-side"&gt;
+                  &lt;p className={entry.tone === 'accent' ? <span class="branch-0 cbranch-no" title="branch not covered" >'isy-value isy-value-accent' : 'isy-value'}&gt;</span>
+                    {entry.agreementRate}
+                  &lt;/p&gt;
+                  &lt;p className="isy-meta"&gt;
+                    {t('workspace.inference.divergenceCount')}: {entry.divergenceCount}
+                  &lt;/p&gt;
+                &lt;/div&gt;
               &lt;/div&gt;
-              &lt;div className="isy-side"&gt;
-                &lt;p className={entry.tone === 'accent' ? <span class="branch-0 cbranch-no" title="branch not covered" >'isy-value isy-value-accent' : 'isy-value'}&gt;</span>
-                  {entry.agreementRate}
-                &lt;/p&gt;
-                &lt;p className="isy-meta"&gt;
-                  {t('workspace.inference.divergenceCount')}: {entry.divergenceCount}
-                &lt;/p&gt;
-              &lt;/div&gt;
-            &lt;/div&gt;
-          ))}
-        &lt;/div&gt;
-      ) : (
-        &lt;div className="empty-inline"&gt;{t('workspace.inference.noSymbolComparisons')}&lt;/div&gt;
-      )}
+            ))}
+          &lt;/div&gt;
+        ) : (
+          &lt;div className="empty-inline"&gt;{t('workspace.inference.noSymbolComparisons')}&lt;/div&gt;
+        )}
 &nbsp;
-      {model.signalDistributions.length &gt; 0 ? (
-        &lt;div className="ids-grid"&gt;
-          {model.signalDistributions.map((group) =&gt; (
-            &lt;div key={group.id} className="ids-group"&gt;
-              &lt;p className="subtle-label"&gt;{group.label}&lt;/p&gt;
-              &lt;DataList dense items={group.items} /&gt;
-            &lt;/div&gt;
-          ))}
-        &lt;/div&gt;
-      ) : null}
-    &lt;/GlassPanel&gt;
+        {model.signalDistributions.length &gt; 0 ? (
+          &lt;div className="ids-grid"&gt;
+            {model.signalDistributions.map((group) =&gt; (
+              &lt;PanelSection
+                key={group.id}
+                className="ids-group"
+                eyebrow={t('workspace.inference.comparisonSummary')}
+                title={group.label}
+              &gt;
+                &lt;DataList dense items={group.items} /&gt;
+              &lt;/PanelSection&gt;
+            ))}
+          &lt;/div&gt;
+        ) : null}
+      &lt;/PanelSection&gt;
+    &lt;/div&gt;
   )
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -244,7 +259,7 @@ export function InferenceSymbolComparisonPanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

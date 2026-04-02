@@ -143,8 +143,8 @@ export function AlpacaPaperPanel({
           items={[
             { id: 'policy', label: t('execution.policy'), value: policy?.enforced ? t('common.ready') : t('common.disabled') },
             { id: 'alpacaSymbolAllowance', label: 'Allowed symbols', value: String(policy?.alpaca_allowed_symbols.length ?? 0) },
-            { id: 'maxQty', label: 'Max qty', value: String(policy?.max_alpaca_order_qty ?? '—') },
-            { id: 'maxNotional', label: 'Max limit notional', value: String(policy?.max_alpaca_limit_notional_usd ?? '—') },
+            { id: 'maxQty', label: 'Max qty', value: String(policy?.max_alpaca_order_qty ?? t('common.na')) },
+            { id: 'maxNotional', label: 'Max limit notional', value: String(policy?.max_alpaca_limit_notional_usd ?? t('common.na')) },
           ]}
         />
       </GlassPanel>
@@ -175,14 +175,14 @@ export function AlpacaPaperPanel({
 
       <DiagnosticDrawer
         title={t('execution.response')}
-        summary={result ? String(result.status) : '—'}
+        summary={result ? String(result.status) : t('common.na')}
         defaultOpen={Boolean(result?.error)}
         testId="alpaca-response-drawer"
       >
         <pre className="diagnostic-pre" data-testid="alpaca-response">{JSON.stringify(result, null, 2)}</pre>
       </DiagnosticDrawer>
 
-      <DiagnosticDrawer title={t('execution.accountSnapshot')} summary={account ? String(account.status) : '—'} defaultOpen={Boolean(account?.error)}>
+      <DiagnosticDrawer title={t('execution.accountSnapshot')} summary={account ? String(account.status) : t('common.na')} defaultOpen={Boolean(account?.error)}>
         <pre className="diagnostic-pre">{JSON.stringify(account, null, 2)}</pre>
       </DiagnosticDrawer>
 

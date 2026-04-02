@@ -219,6 +219,8 @@ describe('inference observability module', () => {
     renderWithI18n(<InferenceDiagnosticsPanel model={model} />)
 
     expect(model.band.title).toContain('health.state.degraded')
+    expect(model.symbolBand.title).toContain('workspace.inference.noSymbolComparisons')
+    expect(model.auditBand.title).toContain('workspace.inference.auditEmpty')
     expect(screen.getAllByText(/workspace\.inference\.blocker\.agreementUnavailable/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/common\.na/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/workspace\.inference\.stateBackend/i).length).toBeGreaterThan(0)
@@ -261,8 +263,8 @@ describe('inference observability module', () => {
     expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/推广状态|Promotion state/i)).toBeTruthy()
     expect(screen.getAllByText(/状态后端|State backend/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/标的级对照|Symbol-level comparison/i)).toBeTruthy()
-    expect(screen.getByText(/审计时间线|Audit timeline/i)).toBeTruthy()
+    expect(screen.getAllByText(/标的级对照|Symbol-level comparison/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/审计时间线|Audit timeline/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/受控操作|Controlled operations/i)).toBeTruthy()
 
     await user.click(screen.getByTestId('health-inference-operations-drawer-trigger'))

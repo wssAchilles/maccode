@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildOverviewContextBandModel,
+  buildOverviewHealthDigestBandModel,
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
   buildOverviewRecentSignalCards,
@@ -173,6 +174,43 @@ describe('overview view models', () => {
     )
   })
 
+  it('builds a health digest band for overview side health cards', () => {
+    const band = buildOverviewHealthDigestBandModel({
+      t,
+      domainStatus: {
+        'market-stream': {
+          state: 'ready',
+          stale: false,
+          request_id: 'req-1',
+          last_update_ms: 1_000,
+        },
+        'strategy-summary': {
+          state: 'degraded',
+          stale: true,
+          reason: 'timeout',
+          request_id: 'req-2',
+          last_update_ms: 2_000,
+        },
+        'execution-trading': {
+          state: 'ready',
+          stale: false,
+          last_update_ms: 3_000,
+        },
+      },
+    })
+
+    expect(band.title).toBe('workspace.overview.attention')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'services', value: '3' }),
+        expect.objectContaining({ id: 'ready', value: '2' }),
+        expect.objectContaining({ id: 'attention', value: '1' }),
+        expect.objectContaining({ id: 'stale', value: '1' }),
+        expect.objectContaining({ id: 'request', value: 'req-1' }),
+      ]),
+    )
+  })
+
   it('prepares recent signal cards for replay in overview', () => {
     const cards = buildOverviewRecentSignalCards({
       t,
@@ -189,14 +227,13 @@ describe('overview view models', () => {
 
     expect(cards).toHaveLength(1)
     expect(cards[0]).toMatchObject({
-      signal: 'BUY',
-      symbol: 'BTCUSDT',
+      title: 'BUY',
+      eyebrow: 'BTCUSDT',
       items: expect.arrayContaining([
         { id: 'confidence', label: 'strategy.confidence', value: '0.770000' },
         { id: 'strategy', label: 'workspace.strategy.auditStrategy', value: 'mom-1' },
       ]),
     })
-    expect(cards[0].items[2]?.label).toBe('common.updatedAt')
-    expect(cards[0].items[2]?.value).not.toBe('—')
+    expect(cards[0].hint).not.toBe('—')
   })
 })

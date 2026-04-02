@@ -29,6 +29,13 @@ describe('orderbook view models', () => {
     expect(model).toMatchObject({
       title: 'orderbook.title',
       description: 'BTCUSDT · depth 10',
+      band: expect.objectContaining({
+        title: 'BTCUSDT',
+        items: expect.arrayContaining([
+          expect.objectContaining({ id: 'best-bid', value: '100.123456' }),
+          expect.objectContaining({ id: 'spread', value: '0.100000' }),
+        ]),
+      }),
       priceColumnTitle: 'orderbook.priceColumn',
       quantityColumnTitle: 'orderbook.quantityColumn',
       orderCountColumnTitle: 'orderbook.orderCountColumn',
@@ -85,5 +92,6 @@ describe('orderbook view models', () => {
     expect(first.asks).toBe(second.asks)
     expect(first.stale).toBe(false)
     expect(second.stale).toBe(true)
+    expect(second.band.accent).toBe('amber')
   })
 })

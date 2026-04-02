@@ -169,6 +169,7 @@ export function MarketWorkspace({ active = true }: Props) {
           className="xts"
           accent="amber"
           stage="tail"
+          bodyClassName="tail-shell"
         >
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />

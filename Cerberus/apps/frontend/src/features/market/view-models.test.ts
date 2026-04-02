@@ -273,5 +273,7 @@ describe('market view models', () => {
 
     expect(model.state).toBe('stale')
     expect(model.staleHint).toBe('workspace.market.executionRailStale')
+    expect(model.band?.title).toBe('BTCUSDT')
+    expect(model.band?.items.find((item) => item.id === 'fills')?.value).toBe('1')
   })
 })

@@ -241,25 +241,25 @@ export function ExecutionTimelinePanel({ active = true }: Props) {
                 <div className="tr-meta-grid">
                   <div className="tr-meta-line">
                     <span className="tr-meta-key">{t('execution.orderId')}</span>
-                    <span className="tr-meta-value" title={row.event.order_id ?? '—'}>
+                    <span className="tr-meta-value" title={row.orderIdLabel}>
                       {row.orderIdLabel}
                     </span>
                   </div>
                   <div className="tr-meta-line">
                     <span className="tr-meta-key">{t('execution.requestId')}</span>
-                    <span className="tr-meta-value" title={row.event.request_id ?? '—'}>
+                    <span className="tr-meta-value" title={row.requestIdLabel}>
                       {row.requestIdLabel}
                     </span>
                   </div>
                   <div className="tr-meta-line">
                     <span className="tr-meta-key">CID</span>
-                    <span className="tr-meta-value" title={row.event.client_order_id ?? '—'}>
+                    <span className="tr-meta-value" title={row.clientOrderIdLabel}>
                       {row.clientOrderIdLabel}
                     </span>
                   </div>
                   <div className="tr-meta-line">
                     <span className="tr-meta-key">{t('workspace.execution.lifecycleExecutionId')}</span>
-                    <span className="tr-meta-value" title={row.event.execution_id ?? '—'}>
+                    <span className="tr-meta-value" title={row.executionIdLabel}>
                       {row.executionIdLabel}
                     </span>
                   </div>

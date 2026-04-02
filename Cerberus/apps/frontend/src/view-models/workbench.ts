@@ -4,6 +4,73 @@ import type { MarketMessage, OrderTimelineEvent, StrategySignal } from '../types
 
 type Translate = (key: TranslationKey) => string
 
+const LOCALE_STORAGE_KEY = 'cerberus.locale'
+
+type EmptyStateKind =
+  | 'generic'
+  | 'time'
+  | 'request-id'
+  | 'order-id'
+  | 'client-order-id'
+  | 'execution-id'
+  | 'bid'
+  | 'ask'
+  | 'mid'
+  | 'spread'
+  | 'latency'
+  | 'quote-time'
+  | 'feedback-time'
+
+const EMPTY_STATE_LABELS: Record<'zh-CN' | 'en-US', Record<EmptyStateKind, string>> = {
+  'zh-CN': {
+    generic: '无',
+    time: '暂无时间',
+    'request-id': '暂无请求 ID',
+    'order-id': '暂无订单 ID',
+    'client-order-id': '暂无客户端订单 ID',
+    'execution-id': '暂无执行 ID',
+    bid: '暂无买价',
+    ask: '暂无卖价',
+    mid: '待形成',
+    spread: '待形成',
+    latency: '暂无延迟样本',
+    'quote-time': '暂无报价时间',
+    'feedback-time': '暂无回报时间',
+  },
+  'en-US': {
+    generic: 'None',
+    time: 'No time yet',
+    'request-id': 'No request ID',
+    'order-id': 'No order ID',
+    'client-order-id': 'No client order ID',
+    'execution-id': 'No execution ID',
+    bid: 'No bid yet',
+    ask: 'No ask yet',
+    mid: 'Pending',
+    spread: 'Pending',
+    latency: 'No latency sample',
+    'quote-time': 'No quote time yet',
+    'feedback-time': 'No feedback time yet',
+  },
+}
+
+function resolveUiLocale(): 'zh-CN' | 'en-US' {
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+    if (stored === 'zh-CN' || stored === 'en-US') {
+      return stored
+    }
+  }
+  if (typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')) {
+    return 'zh-CN'
+  }
+  return 'en-US'
+}
+
+export function formatEmptyStateLabel(kind: EmptyStateKind = 'generic'): string {
+  return EMPTY_STATE_LABELS[resolveUiLocale()][kind]
+}
+
 export type WorkspaceSummaryModel = {
   id: WorkspaceId
   titleKey: TranslationKey
@@ -164,35 +231,42 @@ export function parseDateTimeValue(value?: number | string | null): number | und
   return Number.isNaN(parsed) ? undefined : parsed
 }
 
-export function formatDateTimeLabel(value?: number | string | null): string {
+export function formatDateTimeLabel(
+  value?: number | string | null,
+  fallback = formatEmptyStateLabel('time'),
+): string {
   if (value === undefined || value === null || value === '') {
-    return '—'
+    return fallback
   }
   const parsed = parseDateTimeValue(value)
   if (parsed === undefined) {
-    return typeof value === 'string' ? value : '—'
+    return typeof value === 'string' ? value : fallback
   }
   return new Date(parsed).toLocaleString()
 }
 
-export function formatRequestLabel(value?: string | null): string {
-  return value?.trim() ? value : '—'
+export function formatRequestLabel(value?: string | null, fallback = formatEmptyStateLabel('generic')): string {
+  return value?.trim() ? value : fallback
 }
 
-export function formatNumber(value?: number | null, digits = 2): string {
+export function formatNumber(value?: number | null, digits = 2, fallback = formatEmptyStateLabel('generic')): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return fallback
   }
   return value.toFixed(digits)
 }
 
-export function formatPrice(value?: string | null): string {
-  return value?.trim() ? value : '—'
+export function formatPrice(value?: string | null, fallback = formatEmptyStateLabel('generic')): string {
+  return value?.trim() ? value : fallback
 }
 
-export function formatDerivedPrice(value?: number | null, digits = 6): string {
+export function formatDerivedPrice(
+  value?: number | null,
+  digits = 6,
+  fallback = formatEmptyStateLabel('generic'),
+): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return fallback
   }
   return value.toFixed(digits)
 }
@@ -253,7 +327,11 @@ export function buildExecutionRows(events: OrderTimelineEvent[], t: Translate): 
   return events.map((event) => ({
     id: event.id,
     title: `${event.event_type} · ${event.lifecycle_phase}`,
-    subtitle: [event.symbol ?? '—', event.account_id ?? '—', event.client_order_id ?? event.request_id ?? '—'].join(' · '),
+    subtitle: [
+      formatRequestLabel(event.symbol),
+      formatRequestLabel(event.account_id),
+      formatRequestLabel(event.client_order_id ?? event.request_id, formatEmptyStateLabel('request-id')),
+    ].join(' · '),
     rightTop: event.status ?? event.lifecycle_phase,
     rightBottom: `${t('execution.receivedAt')}: ${formatDateTimeLabel(event.received_at)}`,
   }))
@@ -263,11 +341,11 @@ export function summarizeLatestFeedback(event: OrderTimelineEvent | undefined, h
   if (!event) {
     return heartbeat ?? t('common.heartbeat')
   }
-  return `${event.event_type} · ${event.symbol ?? '—'} · ${event.status ?? '—'}`
+  return `${event.event_type} · ${formatRequestLabel(event.symbol)} · ${formatRequestLabel(event.status)}`
 }
 
 export function summarizeLatestEventAt(event: OrderTimelineEvent | undefined) {
-  return formatDateTimeLabel(event?.event_time ?? event?.received_at)
+  return formatDateTimeLabel(event?.event_time ?? event?.received_at, formatEmptyStateLabel('feedback-time'))
 }
 
 export function summarizeDomainStates(domainStatus: DomainStatusMap) {
@@ -363,16 +441,16 @@ export function buildPreparedTradingSnapshot({
   return {
     selectedSymbol,
     displayQuote,
-    bestBidValue: formatPrice(displayQuote?.bid_price),
-    bestAskValue: formatPrice(displayQuote?.ask_price),
-    midPriceValue: formatDerivedPrice(midPrice),
-    spreadValue: formatDerivedPrice(spread),
+    bestBidValue: formatPrice(displayQuote?.bid_price, formatEmptyStateLabel('bid')),
+    bestAskValue: formatPrice(displayQuote?.ask_price, formatEmptyStateLabel('ask')),
+    midPriceValue: formatDerivedPrice(midPrice, 6, formatEmptyStateLabel('mid')),
+    spreadValue: formatDerivedPrice(spread, 6, formatEmptyStateLabel('spread')),
     signalValue: strategySignal?.signal ?? 'HOLD',
     confidenceValue: formatConfidence(strategySignal?.confidence),
     feedbackValue: latestEvent
-      ? `${latestEvent.event_type} · ${latestEvent.symbol ?? '—'} · ${latestEvent.status ?? '—'}`
+      ? `${latestEvent.event_type} · ${formatRequestLabel(latestEvent.symbol)} · ${formatRequestLabel(latestEvent.status)}`
       : heartbeat,
     feedbackAtValue: summarizeLatestEventAt(latestEvent),
-    quoteUpdatedAtValue: formatDateTimeLabel(displayQuote?.event_time),
+    quoteUpdatedAtValue: formatDateTimeLabel(displayQuote?.event_time, formatEmptyStateLabel('quote-time')),
   }
 }

@@ -3,9 +3,12 @@ import type {
   PersistenceStatus,
   SignalRecord,
 } from '../../types/contracts'
+import type { DomainStatusMap } from '../../store/slices/shared'
 import {
   formatConfidence,
   formatDateTimeLabel,
+  formatEmptyStateLabel,
+  formatRequestLabel,
   type PreparedTradingSnapshot,
   type WorkspaceContextBandModel,
   type WorkspaceOperatorDeckSectionModel,
@@ -30,9 +33,65 @@ export type OverviewDataItem = {
 
 export type OverviewRecentSignalCardModel = {
   id: string
-  signal: string
-  symbol: string
+  title: string
+  eyebrow: string
+  hint: string
   items: OverviewDataItem[]
+}
+
+export function buildOverviewHealthDigestBandModel({
+  t,
+  domainStatus,
+}: {
+  t: Translate
+  domainStatus: DomainStatusMap
+}): WorkspaceContextBandModel {
+  const entries = Object.entries(domainStatus)
+  const readyCount = entries.filter(([, value]) => value.state === 'ready' && !value.stale).length
+  const attentionCount = entries.filter(
+    ([, value]) => value.state === 'degraded' || value.state === 'error' || value.stale,
+  ).length
+  const staleCount = entries.filter(([, value]) => value.stale).length
+  const latestRequestId =
+    entries.map(([, value]) => value.request_id).find((value) => typeof value === 'string' && value.trim()) ??
+    formatEmptyStateLabel('request-id')
+
+  return {
+    eyebrow: t('workspace.overview.healthDigest'),
+    title: attentionCount > 0 ? t('workspace.overview.attention') : t('common.ready'),
+    hint: t('workspace.health.description'),
+    accent: attentionCount > 0 ? 'amber' : 'teal',
+    items: [
+      {
+        id: 'services',
+        label: t('workspace.nav'),
+        value: String(entries.length),
+      },
+      {
+        id: 'ready',
+        label: t('common.ready'),
+        value: String(readyCount),
+        tone: readyCount > 0 ? 'positive' : 'default',
+      },
+      {
+        id: 'attention',
+        label: t('workspace.overview.attention'),
+        value: String(attentionCount),
+        tone: attentionCount > 0 ? 'negative' : 'default',
+      },
+      {
+        id: 'stale',
+        label: t('health.stale'),
+        value: String(staleCount),
+        tone: staleCount > 0 ? 'negative' : 'default',
+      },
+      {
+        id: 'request',
+        label: t('health.requestId'),
+        value: formatRequestLabel(latestRequestId),
+      },
+    ],
+  }
 }
 
 export function buildOverviewContextBandModel({
@@ -190,8 +249,9 @@ export function buildOverviewRecentSignalCards({
 }): OverviewRecentSignalCardModel[] {
   return recentSignals.slice(0, 4).map((signal) => ({
     id: `${signal.created_at}-${signal.strategy_id}-${signal.symbol}`,
-    signal: signal.signal,
-    symbol: signal.symbol,
+    title: signal.signal,
+    eyebrow: signal.symbol,
+    hint: formatDateTimeLabel(signal.created_at),
     items: [
       {
         id: 'confidence',
@@ -201,12 +261,7 @@ export function buildOverviewRecentSignalCards({
       {
         id: 'strategy',
         label: t('workspace.strategy.auditStrategy'),
-        value: signal.strategy_id || '—',
-      },
-      {
-        id: 'createdAt',
-        label: t('common.updatedAt'),
-        value: formatDateTimeLabel(signal.created_at),
+        value: signal.strategy_id || formatEmptyStateLabel('generic'),
       },
     ],
   }))

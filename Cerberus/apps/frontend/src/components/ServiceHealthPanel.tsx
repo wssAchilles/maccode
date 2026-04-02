@@ -1,6 +1,6 @@
 import type { ServiceHealthPanelModel } from '../features/health/view-models'
 import { useI18n } from '../i18n/I18nProvider'
-import { DataList, GlassPanel, StatusPill, TerminalBand } from '../ui'
+import { DataList, GlassPanel, PanelSection, StatusPill, TerminalBand } from '../ui'
 
 type Props = {
   model: ServiceHealthPanelModel
@@ -12,11 +12,12 @@ export function ServiceHealthPanel({ model }: Props) {
   return (
     <div className="stack" data-testid="service-health-panel">
       <TerminalBand model={model.band} className="hp-band" />
-      <section className="hp-section">
-        <div className="ids-group">
-          <p className="subtle-label">{t('workspace.health.title')}</p>
-          <p className="sp-hint">{model.updatedAtLabel}</p>
-        </div>
+      <PanelSection
+        className="hp-section"
+        eyebrow={t('workspace.health.operatorServiceTitle')}
+        title={model.band.title}
+        hint={t('workspace.health.operatorServiceDescription')}
+      >
         <div className="health-grid">
           {model.cards.map((card) => (
             <GlassPanel key={card.id} className="health-card" tone="subtle">
@@ -33,14 +34,15 @@ export function ServiceHealthPanel({ model }: Props) {
             </GlassPanel>
           ))}
         </div>
-      </section>
+      </PanelSection>
 
       {model.persistenceGroups.length > 0 ? (
-        <section className="hp-section">
-          <div className="ids-group">
-            <p className="subtle-label">{t('workspace.health.persistenceTitle')}</p>
-            <p className="sp-hint">{model.band.hint}</p>
-          </div>
+        <PanelSection
+          className="hp-section"
+          eyebrow={t('workspace.health.operatorPersistenceTitle')}
+          title={t('workspace.health.persistenceTitle')}
+          hint={t('workspace.health.operatorPersistenceDescription')}
+        >
           <div className="health-grid">
             {model.persistenceGroups.map((items) => (
               <GlassPanel key={items[0]?.id ?? 'group'} tone="subtle" className="hp-persistence-card">
@@ -48,7 +50,7 @@ export function ServiceHealthPanel({ model }: Props) {
               </GlassPanel>
             ))}
           </div>
-        </section>
+        </PanelSection>
       ) : null}
     </div>
   )

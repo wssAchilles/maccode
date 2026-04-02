@@ -58,6 +58,8 @@ export type InferenceDiagnosticsModel = {
   summary: string
   reason?: string
   band: WorkspaceContextBandModel
+  symbolBand: WorkspaceContextBandModel
+  auditBand: WorkspaceContextBandModel
   runtimeItems: InferenceDataItem[]
   rolloutItems: InferenceDataItem[]
   comparisonItems: InferenceDataItem[]
@@ -446,6 +448,9 @@ export function buildInferenceDiagnosticsModel({
   const blockers = blockersSummary(t, rollout)
   const effectiveMode = formatMode(t, rollout?.effective_mode ?? inferenceStatus?.mode)
   const currentSummary = modelSummary(t, model)
+  const signalDistributions = buildSignalDistribution(t, comparison)
+  const symbolComparisons = buildSymbolComparisons(t, comparison)
+  const auditTimeline = buildAuditTimeline(t, inferenceStatus?.audit)
   const band: WorkspaceContextBandModel = {
     eyebrow: t('workspace.inference.title'),
     title: `${stateLabel} · ${effectiveMode}`,
@@ -475,6 +480,75 @@ export function buildInferenceDiagnosticsModel({
       },
     ],
   }
+  const symbolBand: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.inference.symbolComparison'),
+    title:
+      symbolComparisons.length > 0
+        ? comparisonSummary(t, comparison)
+        : t('workspace.inference.noSymbolComparisons'),
+    hint:
+      symbolComparisons.length > 0
+        ? currentSummary
+        : t('workspace.inference.comparisonSummary'),
+    accent:
+      symbolComparisons.some((entry) => entry.tone === 'accent') && state === 'ready'
+        ? 'teal'
+        : 'cyan',
+    items: [
+      {
+        id: 'symbol-count',
+        label: t('workspace.inference.symbolCoverage'),
+        value: String(symbolComparisons.length),
+      },
+      {
+        id: 'compared-ticks',
+        label: t('workspace.inference.comparedTicks'),
+        value: formatInteger(comparison?.compared_ticks, t),
+      },
+      {
+        id: 'agreement-rate',
+        label: t('workspace.inference.agreementRate'),
+        value: formatPercent(comparison?.agreement_ratio, t),
+        tone:
+          comparison?.agreement_ratio !== undefined && comparison?.agreement_ratio !== null
+            ? 'accent'
+            : 'default',
+      },
+      {
+        id: 'divergence-count',
+        label: t('workspace.inference.divergenceCount'),
+        value: formatInteger(comparison?.divergence_count, t),
+      },
+    ],
+  }
+  const auditBand: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.inference.auditTimeline'),
+    title: auditTimeline[0]?.title ?? t('workspace.inference.auditEmpty'),
+    hint: auditTimeline[0]?.message ?? t('workspace.inference.recentAudit'),
+    accent: state === 'degraded' ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'latest-audit-at',
+        label: t('workspace.inference.recentAudit'),
+        value: formatDateTime(audit?.created_at, t),
+      },
+      {
+        id: 'audit-events',
+        label: t('workspace.inference.auditTimeline'),
+        value: String(auditTimeline.length),
+      },
+      {
+        id: 'audit-blockers',
+        label: t('workspace.inference.gateBlockers'),
+        value: blockers ?? t('common.na'),
+      },
+      {
+        id: 'audit-backend',
+        label: t('workspace.inference.stateBackend'),
+        value: rollout?.state_backend ?? t('common.na'),
+      },
+    ],
+  }
 
   return {
     state,
@@ -482,6 +556,8 @@ export function buildInferenceDiagnosticsModel({
     summary: modelSummary(t, model),
     reason: blockers ?? inferenceStatus?.reason ?? undefined,
     band,
+    symbolBand,
+    auditBand,
     runtimeItems: [
       {
         id: 'runtimeStatus',
@@ -626,9 +702,9 @@ export function buildInferenceDiagnosticsModel({
         value: blockers ?? t('common.na'),
       },
     ],
-    signalDistributions: buildSignalDistribution(t, comparison),
-    symbolComparisons: buildSymbolComparisons(t, comparison),
-    auditTimeline: buildAuditTimeline(t, inferenceStatus?.audit),
+    signalDistributions,
+    symbolComparisons,
+    auditTimeline,
   }
 }
 

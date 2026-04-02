@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CoreFlowMap } from '../store/slices/shared'
-import { buildCoreFlowPanelModel, formatDateTimeLabel } from './workbench'
+import { buildCoreFlowPanelModel, formatDateTimeLabel, formatEmptyStateLabel } from './workbench'
 
 const t = (key: string) => key
 
@@ -35,7 +35,7 @@ describe('workbench view models', () => {
       reason: 'precheck_failed',
       requestId: 'req-precheck',
     })
-    expect(model.steps[0]?.updatedAt).not.toBe('—')
+    expect(model.steps[0]?.updatedAt).not.toBe(formatEmptyStateLabel('time'))
   })
 
   it('formats numeric-string timestamps as local date time labels', () => {
@@ -45,6 +45,6 @@ describe('workbench view models', () => {
   it('formats ISO timestamps and guards invalid values', () => {
     expect(formatDateTimeLabel('2026-04-01T10:00:00Z')).toMatch(/2026/)
     expect(formatDateTimeLabel('not-a-date')).toBe('not-a-date')
-    expect(formatDateTimeLabel(undefined)).toBe('—')
+    expect(formatDateTimeLabel(undefined)).toBe(formatEmptyStateLabel('time'))
   })
 })

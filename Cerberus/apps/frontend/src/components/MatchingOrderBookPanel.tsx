@@ -1,5 +1,5 @@
 import type { MatchingOrderBookLevelRowModel, MatchingOrderBookPanelModel } from '../view-models/orderbook'
-import { EmptyState, GlassPanel, SectionFrame } from '../ui'
+import { EmptyState, GlassPanel, PanelSection, SectionFrame, TerminalBand } from '../ui'
 
 type Props = {
   model: MatchingOrderBookPanelModel
@@ -59,6 +59,7 @@ export function MatchingOrderBookPanel({ model }: Props) {
       title={model.title}
       description={model.description}
     >
+      <TerminalBand model={model.band} className="ob-band" />
       <div className="obs-grid">
         <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{model.bestBidTitle}</p>
@@ -100,7 +101,12 @@ export function MatchingOrderBookPanel({ model }: Props) {
           orderCountColumnTitle={model.orderCountColumnTitle}
         />
       </div>
-      <GlassPanel className="obf" tone="subtle" padded={false}>
+      <PanelSection
+        className="obf"
+        eyebrow={model.title}
+        title={model.totalDepthLabel}
+        hint={`${model.depthBalanceTitle}: ${model.depthBalanceLabel}`}
+      >
         <div className="obfc">
           <div className="obs-card obu">
             <p className="subtle-label">{model.updatedTitle}</p>
@@ -120,7 +126,7 @@ export function MatchingOrderBookPanel({ model }: Props) {
           </div>
         </div>
         {model.stale && model.staleHint ? <p className="obst">{model.staleHint}</p> : null}
-      </GlassPanel>
+      </PanelSection>
     </SectionFrame>
   )
 }

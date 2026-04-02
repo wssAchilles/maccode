@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>70/70</span>
+                <span class='fraction'>79/79</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>70/70</span>
+                <span class='fraction'>79/79</span>
             </div>
         
             
@@ -150,7 +150,18 @@
 <a name='L85'></a><a href='#L85'>85</a>
 <a name='L86'></a><a href='#L86'>86</a>
 <a name='L87'></a><a href='#L87'>87</a>
-<a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -203,10 +214,21 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -242,7 +264,7 @@
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 &nbsp;
@@ -284,22 +306,33 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         &lt;/SectionFrame&gt;
 &nbsp;
         &lt;SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="feature"&gt;
-          &lt;div className="health-grid"&gt;
-            &lt;GlassPanel tone="subtle"&gt;
+          &lt;div className="health-grid hp-tail-grid"&gt;
+            &lt;PanelSection
+              className="hp-tail-section"
+              eyebrow={t('workspace.health.operatorPersistenceTitle')}
+              title={t('workspace.health.workerSnapshotTitle')}
+              hint={t('workspace.health.operatorPersistenceDescription')}
+            &gt;
               &lt;DataList items={model.workerItems} /&gt;
-            &lt;/GlassPanel&gt;
-            &lt;GlassPanel tone="subtle"&gt;
+            &lt;/PanelSection&gt;
+            &lt;PanelSection
+              className="hp-tail-section"
+              eyebrow={t('workspace.health.persistenceTitle')}
+              title={t('workspace.health.storeSnapshotTitle')}
+              hint={t('workspace.health.persistenceDescription')}
+            &gt;
               &lt;DataList items={model.storeItems} /&gt;
-            &lt;/GlassPanel&gt;
+            &lt;/PanelSection&gt;
           &lt;/div&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
-        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail"&gt;
+        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" bodyClassName="tail-shell"&gt;
           &lt;InferenceDiagnosticsPanel model={model.inferenceDiagnostics} /&gt;
           &lt;DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
             summary={model.inferenceDiagnostics.summary}
             testId="health-inference-operations-drawer"
+            contentClassName="tail-drawer"
           &gt;
             &lt;Suspense fallback={&lt;PanelSkeleton height="280px" /&gt;}&gt;
               &lt;LazyHealthInferenceOperationsDrawerContent active={_active} /&gt;
@@ -331,7 +364,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

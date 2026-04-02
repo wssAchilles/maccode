@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel, InlineAlert } from '../../../ui'
+import { EmptyState, GlassPanel, InlineAlert, PanelSection, TerminalBand } from '../../../ui'
 import type { StrategyOrchestrationOperationsModel } from '../view-models'
 
 type EntryDraft = {
@@ -45,6 +45,7 @@ export function StrategyOrchestrationOperationsPanel({
   if (model.rows.length === 0) {
     return (
       <GlassPanel className="so-operations-panel" tone="subtle">
+        <TerminalBand model={model.band} className="sp-band" />
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}
@@ -57,60 +58,67 @@ export function StrategyOrchestrationOperationsPanel({
 
   return (
     <GlassPanel className="so-operations-panel" tone="subtle">
-      <div className="sp-head">
-        <div>
-          <p className="subtle-label">{t('workspace.strategy.operationsTitle')}</p>
-          <p className="sp-summary">{model.summary}</p>
-          <p className="sp-hint">{model.policySummary}</p>
+      <TerminalBand model={model.band} className="sp-band" />
+      <PanelSection
+        className="so-section"
+        eyebrow={t('workspace.strategy.operationsTitle')}
+        title={model.summary}
+        hint={model.policySummary}
+      >
+        <div className="so-policy-grid">
+          <label className="field-label">
+            {t('workspace.strategy.conflictPolicy')}
+            <select
+              id="strategy-conflict-policy"
+              name="strategy_conflict_policy"
+              className="field-input"
+              value={conflictPolicy}
+              onChange={(event) => onConflictPolicyChange(event.target.value)}
+            >
+              {model.conflictOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field-label">
+            {t('workspace.strategy.downgradePolicy')}
+            <select
+              id="strategy-downgrade-policy"
+              name="strategy_downgrade_policy"
+              className="field-input"
+              value={downgradePolicy}
+              onChange={(event) => onDowngradePolicyChange(event.target.value)}
+            >
+              {model.downgradeOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      </div>
+      </PanelSection>
 
-      <div className="so-policy-grid">
+      <PanelSection
+        className="so-section"
+        eyebrow={t('workspace.strategy.operatorNote')}
+        title={t('workspace.strategy.operationStatus')}
+        hint={t('workspace.strategy.operationsDescription')}
+      >
         <label className="field-label">
-          {t('workspace.strategy.conflictPolicy')}
-          <select
-            id="strategy-conflict-policy"
-            name="strategy_conflict_policy"
-            className="field-input"
-            value={conflictPolicy}
-            onChange={(event) => onConflictPolicyChange(event.target.value)}
-          >
-            {model.conflictOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {t('workspace.strategy.operatorNote')}
+          <textarea
+            id="strategy-operator-note"
+            name="strategy_operator_note"
+            className="field-input ifr"
+            rows={3}
+            value={reason}
+            onChange={(event) => onReasonChange(event.target.value)}
+          />
         </label>
-        <label className="field-label">
-          {t('workspace.strategy.downgradePolicy')}
-          <select
-            id="strategy-downgrade-policy"
-            name="strategy_downgrade_policy"
-            className="field-input"
-            value={downgradePolicy}
-            onChange={(event) => onDowngradePolicyChange(event.target.value)}
-          >
-            {model.downgradeOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="field-label">
-        {t('workspace.strategy.operatorNote')}
-        <textarea
-          id="strategy-operator-note"
-          name="strategy_operator_note"
-          className="field-input ifr"
-          rows={3}
-          value={reason}
-          onChange={(event) => onReasonChange(event.target.value)}
-        />
-      </label>
+      </PanelSection>
 
       <div className="so-row-list" role="list" aria-label={t('workspace.strategy.operationsTitle')}>
         {model.rows.map((row) => {

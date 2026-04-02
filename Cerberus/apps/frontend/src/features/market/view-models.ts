@@ -8,6 +8,7 @@ import {
   type WorkspaceOperatorDeckSectionModel,
   type WorkspaceSpotlightModel,
   formatDateTimeLabel,
+  formatEmptyStateLabel,
   formatPrice,
 } from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
@@ -39,6 +40,7 @@ export type MarketChartStateModel = {
 
 export type MarketExecutionRailModel = {
   summary: string
+  band?: WorkspaceContextBandModel
   state: 'ready' | 'empty' | 'stale'
   items: {
     id: string
@@ -130,7 +132,7 @@ function executionPhaseLabel(t: Translate, phase?: string): string {
   if (phase === 'canceled') {
     return t('workspace.execution.lifecycleStatus.canceled')
   }
-  return phase ?? '—'
+  return phase ?? t('common.na')
 }
 
 function markerColor(tone: 'positive' | 'negative' | 'accent' | 'muted'): string {
@@ -635,8 +637,8 @@ export function buildMarketExecutionRailModel({
   const { orderModels, latestTimestamp, filledCount } = prepared
   const items = orderModels.slice(0, 4).map((item) => ({
       id: item.id,
-      title: `${executionPhaseLabel(t, item.latestPhase)} · ${item.side ?? '—'}`,
-      subtitle: `${item.symbol ?? selectedSymbol} · ${item.requestId ?? '—'} · ${item.executionIds[0] ?? item.orderId ?? '—'}`,
+      title: `${executionPhaseLabel(t, item.latestPhase)} · ${item.side ?? t('common.na')}`,
+      subtitle: `${item.symbol ?? selectedSymbol} · ${item.requestId ?? formatEmptyStateLabel('request-id')} · ${item.executionIds[0] ?? item.orderId ?? formatEmptyStateLabel('order-id')}`,
       status: executionPhaseLabel(t, item.latestStatus ?? item.latestPhase),
       time: formatDateTimeLabel(item.fillAt ?? item.canceledAt ?? item.rejectedAt ?? item.acceptedAt ?? item.submitAt),
     }))
@@ -644,6 +646,18 @@ export function buildMarketExecutionRailModel({
   if (items.length === 0) {
     return {
       summary: selectedSymbol,
+      band: {
+        eyebrow: t('workspace.market.executionRailTitle'),
+        title: t('workspace.market.executionRailEmpty'),
+        hint: t('workspace.market.executionRailDescription'),
+        accent: 'amber',
+        items: [
+          { id: 'symbol', label: 'Symbol', value: selectedSymbol, tone: 'accent' },
+          { id: 'events', label: t('workspace.execution.lifecycleLatest'), value: t('common.na') },
+          { id: 'fills', label: t('workspace.execution.lifecycleFilledCount'), value: '0' },
+          { id: 'updated', label: t('common.updatedAt'), value: formatEmptyStateLabel('time') },
+        ],
+      },
       state: 'empty',
       items: [],
       emptyTitle: t('workspace.market.executionRailEmpty'),
@@ -655,6 +669,18 @@ export function buildMarketExecutionRailModel({
 
   return {
     summary: `${selectedSymbol} · ${items.length} · ${filledCount} fills`,
+    band: {
+      eyebrow: t('workspace.market.executionRailTitle'),
+      title: selectedSymbol,
+      hint: stale ? t('workspace.market.executionRailStale') : t('workspace.market.executionRailDescription'),
+      accent: stale ? 'amber' : 'cyan',
+      items: [
+        { id: 'symbol', label: 'Symbol', value: selectedSymbol, tone: 'accent' },
+        { id: 'events', label: t('workspace.execution.lifecycleLatest'), value: items[0]?.status ?? t('common.na') },
+        { id: 'fills', label: t('workspace.execution.lifecycleFilledCount'), value: String(filledCount) },
+        { id: 'updated', label: t('common.updatedAt'), value: items[0]?.time ?? formatEmptyStateLabel('time') },
+      ],
+    },
     state: stale ? 'stale' : 'ready',
     items,
     staleHint: stale ? t('workspace.market.executionRailStale') : undefined,

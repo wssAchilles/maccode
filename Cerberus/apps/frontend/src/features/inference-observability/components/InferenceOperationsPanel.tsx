@@ -1,4 +1,4 @@
-import { DataList, GlassPanel, InlineAlert, StatusPill, TerminalBand } from '../../../ui'
+import { DataList, InlineAlert, PanelSection, StatusPill, TerminalBand } from '../../../ui'
 import { useI18n } from '../../../i18n/I18nProvider'
 import type { InferenceOperationsModel } from '../view-models'
 
@@ -29,14 +29,13 @@ export function InferenceOperationsPanel({
     <div className="stack">
       <TerminalBand model={model.band} className="iop-band" />
       <div className="health-grid">
-        <GlassPanel tone="subtle" className="ifp iop-panel">
-          <div className="ifc-head">
-            <div>
-              <p className="subtle-label">{t('workspace.inference.operationsTitle')}</p>
-              <p className="ifc-summary">{model.summary}</p>
-            </div>
-            <StatusPill state={model.state} label={model.stateLabel} compact />
-          </div>
+        <PanelSection
+          className="ifp iop-panel"
+          eyebrow={t('workspace.inference.operationsTitle')}
+          title={model.summary}
+          hint={t('workspace.inference.operationStatus')}
+          aside={<StatusPill state={model.state} label={model.stateLabel} compact />}
+        >
           <DataList
             items={[
               {
@@ -59,13 +58,14 @@ export function InferenceOperationsPanel({
               },
             ]}
           />
-        </GlassPanel>
+        </PanelSection>
 
-        <GlassPanel tone="subtle" className="ifp iop-panel">
-          <div className="ids-group">
-            <p className="subtle-label">{t('workspace.inference.operatorNote')}</p>
-            <p className="sp-hint">{t('workspace.inference.operationStatus')}</p>
-          </div>
+        <PanelSection
+          className="ifp iop-panel"
+          eyebrow={t('workspace.inference.operatorNote')}
+          title={t('workspace.inference.operationStatus')}
+          hint={t('workspace.inference.operatorNote')}
+        >
           <div className="iop-form">
             <label className="field-label">
               {t('workspace.inference.operationReason')}
@@ -140,7 +140,7 @@ export function InferenceOperationsPanel({
               {model.statusMessage}
             </InlineAlert>
           ) : null}
-        </GlassPanel>
+        </PanelSection>
       </div>
     </div>
   )

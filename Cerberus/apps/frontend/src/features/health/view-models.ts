@@ -7,7 +7,7 @@ import type {
   WorkspaceOperatorDeckSectionModel,
   WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
-import { buildHealthCards, summarizeDomainStates } from '../../view-models/workbench'
+import { buildHealthCards, formatEmptyStateLabel, summarizeDomainStates } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
 
@@ -63,11 +63,11 @@ export function buildHealthDiagnosticsBandModel({
         label: t('workspace.nav'),
         value: String(entries.length),
       },
-      {
-        id: 'latest-request-id',
-        label: t('health.requestId'),
-        value: latestRequestId ?? '—',
-      },
+        {
+          id: 'latest-request-id',
+          label: t('health.requestId'),
+          value: latestRequestId ?? formatEmptyStateLabel('request-id'),
+        },
       {
         id: 'summary-state',
         label: t('workspace.health.title'),
@@ -141,7 +141,8 @@ export function buildServiceHealthPanelModel({
   const readyCount = cards.filter((card) => card.state === 'ready').length
   const attentionCount = cards.filter((card) => card.state === 'degraded' || card.state === 'error').length
   const latestRequestId =
-    cards.map((card) => card.requestId).find((value) => typeof value === 'string' && value.trim()) ?? '—'
+    cards.map((card) => card.requestId).find((value) => typeof value === 'string' && value.trim()) ??
+    formatEmptyStateLabel('request-id')
   const persistenceGroups = persistenceStatus
     ? [
         [

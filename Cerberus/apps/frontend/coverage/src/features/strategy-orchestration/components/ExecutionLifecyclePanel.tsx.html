@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.23% </span>
+                <span class="strong">95.71% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>60/63</span>
+                <span class='fraction'>67/70</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.23% </span>
+                <span class="strong">95.71% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>60/63</span>
+                <span class='fraction'>67/70</span>
             </div>
         
             
@@ -143,7 +143,15 @@
 <a name='L78'></a><a href='#L78'>78</a>
 <a name='L79'></a><a href='#L79'>79</a>
 <a name='L80'></a><a href='#L80'>80</a>
-<a name='L81'></a><a href='#L81'>81</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -181,6 +189,13 @@
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -188,6 +203,7 @@
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -224,7 +240,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, GlassPanel, StatusPill } from '../../../ui'
+import { DataList, PanelSection, StatusPill, TerminalBand } from '../../../ui'
 import type { ExecutionLifecyclePanelModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -240,59 +256,67 @@ export function ExecutionLifecyclePanel({ model }: Props) {
       : 'obs-value'
 &nbsp;
   return (
-    &lt;GlassPanel className="xl-panel" tone="subtle"&gt;
-      &lt;div className="sp-head"&gt;
-        &lt;div&gt;
-          &lt;p className="subtle-label"&gt;{t('workspace.execution.lifecycleTitle')}&lt;/p&gt;
-          &lt;p className="sp-summary"&gt;{model.summary}&lt;/p&gt;
+    &lt;div className="xl-panel"&gt;
+      &lt;TerminalBand model={model.band} className="xtl" /&gt;
+      &lt;PanelSection
+        className="xl-stage-section"
+        eyebrow={t('workspace.execution.lifecycleTitle')}
+        title={model.summary}
+        hint={t('workspace.execution.lifecycleDescription')}
+        aside={&lt;StatusPill state={model.state} label={model.stateLabel} compact /&gt;}
+      &gt;
+        &lt;div className="xl-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
+          {model.stages.map((stage) =&gt; (
+            &lt;article
+              key={stage.id}
+              role="listitem"
+              className={`xl-stage xl-stage-${stage.state}`}
+            &gt;
+              &lt;p className="xl-stage-label"&gt;{stage.label}&lt;/p&gt;
+              &lt;p className="xl-stage-detail"&gt;{stage.detail}&lt;/p&gt;
+            &lt;/article&gt;
+          ))}
         &lt;/div&gt;
-        &lt;StatusPill state={model.state} label={model.stateLabel} compact /&gt;
-      &lt;/div&gt;
+      &lt;/PanelSection&gt;
 &nbsp;
-      &lt;div className="xl-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
-        {model.stages.map((stage) =&gt; (
-          &lt;article
-            key={stage.id}
-            role="listitem"
-            className={`xl-stage xl-stage-${stage.state}`}
-          &gt;
-            &lt;p className="xl-stage-label"&gt;{stage.label}&lt;/p&gt;
-            &lt;p className="xl-stage-detail"&gt;{stage.detail}&lt;/p&gt;
-          &lt;/article&gt;
-        ))}
-      &lt;/div&gt;
-&nbsp;
-      &lt;div className="obs-grid" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
-        {model.summaryItems.map((item) =&gt; (
-          &lt;article key={item.id} role="listitem" className="sd-card"&gt;
-            &lt;p className="subtle-label"&gt;{item.label}&lt;/p&gt;
-            &lt;p className={toneClassName(item.tone)}&gt;{item.value}&lt;/p&gt;
-          &lt;/article&gt;
-        ))}
-      &lt;/div&gt;
+      &lt;PanelSection
+        className="xl-metrics-section"
+        eyebrow={t('workspace.execution.lifecycleDistributionTitle')}
+        title={t('workspace.execution.lifecycleTitle')}
+        hint={t('workspace.execution.lifecycleDescription')}
+      &gt;
+        &lt;div className="obs-grid" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
+          {model.summaryItems.map((item) =&gt; (
+            &lt;article key={item.id} role="listitem" className="sd-card"&gt;
+              &lt;p className="subtle-label"&gt;{item.label}&lt;/p&gt;
+              &lt;p className={toneClassName(item.tone)}&gt;{item.value}&lt;/p&gt;
+            &lt;/article&gt;
+          ))}
+        &lt;/div&gt;
+      &lt;/PanelSection&gt;
 &nbsp;
       &lt;div className="ids-grid"&gt;
-        &lt;section className="sd-card"&gt;
-          &lt;div className="ids-group"&gt;
-            &lt;p className="subtle-label"&gt;{t('workspace.execution.lifecycleIdentifiersTitle')}&lt;/p&gt;
-            &lt;p className="sp-hint"&gt;{t('workspace.execution.lifecycleIdentifiersHint')}&lt;/p&gt;
-          &lt;/div&gt;
-&nbsp;
+        &lt;PanelSection
+          className="xl-detail-section"
+          eyebrow={t('workspace.execution.lifecycleIdentifiersTitle')}
+          title={t('workspace.execution.lifecycleIdentifiersTitle')}
+          hint={t('workspace.execution.lifecycleIdentifiersHint')}
+        &gt;
           &lt;div className="exec-scroll-list exec-identity-list"&gt;
             &lt;DataList items={model.identifierItems} dense /&gt;
           &lt;/div&gt;
-        &lt;/section&gt;
+        &lt;/PanelSection&gt;
 &nbsp;
-        &lt;section className="sd-card"&gt;
-          &lt;div className="ids-group"&gt;
-            &lt;p className="subtle-label"&gt;{t('workspace.execution.lifecycleTelemetryTitle')}&lt;/p&gt;
-            &lt;p className="sp-hint"&gt;{t('workspace.execution.lifecycleTelemetryHint')}&lt;/p&gt;
-          &lt;/div&gt;
-&nbsp;
+        &lt;PanelSection
+          className="xl-detail-section"
+          eyebrow={t('workspace.execution.lifecycleTelemetryTitle')}
+          title={t('workspace.execution.lifecycleTelemetryTitle')}
+          hint={t('workspace.execution.lifecycleTelemetryHint')}
+        &gt;
           &lt;div className="exec-scroll-list"&gt;
             &lt;DataList items={model.telemetryItems} dense /&gt;
           &lt;/div&gt;
-        &lt;/section&gt;
+        &lt;/PanelSection&gt;
       &lt;/div&gt;
 &nbsp;
       {model.<span class="branch-0 cbranch-no" title="branch not covered" >reason ? (</span>
@@ -300,7 +324,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
 <span class="cstat-no" title="statement not covered" >          {model.reason}</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/p&gt;</span>
       ) : null}
-    &lt;/GlassPanel&gt;
+    &lt;/div&gt;
   )
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -310,7 +334,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

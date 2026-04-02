@@ -8,6 +8,11 @@ type ApiEnvelopeBody = {
   error?: unknown
 }
 
+function looksLikeHtmlDocument(text: string): boolean {
+  const trimmed = text.trimStart()
+  return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html')
+}
+
 function parseBody(text: string): unknown {
   if (text.trim().length === 0) {
     return null
@@ -210,8 +215,22 @@ export async function requestEnvelope<T>(
     })
 
     const text = await response.text()
+    const contentType = response.headers.get('content-type') ?? ''
     const body = parseBody(text)
     const responseRequestId = response.headers.get('x-request-id') ?? undefined
+
+    if (response.ok && (contentType.includes('text/html') || looksLikeHtmlDocument(text))) {
+      return {
+        ok: false,
+        status_code: response.status,
+        url,
+        error: {
+          code: 'invalid_html_response',
+          message: 'received HTML instead of API payload',
+          request_id: responseRequestId,
+        },
+      }
+    }
 
     if (response.ok) {
       const { payload } = unwrapSuccessBody<T>(body)

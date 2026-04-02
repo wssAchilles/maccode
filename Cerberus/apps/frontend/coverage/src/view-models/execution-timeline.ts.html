@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.42% </span>
+                <span class="strong">96.49% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>162/168</span>
+                <span class='fraction'>165/171</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.44% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>38/45</span>
+                <span class='fraction'>35/42</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.42% </span>
+                <span class="strong">96.49% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>162/168</span>
+                <span class='fraction'>165/171</span>
             </div>
         
             
@@ -297,7 +297,10 @@
 <a name='L232'></a><a href='#L232'>232</a>
 <a name='L233'></a><a href='#L233'>233</a>
 <a name='L234'></a><a href='#L234'>234</a>
-<a name='L235'></a><a href='#L235'>235</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -373,6 +376,9 @@
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-yes">28x</span>
 <span class="cline-any cline-yes">28x</span>
 <span class="cline-any cline-yes">28x</span>
 <span class="cline-any cline-yes">28x</span>
@@ -532,7 +538,7 @@
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { OrderTimelineEvent } from '../types/contracts'
-import { formatDateTimeLabel, formatRequestLabel } from './workbench'
+import { formatDateTimeLabel, formatEmptyStateLabel, formatRequestLabel } from './workbench'
 &nbsp;
 export type PreparedExecutionTimelineRow = {
   id: string
@@ -607,9 +613,12 @@ function intersectSorted(left: number[], right: number[]): number[] {
   return intersection
 }
 &nbsp;
-function formatCompactIdentifier(value?: string | null): string {
-  const normalized = formatRequestLabel(value)
-  if (normalized === '—' || normalized.length &lt;= 28) {
+function formatCompactIdentifier(
+  value: string | null | undefined,
+  kind: 'request-id' | 'order-id' | 'client-order-id' | 'execution-id' = 'request-id',
+): string {
+  const normalized = formatRequestLabel(value, formatEmptyStateLabel(kind))
+  if (normalized === formatEmptyStateLabel(kind) || normalized.length &lt;= 28) {
     return normalized
   }
   return `${normalized.slice(0, 16)}…${normalized.slice(-8)}`
@@ -650,17 +659,17 @@ export function buildPreparedExecutionTimeline(orderEvents: OrderTimelineEvent[]
       event,
       title: `${event.event_type} · ${event.lifecycle_phase}`,
       subtitle: [
-        event.symbol ?? '—',
-        event.account_id ?? '—',
-        event.client_order_id ?? event.request_id ?? '—',
+        formatRequestLabel(event.symbol),
+        formatRequestLabel(event.account_id),
+        formatRequestLabel(event.client_order_id ?? event.request_id, formatEmptyStateLabel('request-id')),
       ].join(' · '),
       rightTop: event.status ?? event.lifecycle_phase,
       receivedAtLabel: formatDateTimeLabel(event.received_at),
       eventTimeLabel: formatDateTimeLabel(event.event_time),
-      orderIdLabel: formatCompactIdentifier(event.order_id),
-      requestIdLabel: formatCompactIdentifier(event.request_id),
-      clientOrderIdLabel: formatCompactIdentifier(event.client_order_id),
-      executionIdLabel: formatCompactIdentifier(event.execution_id),
+      orderIdLabel: formatCompactIdentifier(event.order_id, 'order-id'),
+      requestIdLabel: formatCompactIdentifier(event.request_id, 'request-id'),
+      clientOrderIdLabel: formatCompactIdentifier(event.client_order_id, 'client-order-id'),
+      executionIdLabel: formatCompactIdentifier(event.execution_id, 'execution-id'),
       searchText: [
         event.symbol,
         event.account_id,
@@ -772,7 +781,7 @@ export function buildPreparedExecutionTimelineWindow({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T09:19:45.602Z
+                at 2026-04-02T11:55:35.930Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

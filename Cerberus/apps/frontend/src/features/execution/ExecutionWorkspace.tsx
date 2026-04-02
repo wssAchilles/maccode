@@ -94,12 +94,14 @@ export function ExecutionWorkspace({ active = true }: Props) {
             <DiagnosticDrawer
               title={t('workspace.strategy.registryTitle')}
               summary={t('workspace.strategy.registryDescription')}
+              contentClassName="tail-drawer"
             >
               <StrategyRegistryPanel model={model.strategyRegistry} />
             </DiagnosticDrawer>
             <DiagnosticDrawer
               title={t('workspace.strategy.auditTimelineTitle')}
               summary={t('workspace.strategy.auditTimelineHint')}
+              contentClassName="tail-drawer"
             >
               <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
             </DiagnosticDrawer>
@@ -121,6 +123,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
           className="xts"
           accent="cyan"
           stage="tail"
+          bodyClassName="tail-shell"
         >
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />
@@ -144,11 +147,13 @@ export function ExecutionWorkspace({ active = true }: Props) {
         className="ws-span-full"
         accent="teal"
         stage="tail"
+        bodyClassName="tail-shell"
       >
         <DiagnosticDrawer
           title={t('workspace.strategy.operationsTitle')}
           summary={t('workspace.strategy.operationsDescription')}
           testId="execution-strategy-operations-drawer"
+          contentClassName="tail-drawer"
         >
           <Suspense fallback={<PanelSkeleton height="420px" />}>
             <LazyExecutionStrategyOperationsDrawerContent active={active} />
@@ -162,6 +167,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         className="ws-span-full"
         accent="amber"
         stage="tail"
+        bodyClassName="tail-shell"
       >
         <Suspense fallback={<PanelSkeleton height="540px" />}>
           <LazyExecutionConsole

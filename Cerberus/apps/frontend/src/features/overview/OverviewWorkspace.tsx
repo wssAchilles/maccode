@@ -3,9 +3,9 @@ import type { WorkspaceId } from '../../store/slices/shared'
 import {
   DataList,
   DiagnosticDrawer,
-  GlassPanel,
   InlineAlert,
   MetricTile,
+  PanelSection,
   SectionFrame,
   StatusPill,
   TerminalBand,
@@ -93,18 +93,24 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       <div className="ws-side stack wss">
         <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')} accent="amber" stage="inspector">
           <div className="stack-sm">
+            <TerminalBand model={model.healthDigestBand} className="overview-health-band" />
             {model.healthCards.map((card) => (
-              <GlassPanel key={card.id} className="hd-card" tone="subtle">
-                <div className="hd-head">
-                  <div>
-                    <p className="subtle-label">{card.title}</p>
-                    <p className="hd-meta">{card.staleLabel}</p>
-                  </div>
-                  <StatusPill state={card.state} label={card.stateLabel} compact />
-                </div>
-                <p className="hd-updated">{t('common.updatedAt')}: {card.updatedAt}</p>
-                {card.reason ? <p className="hd-reason">{card.reason}</p> : null}
-              </GlassPanel>
+              <PanelSection
+                key={card.id}
+                className="hd-card"
+                eyebrow={card.title}
+                title={card.stateLabel}
+                hint={`${card.staleLabel} · ${t('common.updatedAt')}: ${card.updatedAt}`}
+                aside={<StatusPill state={card.state} label={card.stateLabel} compact />}
+              >
+                <DataList
+                  dense
+                  items={[
+                    { id: 'request', label: t('health.requestId'), value: card.requestId ?? t('common.na') },
+                    { id: 'reason', label: t('workspace.inference.reason'), value: card.reason ?? t('common.na') },
+                  ]}
+                />
+              </PanelSection>
             ))}
           </div>
         </SectionFrame>
@@ -132,12 +138,14 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           <DiagnosticDrawer
             title={t('workspace.strategy.registryTitle')}
             summary={t('workspace.strategy.registryDescription')}
+            contentClassName="tail-drawer"
           >
             <StrategyRegistryPanel model={model.strategyRegistry} />
           </DiagnosticDrawer>
           <DiagnosticDrawer
             title={t('workspace.strategy.auditTimelineTitle')}
             summary={t('workspace.strategy.auditTimelineHint')}
+            contentClassName="tail-drawer"
           >
             <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
           </DiagnosticDrawer>
@@ -145,19 +153,21 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       </SectionFrame>
 
       <div className="overview-tail-grid ws-span-full">
-        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail">
+        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail" bodyClassName="tail-shell">
           {model.recentSignals.length === 0 ? (
             <p className="empty-inline">{t('strategy.noData')}</p>
           ) : (
             <div className="stack-sm">
               {model.recentSignals.map((signal) => (
-                <GlassPanel key={signal.id} className="signal-card" tone="subtle">
-                  <div className="sig-head">
-                    <p className="sig-title">{signal.signal}</p>
-                    <p className="sig-symbol">{signal.symbol}</p>
-                  </div>
+                <PanelSection
+                  key={signal.id}
+                  className="signal-card"
+                  eyebrow={signal.eyebrow}
+                  title={signal.title}
+                  hint={`${t('common.updatedAt')}: ${signal.hint}`}
+                >
                   <DataList dense items={signal.items} />
-                </GlassPanel>
+                </PanelSection>
               ))}
             </div>
           )}
@@ -171,8 +181,15 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail">
-          <DataList items={model.persistenceItems} />
+        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail" bodyClassName="tail-shell">
+          <PanelSection
+            className="tail-card"
+            eyebrow={t('strategy.persistence')}
+            title={t('workspace.health.persistenceTitle')}
+            hint={t('workspace.health.persistenceDescription')}
+          >
+            <DataList items={model.persistenceItems} />
+          </PanelSection>
         </SectionFrame>
       </div>
     </div>

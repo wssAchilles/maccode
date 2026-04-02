@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, EmptyState, GlassPanel, StatusPill, TerminalBand } from '../../../ui'
+import { DataList, EmptyState, GlassPanel, PanelSection, StatusPill, TerminalBand } from '../../../ui'
 import type { ExecutionOperationsPanelModel } from '../view-models'
 
 type Props = {
@@ -30,86 +30,94 @@ export function ExecutionOperationsPanel({ model }: Props) {
     <GlassPanel className="xo-panel" tone="subtle">
       <TerminalBand model={model.band} className="xo-band" />
 
-      <div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}>
-        {model.headlineItems.map((item) => (
-          <article key={item.id} role="listitem" className="sd-card">
-            <p className="subtle-label">{item.label}</p>
-            <p className={toneClassName(item.tone)}>{item.value}</p>
-          </article>
-        ))}
-      </div>
+      <PanelSection
+        className="xo-section"
+        eyebrow={t('workspace.execution.operationsTitle')}
+        title={t('workspace.execution.operationsHeadlineTitle')}
+        hint={t('workspace.execution.operationsFlowHint')}
+      >
+        <div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}>
+          {model.headlineItems.map((item) => (
+            <article key={item.id} role="listitem" className="sd-card">
+              <p className="subtle-label">{item.label}</p>
+              <p className={toneClassName(item.tone)}>{item.value}</p>
+            </article>
+          ))}
+        </div>
+      </PanelSection>
 
       <div className="ids-grid">
-        <section className="sd-card">
-          <div className="ids-group">
-            <p className="subtle-label">{t('workspace.execution.operationsLatencyTitle')}</p>
-            <p className="sp-hint">{t('workspace.execution.operationsLatencyHint')}</p>
-          </div>
+        <PanelSection
+          className="xo-section"
+          title={t('workspace.execution.operationsLatencyTitle')}
+          hint={t('workspace.execution.operationsLatencyHint')}
+        >
           <DataList items={model.latencyItems} dense />
-        </section>
+        </PanelSection>
 
-        <section className="sd-card">
-          <div className="ids-group">
-            <p className="subtle-label">{t('workspace.execution.operationsVenueTitle')}</p>
-            <p className="sp-hint">{t('workspace.execution.operationsVenueHint')}</p>
-          </div>
+        <PanelSection
+          className="xo-section"
+          title={t('workspace.execution.operationsVenueTitle')}
+          hint={t('workspace.execution.operationsVenueHint')}
+        >
           <DataList items={model.venueItems} dense />
-        </section>
+        </PanelSection>
       </div>
 
       {model.lifecycleSummary.length > 0 ? (
         <div className="ids-grid">
-          <section className="sd-card">
-            <div className="ids-group">
-              <p className="subtle-label">{t('workspace.execution.lifecycleDistributionTitle')}</p>
-              <p className="sp-hint">{t('workspace.execution.operationsFlowHint')}</p>
-            </div>
+          <PanelSection
+            className="xo-section"
+            title={t('workspace.execution.lifecycleDistributionTitle')}
+            hint={t('workspace.execution.operationsFlowHint')}
+          >
             <DataList items={model.lifecycleSummary} dense />
-          </section>
+          </PanelSection>
 
           {model.reasonSummary.length > 0 ? (
-            <section className="sd-card">
-              <div className="ids-group">
-                <p className="subtle-label">{t('workspace.execution.reasonDistributionTitle')}</p>
-                <p className="sp-hint">{t('workspace.execution.operationsReasonHint')}</p>
-              </div>
-              <div className="exec-scroll-list">
+            <PanelSection
+              className="xo-section"
+              title={t('workspace.execution.reasonDistributionTitle')}
+              hint={t('workspace.execution.operationsReasonHint')}
+              bodyClassName="exec-scroll-list"
+            >
                 <DataList items={model.reasonSummary} dense />
-              </div>
-            </section>
+            </PanelSection>
           ) : null}
         </div>
       ) : null}
 
-      <section className="sd-card xo-diagnosis">
-        <div className="sp-head">
-          <div>
-            <p className="subtle-label">{t('workspace.execution.diagnosisTitle')}</p>
-            <p className="sp-summary">{model.diagnosisLabel}</p>
-          </div>
+      <PanelSection
+        className="xo-section xo-diagnosis"
+        title={t('workspace.execution.diagnosisTitle')}
+        hint={model.diagnosisHint}
+        aside={
           <StatusPill
             state={model.diagnosisTone === 'danger' ? 'error' : model.diagnosisTone === 'accent' ? 'degraded' : 'idle'}
             label={model.diagnosisLabel}
             compact
           />
-        </div>
-        <p className="sp-hint">{model.diagnosisHint}</p>
-      </section>
+        }
+      >
+        <p className="sp-summary">{model.diagnosisLabel}</p>
+      </PanelSection>
 
       {model.accountSummary.length > 0 ? (
-        <section className="sd-card">
-          <div className="ids-group">
-            <p className="subtle-label">{t('workspace.execution.accountSummary')}</p>
-            <p className="sp-hint">{t('workspace.execution.accountSummaryHint')}</p>
-          </div>
-          <div className="exec-scroll-list">
+        <PanelSection
+          className="xo-section"
+          title={t('workspace.execution.accountSummary')}
+          hint={t('workspace.execution.accountSummaryHint')}
+          bodyClassName="exec-scroll-list"
+        >
             <DataList items={model.accountSummary} dense />
-          </div>
-        </section>
+        </PanelSection>
       ) : null}
 
-      <section className="sd-card xo-alerts">
-        <p className="subtle-label">{t('workspace.execution.operationsAnomalies')}</p>
+      <PanelSection
+        className="xo-section xo-alerts"
+        title={t('workspace.execution.operationsAnomalies')}
+        hint={t('workspace.execution.operationsReasonHint')}
+      >
         {model.anomalies.length > 0 ? (
           <ul className="xo-alert-list">
             {model.anomalies.map((item) => (
@@ -121,7 +129,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         ) : (
           <p className="xo-empty">{t('workspace.execution.operationsNoAnomalies')}</p>
         )}
-      </section>
+      </PanelSection>
     </GlassPanel>
   )
 }

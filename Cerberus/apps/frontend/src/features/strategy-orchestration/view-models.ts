@@ -10,7 +10,12 @@ import type {
   TradingPolicy,
   UIState,
 } from '../../types/contracts'
-import { type WorkspaceContextBandModel, formatConfidence, formatDateTimeLabel } from '../../view-models/workbench'
+import {
+  type WorkspaceContextBandModel,
+  formatConfidence,
+  formatDateTimeLabel,
+  formatEmptyStateLabel,
+} from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
 
 type Translate = (key: TranslationKey) => string
@@ -42,6 +47,7 @@ export type StrategyDecisionMatrixModel = {
 
 export type StrategyPortfolioPanelModel = {
   summary: string
+  band: WorkspaceContextBandModel
   biasLabel: string
   gateLabel: string
   gateTone: 'default' | 'muted' | 'accent'
@@ -109,6 +115,7 @@ export type StrategyOrchestrationOperationsRowModel = {
 export type StrategyOrchestrationOperationsModel = {
   summary: string
   policySummary: string
+  band: WorkspaceContextBandModel
   rows: StrategyOrchestrationOperationsRowModel[]
   conflictOptions: { id: string; label: string }[]
   downgradeOptions: { id: string; label: string }[]
@@ -130,6 +137,7 @@ export type ExecutionLifecyclePanelModel = {
   state: 'idle' | 'loading' | 'ready' | 'degraded' | 'error'
   stateLabel: string
   summary: string
+  band: WorkspaceContextBandModel
   reason?: string
   stages: ExecutionLifecycleStageModel[]
   summaryItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
@@ -146,21 +154,21 @@ export type BuildStrategyContextBandParams = {
 
 function formatPercent(value?: number | null): string {
   if (value === undefined || value === null || !Number.isFinite(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return `${(value * 100).toFixed(1)}%`
 }
 
 function formatInteger(value?: number | null): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return String(value)
 }
 
 function formatFloat(value?: number | null, digits = 3): string {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   return value.toFixed(digits)
 }
@@ -309,13 +317,13 @@ function auditDiffLabel(t: Translate, field: string, metadata: Record<string, un
   const currentValue = (current as Record<string, unknown>)[field]
   const normalize = (value: unknown): string => {
     if (Array.isArray(value)) {
-      return value.length > 0 ? value.map((item) => String(item)).join(' · ') : '—'
+      return value.length > 0 ? value.map((item) => String(item)).join(' · ') : formatEmptyStateLabel('generic')
     }
     if (typeof value === 'boolean') {
       return value ? 'true' : 'false'
     }
     if (value === null || value === undefined || value === '') {
-      return '—'
+      return formatEmptyStateLabel('generic')
     }
     return String(value)
   }
@@ -384,7 +392,7 @@ function lifecycleStateFromStatus(
 
 function summarizeCoverage(selectedSymbol: string | undefined, coverage: string[]): string {
   if (coverage.length === 0) {
-    return '—'
+    return formatEmptyStateLabel('generic')
   }
   if (!selectedSymbol) {
     return coverage.join(' · ')
@@ -426,6 +434,18 @@ export function buildStrategyDecisionMatrixModel({
     return {
       summary: t('workspace.strategy.noDecisions'),
       hint: t('workspace.strategy.noDecisionsHint'),
+      band: {
+        eyebrow: t('workspace.strategy.matrixTitle'),
+        title: t('workspace.strategy.noDecisions'),
+        hint: t('workspace.strategy.noDecisionsHint'),
+        accent: 'cyan',
+        items: [
+          { id: 'active', label: t('common.ready'), value: '0' },
+          { id: 'rows', label: t('workspace.strategy.activeStrategies'), value: '0' },
+          { id: 'signal-id', label: t('health.requestId'), value: formatEmptyStateLabel('request-id') },
+          { id: 'lead-source', label: t('workspace.strategy.lifecycleSource'), value: t('common.na') },
+        ],
+      },
       items: [],
       emptyTitle: t('workspace.strategy.noDecisions'),
       emptyHint: t('workspace.strategy.noDecisionsHint'),
@@ -476,7 +496,7 @@ export function buildStrategyDecisionMatrixModel({
         {
           id: 'signal-id',
           label: t('health.requestId'),
-          value: signal?.signal_id ?? '—',
+          value: signal?.signal_id ?? formatEmptyStateLabel('request-id'),
         },
         {
           id: 'lead-source',
@@ -521,7 +541,7 @@ export function buildStrategyContextBandModel({
       {
         id: 'symbol',
         label: 'Symbol',
-        value: selectedSymbol ?? portfolio?.symbol ?? registry?.symbol ?? '—',
+        value: selectedSymbol ?? portfolio?.symbol ?? registry?.symbol ?? formatEmptyStateLabel('generic'),
         tone: 'accent',
       },
       {
@@ -577,6 +597,18 @@ export function buildStrategyPortfolioPanelModel({
   if (!portfolio) {
     return {
       summary: t('workspace.strategy.portfolioEmpty'),
+      band: {
+        eyebrow: t('workspace.strategy.portfolioTitle'),
+        title: t('workspace.strategy.portfolioEmpty'),
+        hint: t('workspace.strategy.noDecisionsHint'),
+        accent: 'cyan',
+        items: [
+          { id: 'signal', label: t('workspace.strategy.finalSignal'), value: t('common.na') },
+          { id: 'gate', label: t('workspace.strategy.executionGate'), value: t('common.na') },
+          { id: 'coverage', label: t('workspace.strategy.coverage'), value: '0' },
+          { id: 'strategies', label: t('workspace.strategy.activeStrategies'), value: '0' },
+        ],
+      },
       biasLabel: t('common.na'),
       gateLabel: t('common.na'),
       gateTone: 'muted',
@@ -596,6 +628,36 @@ export function buildStrategyPortfolioPanelModel({
 
   return {
     summary: `${portfolio.dominant_signal} · ${sourceLabel(t, portfolio.final_source)}`,
+    band: {
+      eyebrow: t('workspace.strategy.portfolioTitle'),
+      title: `${portfolio.final_signal} · ${sourceLabel(t, portfolio.final_source)}`,
+      hint: t('workspace.strategy.portfolioDescription'),
+      accent: gateTone === 'accent' ? 'teal' : gateTone === 'muted' ? 'amber' : 'cyan',
+      items: [
+        {
+          id: 'signal',
+          label: t('workspace.strategy.finalSignal'),
+          value: portfolio.final_signal,
+          tone: decisionTone(portfolio.final_signal) === 'accent' ? 'accent' : 'default',
+        },
+        {
+          id: 'gate',
+          label: t('workspace.strategy.executionGate'),
+          value: executionGateLabel(t, portfolio.execution_gate),
+          tone: gateTone,
+        },
+        {
+          id: 'coverage',
+          label: t('workspace.strategy.coverage'),
+          value: formatInteger(portfolio.tracked_symbols.length),
+        },
+        {
+          id: 'strategies',
+          label: t('workspace.strategy.activeStrategies'),
+          value: formatInteger(portfolio.active_strategy_count),
+        },
+      ],
+    },
     biasLabel: biasLabel(t, portfolio.signal_bias),
     gateLabel: executionGateLabel(t, portfolio.execution_gate),
     gateTone,
@@ -681,6 +743,18 @@ export function buildStrategyRegistryPanelModel({
       policyLabel: t('common.na'),
       downgradeLabel: t('common.na'),
       stateSummary: t('common.na'),
+      band: {
+        eyebrow: t('workspace.strategy.registryTitle'),
+        title: t('workspace.strategy.registryEmpty'),
+        hint: t('workspace.strategy.noDecisionsHint'),
+        accent: 'teal',
+        items: [
+          { id: 'enabled', label: t('common.ready'), value: '0' },
+          { id: 'tracked-symbols', label: t('workspace.strategy.coverage'), value: '0' },
+          { id: 'policy', label: t('workspace.strategy.conflictPolicy'), value: t('common.na') },
+          { id: 'downgrade', label: t('workspace.strategy.downgradePolicy'), value: t('common.na') },
+        ],
+      },
       rows: [],
       emptyTitle: t('workspace.strategy.registryEmpty'),
       emptyHint: t('workspace.strategy.noDecisionsHint'),
@@ -845,6 +919,18 @@ export function buildStrategyOrchestrationAuditTimelineModel({
   if (audit.length === 0) {
     return {
       summary: t('workspace.strategy.auditTimelineEmpty'),
+      band: {
+        eyebrow: t('workspace.strategy.auditTimelineTitle'),
+        title: t('workspace.strategy.auditTimelineEmpty'),
+        hint: t('workspace.strategy.auditTimelineHint'),
+        accent: 'amber',
+        items: [
+          { id: 'events', label: t('workspace.strategy.auditTimelineSummarySuffix'), value: '0' },
+          { id: 'latest-event', label: t('workspace.inference.recentAudit'), value: t('common.na') },
+          { id: 'latest-updated-at', label: t('common.updatedAt'), value: formatEmptyStateLabel('time') },
+          { id: 'latest-actor', label: t('workspace.strategy.auditActor'), value: formatEmptyStateLabel('generic') },
+        ],
+      },
       items: [],
       emptyTitle: t('workspace.strategy.auditTimelineEmpty'),
       emptyHint: t('workspace.strategy.auditTimelineHint'),
@@ -877,7 +963,7 @@ export function buildStrategyOrchestrationAuditTimelineModel({
         {
           id: 'latest-actor',
           label: t('workspace.strategy.auditActor'),
-          value: typeof audit[0]?.metadata.actor === 'string' ? audit[0].metadata.actor : '—',
+          value: typeof audit[0]?.metadata.actor === 'string' ? audit[0].metadata.actor : formatEmptyStateLabel('generic'),
         },
       ],
     },
@@ -926,10 +1012,24 @@ export function buildStrategyOrchestrationOperationsModel({
   orchestrationStatus?: StrategyOrchestrationStatus
   lastResult?: StrategyOrchestrationControlResult
 }): StrategyOrchestrationOperationsModel {
+  const emptyBand: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.strategy.operationsTitle'),
+    title: t('workspace.strategy.registryEmpty'),
+    hint: t('workspace.strategy.noDecisionsHint'),
+    accent: 'teal',
+    items: [
+      { id: 'entries', label: t('workspace.strategy.registryTitle'), value: '0' },
+      { id: 'tracked', label: t('workspace.strategy.trackedSymbolsSuffix'), value: '0' },
+      { id: 'conflict', label: t('workspace.strategy.conflictPolicy'), value: t('common.na') },
+      { id: 'downgrade', label: t('workspace.strategy.downgradePolicy'), value: t('common.na') },
+    ],
+  }
+
   if (!orchestrationStatus || orchestrationStatus.entries.length === 0) {
     return {
       summary: t('workspace.strategy.registryEmpty'),
       policySummary: t('common.na'),
+      band: emptyBand,
       rows: [],
       conflictOptions: [],
       downgradeOptions: [],
@@ -944,10 +1044,39 @@ export function buildStrategyOrchestrationOperationsModel({
       : lastResult?.accepted
         ? 'accent'
         : undefined
+  const band: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.strategy.operationsTitle'),
+    title: `${orchestrationStatus.entries.length} ${t('workspace.strategy.operationsSummarySuffix')}`,
+    hint: `${conflictPolicyLabel(t, orchestrationStatus.conflict_policy)} · ${downgradePolicyLabel(t, orchestrationStatus.downgrade_policy)}`,
+    accent: statusTone === 'danger' ? 'amber' : 'teal',
+    items: [
+      {
+        id: 'entries',
+        label: t('workspace.strategy.registryTitle'),
+        value: String(orchestrationStatus.entries.length),
+      },
+      {
+        id: 'tracked',
+        label: t('workspace.strategy.trackedSymbolsSuffix'),
+        value: String(orchestrationStatus.tracked_symbols.length),
+      },
+      {
+        id: 'conflict',
+        label: t('workspace.strategy.conflictPolicy'),
+        value: conflictPolicyLabel(t, orchestrationStatus.conflict_policy),
+      },
+      {
+        id: 'downgrade',
+        label: t('workspace.strategy.downgradePolicy'),
+        value: downgradePolicyLabel(t, orchestrationStatus.downgrade_policy),
+      },
+    ],
+  }
 
   return {
     summary: `${orchestrationStatus.entries.length} ${t('workspace.strategy.operationsSummarySuffix')}`,
     policySummary: `${conflictPolicyLabel(t, orchestrationStatus.conflict_policy)} · ${downgradePolicyLabel(t, orchestrationStatus.downgrade_policy)} · ${orchestrationStatus.tracked_symbols.length} ${t('workspace.strategy.trackedSymbolsSuffix')}`,
+    band,
     rows: orchestrationStatus.entries.map((entry) => {
       const conflictTargets = Array.isArray(entry.conflict_targets)
         ? entry.conflict_targets
@@ -1081,6 +1210,40 @@ export function buildExecutionLifecyclePanelModel({
     state,
     stateLabel,
     summary,
+    band: {
+      eyebrow: t('workspace.execution.lifecycleTitle'),
+      title: lifecycleStatusLabel(t, latestLifecycleEvent?.latestStatus, latestLifecycleEvent?.latestPhase),
+      hint: t('workspace.execution.lifecycleDescription'),
+      accent: state === 'error' ? 'amber' : state === 'ready' ? 'cyan' : 'teal',
+      items: [
+        {
+          id: 'dispatch',
+          label: t('workspace.execution.lifecycleDispatch'),
+          value: signal?.dispatch_state ?? t('common.na'),
+        },
+        {
+          id: 'policy',
+          label: t('workspace.execution.lifecyclePolicy'),
+          value:
+            portfolioGate
+              ? executionGateLabel(t, portfolioGate)
+              : tradingPolicy?.enforced
+                ? t('common.ready')
+                : t('common.disabled'),
+          tone: portfolioGate === 'ready' || tradingPolicy?.enforced ? 'accent' : 'muted',
+        },
+        {
+          id: 'rule',
+          label: t('workspace.execution.lifecycleVenueRule'),
+          value: binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule'),
+        },
+        {
+          id: 'live-orders',
+          label: t('workspace.execution.lifecycleLiveOrders'),
+          value: formatInteger(matchingStats?.live_orders),
+        },
+      ],
+    },
     reason: domainStatus.reason,
     stages,
     summaryItems: [
