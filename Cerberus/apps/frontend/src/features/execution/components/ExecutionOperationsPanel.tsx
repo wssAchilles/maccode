@@ -9,7 +9,12 @@ type Props = {
 export function ExecutionOperationsPanel({ model }: Props) {
   const { t } = useI18n()
 
-  if (model.items.length === 0) {
+  const toneClassName = (tone?: 'default' | 'muted' | 'accent') =>
+    tone === 'accent'
+      ? 'obs-value obs-value-bid'
+      : 'obs-value'
+
+  if (model.headlineItems.length === 0) {
     return (
       <GlassPanel className="xo-panel" tone="subtle">
         <EmptyState
@@ -30,19 +35,54 @@ export function ExecutionOperationsPanel({ model }: Props) {
         <StatusPill state={model.state} label={model.stateLabel} compact />
       </div>
 
-      <DataList items={model.items} dense />
+      <div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}>
+        {model.headlineItems.map((item) => (
+          <article key={item.id} role="listitem" className="sd-card">
+            <p className="subtle-label">{item.label}</p>
+            <p className={toneClassName(item.tone)}>{item.value}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="ids-grid">
+        <section className="sd-card">
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.execution.operationsLatencyTitle')}</p>
+            <p className="sp-hint">{t('workspace.execution.operationsLatencyHint')}</p>
+          </div>
+          <DataList items={model.latencyItems} dense />
+        </section>
+
+        <section className="sd-card">
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.execution.operationsVenueTitle')}</p>
+            <p className="sp-hint">{t('workspace.execution.operationsVenueHint')}</p>
+          </div>
+          <DataList items={model.venueItems} dense />
+        </section>
+      </div>
 
       {model.lifecycleSummary.length > 0 ? (
-        <div className="xo-lifecycle">
-          <p className="subtle-label">{t('workspace.execution.lifecycleDistributionTitle')}</p>
-          <DataList items={model.lifecycleSummary} dense />
-        </div>
-      ) : null}
+        <div className="ids-grid">
+          <section className="sd-card">
+            <div className="ids-group">
+              <p className="subtle-label">{t('workspace.execution.lifecycleDistributionTitle')}</p>
+              <p className="sp-hint">{t('workspace.execution.operationsFlowHint')}</p>
+            </div>
+            <DataList items={model.lifecycleSummary} dense />
+          </section>
 
-      {model.reasonSummary.length > 0 ? (
-        <div className="xo-lifecycle">
-          <p className="subtle-label">{t('workspace.execution.reasonDistributionTitle')}</p>
-          <DataList items={model.reasonSummary} dense />
+          {model.reasonSummary.length > 0 ? (
+            <section className="sd-card">
+              <div className="ids-group">
+                <p className="subtle-label">{t('workspace.execution.reasonDistributionTitle')}</p>
+                <p className="sp-hint">{t('workspace.execution.operationsReasonHint')}</p>
+              </div>
+              <div className="exec-scroll-list">
+                <DataList items={model.reasonSummary} dense />
+              </div>
+            </section>
+          ) : null}
         </div>
       ) : null}
 
@@ -62,10 +102,15 @@ export function ExecutionOperationsPanel({ model }: Props) {
       </div>
 
       {model.accountSummary.length > 0 ? (
-        <div className="eas">
-          <p className="subtle-label">{t('workspace.execution.accountSummary')}</p>
-          <DataList items={model.accountSummary} dense />
-        </div>
+        <section className="sd-card">
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.execution.accountSummary')}</p>
+            <p className="sp-hint">{t('workspace.execution.accountSummaryHint')}</p>
+          </div>
+          <div className="exec-scroll-list">
+            <DataList items={model.accountSummary} dense />
+          </div>
+        </section>
       ) : null}
 
       <div className="xo-alerts">

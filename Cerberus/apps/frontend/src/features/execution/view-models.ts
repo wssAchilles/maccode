@@ -46,10 +46,12 @@ export type ExecutionOperationsPanelModel = {
   diagnosisLabel: string
   diagnosisTone: 'default' | 'accent' | 'danger'
   diagnosisHint: string
+  headlineItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  latencyItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  venueItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   lifecycleSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   reasonSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   accountSummary: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
-  items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
   emptyTitle?: string
   emptyHint?: string
 }
@@ -331,10 +333,12 @@ export function buildExecutionOperationsPanel({
       diagnosisLabel: t('workspace.execution.diagnosisUnavailable'),
       diagnosisTone: 'default',
       diagnosisHint: t('workspace.execution.operationsDescription'),
+      headlineItems: [],
+      latencyItems: [],
+      venueItems: [],
       lifecycleSummary: [],
       reasonSummary: [],
       accountSummary: [],
-      items: [],
       emptyTitle: t('workspace.execution.operationsEmpty'),
       emptyHint: t('workspace.execution.operationsDescription'),
     }
@@ -373,6 +377,86 @@ export function buildExecutionOperationsPanel({
     diagnosisLabel: diagnosis.label,
     diagnosisTone: diagnosis.tone,
     diagnosisHint: diagnosis.hint,
+    headlineItems: [
+      {
+        id: 'observed',
+        label: t('workspace.execution.operationsObserved'),
+        value: String(orderCount),
+      },
+      {
+        id: 'active',
+        label: t('workspace.execution.operationsActive'),
+        value: String(activeOrderCount),
+        tone: activeOrderCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'accepted',
+        label: t('workspace.execution.operationsAccepted'),
+        value: String(acceptedCount),
+      },
+      {
+        id: 'partialFill',
+        label: t('workspace.execution.operationsPartialFills'),
+        value: String(partialFillCount),
+      },
+      {
+        id: 'filled',
+        label: t('workspace.execution.operationsFilled'),
+        value: String(filledCount),
+      },
+      {
+        id: 'rejected',
+        label: t('workspace.execution.operationsRejected'),
+        value: String(rejectedCount),
+        tone: rejectedCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'canceled',
+        label: t('workspace.execution.operationsCanceled'),
+        value: String(canceledCount),
+        tone: canceledCount > 0 ? 'accent' : 'default',
+      },
+    ],
+    latencyItems: [
+      {
+        id: 'submitToAccepted',
+        label: t('workspace.execution.operationsSubmitToAccepted'),
+        value: formatInteger(avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : undefined),
+      },
+      {
+        id: 'submitToFill',
+        label: t('workspace.execution.operationsSubmitToFill'),
+        value: formatInteger(avgSubmitToFillMs ? Math.round(avgSubmitToFillMs) : undefined),
+      },
+      {
+        id: 'partialFillRatio',
+        label: t('workspace.execution.operationsPartialFillRatio'),
+        value: formatPercent(partialFillRatio),
+      },
+      {
+        id: 'slippage',
+        label: t('workspace.execution.operationsSlippage'),
+        value: fillSlippageBps !== undefined ? fillSlippageBps.toFixed(1) : '—',
+        tone: fillSlippageBps !== undefined && Math.abs(fillSlippageBps) > 5 ? 'accent' : 'default',
+      },
+    ],
+    venueItems: [
+      {
+        id: 'matchingLive',
+        label: t('workspace.execution.operationsMatchingLive'),
+        value: formatInteger(matchingStats?.live_orders),
+      },
+      {
+        id: 'tradeCount',
+        label: t('workspace.execution.operationsTrades'),
+        value: formatInteger(matchingStats?.trade_count),
+      },
+      {
+        id: 'latestStatus',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? '—',
+      },
+    ],
     lifecycleSummary: [
       {
         id: 'submit',
@@ -434,81 +518,5 @@ export function buildExecutionOperationsPanel({
       value: `${item.observed} ${t('workspace.execution.accountObservedShort')} · ${item.accepted} ${t('workspace.execution.accountAcceptedShort')} · ${item.partialFill} ${t('workspace.execution.accountPartialShort')} · ${item.filled} ${t('workspace.execution.accountFilledShort')}`,
       tone: item.rejected > 0 || item.canceled > 0 ? 'accent' : item.active > 0 ? 'accent' : 'default',
     })),
-    items: [
-      {
-        id: 'observed',
-        label: t('workspace.execution.operationsObserved'),
-        value: String(orderCount),
-      },
-      {
-        id: 'active',
-        label: t('workspace.execution.operationsActive'),
-        value: String(activeOrderCount),
-        tone: activeOrderCount > 0 ? 'accent' : 'default',
-      },
-      {
-        id: 'accepted',
-        label: t('workspace.execution.operationsAccepted'),
-        value: String(acceptedCount),
-      },
-      {
-        id: 'partialFill',
-        label: t('workspace.execution.operationsPartialFills'),
-        value: String(partialFillCount),
-      },
-      {
-        id: 'filled',
-        label: t('workspace.execution.operationsFilled'),
-        value: String(filledCount),
-      },
-      {
-        id: 'rejected',
-        label: t('workspace.execution.operationsRejected'),
-        value: String(rejectedCount),
-        tone: rejectedCount > 0 ? 'accent' : 'default',
-      },
-      {
-        id: 'canceled',
-        label: t('workspace.execution.operationsCanceled'),
-        value: String(canceledCount),
-        tone: canceledCount > 0 ? 'accent' : 'default',
-      },
-      {
-        id: 'submitToAccepted',
-        label: t('workspace.execution.operationsSubmitToAccepted'),
-        value: formatInteger(avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : undefined),
-      },
-      {
-        id: 'submitToFill',
-        label: t('workspace.execution.operationsSubmitToFill'),
-        value: formatInteger(avgSubmitToFillMs ? Math.round(avgSubmitToFillMs) : undefined),
-      },
-      {
-        id: 'partialFillRatio',
-        label: t('workspace.execution.operationsPartialFillRatio'),
-        value: formatPercent(partialFillRatio),
-      },
-      {
-        id: 'slippage',
-        label: t('workspace.execution.operationsSlippage'),
-        value: fillSlippageBps !== undefined ? fillSlippageBps.toFixed(1) : '—',
-        tone: fillSlippageBps !== undefined && Math.abs(fillSlippageBps) > 5 ? 'accent' : 'default',
-      },
-      {
-        id: 'matchingLive',
-        label: t('workspace.execution.operationsMatchingLive'),
-        value: formatInteger(matchingStats?.live_orders),
-      },
-      {
-        id: 'tradeCount',
-        label: t('workspace.execution.operationsTrades'),
-        value: formatInteger(matchingStats?.trade_count),
-      },
-      {
-        id: 'latestStatus',
-        label: t('workspace.execution.operationsLatestStatus'),
-        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? '—',
-      },
-    ],
   }
 }

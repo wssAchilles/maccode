@@ -9,6 +9,11 @@ type Props = {
 export function ExecutionLifecyclePanel({ model }: Props) {
   const { t } = useI18n()
 
+  const toneClassName = (tone?: 'default' | 'muted' | 'accent') =>
+    tone === 'accent'
+      ? 'obs-value obs-value-bid'
+      : 'obs-value'
+
   return (
     <GlassPanel className="xl-panel" tone="subtle">
       <div className="sp-head">
@@ -32,7 +37,38 @@ export function ExecutionLifecyclePanel({ model }: Props) {
         ))}
       </div>
 
-      <DataList items={model.items} />
+      <div className="obs-grid" role="list" aria-label={t('workspace.execution.lifecycleTitle')}>
+        {model.summaryItems.map((item) => (
+          <article key={item.id} role="listitem" className="sd-card">
+            <p className="subtle-label">{item.label}</p>
+            <p className={toneClassName(item.tone)}>{item.value}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="ids-grid">
+        <section className="sd-card">
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.execution.lifecycleIdentifiersTitle')}</p>
+            <p className="sp-hint">{t('workspace.execution.lifecycleIdentifiersHint')}</p>
+          </div>
+
+          <div className="exec-scroll-list exec-identity-list">
+            <DataList items={model.identifierItems} dense />
+          </div>
+        </section>
+
+        <section className="sd-card">
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.execution.lifecycleTelemetryTitle')}</p>
+            <p className="sp-hint">{t('workspace.execution.lifecycleTelemetryHint')}</p>
+          </div>
+
+          <div className="exec-scroll-list">
+            <DataList items={model.telemetryItems} dense />
+          </div>
+        </section>
+      </div>
 
       {model.reason ? (
         <p className="xl-reason" role="alert">

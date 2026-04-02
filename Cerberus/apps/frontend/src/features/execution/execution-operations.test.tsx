@@ -77,6 +77,9 @@ describe('Execution operations panel', () => {
 
     expect(screen.getByText('Execution operations')).toBeInTheDocument()
     expect(screen.getByText('BTCUSDT · 2 workspace.execution.operationsSummarySuffix')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Execution pulse' })).toBeInTheDocument()
+    expect(screen.getByText('Latency snapshot')).toBeInTheDocument()
+    expect(screen.getByText('Venue pulse')).toBeInTheDocument()
     expect(screen.getByText('Lifecycle distribution')).toBeInTheDocument()
     expect(screen.getByText('workspace.execution.operationsRejected: 1')).toBeInTheDocument()
     expect(screen.getAllByText('2').length).toBeGreaterThan(0)

@@ -191,6 +191,8 @@ describe('strategy orchestration module', () => {
 
     expect(screen.getByText(/workspace\.execution\.lifecycleStageDispatch/i)).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleStageExecution/i)).toBeTruthy()
+    expect(screen.getByText('Recent identifiers')).toBeTruthy()
+    expect(screen.getByText('Execution telemetry')).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleLiveOrders/i)).toBeTruthy()
     expect(screen.getByText(/workspace\.execution\.lifecycleExecutionId/i)).toBeTruthy()
   })

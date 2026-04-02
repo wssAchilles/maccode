@@ -129,7 +129,9 @@ export type ExecutionLifecyclePanelModel = {
   summary: string
   reason?: string
   stages: ExecutionLifecycleStageModel[]
-  items: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  summaryItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  identifierItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
+  telemetryItems: { id: string; label: string; value: string; tone?: 'default' | 'muted' | 'accent' }[]
 }
 
 function formatPercent(value?: number | null): string {
@@ -908,7 +910,7 @@ export function buildExecutionLifecyclePanelModel({
     summary,
     reason: domainStatus.reason,
     stages,
-    items: [
+    summaryItems: [
       {
         id: 'dispatchState',
         label: t('workspace.execution.lifecycleDispatch'),
@@ -940,6 +942,8 @@ export function buildExecutionLifecyclePanelModel({
         label: t('workspace.execution.lifecycleLatest'),
         value: lifecycleStatusLabel(t, latestLifecycleEvent?.latestStatus, latestLifecycleEvent?.latestPhase),
       },
+    ],
+    identifierItems: [
       {
         id: 'latestRequestId',
         label: t('workspace.execution.lifecycleRequestId'),
@@ -960,6 +964,8 @@ export function buildExecutionLifecyclePanelModel({
         label: t('workspace.execution.lifecycleClientOrderId'),
         value: latestLifecycleEvent?.clientOrderId ?? t('common.na'),
       },
+    ],
+    telemetryItems: [
       {
         id: 'forwardedExecutions',
         label: t('workspace.execution.lifecycleForwarded'),

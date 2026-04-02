@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.22% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/31</span>
+                <span class='fraction'>0/31</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.22% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/31</span>
+                <span class='fraction'>0/31</span>
             </div>
         
             
@@ -108,7 +108,7 @@
 <a name='L43'></a><a href='#L43'>43</a>
 <a name='L44'></a><a href='#L44'>44</a>
 <a name='L45'></a><a href='#L45'>45</a>
-<a name='L46'></a><a href='#L46'>46</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L46'></a><a href='#L46'>46</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -153,7 +153,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { requestEnvelope } from '../../../lib/http'
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { requestEnvelope } from '../../../lib/http'<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
 import type { BinanceRule, OrderEvent, TradingPolicy } from '../../../types/contracts'
 &nbsp;
 export type RecentOrderFilters = {
@@ -164,7 +164,7 @@ export type RecentOrderFilters = {
   request_id?: string
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function appendFilter(params: URLSearchParams, key: keyof RecentOrderFilters, value?: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >function appendFilter(params: URLSearchParams, key: keyof RecentOrderFilters, value?: string) {</span>
 <span class="cstat-no" title="statement not covered" >  const normalized = value?.trim()</span>
 <span class="cstat-no" title="statement not covered" >  if (!normalized || normalized === 'ALL') {</span>
 <span class="cstat-no" title="statement not covered" >    return</span>
@@ -172,7 +172,7 @@ export type RecentOrderFilters = {
 <span class="cstat-no" title="statement not covered" >  params.set(key, normalized)</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadRecentOrderEventsEnvelope(</span></span>
+<span class="cstat-no" title="statement not covered" >export async function loadRecentOrderEventsEnvelope(</span>
 <span class="cstat-no" title="statement not covered" >  gatewayBase: string,</span>
 <span class="cstat-no" title="statement not covered" >  filters?: RecentOrderFilters,</span>
 <span class="cstat-no" title="statement not covered" >) {</span>
@@ -189,11 +189,11 @@ export type RecentOrderFilters = {
 <span class="cstat-no" title="statement not covered" >  )</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadTradingPolicyEnvelope(gatewayBase: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >export async function loadTradingPolicyEnvelope(gatewayBase: string) {</span>
 <span class="cstat-no" title="statement not covered" >  return requestEnvelope&lt;{ policy?: TradingPolicy }&gt;(`${gatewayBase}/api/v1/trading/policy`)</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export async function loadBinanceRuleEnvelope(gatewayBase: string, symbol: string) {</span></span>
+<span class="cstat-no" title="statement not covered" >export async function loadBinanceRuleEnvelope(gatewayBase: string, symbol: string) {</span>
 <span class="cstat-no" title="statement not covered" >  return requestEnvelope&lt;{ rule?: BinanceRule }&gt;(</span>
 <span class="cstat-no" title="statement not covered" >    `${gatewayBase}/api/v1/binance/symbol-rules?symbol=${encodeURIComponent(symbol)}`,</span>
 <span class="cstat-no" title="statement not covered" >  )</span>
@@ -205,7 +205,7 @@ export type RecentOrderFilters = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-01T15:27:03.999Z
+                at 2026-04-02T02:52:44.813Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

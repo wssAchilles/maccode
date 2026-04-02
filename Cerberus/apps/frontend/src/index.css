@@ -971,9 +971,14 @@ button {
   gap: 9px;
 }
 
+.exec-scroll-list {
+  max-height: 172px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .xo-diagnosis,
-.xo-lifecycle,
-.eas,
 .elb,
 .mlb {
   display: grid;
