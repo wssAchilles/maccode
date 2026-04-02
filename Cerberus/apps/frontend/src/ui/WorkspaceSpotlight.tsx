@@ -11,10 +11,12 @@ type Props = {
 }
 
 export function WorkspaceSpotlight({ model, compact = false, className }: Props) {
+  const accent = model.accent ?? 'teal'
+
   return (
     <RevealGroup className={cn('sp-shell', className)}>
-      <MotionSurface mode={compact ? 'panel' : 'spotlight'}>
-        <GlassPanel className={cn(compact ? 'sp sp-compact' : 'sp')} tone="subtle">
+      <MotionSurface className={cn('sp-surface', `sp-surface-${accent}`)} mode={compact ? 'panel' : 'spotlight'}>
+        <GlassPanel className={cn(compact ? 'sp sp-compact' : 'sp', `sp-accent-${accent}`)} tone="subtle">
           <div className="sp-head">
             <div className="sf-copy">
               {model.postureLabel ? <p className="subtle-label">{model.postureLabel}</p> : null}
@@ -22,7 +24,7 @@ export function WorkspaceSpotlight({ model, compact = false, className }: Props)
               {model.hint ? <p className="panel-caption">{model.hint}</p> : null}
             </div>
             {model.chips.length > 0 ? (
-              <div className="ws-actions" aria-label="workspace-spotlight-chips">
+              <div className="sp-chip-row" aria-label="workspace-spotlight-chips">
                 {model.chips.map((chip, index) => (
                   <span key={`${chip}-${index}`} className="account-pill">
                     {chip}

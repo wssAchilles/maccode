@@ -7,7 +7,7 @@ import { RevealGroup } from './RevealGroup'
 
 type Props = {
   sections: WorkspaceOperatorDeckSectionModel[]
-  layout?: 'grid' | 'stack'
+  layout?: 'grid' | 'stack' | 'rail'
 }
 
 export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
@@ -15,12 +15,27 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
     return null
   }
 
+  const deckClass =
+    layout === 'stack'
+      ? 'stack-sm'
+      : layout === 'rail'
+        ? 'od-rail'
+        : 'ids-grid'
+
   return (
-    <div className={layout === 'stack' ? 'stack-sm' : 'ids-grid'}>
+    <div className={deckClass}>
       {sections.map((section, index) => (
-        <RevealGroup key={section.id} revealIndex={index} className={cn(section.visualPriority === 'hero' ? 'od-shell-hero' : '')}>
-          <MotionSurface mode="panel">
-            <GlassPanel className="stack-sm" tone="subtle">
+        <RevealGroup
+          key={section.id}
+          revealIndex={index}
+          className={cn(
+            'od-shell',
+            section.visualPriority === 'hero' ? 'od-shell-hero' : '',
+            layout === 'rail' && section.visualPriority === 'hero' ? 'od-shell-span' : '',
+          )}
+        >
+          <MotionSurface className={cn('od-surface', section.accent ? `od-surface-${section.accent}` : '')} mode="panel">
+            <GlassPanel className={cn('stack-sm od-card', section.accent ? `od-card-${section.accent}` : '')} tone="subtle">
               <div className="ids-group">
                 <div className="sp-head">
                   <p className="subtle-label">{section.title}</p>

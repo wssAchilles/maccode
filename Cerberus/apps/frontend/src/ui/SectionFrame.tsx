@@ -14,6 +14,8 @@ type Props = {
   className?: string
   bodyClassName?: string
   tone?: 'default' | 'hero' | 'subtle'
+  accent?: 'teal' | 'cyan' | 'amber'
+  stage?: 'hero' | 'feature' | 'operator' | 'inspector' | 'tail'
 }
 
 export function SectionFrame({
@@ -25,11 +27,13 @@ export function SectionFrame({
   className,
   bodyClassName,
   tone = 'default',
+  accent = 'teal',
+  stage = 'feature',
 }: Props) {
   return (
-    <RevealGroup className={cn('sf-shell', className)}>
-      <MotionSurface className="sf-surface" mode={tone === 'hero' ? 'spotlight' : 'panel'}>
-        <GlassPanel className="sf" tone={tone}>
+    <RevealGroup className={cn('sf-shell', `sf-shell-${stage}`, className)}>
+      <MotionSurface className={cn('sf-surface', `sf-surface-${accent}`)} mode={tone === 'hero' ? 'spotlight' : 'panel'}>
+        <GlassPanel className={cn('sf', `sf-${stage}`, `sf-accent-${accent}`)} tone={tone}>
           <div className="sf-header">
             <div className="sf-copy">
               {eyebrow ? <p className="sf-eyebrow">{eyebrow}</p> : null}

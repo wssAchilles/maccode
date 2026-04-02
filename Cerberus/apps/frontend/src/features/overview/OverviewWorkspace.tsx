@@ -29,7 +29,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
   const model = useOverviewWorkspaceModel({ active: _active, onSelectWorkspace })
 
   return (
-    <div className="ws-grid">
+    <div className="ws-grid ws-grid-overview" data-workspace="overview">
       <SectionFrame
         title={t('workspace.overview.title')}
         description={t('workspace.overview.description')}
@@ -46,6 +46,8 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         }
         className="ws-span-full"
         tone="hero"
+        accent="cyan"
+        stage="hero"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -66,10 +68,12 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         </InlineAlert>
       ) : null}
 
-      <div className="ws-main">
+      <div className="ws-main ws-main-shell">
         <SectionFrame
           title={t('workspace.overview.healthDigest')}
           description={t('workspace.overview.description')}
+          accent="cyan"
+          stage="feature"
         >
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
@@ -77,15 +81,15 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame
           title={t('workspace.overview.operatorDeckTitle')}
           description={t('workspace.overview.operatorDeckDescription')}
+          accent="teal"
+          stage="operator"
         >
-          <WorkspaceOperatorDeck sections={model.operatorSections} />
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
-
-        <CoreFlowPanel active={_active} />
       </div>
 
-      <div className="ws-side stack">
-        <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')}>
+      <div className="ws-side stack ws-side-shell">
+        <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')} accent="amber" stage="inspector">
           <div className="stack-sm">
             {model.healthCards.map((card) => (
               <GlassPanel key={card.id} className="hd-card" tone="subtle">
@@ -103,30 +107,42 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="teal" stage="inspector">
           <InferenceStatusCard model={model.inferenceCard} onOpenHealth={model.openHealth} />
         </SectionFrame>
+      </div>
 
-        <SectionFrame title={t('workspace.strategy.title')} description={t('workspace.strategy.description')}>
-          <div className="stack">
-            <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
-            <StrategyDecisionMatrix model={model.strategyMatrix} />
-            <DiagnosticDrawer
-              title={t('workspace.strategy.registryTitle')}
-              summary={t('workspace.strategy.registryDescription')}
-            >
-              <StrategyRegistryPanel model={model.strategyRegistry} />
-            </DiagnosticDrawer>
-            <DiagnosticDrawer
-              title={t('workspace.strategy.auditTimelineTitle')}
-              summary={t('workspace.strategy.auditTimelineHint')}
-            >
-              <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
-            </DiagnosticDrawer>
-          </div>
-        </SectionFrame>
+      <div className="ws-span-full">
+        <CoreFlowPanel active={_active} />
+      </div>
 
-        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')}>
+      <SectionFrame
+        title={t('workspace.strategy.title')}
+        description={t('workspace.strategy.description')}
+        className="ws-span-full"
+        accent="teal"
+        stage="feature"
+      >
+        <div className="stack">
+          <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+          <StrategyDecisionMatrix model={model.strategyMatrix} />
+          <DiagnosticDrawer
+            title={t('workspace.strategy.registryTitle')}
+            summary={t('workspace.strategy.registryDescription')}
+          >
+            <StrategyRegistryPanel model={model.strategyRegistry} />
+          </DiagnosticDrawer>
+          <DiagnosticDrawer
+            title={t('workspace.strategy.auditTimelineTitle')}
+            summary={t('workspace.strategy.auditTimelineHint')}
+          >
+            <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
+          </DiagnosticDrawer>
+        </div>
+      </SectionFrame>
+
+      <div className="overview-tail-grid ws-span-full">
+        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail">
           {model.recentSignals.length === 0 ? (
             <p className="empty-inline">{t('strategy.noData')}</p>
           ) : (
@@ -152,7 +168,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')}>
+        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail">
           <DataList items={model.persistenceItems} />
         </SectionFrame>
       </div>

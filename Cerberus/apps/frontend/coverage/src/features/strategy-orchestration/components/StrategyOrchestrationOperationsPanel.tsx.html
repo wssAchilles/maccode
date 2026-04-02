@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/225</span>
+                <span class='fraction'>0/227</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/225</span>
+                <span class='fraction'>0/227</span>
             </div>
         
             
@@ -334,7 +334,9 @@
 <a name='L269'></a><a href='#L269'>269</a>
 <a name='L270'></a><a href='#L270'>270</a>
 <a name='L271'></a><a href='#L271'>271</a>
-<a name='L272'></a><a href='#L272'>272</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -546,16 +548,18 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -747,96 +751,98 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >              &lt;div className="so-editor-grid"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.priority')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;input</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-priority`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_priority`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    type="number"</span>
-<span class="cstat-no" title="statement not covered" >                    min="1"</span>
-<span class="cstat-no" title="statement not covered" >                    max="100"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.priority ?? '1'}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'priority', event.target.value)}</span>
-<span class="cstat-no" title="statement not covered" >                  /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.observeWeight')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;input</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-observe-weight`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_observe_weight`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    type="number"</span>
-<span class="cstat-no" title="statement not covered" >                    min="0"</span>
-<span class="cstat-no" title="statement not covered" >                    step="0.05"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.observeWeight ?? '0'}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'observeWeight', event.target.value)}</span>
-<span class="cstat-no" title="statement not covered" >                  /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.primaryWeight')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;input</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-primary-weight`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_primary_weight`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    type="number"</span>
-<span class="cstat-no" title="statement not covered" >                    min="0"</span>
-<span class="cstat-no" title="statement not covered" >                    step="0.05"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.primaryWeight ?? '0'}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}</span>
-<span class="cstat-no" title="statement not covered" >                  /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label so-coverage-field"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.symbolCoverage')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;input</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-symbol-coverage`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_symbol_coverage`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.symbolCoverage ?? ''}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'symbolCoverage', event.target.value)}</span>
-<span class="cstat-no" title="statement not covered" >                    placeholder="BTCUSDT, ETHUSDT"</span>
-<span class="cstat-no" title="statement not covered" >                  /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label so-coverage-field"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.conflictTargets')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;input</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-conflict-targets`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_conflict_targets`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.conflictTargets ?? ''}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}</span>
-<span class="cstat-no" title="statement not covered" >                    placeholder="default, inference"</span>
-<span class="cstat-no" title="statement not covered" >                  /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;label className="field-label"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('workspace.strategy.downgradeAction')}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;select</span>
-<span class="cstat-no" title="statement not covered" >                    id={`${fieldBaseId}-downgrade-action`}</span>
-<span class="cstat-no" title="statement not covered" >                    name={`${fieldBaseId}_downgrade_action`}</span>
-<span class="cstat-no" title="statement not covered" >                    className="field-input"</span>
-<span class="cstat-no" title="statement not covered" >                    value={draft?.downgradeAction ?? downgradePolicy}</span>
-<span class="cstat-no" title="statement not covered" >                    onChange={(event) =&gt; onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}</span>
-                  &gt;
-<span class="cstat-no" title="statement not covered" >                    {downgradeOptions.map((option) =&gt; (</span>
-<span class="cstat-no" title="statement not covered" >                      &lt;option key={`${row.id}-${option.id}`} value={option.id}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                        {option.label}</span>
-<span class="cstat-no" title="statement not covered" >                      &lt;/option&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    ))}</span>
-<span class="cstat-no" title="statement not covered" >                  &lt;/select&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/label&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="so-row-grid"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;div className="so-editor-grid"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.priority')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-priority`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_priority`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      type="number"</span>
+<span class="cstat-no" title="statement not covered" >                      min="1"</span>
+<span class="cstat-no" title="statement not covered" >                      max="100"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.priority ?? '1'}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'priority', event.target.value)}</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.observeWeight')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-observe-weight`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_observe_weight`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      type="number"</span>
+<span class="cstat-no" title="statement not covered" >                      min="0"</span>
+<span class="cstat-no" title="statement not covered" >                      step="0.05"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.observeWeight ?? '0'}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'observeWeight', event.target.value)}</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.primaryWeight')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-primary-weight`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_primary_weight`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      type="number"</span>
+<span class="cstat-no" title="statement not covered" >                      min="0"</span>
+<span class="cstat-no" title="statement not covered" >                      step="0.05"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.primaryWeight ?? '0'}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label so-coverage-field"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.symbolCoverage')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-symbol-coverage`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_symbol_coverage`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.symbolCoverage ?? ''}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'symbolCoverage', event.target.value)}</span>
+<span class="cstat-no" title="statement not covered" >                      placeholder="BTCUSDT, ETHUSDT"</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label so-coverage-field"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.conflictTargets')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-conflict-targets`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_conflict_targets`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.conflictTargets ?? ''}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}</span>
+<span class="cstat-no" title="statement not covered" >                      placeholder="default, inference"</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;label className="field-label"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('workspace.strategy.downgradeAction')}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;select</span>
+<span class="cstat-no" title="statement not covered" >                      id={`${fieldBaseId}-downgrade-action`}</span>
+<span class="cstat-no" title="statement not covered" >                      name={`${fieldBaseId}_downgrade_action`}</span>
+<span class="cstat-no" title="statement not covered" >                      className="field-input"</span>
+<span class="cstat-no" title="statement not covered" >                      value={draft?.downgradeAction ?? downgradePolicy}</span>
+<span class="cstat-no" title="statement not covered" >                      onChange={(event) =&gt; onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}</span>
+                    &gt;
+<span class="cstat-no" title="statement not covered" >                      {downgradeOptions.map((option) =&gt; (</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;option key={`${row.id}-${option.id}`} value={option.id}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                          {option.label}</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;/option&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      ))}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/select&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >              &lt;div className="so-row-meta"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.runtimeState')}: {row.stateLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.impactTitle')}: {row.impactLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.lastUpdated')}: {row.lastUpdatedLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.lastActor')}: {row.lastActorLabel}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p&gt;{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;div className="so-row-meta"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.runtimeState')}: {row.stateLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.impactTitle')}: {row.impactLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.lastUpdated')}: {row.lastUpdatedLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.lastActor')}: {row.lastActorLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;p&gt;{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >              &lt;div className="ws-actions so-actions"&gt;</span>
@@ -883,7 +889,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T03:14:12.568Z
+                at 2026-04-02T05:56:47.284Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

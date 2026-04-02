@@ -140,96 +140,98 @@ export function StrategyOrchestrationOperationsPanel({
                 </label>
               </div>
 
-              <div className="so-editor-grid">
-                <label className="field-label">
-                  {t('workspace.strategy.priority')}
-                  <input
-                    id={`${fieldBaseId}-priority`}
-                    name={`${fieldBaseId}_priority`}
-                    className="field-input"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={draft?.priority ?? '1'}
-                    onChange={(event) => onDraftFieldChange(row.id, 'priority', event.target.value)}
-                  />
-                </label>
-                <label className="field-label">
-                  {t('workspace.strategy.observeWeight')}
-                  <input
-                    id={`${fieldBaseId}-observe-weight`}
-                    name={`${fieldBaseId}_observe_weight`}
-                    className="field-input"
-                    type="number"
-                    min="0"
-                    step="0.05"
-                    value={draft?.observeWeight ?? '0'}
-                    onChange={(event) => onDraftFieldChange(row.id, 'observeWeight', event.target.value)}
-                  />
-                </label>
-                <label className="field-label">
-                  {t('workspace.strategy.primaryWeight')}
-                  <input
-                    id={`${fieldBaseId}-primary-weight`}
-                    name={`${fieldBaseId}_primary_weight`}
-                    className="field-input"
-                    type="number"
-                    min="0"
-                    step="0.05"
-                    value={draft?.primaryWeight ?? '0'}
-                    onChange={(event) => onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}
-                  />
-                </label>
-                <label className="field-label so-coverage-field">
-                  {t('workspace.strategy.symbolCoverage')}
-                  <input
-                    id={`${fieldBaseId}-symbol-coverage`}
-                    name={`${fieldBaseId}_symbol_coverage`}
-                    className="field-input"
-                    value={draft?.symbolCoverage ?? ''}
-                    onChange={(event) => onDraftFieldChange(row.id, 'symbolCoverage', event.target.value)}
-                    placeholder="BTCUSDT, ETHUSDT"
-                  />
-                </label>
-                <label className="field-label so-coverage-field">
-                  {t('workspace.strategy.conflictTargets')}
-                  <input
-                    id={`${fieldBaseId}-conflict-targets`}
-                    name={`${fieldBaseId}_conflict_targets`}
-                    className="field-input"
-                    value={draft?.conflictTargets ?? ''}
-                    onChange={(event) => onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}
-                    placeholder="default, inference"
-                  />
-                </label>
-                <label className="field-label">
-                  {t('workspace.strategy.downgradeAction')}
-                  <select
-                    id={`${fieldBaseId}-downgrade-action`}
-                    name={`${fieldBaseId}_downgrade_action`}
-                    className="field-input"
-                    value={draft?.downgradeAction ?? downgradePolicy}
-                    onChange={(event) => onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}
-                  >
-                    {downgradeOptions.map((option) => (
-                      <option key={`${row.id}-${option.id}`} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <div className="so-row-grid">
+                <div className="so-editor-grid">
+                  <label className="field-label">
+                    {t('workspace.strategy.priority')}
+                    <input
+                      id={`${fieldBaseId}-priority`}
+                      name={`${fieldBaseId}_priority`}
+                      className="field-input"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={draft?.priority ?? '1'}
+                      onChange={(event) => onDraftFieldChange(row.id, 'priority', event.target.value)}
+                    />
+                  </label>
+                  <label className="field-label">
+                    {t('workspace.strategy.observeWeight')}
+                    <input
+                      id={`${fieldBaseId}-observe-weight`}
+                      name={`${fieldBaseId}_observe_weight`}
+                      className="field-input"
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value={draft?.observeWeight ?? '0'}
+                      onChange={(event) => onDraftFieldChange(row.id, 'observeWeight', event.target.value)}
+                    />
+                  </label>
+                  <label className="field-label">
+                    {t('workspace.strategy.primaryWeight')}
+                    <input
+                      id={`${fieldBaseId}-primary-weight`}
+                      name={`${fieldBaseId}_primary_weight`}
+                      className="field-input"
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value={draft?.primaryWeight ?? '0'}
+                      onChange={(event) => onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}
+                    />
+                  </label>
+                  <label className="field-label so-coverage-field">
+                    {t('workspace.strategy.symbolCoverage')}
+                    <input
+                      id={`${fieldBaseId}-symbol-coverage`}
+                      name={`${fieldBaseId}_symbol_coverage`}
+                      className="field-input"
+                      value={draft?.symbolCoverage ?? ''}
+                      onChange={(event) => onDraftFieldChange(row.id, 'symbolCoverage', event.target.value)}
+                      placeholder="BTCUSDT, ETHUSDT"
+                    />
+                  </label>
+                  <label className="field-label so-coverage-field">
+                    {t('workspace.strategy.conflictTargets')}
+                    <input
+                      id={`${fieldBaseId}-conflict-targets`}
+                      name={`${fieldBaseId}_conflict_targets`}
+                      className="field-input"
+                      value={draft?.conflictTargets ?? ''}
+                      onChange={(event) => onDraftFieldChange(row.id, 'conflictTargets', event.target.value)}
+                      placeholder="default, inference"
+                    />
+                  </label>
+                  <label className="field-label">
+                    {t('workspace.strategy.downgradeAction')}
+                    <select
+                      id={`${fieldBaseId}-downgrade-action`}
+                      name={`${fieldBaseId}_downgrade_action`}
+                      className="field-input"
+                      value={draft?.downgradeAction ?? downgradePolicy}
+                      onChange={(event) => onDraftFieldChange(row.id, 'downgradeAction', event.target.value)}
+                    >
+                      {downgradeOptions.map((option) => (
+                        <option key={`${row.id}-${option.id}`} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
 
-              <div className="so-row-meta">
-                <p>{t('workspace.strategy.runtimeState')}: {row.stateLabel}</p>
-                <p>{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}</p>
-                <p>{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}</p>
-                <p>{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}</p>
-                <p>{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}</p>
-                <p>{t('workspace.strategy.impactTitle')}: {row.impactLabel}</p>
-                <p>{t('workspace.strategy.lastUpdated')}: {row.lastUpdatedLabel}</p>
-                <p>{t('workspace.strategy.lastActor')}: {row.lastActorLabel}</p>
-                <p>{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}</p>
+                <div className="so-row-meta">
+                  <p>{t('workspace.strategy.runtimeState')}: {row.stateLabel}</p>
+                  <p>{t('workspace.strategy.coverageScope')}: {row.coverageScopeLabel}</p>
+                  <p>{t('workspace.strategy.conflictTargets')}: {row.conflictTargetsLabel}</p>
+                  <p>{t('workspace.strategy.symbolCoverage')}: {row.coverageLabel}</p>
+                  <p>{t('workspace.strategy.downgradeAction')}: {row.downgradeActionLabel}</p>
+                  <p>{t('workspace.strategy.impactTitle')}: {row.impactLabel}</p>
+                  <p>{t('workspace.strategy.lastUpdated')}: {row.lastUpdatedLabel}</p>
+                  <p>{t('workspace.strategy.lastActor')}: {row.lastActorLabel}</p>
+                  <p>{t('workspace.strategy.lastReason')}: {row.lastReasonLabel}</p>
+                </div>
               </div>
 
               <div className="ws-actions so-actions">

@@ -151,16 +151,19 @@ describe('market view models', () => {
       preparedSelection,
     })
 
-    expect(markers).toEqual([
-      {
-        id: 'fill-1',
-        time: 1712059200,
-        position: 'belowBar',
-        shape: 'arrowUp',
-        color: '#15803d',
-        text: 'exec-1',
-      },
-    ])
+    expect(markers).toEqual({
+      items: [
+        {
+          id: 'fill-1',
+          time: 1712059200,
+          position: 'belowBar',
+          shape: 'arrowUp',
+          color: '#15803d',
+          text: 'exec-1',
+        },
+      ],
+      signature: 'fill-1:1712059200:belowBar:arrowUp:#15803d:exec-1',
+    })
   })
 
   it('builds a replay plan for trailing candle updates', () => {

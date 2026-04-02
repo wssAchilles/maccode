@@ -17,6 +17,7 @@ import {
   buildMarketChartStateModel,
   buildMarketChartSeriesModel,
   buildMarketChartMarkersModel,
+  buildMarketChartContextModel,
   buildMarketExecutionRailModel,
   buildMarketMetricTiles,
   buildMarketOperatorSections,
@@ -111,6 +112,12 @@ export function useMarketWorkspaceModel({ active }: Params) {
         orderbookPanel,
       }),
       chartMarkers: buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
+      chartContext: buildMarketChartContextModel({
+        t,
+        snapshot: tradingSnapshot,
+        executionRail,
+        orderbookPanel,
+      }),
       orderbookPanel,
       spotlight: buildMarketSpotlightModel({
         t,

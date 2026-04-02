@@ -2,7 +2,7 @@ import { useI18n } from '../i18n/I18nProvider'
 
 import { AlpacaPaperPanel } from './execution/AlpacaPaperPanel'
 import { BinanceTestPanel } from './execution/BinanceTestPanel'
-import { GlassPanel, MotionSurface, StatusPill, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../ui'
+import { GlassPanel, MotionSurface, StatusPill, WorkspaceOperatorDeck } from '../ui'
 import { useExecutionConsoleModel } from '../features/execution/useExecutionConsoleModel'
 import { useRafPresenceTransition } from '../ui/motion/useRafPresenceTransition'
 
@@ -35,35 +35,73 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
 
   return (
     <section className="execution-orchestrator" data-testid="execution-console">
-      <WorkspaceSpotlight model={deskSpotlight} compact className="execution-desk-spotlight" />
-
-      <div
-        className="broker-tabs"
-        role="tablist"
-        aria-label={t('workspace.execution.ticketTitle')}
-        data-broker={broker}
-        data-phase={brokerPhase}
-      >
-        <span className="broker-tabs-indicator" aria-hidden="true" />
-        <button
-          type="button"
-          role="tab"
-          aria-selected={broker === 'binance'}
-          className={broker === 'binance' ? 'chip-button chip-button-active' : 'chip-button'}
-          onClick={() => setBroker('binance')}
-        >
-          Binance
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={broker === 'alpaca'}
-          className={broker === 'alpaca' ? 'chip-button chip-button-active' : 'chip-button'}
-          onClick={() => setBroker('alpaca')}
-        >
-          Alpaca
-        </button>
-      </div>
+      <MotionSurface className="xec-shell" mode="spotlight">
+        <GlassPanel className="xec-header" tone="subtle">
+          <div className="xec-copy">
+            {deskSpotlight.postureLabel ? <p className="subtle-label">{deskSpotlight.postureLabel}</p> : null}
+            <p className="xec-summary">{deskSpotlight.summary}</p>
+            {deskSpotlight.hint ? <p className="panel-caption">{deskSpotlight.hint}</p> : null}
+          </div>
+          <div className="xec-side">
+            {deskSpotlight.chips.length > 0 ? (
+              <div className="xec-chip-row" aria-label="execution-console-chips">
+                {deskSpotlight.chips.map((chip, index) => (
+                  <span key={`${chip}-${index}`} className="account-pill">
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div
+              className="broker-tabs"
+              role="tablist"
+              aria-label={t('workspace.execution.ticketTitle')}
+              data-broker={broker}
+              data-phase={brokerPhase}
+            >
+              <span className="broker-tabs-indicator" aria-hidden="true" />
+              <button
+                type="button"
+                role="tab"
+                aria-selected={broker === 'binance'}
+                className={broker === 'binance' ? 'chip-button chip-button-active' : 'chip-button'}
+                onClick={() => setBroker('binance')}
+              >
+                Binance
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={broker === 'alpaca'}
+                className={broker === 'alpaca' ? 'chip-button chip-button-active' : 'chip-button'}
+                onClick={() => setBroker('alpaca')}
+              >
+                Alpaca
+              </button>
+            </div>
+            <div className="xec-metrics">
+              {deskSpotlight.metrics.map((metric) => (
+                <div key={metric.id} className="xec-metric">
+                  <p className="subtle-label">{metric.label}</p>
+                  <p
+                    className={
+                      metric.tone === 'positive'
+                        ? 'xec-metric-value dl-value-positive'
+                        : metric.tone === 'negative'
+                          ? 'xec-metric-value dl-value-negative'
+                          : metric.tone === 'accent'
+                            ? 'xec-metric-value dl-value-accent'
+                            : 'xec-metric-value'
+                    }
+                  >
+                    {metric.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </GlassPanel>
+      </MotionSurface>
 
       <div className="execution-layout">
         <div className="xlay-main">

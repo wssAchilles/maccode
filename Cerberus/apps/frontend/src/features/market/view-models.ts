@@ -75,10 +75,28 @@ export type MarketChartMarkerModel = {
   text: string
 }
 
+export type MarketChartMarkersModel = {
+  items: MarketChartMarkerModel[]
+  signature: string
+}
+
+export type MarketChartContextModel = {
+  eyebrow: string
+  summary: string
+  hint: string
+  chips: string[]
+  metrics: {
+    id: string
+    label: string
+    value: string
+    tone?: 'default' | 'positive' | 'negative' | 'accent'
+  }[]
+}
+
 export const MARKET_SYMBOLS = ['BTCUSDT', 'ETHUSDT'] as const
 
 const preparedCandleCache = new WeakMap<Candle[], MarketChartSeriesModel>()
-const preparedMarkerCache = new WeakMap<PreparedExecutionSelection, MarketChartMarkerModel[]>()
+const preparedMarkerCache = new WeakMap<PreparedExecutionSelection, MarketChartMarkersModel>()
 
 type BuildMarketMetricTilesParams = {
   t: Translate
@@ -311,6 +329,54 @@ export function buildMarketOperatorSections({
   ]
 }
 
+export function buildMarketChartContextModel({
+  t,
+  snapshot,
+  executionRail,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  executionRail: MarketExecutionRailModel
+  orderbookPanel: MatchingOrderBookPanelModel
+}): MarketChartContextModel {
+  const latestPulse = executionRail.items[0]
+
+  return {
+    eyebrow: t('workspace.market.chartDescription'),
+    summary: `${snapshot.selectedSymbol} · ${snapshot.signalValue}`,
+    hint:
+      executionRail.state === 'stale'
+        ? executionRail.staleHint ?? t('health.stale')
+        : latestPulse?.status ?? orderbookPanel.liquidityBiasLabel,
+    chips: [
+      snapshot.selectedSymbol,
+      snapshot.signalValue,
+      orderbookPanel.liquidityBiasLabel,
+      orderbookPanel.stale ? t('health.stale') : t('health.fresh'),
+    ],
+    metrics: [
+      {
+        id: 'mid',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'pulse',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestPulse?.status ?? t('common.na'),
+        tone: executionRail.state === 'stale' ? 'negative' : 'default',
+      },
+    ],
+  }
+}
+
 export function buildMarketChartStateModel({
   t,
   candlesCount,
@@ -493,13 +559,13 @@ export function buildMarketChartMarkersModel({
   preparedSelection,
 }: {
   preparedSelection: PreparedExecutionSelection
-}): MarketChartMarkerModel[] {
+}): MarketChartMarkersModel {
   const cached = preparedMarkerCache.get(preparedSelection)
   if (cached) {
     return cached
   }
 
-  const prepared: MarketChartMarkerModel[] = preparedSelection.markers.map((item) => ({
+  const items: MarketChartMarkerModel[] = preparedSelection.markers.map((item) => ({
     id: item.id,
     time: Math.floor(item.time / 1000) as UTCTimestamp,
     position:
@@ -517,6 +583,13 @@ export function buildMarketChartMarkersModel({
     color: markerColor(item.tone),
     text: item.label,
   }))
+
+  const prepared = {
+    items,
+    signature: items
+      .map((item) => `${item.id}:${item.time}:${item.position}:${item.shape}:${item.color}:${item.text}`)
+      .join('|'),
+  }
 
   preparedMarkerCache.set(preparedSelection, prepared)
   return prepared

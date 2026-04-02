@@ -16,30 +16,34 @@ export function HealthWorkspace({ active: _active = true }: Props) {
   const model = useHealthWorkspaceModel(_active)
 
   return (
-    <div className="ws-grid">
+    <div className="ws-grid ws-grid-health" data-workspace="health">
       <SectionFrame
         title={t('workspace.health.title')}
         description={t('workspace.health.description')}
         eyebrow={t('workspace.health.eyebrow')}
         className="ws-span-full"
         tone="hero"
+        accent="teal"
+        stage="hero"
       >
         <ServiceHealthPanel model={model.serviceHealthPanel} />
       </SectionFrame>
 
-      <div className="ws-main stack">
-        <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')}>
+      <div className="ws-main stack ws-main-shell">
+        <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')} accent="teal" stage="feature">
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
 
         <SectionFrame
           title={t('workspace.health.operatorDeckTitle')}
           description={t('workspace.health.operatorDeckDescription')}
+          accent="cyan"
+          stage="operator"
         >
-          <WorkspaceOperatorDeck sections={model.operatorSections} />
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')}>
+        <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="feature">
           <div className="health-grid">
             <GlassPanel tone="subtle">
               <DataList items={model.workerItems} />
@@ -50,7 +54,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}>
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail">
           <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
           <DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
@@ -64,7 +68,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack">
+      <div className="ws-side stack ws-side-shell">
         <DiagnosticDrawer
           title={t('workspace.health.requestIds')}
           summary={t('workspace.health.requestIdsDescription')}

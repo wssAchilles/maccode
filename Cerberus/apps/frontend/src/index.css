@@ -17,6 +17,9 @@
   --t2: #7c9ea6;
   --a0: #38bdf8;
   --a1: #2dd4bf;
+  --gl-teal: 45, 212, 191;
+  --gl-cyan: 56, 189, 248;
+  --gl-amber: 245, 158, 11;
   --ok: #2dd4bf;
   --er: #fb923c;
   --wa: #f59e0b;
@@ -102,6 +105,31 @@ button {
   width: min(1510px, calc(100% - 48px));
   margin: 0 auto;
   padding: 28px 0 128px;
+}
+
+.app-shell,
+.ws-grid {
+  --workspace-accent-rgb: var(--gl-teal);
+}
+
+.app-shell[data-workspace='overview'],
+.ws-grid-overview {
+  --workspace-accent-rgb: var(--gl-cyan);
+}
+
+.app-shell[data-workspace='market'],
+.ws-grid-market {
+  --workspace-accent-rgb: var(--gl-cyan);
+}
+
+.app-shell[data-workspace='execution'],
+.ws-grid-execution {
+  --workspace-accent-rgb: var(--gl-amber);
+}
+
+.app-shell[data-workspace='health'],
+.ws-grid-health {
+  --workspace-accent-rgb: var(--gl-teal);
 }
 
 .auth-shell {
@@ -191,10 +219,96 @@ button {
 }
 
 .sf {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
   gap: 18px;
+}
+
+.sf::before,
+.sp::before,
+.od-card::before,
+.xec-header::before,
+.chart-context::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.5), transparent 72%);
+  pointer-events: none;
+}
+
+.sf::after,
+.sp::after,
+.od-card::after,
+.xec-header::after,
+.chart-context::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.sf-accent-teal,
+.sp-accent-teal,
+.od-card-teal,
+.sp-surface-teal,
+.od-surface-teal,
+.sf-surface-teal {
+  --panel-accent-rgb: var(--gl-teal);
+}
+
+.sf-accent-cyan,
+.sp-accent-cyan,
+.od-card-cyan,
+.sp-surface-cyan,
+.od-surface-cyan,
+.sf-surface-cyan {
+  --panel-accent-rgb: var(--gl-cyan);
+}
+
+.sf-accent-amber,
+.sp-accent-amber,
+.od-card-amber,
+.sp-surface-amber,
+.od-surface-amber,
+.sf-surface-amber {
+  --panel-accent-rgb: var(--gl-amber);
+}
+
+.sf-accent-teal,
+.sp-accent-teal,
+.od-card-teal,
+.xec-header,
+.chart-context {
+  background-image: radial-gradient(circle at top right, rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.12), transparent 42%);
+}
+
+.sf-shell-hero .glass-panel,
+.sf-shell-feature .glass-panel,
+.sf-shell-operator .glass-panel,
+.sf-shell-inspector .glass-panel,
+.sf-shell-tail .glass-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 56px -44px rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.3);
+}
+
+.sf-shell-hero .glass-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 72px -44px rgba(var(--panel-accent-rgb, var(--workspace-accent-rgb)), 0.36);
+}
+
+.sf-hero .sf-title,
+.sf-feature .sf-title,
+.sf-operator .sf-title,
+.sf-inspector .sf-title,
+.sf-tail .sf-title {
+  max-width: 18ch;
 }
 
 .sf-header {
@@ -290,6 +404,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
 }
 
 .env-chip,
@@ -325,6 +440,9 @@ button {
 .soft-button,
 .chip-button,
 .ws-mobile-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 42px;
   border: 1px solid var(--b0);
   border-radius: 999px;
@@ -332,6 +450,9 @@ button {
   color: var(--t0);
   padding: 0 16px;
   font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .soft-button:hover,
@@ -503,10 +624,28 @@ button {
   align-items: start;
 }
 
+.ws-grid-overview,
+.ws-grid-market,
+.ws-grid-execution,
+.ws-grid-health {
+  position: relative;
+}
+
 .ws-main,
 .ws-side,
 .stack {
   display: grid;
+  gap: 18px;
+}
+
+.ws-main-shell,
+.ws-side-shell {
+  align-content: start;
+}
+
+.overview-tail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
   gap: 18px;
 }
 
@@ -719,10 +858,24 @@ button {
   gap: 12px;
 }
 
+.od-rail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.od-shell-span {
+  grid-column: 1 / -1;
+}
+
 .ids-group {
   display: grid;
   gap: 8px;
   padding-top: 2px;
+}
+
+.od-card {
+  height: 100%;
 }
 
 .iop-panel {
@@ -756,6 +909,13 @@ button {
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
+}
+
+.sp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .sp-summary,
@@ -890,12 +1050,23 @@ button {
 .so-row-list {
   display: grid;
   gap: 12px;
+  max-height: min(46rem, 64vh);
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .so-row {
   display: grid;
   gap: 12px;
   padding: 14px;
+}
+
+.so-row-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.9fr);
+  gap: 14px;
+  align-items: start;
 }
 
 .so-row-head {
@@ -908,6 +1079,11 @@ button {
 .so-row-meta {
   display: grid;
   gap: 6px;
+  align-content: start;
+  padding: 12px 14px;
+  border-radius: var(--rm);
+  border: 1px solid rgba(127, 216, 210, 0.08);
+  background: rgba(6, 13, 20, 0.82);
   color: var(--t2);
   font-size: 0.86rem;
 }
@@ -1324,8 +1500,67 @@ button {
   gap: 14px;
 }
 
+.xec-shell {
+  border-radius: var(--r0);
+}
+
+.xec-header {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  gap: 18px;
+}
+
+.xec-copy,
+.xec-side,
+.chart-context-copy,
+.chart-context-side {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.xec-summary,
+.chart-context-summary {
+  margin: 0;
+  font: 700 clamp(1.08rem, 1.8vw, 1.35rem)/1.16 var(--fh);
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.xec-chip-row,
+.chart-context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xec-metrics,
+.chart-context-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.xec-metric,
+.chart-context-metric {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(124, 180, 192, 0.1);
+  background: rgba(7, 16, 24, 0.72);
+}
+
+.xec-metric-value,
+.chart-context-value {
+  margin: 0;
+  font: 700 0.95rem/1.2 var(--fm);
+  font-variant-numeric: tabular-nums;
+  color: var(--t0);
+}
+
 .execution-layout {
-  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.8fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
 }
 
 .xlay-main,
@@ -1344,8 +1579,14 @@ button {
 }
 
 .xlay-side {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
   align-content: start;
+}
+
+.xlay-side-shell {
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--r0);
 }
 
 .xs-copy {
@@ -1363,17 +1604,18 @@ button {
 }
 
 .core-flow-frame {
-  height: 100%;
+  align-self: start;
 }
 
 .core-flow-frame .sf-body {
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 .core-flow-frame .flow-grid {
-  min-height: 100%;
-  grid-auto-rows: minmax(140px, 1fr);
+  min-height: 0;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-auto-rows: auto;
 }
 
 .fc-success {
@@ -1448,6 +1690,25 @@ button {
   isolation: isolate;
 }
 
+.chart-context {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.94fr) minmax(320px, 1.06fr);
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  border-radius: var(--r0);
+  border: 1px solid rgba(124, 180, 192, 0.12);
+  background:
+    linear-gradient(180deg, rgba(8, 17, 26, 0.9), rgba(8, 17, 26, 0.7)),
+    radial-gradient(circle at top right, rgba(var(--workspace-accent-rgb), 0.15), transparent 46%);
+  overflow: hidden;
+}
+
+.chart-context[data-phase='entering'] {
+  animation: ws-stage-enter 320ms var(--ease-emphasis);
+}
+
 .chart-frame {
   width: 100%;
   min-height: 360px;
@@ -1485,6 +1746,26 @@ button {
 
 .chart-shell[data-state='ready'] .co {
   display: none;
+}
+
+.chart-shell[data-phase='entering']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(var(--workspace-accent-rgb), 0.12), transparent 42%);
+  pointer-events: none;
+  animation: chart-shell-wipe 420ms var(--ease-emphasis);
+}
+
+@keyframes chart-shell-wipe {
+  from {
+    opacity: 0.8;
+    transform: translateX(-8%) scale(1.02);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(0) scale(1);
+  }
 }
 
 .obgrid {
@@ -1656,18 +1937,16 @@ button {
 }
 
 .xp {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 12px;
-  min-height: 100%;
+  min-height: 0;
 }
 
 .xp-item {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 12px;
-  flex: 1 1 0;
-  min-height: 0;
+  align-items: start;
 }
 
 .xp-rail {
@@ -1709,7 +1988,7 @@ button {
 .xp-copy {
   display: grid;
   gap: 6px;
-  min-height: 100%;
+  min-height: 0;
   padding: 14px 16px;
 }
 
@@ -1885,8 +2164,13 @@ button {
 @media (max-width: 1120px) {
   .ws-grid,
   .execution-layout,
+  .xec-header,
+  .chart-context,
   .timeline-row,
-  .idt-grid {
+  .idt-grid,
+  .so-row-grid,
+  .overview-tail-grid,
+  .od-rail {
     grid-template-columns: 1fr;
   }
 
@@ -1914,6 +2198,8 @@ button {
   .metric-grid,
   .health-grid,
   .ids-grid,
+  .xec-metrics,
+  .chart-context-metrics,
   .obgrid,
   .xf-grid,
   .timeline-toolbar {
@@ -1955,6 +2241,12 @@ button {
   .mer-side {
     justify-items: start;
     text-align: left;
+  }
+
+  .sp-chip-row,
+  .xec-chip-row,
+  .chart-context-chips {
+    justify-content: flex-start;
   }
 
   .so-policy-grid,
@@ -2231,7 +2523,9 @@ button {
   .broker-tabs-indicator,
   .wb-header::before,
   .wb-header::after,
-  .ws-stage[data-phase='entering'] .ws-host-active {
+  .ws-stage[data-phase='entering'] .ws-host-active,
+  .chart-shell[data-phase='entering']::after,
+  .chart-context[data-phase='entering'] {
     transition: none;
     animation: none;
   }

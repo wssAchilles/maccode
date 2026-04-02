@@ -9,7 +9,7 @@ import {
 import { useEffect, useEffectEvent, useRef } from 'react'
 
 import {
-  type MarketChartMarkerModel,
+  type MarketChartMarkersModel,
   type MarketChartSeriesModel,
   getMarketChartReplayStartIndex,
   isSameMarketChartCandle,
@@ -17,10 +17,10 @@ import {
 
 type Props = {
   series: MarketChartSeriesModel
-  markers?: MarketChartMarkerModel[]
+  markers?: MarketChartMarkersModel
 }
 
-export function CandlesChart({ series, markers = [] }: Props) {
+export function CandlesChart({ series, markers }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
@@ -166,16 +166,14 @@ export function CandlesChart({ series, markers = [] }: Props) {
       return
     }
 
-    const nextSignature = markers
-      .map((marker) => `${marker.id}:${marker.time}:${marker.position}:${marker.shape}:${marker.color}:${marker.text}`)
-      .join('|')
+    const nextSignature = markers?.signature ?? ''
 
     if (nextSignature === markerSignatureRef.current) {
       return
     }
 
     markerSignatureRef.current = nextSignature
-    markersRef.current.setMarkers(markers)
+    markersRef.current.setMarkers(markers?.items ?? [])
   }, [markers])
 
   return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />

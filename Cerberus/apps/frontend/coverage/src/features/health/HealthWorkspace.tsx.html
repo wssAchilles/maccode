@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>61/61</span>
+                <span class='fraction'>65/65</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>61/61</span>
+                <span class='fraction'>65/65</span>
             </div>
         
             
@@ -141,7 +141,11 @@
 <a name='L76'></a><a href='#L76'>76</a>
 <a name='L77'></a><a href='#L77'>77</a>
 <a name='L78'></a><a href='#L78'>78</a>
-<a name='L79'></a><a href='#L79'>79</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -166,15 +170,19 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -237,30 +245,34 @@ export function HealthWorkspace({ active: _active = true }: Props) {
   const model = useHealthWorkspaceModel(_active)
 &nbsp;
   return (
-    &lt;div className="ws-grid"&gt;
+    &lt;div className="ws-grid ws-grid-health" data-workspace="health"&gt;
       &lt;SectionFrame
         title={t('workspace.health.title')}
         description={t('workspace.health.description')}
         eyebrow={t('workspace.health.eyebrow')}
         className="ws-span-full"
         tone="hero"
+        accent="teal"
+        stage="hero"
       &gt;
         &lt;ServiceHealthPanel model={model.serviceHealthPanel} /&gt;
       &lt;/SectionFrame&gt;
 &nbsp;
-      &lt;div className="ws-main stack"&gt;
-        &lt;SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')}&gt;
+      &lt;div className="ws-main stack ws-main-shell"&gt;
+        &lt;SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')} accent="teal" stage="feature"&gt;
           &lt;WorkspaceSpotlight model={model.spotlight} /&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
         &lt;SectionFrame
           title={t('workspace.health.operatorDeckTitle')}
           description={t('workspace.health.operatorDeckDescription')}
+          accent="cyan"
+          stage="operator"
         &gt;
-          &lt;WorkspaceOperatorDeck sections={model.operatorSections} /&gt;
+          &lt;WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" /&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
-        &lt;SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')}&gt;
+        &lt;SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="feature"&gt;
           &lt;div className="health-grid"&gt;
             &lt;GlassPanel tone="subtle"&gt;
               &lt;DataList items={model.workerItems} /&gt;
@@ -271,7 +283,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           &lt;/div&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
-        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')}&gt;
+        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail"&gt;
           &lt;InferenceDiagnosticsPanel model={model.inferenceDiagnostics} /&gt;
           &lt;DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
@@ -285,7 +297,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         &lt;/SectionFrame&gt;
       &lt;/div&gt;
 &nbsp;
-      &lt;div className="ws-side stack"&gt;
+      &lt;div className="ws-side stack ws-side-shell"&gt;
         &lt;DiagnosticDrawer
           title={t('workspace.health.requestIds')}
           summary={t('workspace.health.requestIdsDescription')}
@@ -304,7 +316,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T03:14:12.568Z
+                at 2026-04-02T05:56:47.284Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

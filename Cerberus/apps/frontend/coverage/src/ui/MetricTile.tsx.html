@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>17/17</span>
+                <span class='fraction'>23/23</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>17/17</span>
+                <span class='fraction'>23/23</span>
             </div>
         
             
@@ -94,28 +94,40 @@
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">4x</span>
@@ -129,6 +141,8 @@
 &nbsp;
 import { cn } from '../lib/cn'
 import { GlassPanel } from './GlassPanel'
+import { MotionSurface } from './MotionSurface'
+import { RevealGroup } from './RevealGroup'
 &nbsp;
 type Props = {
   label: string
@@ -148,12 +162,16 @@ const TONE_CLASS: Record&lt;NonNullable&lt;Props['tone']&gt;, string&gt; = {
 &nbsp;
 export function MetricTile({ label, value, hint, caption, tone = 'default', className }: Props) {
   return (
-    &lt;GlassPanel className={cn('metric-tile', TONE_CLASS[tone], className)} tone="subtle"&gt;
-      &lt;p className="met-label"&gt;{label}&lt;/p&gt;
-      &lt;p className="met-value"&gt;{value}&lt;/p&gt;
-      {hint ? &lt;p className="met-hint"&gt;{hint}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
-      {<span class="branch-0 cbranch-no" title="branch not covered" >caption ? &lt;div className="met-caption"&gt;{caption}&lt;/div&gt; : n</span>ull}
-    &lt;/GlassPanel&gt;
+    &lt;RevealGroup className={className}&gt;
+      &lt;MotionSurface mode="metric"&gt;
+        &lt;GlassPanel className={cn('metric-tile', TONE_CLASS[tone])} tone="subtle"&gt;
+          &lt;p className="met-label"&gt;{label}&lt;/p&gt;
+          &lt;p className="met-value"&gt;{value}&lt;/p&gt;
+          {hint ? &lt;p className="met-hint"&gt;{hint}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
+          {<span class="branch-0 cbranch-no" title="branch not covered" >caption ? &lt;div className="met-caption"&gt;{caption}&lt;/div&gt; : n</span>ull}
+        &lt;/GlassPanel&gt;
+      &lt;/MotionSurface&gt;
+    &lt;/RevealGroup&gt;
   )
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -163,7 +181,7 @@ export function MetricTile({ label, value, hint, caption, tone = 'default', clas
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T03:14:12.568Z
+                at 2026-04-02T05:56:47.284Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

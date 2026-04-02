@@ -8,6 +8,7 @@ import {
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
 import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
@@ -21,9 +22,10 @@ type Props = {
 export function MarketWorkspace({ active = true }: Props) {
   const { t } = useI18n()
   const model = useMarketWorkspaceModel({ active })
+  const chartPhase = useRafPresenceTransition(model.activeSymbol, 320)
 
   return (
-    <div className="ws-grid">
+    <div className="ws-grid ws-grid-market" data-workspace="market">
       <SectionFrame
         title={t('workspace.market.title')}
         description={t('workspace.market.description')}
@@ -45,6 +47,8 @@ export function MarketWorkspace({ active = true }: Props) {
         }
         className="ws-span-full"
         tone="hero"
+        accent="cyan"
+        stage="hero"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -59,10 +63,12 @@ export function MarketWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="ws-main stack">
+      <div className="ws-main stack ws-main-shell">
         <SectionFrame
           title={t('workspace.market.linkageTitle')}
           description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
+          accent="cyan"
+          stage="feature"
         >
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
@@ -70,15 +76,49 @@ export function MarketWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.market.operatorDeckTitle')}
           description={t('workspace.market.operatorDeckDescription')}
+          accent="teal"
+          stage="operator"
         >
-          <WorkspaceOperatorDeck sections={model.operatorSections} />
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
 
-        <SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}>
+        <SectionFrame
+          title={`${model.activeSymbol} ${t('market.candles')}`}
+          description={t('workspace.market.chartDescription')}
+          accent="cyan"
+          stage="feature"
+        >
+          <div className="chart-context" data-phase={chartPhase}>
+            <div className="chart-context-copy">
+              <p className="subtle-label">{model.chartContext.eyebrow}</p>
+              <p className="chart-context-summary">{model.chartContext.summary}</p>
+              <p className="panel-caption">{model.chartContext.hint}</p>
+            </div>
+            <div className="chart-context-side">
+              <div className="chart-context-chips">
+                {model.chartContext.chips.map((chip, index) => (
+                  <span key={`${chip}-${index}`} className="account-pill">
+                    {chip}
+                  </span>
+                ))}
+              </div>
+              <div className="chart-context-metrics">
+                {model.chartContext.metrics.map((metric) => (
+                  <div key={metric.id} className="chart-context-metric">
+                    <p className="subtle-label">{metric.label}</p>
+                    <p className={metric.tone === 'negative' ? 'chart-context-value dl-value-negative' : metric.tone === 'positive' ? 'chart-context-value dl-value-positive' : metric.tone === 'accent' ? 'chart-context-value dl-value-accent' : 'chart-context-value'}>
+                      {metric.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           <div
             className="chart-shell"
             aria-busy={model.chartState.state === 'loading'}
             data-state={model.chartState.state}
+            data-phase={chartPhase}
           >
             <Suspense fallback={<PanelSkeleton height="340px" />}>
               <LazyCandlesChart series={model.chartSeries} markers={model.chartMarkers} />
@@ -99,6 +139,8 @@ export function MarketWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.market.executionRailTitle')}
           description={t('workspace.market.executionRailDescription')}
+          accent="amber"
+          stage="operator"
         >
           <SymbolExecutionRail model={model.executionRail} />
         </SectionFrame>
@@ -112,6 +154,8 @@ export function MarketWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.strategy.title')}
           description={t('workspace.strategy.description')}
+          accent="teal"
+          stage="feature"
         >
           <StrategyDecisionMatrix model={model.strategyMatrix} />
         </SectionFrame>
@@ -120,6 +164,8 @@ export function MarketWorkspace({ active = true }: Props) {
           title={t('execution.timeline')}
           description={t('workspace.market.executionRailDescription')}
           className="timeline-section"
+          accent="amber"
+          stage="tail"
         >
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />
@@ -127,16 +173,20 @@ export function MarketWorkspace({ active = true }: Props) {
         </SectionFrame>
       </div>
 
-      <div className="ws-side stack">
+      <div className="ws-side stack ws-side-shell">
         <SectionFrame
           title={t('workspace.strategy.portfolioTitle')}
           description={t('workspace.strategy.portfolioDescription')}
+          accent="teal"
+          stage="inspector"
         >
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
         </SectionFrame>
         <SectionFrame
           title={t('workspace.strategy.registryTitle')}
           description={t('workspace.strategy.registryDescription')}
+          accent="cyan"
+          stage="inspector"
         >
           <StrategyRegistryPanel model={model.strategyRegistry} />
         </SectionFrame>

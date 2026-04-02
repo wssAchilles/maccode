@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">64.48% </span>
+                <span class="strong">64.05% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>394/611</span>
+                <span class='fraction'>401/626</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50.6% </span>
+                <span class="strong">51.13% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>42/83</span>
+                <span class='fraction'>45/88</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">64.48% </span>
+                <span class="strong">64.05% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>394/611</span>
+                <span class='fraction'>401/626</span>
             </div>
         
             
@@ -779,7 +779,22 @@
 <a name='L714'></a><a href='#L714'>714</a>
 <a name='L715'></a><a href='#L715'>715</a>
 <a name='L716'></a><a href='#L716'>716</a>
-<a name='L717'></a><a href='#L717'>717</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L717'></a><a href='#L717'>717</a>
+<a name='L718'></a><a href='#L718'>718</a>
+<a name='L719'></a><a href='#L719'>719</a>
+<a name='L720'></a><a href='#L720'>720</a>
+<a name='L721'></a><a href='#L721'>721</a>
+<a name='L722'></a><a href='#L722'>722</a>
+<a name='L723'></a><a href='#L723'>723</a>
+<a name='L724'></a><a href='#L724'>724</a>
+<a name='L725'></a><a href='#L725'>725</a>
+<a name='L726'></a><a href='#L726'>726</a>
+<a name='L727'></a><a href='#L727'>727</a>
+<a name='L728'></a><a href='#L728'>728</a>
+<a name='L729'></a><a href='#L729'>729</a>
+<a name='L730'></a><a href='#L730'>730</a>
+<a name='L731'></a><a href='#L731'>731</a>
+<a name='L732'></a><a href='#L732'>732</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -1022,6 +1037,11 @@
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">9x</span>
@@ -1083,6 +1103,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">9x</span>
@@ -1141,6 +1164,8 @@
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-yes">9x</span>
@@ -1156,6 +1181,11 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1728,12 +1758,17 @@ export function buildExecutionDeskSections({
       id: 'route',
       title: t('workspace.execution.operatorRouteTitle'),
       summary: t('workspace.execution.operatorRouteDescription'),
+      accent: 'cyan',
+      postureLabel: symbol,
+      visualPriority: 'hero',
       items: routeItems,
     },
     {
       id: 'guardrails',
       title: t('workspace.execution.operatorGuardrailsTitle'),
       summary: t('workspace.execution.operatorGuardrailsDescription'),
+      accent: 'amber',
+      postureLabel: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       items: guardrailItems,
     },
   ]
@@ -1771,6 +1806,8 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >      tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),</span>
 <span class="cstat-no" title="statement not covered" >      binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule'),</span>
 <span class="cstat-no" title="statement not covered" >    ],</span>
+<span class="cstat-no" title="statement not covered" >    accent: preparedSelection.activeOrderCount &gt; 0 ? 'amber' : 'cyan',</span>
+<span class="cstat-no" title="statement not covered" >    postureLabel: latestLifecycle,</span>
 <span class="cstat-no" title="statement not covered" >    metrics: [</span>
 <span class="cstat-no" title="statement not covered" >      {</span>
 <span class="cstat-no" title="statement not covered" >        id: 'mid-price',</span>
@@ -1778,6 +1815,7 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >        value: snapshot.midPriceValue,</span>
 <span class="cstat-no" title="statement not covered" >        tone: 'accent',</span>
 <span class="cstat-no" title="statement not covered" >        hint: `${t('common.updatedAt')}: ${snapshot.quoteUpdatedAtValue}`,</span>
+<span class="cstat-no" title="statement not covered" >        visualPriority: 'primary',</span>
 <span class="cstat-no" title="statement not covered" >      },</span>
 <span class="cstat-no" title="statement not covered" >      {</span>
 <span class="cstat-no" title="statement not covered" >        id: 'spread',</span>
@@ -1832,6 +1870,8 @@ export function buildExecutionDeskSpotlightModel({
       tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       broker === 'binance' &amp;&amp; binanceRule ? t('common.ready') : broker === 'binance' ? t('workspace.execution.lifecycleWaitingRule'<span class="branch-0 cbranch-no" title="branch not covered" >) : 'Paper',</span>
     ],
+    accent: broker === 'binance' ? <span class="branch-0 cbranch-no" title="branch not covered" >'amber' : 'cyan',</span>
+    postureLabel: broker === 'binance' ? <span class="branch-0 cbranch-no" title="branch not covered" >'Binance' : 'Alpaca',</span>
     metrics: [
       {
         id: 'best-bid',
@@ -1877,6 +1917,9 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >      id: 'execution-posture',</span>
 <span class="cstat-no" title="statement not covered" >      title: t('workspace.execution.operatorFlowTitle'),</span>
 <span class="cstat-no" title="statement not covered" >      summary: t('workspace.execution.operatorFlowDescription'),</span>
+<span class="cstat-no" title="statement not covered" >      accent: preparedSelection.activeOrderCount &gt; 0 ? 'amber' : 'cyan',</span>
+<span class="cstat-no" title="statement not covered" >      postureLabel: latestLifecycle,</span>
+<span class="cstat-no" title="statement not covered" >      visualPriority: 'hero',</span>
 <span class="cstat-no" title="statement not covered" >      items: [</span>
 <span class="cstat-no" title="statement not covered" >        {</span>
 <span class="cstat-no" title="statement not covered" >          id: 'symbol',</span>
@@ -1911,6 +1954,8 @@ export <span class="fstat-no" title="function not covered" >function buildExecut
 <span class="cstat-no" title="statement not covered" >      id: 'execution-venue',</span>
 <span class="cstat-no" title="statement not covered" >      title: t('workspace.execution.operatorVenueTitle'),</span>
 <span class="cstat-no" title="statement not covered" >      summary: t('workspace.execution.operatorVenueDescription'),</span>
+<span class="cstat-no" title="statement not covered" >      accent: binanceRule ? 'teal' : 'amber',</span>
+<span class="cstat-no" title="statement not covered" >      postureLabel: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),</span>
 <span class="cstat-no" title="statement not covered" >      items: [</span>
 <span class="cstat-no" title="statement not covered" >        {</span>
 <span class="cstat-no" title="statement not covered" >          id: 'policy',</span>
@@ -2218,7 +2263,7 @@ export function buildExecutionOperationsPanel({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T03:14:12.568Z
+                at 2026-04-02T05:56:47.284Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

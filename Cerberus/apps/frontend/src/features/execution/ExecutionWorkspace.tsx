@@ -26,13 +26,15 @@ export function ExecutionWorkspace({ active = true }: Props) {
   const model = useExecutionWorkspaceModel({ active })
 
   return (
-    <div className="ws-grid">
+    <div className="ws-grid ws-grid-execution" data-workspace="execution">
       <SectionFrame
         title={t('workspace.execution.title')}
         description={t('workspace.execution.description')}
         eyebrow={t('workspace.execution.eyebrow')}
         className="ws-span-full"
         tone="hero"
+        accent="amber"
+        stage="hero"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -47,10 +49,12 @@ export function ExecutionWorkspace({ active = true }: Props) {
         </div>
       </SectionFrame>
 
-      <div className="ws-main stack">
+      <div className="ws-main stack ws-main-shell">
         <SectionFrame
           title={t('workspace.execution.linkageTitle')}
           description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}
+          accent="amber"
+          stage="feature"
         >
           <WorkspaceSpotlight model={model.spotlight} />
         </SectionFrame>
@@ -58,59 +62,29 @@ export function ExecutionWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.execution.operatorDeckTitle')}
           description={t('workspace.execution.operatorDeckDescription')}
+          accent="teal"
+          stage="operator"
         >
-          <WorkspaceOperatorDeck sections={model.operatorSections} />
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
 
         <SectionFrame
           title={t('workspace.execution.lifecycleTitle')}
           description={t('workspace.execution.lifecycleDescription')}
+          accent="cyan"
+          stage="feature"
         >
           <ExecutionLifecyclePanel model={model.lifecyclePanel} />
         </SectionFrame>
-
-        <SectionFrame
-          title={t('workspace.execution.operationsTitle')}
-          description={t('workspace.execution.operationsDescription')}
-        >
-          <ExecutionOperationsPanel model={model.operationsPanel} />
-        </SectionFrame>
-
-        <SectionFrame
-          title={t('workspace.strategy.operationsTitle')}
-          description={t('workspace.strategy.operationsDescription')}
-        >
-          <DiagnosticDrawer
-            title={t('workspace.strategy.operationsTitle')}
-            summary={t('workspace.strategy.operationsDescription')}
-            testId="execution-strategy-operations-drawer"
-          >
-            <Suspense fallback={<PanelSkeleton height="420px" />}>
-              <LazyExecutionStrategyOperationsDrawerContent active={active} />
-            </Suspense>
-          </DiagnosticDrawer>
-        </SectionFrame>
-
-        <SectionFrame
-          title={t('workspace.execution.ticketTitle')}
-          description={t('workspace.execution.ticketDescription')}
-        >
-          <Suspense fallback={<PanelSkeleton height="540px" />}>
-            <LazyExecutionConsole
-              active={active}
-              selectedSymbol={model.selectedSymbol}
-              latestBid={model.displayQuote?.bid_price}
-              latestAsk={model.displayQuote?.ask_price}
-            />
-          </Suspense>
-        </SectionFrame>
       </div>
 
-      <div className="ws-side stack execution-side">
+      <div className="ws-side stack execution-side ws-side-shell">
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
           bodyClassName="execution-strategy-frame-body"
+          accent="teal"
+          stage="inspector"
         >
           <div className="stack">
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
@@ -143,12 +117,59 @@ export function ExecutionWorkspace({ active = true }: Props) {
           title={t('execution.timeline')}
           description={t('workspace.execution.timelineDescription')}
           className="timeline-section"
+          accent="cyan"
+          stage="tail"
         >
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />
           </Suspense>
         </SectionFrame>
       </div>
+
+      <SectionFrame
+        title={t('workspace.execution.operationsTitle')}
+        description={t('workspace.execution.operationsDescription')}
+        className="ws-span-full"
+        accent="amber"
+        stage="operator"
+      >
+        <ExecutionOperationsPanel model={model.operationsPanel} />
+      </SectionFrame>
+
+      <SectionFrame
+        title={t('workspace.strategy.operationsTitle')}
+        description={t('workspace.strategy.operationsDescription')}
+        className="ws-span-full"
+        accent="teal"
+        stage="tail"
+      >
+        <DiagnosticDrawer
+          title={t('workspace.strategy.operationsTitle')}
+          summary={t('workspace.strategy.operationsDescription')}
+          testId="execution-strategy-operations-drawer"
+        >
+          <Suspense fallback={<PanelSkeleton height="420px" />}>
+            <LazyExecutionStrategyOperationsDrawerContent active={active} />
+          </Suspense>
+        </DiagnosticDrawer>
+      </SectionFrame>
+
+      <SectionFrame
+        title={t('workspace.execution.ticketTitle')}
+        description={t('workspace.execution.ticketDescription')}
+        className="ws-span-full"
+        accent="amber"
+        stage="tail"
+      >
+        <Suspense fallback={<PanelSkeleton height="540px" />}>
+          <LazyExecutionConsole
+            active={active}
+            selectedSymbol={model.selectedSymbol}
+            latestBid={model.displayQuote?.bid_price}
+            latestAsk={model.displayQuote?.ask_price}
+          />
+        </Suspense>
+      </SectionFrame>
     </div>
   )
 }
