@@ -9,6 +9,7 @@ import {
   buildHealthDiagnostics,
   buildHealthDiagnosticsBandModel,
   buildHealthOperatorSections,
+  buildHealthPersistenceBandModel,
   buildHealthSpotlightModel,
   buildServiceHealthPanelModel,
   buildHealthStoreItems,
@@ -38,6 +39,10 @@ export function useHealthWorkspaceModel(active = true) {
         t,
         summaryError,
         domainStatus,
+      }),
+      persistenceBand: buildHealthPersistenceBandModel({
+        t,
+        persistenceStatus,
       }),
       contextBand: buildHealthContextBandModel({
         t,

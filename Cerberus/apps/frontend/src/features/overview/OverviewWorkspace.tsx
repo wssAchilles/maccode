@@ -91,9 +91,15 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       </div>
 
       <div className="ws-side stack wss">
-        <SectionFrame title={t('workspace.overview.healthDigest')} description={t('workspace.health.description')} accent="amber" stage="inspector">
+        <SectionFrame
+          title={t('workspace.overview.healthDigest')}
+          description={t('workspace.health.description')}
+          accent="amber"
+          stage="inspector"
+          bodyClassName="inspector-shell"
+        >
           <div className="stack-sm">
-            <TerminalBand model={model.healthDigestBand} className="overview-health-band" />
+            <TerminalBand model={model.healthDigestBand} className="overview-health-band" compact />
             {model.healthCards.map((card) => (
               <PanelSection
                 key={card.id}
@@ -115,7 +121,14 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="teal" stage="inspector">
+        <SectionFrame
+          title={t('workspace.inference.title')}
+          description={t('workspace.inference.description')}
+          accent="teal"
+          stage="inspector"
+          bodyClassName="inspector-shell"
+        >
+          <TerminalBand model={model.inferenceBand} className="inspector-band" compact />
           <InferenceStatusCard model={model.inferenceCard} onOpenHealth={model.openHealth} />
         </SectionFrame>
       </div>
@@ -132,7 +145,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         stage="feature"
       >
         <div className="stack">
-          <TerminalBand model={model.strategyBand} className="strategy-band" />
+          <TerminalBand model={model.strategyBand} className="strategy-band" compact />
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
           <DiagnosticDrawer
@@ -154,6 +167,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
 
       <div className="overview-tail-grid ws-span-full">
         <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail" bodyClassName="tail-shell">
+          <TerminalBand model={model.tailBand} className="tail-band" compact />
           {model.recentSignals.length === 0 ? (
             <p className="empty-inline">{t('strategy.noData')}</p>
           ) : (

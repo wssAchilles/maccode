@@ -13,7 +13,7 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
 
   return (
     <div className="stack">
-      <TerminalBand model={model.band} className="if-band" />
+      <TerminalBand model={model.band} className="if-band" compact />
       <div className="health-grid">
         <PanelSection
           className="ifp"

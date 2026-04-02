@@ -523,6 +523,69 @@ export function buildExecutionHeroBandModel({
   }
 }
 
+export function buildExecutionInspectorBandModel({
+  t,
+  snapshot,
+  preparedSelection,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  preparedSelection: PreparedExecutionSelection
+  orderbookPanel: {
+    totalDepthLabel: string
+    updatedAtLabel: string
+    liquidityBiasLabel: string
+  }
+}): WorkspaceContextBandModel {
+  const latestLifecycle =
+    preparedSelection.latestOrder?.latestStatus ??
+    preparedSelection.latestOrder?.latestPhase ??
+    t('execution.noLifecycle')
+
+  return {
+    eyebrow: t('workspace.execution.title'),
+    title: snapshot.selectedSymbol,
+    hint: orderbookPanel.liquidityBiasLabel,
+    accent: preparedSelection.activeOrderCount > 0 ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'active-orders',
+        label: t('workspace.execution.operationsActive'),
+        value: String(preparedSelection.activeOrderCount),
+        tone: preparedSelection.activeOrderCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'latest-lifecycle',
+        label: t('workspace.execution.lifecycleLatest'),
+        value: latestLifecycle,
+      },
+      {
+        id: 'mid-price',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'total-depth',
+        label: t('orderbook.totalDepth'),
+        value: orderbookPanel.totalDepthLabel,
+      },
+      {
+        id: 'updated-at',
+        label: t('common.updatedAt'),
+        value: orderbookPanel.updatedAtLabel,
+      },
+    ],
+  }
+}
+
 export function buildExecutionOperatorSections({
   t,
   snapshot,

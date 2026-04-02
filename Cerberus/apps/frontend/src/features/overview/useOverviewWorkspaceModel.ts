@@ -13,10 +13,12 @@ import {
 import {
   buildOverviewContextBandModel,
   buildOverviewHealthDigestBandModel,
+  buildOverviewInferenceBandModel,
   buildOverviewMetricTiles,
   buildOverviewOperatorSections,
   buildOverviewRecentSignalCards,
   buildOverviewSpotlightModel,
+  buildOverviewTailBandModel,
   buildOverviewPersistenceItems,
 } from './view-models'
 import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
@@ -83,6 +85,8 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
 
   const model = useMemo(() => {
     const domainSummary = summarizeDomainStates(domainStatus)
+    const persistenceItems = buildOverviewPersistenceItems({ t, persistenceStatus })
+    const inferenceCard = buildInferenceStatusCardModel({ t, inferenceStatus })
 
     return {
       metricTiles: buildOverviewMetricTiles({
@@ -90,8 +94,8 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
         snapshot: tradingSnapshot,
       }),
       healthCards: buildHealthCards(domainStatus, t),
-      persistenceItems: buildOverviewPersistenceItems({ t, persistenceStatus }),
-      inferenceCard: buildInferenceStatusCardModel({ t, inferenceStatus }),
+      persistenceItems,
+      inferenceCard,
       strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
       portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
@@ -114,6 +118,16 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
       healthDigestBand: buildOverviewHealthDigestBandModel({
         t,
         domainStatus,
+      }),
+      inferenceBand: buildOverviewInferenceBandModel({
+        t,
+        inferenceCard,
+      }),
+      tailBand: buildOverviewTailBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        recentSignalCount: recentSignals.length,
+        persistenceItems,
       }),
       spotlight: buildOverviewSpotlightModel({
         t,

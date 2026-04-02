@@ -11,7 +11,7 @@ export function ServiceHealthPanel({ model }: Props) {
 
   return (
     <div className="stack" data-testid="service-health-panel">
-      <TerminalBand model={model.band} className="hp-band" />
+      <TerminalBand model={model.band} className="hp-band" compact />
       <PanelSection
         className="hp-section"
         eyebrow={t('workspace.health.operatorServiceTitle')}

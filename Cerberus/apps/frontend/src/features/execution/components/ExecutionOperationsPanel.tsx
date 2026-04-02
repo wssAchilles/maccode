@@ -17,7 +17,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
   if (model.headlineItems.length === 0) {
     return (
       <GlassPanel className="xo-panel" tone="subtle">
-        <TerminalBand model={model.band} className="xo-band" />
+        <TerminalBand model={model.band} className="xo-band" compact />
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.execution.operationsDescription')}
@@ -28,7 +28,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
   return (
     <GlassPanel className="xo-panel" tone="subtle">
-      <TerminalBand model={model.band} className="xo-band" />
+      <TerminalBand model={model.band} className="xo-band" compact />
 
       <PanelSection
         className="xo-section"

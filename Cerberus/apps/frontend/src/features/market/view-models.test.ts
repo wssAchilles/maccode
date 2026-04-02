@@ -4,6 +4,7 @@ import type { Candle } from '../../types/contracts'
 import { buildPreparedExecutionSelection } from '../execution/read-models'
 import {
   buildMarketHeroBandModel,
+  buildMarketInspectorBandModel,
   buildMarketChartMarkersModel,
   buildMarketChartSeriesModel,
   buildMarketChartStateModel,
@@ -275,5 +276,78 @@ describe('market view models', () => {
     expect(model.staleHint).toBe('workspace.market.executionRailStale')
     expect(model.band?.title).toBe('BTCUSDT')
     expect(model.band?.items.find((item) => item.id === 'fills')?.value).toBe('1')
+  })
+
+  it('builds a market inspector band from snapshot, orderbook, and execution rail', () => {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
+        symbol: 'BTCUSDT',
+        bid_price: '100.12',
+        ask_price: '100.56',
+        event_time: 1000,
+      },
+      latestBySymbol: {},
+      strategySignal: {
+        status: 'ready',
+        signal: 'BUY',
+        confidence: 0.83,
+        symbol: 'BTCUSDT',
+      },
+      latestEvent: {
+        id: 'evt-2',
+        channel: 'trade.executions.default',
+        payload: {},
+        received_at: 1000,
+        event_type: 'execution.created',
+        symbol: 'BTCUSDT',
+        status: 'FILLED',
+      },
+    })
+    const preparedSelection = buildPreparedExecutionSelection(
+      [
+        {
+          id: 'evt-1',
+          channel: 'trade.executions.default',
+          payload: {},
+          received_at: 1000,
+          event_time: '1970-01-01T00:10:00.000Z',
+          event_type: 'execution.fill',
+          symbol: 'BTCUSDT',
+          status: 'FILLED',
+          lifecycle_phase: 'fill',
+          correlation_key: 'corr-1',
+        },
+      ],
+      'BTCUSDT',
+    )
+    const executionRail = buildMarketExecutionRailModel({
+      t,
+      selectedSymbol: 'BTCUSDT',
+      preparedSelection,
+      nowMs: 610_000,
+    })
+    const orderbookPanel = {
+      depthBalanceLabel: '1.200 / 0.800',
+      totalDepthLabel: '2.000',
+      liquidityBiasLabel: 'balanced',
+      updatedAtLabel: '1/1/1970, 12:10:00 AM',
+      stale: false,
+    } as const
+
+    const band = buildMarketInspectorBandModel({
+      t,
+      snapshot,
+      executionRail,
+      orderbookPanel,
+    })
+
+    expect(band.title).toBe('BTCUSDT')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'signal', value: 'BUY' }),
+        expect.objectContaining({ id: 'total-depth', value: '2.000' }),
+      ]),
+    )
   })
 })

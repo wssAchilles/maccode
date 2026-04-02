@@ -5,6 +5,7 @@ import {
   buildHealthDiagnosticsBandModel,
   buildHealthDiagnostics,
   buildServiceHealthPanelModel,
+  buildHealthPersistenceBandModel,
   buildHealthStoreItems,
   buildHealthWorkerItems,
 } from './view-models'
@@ -230,6 +231,35 @@ describe('health view models', () => {
       expect.arrayContaining([
         expect.objectContaining({ id: 'degraded-count', value: '1' }),
         expect.objectContaining({ id: 'latest-request-id', value: 'rid-1' }),
+      ]),
+    )
+  })
+
+  it('builds a persistence band for the tail replay shell', () => {
+    const band = buildHealthPersistenceBandModel({
+      t,
+      persistenceStatus: {
+        status: 'ok',
+        worker: {
+          processed_ticks: 12,
+          tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+          started: true,
+          has_last_signal: true,
+        },
+        stores: {
+          supabase_enabled: true,
+          firebase_enabled: false,
+          supabase_table: 'strategy_signals',
+          firebase_collection: 'signals',
+        },
+      },
+    })
+
+    expect(band.title).toBe('ok')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'ticks', value: '12' }),
+        expect.objectContaining({ id: 'tracked-symbols', value: '2' }),
       ]),
     )
   })

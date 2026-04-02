@@ -303,6 +303,43 @@ export function buildHealthContextBandModel({
   }
 }
 
+export function buildHealthPersistenceBandModel({
+  t,
+  persistenceStatus,
+}: {
+  t: Translate
+  persistenceStatus?: PersistenceStatus
+}): WorkspaceContextBandModel {
+  return {
+    eyebrow: t('workspace.health.persistenceTitle'),
+    title: persistenceStatus?.status ?? t('common.disabled'),
+    hint: t('workspace.health.persistenceDescription'),
+    accent: persistenceStatus?.stores.supabase_enabled || persistenceStatus?.stores.firebase_enabled ? 'cyan' : 'amber',
+    items: [
+      {
+        id: 'ticks',
+        label: t('strategy.ticksProcessed'),
+        value: String(persistenceStatus?.worker.processed_ticks ?? 0),
+      },
+      {
+        id: 'tracked-symbols',
+        label: t('workspace.health.trackedSymbols'),
+        value: String(persistenceStatus?.worker.tracked_symbols?.length ?? 0),
+      },
+      {
+        id: 'supabase',
+        label: 'Supabase',
+        value: persistenceStatus?.stores.supabase_enabled ? t('common.ready') : t('common.disabled'),
+      },
+      {
+        id: 'firebase',
+        label: 'Firestore',
+        value: persistenceStatus?.stores.firebase_enabled ? t('common.ready') : t('common.disabled'),
+      },
+    ],
+  }
+}
+
 export function buildHealthSpotlightModel({
   t,
   domainStatus,

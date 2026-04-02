@@ -237,6 +237,62 @@ export function buildMarketHeroBandModel({
   }
 }
 
+export function buildMarketInspectorBandModel({
+  t,
+  snapshot,
+  executionRail,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  executionRail: MarketExecutionRailModel
+  orderbookPanel: MatchingOrderBookPanelModel
+}): WorkspaceContextBandModel {
+  const latestPulse = executionRail.items[0]
+
+  return {
+    eyebrow: t('workspace.market.title'),
+    title: snapshot.selectedSymbol,
+    hint: orderbookPanel.liquidityBiasLabel,
+    accent: orderbookPanel.stale ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'mid',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'depth-balance',
+        label: t('orderbook.depthBalance'),
+        value: orderbookPanel.depthBalanceLabel,
+      },
+      {
+        id: 'total-depth',
+        label: t('orderbook.totalDepth'),
+        value: orderbookPanel.totalDepthLabel,
+      },
+      {
+        id: 'pulse',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestPulse?.status ?? executionRail.emptyTitle ?? t('common.na'),
+        tone: executionRail.state === 'stale' ? 'negative' : 'default',
+      },
+      {
+        id: 'updated',
+        label: t('common.updatedAt'),
+        value: latestPulse?.time ?? orderbookPanel.updatedAtLabel,
+      },
+    ],
+  }
+}
+
 export function buildMarketSpotlightModel({
   t,
   snapshot,

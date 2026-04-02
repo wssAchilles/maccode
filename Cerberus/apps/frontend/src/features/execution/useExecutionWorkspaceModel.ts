@@ -20,6 +20,7 @@ import {
 import {
   buildExecutionOperationsPanel,
   buildExecutionHeroBandModel,
+  buildExecutionInspectorBandModel,
   buildExecutionOperatorSections,
   buildExecutionSpotlightModel,
 } from './view-models'
@@ -83,80 +84,90 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     [orderEvents, selectedSymbol],
   )
 
-  const model = useMemo(() => ({
-    heroBand: buildExecutionHeroBandModel({
-      t,
-      snapshot: tradingSnapshot,
-      preparedSelection: preparedExecutionSelection,
-      tradingPolicy,
-      binanceRule,
-    }),
-    metricTiles: [
-      {
-        id: 'signal',
-        label: t('strategy.signal'),
-        value: tradingSnapshot.signalValue,
-        hint: `${t('strategy.confidence')}: ${tradingSnapshot.confidenceValue}`,
-        tone: 'accent' as const,
-      },
-      {
-        id: 'best-bid',
-        label: t('market.bestBid'),
-        value: tradingSnapshot.bestBidValue,
-        tone: 'positive' as const,
-      },
-      {
-        id: 'best-ask',
-        label: t('market.bestAsk'),
-        value: tradingSnapshot.bestAskValue,
-        tone: 'negative' as const,
-      },
-      {
-        id: 'execution-stream',
-        label: t('execution.timeline'),
-        value: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
-        hint: tradingSnapshot.feedbackAtValue,
-      },
-    ],
-    lifecyclePanel: buildExecutionLifecyclePanelModel({
-      t,
-      signal: strategySignal,
-      persistenceStatus,
-      preparedSelection: preparedExecutionSelection,
-      latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
-      heartbeat,
-      tradingPolicy,
-      binanceRule,
-      domainStatus: executionStatus,
-    }),
-    operationsPanel: buildExecutionOperationsPanel({
-      t,
-      selectedSymbol,
-      preparedSelection: preparedExecutionSelection,
-      persistenceStatus,
-      domainStatus: executionStatus,
-    }),
-    strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
-    portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
-    strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-    strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
-    strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-    orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),
-    operatorSections: buildExecutionOperatorSections({
-      t,
-      snapshot: tradingSnapshot,
-      preparedSelection: preparedExecutionSelection,
-      tradingPolicy,
-      binanceRule,
-    }),
-    spotlight: buildExecutionSpotlightModel({
-      t,
-      snapshot: tradingSnapshot,
-      preparedSelection: preparedExecutionSelection,
-      tradingPolicy,
-      binanceRule,
-    }),
-  }), [
+  const model = useMemo(() => {
+    const orderbookPanel = buildMatchingOrderBookPanelModel({ t, orderbook })
+
+    return {
+      heroBand: buildExecutionHeroBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        preparedSelection: preparedExecutionSelection,
+        tradingPolicy,
+        binanceRule,
+      }),
+      metricTiles: [
+        {
+          id: 'signal',
+          label: t('strategy.signal'),
+          value: tradingSnapshot.signalValue,
+          hint: `${t('strategy.confidence')}: ${tradingSnapshot.confidenceValue}`,
+          tone: 'accent' as const,
+        },
+        {
+          id: 'best-bid',
+          label: t('market.bestBid'),
+          value: tradingSnapshot.bestBidValue,
+          tone: 'positive' as const,
+        },
+        {
+          id: 'best-ask',
+          label: t('market.bestAsk'),
+          value: tradingSnapshot.bestAskValue,
+          tone: 'negative' as const,
+        },
+        {
+          id: 'execution-stream',
+          label: t('execution.timeline'),
+          value: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
+          hint: tradingSnapshot.feedbackAtValue,
+        },
+      ],
+      lifecyclePanel: buildExecutionLifecyclePanelModel({
+        t,
+        signal: strategySignal,
+        persistenceStatus,
+        preparedSelection: preparedExecutionSelection,
+        latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),
+        heartbeat,
+        tradingPolicy,
+        binanceRule,
+        domainStatus: executionStatus,
+      }),
+      operationsPanel: buildExecutionOperationsPanel({
+        t,
+        selectedSymbol,
+        preparedSelection: preparedExecutionSelection,
+        persistenceStatus,
+        domainStatus: executionStatus,
+      }),
+      strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
+      portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
+      strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+      strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+      strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+      orderbookPanel,
+      inspectorBand: buildExecutionInspectorBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        preparedSelection: preparedExecutionSelection,
+        orderbookPanel,
+      }),
+      operatorSections: buildExecutionOperatorSections({
+        t,
+        snapshot: tradingSnapshot,
+        preparedSelection: preparedExecutionSelection,
+        tradingPolicy,
+        binanceRule,
+      }),
+      spotlight: buildExecutionSpotlightModel({
+        t,
+        snapshot: tradingSnapshot,
+        preparedSelection: preparedExecutionSelection,
+        tradingPolicy,
+        binanceRule,
+      }),
+    }
+  }, [
     binanceRule,
     executionStatus,
     heartbeat,

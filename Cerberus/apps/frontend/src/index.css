@@ -436,6 +436,10 @@ button {
   padding-top: 4px;
 }
 
+.rail-shell {
+  padding: 14px;
+}
+
 .wb-header {
   position: relative;
   display: grid;
@@ -857,6 +861,17 @@ button {
   display: grid;
   gap: 16px;
   align-content: start;
+}
+
+.inspector-shell {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.inspector-band,
+.tail-band {
+  margin-bottom: 2px;
 }
 
 .tail-drawer {
@@ -1774,6 +1789,12 @@ button {
     linear-gradient(90deg, rgba(var(--pa, var(--wrgb)), 0.08), transparent 28%, transparent 72%, rgba(var(--pa, var(--wrgb)), 0.06));
 }
 
+.tb-compact {
+  grid-template-columns: minmax(140px, 0.82fr) minmax(0, 1.18fr);
+  gap: 12px;
+  padding: 12px 14px;
+}
+
 .xec-band,
 .cc-band {
   margin-bottom: 12px;
@@ -1792,11 +1813,30 @@ button {
   color: var(--t0);
 }
 
+.tb-compact .tb-copy {
+  gap: 6px;
+}
+
+.tb-compact .tb-title {
+  font: 700 0.98rem/1.16 var(--fh);
+  letter-spacing: -0.015em;
+}
+
+.tb-compact .panel-caption {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .tb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 10px;
   min-width: 0;
+}
+
+.tb-compact .tb-grid {
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
 }
 
 .tb-item {
@@ -1806,6 +1846,11 @@ button {
   min-width: 0;
   padding-left: 10px;
   border-left: 1px solid rgba(124, 180, 192, 0.12);
+}
+
+.tb-compact .tb-item {
+  gap: 4px;
+  padding-left: 8px;
 }
 
 .tb-item:first-child {
@@ -1820,6 +1865,11 @@ button {
   color: var(--t0);
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.tb-compact .tb-value {
+  font-size: 0.84rem;
+  line-height: 1.2;
 }
 
 .xec-summary,

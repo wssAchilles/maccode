@@ -7,15 +7,16 @@ import { accentVar } from './accent'
 type Props = {
   model: WorkspaceContextBandModel
   className?: string
+  compact?: boolean
 }
 
-export function TerminalBand({ model, className }: Props) {
+export function TerminalBand({ model, className, compact = false }: Props) {
   const style = {
     '--pa': accentVar(model.accent ?? 'cyan'),
   } as CSSProperties
 
   return (
-    <div className={cn('tb', className)} style={style}>
+    <div className={cn('tb', compact && 'tb-compact', className)} style={style}>
       <div className="tb-copy">
         <p className="subtle-label">{model.eyebrow}</p>
         <p className="tb-title">{model.title}</p>

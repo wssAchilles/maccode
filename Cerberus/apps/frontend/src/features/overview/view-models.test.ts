@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   buildOverviewContextBandModel,
   buildOverviewHealthDigestBandModel,
+  buildOverviewInferenceBandModel,
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
   buildOverviewRecentSignalCards,
   buildOverviewSpotlightModel,
+  buildOverviewTailBandModel,
 } from './view-models'
 import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
 
@@ -235,5 +237,70 @@ describe('overview view models', () => {
       ]),
     })
     expect(cards[0].hint).not.toBe('—')
+  })
+
+  it('builds an inference band for overview inspector replay', () => {
+    const band = buildOverviewInferenceBandModel({
+      t,
+      inferenceCard: {
+        stateLabel: 'common.ready',
+        summary: 'model-x · 1.0.0',
+        reason: 'observe gate held',
+        items: [
+          { id: 'mode', label: 'workspace.inference.rolloutMode', value: 'observe' },
+          { id: 'promotion', label: 'workspace.inference.promotionState', value: 'held' },
+        ],
+      },
+    })
+
+    expect(band.title).toBe('common.ready')
+    expect(band.hint).toBe('observe gate held')
+    expect(band.items).toHaveLength(2)
+  })
+
+  it('builds a tail band from signals and persistence digest', () => {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
+        symbol: 'BTCUSDT',
+        bid_price: '100.0',
+        ask_price: '100.4',
+        event_time: 1_000,
+      },
+      latestBySymbol: {},
+      strategySignal: {
+        status: 'ready',
+        signal: 'HOLD',
+        confidence: 0.42,
+      },
+      latestEvent: {
+        id: 'evt-3',
+        channel: 'trade.executions.default',
+        payload: {},
+        received_at: 1_000,
+        event_type: 'strategy.signal.generated',
+        symbol: 'BTCUSDT',
+        status: 'HOLD',
+      },
+    })
+
+    const band = buildOverviewTailBandModel({
+      t,
+      snapshot,
+      recentSignalCount: 3,
+      persistenceItems: [
+        { id: 'worker', label: 'strategy.ticksProcessed', value: '44' },
+        { id: 'supabase', label: 'Supabase', value: 'true' },
+        { id: 'firebase', label: 'Firestore', value: 'false' },
+      ],
+    })
+
+    expect(band.title).toBe('BTCUSDT')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'recent-signals', value: '3' }),
+        expect.objectContaining({ id: 'ticks', value: '44' }),
+      ]),
+    )
   })
 })

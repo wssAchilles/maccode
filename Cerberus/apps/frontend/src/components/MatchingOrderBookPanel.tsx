@@ -59,7 +59,7 @@ export function MatchingOrderBookPanel({ model }: Props) {
       title={model.title}
       description={model.description}
     >
-      <TerminalBand model={model.band} className="ob-band" />
+      <TerminalBand model={model.band} className="ob-band" compact />
       <div className="obs-grid">
         <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{model.bestBidTitle}</p>

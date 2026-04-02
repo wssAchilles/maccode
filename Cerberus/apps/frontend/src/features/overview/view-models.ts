@@ -94,6 +94,27 @@ export function buildOverviewHealthDigestBandModel({
   }
 }
 
+export function buildOverviewInferenceBandModel({
+  t,
+  inferenceCard,
+}: {
+  t: Translate
+  inferenceCard: {
+    stateLabel: string
+    summary: string
+    reason?: string
+    items: OverviewDataItem[]
+  }
+}): WorkspaceContextBandModel {
+  return {
+    eyebrow: t('workspace.inference.title'),
+    title: inferenceCard.stateLabel,
+    hint: inferenceCard.reason ?? inferenceCard.summary,
+    accent: inferenceCard.reason ? 'amber' : 'teal',
+    items: inferenceCard.items.slice(0, 4),
+  }
+}
+
 export function buildOverviewContextBandModel({
   t,
   snapshot,
@@ -144,6 +165,62 @@ export function buildOverviewContextBandModel({
         label: t('workspace.overview.attention'),
         value: String(attentionCount),
         tone: attentionCount > 0 ? 'negative' : 'default',
+      },
+    ],
+  }
+}
+
+export function buildOverviewTailBandModel({
+  t,
+  snapshot,
+  recentSignalCount,
+  persistenceItems,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  recentSignalCount: number
+  persistenceItems: OverviewDataItem[]
+}): WorkspaceContextBandModel {
+  const supabase = persistenceItems.find((item) => item.id === 'supabase')?.value ?? t('common.na')
+  const firebase = persistenceItems.find((item) => item.id === 'firebase')?.value ?? t('common.na')
+  const ticks = persistenceItems.find((item) => item.id === 'worker')?.value ?? t('common.na')
+
+  return {
+    eyebrow: t('workspace.overview.operatorDeckTitle'),
+    title: snapshot.selectedSymbol,
+    hint: t('workspace.overview.signalsDescription'),
+    accent: 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'recent-signals',
+        label: t('strategy.recent'),
+        value: String(recentSignalCount),
+      },
+      {
+        id: 'ticks',
+        label: t('strategy.ticksProcessed'),
+        value: ticks,
+      },
+      {
+        id: 'supabase',
+        label: 'Supabase',
+        value: supabase,
+      },
+      {
+        id: 'firebase',
+        label: 'Firestore',
+        value: firebase,
+      },
+      {
+        id: 'updated-at',
+        label: t('common.updatedAt'),
+        value: snapshot.feedbackAtValue,
       },
     ],
   }

@@ -12,7 +12,7 @@ export function StrategyPortfolioPanel({ model, onSelectSymbol }: Props) {
 
   return (
     <div className="sp">
-      <TerminalBand model={model.band} className="sp-band" />
+      <TerminalBand model={model.band} className="sp-band" compact />
       <PanelSection
         className="spf-section"
         eyebrow={t('workspace.strategy.portfolioTitle')}

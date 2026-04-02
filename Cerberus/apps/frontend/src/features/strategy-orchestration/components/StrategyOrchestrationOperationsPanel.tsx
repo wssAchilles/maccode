@@ -45,7 +45,7 @@ export function StrategyOrchestrationOperationsPanel({
   if (model.rows.length === 0) {
     return (
       <GlassPanel className="so-operations-panel" tone="subtle">
-        <TerminalBand model={model.band} className="sp-band" />
+        <TerminalBand model={model.band} className="sp-band" compact />
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}
@@ -58,7 +58,7 @@ export function StrategyOrchestrationOperationsPanel({
 
   return (
     <GlassPanel className="so-operations-panel" tone="subtle">
-      <TerminalBand model={model.band} className="sp-band" />
+      <TerminalBand model={model.band} className="sp-band" compact />
       <PanelSection
         className="so-section"
         eyebrow={t('workspace.strategy.operationsTitle')}

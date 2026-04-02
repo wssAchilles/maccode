@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
@@ -44,7 +44,14 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="feature">
+        <SectionFrame
+          title={t('workspace.health.persistenceTitle')}
+          description={t('workspace.health.persistenceDescription')}
+          accent="amber"
+          stage="feature"
+          bodyClassName="tail-shell"
+        >
+          <TerminalBand model={model.persistenceBand} className="tail-band" compact />
           <div className="health-grid hp-tail-grid">
             <PanelSection
               className="hp-tail-section"
@@ -81,17 +88,23 @@ export function HealthWorkspace({ active: _active = true }: Props) {
       </div>
 
       <div className="ws-side stack wss">
-        <GlassPanel className="diag-shell" tone="subtle">
-          <TerminalBand model={model.diagnosticsBand} className="diag-band" />
-        </GlassPanel>
-        <DiagnosticDrawer
+        <SectionFrame
           title={t('workspace.health.requestIds')}
-          summary={t('workspace.health.requestIdsDescription')}
-          defaultOpen={model.hasDiagnosticsAlert}
-          contentClassName="diag-content"
+          description={t('workspace.health.requestIdsDescription')}
+          accent="cyan"
+          stage="inspector"
+          bodyClassName="inspector-shell"
         >
-          <pre className="diagnostic-pre">{JSON.stringify(model.diagnostics, null, 2)}</pre>
-        </DiagnosticDrawer>
+          <TerminalBand model={model.diagnosticsBand} className="diag-band" compact />
+          <DiagnosticDrawer
+            title={t('workspace.health.requestIds')}
+            summary={t('workspace.health.requestIdsDescription')}
+            defaultOpen={model.hasDiagnosticsAlert}
+            contentClassName="diag-content"
+          >
+            <pre className="diagnostic-pre">{JSON.stringify(model.diagnostics, null, 2)}</pre>
+          </DiagnosticDrawer>
+        </SectionFrame>
       </div>
     </div>
   )

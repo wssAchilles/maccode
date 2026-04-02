@@ -7,7 +7,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
@@ -89,7 +89,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="cyan"
           stage="feature"
         >
-          <TerminalBand model={model.chartBand} className="cc-band" />
+          <TerminalBand model={model.chartBand} className="cc-band" compact />
           <div className="cc" data-phase={chartPhase}>
             <div className="cc-copy">
               <p className="subtle-label">{model.chartContext.eyebrow}</p>
@@ -159,7 +159,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="teal"
           stage="feature"
         >
-          <TerminalBand model={model.strategyBand} className="strategy-band" />
+          <TerminalBand model={model.strategyBand} className="strategy-band" compact />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
         </SectionFrame>
 
@@ -171,6 +171,7 @@ export function MarketWorkspace({ active = true }: Props) {
           stage="tail"
           bodyClassName="tail-shell"
         >
+          {model.executionRail.band ? <TerminalBand model={model.executionRail.band} className="tail-band" compact /> : null}
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />
           </Suspense>
@@ -178,11 +179,15 @@ export function MarketWorkspace({ active = true }: Props) {
       </div>
 
       <div className="ws-side stack wss">
+        <GlassPanel className="rail-shell" tone="subtle">
+          <TerminalBand model={model.inspectorBand} className="inspector-band" compact />
+        </GlassPanel>
         <SectionFrame
           title={t('workspace.strategy.portfolioTitle')}
           description={t('workspace.strategy.portfolioDescription')}
           accent="teal"
           stage="inspector"
+          bodyClassName="inspector-shell"
         >
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
         </SectionFrame>
@@ -191,6 +196,7 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.strategy.registryDescription')}
           accent="cyan"
           stage="inspector"
+          bodyClassName="inspector-shell"
         >
           <StrategyRegistryPanel model={model.strategyRegistry} />
         </SectionFrame>

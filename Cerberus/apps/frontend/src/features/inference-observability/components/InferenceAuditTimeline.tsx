@@ -11,7 +11,7 @@ export function InferenceAuditTimeline({ model }: Props) {
 
   return (
     <div className="stack ip-detail">
-      <TerminalBand model={model.auditBand} className="if-sub-band" />
+      <TerminalBand model={model.auditBand} className="if-sub-band" compact />
       <PanelSection
         className="ifp ip-detail-section"
         eyebrow={t('workspace.inference.auditTimeline')}

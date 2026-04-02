@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/163</span>
+                <span class='fraction'>0/172</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/163</span>
+                <span class='fraction'>0/172</span>
             </div>
         
             
@@ -249,7 +249,18 @@
 <a name='L184'></a><a href='#L184'>184</a>
 <a name='L185'></a><a href='#L185'>185</a>
 <a name='L186'></a><a href='#L186'>186</a>
-<a name='L187'></a><a href='#L187'>187</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -279,6 +290,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -334,6 +346,16 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -457,6 +479,7 @@
 <span class="cstat-no" title="statement not covered" >import {</span>
   buildExecutionOperationsPanel,
   buildExecutionHeroBandModel,
+  buildExecutionInspectorBandModel,
   buildExecutionOperatorSections,
   buildExecutionSpotlightModel,
 } from './view-models'
@@ -520,80 +543,90 @@ type Params = {
 <span class="cstat-no" title="statement not covered" >    [orderEvents, selectedSymbol],</span>
 <span class="cstat-no" title="statement not covered" >  )</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  const model = useMemo(() =&gt; ({</span>
-<span class="cstat-no" title="statement not covered" >    heroBand: buildExecutionHeroBandModel({</span>
-<span class="cstat-no" title="statement not covered" >      t,</span>
-<span class="cstat-no" title="statement not covered" >      snapshot: tradingSnapshot,</span>
-<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
-<span class="cstat-no" title="statement not covered" >      tradingPolicy,</span>
-<span class="cstat-no" title="statement not covered" >      binanceRule,</span>
-<span class="cstat-no" title="statement not covered" >    }),</span>
-<span class="cstat-no" title="statement not covered" >    metricTiles: [</span>
-<span class="cstat-no" title="statement not covered" >      {</span>
-<span class="cstat-no" title="statement not covered" >        id: 'signal',</span>
-<span class="cstat-no" title="statement not covered" >        label: t('strategy.signal'),</span>
-<span class="cstat-no" title="statement not covered" >        value: tradingSnapshot.signalValue,</span>
-<span class="cstat-no" title="statement not covered" >        hint: `${t('strategy.confidence')}: ${tradingSnapshot.confidenceValue}`,</span>
-<span class="cstat-no" title="statement not covered" >        tone: 'accent' as const,</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >      {</span>
-<span class="cstat-no" title="statement not covered" >        id: 'best-bid',</span>
-<span class="cstat-no" title="statement not covered" >        label: t('market.bestBid'),</span>
-<span class="cstat-no" title="statement not covered" >        value: tradingSnapshot.bestBidValue,</span>
-<span class="cstat-no" title="statement not covered" >        tone: 'positive' as const,</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >      {</span>
-<span class="cstat-no" title="statement not covered" >        id: 'best-ask',</span>
-<span class="cstat-no" title="statement not covered" >        label: t('market.bestAsk'),</span>
-<span class="cstat-no" title="statement not covered" >        value: tradingSnapshot.bestAskValue,</span>
-<span class="cstat-no" title="statement not covered" >        tone: 'negative' as const,</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >      {</span>
-<span class="cstat-no" title="statement not covered" >        id: 'execution-stream',</span>
-<span class="cstat-no" title="statement not covered" >        label: t('execution.timeline'),</span>
-<span class="cstat-no" title="statement not covered" >        value: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),</span>
-<span class="cstat-no" title="statement not covered" >        hint: tradingSnapshot.feedbackAtValue,</span>
-<span class="cstat-no" title="statement not covered" >      },</span>
-<span class="cstat-no" title="statement not covered" >    ],</span>
-<span class="cstat-no" title="statement not covered" >    lifecyclePanel: buildExecutionLifecyclePanelModel({</span>
-<span class="cstat-no" title="statement not covered" >      t,</span>
-<span class="cstat-no" title="statement not covered" >      signal: strategySignal,</span>
-<span class="cstat-no" title="statement not covered" >      persistenceStatus,</span>
-<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
-<span class="cstat-no" title="statement not covered" >      latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),</span>
-<span class="cstat-no" title="statement not covered" >      heartbeat,</span>
-<span class="cstat-no" title="statement not covered" >      tradingPolicy,</span>
-<span class="cstat-no" title="statement not covered" >      binanceRule,</span>
-<span class="cstat-no" title="statement not covered" >      domainStatus: executionStatus,</span>
-<span class="cstat-no" title="statement not covered" >    }),</span>
-<span class="cstat-no" title="statement not covered" >    operationsPanel: buildExecutionOperationsPanel({</span>
-<span class="cstat-no" title="statement not covered" >      t,</span>
-<span class="cstat-no" title="statement not covered" >      selectedSymbol,</span>
-<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
-<span class="cstat-no" title="statement not covered" >      persistenceStatus,</span>
-<span class="cstat-no" title="statement not covered" >      domainStatus: executionStatus,</span>
-<span class="cstat-no" title="statement not covered" >    }),</span>
-<span class="cstat-no" title="statement not covered" >    strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),</span>
-<span class="cstat-no" title="statement not covered" >    portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),</span>
-<span class="cstat-no" title="statement not covered" >    strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
-<span class="cstat-no" title="statement not covered" >    strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),</span>
-<span class="cstat-no" title="statement not covered" >    strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
-<span class="cstat-no" title="statement not covered" >    orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),</span>
-<span class="cstat-no" title="statement not covered" >    operatorSections: buildExecutionOperatorSections({</span>
-<span class="cstat-no" title="statement not covered" >      t,</span>
-<span class="cstat-no" title="statement not covered" >      snapshot: tradingSnapshot,</span>
-<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
-<span class="cstat-no" title="statement not covered" >      tradingPolicy,</span>
-<span class="cstat-no" title="statement not covered" >      binanceRule,</span>
-<span class="cstat-no" title="statement not covered" >    }),</span>
-<span class="cstat-no" title="statement not covered" >    spotlight: buildExecutionSpotlightModel({</span>
-<span class="cstat-no" title="statement not covered" >      t,</span>
-<span class="cstat-no" title="statement not covered" >      snapshot: tradingSnapshot,</span>
-<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
-<span class="cstat-no" title="statement not covered" >      tradingPolicy,</span>
-<span class="cstat-no" title="statement not covered" >      binanceRule,</span>
-<span class="cstat-no" title="statement not covered" >    }),</span>
-<span class="cstat-no" title="statement not covered" >  }), [</span>
+<span class="cstat-no" title="statement not covered" >  const model = useMemo(() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    const orderbookPanel = buildMatchingOrderBookPanelModel({ t, orderbook })</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    return {</span>
+<span class="cstat-no" title="statement not covered" >      heroBand: buildExecutionHeroBandModel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >        binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >      metricTiles: [</span>
+<span class="cstat-no" title="statement not covered" >        {</span>
+<span class="cstat-no" title="statement not covered" >          id: 'signal',</span>
+<span class="cstat-no" title="statement not covered" >          label: t('strategy.signal'),</span>
+<span class="cstat-no" title="statement not covered" >          value: tradingSnapshot.signalValue,</span>
+<span class="cstat-no" title="statement not covered" >          hint: `${t('strategy.confidence')}: ${tradingSnapshot.confidenceValue}`,</span>
+<span class="cstat-no" title="statement not covered" >          tone: 'accent' as const,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >        {</span>
+<span class="cstat-no" title="statement not covered" >          id: 'best-bid',</span>
+<span class="cstat-no" title="statement not covered" >          label: t('market.bestBid'),</span>
+<span class="cstat-no" title="statement not covered" >          value: tradingSnapshot.bestBidValue,</span>
+<span class="cstat-no" title="statement not covered" >          tone: 'positive' as const,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >        {</span>
+<span class="cstat-no" title="statement not covered" >          id: 'best-ask',</span>
+<span class="cstat-no" title="statement not covered" >          label: t('market.bestAsk'),</span>
+<span class="cstat-no" title="statement not covered" >          value: tradingSnapshot.bestAskValue,</span>
+<span class="cstat-no" title="statement not covered" >          tone: 'negative' as const,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >        {</span>
+<span class="cstat-no" title="statement not covered" >          id: 'execution-stream',</span>
+<span class="cstat-no" title="statement not covered" >          label: t('execution.timeline'),</span>
+<span class="cstat-no" title="statement not covered" >          value: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),</span>
+<span class="cstat-no" title="statement not covered" >          hint: tradingSnapshot.feedbackAtValue,</span>
+<span class="cstat-no" title="statement not covered" >        },</span>
+<span class="cstat-no" title="statement not covered" >      ],</span>
+<span class="cstat-no" title="statement not covered" >      lifecyclePanel: buildExecutionLifecyclePanelModel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        signal: strategySignal,</span>
+<span class="cstat-no" title="statement not covered" >        persistenceStatus,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        latestEventSummary: tradingSnapshot.feedbackValue ?? t('common.heartbeat'),</span>
+<span class="cstat-no" title="statement not covered" >        heartbeat,</span>
+<span class="cstat-no" title="statement not covered" >        tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >        binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >        domainStatus: executionStatus,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >      operationsPanel: buildExecutionOperationsPanel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        selectedSymbol,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        persistenceStatus,</span>
+<span class="cstat-no" title="statement not covered" >        domainStatus: executionStatus,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >      strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),</span>
+<span class="cstat-no" title="statement not covered" >      portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),</span>
+<span class="cstat-no" title="statement not covered" >      strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
+<span class="cstat-no" title="statement not covered" >      strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),</span>
+<span class="cstat-no" title="statement not covered" >      strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
+<span class="cstat-no" title="statement not covered" >      orderbookPanel,</span>
+<span class="cstat-no" title="statement not covered" >      inspectorBand: buildExecutionInspectorBandModel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        orderbookPanel,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >      operatorSections: buildExecutionOperatorSections({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >        binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >      spotlight: buildExecutionSpotlightModel({</span>
+<span class="cstat-no" title="statement not covered" >        t,</span>
+<span class="cstat-no" title="statement not covered" >        snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >        preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >        tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >        binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >      }),</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }, [</span>
 <span class="cstat-no" title="statement not covered" >    binanceRule,</span>
 <span class="cstat-no" title="statement not covered" >    executionStatus,</span>
 <span class="cstat-no" title="statement not covered" >    heartbeat,</span>
@@ -628,7 +661,7 @@ type Params = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T11:55:35.930Z
+                at 2026-04-02T13:43:04.912Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -11,7 +11,7 @@ export function SymbolExecutionRail({ model }: Props) {
 
   return (
     <div className="market-execution-rail">
-      {model.band ? <TerminalBand model={model.band} className="mer-band" /> : null}
+      {model.band ? <TerminalBand model={model.band} className="mer-band" compact /> : null}
       <PanelSection
         className="mer-section"
         eyebrow={t('workspace.market.executionRailTitle')}

@@ -16,7 +16,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
 
   return (
     <div className="xl-panel">
-      <TerminalBand model={model.band} className="xtl" />
+      <TerminalBand model={model.band} className="xtl" compact />
       <PanelSection
         className="xl-stage-section"
         eyebrow={t('workspace.execution.lifecycleTitle')}

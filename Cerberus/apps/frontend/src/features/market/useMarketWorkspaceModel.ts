@@ -22,6 +22,7 @@ import {
   buildMarketChartContextModel,
   buildMarketExecutionRailModel,
   buildMarketHeroBandModel,
+  buildMarketInspectorBandModel,
   buildMarketMetricTiles,
   buildMarketOperatorSections,
   buildMarketSpotlightModel,
@@ -113,6 +114,12 @@ export function useMarketWorkspaceModel({ active }: Params) {
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       executionRail,
+      inspectorBand: buildMarketInspectorBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        executionRail,
+        orderbookPanel,
+      }),
       operatorSections: buildMarketOperatorSections({
         t,
         snapshot: tradingSnapshot,

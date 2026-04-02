@@ -12,7 +12,7 @@ export function StrategyRegistryPanel({ model }: Props) {
   if (model.rows.length === 0) {
     return (
       <GlassPanel className="srg-panel" tone="subtle">
-        {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
+        {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.noDecisionsHint')}
@@ -23,7 +23,7 @@ export function StrategyRegistryPanel({ model }: Props) {
 
   return (
     <GlassPanel className="srg-panel" tone="subtle">
-      {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
+      {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
       <PanelSection
         className="srg-summary-section"
         eyebrow={t('workspace.strategy.registryTitle')}

@@ -27,7 +27,7 @@ export function InferenceOperationsPanel({
 
   return (
     <div className="stack">
-      <TerminalBand model={model.band} className="iop-band" />
+      <TerminalBand model={model.band} className="iop-band" compact />
       <div className="health-grid">
         <PanelSection
           className="ifp iop-panel"

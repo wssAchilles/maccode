@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/148</span>
+                <span class='fraction'>0/151</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/148</span>
+                <span class='fraction'>0/151</span>
             </div>
         
             
@@ -246,7 +246,10 @@
 <a name='L181'></a><a href='#L181'>181</a>
 <a name='L182'></a><a href='#L182'>182</a>
 <a name='L183'></a><a href='#L183'>183</a>
-<a name='L184'></a><a href='#L184'>184</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -327,6 +330,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -439,7 +445,7 @@
   PanelSkeleton,
 } from '../../app/lazyPanels'
 <span class="cstat-no" title="statement not covered" >import { useI18n } from '../../i18n/I18nProvider'</span>
-<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'</span>
+<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'</span>
 <span class="cstat-no" title="statement not covered" >import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'</span>
 <span class="cstat-no" title="statement not covered" >import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'</span>
 <span class="cstat-no" title="statement not covered" >import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'</span>
@@ -511,15 +517,18 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;div className="ws-side stack xsd wss"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;GlassPanel className="rail-shell" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.inspectorBand} className="inspector-band" compact /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/GlassPanel&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('workspace.strategy.matrixTitle')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.strategy.description')}</span>
-<span class="cstat-no" title="statement not covered" >          bodyClassName="xsfb"</span>
+<span class="cstat-no" title="statement not covered" >          bodyClassName="xsfb inspector-shell"</span>
 <span class="cstat-no" title="statement not covered" >          accent="teal"</span>
 <span class="cstat-no" title="statement not covered" >          stage="inspector"</span>
         &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;div className="stack"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;TerminalBand model={model.strategyBand} className="strategy-band" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;TerminalBand model={model.strategyBand} className="strategy-band" compact /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;StrategyDecisionMatrix model={model.strategyMatrix} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;DiagnosticDrawer</span>
@@ -619,7 +628,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T11:55:35.930Z
+                at 2026-04-02T13:43:04.912Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
