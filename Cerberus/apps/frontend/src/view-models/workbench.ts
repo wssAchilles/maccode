@@ -35,6 +35,7 @@ export type WorkspaceSpotlightMetricModel = {
   value: string
   hint?: string
   tone?: 'default' | 'positive' | 'negative' | 'accent'
+  visualPriority?: 'primary' | 'secondary'
 }
 
 export type WorkspaceSpotlightModel = {
@@ -42,6 +43,8 @@ export type WorkspaceSpotlightModel = {
   hint?: string
   chips: string[]
   metrics: WorkspaceSpotlightMetricModel[]
+  accent?: 'teal' | 'cyan' | 'amber'
+  postureLabel?: string
 }
 
 export type WorkspaceOperatorDeckItemModel = {
@@ -56,6 +59,9 @@ export type WorkspaceOperatorDeckSectionModel = {
   title: string
   summary?: string
   items: WorkspaceOperatorDeckItemModel[]
+  accent?: 'teal' | 'cyan' | 'amber'
+  postureLabel?: string
+  visualPriority?: 'hero' | 'default'
 }
 
 export type CoreFlowStepCardModel = {

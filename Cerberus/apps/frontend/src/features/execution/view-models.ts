@@ -231,12 +231,17 @@ export function buildExecutionDeskSections({
       id: 'route',
       title: t('workspace.execution.operatorRouteTitle'),
       summary: t('workspace.execution.operatorRouteDescription'),
+      accent: 'cyan',
+      postureLabel: symbol,
+      visualPriority: 'hero',
       items: routeItems,
     },
     {
       id: 'guardrails',
       title: t('workspace.execution.operatorGuardrailsTitle'),
       summary: t('workspace.execution.operatorGuardrailsDescription'),
+      accent: 'amber',
+      postureLabel: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       items: guardrailItems,
     },
   ]
@@ -274,6 +279,8 @@ export function buildExecutionSpotlightModel({
       tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule'),
     ],
+    accent: preparedSelection.activeOrderCount > 0 ? 'amber' : 'cyan',
+    postureLabel: latestLifecycle,
     metrics: [
       {
         id: 'mid-price',
@@ -281,6 +288,7 @@ export function buildExecutionSpotlightModel({
         value: snapshot.midPriceValue,
         tone: 'accent',
         hint: `${t('common.updatedAt')}: ${snapshot.quoteUpdatedAtValue}`,
+        visualPriority: 'primary',
       },
       {
         id: 'spread',
@@ -335,6 +343,8 @@ export function buildExecutionDeskSpotlightModel({
       tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       broker === 'binance' && binanceRule ? t('common.ready') : broker === 'binance' ? t('workspace.execution.lifecycleWaitingRule') : 'Paper',
     ],
+    accent: broker === 'binance' ? 'amber' : 'cyan',
+    postureLabel: broker === 'binance' ? 'Binance' : 'Alpaca',
     metrics: [
       {
         id: 'best-bid',
@@ -380,6 +390,9 @@ export function buildExecutionOperatorSections({
       id: 'execution-posture',
       title: t('workspace.execution.operatorFlowTitle'),
       summary: t('workspace.execution.operatorFlowDescription'),
+      accent: preparedSelection.activeOrderCount > 0 ? 'amber' : 'cyan',
+      postureLabel: latestLifecycle,
+      visualPriority: 'hero',
       items: [
         {
           id: 'symbol',
@@ -414,6 +427,8 @@ export function buildExecutionOperatorSections({
       id: 'execution-venue',
       title: t('workspace.execution.operatorVenueTitle'),
       summary: t('workspace.execution.operatorVenueDescription'),
+      accent: binanceRule ? 'teal' : 'amber',
+      postureLabel: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
       items: [
         {
           id: 'policy',

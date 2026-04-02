@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useId, useState } from 'react'
 
 import { cn } from '../lib/cn'
+import { useRafPresenceTransition } from './motion/useRafPresenceTransition'
 
 type Props = {
   title: string
@@ -24,6 +25,7 @@ export function DiagnosticDrawer({
 }: Props) {
   const [open, setOpen] = useState(defaultOpen)
   const contentId = useId()
+  const presencePhase = useRafPresenceTransition(open ? 'open' : 'closed', 280)
 
   useEffect(() => {
     if (defaultOpen) {
@@ -32,7 +34,12 @@ export function DiagnosticDrawer({
   }, [defaultOpen])
 
   return (
-    <section className={cn('dd', className)} data-testid={testId}>
+    <section
+      className={cn('dd', className)}
+      data-open={open}
+      data-presence={presencePhase}
+      data-testid={testId}
+    >
       <button
         type="button"
         className="dd-trigger"

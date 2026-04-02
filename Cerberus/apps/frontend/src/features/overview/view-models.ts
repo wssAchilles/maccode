@@ -94,12 +94,15 @@ export function buildOverviewSpotlightModel({
     summary: `${snapshot.selectedSymbol} · ${snapshot.signalValue} · ${snapshot.feedbackValue ?? t('common.heartbeat')}`,
     hint: `${t('common.updatedAt')}: ${snapshot.feedbackAtValue}`,
     chips: [snapshot.selectedSymbol, snapshot.signalValue],
+    accent: attentionCount > 0 ? 'amber' : 'cyan',
+    postureLabel: attentionCount > 0 ? t('workspace.overview.attention') : t('common.ready'),
     metrics: [
       {
         id: 'mid-price',
         label: t('orderbook.midPrice'),
         value: snapshot.midPriceValue,
         tone: 'accent',
+        visualPriority: 'primary',
       },
       {
         id: 'spread',
@@ -171,6 +174,9 @@ export function buildOverviewOperatorSections({
       id: 'signal-posture',
       title: t('workspace.overview.operatorSignalTitle'),
       summary: t('workspace.overview.operatorSignalDescription'),
+      accent: 'cyan',
+      postureLabel: snapshot.signalValue,
+      visualPriority: 'hero',
       items: [
         {
           id: 'symbol',
@@ -205,6 +211,8 @@ export function buildOverviewOperatorSections({
       id: 'service-posture',
       title: t('workspace.overview.operatorServiceTitle'),
       summary: t('workspace.overview.operatorServiceDescription'),
+      accent: attentionCount > 0 ? 'amber' : 'teal',
+      postureLabel: attentionCount > 0 ? t('workspace.overview.attention') : t('common.ready'),
       items: [
         {
           id: 'best-bid',

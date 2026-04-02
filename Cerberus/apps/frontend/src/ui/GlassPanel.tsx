@@ -30,6 +30,7 @@ export function GlassPanel<T extends ElementType = 'section'>({
   const Component = as ?? 'section'
   return (
     <Component
+      data-tone={tone}
       className={cn(TONE_CLASS[tone], padded ? 'glass-panel-padded' : '', className)}
       {...props}
     >

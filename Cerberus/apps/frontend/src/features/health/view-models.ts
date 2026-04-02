@@ -173,12 +173,15 @@ export function buildHealthSpotlightModel({
     summary: `${persistenceStatus?.status ?? t('common.disabled')} · ${matchingStatus}`,
     hint: t('workspace.health.description'),
     chips: [matchingStatus, formatInferenceMode(t, inferenceStatus)],
+    accent: domainSummary.attentionCount > 0 ? 'amber' : 'teal',
+    postureLabel: matchingStatus,
     metrics: [
       {
         id: 'ready-services',
         label: t('common.ready'),
         value: String(domainSummary.readyCount),
         tone: domainSummary.readyCount > 0 ? 'positive' : 'default',
+        visualPriority: 'primary',
       },
       {
         id: 'attention-services',
@@ -223,6 +226,9 @@ export function buildHealthOperatorSections({
       id: 'service-posture',
       title: t('workspace.health.operatorServiceTitle'),
       summary: t('workspace.health.operatorServiceDescription'),
+      accent: domainSummary.attentionCount > 0 ? 'amber' : 'teal',
+      postureLabel: formatInferenceMode(t, inferenceStatus),
+      visualPriority: 'hero',
       items: [
         {
           id: 'ready-services',
@@ -256,6 +262,8 @@ export function buildHealthOperatorSections({
       id: 'persistence-posture',
       title: t('workspace.health.operatorPersistenceTitle'),
       summary: t('workspace.health.operatorPersistenceDescription'),
+      accent: 'cyan',
+      postureLabel: persistenceStatus?.status ?? t('common.disabled'),
       items: [
         {
           id: 'processed-ticks',

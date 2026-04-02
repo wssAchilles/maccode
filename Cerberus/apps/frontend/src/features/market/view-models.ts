@@ -187,6 +187,8 @@ export function buildMarketSpotlightModel({
       snapshot.signalValue,
       orderbookPanel.stale ? t('health.stale') : t('health.fresh'),
     ],
+    accent: orderbookPanel.stale ? 'amber' : 'cyan',
+    postureLabel: orderbookPanel.liquidityBiasLabel,
     metrics: [
       {
         id: 'mid-price',
@@ -194,6 +196,7 @@ export function buildMarketSpotlightModel({
         value: snapshot.midPriceValue,
         tone: 'accent',
         hint: `${t('common.updatedAt')}: ${snapshot.quoteUpdatedAtValue}`,
+        visualPriority: 'primary',
       },
       {
         id: 'spread',
@@ -235,6 +238,9 @@ export function buildMarketOperatorSections({
       id: 'quote-posture',
       title: t('workspace.market.operatorQuoteTitle'),
       summary: t('workspace.market.operatorQuoteDescription'),
+      accent: 'cyan',
+      postureLabel: snapshot.selectedSymbol,
+      visualPriority: 'hero',
       items: [
         {
           id: 'symbol',
@@ -271,6 +277,8 @@ export function buildMarketOperatorSections({
       id: 'depth-pulse',
       title: t('workspace.market.operatorDepthTitle'),
       summary: t('workspace.market.operatorDepthDescription'),
+      accent: executionRail.state === 'stale' ? 'amber' : 'teal',
+      postureLabel: orderbookPanel.liquidityBiasLabel,
       items: [
         {
           id: 'depth-balance',
