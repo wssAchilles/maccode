@@ -1,7 +1,11 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { DomainStatusMap } from '../../store/slices/shared'
 import type { AppError, InferenceStatusPayload, PersistenceStatus, UIState } from '../../types/contracts'
-import type { HealthCardModel, WorkspaceSpotlightModel } from '../../view-models/workbench'
+import type {
+  HealthCardModel,
+  WorkspaceOperatorDeckSectionModel,
+  WorkspaceSpotlightModel,
+} from '../../view-models/workbench'
 import { buildHealthCards, summarizeDomainStates } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
@@ -198,6 +202,89 @@ export function buildHealthSpotlightModel({
       },
     ],
   }
+}
+
+export function buildHealthOperatorSections({
+  t,
+  domainStatus,
+  persistenceStatus,
+  inferenceStatus,
+}: {
+  t: Translate
+  domainStatus: DomainStatusMap
+  persistenceStatus?: PersistenceStatus
+  inferenceStatus?: InferenceStatusPayload
+}): WorkspaceOperatorDeckSectionModel[] {
+  const domainSummary = summarizeDomainStates(domainStatus)
+  const matchingStatus = persistenceStatus?.matching?.health?.status ?? t('common.disabled')
+
+  return [
+    {
+      id: 'service-posture',
+      title: t('workspace.health.operatorServiceTitle'),
+      summary: t('workspace.health.operatorServiceDescription'),
+      items: [
+        {
+          id: 'ready-services',
+          label: t('common.ready'),
+          value: String(domainSummary.readyCount),
+          tone: domainSummary.readyCount > 0 ? 'positive' : 'default',
+        },
+        {
+          id: 'attention-services',
+          label: t('workspace.overview.attention'),
+          value: String(domainSummary.attentionCount),
+          tone: domainSummary.attentionCount > 0 ? 'negative' : 'default',
+        },
+        {
+          id: 'matching-status',
+          label: t('strategy.matching'),
+          value: matchingStatus,
+        },
+        {
+          id: 'rollout-mode',
+          label: t('workspace.inference.rolloutMode'),
+          value: formatInferenceMode(t, inferenceStatus),
+          tone:
+            inferenceStatus?.rollout?.effective_mode === 'primary' || inferenceStatus?.mode === 'primary'
+              ? 'accent'
+              : 'default',
+        },
+      ],
+    },
+    {
+      id: 'persistence-posture',
+      title: t('workspace.health.operatorPersistenceTitle'),
+      summary: t('workspace.health.operatorPersistenceDescription'),
+      items: [
+        {
+          id: 'processed-ticks',
+          label: t('strategy.ticksProcessed'),
+          value: String(persistenceStatus?.worker.processed_ticks ?? 0),
+        },
+        {
+          id: 'tracked-symbols',
+          label: t('workspace.health.trackedSymbols'),
+          value: String(persistenceStatus?.worker.tracked_symbols?.length ?? 0),
+        },
+        {
+          id: 'worker-started',
+          label: t('workspace.health.workerStarted'),
+          value: persistenceStatus?.worker.started ? t('common.yes') : t('common.no'),
+        },
+        {
+          id: 'supabase',
+          label: 'Supabase',
+          value: persistenceStatus?.stores.supabase_enabled ? t('common.ready') : t('common.disabled'),
+        },
+        {
+          id: 'firebase',
+          label: 'Firestore',
+          value: persistenceStatus?.stores.firebase_enabled ? t('common.ready') : t('common.disabled'),
+        },
+      ],
+    },
+  ]
 }
 
 export function buildHealthDiagnostics(

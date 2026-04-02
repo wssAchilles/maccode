@@ -2,7 +2,7 @@ import { useI18n } from '../i18n/I18nProvider'
 
 import { AlpacaPaperPanel } from './execution/AlpacaPaperPanel'
 import { BinanceTestPanel } from './execution/BinanceTestPanel'
-import { DataList, GlassPanel, StatusPill, WorkspaceSpotlight } from '../ui'
+import { GlassPanel, StatusPill, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../ui'
 import { useExecutionConsoleModel } from '../features/execution/useExecutionConsoleModel'
 
 type Props = {
@@ -22,7 +22,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
     binanceModel,
     alpacaModel,
     deskSpotlight,
-    executionSummary,
+    deskSections,
     progressItems,
   } = useExecutionConsoleModel({
     active,
@@ -117,7 +117,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
             <p className="subtle-label">{t('workspace.execution.diagnostics')}</p>
             <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
           </div>
-          <DataList items={executionSummary} />
+          <WorkspaceOperatorDeck sections={deskSections} layout="stack" />
           <div className="xp">
             {progressItems.map((item, index) => (
               <div key={item.id} className="xp-item">

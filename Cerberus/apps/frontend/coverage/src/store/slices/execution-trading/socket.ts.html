@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">8.95% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/67</span>
+                <span class='fraction'>6/67</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/1</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
-                <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/2</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">8.95% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/67</span>
+                <span class='fraction'>6/67</span>
             </div>
         
             
@@ -151,7 +151,7 @@
 <a name='L86'></a><a href='#L86'>86</a>
 <a name='L87'></a><a href='#L87'>87</a>
 <a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -162,20 +162,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -238,7 +238,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { OrderTimelineEvent } from '../../../types/contracts'
-<span class="cstat-no" title="statement not covered" >import { parseOrdersSocketMessage } from './events'</span>
+import { parseOrdersSocketMessage } from './events'
 &nbsp;
 type ConnectOrdersSocketParams = {
   liveStreamEnabled: boolean
@@ -249,20 +249,20 @@ type ConnectOrdersSocketParams = {
   onDegraded: (reason: string) =&gt; void
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >let ordersSocket: WebSocket | null = null</span>
-<span class="cstat-no" title="statement not covered" >let ordersReconnectHandle: number | null = null</span>
-<span class="cstat-no" title="statement not covered" >let ordersReconnectAttempt = 0</span>
+let ordersSocket: WebSocket | null = null
+let ordersReconnectHandle: number | null = null
+let ordersReconnectAttempt = 0
 &nbsp;
-<span class="cstat-no" title="statement not covered" >const MAX_ORDERS_RECONNECT_DELAY_MS = 30_000</span>
+const MAX_ORDERS_RECONNECT_DELAY_MS = 30_000
 &nbsp;
-<span class="cstat-no" title="statement not covered" >function clearOrdersReconnectHandle(): void {</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >function clearOrdersReconnectHandle(): void {</span></span>
 <span class="cstat-no" title="statement not covered" >  if (ordersReconnectHandle !== null) {</span>
 <span class="cstat-no" title="statement not covered" >    window.clearTimeout(ordersReconnectHandle)</span>
 <span class="cstat-no" title="statement not covered" >    ordersReconnectHandle = null</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export function connectOrdersSocket({</span>
+export <span class="fstat-no" title="function not covered" >function connectOrdersSocket({</span>
 <span class="cstat-no" title="statement not covered" >  liveStreamEnabled,</span>
 <span class="cstat-no" title="statement not covered" >  wsBase,</span>
 <span class="cstat-no" title="statement not covered" >  onLoading,</span>
@@ -331,7 +331,7 @@ type ConnectOrdersSocketParams = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T02:52:44.813Z
+                at 2026-04-02T03:14:12.568Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

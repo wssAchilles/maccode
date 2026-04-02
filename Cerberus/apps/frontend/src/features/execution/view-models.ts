@@ -1,7 +1,14 @@
 import type { TranslationKey } from '../../i18n/messages'
 import type { CoreFlowMap } from '../../store/slices/shared'
 import type { BinanceRule, PersistenceStatus, TradingPolicy, UIState } from '../../types/contracts'
-import { formatDerivedPrice, parseNumericString, type PreparedTradingSnapshot, type WorkspaceSpotlightModel } from '../../view-models/workbench'
+import {
+  formatDateTimeLabel,
+  formatDerivedPrice,
+  parseNumericString,
+  type PreparedTradingSnapshot,
+  type WorkspaceOperatorDeckSectionModel,
+  type WorkspaceSpotlightModel,
+} from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from './read-models'
 
 const EXECUTION_PROGRESS_STEPS = ['precheck', 'submit', 'feedback', 'cancel'] as const
@@ -22,12 +29,6 @@ const FLOW_STATE_LABELS = {
 } as const
 
 type Translate = (key: TranslationKey) => string
-
-export type ExecutionSummaryItem = {
-  id: string
-  label: string
-  value: string
-}
 
 export type ExecutionProgressItem = {
   id: (typeof EXECUTION_PROGRESS_STEPS)[number]
@@ -72,6 +73,16 @@ type BuildExecutionSummaryParams = {
   tradingPolicy?: TradingPolicy
   latestBid?: string
   latestAsk?: string
+  binanceRule?: BinanceRule
+  alpacaAccountLabel?: string
+}
+
+type BuildExecutionOperatorSectionsParams = {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  preparedSelection: PreparedExecutionSelection
+  tradingPolicy?: TradingPolicy
+  binanceRule?: BinanceRule
 }
 
 type BuildExecutionOperationsParams = {
@@ -96,7 +107,7 @@ function formatPercent(value?: number | null): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
-export function buildExecutionSummary({
+export function buildExecutionDeskSections({
   t,
   broker,
   selectedSymbol,
@@ -104,27 +115,129 @@ export function buildExecutionSummary({
   tradingPolicy,
   latestBid,
   latestAsk,
-}: BuildExecutionSummaryParams): ExecutionSummaryItem[] {
-  return [
+  binanceRule,
+  alpacaAccountLabel,
+}: BuildExecutionSummaryParams): WorkspaceOperatorDeckSectionModel[] {
+  const symbol = broker === 'binance' ? selectedSymbol : alpacaSymbol.toUpperCase()
+  const bid = parseNumericString(latestBid)
+  const ask = parseNumericString(latestAsk)
+  const spread = bid !== undefined && ask !== undefined ? ask - bid : undefined
+
+  const routeItems = [
+    {
+      id: 'venue',
+      label: t('workspace.execution.operatorVenue'),
+      value: broker === 'binance' ? 'Binance Testnet' : 'Alpaca Paper',
+      tone: 'accent' as const,
+    },
     {
       id: 'symbol',
       label: 'Symbol',
-      value: broker === 'binance' ? selectedSymbol : alpacaSymbol.toUpperCase(),
+      value: symbol,
     },
     {
-      id: 'policy',
-      label: t('execution.policy'),
-      value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
-    },
-    {
-      id: 'bid',
+      id: 'best-bid',
       label: t('market.bestBid'),
       value: latestBid ?? '—',
+      tone: 'positive' as const,
     },
     {
-      id: 'ask',
+      id: 'best-ask',
       label: t('market.bestAsk'),
       value: latestAsk ?? '—',
+      tone: 'negative' as const,
+    },
+    {
+      id: 'spread',
+      label: t('orderbook.spread'),
+      value: formatDerivedPrice(spread),
+    },
+  ]
+
+  const guardrailItems =
+    broker === 'binance'
+      ? [
+          {
+            id: 'policy',
+            label: t('execution.policy'),
+            value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+          },
+          {
+            id: 'max-qty',
+            label: t('workspace.execution.operatorMaxQty'),
+            value:
+              tradingPolicy?.max_binance_order_qty !== undefined && tradingPolicy?.max_binance_order_qty !== null
+                ? String(tradingPolicy.max_binance_order_qty)
+                : '—',
+          },
+          {
+            id: 'max-notional',
+            label: t('workspace.execution.operatorMaxNotional'),
+            value:
+              tradingPolicy?.max_binance_order_notional_usd !== undefined &&
+              tradingPolicy?.max_binance_order_notional_usd !== null
+                ? formatDerivedPrice(tradingPolicy.max_binance_order_notional_usd, 2)
+                : '—',
+          },
+          {
+            id: 'min-qty',
+            label: t('workspace.execution.operatorMinQty'),
+            value:
+              binanceRule?.min_qty !== undefined && binanceRule?.min_qty !== null
+                ? formatDerivedPrice(binanceRule.min_qty)
+                : '—',
+          },
+          {
+            id: 'min-notional',
+            label: t('workspace.execution.operatorMinNotional'),
+            value:
+              binanceRule?.min_notional !== undefined && binanceRule?.min_notional !== null
+                ? formatDerivedPrice(binanceRule.min_notional, 2)
+                : '—',
+          },
+        ]
+      : [
+          {
+            id: 'policy',
+            label: t('execution.policy'),
+            value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+          },
+          {
+            id: 'max-qty',
+            label: t('workspace.execution.operatorMaxQty'),
+            value:
+              tradingPolicy?.max_alpaca_order_qty !== undefined && tradingPolicy?.max_alpaca_order_qty !== null
+                ? String(tradingPolicy.max_alpaca_order_qty)
+                : '—',
+          },
+          {
+            id: 'max-notional',
+            label: t('workspace.execution.operatorMaxNotional'),
+            value:
+              tradingPolicy?.max_alpaca_limit_notional_usd !== undefined &&
+              tradingPolicy?.max_alpaca_limit_notional_usd !== null
+                ? formatDerivedPrice(tradingPolicy.max_alpaca_limit_notional_usd, 2)
+                : '—',
+          },
+          {
+            id: 'account',
+            label: t('workspace.execution.operatorAccount'),
+            value: alpacaAccountLabel ?? '—',
+          },
+        ]
+
+  return [
+    {
+      id: 'route',
+      title: t('workspace.execution.operatorRouteTitle'),
+      summary: t('workspace.execution.operatorRouteDescription'),
+      items: routeItems,
+    },
+    {
+      id: 'guardrails',
+      title: t('workspace.execution.operatorGuardrailsTitle'),
+      summary: t('workspace.execution.operatorGuardrailsDescription'),
+      items: guardrailItems,
     },
   ]
 }
@@ -251,6 +364,87 @@ export function buildExecutionDeskSpotlightModel({
       },
     ],
   }
+}
+
+export function buildExecutionOperatorSections({
+  t,
+  snapshot,
+  preparedSelection,
+  tradingPolicy,
+  binanceRule,
+}: BuildExecutionOperatorSectionsParams): WorkspaceOperatorDeckSectionModel[] {
+  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+
+  return [
+    {
+      id: 'execution-posture',
+      title: t('workspace.execution.operatorFlowTitle'),
+      summary: t('workspace.execution.operatorFlowDescription'),
+      items: [
+        {
+          id: 'symbol',
+          label: 'Symbol',
+          value: snapshot.selectedSymbol,
+          tone: 'accent',
+        },
+        {
+          id: 'signal',
+          label: t('strategy.signal'),
+          value: snapshot.signalValue,
+          tone: 'accent',
+        },
+        {
+          id: 'active-orders',
+          label: t('workspace.execution.operationsActive'),
+          value: String(preparedSelection.activeOrderCount),
+        },
+        {
+          id: 'latest-lifecycle',
+          label: t('workspace.execution.lifecycleLatest'),
+          value: latestLifecycle,
+        },
+        {
+          id: 'feedback-updated-at',
+          label: t('common.updatedAt'),
+          value: snapshot.feedbackAtValue,
+        },
+      ],
+    },
+    {
+      id: 'execution-venue',
+      title: t('workspace.execution.operatorVenueTitle'),
+      summary: t('workspace.execution.operatorVenueDescription'),
+      items: [
+        {
+          id: 'policy',
+          label: t('execution.policy'),
+          value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+        },
+        {
+          id: 'venue-rule',
+          label: t('workspace.execution.lifecycleVenueRule'),
+          value: binanceRule?.symbol ?? t('workspace.execution.lifecycleWaitingRule'),
+        },
+        {
+          id: 'rule-updated-at',
+          label: t('common.updatedAt'),
+          value: formatDateTimeLabel(binanceRule?.refreshed_at),
+        },
+        {
+          id: 'filled-count',
+          label: t('workspace.execution.operationsFilled'),
+          value: String(preparedSelection.filledCount),
+          tone: preparedSelection.filledCount > 0 ? 'positive' : 'default',
+        },
+        {
+          id: 'rejected-count',
+          label: t('workspace.execution.operationsRejected'),
+          value: String(preparedSelection.rejectedCount),
+          tone: preparedSelection.rejectedCount > 0 ? 'negative' : 'default',
+        },
+      ],
+    },
+  ]
 }
 
 export function buildExecutionOperationsPanel({

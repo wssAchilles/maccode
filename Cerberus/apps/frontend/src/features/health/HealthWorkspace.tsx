@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
@@ -22,6 +22,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         description={t('workspace.health.description')}
         eyebrow={t('workspace.health.eyebrow')}
         className="ws-span-full"
+        tone="hero"
       >
         <ServiceHealthPanel model={model.serviceHealthPanel} />
       </SectionFrame>
@@ -29,6 +30,13 @@ export function HealthWorkspace({ active: _active = true }: Props) {
       <div className="ws-main stack">
         <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')}>
           <WorkspaceSpotlight model={model.spotlight} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.health.operatorDeckTitle')}
+          description={t('workspace.health.operatorDeckDescription')}
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} />
         </SectionFrame>
 
         <SectionFrame title={t('workspace.health.persistenceTitle')} description={t('workspace.health.persistenceDescription')}>

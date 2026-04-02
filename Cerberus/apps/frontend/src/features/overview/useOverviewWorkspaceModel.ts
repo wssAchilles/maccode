@@ -12,6 +12,7 @@ import {
 } from '../../view-models/workbench'
 import {
   buildOverviewMetricTiles,
+  buildOverviewOperatorSections,
   buildOverviewRecentSignalCards,
   buildOverviewSpotlightModel,
   buildOverviewPersistenceItems,
@@ -93,6 +94,13 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
       recentSignals: buildOverviewRecentSignalCards({ t, recentSignals }),
+      operatorSections: buildOverviewOperatorSections({
+        t,
+        snapshot: tradingSnapshot,
+        readyCount: domainSummary.readyCount,
+        attentionCount: domainSummary.attentionCount,
+        recentSignalCount: recentSignals.length,
+      }),
       spotlight: buildOverviewSpotlightModel({
         t,
         snapshot: tradingSnapshot,

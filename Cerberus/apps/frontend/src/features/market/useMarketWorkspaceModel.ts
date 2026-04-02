@@ -19,6 +19,7 @@ import {
   buildMarketChartMarkersModel,
   buildMarketExecutionRailModel,
   buildMarketMetricTiles,
+  buildMarketOperatorSections,
   buildMarketSpotlightModel,
   buildMarketSymbolChips,
 } from './view-models'
@@ -103,6 +104,12 @@ export function useMarketWorkspaceModel({ active }: Params) {
       portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       executionRail,
+      operatorSections: buildMarketOperatorSections({
+        t,
+        snapshot: tradingSnapshot,
+        executionRail,
+        orderbookPanel,
+      }),
       chartMarkers: buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
       orderbookPanel,
       spotlight: buildMarketSpotlightModel({

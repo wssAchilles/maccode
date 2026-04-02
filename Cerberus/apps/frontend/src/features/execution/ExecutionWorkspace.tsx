@@ -8,7 +8,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
@@ -32,6 +32,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         description={t('workspace.execution.description')}
         eyebrow={t('workspace.execution.eyebrow')}
         className="ws-span-full"
+        tone="hero"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -52,6 +53,13 @@ export function ExecutionWorkspace({ active = true }: Props) {
           description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}
         >
           <WorkspaceSpotlight model={model.spotlight} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.execution.operatorDeckTitle')}
+          description={t('workspace.execution.operatorDeckDescription')}
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} />
         </SectionFrame>
 
         <SectionFrame

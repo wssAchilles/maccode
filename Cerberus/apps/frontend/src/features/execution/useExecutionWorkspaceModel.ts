@@ -16,7 +16,11 @@ import {
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
 } from '../strategy-orchestration/view-models'
-import { buildExecutionOperationsPanel, buildExecutionSpotlightModel } from './view-models'
+import {
+  buildExecutionOperationsPanel,
+  buildExecutionOperatorSections,
+  buildExecutionSpotlightModel,
+} from './view-models'
 
 type Params = {
   active: boolean
@@ -128,6 +132,13 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
     strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
     orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),
+    operatorSections: buildExecutionOperatorSections({
+      t,
+      snapshot: tradingSnapshot,
+      preparedSelection: preparedExecutionSelection,
+      tradingPolicy,
+      binanceRule,
+    }),
     spotlight: buildExecutionSpotlightModel({
       t,
       snapshot: tradingSnapshot,

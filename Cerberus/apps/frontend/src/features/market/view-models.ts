@@ -2,7 +2,13 @@ import type { UTCTimestamp } from 'lightweight-charts'
 import type { TranslationKey } from '../../i18n/messages'
 import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
-import { type PreparedTradingSnapshot, type WorkspaceSpotlightModel, formatDateTimeLabel, formatPrice } from '../../view-models/workbench'
+import {
+  type PreparedTradingSnapshot,
+  type WorkspaceOperatorDeckSectionModel,
+  type WorkspaceSpotlightModel,
+  formatDateTimeLabel,
+  formatPrice,
+} from '../../view-models/workbench'
 import { type PreparedExecutionSelection } from '../execution/read-models'
 import type { MatchingOrderBookPanelModel } from '../../view-models/orderbook'
 
@@ -209,6 +215,92 @@ export function buildMarketSpotlightModel({
       },
     ],
   }
+}
+
+export function buildMarketOperatorSections({
+  t,
+  snapshot,
+  executionRail,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  executionRail: MarketExecutionRailModel
+  orderbookPanel: MatchingOrderBookPanelModel
+}): WorkspaceOperatorDeckSectionModel[] {
+  const latestPulse = executionRail.items[0]
+
+  return [
+    {
+      id: 'quote-posture',
+      title: t('workspace.market.operatorQuoteTitle'),
+      summary: t('workspace.market.operatorQuoteDescription'),
+      items: [
+        {
+          id: 'symbol',
+          label: 'Symbol',
+          value: snapshot.selectedSymbol,
+          tone: 'accent',
+        },
+        {
+          id: 'best-bid',
+          label: t('market.bestBid'),
+          value: snapshot.bestBidValue,
+          tone: 'positive',
+        },
+        {
+          id: 'best-ask',
+          label: t('market.bestAsk'),
+          value: snapshot.bestAskValue,
+          tone: 'negative',
+        },
+        {
+          id: 'mid-price',
+          label: t('orderbook.midPrice'),
+          value: snapshot.midPriceValue,
+          tone: 'accent',
+        },
+        {
+          id: 'spread',
+          label: t('orderbook.spread'),
+          value: snapshot.spreadValue,
+        },
+      ],
+    },
+    {
+      id: 'depth-pulse',
+      title: t('workspace.market.operatorDepthTitle'),
+      summary: t('workspace.market.operatorDepthDescription'),
+      items: [
+        {
+          id: 'depth-balance',
+          label: t('orderbook.depthBalance'),
+          value: orderbookPanel.depthBalanceLabel,
+        },
+        {
+          id: 'total-depth',
+          label: t('orderbook.totalDepth'),
+          value: orderbookPanel.totalDepthLabel,
+        },
+        {
+          id: 'liquidity-bias',
+          label: t('orderbook.liquidityBias'),
+          value: orderbookPanel.liquidityBiasLabel,
+        },
+        {
+          id: 'pulse-status',
+          label: t('workspace.execution.operationsLatestStatus'),
+          value: latestPulse?.status ?? executionRail.emptyTitle ?? t('common.na'),
+          tone: executionRail.state === 'stale' ? 'negative' : 'default',
+        },
+        {
+          id: 'pulse-time',
+          label: t('common.updatedAt'),
+          value: latestPulse?.time ?? executionRail.staleHint ?? executionRail.emptyHint ?? t('common.na'),
+        },
+      ],
+    },
+  ]
 }
 
 export function buildMarketChartStateModel({

@@ -7,7 +7,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
@@ -44,6 +44,7 @@ export function MarketWorkspace({ active = true }: Props) {
           </div>
         }
         className="ws-span-full"
+        tone="hero"
       >
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
@@ -64,6 +65,13 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
         >
           <WorkspaceSpotlight model={model.spotlight} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.market.operatorDeckTitle')}
+          description={t('workspace.market.operatorDeckDescription')}
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} />
         </SectionFrame>
 
         <SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}>

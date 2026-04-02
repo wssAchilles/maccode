@@ -1,6 +1,16 @@
 import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { DataList, DiagnosticDrawer, GlassPanel, InlineAlert, MetricTile, SectionFrame, StatusPill, WorkspaceSpotlight } from '../../ui'
+import {
+  DataList,
+  DiagnosticDrawer,
+  GlassPanel,
+  InlineAlert,
+  MetricTile,
+  SectionFrame,
+  StatusPill,
+  WorkspaceOperatorDeck,
+  WorkspaceSpotlight,
+} from '../../ui'
 import { CoreFlowPanel } from '../../components/CoreFlowPanel'
 import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
@@ -62,6 +72,13 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           description={t('workspace.overview.description')}
         >
           <WorkspaceSpotlight model={model.spotlight} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.overview.operatorDeckTitle')}
+          description={t('workspace.overview.operatorDeckDescription')}
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} />
         </SectionFrame>
 
         <CoreFlowPanel active={_active} />

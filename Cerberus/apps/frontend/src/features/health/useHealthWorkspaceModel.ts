@@ -6,6 +6,7 @@ import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
   buildHealthDiagnostics,
+  buildHealthOperatorSections,
   buildHealthSpotlightModel,
   buildServiceHealthPanelModel,
   buildHealthStoreItems,
@@ -33,6 +34,12 @@ export function useHealthWorkspaceModel(active = true) {
       diagnostics: buildHealthDiagnostics(summaryError, domainStatus),
       serviceHealthPanel: buildServiceHealthPanelModel({ t, domainStatus, persistenceStatus }),
       inferenceDiagnostics,
+      operatorSections: buildHealthOperatorSections({
+        t,
+        domainStatus,
+        persistenceStatus,
+        inferenceStatus,
+      }),
       spotlight: buildHealthSpotlightModel({
         t,
         domainStatus,

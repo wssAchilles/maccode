@@ -7,6 +7,7 @@ import {
   formatConfidence,
   formatDateTimeLabel,
   type PreparedTradingSnapshot,
+  type WorkspaceOperatorDeckSectionModel,
   type WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
 
@@ -150,6 +151,93 @@ export function buildOverviewRecentSignalCards({
       },
     ],
   }))
+}
+
+export function buildOverviewOperatorSections({
+  t,
+  snapshot,
+  readyCount,
+  attentionCount,
+  recentSignalCount,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  readyCount: number
+  attentionCount: number
+  recentSignalCount: number
+}): WorkspaceOperatorDeckSectionModel[] {
+  return [
+    {
+      id: 'signal-posture',
+      title: t('workspace.overview.operatorSignalTitle'),
+      summary: t('workspace.overview.operatorSignalDescription'),
+      items: [
+        {
+          id: 'symbol',
+          label: 'Symbol',
+          value: snapshot.selectedSymbol,
+          tone: 'accent',
+        },
+        {
+          id: 'signal',
+          label: t('strategy.signal'),
+          value: snapshot.signalValue,
+          tone: 'accent',
+        },
+        {
+          id: 'confidence',
+          label: t('strategy.confidence'),
+          value: snapshot.confidenceValue,
+        },
+        {
+          id: 'feedback',
+          label: t('workspace.overview.feedback'),
+          value: snapshot.feedbackValue ?? t('common.heartbeat'),
+        },
+        {
+          id: 'feedback-at',
+          label: t('common.updatedAt'),
+          value: snapshot.feedbackAtValue,
+        },
+      ],
+    },
+    {
+      id: 'service-posture',
+      title: t('workspace.overview.operatorServiceTitle'),
+      summary: t('workspace.overview.operatorServiceDescription'),
+      items: [
+        {
+          id: 'best-bid',
+          label: t('market.bestBid'),
+          value: snapshot.bestBidValue,
+          tone: 'positive',
+        },
+        {
+          id: 'best-ask',
+          label: t('market.bestAsk'),
+          value: snapshot.bestAskValue,
+          tone: 'negative',
+        },
+        {
+          id: 'ready-count',
+          label: t('common.ready'),
+          value: String(readyCount),
+          tone: readyCount > 0 ? 'positive' : 'default',
+        },
+        {
+          id: 'attention-count',
+          label: t('workspace.overview.attention'),
+          value: String(attentionCount),
+          tone: attentionCount > 0 ? 'negative' : 'default',
+        },
+        {
+          id: 'recent-signals',
+          label: t('strategy.recent'),
+          value: String(recentSignalCount),
+        },
+      ],
+    },
+  ]
 }
 
 export function buildOverviewPersistenceItems({

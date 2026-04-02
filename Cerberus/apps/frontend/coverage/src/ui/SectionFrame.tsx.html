@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">12% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/25</span>
+                <span class='fraction'>25/25</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">83.33% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
-                <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">12% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/25</span>
+                <span class='fraction'>25/25</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -120,29 +120,29 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ReactNode } from 'react'
 &nbsp;
 import { cn } from '../lib/cn'
@@ -159,30 +159,30 @@ type Props = {
   tone?: 'default' | 'hero' | 'subtle'
 }
 &nbsp;
-export <span class="fstat-no" title="function not covered" >function SectionFrame({</span>
-<span class="cstat-no" title="statement not covered" >  title,</span>
-<span class="cstat-no" title="statement not covered" >  description,</span>
-<span class="cstat-no" title="statement not covered" >  eyebrow,</span>
-<span class="cstat-no" title="statement not covered" >  aside,</span>
-<span class="cstat-no" title="statement not covered" >  children,</span>
-<span class="cstat-no" title="statement not covered" >  className,</span>
-<span class="cstat-no" title="statement not covered" >  bodyClassName,</span>
-<span class="cstat-no" title="statement not covered" >  tone = 'default',</span>
-<span class="cstat-no" title="statement not covered" >}: Props) {</span>
-<span class="cstat-no" title="statement not covered" >  return (</span>
-<span class="cstat-no" title="statement not covered" >    &lt;GlassPanel className={cn('sf', className)} tone={tone}&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div className="sf-header"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="sf-copy"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          {eyebrow ? &lt;p className="sf-eyebrow"&gt;{eyebrow}&lt;/p&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >          &lt;h2 className="sf-title"&gt;{title}&lt;/h2&gt;</span>
-<span class="cstat-no" title="statement not covered" >          {description ? &lt;p className="sf-description"&gt;{description}&lt;/p&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        {aside ? &lt;div className="sf-aside"&gt;{aside}&lt;/div&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      &lt;div className={cn('sf-body', bodyClassName)}&gt;{children}&lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >    &lt;/GlassPanel&gt;</span>
+export function SectionFrame({
+  title,
+  description,
+  eyebrow,
+  aside,
+  children,
+  className,
+  bodyClassName,
+  tone = 'default',
+}: Props) {
+  return (
+    &lt;GlassPanel className={cn('sf', className)} tone={tone}&gt;
+      &lt;div className="sf-header"&gt;
+        &lt;div className="sf-copy"&gt;
+          {eyebrow ? &lt;p className="sf-eyebrow"&gt;{eyebrow}&lt;/p&gt; : null}
+          &lt;h2 className="sf-title"&gt;{title}&lt;/h2&gt;
+          {description ? &lt;p className="sf-description"&gt;{description}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
+        &lt;/div&gt;
+        {aside ? &lt;div className="sf-aside"&gt;{aside}&lt;/div&gt; : null}
+      &lt;/div&gt;
+      &lt;div className={cn('sf-body', bodyClassName)}&gt;{children}&lt;/div&gt;
+    &lt;/GlassPanel&gt;
   )
-<span class="cstat-no" title="statement not covered" >}</span>
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -190,7 +190,7 @@ export <span class="fstat-no" title="function not covered" >function SectionFram
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T02:52:44.813Z
+                at 2026-04-02T03:14:12.568Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

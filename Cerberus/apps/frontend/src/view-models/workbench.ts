@@ -44,6 +44,20 @@ export type WorkspaceSpotlightModel = {
   metrics: WorkspaceSpotlightMetricModel[]
 }
 
+export type WorkspaceOperatorDeckItemModel = {
+  id: string
+  label: string
+  value: string
+  tone?: 'default' | 'muted' | 'accent' | 'positive' | 'negative'
+}
+
+export type WorkspaceOperatorDeckSectionModel = {
+  id: string
+  title: string
+  summary?: string
+  items: WorkspaceOperatorDeckItemModel[]
+}
+
 export type CoreFlowStepCardModel = {
   id: CoreFlowStepId
   title: string

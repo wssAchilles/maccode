@@ -6,7 +6,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts'
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 
 import {
   type MarketChartMarkerModel,
@@ -25,11 +25,23 @@ export function CandlesChart({ series, markers = [] }: Props) {
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const markersRef = useRef<ReturnType<typeof createSeriesMarkers<Time>> | null>(null)
+  const widthRef = useRef(0)
+  const resizeRafRef = useRef<number | null>(null)
+  const markerSignatureRef = useRef('')
   const dataRef = useRef<MarketChartSeriesModel>({
     points: [],
     prefixHashes: new Uint32Array(0),
     firstTime: undefined,
     lastTime: undefined,
+  })
+
+  const applyChartWidth = useEffectEvent(() => {
+    const nextWidth = containerRef.current?.clientWidth ?? 680
+    if (!chartRef.current || nextWidth <= 0 || nextWidth === widthRef.current) {
+      return
+    }
+    widthRef.current = nextWidth
+    chartRef.current.applyOptions({ width: nextWidth })
   })
 
   useEffect(() => {
@@ -80,18 +92,31 @@ export function CandlesChart({ series, markers = [] }: Props) {
     chartRef.current = chart
     seriesRef.current = series
     markersRef.current = createSeriesMarkers(series, [])
+    widthRef.current = containerRef.current.clientWidth
     chart.timeScale().fitContent()
 
     const resizeObserver = new ResizeObserver(() => {
-      chart.applyOptions({ width: containerRef.current?.clientWidth ?? 680 })
+      if (resizeRafRef.current !== null) {
+        return
+      }
+      resizeRafRef.current = window.requestAnimationFrame(() => {
+        resizeRafRef.current = null
+        applyChartWidth()
+      })
     })
     resizeObserver.observe(containerRef.current)
 
     return () => {
       resizeObserver.disconnect()
+      if (resizeRafRef.current !== null) {
+        window.cancelAnimationFrame(resizeRafRef.current)
+      }
       chartRef.current = null
       seriesRef.current = null
       markersRef.current = null
+      widthRef.current = 0
+      resizeRafRef.current = null
+      markerSignatureRef.current = ''
       dataRef.current = {
         points: [],
         prefixHashes: new Uint32Array(0),
@@ -141,6 +166,15 @@ export function CandlesChart({ series, markers = [] }: Props) {
       return
     }
 
+    const nextSignature = markers
+      .map((marker) => `${marker.id}:${marker.time}:${marker.position}:${marker.shape}:${marker.color}:${marker.text}`)
+      .join('|')
+
+    if (nextSignature === markerSignatureRef.current) {
+      return
+    }
+
+    markerSignatureRef.current = nextSignature
     markersRef.current.setMarkers(markers)
   }, [markers])
 

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/110</span>
+                <span class='fraction'>0/116</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/110</span>
+                <span class='fraction'>0/116</span>
             </div>
         
             
@@ -204,7 +204,15 @@
 <a name='L139'></a><a href='#L139'>139</a>
 <a name='L140'></a><a href='#L140'>140</a>
 <a name='L141'></a><a href='#L141'>141</a>
-<a name='L142'></a><a href='#L142'>142</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -250,21 +258,29 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -354,7 +370,7 @@
   PanelSkeleton,
 } from '../../app/lazyPanels'
 <span class="cstat-no" title="statement not covered" >import { useI18n } from '../../i18n/I18nProvider'</span>
-<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceSpotlight } from '../../ui'</span>
+<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'</span>
 <span class="cstat-no" title="statement not covered" >import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'</span>
 <span class="cstat-no" title="statement not covered" >import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'</span>
 <span class="cstat-no" title="statement not covered" >import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'</span>
@@ -391,6 +407,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
         }
 <span class="cstat-no" title="statement not covered" >        className="ws-span-full"</span>
+<span class="cstat-no" title="statement not covered" >        tone="hero"</span>
       &gt;
 <span class="cstat-no" title="statement not covered" >        &lt;div className="metric-grid"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {model.metricTiles.map((tile) =&gt; (</span>
@@ -411,6 +428,13 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}</span>
         &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;WorkspaceSpotlight model={model.spotlight} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
+<span class="cstat-no" title="statement not covered" >          title={t('workspace.market.operatorDeckTitle')}</span>
+<span class="cstat-no" title="statement not covered" >          description={t('workspace.market.operatorDeckDescription')}</span>
+        &gt;
+<span class="cstat-no" title="statement not covered" >          &lt;WorkspaceOperatorDeck sections={model.operatorSections} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame title={`${model.activeSymbol} ${t('market.candles')}`} description={t('workspace.market.chartDescription')}&gt;</span>
@@ -493,7 +517,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T02:52:44.813Z
+                at 2026-04-02T03:14:12.568Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

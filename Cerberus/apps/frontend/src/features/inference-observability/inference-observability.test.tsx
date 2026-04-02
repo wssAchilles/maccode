@@ -230,7 +230,7 @@ describe('inference observability module', () => {
     renderWithI18n(<OverviewWorkspace onSelectWorkspace={onSelectWorkspace} />)
 
     expect(screen.getAllByText(/推理可观测|Inference observability/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/最近信号|Recent Signals/i)).toBeTruthy()
+    expect(screen.getAllByText(/最近信号|Recent Signals/i).length).toBeGreaterThan(0)
   })
 
   it('integrates into health workspace with a read-only diagnostics section', async () => {
