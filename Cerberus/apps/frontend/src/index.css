@@ -351,6 +351,31 @@ button {
   min-height: 0;
 }
 
+.hero-band {
+  margin-bottom: 14px;
+}
+
+.strategy-band {
+  margin-bottom: 14px;
+}
+
+.sp-band,
+.diag-band,
+.if-band,
+.hp-band,
+.xo-band,
+.iop-band {
+  margin-bottom: 14px;
+}
+
+.diag-shell {
+  padding-bottom: 0;
+}
+
+.diag-content {
+  padding-top: 4px;
+}
+
 .wb-header {
   position: relative;
   display: grid;
@@ -1026,6 +1051,7 @@ button {
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
+  margin-bottom: 14px;
 }
 
 .sp-chip-row {
@@ -1293,8 +1319,23 @@ button {
 .xo-alerts {
   display: grid;
   gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(122, 151, 169, 0.18);
+}
+
+.hp-section,
+.iop-panel,
+.xo-diagnosis,
+.xo-alerts {
+  display: grid;
+  gap: 12px;
+}
+
+.hp-persistence-card {
+  align-content: start;
+}
+
+.iop-form {
+  display: grid;
+  gap: 12px;
 }
 
 .xo-panel .data-list {
@@ -1592,6 +1633,7 @@ button {
 
 .xec-header {
   display: grid;
+  align-content: start;
   grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
   gap: 18px;
 }
@@ -1603,6 +1645,62 @@ button {
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.tb {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(420px, 1.22fr);
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 180, 192, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 252, 0.84)),
+    linear-gradient(90deg, rgba(var(--pa, var(--wrgb)), 0.08), transparent 28%, transparent 72%, rgba(var(--pa, var(--wrgb)), 0.06));
+}
+
+.xec-band,
+.cc-band {
+  margin-bottom: 12px;
+}
+
+.tb-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tb-title {
+  margin: 0;
+  font: 700 clamp(1rem, 1.5vw, 1.18rem)/1.1 var(--fh);
+  letter-spacing: -0.02em;
+  color: var(--t0);
+}
+
+.tb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tb-item {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding-left: 10px;
+  border-left: 1px solid rgba(124, 180, 192, 0.12);
+}
+
+.tb-item:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.tb-value {
+  margin: 0;
+  font: 700 0.9rem/1.25 var(--fm);
+  font-variant-numeric: tabular-nums;
+  color: var(--t0);
 }
 
 .xec-summary,
@@ -1789,6 +1887,14 @@ button {
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 249, 251, 0.86)),
     radial-gradient(circle at top right, rgba(var(--wrgb), 0.12), transparent 46%);
   overflow: hidden;
+}
+
+.cc::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(var(--pa, var(--wrgb)), 0.75), rgba(var(--pa, var(--wrgb)), 0.08));
 }
 
 .cc[data-phase='entering'] {
@@ -2250,6 +2356,7 @@ button {
 @media (max-width: 1120px) {
   .ws-grid,
   .xly,
+  .tb,
   .xec-header,
   .cc,
   .timeline-row,
@@ -2284,6 +2391,7 @@ button {
   .metric-grid,
   .health-grid,
   .ids-grid,
+  .tb-grid,
   .xec-metrics,
   .cc-metrics,
   .obgrid,

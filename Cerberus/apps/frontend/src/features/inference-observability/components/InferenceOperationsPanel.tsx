@@ -1,4 +1,4 @@
-import { DataList, GlassPanel, InlineAlert } from '../../../ui'
+import { DataList, GlassPanel, InlineAlert, StatusPill, TerminalBand } from '../../../ui'
 import { useI18n } from '../../../i18n/I18nProvider'
 import type { InferenceOperationsModel } from '../view-models'
 
@@ -27,6 +27,7 @@ export function InferenceOperationsPanel({
 
   return (
     <div className="stack">
+      <TerminalBand model={model.band} className="iop-band" />
       <div className="health-grid">
         <GlassPanel tone="subtle" className="ifp iop-panel">
           <div className="ifc-head">
@@ -34,6 +35,7 @@ export function InferenceOperationsPanel({
               <p className="subtle-label">{t('workspace.inference.operationsTitle')}</p>
               <p className="ifc-summary">{model.summary}</p>
             </div>
+            <StatusPill state={model.state} label={model.stateLabel} compact />
           </div>
           <DataList
             items={[
@@ -60,36 +62,41 @@ export function InferenceOperationsPanel({
         </GlassPanel>
 
         <GlassPanel tone="subtle" className="ifp iop-panel">
-          <p className="subtle-label">{t('workspace.inference.operatorNote')}</p>
-          <label className="field-label">
-            {t('workspace.inference.operationReason')}
-            <textarea
-              id="inference-operation-reason"
-              name="inference_operation_reason"
-              className="field-input ifr"
-              value={reason}
-              onChange={(event) => onReasonChange(event.target.value)}
-              rows={3}
-            />
-          </label>
-          {model.modelOptions.length > 1 ? (
+          <div className="ids-group">
+            <p className="subtle-label">{t('workspace.inference.operatorNote')}</p>
+            <p className="sp-hint">{t('workspace.inference.operationStatus')}</p>
+          </div>
+          <div className="iop-form">
             <label className="field-label">
-              {t('workspace.inference.registryTitle')}
-              <select
-                id="inference-model-select"
-                name="inference_model_select"
-                className="field-input"
-                value={selectedModelId}
-                onChange={(event) => onSelectedModelIdChange(event.target.value)}
-              >
-                {model.modelOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.active ? `${option.label} · ${t('common.ready')}` : option.label}
-                  </option>
-                ))}
-              </select>
+              {t('workspace.inference.operationReason')}
+              <textarea
+                id="inference-operation-reason"
+                name="inference_operation_reason"
+                className="field-input ifr"
+                value={reason}
+                onChange={(event) => onReasonChange(event.target.value)}
+                rows={3}
+              />
             </label>
-          ) : null}
+            {model.modelOptions.length > 1 ? (
+              <label className="field-label">
+                {t('workspace.inference.registryTitle')}
+                <select
+                  id="inference-model-select"
+                  name="inference_model_select"
+                  className="field-input"
+                  value={selectedModelId}
+                  onChange={(event) => onSelectedModelIdChange(event.target.value)}
+                >
+                  {model.modelOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.active ? `${option.label} · ${t('common.ready')}` : option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
           <div className="ws-actions iop-actions">
             <button
               type="button"

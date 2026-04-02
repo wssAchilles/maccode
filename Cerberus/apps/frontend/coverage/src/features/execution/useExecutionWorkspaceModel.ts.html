@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/155</span>
+                <span class='fraction'>0/163</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/155</span>
+                <span class='fraction'>0/163</span>
             </div>
         
             
@@ -239,7 +239,17 @@
 <a name='L174'></a><a href='#L174'>174</a>
 <a name='L175'></a><a href='#L175'>175</a>
 <a name='L176'></a><a href='#L176'>176</a>
-<a name='L177'></a><a href='#L177'>177</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -257,6 +267,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -267,6 +278,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -322,6 +334,14 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -428,6 +448,7 @@
 <span class="cstat-no" title="statement not covered" >import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'</span>
 <span class="cstat-no" title="statement not covered" >import {</span>
   buildStrategyOrchestrationAuditTimelineModel,
+  buildStrategyContextBandModel,
   buildExecutionLifecyclePanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
@@ -435,6 +456,7 @@
 } from '../strategy-orchestration/view-models'
 <span class="cstat-no" title="statement not covered" >import {</span>
   buildExecutionOperationsPanel,
+  buildExecutionHeroBandModel,
   buildExecutionOperatorSections,
   buildExecutionSpotlightModel,
 } from './view-models'
@@ -499,6 +521,13 @@ type Params = {
 <span class="cstat-no" title="statement not covered" >  )</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  const model = useMemo(() =&gt; ({</span>
+<span class="cstat-no" title="statement not covered" >    heroBand: buildExecutionHeroBandModel({</span>
+<span class="cstat-no" title="statement not covered" >      t,</span>
+<span class="cstat-no" title="statement not covered" >      snapshot: tradingSnapshot,</span>
+<span class="cstat-no" title="statement not covered" >      preparedSelection: preparedExecutionSelection,</span>
+<span class="cstat-no" title="statement not covered" >      tradingPolicy,</span>
+<span class="cstat-no" title="statement not covered" >      binanceRule,</span>
+<span class="cstat-no" title="statement not covered" >    }),</span>
 <span class="cstat-no" title="statement not covered" >    metricTiles: [</span>
 <span class="cstat-no" title="statement not covered" >      {</span>
 <span class="cstat-no" title="statement not covered" >        id: 'signal',</span>
@@ -548,6 +577,7 @@ type Params = {
 <span class="cstat-no" title="statement not covered" >    portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),</span>
 <span class="cstat-no" title="statement not covered" >    strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
 <span class="cstat-no" title="statement not covered" >    strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),</span>
+<span class="cstat-no" title="statement not covered" >    strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),</span>
 <span class="cstat-no" title="statement not covered" >    orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),</span>
 <span class="cstat-no" title="statement not covered" >    operatorSections: buildExecutionOperatorSections({</span>
 <span class="cstat-no" title="statement not covered" >      t,</span>
@@ -598,7 +628,7 @@ type Params = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T08:21:51.597Z
+                at 2026-04-02T09:19:45.602Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

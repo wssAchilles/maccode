@@ -7,7 +7,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
@@ -50,6 +50,7 @@ export function MarketWorkspace({ active = true }: Props) {
         accent="cyan"
         stage="hero"
       >
+        <TerminalBand model={model.heroBand} className="hero-band" />
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
             <MetricTile
@@ -88,6 +89,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="cyan"
           stage="feature"
         >
+          <TerminalBand model={model.chartBand} className="cc-band" />
           <div className="cc" data-phase={chartPhase}>
             <div className="cc-copy">
               <p className="subtle-label">{model.chartContext.eyebrow}</p>
@@ -157,6 +159,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="teal"
           stage="feature"
         >
+          <TerminalBand model={model.strategyBand} className="strategy-band" />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
         </SectionFrame>
 

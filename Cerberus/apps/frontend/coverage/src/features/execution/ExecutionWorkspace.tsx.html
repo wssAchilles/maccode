@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/140</span>
+                <span class='fraction'>0/142</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/140</span>
+                <span class='fraction'>0/142</span>
             </div>
         
             
@@ -238,7 +238,9 @@
 <a name='L173'></a><a href='#L173'>173</a>
 <a name='L174'></a><a href='#L174'>174</a>
 <a name='L175'></a><a href='#L175'>175</a>
-<a name='L176'></a><a href='#L176'>176</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -288,17 +290,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -316,6 +310,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -326,6 +329,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -423,7 +427,7 @@
   PanelSkeleton,
 } from '../../app/lazyPanels'
 <span class="cstat-no" title="statement not covered" >import { useI18n } from '../../i18n/I18nProvider'</span>
-<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'</span>
+<span class="cstat-no" title="statement not covered" >import { DiagnosticDrawer, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'</span>
 <span class="cstat-no" title="statement not covered" >import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'</span>
 <span class="cstat-no" title="statement not covered" >import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'</span>
 <span class="cstat-no" title="statement not covered" >import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'</span>
@@ -451,6 +455,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        accent="amber"</span>
 <span class="cstat-no" title="statement not covered" >        stage="hero"</span>
       &gt;
+<span class="cstat-no" title="statement not covered" >        &lt;TerminalBand model={model.heroBand} className="hero-band" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;div className="metric-grid"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          {model.metricTiles.map((tile) =&gt; (</span>
 <span class="cstat-no" title="statement not covered" >            &lt;MetricTile</span>
@@ -502,6 +507,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          stage="inspector"</span>
         &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;div className="stack"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;TerminalBand model={model.strategyBand} className="strategy-band" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;StrategyDecisionMatrix model={model.strategyMatrix} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;DiagnosticDrawer</span>
@@ -595,7 +601,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T08:21:51.597Z
+                at 2026-04-02T09:19:45.602Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

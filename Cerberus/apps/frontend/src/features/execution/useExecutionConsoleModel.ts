@@ -9,6 +9,7 @@ import { useAlpacaPaperTrading } from '../../components/execution/useAlpacaPaper
 import { useBinanceOrderTest } from '../../components/execution/useBinanceOrderTest'
 
 import {
+  buildExecutionDeskContextModel,
   buildExecutionDeskSections,
   buildExecutionDeskSpotlightModel,
   buildExecutionProgressItems,
@@ -73,6 +74,16 @@ export function useExecutionConsoleModel({
   })
 
   const consoleModel = useMemo(() => ({
+    deskContext: buildExecutionDeskContextModel({
+      t,
+      broker,
+      selectedSymbol,
+      alpacaSymbol: alpacaModel.symbol,
+      tradingPolicy,
+      latestBid,
+      latestAsk,
+      binanceRule,
+    }),
     deskSections: buildExecutionDeskSections({
       t,
       broker,

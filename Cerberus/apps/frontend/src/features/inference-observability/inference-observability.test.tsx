@@ -9,7 +9,7 @@ import { HealthWorkspace } from '../health/HealthWorkspace'
 import { OverviewWorkspace } from '../overview/OverviewWorkspace'
 import { InferenceDiagnosticsPanel } from './components/InferenceDiagnosticsPanel'
 import { InferenceStatusCard } from './components/InferenceStatusCard'
-import { buildInferenceDiagnosticsModel, buildInferenceStatusCardModel } from './view-models'
+import { buildInferenceDiagnosticsModel, buildInferenceOperationsModel, buildInferenceStatusCardModel } from './view-models'
 
 function renderWithI18n(ui: ReactNode) {
   return render(<I18nProvider>{ui}</I18nProvider>)
@@ -218,10 +218,30 @@ describe('inference observability module', () => {
 
     renderWithI18n(<InferenceDiagnosticsPanel model={model} />)
 
+    expect(model.band.title).toContain('health.state.degraded')
     expect(screen.getAllByText(/workspace\.inference\.blocker\.agreementUnavailable/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/common\.na/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/workspace\.inference\.stateBackend/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/No symbol-level comparison data yet|暂无标的级对照数据/i)).toBeTruthy()
+  })
+
+  it('builds a controlled-operations band from rollout posture', () => {
+    const model = buildInferenceOperationsModel({
+      t: (key) => key,
+      inferenceStatus: useCerberusStore.getState().strategySummary.inference_status,
+      catalog: useCerberusStore.getState().strategySummary.inference_catalog,
+      selectedModelId: 'cerberus-transformer-lstm:v2',
+      lastResult: undefined,
+    })
+
+    expect(model.band.title).toContain('common.ready')
+    expect(model.band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'effective-mode' }),
+        expect.objectContaining({ id: 'active-model' }),
+        expect.objectContaining({ id: 'blockers', value: '1' }),
+      ]),
+    )
   })
 
   it('integrates into overview workspace without replacing existing sections', () => {
@@ -237,7 +257,7 @@ describe('inference observability module', () => {
     const user = userEvent.setup()
     renderWithI18n(<HealthWorkspace />)
 
-    expect(screen.getByText(/推理可观测|Inference observability/i)).toBeTruthy()
+    expect(screen.getAllByText(/推理可观测|Inference observability/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/推广状态|Promotion state/i)).toBeTruthy()
     expect(screen.getAllByText(/状态后端|State backend/i).length).toBeGreaterThan(0)

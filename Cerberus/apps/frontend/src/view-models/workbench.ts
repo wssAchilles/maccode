@@ -64,6 +64,14 @@ export type WorkspaceOperatorDeckSectionModel = {
   visualPriority?: 'hero' | 'default'
 }
 
+export type WorkspaceContextBandModel = {
+  eyebrow: string
+  title: string
+  hint: string
+  items: WorkspaceOperatorDeckItemModel[]
+  accent?: 'teal' | 'cyan' | 'amber'
+}
+
 export type CoreFlowStepCardModel = {
   id: CoreFlowStepId
   title: string

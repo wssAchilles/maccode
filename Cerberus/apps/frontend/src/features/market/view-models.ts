@@ -4,6 +4,7 @@ import type { Candle, UIState } from '../../types/contracts'
 import { isRealtimeSnapshotStale } from '../../view-models/realtime'
 import {
   type PreparedTradingSnapshot,
+  type WorkspaceContextBandModel,
   type WorkspaceOperatorDeckSectionModel,
   type WorkspaceSpotlightModel,
   formatDateTimeLabel,
@@ -182,6 +183,56 @@ export function buildMarketMetricTiles({
       value: snapshot.feedbackValue ?? t('common.heartbeat'),
     },
   ]
+}
+
+export function buildMarketHeroBandModel({
+  t,
+  snapshot,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+}): WorkspaceContextBandModel {
+  return {
+    eyebrow: t('workspace.market.description'),
+    title: snapshot.selectedSymbol,
+    hint: snapshot.feedbackValue ?? t('common.heartbeat'),
+    accent: 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'best-bid',
+        label: t('market.bestBid'),
+        value: snapshot.bestBidValue,
+        tone: 'positive',
+      },
+      {
+        id: 'best-ask',
+        label: t('market.bestAsk'),
+        value: snapshot.bestAskValue,
+        tone: 'negative',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'feedback',
+        label: t('workspace.overview.feedback'),
+        value: snapshot.feedbackValue ?? t('common.heartbeat'),
+      },
+      {
+        id: 'updated-at',
+        label: t('common.updatedAt'),
+        value: snapshot.quoteUpdatedAtValue,
+      },
+    ],
+  }
 }
 
 export function buildMarketSpotlightModel({
@@ -372,6 +423,61 @@ export function buildMarketChartContextModel({
         label: t('workspace.execution.operationsLatestStatus'),
         value: latestPulse?.status ?? t('common.na'),
         tone: executionRail.state === 'stale' ? 'negative' : 'default',
+      },
+    ],
+  }
+}
+
+export function buildMarketChartBandModel({
+  t,
+  snapshot,
+  executionRail,
+  orderbookPanel,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  executionRail: MarketExecutionRailModel
+  orderbookPanel: MatchingOrderBookPanelModel
+}): WorkspaceContextBandModel {
+  const latestPulse = executionRail.items[0]
+
+  return {
+    eyebrow: t('workspace.market.chartDescription'),
+    title: snapshot.selectedSymbol,
+    hint: orderbookPanel.liquidityBiasLabel,
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'mid',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'depth',
+        label: t('orderbook.depthBalance'),
+        value: orderbookPanel.depthBalanceLabel,
+      },
+      {
+        id: 'pulse',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestPulse?.status ?? t('common.na'),
+        tone: executionRail.state === 'stale' ? 'negative' : 'default',
+      },
+      {
+        id: 'freshness',
+        label: t('common.updatedAt'),
+        value: snapshot.quoteUpdatedAtValue,
       },
     ],
   }

@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel } from '../../../ui'
+import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
 import type { StrategyOrchestrationAuditTimelineModel } from '../view-models'
 
 type Props = {
@@ -28,6 +28,7 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
           <p className="sp-summary">{model.summary}</p>
         </div>
       </div>
+      {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
 
       <div className="so-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}>
         {model.items.map((item) => (

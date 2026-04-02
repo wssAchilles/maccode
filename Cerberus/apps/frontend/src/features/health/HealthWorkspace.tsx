@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, GlassPanel, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
@@ -26,6 +26,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         accent="teal"
         stage="hero"
       >
+        <TerminalBand model={model.contextBand} className="hero-band" />
         <ServiceHealthPanel model={model.serviceHealthPanel} />
       </SectionFrame>
 
@@ -69,10 +70,14 @@ export function HealthWorkspace({ active: _active = true }: Props) {
       </div>
 
       <div className="ws-side stack wss">
+        <GlassPanel className="diag-shell" tone="subtle">
+          <TerminalBand model={model.diagnosticsBand} className="diag-band" />
+        </GlassPanel>
         <DiagnosticDrawer
           title={t('workspace.health.requestIds')}
           summary={t('workspace.health.requestIdsDescription')}
           defaultOpen={model.hasDiagnosticsAlert}
+          contentClassName="diag-content"
         >
           <pre className="diagnostic-pre">{JSON.stringify(model.diagnostics, null, 2)}</pre>
         </DiagnosticDrawer>

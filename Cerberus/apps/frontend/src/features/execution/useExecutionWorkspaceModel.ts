@@ -11,6 +11,7 @@ import { buildPreparedExecutionSelection } from './read-models'
 import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
   buildStrategyOrchestrationAuditTimelineModel,
+  buildStrategyContextBandModel,
   buildExecutionLifecyclePanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
@@ -18,6 +19,7 @@ import {
 } from '../strategy-orchestration/view-models'
 import {
   buildExecutionOperationsPanel,
+  buildExecutionHeroBandModel,
   buildExecutionOperatorSections,
   buildExecutionSpotlightModel,
 } from './view-models'
@@ -82,6 +84,13 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
   )
 
   const model = useMemo(() => ({
+    heroBand: buildExecutionHeroBandModel({
+      t,
+      snapshot: tradingSnapshot,
+      preparedSelection: preparedExecutionSelection,
+      tradingPolicy,
+      binanceRule,
+    }),
     metricTiles: [
       {
         id: 'signal',
@@ -131,6 +140,7 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
     strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
     strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+    strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
     orderbookPanel: buildMatchingOrderBookPanelModel({ t, orderbook }),
     operatorSections: buildExecutionOperatorSections({
       t,

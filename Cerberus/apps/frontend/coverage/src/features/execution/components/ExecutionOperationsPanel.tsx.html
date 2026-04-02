@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.98% </span>
+                <span class="strong">80.18% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>91/111</span>
+                <span class='fraction'>85/106</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.98% </span>
+                <span class="strong">80.18% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>91/111</span>
+                <span class='fraction'>85/106</span>
             </div>
         
             
@@ -190,12 +190,7 @@
 <a name='L125'></a><a href='#L125'>125</a>
 <a name='L126'></a><a href='#L126'>126</a>
 <a name='L127'></a><a href='#L127'>127</a>
-<a name='L128'></a><a href='#L128'>128</a>
-<a name='L129'></a><a href='#L129'>129</a>
-<a name='L130'></a><a href='#L130'>130</a>
-<a name='L131'></a><a href='#L131'>131</a>
-<a name='L132'></a><a href='#L132'>132</a>
-<a name='L133'></a><a href='#L133'>133</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L128'></a><a href='#L128'>128</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -219,15 +214,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -328,7 +318,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, EmptyState, GlassPanel, StatusPill } from '../../../ui'
+import { DataList, EmptyState, GlassPanel, StatusPill, TerminalBand } from '../../../ui'
 import type { ExecutionOperationsPanelModel } from '../view-models'
 &nbsp;
 type Props = {
@@ -346,6 +336,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
   if (model.headlineItems.length === 0) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
 <span class="cstat-no" title="statement not covered" >      &lt;GlassPanel className="xo-panel" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;TerminalBand model={model.band} className="xo-band" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;EmptyState</span>
 <span class="cstat-no" title="statement not covered" >          title={model.emptyTitle ?? model.summary}</span>
 <span class="cstat-no" title="statement not covered" >          body={model.emptyHint ?? t('workspace.execution.operationsDescription')}</span>
@@ -356,13 +347,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 &nbsp;
   return (
     &lt;GlassPanel className="xo-panel" tone="subtle"&gt;
-      &lt;div className="sp-head"&gt;
-        &lt;div&gt;
-          &lt;p className="subtle-label"&gt;{t('workspace.execution.operationsTitle')}&lt;/p&gt;
-          &lt;p className="sp-summary"&gt;{model.summary}&lt;/p&gt;
-        &lt;/div&gt;
-        &lt;StatusPill state={model.state} label={model.stateLabel} compact /&gt;
-      &lt;/div&gt;
+      &lt;TerminalBand model={model.band} className="xo-band" /&gt;
 &nbsp;
       &lt;div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}&gt;
         {model.headlineItems.map((item) =&gt; (
@@ -415,7 +400,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 <span class="branch-0 cbranch-no" title="branch not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      ) : null}</span>
 &nbsp;
-      &lt;div className="xo-diagnosis"&gt;
+      &lt;section className="sd-card xo-diagnosis"&gt;
         &lt;div className="sp-head"&gt;
           &lt;div&gt;
             &lt;p className="subtle-label"&gt;{t('workspace.execution.diagnosisTitle')}&lt;/p&gt;
@@ -428,7 +413,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
           /&gt;
         &lt;/div&gt;
         &lt;p className="sp-hint"&gt;{model.diagnosisHint}&lt;/p&gt;
-      &lt;/div&gt;
+      &lt;/section&gt;
 &nbsp;
       {model.accountSummary.length &gt; 0 ? (
         &lt;section className="sd-card"&gt;
@@ -442,7 +427,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 <span class="branch-0 cbranch-no" title="branch not covered" >        &lt;/section&gt;</span>
 <span class="cstat-no" title="statement not covered" >      ) : null}</span>
 &nbsp;
-      &lt;div className="xo-alerts"&gt;
+      &lt;section className="sd-card xo-alerts"&gt;
         &lt;p className="subtle-label"&gt;{t('workspace.execution.operationsAnomalies')}&lt;/p&gt;
         {model.anomalies.length &gt; 0 ? (
           &lt;ul className="xo-alert-list"&gt;
@@ -455,7 +440,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         ) : (
 <span class="cstat-no" title="statement not covered" >          &lt;p className="xo-empty"&gt;{t('workspace.execution.operationsNoAnomalies')}&lt;/p&gt;</span>
         )}
-      &lt;/div&gt;
+      &lt;/section&gt;
     &lt;/GlassPanel&gt;
   )
 }
@@ -466,7 +451,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T08:21:51.597Z
+                at 2026-04-02T09:19:45.602Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

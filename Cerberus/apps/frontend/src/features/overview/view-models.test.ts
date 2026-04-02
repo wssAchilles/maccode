@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildOverviewContextBandModel,
   buildOverviewMetricTiles,
   buildOverviewPersistenceItems,
   buildOverviewRecentSignalCards,
@@ -124,6 +125,50 @@ describe('overview view models', () => {
         expect.objectContaining({ id: 'mid-price', value: '100.200000' }),
         expect.objectContaining({ id: 'services-ready', value: '2' }),
         expect.objectContaining({ id: 'services-attention', value: '1' }),
+      ]),
+    )
+  })
+
+  it('builds overview context band from prepared snapshot and domain counts', () => {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
+        symbol: 'BTCUSDT',
+        bid_price: '100.0',
+        ask_price: '100.4',
+        event_time: 1_000,
+      },
+      latestBySymbol: {},
+      strategySignal: {
+        status: 'ready',
+        signal: 'HOLD',
+        confidence: 0.42,
+      },
+      latestEvent: {
+        id: 'evt-3',
+        channel: 'trade.executions.default',
+        payload: {},
+        received_at: 1_000,
+        event_type: 'strategy.signal.generated',
+        symbol: 'BTCUSDT',
+        status: 'HOLD',
+      },
+    })
+
+    const band = buildOverviewContextBandModel({
+      t,
+      snapshot,
+      readyCount: 2,
+      attentionCount: 1,
+    })
+
+    expect(band.title).toBe('BTCUSDT')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'signal', value: 'HOLD' }),
+        expect.objectContaining({ id: 'mid-price', value: '100.200000' }),
+        expect.objectContaining({ id: 'ready', value: '2' }),
+        expect.objectContaining({ id: 'attention', value: '1' }),
       ]),
     )
   })

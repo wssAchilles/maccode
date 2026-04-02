@@ -6,6 +6,7 @@ import {
   formatDerivedPrice,
   parseNumericString,
   type PreparedTradingSnapshot,
+  type WorkspaceContextBandModel,
   type WorkspaceOperatorDeckSectionModel,
   type WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
@@ -43,6 +44,7 @@ export type ExecutionOperationsPanelModel = {
   state: UIState['state']
   stateLabel: string
   summary: string
+  band: WorkspaceContextBandModel
   anomalies: string[]
   diagnosisLabel: string
   diagnosisTone: 'default' | 'accent' | 'danger'
@@ -78,6 +80,14 @@ type BuildExecutionSummaryParams = {
 }
 
 type BuildExecutionOperatorSectionsParams = {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  preparedSelection: PreparedExecutionSelection
+  tradingPolicy?: TradingPolicy
+  binanceRule?: BinanceRule
+}
+
+type BuildExecutionHeroBandParams = {
   t: Translate
   snapshot: PreparedTradingSnapshot
   preparedSelection: PreparedExecutionSelection
@@ -376,6 +386,136 @@ export function buildExecutionDeskSpotlightModel({
   }
 }
 
+export function buildExecutionDeskContextModel({
+  t,
+  broker,
+  selectedSymbol,
+  alpacaSymbol,
+  tradingPolicy,
+  latestBid,
+  latestAsk,
+  binanceRule,
+}: {
+  t: Translate
+  broker: 'binance' | 'alpaca'
+  selectedSymbol: string
+  alpacaSymbol: string
+  tradingPolicy?: TradingPolicy
+  latestBid?: string
+  latestAsk?: string
+  binanceRule?: BinanceRule
+}): WorkspaceContextBandModel {
+  const symbol = broker === 'binance' ? selectedSymbol : alpacaSymbol.toUpperCase()
+  const bid = parseNumericString(latestBid)
+  const ask = parseNumericString(latestAsk)
+  const spread = bid !== undefined && ask !== undefined ? ask - bid : undefined
+
+  return {
+    eyebrow: broker === 'binance' ? t('execution.binanceTest') : t('execution.alpacaPaper'),
+    title: symbol,
+    hint:
+      broker === 'binance'
+        ? tradingPolicy?.enforced
+          ? t('workspace.execution.operatorGuardrailsDescription')
+          : t('workspace.execution.lifecycleWaitingRule')
+        : t('execution.accountSnapshot'),
+    items: [
+      {
+        id: 'venue',
+        label: t('workspace.execution.operatorVenue'),
+        value: broker === 'binance' ? 'Binance Testnet' : 'Alpaca Paper',
+        tone: 'accent',
+      },
+      {
+        id: 'bid',
+        label: t('market.bestBid'),
+        value: latestBid ?? '—',
+        tone: 'positive',
+      },
+      {
+        id: 'ask',
+        label: t('market.bestAsk'),
+        value: latestAsk ?? '—',
+        tone: 'negative',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: formatDerivedPrice(spread),
+      },
+      {
+        id: 'policy',
+        label: t('execution.policy'),
+        value: tradingPolicy?.enforced ? t('common.ready') : t('common.disabled'),
+        tone: tradingPolicy?.enforced ? 'accent' : 'default',
+      },
+      {
+        id: 'rule',
+        label: t('workspace.execution.operatorGuardrailsTitle'),
+        value: broker === 'binance' ? (binanceRule ? t('common.ready') : t('workspace.execution.lifecycleWaitingRule')) : 'Paper',
+      },
+    ],
+  }
+}
+
+export function buildExecutionHeroBandModel({
+  t,
+  snapshot,
+  preparedSelection,
+  tradingPolicy,
+  binanceRule,
+}: BuildExecutionHeroBandParams): WorkspaceContextBandModel {
+  const latestLifecycle = preparedSelection.latestOrder?.latestStatus ?? preparedSelection.latestOrder?.latestPhase ?? '—'
+
+  return {
+    eyebrow: t('workspace.execution.description'),
+    title: snapshot.selectedSymbol,
+    hint: snapshot.feedbackValue ?? t('common.heartbeat'),
+    accent: preparedSelection.activeOrderCount > 0 ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'best-bid',
+        label: t('market.bestBid'),
+        value: snapshot.bestBidValue,
+        tone: 'positive',
+      },
+      {
+        id: 'best-ask',
+        label: t('market.bestAsk'),
+        value: snapshot.bestAskValue,
+        tone: 'negative',
+      },
+      {
+        id: 'active-orders',
+        label: t('workspace.execution.operationsActive'),
+        value: String(preparedSelection.activeOrderCount),
+        tone: preparedSelection.activeOrderCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'latest-lifecycle',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestLifecycle,
+      },
+      {
+        id: 'guardrail-state',
+        label: t('workspace.execution.operatorGuardrailsTitle'),
+        value: tradingPolicy?.enforced
+          ? binanceRule
+            ? t('common.ready')
+            : t('workspace.execution.lifecycleWaitingRule')
+          : t('common.disabled'),
+        tone: tradingPolicy?.enforced ? 'accent' : 'default',
+      },
+    ],
+  }
+}
+
 export function buildExecutionOperatorSections({
   t,
   snapshot,
@@ -534,10 +674,40 @@ export function buildExecutionOperationsPanel({
   }
 
   if (orderCount === 0) {
+    const band: WorkspaceContextBandModel = {
+      eyebrow: t('workspace.execution.operationsTitle'),
+      title: `${selectedSymbol} · ${t('workspace.execution.diagnosisUnavailable')}`,
+      hint: t('workspace.execution.operationsDescription'),
+      accent: 'cyan',
+      items: [
+        {
+          id: 'observed',
+          label: t('workspace.execution.operationsObserved'),
+          value: '0',
+        },
+        {
+          id: 'active',
+          label: t('workspace.execution.operationsActive'),
+          value: '0',
+        },
+        {
+          id: 'latest-status',
+          label: t('workspace.execution.operationsLatestStatus'),
+          value: '—',
+        },
+        {
+          id: 'matching-live',
+          label: t('workspace.execution.operationsMatchingLive'),
+          value: formatInteger(matchingStats?.live_orders),
+        },
+      ],
+    }
+
     return {
       state: domainStatus.state,
       stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
       summary: selectedSymbol,
+      band,
       anomalies,
       diagnosisLabel: t('workspace.execution.diagnosisUnavailable'),
       diagnosisTone: 'default',
@@ -578,10 +748,42 @@ export function buildExecutionOperationsPanel({
               hint: t('workspace.execution.diagnosisHintReady'),
             }
 
+  const band: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.execution.operationsTitle'),
+    title: `${selectedSymbol} · ${diagnosis.label}`,
+    hint: diagnosis.hint,
+    accent: diagnosis.tone === 'danger' ? 'amber' : diagnosis.tone === 'accent' ? 'cyan' : 'teal',
+    items: [
+      {
+        id: 'observed',
+        label: t('workspace.execution.operationsObserved'),
+        value: String(orderCount),
+      },
+      {
+        id: 'active',
+        label: t('workspace.execution.operationsActive'),
+        value: String(activeOrderCount),
+        tone: activeOrderCount > 0 ? 'accent' : 'default',
+      },
+      {
+        id: 'latest-status',
+        label: t('workspace.execution.operationsLatestStatus'),
+        value: latestOrder?.latestStatus ?? latestOrder?.latestPhase ?? '—',
+      },
+      {
+        id: 'latency',
+        label: t('workspace.execution.operationsSubmitToAccepted'),
+        value: formatInteger(avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : undefined),
+        tone: avgSubmitToAcceptedMs !== undefined && avgSubmitToAcceptedMs > 10_000 ? 'negative' : 'default',
+      },
+    ],
+  }
+
   return {
     state: domainStatus.state,
     stateLabel: t(`health.state.${domainStatus.state}` as TranslationKey),
     summary: `${selectedSymbol} · ${orderCount} ${t('workspace.execution.operationsSummarySuffix')}`,
+    band,
     anomalies,
     diagnosisLabel: diagnosis.label,
     diagnosisTone: diagnosis.tone,

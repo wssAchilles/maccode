@@ -10,6 +10,7 @@ import type {
   InferenceSymbolComparison,
   LoadState,
 } from '../../types/contracts'
+import type { WorkspaceContextBandModel } from '../../view-models/workbench'
 
 type Translate = (key: TranslationKey) => string
 
@@ -56,6 +57,7 @@ export type InferenceDiagnosticsModel = {
   stateLabel: string
   summary: string
   reason?: string
+  band: WorkspaceContextBandModel
   runtimeItems: InferenceDataItem[]
   rolloutItems: InferenceDataItem[]
   comparisonItems: InferenceDataItem[]
@@ -75,6 +77,7 @@ export type InferenceModelOption = {
 export type InferenceOperationsModel = {
   state: LoadState
   stateLabel: string
+  band: WorkspaceContextBandModel
   targetModeLabel: string
   effectiveModeLabel: string
   summary: string
@@ -441,12 +444,44 @@ export function buildInferenceDiagnosticsModel({
   const horizon = readNumber(modelMetadata, 'horizon') ?? readNumber(runtimeMetadata, 'horizon')
   const macroF1 = readNumber(modelMetadata, 'best_macro_f1')
   const blockers = blockersSummary(t, rollout)
+  const effectiveMode = formatMode(t, rollout?.effective_mode ?? inferenceStatus?.mode)
+  const currentSummary = modelSummary(t, model)
+  const band: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.inference.title'),
+    title: `${stateLabel} · ${effectiveMode}`,
+    hint: blockers ?? inferenceStatus?.reason ?? currentSummary,
+    accent: state === 'ready' ? 'teal' : state === 'degraded' ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'active-model',
+        label: t('workspace.inference.model'),
+        value: currentSummary,
+        tone: model ? 'accent' : 'default',
+      },
+      {
+        id: 'comparison',
+        label: t('workspace.inference.comparisonSummary'),
+        value: comparisonSummary(t, comparison),
+      },
+      {
+        id: 'latest-audit',
+        label: t('workspace.inference.recentAudit'),
+        value: formatDateTime(audit?.created_at, t),
+      },
+      {
+        id: 'backend',
+        label: t('workspace.inference.stateBackend'),
+        value: rollout?.state_backend ?? t('common.na'),
+      },
+    ],
+  }
 
   return {
     state,
     stateLabel,
     summary: modelSummary(t, model),
     reason: blockers ?? inferenceStatus?.reason ?? undefined,
+    band,
     runtimeItems: [
       {
         id: 'runtimeStatus',
@@ -627,10 +662,44 @@ export function buildInferenceOperationsModel({
       : lastResult.accepted
         ? 'accent'
         : 'danger'
+  const band: WorkspaceContextBandModel = {
+    eyebrow: t('workspace.inference.operationsTitle'),
+    title: `${stateLabel} · ${formatMode(t, targetMode)}`,
+    hint:
+      blockers.length > 0
+        ? blockers.join(' · ')
+        : lastResult?.message ?? modelSummary(t, activeModel),
+    accent: statusTone === 'danger' ? 'amber' : state === 'ready' ? 'teal' : 'cyan',
+    items: [
+      {
+        id: 'effective-mode',
+        label: t('workspace.inference.rolloutMode'),
+        value: formatMode(t, effectiveMode),
+      },
+      {
+        id: 'active-model',
+        label: t('workspace.inference.model'),
+        value: modelSummary(t, activeModel),
+        tone: activeModel ? 'accent' : 'default',
+      },
+      {
+        id: 'blockers',
+        label: t('workspace.inference.gateBlockers'),
+        value: blockers.length > 0 ? String(blockers.length) : '0',
+        tone: blockers.length > 0 ? 'negative' : 'positive',
+      },
+      {
+        id: 'catalog-size',
+        label: t('workspace.inference.registryTitle'),
+        value: String(modelOptions.length),
+      },
+    ],
+  }
 
   return {
     state,
     stateLabel,
+    band,
     targetModeLabel: formatMode(t, targetMode),
     effectiveModeLabel: formatMode(t, effectiveMode),
     summary: modelSummary(t, activeModel),

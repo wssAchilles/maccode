@@ -8,7 +8,7 @@ import {
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, MetricTile, SectionFrame, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
@@ -36,6 +36,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         accent="amber"
         stage="hero"
       >
+        <TerminalBand model={model.heroBand} className="hero-band" />
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
             <MetricTile
@@ -87,6 +88,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
           stage="inspector"
         >
           <div className="stack">
+            <TerminalBand model={model.strategyBand} className="strategy-band" />
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
             <DiagnosticDrawer

@@ -7,6 +7,7 @@ import {
   formatConfidence,
   formatDateTimeLabel,
   type PreparedTradingSnapshot,
+  type WorkspaceContextBandModel,
   type WorkspaceOperatorDeckSectionModel,
   type WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
@@ -32,6 +33,61 @@ export type OverviewRecentSignalCardModel = {
   signal: string
   symbol: string
   items: OverviewDataItem[]
+}
+
+export function buildOverviewContextBandModel({
+  t,
+  snapshot,
+  readyCount,
+  attentionCount,
+}: {
+  t: Translate
+  snapshot: PreparedTradingSnapshot
+  readyCount: number
+  attentionCount: number
+}): WorkspaceContextBandModel {
+  return {
+    eyebrow: t('workspace.overview.title'),
+    title: snapshot.selectedSymbol,
+    hint: t('workspace.overview.operatorDeckDescription'),
+    accent: attentionCount > 0 ? 'amber' : 'cyan',
+    items: [
+      {
+        id: 'signal',
+        label: t('strategy.signal'),
+        value: snapshot.signalValue,
+        tone: 'accent',
+      },
+      {
+        id: 'mid-price',
+        label: t('orderbook.midPrice'),
+        value: snapshot.midPriceValue,
+        tone: 'accent',
+      },
+      {
+        id: 'spread',
+        label: t('orderbook.spread'),
+        value: snapshot.spreadValue,
+      },
+      {
+        id: 'feedback',
+        label: t('workspace.overview.feedback'),
+        value: snapshot.feedbackValue ?? t('common.heartbeat'),
+      },
+      {
+        id: 'ready',
+        label: t('common.ready'),
+        value: String(readyCount),
+        tone: readyCount > 0 ? 'positive' : 'default',
+      },
+      {
+        id: 'attention',
+        label: t('workspace.overview.attention'),
+        value: String(attentionCount),
+        tone: attentionCount > 0 ? 'negative' : 'default',
+      },
+    ],
+  }
 }
 
 type BuildOverviewMetricTilesParams = {

@@ -75,8 +75,15 @@ describe('Execution operations panel', () => {
       </I18nProvider>,
     )
 
-    expect(screen.getByText('Execution operations')).toBeInTheDocument()
-    expect(screen.getByText('BTCUSDT · 2 workspace.execution.operationsSummarySuffix')).toBeInTheDocument()
+    expect(screen.getByText('workspace.execution.operationsTitle')).toBeInTheDocument()
+    expect(screen.getByText(model.band.title)).toBeInTheDocument()
+    expect(model.band.title).toContain('BTCUSDT')
+    expect(model.band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'observed', value: '2' }),
+        expect.objectContaining({ id: 'active' }),
+      ]),
+    )
     expect(screen.getByRole('list', { name: 'Execution pulse' })).toBeInTheDocument()
     expect(screen.getByText('Latency snapshot')).toBeInTheDocument()
     expect(screen.getByText('Venue pulse')).toBeInTheDocument()

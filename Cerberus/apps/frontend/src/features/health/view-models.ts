@@ -3,6 +3,7 @@ import type { DomainStatusMap } from '../../store/slices/shared'
 import type { AppError, InferenceStatusPayload, PersistenceStatus, UIState } from '../../types/contracts'
 import type {
   HealthCardModel,
+  WorkspaceContextBandModel,
   WorkspaceOperatorDeckSectionModel,
   WorkspaceSpotlightModel,
 } from '../../view-models/workbench'
@@ -17,6 +18,7 @@ export type HealthDataItem = {
 }
 
 export type ServiceHealthPanelModel = {
+  band: WorkspaceContextBandModel
   cards: HealthCardModel[]
   updatedAtLabel: string
   requestIdLabel: string
@@ -26,6 +28,53 @@ export type ServiceHealthPanelModel = {
 export type HealthDiagnosticsModel = {
   summaryError?: AppError
   domainStatus: Record<string, UIState>
+}
+
+export function buildHealthDiagnosticsBandModel({
+  t,
+  summaryError,
+  domainStatus,
+}: {
+  t: Translate
+  summaryError?: AppError
+  domainStatus: DomainStatusMap
+}): WorkspaceContextBandModel {
+  const entries = Object.entries(domainStatus)
+  const degraded = entries.filter(([, value]) => value.state === 'degraded' || value.state === 'error')
+  const latestRequestId =
+    summaryError?.request_id ??
+    degraded.map(([, value]) => value.request_id).find((value) => typeof value === 'string' && value.trim()) ??
+    entries.map(([, value]) => value.request_id).find((value) => typeof value === 'string' && value.trim())
+
+  return {
+    eyebrow: t('workspace.health.requestIds'),
+    title: summaryError?.code ?? (degraded.length > 0 ? t('workspace.overview.attention') : t('common.ready')),
+    hint: summaryError?.message ?? t('workspace.health.requestIdsDescription'),
+    accent: degraded.length > 0 || summaryError ? 'amber' : 'teal',
+    items: [
+      {
+        id: 'degraded-count',
+        label: t('workspace.overview.attention'),
+        value: String(degraded.length),
+        tone: degraded.length > 0 ? 'negative' : 'default',
+      },
+      {
+        id: 'domains',
+        label: t('workspace.nav'),
+        value: String(entries.length),
+      },
+      {
+        id: 'latest-request-id',
+        label: t('health.requestId'),
+        value: latestRequestId ?? '—',
+      },
+      {
+        id: 'summary-state',
+        label: t('workspace.health.title'),
+        value: summaryError ? t('health.state.degraded') : t('health.state.ready'),
+      },
+    ],
+  }
 }
 
 type BuildHealthItemsParams = {
@@ -88,6 +137,11 @@ export function buildServiceHealthPanelModel({
   domainStatus: DomainStatusMap
   persistenceStatus?: PersistenceStatus
 }): ServiceHealthPanelModel {
+  const cards = buildHealthCards(domainStatus, t)
+  const readyCount = cards.filter((card) => card.state === 'ready').length
+  const attentionCount = cards.filter((card) => card.state === 'degraded' || card.state === 'error').length
+  const latestRequestId =
+    cards.map((card) => card.requestId).find((value) => typeof value === 'string' && value.trim()) ?? '—'
   const persistenceGroups = persistenceStatus
     ? [
         [
@@ -134,7 +188,40 @@ export function buildServiceHealthPanelModel({
     : []
 
   return {
-    cards: buildHealthCards(domainStatus, t),
+    band: {
+      eyebrow: t('workspace.health.title'),
+      title:
+        attentionCount > 0
+          ? `${attentionCount} ${t('workspace.overview.attention').toLowerCase()}`
+          : `${readyCount} ${t('common.ready').toLowerCase()}`,
+      hint: persistenceStatus?.status ?? t('workspace.health.operatorDeckDescription'),
+      accent: attentionCount > 0 ? 'amber' : 'teal',
+      items: [
+        {
+          id: 'ready',
+          label: t('common.ready'),
+          value: String(readyCount),
+          tone: readyCount > 0 ? 'positive' : 'default',
+        },
+        {
+          id: 'attention',
+          label: t('workspace.overview.attention'),
+          value: String(attentionCount),
+          tone: attentionCount > 0 ? 'negative' : 'default',
+        },
+        {
+          id: 'matching',
+          label: t('strategy.matching'),
+          value: persistenceStatus?.matching?.health?.status ?? t('common.disabled'),
+        },
+        {
+          id: 'request',
+          label: t('health.requestId'),
+          value: latestRequestId,
+        },
+      ],
+    },
+    cards,
     updatedAtLabel: t('common.updatedAt'),
     requestIdLabel: t('health.requestId'),
     persistenceGroups,
@@ -153,6 +240,66 @@ function formatInferenceMode(t: Translate, inferenceStatus?: InferenceStatusPayl
     return t('workspace.inference.mode.disabled')
   }
   return mode ?? t('common.na')
+}
+
+export function buildHealthContextBandModel({
+  t,
+  domainStatus,
+  persistenceStatus,
+  inferenceStatus,
+}: {
+  t: Translate
+  domainStatus: DomainStatusMap
+  persistenceStatus?: PersistenceStatus
+  inferenceStatus?: InferenceStatusPayload
+}): WorkspaceContextBandModel {
+  const domainSummary = summarizeDomainStates(domainStatus)
+  const matchingStatus = persistenceStatus?.matching?.health?.status ?? t('common.disabled')
+
+  return {
+    eyebrow: t('workspace.health.title'),
+    title: persistenceStatus?.status ?? t('common.disabled'),
+    hint: t('workspace.health.operatorDeckDescription'),
+    accent: domainSummary.attentionCount > 0 ? 'amber' : 'teal',
+    items: [
+      {
+        id: 'ready',
+        label: t('common.ready'),
+        value: String(domainSummary.readyCount),
+        tone: domainSummary.readyCount > 0 ? 'positive' : 'default',
+      },
+      {
+        id: 'attention',
+        label: t('workspace.overview.attention'),
+        value: String(domainSummary.attentionCount),
+        tone: domainSummary.attentionCount > 0 ? 'negative' : 'default',
+      },
+      {
+        id: 'matching',
+        label: t('strategy.matching'),
+        value: matchingStatus,
+      },
+      {
+        id: 'rollout',
+        label: t('workspace.inference.rolloutMode'),
+        value: formatInferenceMode(t, inferenceStatus),
+        tone:
+          inferenceStatus?.rollout?.effective_mode === 'primary' || inferenceStatus?.mode === 'primary'
+            ? 'accent'
+            : 'default',
+      },
+      {
+        id: 'ticks',
+        label: t('strategy.ticksProcessed'),
+        value: String(persistenceStatus?.worker.processed_ticks ?? 0),
+      },
+      {
+        id: 'symbols',
+        label: t('workspace.health.trackedSymbols'),
+        value: String(persistenceStatus?.worker.tracked_symbols?.length ?? 0),
+      },
+    ],
+  }
 }
 
 export function buildHealthSpotlightModel({

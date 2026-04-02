@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildHealthContextBandModel,
+  buildHealthDiagnosticsBandModel,
   buildHealthDiagnostics,
   buildServiceHealthPanelModel,
   buildHealthStoreItems,
@@ -124,6 +126,7 @@ describe('health view models', () => {
     })
 
     expect(model.cards).toHaveLength(3)
+    expect(model.band.title).toBe('1 workspace.overview.attention')
     expect(model.updatedAtLabel).toBe('common.updatedAt')
     expect(model.requestIdLabel).toBe('health.requestId')
     expect(model.persistenceGroups[0][0]).toEqual({
@@ -136,5 +139,98 @@ describe('health view models', () => {
       label: 'Live orders',
       value: '2',
     })
+  })
+
+  it('builds health context band from domain and persistence state', () => {
+    const band = buildHealthContextBandModel({
+      t,
+      domainStatus: {
+        'market-stream': {
+          state: 'ready',
+          last_update_ms: 1_000,
+          stale: false,
+        },
+        'strategy-summary': {
+          state: 'degraded',
+          last_update_ms: 2_000,
+          stale: true,
+        },
+        'execution-trading': {
+          state: 'loading',
+          last_update_ms: 3_000,
+          stale: false,
+        },
+      },
+      persistenceStatus: {
+        status: 'ok',
+        worker: {
+          processed_ticks: 12,
+          tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+          started: true,
+          has_last_signal: true,
+        },
+        stores: {
+          supabase_enabled: true,
+          firebase_enabled: false,
+          supabase_table: 'strategy_signals',
+          firebase_collection: 'signals',
+        },
+        matching: {
+          health: {
+            enabled: true,
+            reachable: true,
+            status: 'ok',
+            service: 'matching-cpp',
+            version: '0.1.0',
+            uptime_seconds: 30,
+          },
+        },
+      },
+      inferenceStatus: {
+        mode: 'observe',
+      },
+    })
+
+    expect(band.title).toBe('ok')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'ready', value: '1' }),
+        expect.objectContaining({ id: 'attention', value: '1' }),
+        expect.objectContaining({ id: 'matching', value: 'ok' }),
+        expect.objectContaining({ id: 'symbols', value: '2' }),
+      ]),
+    )
+  })
+
+  it('builds a diagnostics band from summary and domain request ids', () => {
+    const band = buildHealthDiagnosticsBandModel({
+      t,
+      summaryError: {
+        code: 'summary_failed',
+        message: 'summary unavailable',
+        request_id: 'rid-1',
+      },
+      domainStatus: {
+        'market-stream': {
+          state: 'degraded',
+          last_update_ms: 1_000,
+          stale: true,
+          request_id: 'rid-market',
+        },
+        'strategy-summary': {
+          state: 'ready',
+          last_update_ms: 2_000,
+          stale: false,
+        },
+      },
+    })
+
+    expect(band.title).toBe('summary_failed')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'degraded-count', value: '1' }),
+        expect.objectContaining({ id: 'latest-request-id', value: 'rid-1' }),
+      ]),
+    )
   })
 })

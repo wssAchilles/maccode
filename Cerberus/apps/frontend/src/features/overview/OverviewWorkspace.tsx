@@ -8,6 +8,7 @@ import {
   MetricTile,
   SectionFrame,
   StatusPill,
+  TerminalBand,
   WorkspaceOperatorDeck,
   WorkspaceSpotlight,
 } from '../../ui'
@@ -49,6 +50,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         accent="cyan"
         stage="hero"
       >
+        <TerminalBand model={model.contextBand} className="hero-band" />
         <div className="metric-grid">
           {model.metricTiles.map((tile) => (
             <MetricTile
@@ -124,6 +126,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         stage="feature"
       >
         <div className="stack">
+          <TerminalBand model={model.strategyBand} className="strategy-band" />
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
           <DiagnosticDrawer

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Candle } from '../../types/contracts'
 import { buildPreparedExecutionSelection } from '../execution/read-models'
 import {
+  buildMarketHeroBandModel,
   buildMarketChartMarkersModel,
   buildMarketChartSeriesModel,
   buildMarketChartStateModel,
@@ -67,6 +68,46 @@ describe('market view models', () => {
       id: 'execution-stream',
       value: 'execution.created · BTCUSDT · FILLED',
     })
+  })
+
+  it('builds a market hero band from the prepared trading snapshot', () => {
+    const snapshot = buildPreparedTradingSnapshot({
+      selectedSymbol: 'BTCUSDT',
+      latest: {
+        symbol: 'BTCUSDT',
+        bid_price: '100.12',
+        ask_price: '100.56',
+        event_time: 1000,
+      },
+      latestBySymbol: {},
+      strategySignal: {
+        status: 'ready',
+        signal: 'BUY',
+        confidence: 0.83,
+        symbol: 'BTCUSDT',
+      },
+      latestEvent: {
+        id: 'evt-2',
+        channel: 'trade.executions.default',
+        payload: {},
+        received_at: 1000,
+        event_type: 'execution.created',
+        symbol: 'BTCUSDT',
+        status: 'FILLED',
+      },
+    })
+
+    const band = buildMarketHeroBandModel({ t, snapshot })
+
+    expect(band.title).toBe('BTCUSDT')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'signal', value: 'BUY' }),
+        expect.objectContaining({ id: 'best-bid', value: '100.12' }),
+        expect.objectContaining({ id: 'best-ask', value: '100.56' }),
+        expect.objectContaining({ id: 'feedback', value: 'execution.created · BTCUSDT · FILLED' }),
+      ]),
+    )
   })
 
   it('returns a loading chart state before the first candle batch arrives', () => {

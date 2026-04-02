@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { EmptyState, GlassPanel } from '../../../ui'
+import { EmptyState, GlassPanel, TerminalBand } from '../../../ui'
 import type { StrategyDecisionMatrixModel } from '../view-models'
 
 type Props = {
@@ -27,6 +27,7 @@ export function StrategyDecisionMatrix({ model }: Props) {
         </div>
         {model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
       </div>
+      {model.band ? <TerminalBand model={model.band} className="sp-band" /> : null}
 
       <div className="sd-list" role="list" aria-label={t('workspace.strategy.matrixTitle')}>
         {model.items.map((item) => (

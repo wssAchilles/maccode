@@ -10,6 +10,7 @@ import { StrategyPortfolioPanel } from './components/StrategyPortfolioPanel'
 import { StrategyRegistryPanel } from './components/StrategyRegistryPanel'
 import {
   buildExecutionLifecyclePanelModel,
+  buildStrategyContextBandModel,
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
 } from './view-models'
@@ -238,5 +239,54 @@ describe('strategy orchestration module', () => {
     expect(screen.getByText('Rule engine')).toBeTruthy()
     expect(screen.getAllByText(/common\.ready/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/workspace\.strategy\.configuredWeight/i)).toBeTruthy()
+    expect(screen.getByText(/workspace\.strategy\.conflictPolicy/i)).toBeTruthy()
+  })
+
+  it('builds a strategy context band with formatted gate and update labels', () => {
+    const band = buildStrategyContextBandModel({
+      t: (key) => key,
+      selectedSymbol: 'BTCUSDT',
+      signal: {
+        status: 'ready',
+        signal: 'BUY',
+        decision_source: 'rule_engine',
+        portfolio: {
+          symbol: 'BTCUSDT',
+          dominant_signal: 'BUY',
+          final_signal: 'BUY',
+          final_source: 'rule_engine',
+          signal_bias: 'bullish',
+          consensus_level: 'moderate',
+          execution_ready: false,
+          execution_gate: 'review',
+          execution_gate_reason: 'strategy basket is still contested',
+          aligned_count: 1,
+          contested_count: 1,
+          agreement_ratio: 0.5,
+          weighted_score: 0.564,
+          active_strategy_count: 2,
+          tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+          updated_at: Date.parse('2026-04-02T10:00:00Z') as unknown as string,
+        },
+      },
+      orchestrationStatus: {
+        conflict_policy: 'review_on_conflict',
+        downgrade_policy: 'review',
+        tracked_symbols: ['BTCUSDT', 'ETHUSDT'],
+        state_restored: true,
+        entries: [],
+        audit: [],
+      },
+    })
+
+    expect(band.title).toContain('BUY')
+    expect(band.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'execution-gate', value: 'workspace.strategy.gate.review' }),
+        expect.objectContaining({ id: 'consensus', value: 'workspace.strategy.consensus.moderate' }),
+        expect.objectContaining({ id: 'active-strategies', value: '2' }),
+      ]),
+    )
+    expect(band.items.find((item) => item.id === 'updated-at')?.value).not.toBe('1775124000000')
   })
 })

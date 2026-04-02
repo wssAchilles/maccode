@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, GlassPanel, StatusPill } from '../../../ui'
+import { DataList, GlassPanel, StatusPill, TerminalBand } from '../../../ui'
 import { InferenceAuditTimeline } from './InferenceAuditTimeline'
 import { InferenceSymbolComparisonPanel } from './InferenceSymbolComparisonPanel'
 import type { InferenceDiagnosticsModel } from '../view-models'
@@ -13,6 +13,7 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
 
   return (
     <div className="stack">
+      <TerminalBand model={model.band} className="if-band" />
       <div className="health-grid">
         <GlassPanel tone="subtle" className="ifp">
           <div className="ifc-head">

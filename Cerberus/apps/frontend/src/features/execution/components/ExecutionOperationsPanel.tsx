@@ -1,5 +1,5 @@
 import { useI18n } from '../../../i18n/I18nProvider'
-import { DataList, EmptyState, GlassPanel, StatusPill } from '../../../ui'
+import { DataList, EmptyState, GlassPanel, StatusPill, TerminalBand } from '../../../ui'
 import type { ExecutionOperationsPanelModel } from '../view-models'
 
 type Props = {
@@ -17,6 +17,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
   if (model.headlineItems.length === 0) {
     return (
       <GlassPanel className="xo-panel" tone="subtle">
+        <TerminalBand model={model.band} className="xo-band" />
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.execution.operationsDescription')}
@@ -27,13 +28,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
   return (
     <GlassPanel className="xo-panel" tone="subtle">
-      <div className="sp-head">
-        <div>
-          <p className="subtle-label">{t('workspace.execution.operationsTitle')}</p>
-          <p className="sp-summary">{model.summary}</p>
-        </div>
-        <StatusPill state={model.state} label={model.stateLabel} compact />
-      </div>
+      <TerminalBand model={model.band} className="xo-band" />
 
       <div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}>
         {model.headlineItems.map((item) => (
@@ -86,7 +81,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         </div>
       ) : null}
 
-      <div className="xo-diagnosis">
+      <section className="sd-card xo-diagnosis">
         <div className="sp-head">
           <div>
             <p className="subtle-label">{t('workspace.execution.diagnosisTitle')}</p>
@@ -99,7 +94,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
           />
         </div>
         <p className="sp-hint">{model.diagnosisHint}</p>
-      </div>
+      </section>
 
       {model.accountSummary.length > 0 ? (
         <section className="sd-card">
@@ -113,7 +108,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         </section>
       ) : null}
 
-      <div className="xo-alerts">
+      <section className="sd-card xo-alerts">
         <p className="subtle-label">{t('workspace.execution.operationsAnomalies')}</p>
         {model.anomalies.length > 0 ? (
           <ul className="xo-alert-list">
@@ -126,7 +121,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         ) : (
           <p className="xo-empty">{t('workspace.execution.operationsNoAnomalies')}</p>
         )}
-      </div>
+      </section>
     </GlassPanel>
   )
 }

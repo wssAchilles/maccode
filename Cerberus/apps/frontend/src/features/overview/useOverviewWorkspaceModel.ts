@@ -11,6 +11,7 @@ import {
   summarizeDomainStates,
 } from '../../view-models/workbench'
 import {
+  buildOverviewContextBandModel,
   buildOverviewMetricTiles,
   buildOverviewOperatorSections,
   buildOverviewRecentSignalCards,
@@ -20,6 +21,7 @@ import {
 import { buildInferenceStatusCardModel } from '../inference-observability/view-models'
 import {
   buildStrategyOrchestrationAuditTimelineModel,
+  buildStrategyContextBandModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
   buildStrategyRegistryPanelModel,
@@ -93,7 +95,14 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
       portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
+      strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       recentSignals: buildOverviewRecentSignalCards({ t, recentSignals }),
+      contextBand: buildOverviewContextBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        readyCount: domainSummary.readyCount,
+        attentionCount: domainSummary.attentionCount,
+      }),
       operatorSections: buildOverviewOperatorSections({
         t,
         snapshot: tradingSnapshot,

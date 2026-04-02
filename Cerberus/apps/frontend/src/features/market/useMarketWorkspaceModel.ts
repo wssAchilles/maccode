@@ -9,6 +9,7 @@ import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import { buildPreparedTradingSnapshot } from '../../view-models/workbench'
 import { buildPreparedExecutionSelection } from '../execution/read-models'
 import {
+  buildStrategyContextBandModel,
   buildStrategyRegistryPanelModel,
   buildStrategyDecisionMatrixModel,
   buildStrategyPortfolioPanelModel,
@@ -17,8 +18,10 @@ import {
   buildMarketChartStateModel,
   buildMarketChartSeriesModel,
   buildMarketChartMarkersModel,
+  buildMarketChartBandModel,
   buildMarketChartContextModel,
   buildMarketExecutionRailModel,
+  buildMarketHeroBandModel,
   buildMarketMetricTiles,
   buildMarketOperatorSections,
   buildMarketSpotlightModel,
@@ -90,6 +93,10 @@ export function useMarketWorkspaceModel({ active }: Params) {
 
     return {
       symbolChips: buildMarketSymbolChips(selectedSymbol),
+      heroBand: buildMarketHeroBandModel({
+        t,
+        snapshot: tradingSnapshot,
+      }),
       metricTiles: buildMarketMetricTiles({
         t,
         snapshot: tradingSnapshot,
@@ -104,6 +111,7 @@ export function useMarketWorkspaceModel({ active }: Params) {
       strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
       portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
       strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
+      strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       executionRail,
       operatorSections: buildMarketOperatorSections({
         t,
@@ -112,6 +120,12 @@ export function useMarketWorkspaceModel({ active }: Params) {
         orderbookPanel,
       }),
       chartMarkers: buildMarketChartMarkersModel({ preparedSelection: preparedExecutionSelection }),
+      chartBand: buildMarketChartBandModel({
+        t,
+        snapshot: tradingSnapshot,
+        executionRail,
+        orderbookPanel,
+      }),
       chartContext: buildMarketChartContextModel({
         t,
         snapshot: tradingSnapshot,

@@ -5,7 +5,9 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { useDormantSelector } from '../../store/useDormantSelector'
 import { buildInferenceDiagnosticsModel } from '../inference-observability/view-models'
 import {
+  buildHealthContextBandModel,
   buildHealthDiagnostics,
+  buildHealthDiagnosticsBandModel,
   buildHealthOperatorSections,
   buildHealthSpotlightModel,
   buildServiceHealthPanelModel,
@@ -32,6 +34,17 @@ export function useHealthWorkspaceModel(active = true) {
       workerItems: buildHealthWorkerItems({ t, persistenceStatus }),
       storeItems: buildHealthStoreItems({ t, persistenceStatus }),
       diagnostics: buildHealthDiagnostics(summaryError, domainStatus),
+      diagnosticsBand: buildHealthDiagnosticsBandModel({
+        t,
+        summaryError,
+        domainStatus,
+      }),
+      contextBand: buildHealthContextBandModel({
+        t,
+        domainStatus,
+        persistenceStatus,
+        inferenceStatus,
+      }),
       serviceHealthPanel: buildServiceHealthPanelModel({ t, domainStatus, persistenceStatus }),
       inferenceDiagnostics,
       operatorSections: buildHealthOperatorSections({

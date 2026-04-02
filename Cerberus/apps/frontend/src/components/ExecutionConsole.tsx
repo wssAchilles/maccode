@@ -2,7 +2,7 @@ import { useI18n } from '../i18n/I18nProvider'
 
 import { AlpacaPaperPanel } from './execution/AlpacaPaperPanel'
 import { BinanceTestPanel } from './execution/BinanceTestPanel'
-import { GlassPanel, MotionSurface, StatusPill, WorkspaceOperatorDeck } from '../ui'
+import { GlassPanel, MotionSurface, StatusPill, TerminalBand, WorkspaceOperatorDeck } from '../ui'
 import { useExecutionConsoleModel } from '../features/execution/useExecutionConsoleModel'
 import { useRafPresenceTransition } from '../ui/motion/useRafPresenceTransition'
 
@@ -22,6 +22,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
     binanceRule,
     binanceModel,
     alpacaModel,
+    deskContext,
     deskSpotlight,
     deskSections,
     progressItems,
@@ -37,6 +38,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
     <section className="xoc" data-testid="execution-console">
       <MotionSurface className="xec-shell" mode="spotlight">
         <GlassPanel className="xec-header" tone="subtle">
+          <TerminalBand model={deskContext} className="xec-band" />
           <div className="xec-copy">
             {deskSpotlight.postureLabel ? <p className="subtle-label">{deskSpotlight.postureLabel}</p> : null}
             <p className="xec-summary">{deskSpotlight.summary}</p>
