@@ -41,7 +41,7 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
               : undefined
           }
         >
-          <MotionSurface className="od-surface" mode="panel">
+          <MotionSurface className="od-surface" mode={section.visualPriority === 'hero' ? 'spotlight' : 'panel'}>
             <GlassPanel className="stack-sm od-card" tone="subtle">
               <div className="ids-group">
                 <div className="sp-head">

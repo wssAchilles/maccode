@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.36% </span>
+                <span class="strong">96.61% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>53/55</span>
+                <span class='fraction'>57/59</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.36% </span>
+                <span class="strong">96.61% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>53/55</span>
+                <span class='fraction'>57/59</span>
             </div>
         
             
@@ -132,7 +132,11 @@
 <a name='L67'></a><a href='#L67'>67</a>
 <a name='L68'></a><a href='#L68'>68</a>
 <a name='L69'></a><a href='#L69'>69</a>
-<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -176,6 +180,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
@@ -190,6 +196,8 @@
 <span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
@@ -244,25 +252,29 @@ export function WorkspaceSpotlight({ model, compact = false, className }: Props)
           &lt;/div&gt;
 &nbsp;
           &lt;div className="obs-grid"&gt;
-            {model.metrics.map((metric) =&gt; (
-              &lt;div key={metric.id} className="obs-card" data-priority={metric.visualPriority ?? 'secondary'}&gt;
-                &lt;p className="subtle-label"&gt;{metric.label}&lt;/p&gt;
-                &lt;p
-                  className={cn(
-                    'obs-value',
-                    metric.tone === <span class="branch-0 cbranch-no" title="branch not covered" >'positive'</span>
-<span class="cstat-no" title="statement not covered" >                      ? 'dl-value-positive'</span>
-                      : metric.tone === 'negative'
-                        ? 'dl-value-negative'
-                        : metric.tone === 'accent'
-                          ? 'dl-value-accent'
-                          : '',
-                  )}
-                &gt;
-                  {metric.value}
-                &lt;/p&gt;
-                {metric.<span class="branch-0 cbranch-no" title="branch not covered" >hint ? &lt;p className="panel-caption"&gt;{metric.hint}&lt;/p&gt; : n</span>ull}
-              &lt;/div&gt;
+            {model.metrics.map((metric, index) =&gt; (
+              &lt;RevealGroup key={metric.id} revealIndex={index + 1}&gt;
+                &lt;MotionSurface className="obs-surface" mode="metric"&gt;
+                  &lt;div className="obs-card" data-priority={metric.visualPriority ?? 'secondary'}&gt;
+                    &lt;p className="subtle-label"&gt;{metric.label}&lt;/p&gt;
+                    &lt;p
+                      className={cn(
+                        'obs-value',
+                        metric.tone === <span class="branch-0 cbranch-no" title="branch not covered" >'positive'</span>
+<span class="cstat-no" title="statement not covered" >                          ? 'dl-value-positive'</span>
+                          : metric.tone === 'negative'
+                            ? 'dl-value-negative'
+                            : metric.tone === 'accent'
+                              ? 'dl-value-accent'
+                              : '',
+                      )}
+                    &gt;
+                      {metric.value}
+                    &lt;/p&gt;
+                    {metric.<span class="branch-0 cbranch-no" title="branch not covered" >hint ? &lt;p className="panel-caption"&gt;{metric.hint}&lt;/p&gt; : n</span>ull}
+                  &lt;/div&gt;
+                &lt;/MotionSurface&gt;
+              &lt;/RevealGroup&gt;
             ))}
           &lt;/div&gt;
         &lt;/GlassPanel&gt;
@@ -277,7 +289,7 @@ export function WorkspaceSpotlight({ model, compact = false, className }: Props)
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T07:04:07.596Z
+                at 2026-04-02T08:00:17.708Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -37,7 +37,7 @@ export function SectionFrame({
 
   return (
     <RevealGroup className={cn('sf-shell', className)} data-stage={stage} style={style}>
-      <MotionSurface className="sf-surface" mode={tone === 'hero' ? 'spotlight' : 'panel'}>
+      <MotionSurface className="sf-surface" mode={tone === 'hero' ? 'spotlight' : 'panel'} data-stage={stage}>
         <GlassPanel className="sf" tone={tone} data-stage={stage}>
           <div className="sf-header">
             <div className="sf-copy">

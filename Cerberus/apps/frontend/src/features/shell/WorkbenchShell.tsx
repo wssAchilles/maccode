@@ -1,4 +1,4 @@
-import { lazy, Suspense, startTransition, useEffect, useMemo, useState, type ComponentType, type CSSProperties } from 'react'
+import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 
 import { useStrategySummaryResource } from '../../app/bootstrap/useResourceQueries'
 import type { FirebaseAuthState } from '../../auth/useFirebaseAuth'
@@ -7,7 +7,7 @@ import { cn } from '../../lib/cn'
 import { useCerberusStore } from '../../store'
 import type { WorkspaceId } from '../../store/slices/shared'
 import { WORKSPACE_MODELS, buildHealthCards } from '../../view-models/workbench'
-import { GlassPanel, MotionSurface, RevealGroup, StatusPill } from '../../ui'
+import { GlassPanel, MotionBackdrop, MotionSurface, RevealGroup, StatusPill } from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 
 const LazyOverviewWorkspace = lazy(() =>
@@ -74,8 +74,11 @@ export function WorkbenchShell({ auth }: Props) {
     return auth.user.email ?? auth.user.displayName ?? auth.user.uid
   }, [auth.user])
   const healthCards = buildHealthCards(domainStatus, t)
-  const shellPhase = useRafPresenceTransition(workspace, 520)
   const workspaceIndex = WORKSPACE_MODELS.findIndex((item) => item.id === workspace)
+  const previousWorkspaceIndex = useRef(workspaceIndex)
+  const [workspaceDirection, setWorkspaceDirection] = useState<'forward' | 'backward'>('forward')
+  const shellPhase = useRafPresenceTransition(`${workspace}:${workspaceDirection}`, 620)
+  const shellAccent = workspace === 'execution' ? 'amber' : workspace === 'health' ? 'teal' : 'cyan'
 
   useEffect(() => {
     setVisited((current) => (current.includes(workspace) ? current : [...current, workspace]))
@@ -98,6 +101,15 @@ export function WorkbenchShell({ auth }: Props) {
     }
   }, [setWorkspace])
 
+  useEffect(() => {
+    const previousIndex = previousWorkspaceIndex.current
+    if (workspaceIndex === previousIndex) {
+      return
+    }
+    setWorkspaceDirection(workspaceIndex > previousIndex ? 'forward' : 'backward')
+    previousWorkspaceIndex.current = workspaceIndex
+  }, [workspaceIndex])
+
   const handleWorkspaceChange = (next: WorkspaceId) => {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
@@ -110,6 +122,7 @@ export function WorkbenchShell({ auth }: Props) {
   return (
     <main className="app-shell" data-testid="app-shell" data-workspace={workspace} data-phase={shellPhase}>
       <GlassPanel className="wb-header" tone="hero">
+        <MotionBackdrop accent={shellAccent} intensity="hero" className="wb-backdrop" />
         <div className="wb-header-top">
           <div className="wb-brand">
             <p className="wb-eyebrow">{t('app.kicker')}</p>
@@ -190,28 +203,31 @@ export function WorkbenchShell({ auth }: Props) {
         ))}
       </nav>
 
-      <section className="ws-stage" data-workspace={workspace} data-phase={shellPhase}>
-        <Suspense fallback={<GlassPanel className="ws-loading">{t('workspace.loading')}</GlassPanel>}>
-          {visited.map((visitedWorkspace) => {
-            const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]
-            return (
-              <div
-                key={visitedWorkspace}
-                className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}
-                aria-hidden={workspace !== visitedWorkspace}
-              >
-                {visitedWorkspace === 'overview' ? (
-                  <WorkspaceComponent
-                    active={workspace === visitedWorkspace}
-                    onSelectWorkspace={handleWorkspaceChange}
-                  />
-                ) : (
-                  <WorkspaceComponent active={workspace === visitedWorkspace} />
-                )}
-              </div>
-            )
-          })}
-        </Suspense>
+      <section className="ws-stage" data-workspace={workspace} data-phase={shellPhase} data-direction={workspaceDirection}>
+        <MotionBackdrop accent={shellAccent} intensity="stage" className="ws-stage-backdrop" />
+        <div className="ws-stage-stack">
+          <Suspense fallback={<GlassPanel className="ws-loading">{t('workspace.loading')}</GlassPanel>}>
+            {visited.map((visitedWorkspace) => {
+              const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]
+              return (
+                <div
+                  key={visitedWorkspace}
+                  className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}
+                  aria-hidden={workspace !== visitedWorkspace}
+                >
+                  {visitedWorkspace === 'overview' ? (
+                    <WorkspaceComponent
+                      active={workspace === visitedWorkspace}
+                      onSelectWorkspace={handleWorkspaceChange}
+                    />
+                  ) : (
+                    <WorkspaceComponent active={workspace === visitedWorkspace} />
+                  )}
+                </div>
+              )
+            })}
+          </Suspense>
+        </div>
       </section>
 
       <nav className="ws-mobile-nav" aria-label={t('workspace.nav')}>

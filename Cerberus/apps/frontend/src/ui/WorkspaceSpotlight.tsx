@@ -41,25 +41,29 @@ export function WorkspaceSpotlight({ model, compact = false, className }: Props)
           </div>
 
           <div className="obs-grid">
-            {model.metrics.map((metric) => (
-              <div key={metric.id} className="obs-card" data-priority={metric.visualPriority ?? 'secondary'}>
-                <p className="subtle-label">{metric.label}</p>
-                <p
-                  className={cn(
-                    'obs-value',
-                    metric.tone === 'positive'
-                      ? 'dl-value-positive'
-                      : metric.tone === 'negative'
-                        ? 'dl-value-negative'
-                        : metric.tone === 'accent'
-                          ? 'dl-value-accent'
-                          : '',
-                  )}
-                >
-                  {metric.value}
-                </p>
-                {metric.hint ? <p className="panel-caption">{metric.hint}</p> : null}
-              </div>
+            {model.metrics.map((metric, index) => (
+              <RevealGroup key={metric.id} revealIndex={index + 1}>
+                <MotionSurface className="obs-surface" mode="metric">
+                  <div className="obs-card" data-priority={metric.visualPriority ?? 'secondary'}>
+                    <p className="subtle-label">{metric.label}</p>
+                    <p
+                      className={cn(
+                        'obs-value',
+                        metric.tone === 'positive'
+                          ? 'dl-value-positive'
+                          : metric.tone === 'negative'
+                            ? 'dl-value-negative'
+                            : metric.tone === 'accent'
+                              ? 'dl-value-accent'
+                              : '',
+                      )}
+                    >
+                      {metric.value}
+                    </p>
+                    {metric.hint ? <p className="panel-caption">{metric.hint}</p> : null}
+                  </div>
+                </MotionSurface>
+              </RevealGroup>
             ))}
           </div>
         </GlassPanel>
