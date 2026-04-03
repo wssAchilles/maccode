@@ -89,6 +89,52 @@ class ApiService {
   static Future<Map<String, dynamic>> retryJob(String jobId) =>
       _retryJob(jobId);
 
+  static Future<List<Map<String, dynamic>>> listOperations({
+    String? type,
+    String? status,
+    int limit = 20,
+  }) => _listOperations(type: type, status: status, limit: limit);
+
+  static Future<Map<String, dynamic>> createOperation({
+    required String type,
+    required Map<String, dynamic> input,
+    String? controlTaskId,
+    String trigger = 'manual',
+    Map<String, dynamic>? approvalPolicy,
+    Map<String, dynamic>? metadata,
+  }) => _createOperation(
+    type: type,
+    input: input,
+    controlTaskId: controlTaskId,
+    trigger: trigger,
+    approvalPolicy: approvalPolicy,
+    metadata: metadata,
+  );
+
+  static Future<Map<String, dynamic>> getOperation(String operationId) =>
+      _getOperation(operationId);
+
+  static Future<List<Map<String, dynamic>>> getOperationEvents(
+    String operationId, {
+    int limit = 50,
+  }) => _getOperationEvents(operationId, limit: limit);
+
+  static Future<Map<String, dynamic>> cancelOperation(String operationId) =>
+      _cancelOperation(operationId);
+
+  static Future<Map<String, dynamic>> retryOperation(String operationId) =>
+      _retryOperation(operationId);
+
+  static Future<Map<String, dynamic>> approveOperation(
+    String operationId, {
+    required bool approved,
+    String? message,
+  }) => _approveOperation(
+    operationId,
+    approved: approved,
+    message: message,
+  );
+
   static Future<Map<String, dynamic>> createOptimizationJob({
     required double initialSoc,
     DateTime? targetDate,

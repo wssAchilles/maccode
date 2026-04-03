@@ -32,6 +32,7 @@ class Config:
 
     # 任务系统配置
     JOBS_COLLECTION = os.getenv('JOBS_COLLECTION', 'jobs')
+    CONTROL_TASKS_COLLECTION = os.getenv('CONTROL_TASKS_COLLECTION', 'control_tasks')
     ACTIVITY_COLLECTION = os.getenv('ACTIVITY_COLLECTION', 'activity')
     TASKS_EXECUTION_MODE = os.getenv(
         'TASKS_EXECUTION_MODE',

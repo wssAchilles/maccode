@@ -83,6 +83,116 @@ Future<Map<String, dynamic>> _retryJob(String jobId) async {
   return _unwrapEnvelopeData(response, fallback: '重试任务失败');
 }
 
+Future<List<Map<String, dynamic>>> _listOperations({
+  String? type,
+  String? status,
+  int limit = 20,
+}) async {
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/operations',
+    queryParameters: <String, Object?>{
+      'limit': limit,
+      ...?type == null ? null : <String, Object?>{'type': type},
+      ...?status == null ? null : <String, Object?>{'status': status},
+    },
+    timeout: AppConstants.jobPollingTimeout,
+    timeoutMessage: '运行控制台响应较慢，请稍后刷新查看',
+  );
+  final data = _unwrapEnvelopeData(response, fallback: '获取任务运行列表失败');
+  return List<Map<String, dynamic>>.from(data['operations'] ?? const []);
+}
+
+Future<Map<String, dynamic>> _createOperation({
+  required String type,
+  required Map<String, dynamic> input,
+  String? controlTaskId,
+  String trigger = 'manual',
+  Map<String, dynamic>? approvalPolicy,
+  Map<String, dynamic>? metadata,
+}) async {
+  final response = await _authorizedPost(
+    _baseUrl,
+    '/api/operations',
+    body: jsonEncode(<String, dynamic>{
+      'type': type,
+      'input': input,
+      'trigger': trigger,
+      ...?controlTaskId == null
+          ? null
+          : <String, dynamic>{'control_task_id': controlTaskId},
+      ...?approvalPolicy == null
+          ? null
+          : <String, dynamic>{'approval_policy': approvalPolicy},
+      ...?metadata == null ? null : <String, dynamic>{'metadata': metadata},
+    }),
+    timeout: AppConstants.optimizationTimeout,
+  );
+  return _unwrapEnvelopeData(response, fallback: '创建任务运行失败');
+}
+
+Future<Map<String, dynamic>> _getOperation(String operationId) async {
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/operations/$operationId',
+    timeout: AppConstants.jobPollingTimeout,
+    timeoutMessage: '任务运行详情加载较慢，请稍后刷新查看',
+  );
+  return _unwrapEnvelopeData(response, fallback: '获取任务运行详情失败');
+}
+
+Future<List<Map<String, dynamic>>> _getOperationEvents(
+  String operationId, {
+  int limit = 50,
+}) async {
+  final response = await _authorizedGet(
+    _baseUrl,
+    '/api/operations/$operationId/events',
+    queryParameters: <String, Object?>{'limit': limit},
+    timeout: AppConstants.jobPollingTimeout,
+    timeoutMessage: '任务事件流加载较慢，请稍后刷新查看',
+  );
+  final data = _unwrapEnvelopeData(response, fallback: '获取任务事件失败');
+  return List<Map<String, dynamic>>.from(data['events'] ?? const []);
+}
+
+Future<Map<String, dynamic>> _cancelOperation(String operationId) async {
+  final response = await _authorizedPost(
+    _baseUrl,
+    '/api/operations/$operationId/cancel',
+    body: jsonEncode(const <String, dynamic>{}),
+    timeout: AppConstants.optimizationTimeout,
+  );
+  return _unwrapEnvelopeData(response, fallback: '取消任务失败');
+}
+
+Future<Map<String, dynamic>> _retryOperation(String operationId) async {
+  final response = await _authorizedPost(
+    _baseUrl,
+    '/api/operations/$operationId/retry',
+    body: jsonEncode(const <String, dynamic>{}),
+    timeout: AppConstants.optimizationTimeout,
+  );
+  return _unwrapEnvelopeData(response, fallback: '重试任务运行失败');
+}
+
+Future<Map<String, dynamic>> _approveOperation(
+  String operationId, {
+  required bool approved,
+  String? message,
+}) async {
+  final response = await _authorizedPost(
+    _baseUrl,
+    '/api/operations/$operationId/approve',
+    body: jsonEncode(<String, dynamic>{
+      'approved': approved,
+      ...?message == null ? null : <String, dynamic>{'message': message},
+    }),
+    timeout: AppConstants.optimizationTimeout,
+  );
+  return _unwrapEnvelopeData(response, fallback: '审批任务失败');
+}
+
 Future<Map<String, dynamic>> _createOptimizationJob({
   required double initialSoc,
   DateTime? targetDate,

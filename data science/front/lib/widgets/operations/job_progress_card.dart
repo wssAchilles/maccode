@@ -19,6 +19,7 @@ class JobProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _JobTone.fromStatus(job.status);
     final latestEvent = job.latestEvent;
+    final currentStep = job.currentStep;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -66,6 +67,15 @@ class JobProgressCard extends StatelessWidget {
             buildJobPrimaryText(job),
             style: AppTextStyles.h4,
           ),
+          if (currentStep != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '当前步骤 · ${_JobPhaseChip.phaseLabel(currentStep.phase)} · ${currentStep.toolName}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           if (latestEvent != null) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -84,6 +94,15 @@ class JobProgressCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+          if (job.artifacts.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '产物 ${job.artifacts.length} 项',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
             ),
           ],
           const SizedBox(height: 8),
@@ -150,7 +169,7 @@ class _JobPhaseChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
       ),
       child: Text(
-        _phaseLabel(phase),
+        phaseLabel(phase),
         style: AppTextStyles.labelMedium.copyWith(
           color: tone.foreground,
           fontWeight: FontWeight.w700,
@@ -159,8 +178,32 @@ class _JobPhaseChip extends StatelessWidget {
     );
   }
 
-  String _phaseLabel(String value) {
+  static String phaseLabel(String value) {
     switch (value) {
+      case 'approval':
+        return '审批';
+      case 'fetch_external_data':
+        return '数据抓取';
+      case 'prepare_dataset':
+        return '数据准备';
+      case 'profile_dataset':
+        return '数据剖析';
+      case 'run_quality_checks':
+        return '质量检查';
+      case 'run_stat_tests':
+        return '统计检验';
+      case 'train_forecast_model':
+        return '模型训练';
+      case 'evaluate_model':
+        return '模型评估';
+      case 'optimize_schedule':
+        return '优化调度';
+      case 'generate_report':
+        return '报告生成';
+      case 'publish_artifacts':
+        return '产物发布';
+      case 'ingest_knowledge_base':
+        return '知识入库';
       case 'queued':
         return '排队';
       case 'started':
@@ -237,9 +280,24 @@ class _JobTone {
           background: AppColors.infoLight,
           icon: Icons.schedule_rounded,
         );
-      case 'running':
+      case 'awaiting_approval':
         return const _JobTone(
-          label: '进行中',
+          label: '待审批',
+          foreground: AppColors.warning,
+          background: Color(0xFFFFF4E5),
+          icon: Icons.pending_actions_rounded,
+        );
+      case 'dispatching':
+        return const _JobTone(
+          label: '调度中',
+          foreground: AppColors.primary,
+          background: AppColors.infoLight,
+          icon: Icons.route_rounded,
+        );
+      case 'retrying':
+      case 'running':
+        return _JobTone(
+          label: status == 'retrying' ? '重试中' : '进行中',
           foreground: AppColors.cta,
           background: Color(0xFFFFEDD5),
           icon: Icons.autorenew_rounded,

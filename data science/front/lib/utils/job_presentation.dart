@@ -19,6 +19,12 @@ String buildJobPrimaryText(
   switch (job.status) {
     case 'queued':
       return '${_jobLabel(job.type)}已排队';
+    case 'awaiting_approval':
+      return '${_jobLabel(job.type)}等待审批';
+    case 'dispatching':
+      return '${_jobLabel(job.type)}调度中';
+    case 'retrying':
+      return '${_jobLabel(job.type)}重试中';
     case 'running':
       return '${_jobLabel(job.type)}运行中';
     case 'succeeded':
@@ -40,6 +46,32 @@ String buildJobEventMessage(JobRecord job, JobEvent event) {
 
   final jobLabel = _jobLabel(job.type);
   switch (event.phase) {
+    case 'approval':
+      return '等待审批';
+    case 'cancel':
+      return '取消请求';
+    case 'fetch_external_data':
+      return '抓取外部数据';
+    case 'prepare_dataset':
+      return '准备数据集';
+    case 'profile_dataset':
+      return '生成数据画像';
+    case 'run_quality_checks':
+      return '执行质量检查';
+    case 'run_stat_tests':
+      return '执行统计检验';
+    case 'train_forecast_model':
+      return '训练预测模型';
+    case 'evaluate_model':
+      return '评估模型';
+    case 'optimize_schedule':
+      return '优化调度';
+    case 'generate_report':
+      return '生成报告';
+    case 'publish_artifacts':
+      return '发布产物';
+    case 'ingest_knowledge_base':
+      return '知识入库';
     case 'queued':
       return '$jobLabel已排队';
     case 'started':
@@ -172,6 +204,18 @@ String? _translateKnownJobMessage(JobRecord job, String message) {
   if (normalized.contains('running analysis')) {
     return '启动分析任务';
   }
+  if (normalized.contains('operation approved')) {
+    return '任务已批准执行';
+  }
+  if (normalized.contains('operation rejected')) {
+    return '任务已被拒绝';
+  }
+  if (normalized.contains('cancellation requested')) {
+    return '已请求取消任务';
+  }
+  if (normalized.contains('artifact published')) {
+    return '产物已发布';
+  }
 
   if (normalized == 'running') {
     return '${_jobLabel(job.type)}运行中';
@@ -190,6 +234,10 @@ String _jobLabel(String type) {
       return '训练任务';
     case 'rag_ingest':
       return '知识库任务';
+    case 'fetch_data':
+      return '抓取任务';
+    case 'train_model':
+      return '重训任务';
     default:
       return '任务';
   }
@@ -210,7 +258,9 @@ bool _isGenericStatusMessage(String status, String message) {
       normalizedMessage == 'job completed' ||
       normalizedMessage == 'job queued' ||
       normalizedMessage == 'job failed' ||
-      normalizedMessage == 'job cancelled';
+      normalizedMessage == 'job cancelled' ||
+      normalizedMessage == 'operation completed' ||
+      normalizedMessage == 'operation created';
 }
 
 bool _isGenericEventMessage(JobEvent event, String message) {
@@ -220,5 +270,7 @@ bool _isGenericEventMessage(JobEvent event, String message) {
       normalizedMessage == 'job completed' ||
       normalizedMessage == 'job queued' ||
       normalizedMessage == 'job failed' ||
-      normalizedMessage == 'job cancelled';
+      normalizedMessage == 'job cancelled' ||
+      normalizedMessage == 'operation completed' ||
+      normalizedMessage == 'operation created';
 }

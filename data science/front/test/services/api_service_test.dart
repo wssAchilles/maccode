@@ -135,6 +135,86 @@ void main() {
     });
   });
 
+  group('ApiService operations API', () {
+    test('createOperation posts control-plane payload to operations endpoint', () async {
+      late http.Request capturedRequest;
+
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient((request) async {
+          capturedRequest = request;
+          return http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'job_id': 'op-1',
+                'operation_id': 'op-1',
+                'type': 'analysis',
+                'status': 'queued',
+                'progress': 0,
+                'requested_by': 'tester',
+                'attempt_count': 0,
+                'max_attempts': 3,
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final result = await ApiService.createOperation(
+        type: 'analysis',
+        input: const {'storage_path': 'uploads/data.csv'},
+        controlTaskId: 'analysis_manual',
+        approvalPolicy: const {'required': false, 'mode': 'auto'},
+        metadata: const {'source': 'test'},
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+      expect(capturedRequest.url.path, '/api/operations');
+      expect(body['type'], 'analysis');
+      expect(body['input']['storage_path'], 'uploads/data.csv');
+      expect(body['control_task_id'], 'analysis_manual');
+      expect(body['approval_policy']['mode'], 'auto');
+      expect(body['metadata']['source'], 'test');
+      expect(result['operation_id'], 'op-1');
+    });
+
+    test('getOperationEvents unwraps event list from operations endpoint', () async {
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'events': [
+                  {
+                    'type': 'step.started',
+                    'phase': 'prepare_dataset',
+                    'status': 'running',
+                    'message': 'Preparing dataset',
+                    'progress': 25,
+                  },
+                ],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+
+      final events = await ApiService.getOperationEvents('op-1');
+
+      expect(events, hasLength(1));
+      expect(events.single['type'], 'step.started');
+      expect(events.single['phase'], 'prepare_dataset');
+    });
+  });
+
   test(
     'throws unauthenticated error when test token provider returns null',
     () async {
