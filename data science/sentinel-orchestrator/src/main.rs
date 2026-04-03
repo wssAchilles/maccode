@@ -3,12 +3,15 @@ mod handlers;
 mod proxy;
 
 use anyhow::{Context, Result};
-use axum::{routing::{get, post}, Router};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use config::{AppConfig, AppState};
 use handlers::{
-    approve_operation, cancel_operation, dispatch_operation, get_operation,
-    get_operation_events, get_control_task, healthz, list_control_tasks,
-    retry_operation, run_control_task, stream_operation, update_control_task,
+    approve_operation, cancel_operation, dispatch_operation, get_control_task, get_operation,
+    get_operation_events, healthz, list_control_tasks, retry_operation, run_control_task,
+    stream_operation, update_control_task,
 };
 use reqwest::Client;
 use std::sync::Arc;
@@ -38,16 +41,40 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .route("/healthz", get(healthz))
-        .route("/internal/operations/{operation_id}/dispatch", post(dispatch_operation))
-        .route("/internal/operations/{operation_id}/cancel", post(cancel_operation))
-        .route("/internal/operations/{operation_id}/retry", post(retry_operation))
-        .route("/internal/operations/{operation_id}/approve", post(approve_operation))
+        .route(
+            "/internal/operations/{operation_id}/dispatch",
+            post(dispatch_operation),
+        )
+        .route(
+            "/internal/operations/{operation_id}/cancel",
+            post(cancel_operation),
+        )
+        .route(
+            "/internal/operations/{operation_id}/retry",
+            post(retry_operation),
+        )
+        .route(
+            "/internal/operations/{operation_id}/approve",
+            post(approve_operation),
+        )
         .route("/internal/operations/{operation_id}", get(get_operation))
-        .route("/internal/operations/{operation_id}/events", get(get_operation_events))
-        .route("/internal/operations/{operation_id}/stream", get(stream_operation))
+        .route(
+            "/internal/operations/{operation_id}/events",
+            get(get_operation_events),
+        )
+        .route(
+            "/internal/operations/{operation_id}/stream",
+            get(stream_operation),
+        )
         .route("/internal/control-tasks", get(list_control_tasks))
-        .route("/internal/control-tasks/{control_task_id}", get(get_control_task).patch(update_control_task))
-        .route("/internal/control-tasks/{control_task_id}/run", post(run_control_task))
+        .route(
+            "/internal/control-tasks/{control_task_id}",
+            get(get_control_task).patch(update_control_task),
+        )
+        .route(
+            "/internal/control-tasks/{control_task_id}/run",
+            post(run_control_task),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
@@ -55,7 +82,10 @@ async fn main() -> Result<()> {
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
         .context("failed to bind sentinel orchestrator")?;
-    info!("sentinel orchestrator listening on {}", listener.local_addr()?);
+    info!(
+        "sentinel orchestrator listening on {}",
+        listener.local_addr()?
+    );
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
@@ -72,7 +102,7 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        use tokio::signal::unix::{signal, SignalKind};
+        use tokio::signal::unix::{SignalKind, signal};
 
         match signal(SignalKind::terminate()) {
             Ok(mut signal) => {

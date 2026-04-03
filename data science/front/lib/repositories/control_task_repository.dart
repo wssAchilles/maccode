@@ -30,6 +30,15 @@ abstract class ControlTaskRepository {
     String controlTaskId, {
     required Map<String, dynamic> approvalPolicy,
   });
+
+  Future<ControlTaskRecord> updateControlTaskDefinition(
+    String controlTaskId, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  });
 }
 
 class ApiControlTaskRepository implements ControlTaskRepository {
@@ -91,6 +100,26 @@ class ApiControlTaskRepository implements ControlTaskRepository {
     final payload = await ApiService.setControlTaskApprovalPolicy(
       controlTaskId,
       approvalPolicy: approvalPolicy,
+    );
+    return ControlTaskRecord.fromJson(payload);
+  }
+
+  @override
+  Future<ControlTaskRecord> updateControlTaskDefinition(
+    String controlTaskId, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  }) async {
+    final payload = await ApiService.updateControlTaskDefinition(
+      controlTaskId,
+      schedule: schedule,
+      owner: owner,
+      dependencies: dependencies,
+      approvalPolicy: approvalPolicy,
+      defaultInput: defaultInput,
     );
     return ControlTaskRecord.fromJson(payload);
   }

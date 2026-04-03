@@ -74,6 +74,9 @@ export function WorkbenchShell({ auth }: Props) {
     return auth.user.email ?? auth.user.displayName ?? auth.user.uid
   }, [auth.user])
   const healthCards = buildHealthCards(domainStatus, t)
+  const readyCount = healthCards.filter((card) => card.state === 'ready').length
+  const attentionCount = healthCards.filter((card) => card.state === 'degraded' || card.state === 'error').length
+  const loadingCount = healthCards.filter((card) => card.state === 'loading').length
   const workspaceIndex = WORKSPACE_MODELS.findIndex((item) => item.id === workspace)
   const previousWorkspaceIndex = useRef(workspaceIndex)
   const [workspaceDirection, setWorkspaceDirection] = useState<'forward' | 'backward'>('forward')
@@ -172,50 +175,75 @@ export function WorkbenchShell({ auth }: Props) {
           </div>
         </div>
 
-        <div className="wb-status-strip">
-          {healthCards.map((card, index) => (
-            <RevealGroup key={card.id} revealIndex={index} className="ss-shell">
-              <MotionSurface className="ss-surface" mode="panel">
-                <GlassPanel className="ss-card" tone="subtle">
-                  <div className="ss-head">
-                    <div>
-                      <p className="subtle-label">{card.title}</p>
-                      <p className="ss-meta">{card.staleLabel}</p>
+        <div className="wb-strip-shell">
+          <div className="wb-strip-head">
+            <div>
+              <p className="subtle-label">{t('shell.status')}</p>
+              <p className="wb-strip-summary">
+                {readyCount} {t('shell.ready')} · {attentionCount} {t('shell.attention')}
+                {loadingCount > 0 ? ` · ${loadingCount} ${t('shell.loading')}` : ''}
+              </p>
+            </div>
+          </div>
+          <div className="wb-status-strip">
+            {healthCards.map((card, index) => (
+              <RevealGroup key={card.id} revealIndex={index} className="ss-shell">
+                <MotionSurface className="ss-surface" mode="panel">
+                  <GlassPanel className="ss-card" tone="subtle">
+                    <div className="ss-head">
+                      <div>
+                        <p className="subtle-label">{card.title}</p>
+                        <p className="ss-meta">{card.staleLabel}</p>
+                      </div>
+                      <StatusPill state={card.state} label={card.stateLabel} compact />
                     </div>
-                    <StatusPill state={card.state} label={card.stateLabel} compact />
-                  </div>
-                  <p className="ss-updated">{card.updatedAt}</p>
-                </GlassPanel>
-              </MotionSurface>
-            </RevealGroup>
-          ))}
+                    <p className="ss-updated">{card.updatedAt}</p>
+                  </GlassPanel>
+                </MotionSurface>
+              </RevealGroup>
+            ))}
+          </div>
         </div>
       </GlassPanel>
 
-      <nav
-        className="ws-nav"
-        aria-label={t('workspace.nav')}
-        style={{ '--ws-nav-index': String(workspaceIndex) } as CSSProperties}
-      >
-        {WORKSPACE_MODELS.map((item, index) => (
-          <RevealGroup key={item.id} revealIndex={index} className="ws-nav-shell">
-            <MotionSurface className="ws-nav-surface" mode="button">
-              <button
-                type="button"
-                className={workspace === item.id ? 'ws-nav-button ws-nav-button-active' : 'ws-nav-button'}
-                onClick={() => handleWorkspaceChange(item.id)}
-              >
-                <span className="subtle-label">0{index + 1}</span>
-                <span>
-                  <span className="ws-nav-title">{t(item.titleKey)}</span>
-                  <span className="ws-nav-description">{t(item.descriptionKey)}</span>
-                </span>
-                <span className="ws-nav-pulse" aria-hidden="true" />
-              </button>
-            </MotionSurface>
-          </RevealGroup>
-        ))}
-      </nav>
+      <div className="ws-nav-shell-block">
+        <div className="ws-nav-head">
+          <div>
+            <p className="subtle-label">{t('shell.navRail')}</p>
+            <p className="wb-strip-summary">
+              {t(WORKSPACE_MODELS[workspaceIndex].titleKey)} · {t(WORKSPACE_MODELS[workspaceIndex].descriptionKey)}
+            </p>
+          </div>
+        </div>
+        <nav
+          className="ws-nav"
+          aria-label={t('workspace.nav')}
+          style={{ '--ws-nav-index': String(workspaceIndex) } as CSSProperties}
+        >
+          {WORKSPACE_MODELS.map((item, index) => (
+            <RevealGroup key={item.id} revealIndex={index} className="ws-nav-shell">
+              <MotionSurface className="ws-nav-surface" mode="button">
+                <button
+                  type="button"
+                  className={workspace === item.id ? 'ws-nav-button ws-nav-button-active' : 'ws-nav-button'}
+                  onClick={() => handleWorkspaceChange(item.id)}
+                >
+                  <span className="subtle-label">0{index + 1}</span>
+                  <span>
+                    <span className="ws-nav-title">{t(item.titleKey)}</span>
+                    <span
+                      className={workspace === item.id ? 'ws-nav-description ws-nav-description-active' : 'ws-nav-description'}
+                    >
+                      {t(item.descriptionKey)}
+                    </span>
+                  </span>
+                  <span className="ws-nav-pulse" aria-hidden="true" />
+                </button>
+              </MotionSurface>
+            </RevealGroup>
+          ))}
+        </nav>
+      </div>
 
       <section className="ws-stage" data-workspace={workspace} data-phase={shellPhase} data-direction={workspaceDirection}>
         <MotionBackdrop accent={shellAccent} intensity="stage" className="ws-stage-backdrop" />

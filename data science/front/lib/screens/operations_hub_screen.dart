@@ -18,6 +18,7 @@ import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/control_task_board.dart';
+import '../widgets/operations/control_task_edit_dialog.dart';
 import '../widgets/operations/dataset_asset_card.dart';
 import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/duty_section_block.dart';
@@ -160,7 +161,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
               ? '已创建待审批运行: ${task.title}'
               : '已触发规划任务: ${task.title}',
         ),
-        backgroundColor: awaitingApproval ? AppColors.warning : AppColors.success,
+        backgroundColor: awaitingApproval
+            ? AppColors.warning
+            : AppColors.success,
       ),
     );
   }
@@ -190,8 +193,12 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(updated.enabled ? '已恢复规划任务: ${task.title}' : '已暂停规划任务: ${task.title}'),
-        backgroundColor: updated.enabled ? AppColors.success : AppColors.warning,
+        content: Text(
+          updated.enabled ? '已恢复规划任务: ${task.title}' : '已暂停规划任务: ${task.title}',
+        ),
+        backgroundColor: updated.enabled
+            ? AppColors.success
+            : AppColors.warning,
       ),
     );
   }
@@ -233,6 +240,46 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           nextRequired ? '已切换为审批执行: ${task.title}' : '已切换为自动执行: ${task.title}',
         ),
         backgroundColor: nextRequired ? AppColors.warning : AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _editControlTaskDefinition(ControlTaskRecord task) async {
+    final viewModel = widget.controlTaskViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final draft = await showControlTaskEditDialog(context, task);
+    if (!mounted || draft == null) {
+      return;
+    }
+
+    final updated = await viewModel.updateControlTaskDefinition(
+      task,
+      schedule: draft.schedule,
+      owner: draft.owner,
+      dependencies: draft.dependencies,
+      approvalPolicy: draft.approvalPolicy,
+      defaultInput: draft.defaultInput,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      final errorMessage = viewModel.errorMessage ?? '更新规划任务定义失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('已更新规划任务定义: ${task.title}'),
+        backgroundColor: AppColors.success,
       ),
     );
   }
@@ -461,8 +508,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           children: [
             DutyContextBoard(
               title: '值班控制板',
-              description:
-                  '驾驶舱摘要暂时不可用，页面已切换到降级模式。你仍然可以继续进入主工作台排查问题。',
+              description: '驾驶舱摘要暂时不可用，页面已切换到降级模式。你仍然可以继续进入主工作台排查问题。',
               icon: Icons.warning_amber_rounded,
               accent: AppColors.warning,
               metrics: const [
@@ -519,8 +565,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
               alert: DashboardAlert(
                 severity: 'warning',
                 title: '驾驶舱已进入恢复模式',
-                message:
-                    '当前无法加载统一摘要，但主工作台和审计入口仍可访问。优先重试摘要，或直接进入具体工作台继续排障。',
+                message: '当前无法加载统一摘要，但主工作台和审计入口仍可访问。优先重试摘要，或直接进入具体工作台继续排障。',
               ),
             ),
           ],
@@ -550,7 +595,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final degradedSystems = safeSummary.systemStatus
         .where((item) => item.status != 'healthy')
         .length;
-    final cardFactValue = buildDutyContextCardValue(focusChain?.cardTargetLabel);
+    final cardFactValue = buildDutyContextCardValue(
+      focusChain?.cardTargetLabel,
+    );
     final incidentFactValue = buildDutyContextIncidentValue(
       focusChain?.incidentTargetLabel,
     );
@@ -1045,6 +1092,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             onToggleTask: _toggleControlTask,
             isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
             onToggleApproval: _toggleControlTaskApproval,
+            onEditDefinition: _editControlTaskDefinition,
           ),
         ],
         const SizedBox(height: 20),

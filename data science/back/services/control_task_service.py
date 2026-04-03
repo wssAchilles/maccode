@@ -11,10 +11,19 @@ from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 from config import Config
 from services.control_task_projection import serialize_control_task
 from services.operation_policies import default_approval_policy
+from services.control_task_validation import (
+    normalize_approval_policy,
+    normalize_dependencies,
+    normalize_owner,
+    normalize_schedule,
+)
 
 
 class ControlTaskBackendUnavailableError(RuntimeError):
     """Raised when the configured control-task backend is unavailable."""
+
+
+_UNSET = object()
 
 
 class ControlTaskService:
@@ -77,12 +86,14 @@ class ControlTaskService:
                 'kind': kind,
                 'operation_type': operation_type or current.get('operation_type'),
                 'title': title,
-                'schedule': schedule,
+                'schedule': normalize_schedule(schedule),
                 'default_input': default_input or {},
-                'dependencies': list(dependencies or ()),
-                'approval_policy': approval_policy or default_approval_policy(False),
+                'dependencies': normalize_dependencies(dependencies),
+                'approval_policy': normalize_approval_policy(
+                    approval_policy or default_approval_policy(False),
+                ),
                 'enabled': enabled,
-                'owner': owner,
+                'owner': normalize_owner(owner),
                 'updated_at': SERVER_TIMESTAMP,
             }
             if not snapshot.exists:
@@ -115,6 +126,10 @@ class ControlTaskService:
         *,
         enabled: Optional[bool] = None,
         approval_policy: Optional[Dict[str, Any]] = None,
+        dependencies: Any = _UNSET,
+        schedule: Any = _UNSET,
+        owner: Any = _UNSET,
+        default_input: Any = _UNSET,
     ) -> Optional[Dict[str, Any]]:
         try:
             document = cls._collection().document(control_task_id)
@@ -128,8 +143,25 @@ class ControlTaskService:
                 changes['enabled'] = enabled
                 updated['enabled'] = enabled
             if approval_policy is not None:
-                changes['approval_policy'] = dict(approval_policy)
-                updated['approval_policy'] = dict(approval_policy)
+                normalized_policy = normalize_approval_policy(approval_policy)
+                changes['approval_policy'] = normalized_policy
+                updated['approval_policy'] = normalized_policy
+            if dependencies is not _UNSET:
+                normalized_dependencies = normalize_dependencies(dependencies)
+                changes['dependencies'] = normalized_dependencies
+                updated['dependencies'] = normalized_dependencies
+            if schedule is not _UNSET:
+                normalized_schedule = normalize_schedule(schedule)
+                changes['schedule'] = normalized_schedule
+                updated['schedule'] = normalized_schedule
+            if owner is not _UNSET:
+                normalized_owner = normalize_owner(owner)
+                changes['owner'] = normalized_owner
+                updated['owner'] = normalized_owner
+            if default_input is not _UNSET:
+                normalized_default_input = dict(default_input or {})
+                changes['default_input'] = normalized_default_input
+                updated['default_input'] = normalized_default_input
 
             if len(changes) == 1:
                 return serialize_control_task(updated, control_task_id=control_task_id)
@@ -139,7 +171,15 @@ class ControlTaskService:
             if enabled is not None:
                 updated['enabled'] = enabled
             if approval_policy is not None:
-                updated['approval_policy'] = dict(approval_policy)
+                updated['approval_policy'] = normalize_approval_policy(approval_policy)
+            if dependencies is not _UNSET:
+                updated['dependencies'] = normalize_dependencies(dependencies)
+            if schedule is not _UNSET:
+                updated['schedule'] = normalize_schedule(schedule)
+            if owner is not _UNSET:
+                updated['owner'] = normalize_owner(owner)
+            if default_input is not _UNSET:
+                updated['default_input'] = dict(default_input or {})
             updated['updated_at'] = datetime.now(timezone.utc).isoformat()
             return serialize_control_task(updated, control_task_id=control_task_id)
         except Exception as exc:

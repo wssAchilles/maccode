@@ -25,8 +25,10 @@ class ControlTaskViewModel extends ChangeNotifier {
   List<ControlTaskRecord> get tasks => List.unmodifiable(_tasks);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool isRunningTask(String controlTaskId) => _runningTaskIds.contains(controlTaskId);
-  bool isUpdatingTask(String controlTaskId) => _updatingTaskIds.contains(controlTaskId);
+  bool isRunningTask(String controlTaskId) =>
+      _runningTaskIds.contains(controlTaskId);
+  bool isUpdatingTask(String controlTaskId) =>
+      _updatingTaskIds.contains(controlTaskId);
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -148,6 +150,46 @@ class ControlTaskViewModel extends ChangeNotifier {
       return updated;
     } catch (e) {
       _errorMessage = '更新规划任务审批策略失败: ${_readableErrorMessage(e)}';
+      _notifySafely();
+      return null;
+    } finally {
+      _updatingTaskIds.remove(task.id);
+      _notifySafely();
+    }
+  }
+
+  Future<ControlTaskRecord?> updateControlTaskDefinition(
+    ControlTaskRecord task, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  }) async {
+    if (_updatingTaskIds.contains(task.id)) {
+      return null;
+    }
+
+    _updatingTaskIds.add(task.id);
+    _errorMessage = null;
+    _notifySafely();
+
+    try {
+      final updated = await _repository.updateControlTaskDefinition(
+        task.id,
+        schedule: schedule,
+        owner: owner,
+        dependencies: dependencies,
+        approvalPolicy: approvalPolicy,
+        defaultInput: defaultInput,
+      );
+      _tasks = _tasks
+          .map((item) => item.id == updated.id ? updated : item)
+          .toList(growable: false);
+      _notifySafely();
+      return updated;
+    } catch (e) {
+      _errorMessage = '更新规划任务定义失败: ${_readableErrorMessage(e)}';
       _notifySafely();
       return null;
     } finally {

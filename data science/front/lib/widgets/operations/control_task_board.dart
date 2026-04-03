@@ -19,6 +19,7 @@ class ControlTaskBoard extends StatelessWidget {
     required this.onToggleTask,
     required this.isTaskUpdating,
     required this.onToggleApproval,
+    required this.onEditDefinition,
     this.errorMessage,
   });
 
@@ -31,6 +32,7 @@ class ControlTaskBoard extends StatelessWidget {
   final ValueChanged<ControlTaskRecord> onToggleTask;
   final bool Function(String controlTaskId) isTaskUpdating;
   final ValueChanged<ControlTaskRecord> onToggleApproval;
+  final ValueChanged<ControlTaskRecord> onEditDefinition;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +66,7 @@ class ControlTaskBoard extends StatelessWidget {
                     onRunTask: () => onRunTask(tasks[i]),
                     onToggleTask: () => onToggleTask(tasks[i]),
                     onToggleApproval: () => onToggleApproval(tasks[i]),
+                    onEditDefinition: () => onEditDefinition(tasks[i]),
                   ),
                   if (i < tasks.length - 1) const SizedBox(height: 12),
                 ],
@@ -83,6 +86,7 @@ class _ControlTaskTile extends StatelessWidget {
     required this.onRunTask,
     required this.onToggleTask,
     required this.onToggleApproval,
+    required this.onEditDefinition,
   });
 
   final ControlTaskRecord task;
@@ -91,11 +95,15 @@ class _ControlTaskTile extends StatelessWidget {
   final VoidCallback onRunTask;
   final VoidCallback onToggleTask;
   final VoidCallback onToggleApproval;
+  final VoidCallback onEditDefinition;
 
   @override
   Widget build(BuildContext context) {
     final approvalMode = (task.approvalPolicy['mode'] ?? 'auto').toString();
     final requiredApproval = task.approvalPolicy['required'] == true;
+    final approvalReason = (task.approvalPolicy['reason'] ?? '')
+        .toString()
+        .trim();
     final schedule = task.schedule?.trim();
     final dependencyLabel = task.dependencies.isEmpty
         ? '无依赖'
@@ -127,7 +135,9 @@ class _ControlTaskTile extends StatelessWidget {
               const SizedBox(width: 12),
               _Badge(
                 label: task.enabled ? 'ACTIVE' : 'PAUSED',
-                foreground: task.enabled ? AppColors.success : AppColors.warning,
+                foreground: task.enabled
+                    ? AppColors.success
+                    : AppColors.warning,
                 background: task.enabled
                     ? AppColors.successLight
                     : AppColors.warningLight,
@@ -163,18 +173,38 @@ class _ControlTaskTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _DetailRow(label: '调度', value: schedule == null || schedule.isEmpty ? '手动触发' : schedule),
+          _DetailRow(
+            label: '调度',
+            value:
+                schedule == null ||
+                    schedule.isEmpty ||
+                    schedule.toLowerCase() == 'manual'
+                ? '手动触发'
+                : schedule,
+          ),
           if (task.operationType.isNotEmpty)
             _DetailRow(label: '运行类型', value: task.operationType),
-          _DetailRow(label: '责任人', value: task.owner.isEmpty ? 'system' : task.owner),
+          _DetailRow(
+            label: '责任人',
+            value: task.owner.isEmpty ? 'system' : task.owner,
+          ),
           _DetailRow(
             label: '默认输入',
             value: task.defaultInput.isEmpty
                 ? '无'
                 : task.defaultInput.keys.take(3).join(' / '),
           ),
+          if (task.dependencies.isNotEmpty)
+            _DetailRow(
+              label: '依赖',
+              value: task.dependencies.take(3).join(' / '),
+            ),
+          if (approvalReason.isNotEmpty)
+            _DetailRow(label: '审批原因', value: approvalReason),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
               FilledButton.tonalIcon(
                 onPressed: task.enabled && !isRunning ? onRunTask : null,
@@ -187,7 +217,6 @@ class _ControlTaskTile extends StatelessWidget {
                     : const Icon(Icons.play_arrow_rounded),
                 label: Text(isRunning ? '触发中' : '立即运行'),
               ),
-              const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: !isUpdating ? onToggleTask : null,
                 icon: isUpdating
@@ -203,7 +232,6 @@ class _ControlTaskTile extends StatelessWidget {
                       ),
                 label: Text(isUpdating ? '更新中' : (task.enabled ? '暂停' : '恢复')),
               ),
-              const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: !isUpdating ? onToggleApproval : null,
                 icon: Icon(
@@ -212,10 +240,13 @@ class _ControlTaskTile extends StatelessWidget {
                       : Icons.bolt_outlined,
                 ),
                 label: Text(
-                  isUpdating
-                      ? '更新中'
-                      : (requiredApproval ? '改为自动' : '改为审批'),
+                  isUpdating ? '更新中' : (requiredApproval ? '改为自动' : '改为审批'),
                 ),
+              ),
+              OutlinedButton.icon(
+                onPressed: !isUpdating ? onEditDefinition : null,
+                icon: const Icon(Icons.tune_rounded),
+                label: Text(isUpdating ? '更新中' : '编辑定义'),
               ),
             ],
           ),
@@ -303,12 +334,18 @@ class _InfoBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.sync_problem_rounded, color: AppColors.warning, size: 18),
+          const Icon(
+            Icons.sync_problem_rounded,
+            color: AppColors.warning,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -334,7 +371,9 @@ class _EmptyState extends StatelessWidget {
       ),
       child: Text(
         '当前暂无规划任务定义。',
-        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }

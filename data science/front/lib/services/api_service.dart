@@ -122,6 +122,22 @@ class ApiService {
     approvalPolicy: approvalPolicy,
   );
 
+  static Future<Map<String, dynamic>> updateControlTaskDefinition(
+    String controlTaskId, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  }) => _updateControlTaskDefinition(
+    controlTaskId,
+    schedule: schedule,
+    owner: owner,
+    dependencies: dependencies,
+    approvalPolicy: approvalPolicy,
+    defaultInput: defaultInput,
+  );
+
   static Future<Map<String, dynamic>> getJob(String jobId) => _getJob(jobId);
 
   static Future<Map<String, dynamic>> retryJob(String jobId) =>
@@ -167,11 +183,7 @@ class ApiService {
     String operationId, {
     required bool approved,
     String? message,
-  }) => _approveOperation(
-    operationId,
-    approved: approved,
-    message: message,
-  );
+  }) => _approveOperation(operationId, approved: approved, message: message);
 
   static Stream<JobStreamFrame> streamOperation(
     String operationId, {

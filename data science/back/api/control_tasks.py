@@ -17,6 +17,7 @@ from services.control_task_service import (
     ControlTaskBackendUnavailableError,
     ControlTaskService,
 )
+from services.control_task_validation import ControlTaskValidationError
 from services.firebase_service import require_auth
 from services.operation_service import OperationService
 from utils.responses import error_response, success_response
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 control_tasks_bp = Blueprint('control_tasks', __name__, url_prefix='/api/control-tasks')
 internal_control_tasks_bp = Blueprint('internal_control_tasks', __name__)
+_UNSET = object()
 
 
 def _parse_bool_query(value: str | None):
@@ -42,6 +44,86 @@ def _validate_internal_token() -> bool:
     if current_app.config.get('DEBUG') or current_app.config.get('TESTING'):
         return True
     return request.headers.get('X-Internal-Job-Token') == current_app.config.get('INTERNAL_JOB_TOKEN')
+
+
+def _parse_control_task_update_payload(payload: dict):
+    updates = {
+        'enabled': None,
+        'approval_policy': None,
+        'dependencies': _UNSET,
+        'schedule': _UNSET,
+        'owner': _UNSET,
+        'default_input': _UNSET,
+    }
+
+    if 'enabled' in payload:
+        updates['enabled'] = bool(payload.get('enabled'))
+
+    if 'approval_policy' in payload:
+        if not isinstance(payload.get('approval_policy'), dict):
+            return None, error_response(
+                'CONTROL_TASK_UPDATE_INVALID',
+                'approval_policy 必须是对象',
+                status_code=400,
+            )
+        updates['approval_policy'] = dict(payload.get('approval_policy') or {})
+
+    if 'dependencies' in payload:
+        raw_dependencies = payload.get('dependencies')
+        if raw_dependencies is not None and not isinstance(raw_dependencies, list):
+            return None, error_response(
+                'CONTROL_TASK_UPDATE_INVALID',
+                'dependencies 必须是字符串数组或 null',
+                status_code=400,
+            )
+        updates['dependencies'] = list(raw_dependencies or [])
+
+    if 'schedule' in payload:
+        raw_schedule = payload.get('schedule')
+        if raw_schedule is not None and not isinstance(raw_schedule, str):
+            return None, error_response(
+                'CONTROL_TASK_UPDATE_INVALID',
+                'schedule 必须是字符串或 null',
+                status_code=400,
+            )
+        updates['schedule'] = raw_schedule
+
+    if 'owner' in payload:
+        raw_owner = payload.get('owner')
+        if raw_owner is not None and not isinstance(raw_owner, str):
+            return None, error_response(
+                'CONTROL_TASK_UPDATE_INVALID',
+                'owner 必须是字符串或 null',
+                status_code=400,
+            )
+        updates['owner'] = raw_owner
+
+    if 'default_input' in payload:
+        raw_default_input = payload.get('default_input')
+        if raw_default_input is not None and not isinstance(raw_default_input, dict):
+            return None, error_response(
+                'CONTROL_TASK_UPDATE_INVALID',
+                'default_input 必须是对象或 null',
+                status_code=400,
+            )
+        updates['default_input'] = dict(raw_default_input or {})
+
+    has_changes = (
+        updates['enabled'] is not None or
+        updates['approval_policy'] is not None or
+        updates['dependencies'] is not _UNSET or
+        updates['schedule'] is not _UNSET or
+        updates['owner'] is not _UNSET or
+        updates['default_input'] is not _UNSET
+    )
+    if not has_changes:
+        return None, error_response(
+            'CONTROL_TASK_UPDATE_INVALID',
+            '当前支持更新 enabled、approval_policy、dependencies、schedule、owner、default_input 字段',
+            status_code=400,
+        )
+
+    return updates, None
 
 
 @control_tasks_bp.route('', methods=['GET'])
@@ -89,27 +171,24 @@ def get_control_task(control_task_id: str):
 @rate_limit(max_requests=20, window_seconds=300)
 def update_control_task(control_task_id: str):
     payload = request.get_json() or {}
-    enabled = None
-    approval_policy = None
-    if 'enabled' in payload:
-        enabled = bool(payload.get('enabled'))
-    if isinstance(payload.get('approval_policy'), dict):
-        approval_policy = dict(payload.get('approval_policy'))
-    if enabled is None and approval_policy is None:
-        return error_response(
-            'CONTROL_TASK_UPDATE_INVALID',
-            '当前支持更新 enabled 或 approval_policy 字段',
-            status_code=400,
-        )
+    updates, error = _parse_control_task_update_payload(payload)
+    if error is not None:
+        return error
     try:
         task = ControlTaskService.update_control_task(
             control_task_id,
-            enabled=enabled,
-            approval_policy=approval_policy,
+            enabled=updates['enabled'],
+            approval_policy=updates['approval_policy'],
+            dependencies=updates['dependencies'],
+            schedule=updates['schedule'],
+            owner=updates['owner'],
+            default_input=updates['default_input'],
         )
     except ControlTaskBackendUnavailableError as exc:
         logger.warning('Control task backend unavailable while updating %s: %s', control_task_id, exc)
         return error_response('CONTROL_TASK_BACKEND_UNAVAILABLE', str(exc), status_code=503)
+    except ControlTaskValidationError as exc:
+        return error_response('CONTROL_TASK_UPDATE_INVALID', str(exc), status_code=400)
 
     if not task:
         return error_response('CONTROL_TASK_NOT_FOUND', '规划任务不存在', status_code=404)
@@ -217,6 +296,8 @@ def internal_get_control_task(control_task_id: str):
         task = ControlTaskService.get_control_task(control_task_id)
     except ControlTaskBackendUnavailableError as exc:
         return error_response('CONTROL_TASK_BACKEND_UNAVAILABLE', str(exc), status_code=503)
+    except ControlTaskValidationError as exc:
+        return error_response('CONTROL_TASK_UPDATE_INVALID', str(exc), status_code=400)
 
     if not task:
         return error_response('CONTROL_TASK_NOT_FOUND', '规划任务不存在', status_code=404)
@@ -229,24 +310,19 @@ def internal_update_control_task(control_task_id: str):
         return error_response('UNAUTHORIZED', 'Internal operation token missing', status_code=403)
 
     payload = request.get_json() or {}
-    enabled = None
-    approval_policy = None
-    if 'enabled' in payload:
-        enabled = bool(payload.get('enabled'))
-    if isinstance(payload.get('approval_policy'), dict):
-        approval_policy = dict(payload.get('approval_policy'))
-    if enabled is None and approval_policy is None:
-        return error_response(
-            'CONTROL_TASK_UPDATE_INVALID',
-            '当前支持更新 enabled 或 approval_policy 字段',
-            status_code=400,
-        )
+    updates, error = _parse_control_task_update_payload(payload)
+    if error is not None:
+        return error
 
     try:
         task = ControlTaskService.update_control_task(
             control_task_id,
-            enabled=enabled,
-            approval_policy=approval_policy,
+            enabled=updates['enabled'],
+            approval_policy=updates['approval_policy'],
+            dependencies=updates['dependencies'],
+            schedule=updates['schedule'],
+            owner=updates['owner'],
+            default_input=updates['default_input'],
         )
     except ControlTaskBackendUnavailableError as exc:
         return error_response('CONTROL_TASK_BACKEND_UNAVAILABLE', str(exc), status_code=503)

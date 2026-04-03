@@ -674,7 +674,7 @@ button {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ws-nav-gap);
-  margin: 18px 0 24px;
+  margin: 0 0 24px;
   padding-bottom: 8px;
 }
 
@@ -757,12 +757,52 @@ button {
   color: var(--t1);
   font-size: 0.92rem;
   line-height: 1.4;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translate3d(0, -2px, 0);
+  transition:
+    max-height var(--db) var(--ee),
+    opacity var(--db) ease-out,
+    transform var(--db) var(--ee);
+}
+
+.ws-nav-description-active,
+.ws-nav-button:hover .ws-nav-description,
+.ws-nav-button:focus-visible .ws-nav-description {
+  max-height: 2.8em;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .wb-status-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.wb-strip-shell,
+.ws-nav-shell-block {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.wb-strip-head,
+.ws-nav-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wb-strip-summary {
+  margin: 4px 0 0;
+  color: var(--t1);
+  font-size: 0.94rem;
+  line-height: 1.4;
 }
 
 .ss-card,
@@ -2823,6 +2863,10 @@ button {
     display: none;
   }
 
+  .ws-nav-shell-block {
+    display: none;
+  }
+
   .ws-mobile-nav {
     display: flex;
   }
@@ -3058,7 +3102,8 @@ button {
 }
 
 .wb-header-top,
-.wb-status-strip {
+.wb-strip-shell,
+.ws-nav-shell-block {
   position: relative;
   z-index: 1;
 }
@@ -3084,6 +3129,10 @@ button {
   gap: 6px;
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.ws-nav-button:not(.ws-nav-button-active) > :nth-child(2) {
+  align-content: center;
 }
 
 .ws-nav-pulse {

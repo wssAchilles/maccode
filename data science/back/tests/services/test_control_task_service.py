@@ -200,6 +200,39 @@ class ControlTaskServiceTestCase(unittest.TestCase):
         self.assertTrue(updated['approval_policy']['required'])
         self.assertEqual(updated['approval_policy']['mode'], 'manual')
 
+    def test_update_control_task_definition_fields(self):
+        TestControlTaskService.ensure_control_task(
+            control_task_id='train_model_daily',
+            kind='scheduler',
+            operation_type='train_model',
+            title='每日模型重训',
+            schedule='every day 04:00 UTC',
+            owner='system',
+            default_input={'window_days': 30},
+        )
+
+        updated = TestControlTaskService.update_control_task(
+            'train_model_daily',
+            dependencies=['dataset_ready', 'weather_ready'],
+            approval_policy={
+                'required': True,
+                'mode': 'manual',
+                'reason': '高成本重训需要审批',
+            },
+            schedule='every day 05:00 UTC',
+            owner='mlops',
+            default_input={'window_days': 60, 'retrain': True},
+        )
+
+        self.assertIsNotNone(updated)
+        self.assertEqual(updated['dependencies'], ['dataset_ready', 'weather_ready'])
+        self.assertTrue(updated['approval_policy']['required'])
+        self.assertEqual(updated['approval_policy']['reason'], '高成本重训需要审批')
+        self.assertEqual(updated['schedule'], 'every day 05:00 UTC')
+        self.assertEqual(updated['owner'], 'mlops')
+        self.assertEqual(updated['default_input']['window_days'], 60)
+        self.assertTrue(updated['default_input']['retrain'])
+
 
 if __name__ == '__main__':
     unittest.main()

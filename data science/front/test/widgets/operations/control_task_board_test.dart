@@ -33,6 +33,7 @@ void main() {
             onToggleTask: _onRun,
             isTaskUpdating: (_) => false,
             onToggleApproval: _onRun,
+            onEditDefinition: _onRun,
           ),
         ),
       ),
@@ -46,9 +47,12 @@ void main() {
     expect(find.text('立即运行'), findsOneWidget);
     expect(find.text('暂停'), findsOneWidget);
     expect(find.text('改为审批'), findsOneWidget);
+    expect(find.text('编辑定义'), findsOneWidget);
   });
 
-  testWidgets('ControlTaskBoard renders error banner and retry action', (tester) async {
+  testWidgets('ControlTaskBoard renders error banner and retry action', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
@@ -63,6 +67,7 @@ void main() {
             onToggleTask: _onRun,
             isTaskUpdating: (_) => false,
             onToggleApproval: _onRun,
+            onEditDefinition: _onRun,
           ),
         ),
       ),

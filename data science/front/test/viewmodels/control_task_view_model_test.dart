@@ -12,12 +12,14 @@ class _FakeControlTaskRepository implements ControlTaskRepository {
     this.error,
     this.updatedTask,
     this.approvalUpdatedTask,
+    this.definitionUpdatedTask,
   });
 
   final List<ControlTaskRecord> tasks;
   final Object? error;
   final ControlTaskRecord? updatedTask;
   final ControlTaskRecord? approvalUpdatedTask;
+  final ControlTaskRecord? definitionUpdatedTask;
 
   @override
   Future<ControlTaskRecord> getControlTask(String controlTaskId) async {
@@ -83,6 +85,33 @@ class _FakeControlTaskRepository implements ControlTaskRepository {
   }
 
   @override
+  Future<ControlTaskRecord> updateControlTaskDefinition(
+    String controlTaskId, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  }) async {
+    if (error != null) {
+      throw error!;
+    }
+    return definitionUpdatedTask ??
+        ControlTaskRecord(
+          id: controlTaskId,
+          kind: 'scheduler',
+          operationType: 'train_model',
+          title: '每日模型重训',
+          enabled: true,
+          schedule: schedule,
+          owner: owner ?? 'system',
+          dependencies: dependencies,
+          approvalPolicy: approvalPolicy,
+          defaultInput: defaultInput,
+        );
+  }
+
+  @override
   Future<List<ControlTaskRecord>> listControlTasks({
     String? kind,
     bool? enabled,
@@ -133,37 +162,40 @@ void main() {
     viewModel.dispose();
   });
 
-  test('runControlTask tracks in-flight state and returns launched operation', () async {
-    final viewModel = ControlTaskViewModel(
-      repository: _FakeControlTaskRepository(
-        tasks: const [
-          ControlTaskRecord(
-            id: 'train_model_daily',
-            kind: 'scheduler',
-            operationType: 'train_model',
-            title: '每日模型重训',
-          ),
-        ],
-      ),
-    );
+  test(
+    'runControlTask tracks in-flight state and returns launched operation',
+    () async {
+      final viewModel = ControlTaskViewModel(
+        repository: _FakeControlTaskRepository(
+          tasks: const [
+            ControlTaskRecord(
+              id: 'train_model_daily',
+              kind: 'scheduler',
+              operationType: 'train_model',
+              title: '每日模型重训',
+            ),
+          ],
+        ),
+      );
 
-    final task = viewModel.tasks.isEmpty
-        ? const ControlTaskRecord(
-            id: 'train_model_daily',
-            kind: 'scheduler',
-            operationType: 'train_model',
-            title: '每日模型重训',
-          )
-        : viewModel.tasks.first;
+      final task = viewModel.tasks.isEmpty
+          ? const ControlTaskRecord(
+              id: 'train_model_daily',
+              kind: 'scheduler',
+              operationType: 'train_model',
+              title: '每日模型重训',
+            )
+          : viewModel.tasks.first;
 
-    final operation = await viewModel.runControlTask(task);
+      final operation = await viewModel.runControlTask(task);
 
-    expect(operation, isNotNull);
-    expect(operation!.status, 'queued');
-    expect(viewModel.isRunningTask(task.id), isFalse);
-    expect(viewModel.errorMessage, isNull);
-    viewModel.dispose();
-  });
+      expect(operation, isNotNull);
+      expect(operation!.status, 'queued');
+      expect(viewModel.isRunningTask(task.id), isFalse);
+      expect(viewModel.errorMessage, isNull);
+      viewModel.dispose();
+    },
+  );
 
   test('setControlTaskEnabled updates local task projection', () async {
     final viewModel = ControlTaskViewModel(
@@ -237,4 +269,68 @@ void main() {
     expect(viewModel.errorMessage, isNull);
     viewModel.dispose();
   });
+
+  test(
+    'updateControlTaskDefinition updates local planning definition',
+    () async {
+      final viewModel = ControlTaskViewModel(
+        repository: _FakeControlTaskRepository(
+          tasks: const [
+            ControlTaskRecord(
+              id: 'train_model_daily',
+              kind: 'scheduler',
+              operationType: 'train_model',
+              title: '每日模型重训',
+              enabled: true,
+              schedule: 'every day 04:00 UTC',
+              owner: 'system',
+              defaultInput: {'window_days': 30},
+            ),
+          ],
+          definitionUpdatedTask: const ControlTaskRecord(
+            id: 'train_model_daily',
+            kind: 'scheduler',
+            operationType: 'train_model',
+            title: '每日模型重训',
+            enabled: true,
+            schedule: 'every day 05:00 UTC',
+            owner: 'mlops',
+            dependencies: ['dataset_ready', 'weather_ready'],
+            approvalPolicy: {
+              'required': true,
+              'mode': 'manual',
+              'reason': '高成本重训需要审批',
+            },
+            defaultInput: {'window_days': 60},
+          ),
+        ),
+      );
+
+      await viewModel.loadControlTasks();
+      final updated = await viewModel.updateControlTaskDefinition(
+        viewModel.tasks.first,
+        schedule: 'every day 05:00 UTC',
+        owner: 'mlops',
+        dependencies: const ['dataset_ready', 'weather_ready'],
+        approvalPolicy: const {
+          'required': true,
+          'mode': 'manual',
+          'reason': '高成本重训需要审批',
+        },
+        defaultInput: const {'window_days': 60},
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.schedule, 'every day 05:00 UTC');
+      expect(viewModel.tasks.first.owner, 'mlops');
+      expect(viewModel.tasks.first.dependencies, [
+        'dataset_ready',
+        'weather_ready',
+      ]);
+      expect(viewModel.tasks.first.approvalPolicy['reason'], '高成本重训需要审批');
+      expect(viewModel.tasks.first.defaultInput['window_days'], 60);
+      expect(viewModel.errorMessage, isNull);
+      viewModel.dispose();
+    },
+  );
 }

@@ -32,7 +32,6 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           <div className="ws-hero-side hero-side-shell">
             <div className="hero-side-head">
               <p className="subtle-label">{t('workspace.hero.readings')}</p>
-              <p className="panel-caption">{t('workspace.health.description')}</p>
             </div>
             <ServiceHealthPanel model={model.serviceHealthPanel} />
           </div>

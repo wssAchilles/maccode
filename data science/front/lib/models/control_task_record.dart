@@ -30,6 +30,36 @@ class ControlTaskRecord {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  ControlTaskRecord copyWith({
+    String? id,
+    String? kind,
+    String? operationType,
+    String? title,
+    String? schedule,
+    Map<String, dynamic>? defaultInput,
+    List<String>? dependencies,
+    Map<String, dynamic>? approvalPolicy,
+    bool? enabled,
+    String? owner,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return ControlTaskRecord(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      operationType: operationType ?? this.operationType,
+      title: title ?? this.title,
+      schedule: schedule ?? this.schedule,
+      defaultInput: defaultInput ?? this.defaultInput,
+      dependencies: dependencies ?? this.dependencies,
+      approvalPolicy: approvalPolicy ?? this.approvalPolicy,
+      enabled: enabled ?? this.enabled,
+      owner: owner ?? this.owner,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   factory ControlTaskRecord.fromJson(Map<String, dynamic> json) {
     return ControlTaskRecord(
       id: (json['id'] ?? '').toString(),

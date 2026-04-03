@@ -1,11 +1,11 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::Response,
-    Json,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::{
     config::AppState,
@@ -29,6 +29,10 @@ pub struct RunControlTaskRequest {
 pub struct UpdateControlTaskRequest {
     pub enabled: Option<bool>,
     pub approval_policy: Option<Value>,
+    pub dependencies: Option<Vec<String>>,
+    pub schedule: Option<String>,
+    pub owner: Option<String>,
+    pub default_input: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -50,14 +54,22 @@ pub async fn dispatch_operation(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_empty_post(&state, format!("/internal/operations/{operation_id}/dispatch")).await
+    proxy_empty_post(
+        &state,
+        format!("/internal/operations/{operation_id}/dispatch"),
+    )
+    .await
 }
 
 pub async fn cancel_operation(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_empty_post(&state, format!("/internal/operations/{operation_id}/cancel")).await
+    proxy_empty_post(
+        &state,
+        format!("/internal/operations/{operation_id}/cancel"),
+    )
+    .await
 }
 
 pub async fn retry_operation(
@@ -94,14 +106,22 @@ pub async fn get_operation_events(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_get(&state, format!("/internal/operations/{operation_id}/events")).await
+    proxy_get(
+        &state,
+        format!("/internal/operations/{operation_id}/events"),
+    )
+    .await
 }
 
 pub async fn stream_operation(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> Response {
-    proxy_sse_get(&state, format!("/internal/operations/{operation_id}/stream")).await
+    proxy_sse_get(
+        &state,
+        format!("/internal/operations/{operation_id}/stream"),
+    )
+    .await
 }
 
 pub async fn run_control_task(
@@ -143,6 +163,10 @@ pub async fn update_control_task(
         json!({
             "enabled": payload.enabled,
             "approval_policy": payload.approval_policy,
+            "dependencies": payload.dependencies,
+            "schedule": payload.schedule,
+            "owner": payload.owner,
+            "default_input": payload.default_input,
         }),
     )
     .await

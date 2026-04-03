@@ -67,7 +67,6 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           <div className="ws-hero-side hero-side-shell">
             <div className="hero-side-head">
               <p className="subtle-label">{t('workspace.hero.readings')}</p>
-              <p className="panel-caption">{t('workspace.overview.description')}</p>
             </div>
             <div className="metric-grid ws-hero-metrics">
               {model.metricTiles.map((tile, index) => (

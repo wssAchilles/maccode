@@ -74,3 +74,26 @@ Future<Map<String, dynamic>> _setControlTaskApprovalPolicy(
   );
   return _unwrapEnvelopeData(response, fallback: '更新规划任务审批策略失败');
 }
+
+Future<Map<String, dynamic>> _updateControlTaskDefinition(
+  String controlTaskId, {
+  String? schedule,
+  String? owner,
+  required List<String> dependencies,
+  required Map<String, dynamic> approvalPolicy,
+  required Map<String, dynamic> defaultInput,
+}) async {
+  final response = await _authorizedPatch(
+    _baseUrl,
+    '/api/control-tasks/$controlTaskId',
+    body: jsonEncode(<String, dynamic>{
+      'schedule': schedule,
+      'owner': owner,
+      'dependencies': dependencies,
+      'approval_policy': approvalPolicy,
+      'default_input': defaultInput,
+    }),
+    timeout: AppConstants.optimizationTimeout,
+  );
+  return _unwrapEnvelopeData(response, fallback: '更新规划任务定义失败');
+}

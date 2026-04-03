@@ -42,7 +42,6 @@ export function ExecutionWorkspace({ active = true }: Props) {
           <div className="ws-hero-side hero-side-shell">
             <div className="hero-side-head">
               <p className="subtle-label">{t('workspace.hero.readings')}</p>
-              <p className="panel-caption">{t('workspace.execution.description')}</p>
             </div>
             <div className="metric-grid ws-hero-metrics">
               {model.metricTiles.map((tile, index) => (

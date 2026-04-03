@@ -89,130 +89,139 @@ void main() {
       );
     });
 
-    test('askRagQuestion surfaces backend message when success=false', () async {
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient(
-          (_) async => http.Response(
-            jsonEncode(const {
-              'success': false,
-              'message': 'quota exceeded',
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
+    test(
+      'askRagQuestion surfaces backend message when success=false',
+      () async {
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient(
+            (_) async => http.Response(
+              jsonEncode(const {'success': false, 'message': 'quota exceeded'}),
+              200,
+              headers: {'content-type': 'application/json'},
+            ),
           ),
-        ),
-      );
+        );
 
-      await expectLater(
-        ApiService.askRagQuestion(question: 'hello'),
-        throwsA(
-          isA<ApiServiceException>().having(
-            (e) => e.message,
-            'message',
-            contains('quota exceeded'),
+        await expectLater(
+          ApiService.askRagQuestion(question: 'hello'),
+          throwsA(
+            isA<ApiServiceException>().having(
+              (e) => e.message,
+              'message',
+              contains('quota exceeded'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('runOptimization maps license failures even when body is plain text', () async {
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient((_) async => http.Response('license expired', 500)),
-      );
+    test(
+      'runOptimization maps license failures even when body is plain text',
+      () async {
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient((_) async => http.Response('license expired', 500)),
+        );
 
-      await expectLater(
-        ApiService.runOptimization(),
-        throwsA(
-          isA<ApiServiceException>().having(
-            (e) => e.message,
-            'message',
-            contains('许可证错误'),
+        await expectLater(
+          ApiService.runOptimization(),
+          throwsA(
+            isA<ApiServiceException>().having(
+              (e) => e.message,
+              'message',
+              contains('许可证错误'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   });
 
   group('ApiService operations API', () {
-    test('createOperation posts control-plane payload to operations endpoint', () async {
-      late http.Request capturedRequest;
+    test(
+      'createOperation posts control-plane payload to operations endpoint',
+      () async {
+        late http.Request capturedRequest;
 
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient((request) async {
-          capturedRequest = request;
-          return http.Response(
-            jsonEncode(const {
-              'success': true,
-              'data': {
-                'job_id': 'op-1',
-                'operation_id': 'op-1',
-                'type': 'analysis',
-                'status': 'queued',
-                'progress': 0,
-                'requested_by': 'tester',
-                'attempt_count': 0,
-                'max_attempts': 3,
-              },
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
-          );
-        }),
-      );
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(const {
+                'success': true,
+                'data': {
+                  'job_id': 'op-1',
+                  'operation_id': 'op-1',
+                  'type': 'analysis',
+                  'status': 'queued',
+                  'progress': 0,
+                  'requested_by': 'tester',
+                  'attempt_count': 0,
+                  'max_attempts': 3,
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        );
 
-      final result = await ApiService.createOperation(
-        type: 'analysis',
-        input: const {'storage_path': 'uploads/data.csv'},
-        controlTaskId: 'analysis_manual',
-        approvalPolicy: const {'required': false, 'mode': 'auto'},
-        metadata: const {'source': 'test'},
-      );
+        final result = await ApiService.createOperation(
+          type: 'analysis',
+          input: const {'storage_path': 'uploads/data.csv'},
+          controlTaskId: 'analysis_manual',
+          approvalPolicy: const {'required': false, 'mode': 'auto'},
+          metadata: const {'source': 'test'},
+        );
 
-      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+        final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
 
-      expect(capturedRequest.url.path, '/api/operations');
-      expect(body['type'], 'analysis');
-      expect(body['input']['storage_path'], 'uploads/data.csv');
-      expect(body['control_task_id'], 'analysis_manual');
-      expect(body['approval_policy']['mode'], 'auto');
-      expect(body['metadata']['source'], 'test');
-      expect(result['operation_id'], 'op-1');
-    });
+        expect(capturedRequest.url.path, '/api/operations');
+        expect(body['type'], 'analysis');
+        expect(body['input']['storage_path'], 'uploads/data.csv');
+        expect(body['control_task_id'], 'analysis_manual');
+        expect(body['approval_policy']['mode'], 'auto');
+        expect(body['metadata']['source'], 'test');
+        expect(result['operation_id'], 'op-1');
+      },
+    );
 
-    test('getOperationEvents unwraps event list from operations endpoint', () async {
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient(
-          (_) async => http.Response(
-            jsonEncode(const {
-              'success': true,
-              'data': {
-                'events': [
-                  {
-                    'type': 'step.started',
-                    'phase': 'prepare_dataset',
-                    'status': 'running',
-                    'message': 'Preparing dataset',
-                    'progress': 25,
-                  },
-                ],
-              },
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
+    test(
+      'getOperationEvents unwraps event list from operations endpoint',
+      () async {
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient(
+            (_) async => http.Response(
+              jsonEncode(const {
+                'success': true,
+                'data': {
+                  'events': [
+                    {
+                      'type': 'step.started',
+                      'phase': 'prepare_dataset',
+                      'status': 'running',
+                      'message': 'Preparing dataset',
+                      'progress': 25,
+                    },
+                  ],
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            ),
           ),
-        ),
-      );
+        );
 
-      final events = await ApiService.getOperationEvents('op-1');
+        final events = await ApiService.getOperationEvents('op-1');
 
-      expect(events, hasLength(1));
-      expect(events.single['type'], 'step.started');
-      expect(events.single['phase'], 'prepare_dataset');
-    });
+        expect(events, hasLength(1));
+        expect(events.single['type'], 'step.started');
+        expect(events.single['phase'], 'prepare_dataset');
+      },
+    );
   });
 
   group('ApiService control tasks API', () {
@@ -307,89 +316,158 @@ void main() {
 
       final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
 
-      expect(capturedRequest.url.path, '/api/control-tasks/train_model_daily/run');
+      expect(
+        capturedRequest.url.path,
+        '/api/control-tasks/train_model_daily/run',
+      );
       expect(body['trigger'], 'manual');
       expect(body['input']['n_estimators'], 200);
       expect(payload['operation_id'], 'op-9');
     });
 
-    test('setControlTaskEnabled patches enabled flag to planning endpoint', () async {
-      late http.Request capturedRequest;
+    test(
+      'setControlTaskEnabled patches enabled flag to planning endpoint',
+      () async {
+        late http.Request capturedRequest;
 
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient((request) async {
-          capturedRequest = request;
-          return http.Response(
-            jsonEncode(const {
-              'success': true,
-              'data': {
-                'id': 'train_model_daily',
-                'kind': 'scheduler',
-                'operation_type': 'train_model',
-                'title': '每日模型重训',
-                'enabled': false,
-              },
-            }),
-            202,
-            headers: {'content-type': 'application/json'},
-          );
-        }),
-      );
-
-      final payload = await ApiService.setControlTaskEnabled(
-        'train_model_daily',
-        enabled: false,
-      );
-
-      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
-
-      expect(capturedRequest.method, 'PATCH');
-      expect(capturedRequest.url.path, '/api/control-tasks/train_model_daily');
-      expect(body['enabled'], isFalse);
-      expect(payload['enabled'], isFalse);
-    });
-
-    test('setControlTaskApprovalPolicy patches approval policy to planning endpoint', () async {
-      late http.Request capturedRequest;
-
-      ApiService.setTokenProviderForTesting(() async => 'test-token');
-      ApiService.setHttpClientForTesting(
-        MockClient((request) async {
-          capturedRequest = request;
-          return http.Response(
-            jsonEncode(const {
-              'success': true,
-              'data': {
-                'id': 'train_model_daily',
-                'kind': 'scheduler',
-                'operation_type': 'train_model',
-                'title': '每日模型重训',
-                'enabled': true,
-                'approval_policy': {
-                  'required': true,
-                  'mode': 'manual',
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(const {
+                'success': true,
+                'data': {
+                  'id': 'train_model_daily',
+                  'kind': 'scheduler',
+                  'operation_type': 'train_model',
+                  'title': '每日模型重训',
+                  'enabled': false,
                 },
-              },
-            }),
-            202,
-            headers: {'content-type': 'application/json'},
-          );
-        }),
-      );
+              }),
+              202,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        );
 
-      final payload = await ApiService.setControlTaskApprovalPolicy(
-        'train_model_daily',
-        approvalPolicy: const {'required': true, 'mode': 'manual'},
-      );
+        final payload = await ApiService.setControlTaskEnabled(
+          'train_model_daily',
+          enabled: false,
+        );
 
-      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+        final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
 
-      expect(capturedRequest.method, 'PATCH');
-      expect(body['approval_policy']['required'], isTrue);
-      expect(body['approval_policy']['mode'], 'manual');
-      expect(payload['approval_policy']['mode'], 'manual');
-    });
+        expect(capturedRequest.method, 'PATCH');
+        expect(
+          capturedRequest.url.path,
+          '/api/control-tasks/train_model_daily',
+        );
+        expect(body['enabled'], isFalse);
+        expect(payload['enabled'], isFalse);
+      },
+    );
+
+    test(
+      'setControlTaskApprovalPolicy patches approval policy to planning endpoint',
+      () async {
+        late http.Request capturedRequest;
+
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(const {
+                'success': true,
+                'data': {
+                  'id': 'train_model_daily',
+                  'kind': 'scheduler',
+                  'operation_type': 'train_model',
+                  'title': '每日模型重训',
+                  'enabled': true,
+                  'approval_policy': {'required': true, 'mode': 'manual'},
+                },
+              }),
+              202,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        );
+
+        final payload = await ApiService.setControlTaskApprovalPolicy(
+          'train_model_daily',
+          approvalPolicy: const {'required': true, 'mode': 'manual'},
+        );
+
+        final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+        expect(capturedRequest.method, 'PATCH');
+        expect(body['approval_policy']['required'], isTrue);
+        expect(body['approval_policy']['mode'], 'manual');
+        expect(payload['approval_policy']['mode'], 'manual');
+      },
+    );
+
+    test(
+      'updateControlTaskDefinition patches schedule owner and default input',
+      () async {
+        late http.Request capturedRequest;
+
+        ApiService.setTokenProviderForTesting(() async => 'test-token');
+        ApiService.setHttpClientForTesting(
+          MockClient((request) async {
+            capturedRequest = request;
+            return http.Response(
+              jsonEncode(const {
+                'success': true,
+                'data': {
+                  'id': 'train_model_daily',
+                  'kind': 'scheduler',
+                  'operation_type': 'train_model',
+                  'title': '每日模型重训',
+                  'schedule': 'every day 05:00 UTC',
+                  'owner': 'mlops',
+                  'dependencies': ['dataset_ready', 'weather_ready'],
+                  'approval_policy': {
+                    'required': true,
+                    'mode': 'manual',
+                    'reason': '高成本重训需要审批',
+                  },
+                  'default_input': {'window_days': 60},
+                },
+              }),
+              202,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        );
+
+        final payload = await ApiService.updateControlTaskDefinition(
+          'train_model_daily',
+          schedule: 'every day 05:00 UTC',
+          owner: 'mlops',
+          dependencies: const ['dataset_ready', 'weather_ready'],
+          approvalPolicy: const {
+            'required': true,
+            'mode': 'manual',
+            'reason': '高成本重训需要审批',
+          },
+          defaultInput: const {'window_days': 60},
+        );
+
+        final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+        expect(capturedRequest.method, 'PATCH');
+        expect(body['schedule'], 'every day 05:00 UTC');
+        expect(body['owner'], 'mlops');
+        expect(body['dependencies'], ['dataset_ready', 'weather_ready']);
+        expect(body['approval_policy']['reason'], '高成本重训需要审批');
+        expect(body['default_input']['window_days'], 60);
+        expect(payload['owner'], 'mlops');
+        expect(payload['dependencies'], ['dataset_ready', 'weather_ready']);
+      },
+    );
   });
 
   test(
