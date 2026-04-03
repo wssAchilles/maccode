@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/155</span>
+                <span class='fraction'>0/153</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/155</span>
+                <span class='fraction'>0/153</span>
             </div>
         
             
@@ -249,11 +249,7 @@
 <a name='L184'></a><a href='#L184'>184</a>
 <a name='L185'></a><a href='#L185'>185</a>
 <a name='L186'></a><a href='#L186'>186</a>
-<a name='L187'></a><a href='#L187'>187</a>
-<a name='L188'></a><a href='#L188'>188</a>
-<a name='L189'></a><a href='#L189'>189</a>
-<a name='L190'></a><a href='#L190'>190</a>
-<a name='L191'></a><a href='#L191'>191</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L187'></a><a href='#L187'>187</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -304,17 +300,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -482,29 +474,25 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        stage="hero"</span>
       &gt;
 <span class="cstat-no" title="statement not covered" >        &lt;TerminalBand model={model.heroBand} className="hero-band" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="metric-grid"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          {model.metricTiles.map((tile) =&gt; (</span>
-<span class="cstat-no" title="statement not covered" >            &lt;MetricTile</span>
-<span class="cstat-no" title="statement not covered" >              key={tile.id}</span>
-<span class="cstat-no" title="statement not covered" >              label={tile.label}</span>
-<span class="cstat-no" title="statement not covered" >              value={tile.value}</span>
-<span class="cstat-no" title="statement not covered" >              hint={tile.hint}</span>
-<span class="cstat-no" title="statement not covered" >              tone={tile.tone}</span>
-<span class="cstat-no" title="statement not covered" >            /&gt;</span>
-<span class="cstat-no" title="statement not covered" >          ))}</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="ws-hero-grid"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div className="ws-hero-side"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div className="metric-grid ws-hero-metrics"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {model.metricTiles.map((tile) =&gt; (</span>
+<span class="cstat-no" title="statement not covered" >                &lt;MetricTile</span>
+<span class="cstat-no" title="statement not covered" >                  key={tile.id}</span>
+<span class="cstat-no" title="statement not covered" >                  label={tile.label}</span>
+<span class="cstat-no" title="statement not covered" >                  value={tile.value}</span>
+<span class="cstat-no" title="statement not covered" >                  hint={tile.hint}</span>
+<span class="cstat-no" title="statement not covered" >                  tone={tile.tone}</span>
+<span class="cstat-no" title="statement not covered" >                /&gt;</span>
+<span class="cstat-no" title="statement not covered" >              ))}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/SectionFrame&gt;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;div className="ws-main stack wsm"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
-<span class="cstat-no" title="statement not covered" >          title={t('workspace.execution.linkageTitle')}</span>
-<span class="cstat-no" title="statement not covered" >          description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}</span>
-<span class="cstat-no" title="statement not covered" >          accent="amber"</span>
-<span class="cstat-no" title="statement not covered" >          stage="feature"</span>
-        &gt;
-<span class="cstat-no" title="statement not covered" >          &lt;WorkspaceSpotlight model={model.spotlight} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
-&nbsp;
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('workspace.execution.operatorDeckTitle')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.execution.operatorDeckDescription')}</span>
@@ -640,7 +628,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T15:53:48.889Z
+                at 2026-04-03T00:05:48.316Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -37,29 +37,25 @@ export function ExecutionWorkspace({ active = true }: Props) {
         stage="hero"
       >
         <TerminalBand model={model.heroBand} className="hero-band" />
-        <div className="metric-grid">
-          {model.metricTiles.map((tile) => (
-            <MetricTile
-              key={tile.id}
-              label={tile.label}
-              value={tile.value}
-              hint={tile.hint}
-              tone={tile.tone}
-            />
-          ))}
+        <div className="ws-hero-grid">
+          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+          <div className="ws-hero-side">
+            <div className="metric-grid ws-hero-metrics">
+              {model.metricTiles.map((tile) => (
+                <MetricTile
+                  key={tile.id}
+                  label={tile.label}
+                  value={tile.value}
+                  hint={tile.hint}
+                  tone={tile.tone}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SectionFrame>
 
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.execution.linkageTitle')}
-          description={t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}
-          accent="amber"
-          stage="feature"
-        >
-          <WorkspaceSpotlight model={model.spotlight} />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.execution.operatorDeckTitle')}
           description={t('workspace.execution.operatorDeckDescription')}

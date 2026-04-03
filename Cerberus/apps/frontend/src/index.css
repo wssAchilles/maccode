@@ -924,6 +924,30 @@ button {
   gap: 14px;
 }
 
+.ws-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(320px, 0.86fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ws-hero-side {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+
+.ws-hero-metrics {
+  gap: 12px;
+}
+
+.ws-hero-spotlight,
+.ws-hero-spotlight .sp-surface,
+.ws-hero-spotlight .sp {
+  height: 100%;
+}
+
 .hp-tail-grid {
   align-items: start;
 }
@@ -2614,6 +2638,7 @@ button {
   .wb-status-strip,
   .metric-grid,
   .health-grid,
+  .ws-hero-grid,
   .ids-grid,
   .tb-grid,
   .xec-metrics,

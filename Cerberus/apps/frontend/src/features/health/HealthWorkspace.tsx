@@ -27,14 +27,15 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         stage="hero"
       >
         <TerminalBand model={model.contextBand} className="hero-band" />
-        <ServiceHealthPanel model={model.serviceHealthPanel} />
+        <div className="ws-hero-grid">
+          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+          <div className="ws-hero-side">
+            <ServiceHealthPanel model={model.serviceHealthPanel} />
+          </div>
+        </div>
       </SectionFrame>
 
       <div className="ws-main stack wsm">
-        <SectionFrame title={t('workspace.health.title')} description={t('workspace.health.description')} accent="teal" stage="feature">
-          <WorkspaceSpotlight model={model.spotlight} />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.health.operatorDeckTitle')}
           description={t('workspace.health.operatorDeckDescription')}

@@ -51,16 +51,21 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         stage="hero"
       >
         <TerminalBand model={model.contextBand} className="hero-band" />
-        <div className="metric-grid">
-          {model.metricTiles.map((tile) => (
-            <MetricTile
-              key={tile.id}
-              label={tile.label}
-              value={tile.value}
-              tone={tile.tone}
-              hint={tile.hint}
-            />
-          ))}
+        <div className="ws-hero-grid">
+          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+          <div className="ws-hero-side">
+            <div className="metric-grid ws-hero-metrics">
+              {model.metricTiles.map((tile) => (
+                <MetricTile
+                  key={tile.id}
+                  label={tile.label}
+                  value={tile.value}
+                  tone={tile.tone}
+                  hint={tile.hint}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SectionFrame>
 
@@ -71,15 +76,6 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       ) : null}
 
       <div className="ws-main wsm">
-        <SectionFrame
-          title={t('workspace.overview.healthDigest')}
-          description={t('workspace.overview.description')}
-          accent="cyan"
-          stage="feature"
-        >
-          <WorkspaceSpotlight model={model.spotlight} />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.overview.operatorDeckTitle')}
           description={t('workspace.overview.operatorDeckDescription')}

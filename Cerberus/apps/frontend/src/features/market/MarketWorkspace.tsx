@@ -51,29 +51,25 @@ export function MarketWorkspace({ active = true }: Props) {
         stage="hero"
       >
         <TerminalBand model={model.heroBand} className="hero-band" />
-        <div className="metric-grid">
-          {model.metricTiles.map((tile) => (
-            <MetricTile
-              key={tile.id}
-              label={tile.label}
-              value={tile.value}
-              tone={tile.tone}
-              hint={tile.hint}
-            />
-          ))}
+        <div className="ws-hero-grid">
+          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+          <div className="ws-hero-side">
+            <div className="metric-grid ws-hero-metrics">
+              {model.metricTiles.map((tile) => (
+                <MetricTile
+                  key={tile.id}
+                  label={tile.label}
+                  value={tile.value}
+                  tone={tile.tone}
+                  hint={tile.hint}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SectionFrame>
 
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.market.linkageTitle')}
-          description={t('workspace.market.linkageHint').replace('{symbol}', model.activeSymbol)}
-          accent="cyan"
-          stage="feature"
-        >
-          <WorkspaceSpotlight model={model.spotlight} />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.market.operatorDeckTitle')}
           description={t('workspace.market.operatorDeckDescription')}
