@@ -26,13 +26,17 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
         : 'ids-grid'
 
   return (
-    <div className={deckClass}>
-      {sections.map((section, index) => (
+    <div className={deckClass} data-layout={layout}>
+      {sections.map((section, index) => {
+        const isHero = section.visualPriority === 'hero'
+        const showSummary = isHero || layout !== 'rail'
+
+        return (
         <RevealGroup
           key={section.id}
           revealIndex={index}
           className={cn('od-shell', layout === 'rail' && section.visualPriority === 'hero' ? 'od-shell-span' : '')}
-          data-priority={section.visualPriority === 'hero' ? 'hero' : 'secondary'}
+          data-priority={isHero ? 'hero' : 'secondary'}
           style={
             section.accent
               ? ({
@@ -41,20 +45,23 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
               : undefined
           }
         >
-          <MotionSurface className="od-surface" mode={section.visualPriority === 'hero' ? 'spotlight' : 'panel'}>
-            <GlassPanel className="stack-sm od-card" tone="subtle">
+          <MotionSurface className="od-surface" mode={isHero ? 'spotlight' : 'panel'}>
+            <GlassPanel className={cn('stack-sm od-card', isHero ? 'od-card-hero' : 'od-card-secondary')} tone="subtle">
               <div className="ids-group">
-                <div className="sp-head">
-                  <p className="subtle-label">{section.title}</p>
-                  {section.postureLabel ? <p className="subtle-label">{section.postureLabel}</p> : null}
+                <div className="od-head">
+                  <div className="od-copy">
+                    <p className="subtle-label">{section.title}</p>
+                    {showSummary ? <p className="od-summary">{section.summary}</p> : null}
+                  </div>
+                  {section.postureLabel ? <span className="od-posture">{section.postureLabel}</span> : null}
                 </div>
-                {section.summary ? <p className="panel-caption">{section.summary}</p> : null}
               </div>
               <DataList items={section.items} dense />
             </GlassPanel>
           </MotionSurface>
         </RevealGroup>
-      ))}
+        )
+      })}
     </div>
   )
 }

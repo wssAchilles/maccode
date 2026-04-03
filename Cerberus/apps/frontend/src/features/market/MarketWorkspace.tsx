@@ -75,6 +75,8 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.market.operatorDeckDescription')}
           accent="teal"
           stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
         >
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>

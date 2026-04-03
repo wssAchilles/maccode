@@ -81,6 +81,8 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           description={t('workspace.overview.operatorDeckDescription')}
           accent="teal"
           stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
         >
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>

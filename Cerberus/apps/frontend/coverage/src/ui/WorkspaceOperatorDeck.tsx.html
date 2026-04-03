@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.3% </span>
+                <span class="strong">92.15% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>42/46</span>
+                <span class='fraction'>47/51</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.75% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/16</span>
+                <span class='fraction'>16/20</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.3% </span>
+                <span class="strong">92.15% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>42/46</span>
+                <span class='fraction'>47/51</span>
             </div>
         
             
@@ -123,7 +123,14 @@
 <a name='L58'></a><a href='#L58'>58</a>
 <a name='L59'></a><a href='#L59'>59</a>
 <a name='L60'></a><a href='#L60'>60</a>
-<a name='L61'></a><a href='#L61'>61</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -155,6 +162,10 @@
 <span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
@@ -179,6 +190,9 @@
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
 <span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-yes">48x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-yes">24x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -211,13 +225,17 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
 <span class="cstat-no" title="statement not covered" >        : 'ids-grid'</span>
 &nbsp;
   return (
-    &lt;div className={deckClass}&gt;
-      {sections.map((section, index) =&gt; (
+    &lt;div className={deckClass} data-layout={layout}&gt;
+      {sections.map((section, index) =&gt; {
+        const isHero = section.visualPriority === 'hero'
+        const showSummary = isHero || layout !== 'rail'
+&nbsp;
+        return (
         &lt;RevealGroup
           key={section.id}
           revealIndex={index}
           className={cn('od-shell', layout === 'rail' &amp;&amp; section.visualPriority === 'hero' ? 'od-shell-span' : '')}
-          data-priority={section.visualPriority === 'hero' ? 'hero' : 'secondary'}
+          data-priority={isHero ? 'hero' : 'secondary'}
           style={
             section.accent
               ? ({
@@ -226,20 +244,23 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
 <span class="cstat-no" title="statement not covered" >              : undefined</span>
           }
         &gt;
-          &lt;MotionSurface className="od-surface" mode={section.visualPriority === 'hero' ? 'spotlight' : 'panel'}&gt;
-            &lt;GlassPanel className="stack-sm od-card" tone="subtle"&gt;
+          &lt;MotionSurface className="od-surface" mode={isHero ? 'spotlight' : 'panel'}&gt;
+            &lt;GlassPanel className={cn('stack-sm od-card', isHero ? 'od-card-hero' : 'od-card-secondary')} tone="subtle"&gt;
               &lt;div className="ids-group"&gt;
-                &lt;div className="sp-head"&gt;
-                  &lt;p className="subtle-label"&gt;{section.title}&lt;/p&gt;
-                  {section.postureLabel ? &lt;p className="subtle-label"&gt;{section.postureLabel}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
+                &lt;div className="od-head"&gt;
+                  &lt;div className="od-copy"&gt;
+                    &lt;p className="subtle-label"&gt;{section.title}&lt;/p&gt;
+                    {showSummary ? &lt;p className="od-summary"&gt;{section.summary}&lt;/p&gt; : null}
+                  &lt;/div&gt;
+                  {section.postureLabel ? &lt;span className="od-posture"&gt;{section.postureLabel}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/span&gt; : null}</span>
                 &lt;/div&gt;
-                {section.summary ? &lt;p className="panel-caption"&gt;{section.summary}<span class="branch-0 cbranch-no" title="branch not covered" >&lt;/p&gt; : null}</span>
               &lt;/div&gt;
               &lt;DataList items={section.items} dense /&gt;
             &lt;/GlassPanel&gt;
           &lt;/MotionSurface&gt;
         &lt;/RevealGroup&gt;
-      ))}
+        )
+      })}
     &lt;/div&gt;
   )
 }
@@ -250,7 +271,7 @@ export function WorkspaceOperatorDeck({ sections, layout = 'grid' }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T00:05:48.316Z
+                at 2026-04-03T01:06:41.941Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

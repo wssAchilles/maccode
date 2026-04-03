@@ -61,6 +61,8 @@ export function ExecutionWorkspace({ active = true }: Props) {
           description={t('workspace.execution.operatorDeckDescription')}
           accent="teal"
           stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
         >
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
@@ -82,7 +84,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
-          bodyClassName="xsfb inspector-shell"
+          bodyClassName="inspector-shell"
           accent="teal"
           stage="inspector"
           compactHeader

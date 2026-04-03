@@ -41,6 +41,8 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           description={t('workspace.health.operatorDeckDescription')}
           accent="cyan"
           stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
         >
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
