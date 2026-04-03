@@ -6,10 +6,14 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 
 use crate::{
     config::AppState,
-    proxy::{proxy_empty_post, proxy_get, proxy_json_patch, proxy_json_post, proxy_sse_get},
+    proxy::{
+        proxy_empty_post, proxy_get, proxy_json_patch, proxy_json_post,
+        proxy_json_post_with_headers, proxy_sse_get,
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -54,11 +58,10 @@ pub async fn dispatch_operation(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_empty_post(
-        &state,
-        format!("/internal/operations/{operation_id}/dispatch"),
-    )
-    .await
+    state
+        .dispatch_controller
+        .enqueue_dispatch(state.clone(), operation_id)
+        .await
 }
 
 pub async fn cancel_operation(
@@ -76,7 +79,17 @@ pub async fn retry_operation(
     State(state): State<AppState>,
     Path(operation_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_empty_post(&state, format!("/internal/operations/{operation_id}/retry")).await
+    let mut headers = HashMap::new();
+    headers.insert("X-Orchestrator-Managed".to_string(), "true".to_string());
+    let response = proxy_json_post_with_headers(
+        &state,
+        format!("/internal/operations/{operation_id}/retry"),
+        json!({}),
+        headers,
+    )
+    .await;
+    queue_dispatch_if_needed(&state, &operation_id, &response).await;
+    response
 }
 
 pub async fn approve_operation(
@@ -84,15 +97,22 @@ pub async fn approve_operation(
     Path(operation_id): Path<String>,
     Json(payload): Json<ApprovalRequest>,
 ) -> (StatusCode, Json<Value>) {
-    proxy_json_post(
+    let mut headers = HashMap::new();
+    headers.insert("X-Orchestrator-Managed".to_string(), "true".to_string());
+    let response = proxy_json_post_with_headers(
         &state,
         format!("/internal/operations/{operation_id}/approve"),
         json!({
             "approved": payload.approved,
             "message": payload.message,
         }),
+        headers,
     )
-    .await
+    .await;
+    if payload.approved {
+        queue_dispatch_if_needed(&state, &operation_id, &response).await;
+    }
+    response
 }
 
 pub async fn get_operation(
@@ -170,4 +190,33 @@ pub async fn update_control_task(
         }),
     )
     .await
+}
+
+async fn queue_dispatch_if_needed(
+    state: &AppState,
+    operation_id: &str,
+    response: &(StatusCode, Json<Value>),
+) {
+    if !response.0.is_success() {
+        return;
+    }
+
+    let Some(status) = response
+        .1
+        .0
+        .get("data")
+        .and_then(|data| data.get("status"))
+        .and_then(Value::as_str)
+    else {
+        return;
+    };
+
+    if status != "queued" {
+        return;
+    }
+
+    let _ = state
+        .dispatch_controller
+        .enqueue_dispatch(state.clone(), operation_id.to_string())
+        .await;
 }

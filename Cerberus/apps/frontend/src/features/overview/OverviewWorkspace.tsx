@@ -1,11 +1,14 @@
-import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
+import { WORKSPACE_MODELS } from '../../view-models/workbench'
 import {
   DataList,
   DiagnosticDrawer,
+  GlassPanel,
   InlineAlert,
   MetricTile,
+  MotionSurface,
   PanelSection,
+  RevealGroup,
   SectionFrame,
   StatusPill,
   TerminalBand,
@@ -13,12 +16,9 @@ import {
   WorkspaceSpotlight,
 } from '../../ui'
 import { CoreFlowPanel } from '../../components/CoreFlowPanel'
-import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
+import { useI18n } from '../../i18n/I18nProvider'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
-import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
-import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
-import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
-import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
+import { useOverviewWorkspaceModel } from './useOverviewWorkspaceModel'
 
 type Props = {
   active?: boolean
@@ -29,6 +29,22 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
   const { t } = useI18n()
   const model = useOverviewWorkspaceModel({ active: _active, onSelectWorkspace })
 
+  const workspaceShortcuts = WORKSPACE_MODELS.filter((item) => item.id !== 'overview').map((item) => ({
+    ...item,
+    onSelect:
+      item.id === 'market'
+        ? model.openMarket
+        : item.id === 'book'
+          ? model.openBook
+          : item.id === 'strategy'
+            ? model.openStrategy
+            : item.id === 'execution'
+              ? model.openExecution
+              : item.id === 'inference'
+                ? model.openInference
+                : model.openHealth,
+  }))
+
   return (
     <div className="ws-grid ws-grid-overview" data-workspace="overview">
       <div className="ws-main wsm">
@@ -38,13 +54,16 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           eyebrow={t('workspace.overview.eyebrow')}
           aside={
             <div className="ws-actions">
-              <button type="button" className="soft-button sbp" onClick={model.openExecution}>
+              <button type="button" className="soft-button sbp" onClick={model.openMarket}>
+                {t('workspace.cta.market')}
+              </button>
+              <button type="button" className="soft-button" onClick={model.openExecution}>
                 {t('workspace.cta.execution')}
               </button>
               <button type="button" className="soft-button" onClick={model.openHealth}>
                 {t('workspace.cta.health')}
               </button>
-              {model.summaryError && (
+              {model.summaryError ? (
                 <DiagnosticDrawer
                   title={t('workspace.overview.attention')}
                   summary="微服务异常日志"
@@ -54,7 +73,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
                     {model.summaryError.message}
                   </InlineAlert>
                 </DiagnosticDrawer>
-              )}
+              ) : null}
             </div>
           }
           tone="hero"
@@ -62,26 +81,26 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           stage="hero"
         >
           <TerminalBand model={model.contextBand} className="hero-band" />
-        <div className="ws-hero-grid">
-          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side hero-side-shell">
-            <div className="hero-side-head">
-              <p className="subtle-label">{t('workspace.hero.readings')}</p>
-            </div>
-            <div className="metric-grid ws-hero-metrics">
-              {model.metricTiles.map((tile, index) => (
-                <MetricTile
-                  key={tile.id}
-                  label={tile.label}
-                  value={tile.value}
-                  tone={tile.tone}
-                  hint={tile.hint}
-                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
-                />
-              ))}
+          <div className="ws-hero-grid">
+            <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+            <div className="ws-hero-side hero-side-shell">
+              <div className="hero-side-head">
+                <p className="subtle-label">{t('workspace.hero.readings')}</p>
+              </div>
+              <div className="metric-grid ws-hero-metrics">
+                {model.metricTiles.map((tile, index) => (
+                  <MetricTile
+                    key={tile.id}
+                    label={tile.label}
+                    value={tile.value}
+                    tone={tile.tone}
+                    hint={tile.hint}
+                    className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
         </SectionFrame>
 
         <SectionFrame
@@ -96,34 +115,42 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         </SectionFrame>
 
         <SectionFrame
-          title={t('workspace.strategy.title')}
-          description={t('workspace.strategy.description')}
-          accent="teal"
+          title={t('workspace.nav')}
+          description={t('shell.navRail')}
+          accent="cyan"
           stage="feature"
         >
-          <div className="stack">
-            <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
-            <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
-            <StrategyDecisionMatrix model={model.strategyMatrix} />
-            <DiagnosticDrawer
-              title={t('workspace.strategy.registryTitle')}
-              summary={t('workspace.strategy.registryDescription')}
-              contentClassName="tail-drawer"
-            >
-              <StrategyRegistryPanel model={model.strategyRegistry} />
-            </DiagnosticDrawer>
-            <DiagnosticDrawer
-              title={t('workspace.strategy.auditTimelineTitle')}
-              summary={t('workspace.strategy.auditTimelineHint')}
-              contentClassName="tail-drawer"
-            >
-              <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
-            </DiagnosticDrawer>
+          <div className="workspace-portal-grid">
+            {workspaceShortcuts.map((item, index) => (
+              <RevealGroup key={item.id} revealIndex={index} className="workspace-portal-shell">
+                <MotionSurface className="workspace-portal-surface" mode="panel">
+                  <button type="button" className="workspace-portal" onClick={item.onSelect}>
+                    <GlassPanel className="workspace-portal-card" tone="subtle">
+                      <div className="workspace-portal-head">
+                        <div>
+                          <p className="subtle-label">{item.indexLabel}</p>
+                          <p className="workspace-portal-title">{t(item.titleKey)}</p>
+                        </div>
+                        <span className="workspace-portal-pulse" aria-hidden="true" />
+                      </div>
+                      <p className="workspace-portal-description">{t(item.descriptionKey)}</p>
+                    </GlassPanel>
+                  </button>
+                </MotionSurface>
+              </RevealGroup>
+            ))}
           </div>
         </SectionFrame>
 
         <div className="overview-tail-grid">
-          <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail" compactHeader bodyClassName="tail-shell">
+          <SectionFrame
+            title={t('strategy.recent')}
+            description={t('workspace.overview.signalsDescription')}
+            accent="cyan"
+            stage="tail"
+            compactHeader
+            bodyClassName="tail-shell"
+          >
             <TerminalBand model={model.tailBand} className="tail-band" compact hideHint hideEyebrow />
             {model.recentSignals.length === 0 ? (
               <p className="empty-inline">{t('strategy.noData')}</p>
@@ -144,13 +171,23 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
               </div>
             )}
             <div className="ws-actions">
-              <button type="button" className="soft-button" onClick={model.openMarket}>
-                {t('workspace.cta.market')}
+              <button type="button" className="soft-button" onClick={model.openStrategy}>
+                {t('workspace.cta.strategy')}
+              </button>
+              <button type="button" className="soft-button" onClick={model.openInference}>
+                {t('workspace.cta.inference')}
               </button>
             </div>
           </SectionFrame>
 
-          <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail" compactHeader bodyClassName="tail-shell">
+          <SectionFrame
+            title={t('strategy.persistence')}
+            description={t('workspace.health.persistenceDescription')}
+            accent="amber"
+            stage="tail"
+            compactHeader
+            bodyClassName="tail-shell"
+          >
             <PanelSection
               className="tail-card"
               eyebrow={t('strategy.persistence')}
@@ -160,6 +197,11 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
             >
               <DataList items={model.persistenceItems} />
             </PanelSection>
+            <div className="ws-actions">
+              <button type="button" className="soft-button" onClick={model.openBook}>
+                {t('workspace.cta.book')}
+              </button>
+            </div>
           </SectionFrame>
         </div>
       </div>

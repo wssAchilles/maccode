@@ -330,6 +330,24 @@ class OperationServiceTestCase(unittest.TestCase):
         self.assertIn('artifact.published', event_types)
         self.assertEqual(events[-1]['type'], 'operation.completed')
 
+    def test_claim_dispatch_moves_queued_operation_to_dispatching_once(self):
+        operation = TestOperationService.create_operation(
+            'user-1',
+            'analysis',
+            {'storage_path': 'uploads/data.csv'},
+        )
+
+        claimed = TestOperationService.claim_dispatch(operation['job_id'])
+        duplicate = TestOperationService.claim_dispatch(operation['job_id'])
+
+        self.assertIsNotNone(claimed)
+        self.assertEqual(claimed['status'], 'dispatching')
+        self.assertIsNotNone(duplicate)
+        self.assertEqual(duplicate['status'], 'dispatching')
+
+        events = TestOperationService.list_operation_events('user-1', operation['job_id'])
+        self.assertIn('operation.dispatched', [event['type'] for event in events])
+
 
 if __name__ == '__main__':
     unittest.main()

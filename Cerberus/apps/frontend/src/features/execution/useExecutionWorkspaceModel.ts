@@ -10,12 +10,7 @@ import {
 import { buildPreparedExecutionSelection } from './read-models'
 import { buildMatchingOrderBookPanelModel } from '../../view-models/orderbook'
 import {
-  buildStrategyOrchestrationAuditTimelineModel,
-  buildStrategyContextBandModel,
   buildExecutionLifecyclePanelModel,
-  buildStrategyDecisionMatrixModel,
-  buildStrategyPortfolioPanelModel,
-  buildStrategyRegistryPanelModel,
 } from '../strategy-orchestration/view-models'
 import {
   buildExecutionOperationsPanel,
@@ -37,7 +32,6 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     latestBySymbol,
     strategySignal,
     persistenceStatus,
-    orchestrationStatus,
     orderbook,
     latestEvent,
     orderEvents,
@@ -54,7 +48,6 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
       latestBySymbol: state.marketStream.latest_by_symbol,
       strategySignal: state.strategySummary.signal,
       persistenceStatus: state.strategySummary.persistence_status,
-      orchestrationStatus: state.strategySummary.orchestration_status,
       orderbook: state.strategySummary.matching_orderbook,
       latestEvent: state.executionTrading.latest_event,
       orderEvents: state.executionTrading.order_events,
@@ -140,11 +133,6 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
         persistenceStatus,
         domainStatus: executionStatus,
       }),
-      strategyMatrix: buildStrategyDecisionMatrixModel({ t, signal: strategySignal }),
-      portfolioPanel: buildStrategyPortfolioPanelModel({ t, signal: strategySignal, selectedSymbol }),
-      strategyRegistry: buildStrategyRegistryPanelModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
-      strategyAuditTimeline: buildStrategyOrchestrationAuditTimelineModel({ t, orchestrationStatus }),
-      strategyBand: buildStrategyContextBandModel({ t, signal: strategySignal, selectedSymbol, orchestrationStatus }),
       orderbookPanel,
       inspectorBand: buildExecutionInspectorBandModel({
         t,
@@ -171,7 +159,6 @@ export function useExecutionWorkspaceModel({ active: _active = true }: Params) {
     binanceRule,
     executionStatus,
     heartbeat,
-    orchestrationStatus,
     orderbook,
     persistenceStatus,
     preparedExecutionSelection,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/control_task_record.dart';
 import '../common/glass_card.dart';
+import 'control_task_dependency_graph.dart';
 import 'duty_section_block.dart';
 
 class ControlTaskBoard extends StatelessWidget {
@@ -20,6 +21,7 @@ class ControlTaskBoard extends StatelessWidget {
     required this.isTaskUpdating,
     required this.onToggleApproval,
     required this.onEditDefinition,
+    this.onOpenLatestOperation,
     this.errorMessage,
   });
 
@@ -33,6 +35,7 @@ class ControlTaskBoard extends StatelessWidget {
   final bool Function(String controlTaskId) isTaskUpdating;
   final ValueChanged<ControlTaskRecord> onToggleApproval;
   final ValueChanged<ControlTaskRecord> onEditDefinition;
+  final ValueChanged<ControlTaskLatestOperation>? onOpenLatestOperation;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,12 @@ class ControlTaskBoard extends StatelessWidget {
                     onToggleTask: () => onToggleTask(tasks[i]),
                     onToggleApproval: () => onToggleApproval(tasks[i]),
                     onEditDefinition: () => onEditDefinition(tasks[i]),
+                    onOpenLatestOperation:
+                        tasks[i].latestOperation == null ||
+                            onOpenLatestOperation == null
+                        ? null
+                        : () =>
+                              onOpenLatestOperation!(tasks[i].latestOperation!),
                   ),
                   if (i < tasks.length - 1) const SizedBox(height: 12),
                 ],
@@ -87,6 +96,7 @@ class _ControlTaskTile extends StatelessWidget {
     required this.onToggleTask,
     required this.onToggleApproval,
     required this.onEditDefinition,
+    this.onOpenLatestOperation,
   });
 
   final ControlTaskRecord task;
@@ -96,6 +106,7 @@ class _ControlTaskTile extends StatelessWidget {
   final VoidCallback onToggleTask;
   final VoidCallback onToggleApproval;
   final VoidCallback onEditDefinition;
+  final VoidCallback? onOpenLatestOperation;
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +119,9 @@ class _ControlTaskTile extends StatelessWidget {
     final dependencyLabel = task.dependencies.isEmpty
         ? '无依赖'
         : '${task.dependencies.length} 项依赖';
+    final nextRunLabel = _formatNextRunAt(task.nextRunAt);
+    final dependencyState = _dependencyStatePresentation(task.dependencyState);
+    final latestOperation = task.latestOperation;
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
@@ -166,10 +180,20 @@ class _ControlTaskTile extends StatelessWidget {
                     : AppColors.surfaceVariant,
               ),
               _Badge(
-                label: dependencyLabel,
-                foreground: AppColors.textPrimary,
-                background: AppColors.surfaceVariant,
+                label: dependencyState?.label ?? dependencyLabel,
+                foreground:
+                    dependencyState?.foreground ?? AppColors.textPrimary,
+                background:
+                    dependencyState?.background ?? AppColors.surfaceVariant,
               ),
+              if (latestOperation != null)
+                _Badge(
+                  label: '运行 ${latestOperation.status.toUpperCase()}',
+                  foreground: _operationStatusColor(latestOperation.status),
+                  background: _operationStatusBackground(
+                    latestOperation.status,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -188,6 +212,8 @@ class _ControlTaskTile extends StatelessWidget {
             label: '责任人',
             value: task.owner.isEmpty ? 'system' : task.owner,
           ),
+          if (nextRunLabel != null)
+            _DetailRow(label: '下次运行', value: nextRunLabel),
           _DetailRow(
             label: '默认输入',
             value: task.defaultInput.isEmpty
@@ -199,8 +225,22 @@ class _ControlTaskTile extends StatelessWidget {
               label: '依赖',
               value: task.dependencies.take(3).join(' / '),
             ),
+          if (task.dependencySummary.isNotEmpty)
+            _DetailRow(label: '依赖状态', value: task.dependencySummary),
+          if (latestOperation != null)
+            _DetailRow(
+              label: '最近运行',
+              value: _formatLatestOperation(latestOperation),
+            ),
           if (approvalReason.isNotEmpty)
             _DetailRow(label: '审批原因', value: approvalReason),
+          if (task.dependencies.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ControlTaskDependencyGraph(
+              taskId: task.id,
+              dependencies: task.dependencies,
+            ),
+          ],
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -248,12 +288,101 @@ class _ControlTaskTile extends StatelessWidget {
                 icon: const Icon(Icons.tune_rounded),
                 label: Text(isUpdating ? '更新中' : '编辑定义'),
               ),
+              if (onOpenLatestOperation != null)
+                TextButton.icon(
+                  onPressed: onOpenLatestOperation,
+                  icon: const Icon(Icons.travel_explore_rounded),
+                  label: const Text('查看运行'),
+                ),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+class _DependencyStatePresentation {
+  const _DependencyStatePresentation({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+}
+
+_DependencyStatePresentation? _dependencyStatePresentation(String state) {
+  switch (state) {
+    case 'ready':
+      return const _DependencyStatePresentation(
+        label: '依赖 READY',
+        foreground: AppColors.success,
+        background: AppColors.successLight,
+      );
+    case 'blocked':
+      return const _DependencyStatePresentation(
+        label: '依赖 BLOCKED',
+        foreground: AppColors.warning,
+        background: AppColors.warningLight,
+      );
+    case 'missing':
+      return const _DependencyStatePresentation(
+        label: '依赖 MISSING',
+        foreground: AppColors.error,
+        background: AppColors.errorLight,
+      );
+    default:
+      return null;
+  }
+}
+
+Color _operationStatusColor(String status) {
+  switch (status) {
+    case 'succeeded':
+      return AppColors.success;
+    case 'failed':
+    case 'cancelled':
+      return AppColors.error;
+    case 'awaiting_approval':
+    case 'retrying':
+      return AppColors.warning;
+    default:
+      return AppColors.primary;
+  }
+}
+
+Color _operationStatusBackground(String status) {
+  switch (status) {
+    case 'succeeded':
+      return AppColors.successLight;
+    case 'failed':
+    case 'cancelled':
+      return AppColors.errorLight;
+    case 'awaiting_approval':
+    case 'retrying':
+      return AppColors.warningLight;
+    default:
+      return AppColors.infoLight;
+  }
+}
+
+String? _formatNextRunAt(DateTime? value) {
+  if (value == null) {
+    return null;
+  }
+  final utc = value.toUtc();
+  final date = utc.toIso8601String().replaceFirst('.000', '');
+  return '$date UTC';
+}
+
+String _formatLatestOperation(ControlTaskLatestOperation operation) {
+  final submittedAt = operation.submittedAt == null
+      ? ''
+      : ' · ${_formatNextRunAt(operation.submittedAt)}';
+  return '${operation.type} · ${operation.status} · ${operation.progress}%$submittedAt';
 }
 
 class _DetailRow extends StatelessWidget {

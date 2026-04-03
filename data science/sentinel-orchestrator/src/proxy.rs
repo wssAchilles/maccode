@@ -6,12 +6,13 @@ use axum::{
 };
 use reqwest::Method;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use tracing::warn;
 
 use crate::config::AppState;
 
 pub async fn proxy_empty_post(state: &AppState, path: String) -> (StatusCode, Json<Value>) {
-    proxy_request_json(state, Method::POST, path, None).await
+    proxy_request_json(state, Method::POST, path, None, None).await
 }
 
 pub async fn proxy_json_post(
@@ -19,7 +20,16 @@ pub async fn proxy_json_post(
     path: String,
     payload: Value,
 ) -> (StatusCode, Json<Value>) {
-    proxy_request_json(state, Method::POST, path, Some(payload)).await
+    proxy_request_json(state, Method::POST, path, Some(payload), None).await
+}
+
+pub async fn proxy_json_post_with_headers(
+    state: &AppState,
+    path: String,
+    payload: Value,
+    headers: HashMap<String, String>,
+) -> (StatusCode, Json<Value>) {
+    proxy_request_json(state, Method::POST, path, Some(payload), Some(headers)).await
 }
 
 pub async fn proxy_json_patch(
@@ -27,11 +37,11 @@ pub async fn proxy_json_patch(
     path: String,
     payload: Value,
 ) -> (StatusCode, Json<Value>) {
-    proxy_request_json(state, Method::PATCH, path, Some(payload)).await
+    proxy_request_json(state, Method::PATCH, path, Some(payload), None).await
 }
 
 pub async fn proxy_get(state: &AppState, path: String) -> (StatusCode, Json<Value>) {
-    proxy_request_json(state, Method::GET, path, None).await
+    proxy_request_json(state, Method::GET, path, None, None).await
 }
 
 pub async fn proxy_sse_get(state: &AppState, path: String) -> Response {
@@ -83,6 +93,7 @@ async fn proxy_request_json(
     method: Method,
     path: String,
     payload: Option<Value>,
+    extra_headers: Option<HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
     let Some(base_url) = state.config.python_worker_base_url.as_ref() else {
         warn!("python worker base url not configured for {}", path);
@@ -95,6 +106,12 @@ async fn proxy_request_json(
         .request(method, &url)
         .header(header::CONTENT_TYPE, "application/json")
         .header("X-Internal-Job-Token", &state.config.internal_job_token);
+
+    if let Some(headers) = extra_headers {
+        for (key, value) in headers {
+            request = request.header(&key, value);
+        }
+    }
 
     if let Some(body) = payload {
         request = request.json(&body);

@@ -3,12 +3,17 @@ use std::{net::SocketAddr, sync::Arc};
 use anyhow::{Context, Result};
 use reqwest::Client;
 
+use crate::controller::DispatchController;
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub host: String,
     pub port: u16,
     pub python_worker_base_url: Option<String>,
     pub internal_job_token: String,
+    pub max_light_parallel: usize,
+    pub max_heavy_parallel: usize,
+    pub dispatch_timeout_secs: u64,
 }
 
 impl AppConfig {
@@ -25,6 +30,18 @@ impl AppConfig {
                 .filter(|value| !value.is_empty()),
             internal_job_token: std::env::var("INTERNAL_JOB_TOKEN")
                 .unwrap_or_else(|_| "dev-internal-job-token".to_string()),
+            max_light_parallel: std::env::var("MAX_LIGHT_PARALLEL")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(4),
+            max_heavy_parallel: std::env::var("MAX_HEAVY_PARALLEL")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(2),
+            dispatch_timeout_secs: std::env::var("DISPATCH_TIMEOUT_SECS")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(1800),
         }
     }
 
@@ -39,4 +56,5 @@ impl AppConfig {
 pub struct AppState {
     pub config: Arc<AppConfig>,
     pub http_client: Client,
+    pub dispatch_controller: DispatchController,
 }

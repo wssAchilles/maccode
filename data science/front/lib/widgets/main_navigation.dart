@@ -20,8 +20,10 @@ import '../screens/operations_hub_screen.dart';
 import '../services/auth_gateway.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
+import '../viewmodels/approval_queue_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
+import '../viewmodels/operation_console_view_model.dart';
 import 'operations/workbench_page_frame.dart';
 import 'operations/system_status_strip.dart';
 
@@ -34,10 +36,14 @@ class MainNavigation extends StatefulWidget {
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
     ControlTaskViewModel? controlTaskViewModel,
+    ApprovalQueueViewModel? approvalQueueViewModel,
+    OperationConsoleViewModel? operationConsoleViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
        _controlTaskViewModel = controlTaskViewModel,
+       _approvalQueueViewModel = approvalQueueViewModel,
+       _operationConsoleViewModel = operationConsoleViewModel,
        _customPages = null,
        assert(
          authRepository == null || authGateway == null,
@@ -52,10 +58,14 @@ class MainNavigation extends StatefulWidget {
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
     ControlTaskViewModel? controlTaskViewModel,
+    ApprovalQueueViewModel? approvalQueueViewModel,
+    OperationConsoleViewModel? operationConsoleViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
        _controlTaskViewModel = controlTaskViewModel,
+       _approvalQueueViewModel = approvalQueueViewModel,
+       _operationConsoleViewModel = operationConsoleViewModel,
        _customPages = pages,
        assert(
          authRepository == null || authGateway == null,
@@ -70,6 +80,8 @@ class MainNavigation extends StatefulWidget {
   final AuthGateway? _authGateway;
   final DashboardViewModel? _dashboardViewModel;
   final ControlTaskViewModel? _controlTaskViewModel;
+  final ApprovalQueueViewModel? _approvalQueueViewModel;
+  final OperationConsoleViewModel? _operationConsoleViewModel;
   final List<Widget>? _customPages;
 
   @override
@@ -91,6 +103,10 @@ class _MainNavigationState extends State<MainNavigation> {
   late final bool _ownsDashboardViewModel;
   late final ControlTaskViewModel _controlTaskViewModel;
   late final bool _ownsControlTaskViewModel;
+  late final ApprovalQueueViewModel _approvalQueueViewModel;
+  late final bool _ownsApprovalQueueViewModel;
+  late final OperationConsoleViewModel _operationConsoleViewModel;
+  late final bool _ownsOperationConsoleViewModel;
   StreamSubscription<User?>? _authSubscription;
   User? _currentUser;
   AiLabLaunchIntent? _pendingAiLabIntent;
@@ -110,6 +126,12 @@ class _MainNavigationState extends State<MainNavigation> {
     _controlTaskViewModel =
         widget._controlTaskViewModel ?? ControlTaskViewModel();
     _ownsControlTaskViewModel = widget._controlTaskViewModel == null;
+    _approvalQueueViewModel =
+        widget._approvalQueueViewModel ?? ApprovalQueueViewModel();
+    _ownsApprovalQueueViewModel = widget._approvalQueueViewModel == null;
+    _operationConsoleViewModel =
+        widget._operationConsoleViewModel ?? OperationConsoleViewModel();
+    _ownsOperationConsoleViewModel = widget._operationConsoleViewModel == null;
     _currentUser = _authRepository.currentUser;
     _authSubscription = _authRepository.authStateChanges.listen((user) {
       if (!mounted || user == _currentUser) {
@@ -130,6 +152,12 @@ class _MainNavigationState extends State<MainNavigation> {
     }
     if (_ownsControlTaskViewModel) {
       _controlTaskViewModel.dispose();
+    }
+    if (_ownsApprovalQueueViewModel) {
+      _approvalQueueViewModel.dispose();
+    }
+    if (_ownsOperationConsoleViewModel) {
+      _operationConsoleViewModel.dispose();
     }
     super.dispose();
   }
@@ -444,6 +472,8 @@ class _MainNavigationState extends State<MainNavigation> {
         OperationsHubScreen(
           viewModel: _dashboardViewModel,
           controlTaskViewModel: _controlTaskViewModel,
+          approvalQueueViewModel: _approvalQueueViewModel,
+          operationConsoleViewModel: _operationConsoleViewModel,
           onNavigateToTab: _onNavTap,
           onOpenAiLab: _openAiLabWithIntent,
           onOpenDataAnalysis: _openDataAnalysisWithIntent,

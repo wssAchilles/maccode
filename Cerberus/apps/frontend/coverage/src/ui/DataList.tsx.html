@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.65% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>22/23</span>
+                <span class='fraction'>0/23</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">90.9% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>10/11</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.65% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>22/23</span>
+                <span class='fraction'>0/23</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -113,32 +113,32 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">104x</span>
-<span class="cline-any cline-yes">104x</span>
-<span class="cline-any cline-yes">104x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">37x</span>
-<span class="cline-any cline-yes">485x</span>
-<span class="cline-any cline-yes">24x</span>
-<span class="cline-any cline-yes">461x</span>
-<span class="cline-any cline-yes">26x</span>
-<span class="cline-any cline-yes">435x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">435x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">522x</span>
-<span class="cline-any cline-yes">104x</span>
-<span class="cline-any cline-yes">104x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">104x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">type Item = {
   id: string
   label: string
@@ -151,32 +151,32 @@ type Props = {
   dense?: boolean
 }
 &nbsp;
-export function DataList({ items, dense = false }: Props) {
-  return (
-    &lt;dl className={dense ? 'data-list dl-dense' : 'data-list'}&gt;
-      {items.map((item) =&gt; (
-        &lt;div key={item.id} className="dl-row"&gt;
-          &lt;dt className="dl-label"&gt;{item.label}&lt;/dt&gt;
-          &lt;dd
-            className={
-              item.tone === 'accent'
-                ? 'dl-value dl-value-accent'
-                : item.tone === 'positive'
-                  ? 'dl-value dl-value-positive'
-                  : item.tone === 'negative'
-                    ? 'dl-value dl-value-negative'
-                    : item.tone === <span class="branch-0 cbranch-no" title="branch not covered" >'muted'</span>
+<span class="cstat-no" title="statement not covered" >export function DataList({ items, dense = false }: Props) {</span>
+<span class="cstat-no" title="statement not covered" >  return (</span>
+<span class="cstat-no" title="statement not covered" >    &lt;dl className={dense ? 'data-list dl-dense' : 'data-list'}&gt;</span>
+<span class="cstat-no" title="statement not covered" >      {items.map((item) =&gt; (</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div key={item.id} className="dl-row"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;dt className="dl-label"&gt;{item.label}&lt;/dt&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;dd</span>
+<span class="cstat-no" title="statement not covered" >            className={</span>
+<span class="cstat-no" title="statement not covered" >              item.tone === 'accent'</span>
+<span class="cstat-no" title="statement not covered" >                ? 'dl-value dl-value-accent'</span>
+<span class="cstat-no" title="statement not covered" >                : item.tone === 'positive'</span>
+<span class="cstat-no" title="statement not covered" >                  ? 'dl-value dl-value-positive'</span>
+<span class="cstat-no" title="statement not covered" >                  : item.tone === 'negative'</span>
+<span class="cstat-no" title="statement not covered" >                    ? 'dl-value dl-value-negative'</span>
+<span class="cstat-no" title="statement not covered" >                    : item.tone === 'muted'</span>
 <span class="cstat-no" title="statement not covered" >                      ? 'dl-value dl-value-muted'</span>
-                      : 'dl-value'
+<span class="cstat-no" title="statement not covered" >                      : 'dl-value'</span>
             }
           &gt;
-            {item.value}
-          &lt;/dd&gt;
-        &lt;/div&gt;
-      ))}
-    &lt;/dl&gt;
+<span class="cstat-no" title="statement not covered" >            {item.value}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/dd&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >      ))}</span>
+<span class="cstat-no" title="statement not covered" >    &lt;/dl&gt;</span>
   )
-}
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -184,7 +184,7 @@ export function DataList({ items, dense = false }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T10:29:57.750Z
+                at 2026-04-03T15:02:17.689Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

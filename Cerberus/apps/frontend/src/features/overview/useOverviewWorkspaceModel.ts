@@ -160,5 +160,8 @@ export function useOverviewWorkspaceModel({ active, onSelectWorkspace }: Params)
     openExecution: () => onSelectWorkspace('execution'),
     openHealth: () => onSelectWorkspace('health'),
     openMarket: () => onSelectWorkspace('market'),
+    openBook: () => onSelectWorkspace('book'),
+    openStrategy: () => onSelectWorkspace('strategy'),
+    openInference: () => onSelectWorkspace('inference'),
   }
 }

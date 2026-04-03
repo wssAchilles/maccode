@@ -14,6 +14,9 @@ REGION="${REGION:-asia-northeast1}"
 SERVICE_NAME="${ORCHESTRATOR_SERVICE_NAME:-sentinel-orchestrator}"
 PYTHON_WORKER_BASE_URL="${PYTHON_WORKER_BASE_URL:-https://${PROJECT_ID}.an.r.appspot.com}"
 INTERNAL_JOB_TOKEN="${INTERNAL_JOB_TOKEN:-dev-internal-job-token}"
+MAX_LIGHT_PARALLEL="${MAX_LIGHT_PARALLEL:-4}"
+MAX_HEAVY_PARALLEL="${MAX_HEAVY_PARALLEL:-2}"
+DISPATCH_TIMEOUT_SECS="${DISPATCH_TIMEOUT_SECS:-1800}"
 
 if [ -z "${PROJECT_ID}" ]; then
   echo "❌ Error: Could not determine Google Cloud Project ID."
@@ -30,6 +33,8 @@ fi
 echo "✅ Project ID: ${PROJECT_ID}"
 echo "✅ Region: ${REGION}"
 echo "✅ Python Worker Base URL: ${PYTHON_WORKER_BASE_URL}"
+echo "✅ Light Parallelism: ${MAX_LIGHT_PARALLEL}"
+echo "✅ Heavy Parallelism: ${MAX_HEAVY_PARALLEL}"
 
 echo "🏗️  Building orchestrator image..."
 gcloud builds submit "sentinel-orchestrator" \
@@ -48,7 +53,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --concurrency 80 \
   --min-instances 0 \
   --max-instances 2 \
-  --set-env-vars "PYTHON_WORKER_BASE_URL=${PYTHON_WORKER_BASE_URL},INTERNAL_JOB_TOKEN=${INTERNAL_JOB_TOKEN}" \
+  --set-env-vars "PYTHON_WORKER_BASE_URL=${PYTHON_WORKER_BASE_URL},INTERNAL_JOB_TOKEN=${INTERNAL_JOB_TOKEN},MAX_LIGHT_PARALLEL=${MAX_LIGHT_PARALLEL},MAX_HEAVY_PARALLEL=${MAX_HEAVY_PARALLEL},DISPATCH_TIMEOUT_SECS=${DISPATCH_TIMEOUT_SECS}" \
   --quiet
 
 SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
@@ -58,6 +63,10 @@ SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
 
 echo "✅ Orchestrator deployment complete."
 echo "🌐 Service URL: ${SERVICE_URL}"
+
+echo "🩺 Verifying /healthz ..."
+curl --fail --silent --show-error "${SERVICE_URL}/healthz" >/dev/null
+echo "✅ Health check passed."
 echo ""
 echo "👉 Next step:"
 echo "   Set ORCHESTRATOR_BASE_URL=${SERVICE_URL} in App Engine or Python worker env vars."

@@ -111,8 +111,8 @@ describe('ui state machine', () => {
 
   it('updates shell workspace through ui actions', () => {
     const { uiActions } = useCerberusStore.getState()
-    uiActions.setWorkspace('execution')
+    uiActions.setWorkspace('inference')
 
-    expect(useCerberusStore.getState().uiState.shell_navigation.workspace).toBe('execution')
+    expect(useCerberusStore.getState().uiState.shell_navigation.workspace).toBe('inference')
   })
 })

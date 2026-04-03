@@ -22,7 +22,17 @@ export type DomainName = 'market-stream' | 'strategy-summary' | 'execution-tradi
 
 export type DomainStatusMap = Record<DomainName, UIState>
 
-export type WorkspaceId = 'overview' | 'market' | 'execution' | 'health'
+export const WORKSPACE_IDS = [
+  'overview',
+  'market',
+  'book',
+  'strategy',
+  'execution',
+  'inference',
+  'health',
+] as const
+
+export type WorkspaceId = (typeof WORKSPACE_IDS)[number]
 
 export type ShellNavigationState = {
   workspace: WorkspaceId

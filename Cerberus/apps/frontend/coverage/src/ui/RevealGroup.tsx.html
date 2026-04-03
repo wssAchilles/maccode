@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>0/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>0/24</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -102,8 +102,8 @@
 <a name='L37'></a><a href='#L37'>37</a>
 <a name='L38'></a><a href='#L38'>38</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -112,35 +112,35 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">78x</span>
-<span class="cline-any cline-yes">78x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">78x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
 &nbsp;
-import { cn } from '../lib/cn'
-import { useRevealOnView } from './motion/useRevealOnView'
+<span class="cstat-no" title="statement not covered" >import { cn } from '../lib/cn'</span>
+<span class="cstat-no" title="statement not covered" >import { useRevealOnView } from './motion/useRevealOnView'</span>
 &nbsp;
 type Props = Omit&lt;HTMLAttributes&lt;HTMLDivElement&gt;, 'children'&gt; &amp; {
   children: ReactNode
@@ -149,31 +149,31 @@ type Props = Omit&lt;HTMLAttributes&lt;HTMLDivElement&gt;, 'children'&gt; &amp; 
   once?: boolean
 }
 &nbsp;
-export function RevealGroup({
-  children,
-  className,
-  disabled = false,
-  revealIndex,
-  once = true,
-  style,
-  ...props
-}: Props) {
-  const ref = useRevealOnView&lt;HTMLDivElement&gt;({ disabled, once })
+<span class="cstat-no" title="statement not covered" >export function RevealGroup({</span>
+<span class="cstat-no" title="statement not covered" >  children,</span>
+<span class="cstat-no" title="statement not covered" >  className,</span>
+<span class="cstat-no" title="statement not covered" >  disabled = false,</span>
+<span class="cstat-no" title="statement not covered" >  revealIndex,</span>
+<span class="cstat-no" title="statement not covered" >  once = true,</span>
+<span class="cstat-no" title="statement not covered" >  style,</span>
+<span class="cstat-no" title="statement not covered" >  ...props</span>
+<span class="cstat-no" title="statement not covered" >}: Props) {</span>
+<span class="cstat-no" title="statement not covered" >  const ref = useRevealOnView&lt;HTMLDivElement&gt;({ disabled, once })</span>
 &nbsp;
-  return (
-    &lt;div
-      ref={ref}
-      className={cn('rg', className)}
-      style={{
-        ...(style as CSSProperties | undefined),
-        '--reveal-index': revealIndex === undefined ? undefined : String(revealIndex),
-      } as CSSProperties}
-      {...props}
+<span class="cstat-no" title="statement not covered" >  return (</span>
+<span class="cstat-no" title="statement not covered" >    &lt;div</span>
+<span class="cstat-no" title="statement not covered" >      ref={ref}</span>
+<span class="cstat-no" title="statement not covered" >      className={cn('rg', className)}</span>
+<span class="cstat-no" title="statement not covered" >      style={{</span>
+<span class="cstat-no" title="statement not covered" >        ...(style as CSSProperties | undefined),</span>
+<span class="cstat-no" title="statement not covered" >        '--reveal-index': revealIndex === undefined ? undefined : String(revealIndex),</span>
+<span class="cstat-no" title="statement not covered" >      } as CSSProperties}</span>
+<span class="cstat-no" title="statement not covered" >      {...props}</span>
     &gt;
-      {children}
-    &lt;/div&gt;
+<span class="cstat-no" title="statement not covered" >      {children}</span>
+<span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
   )
-}
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -181,7 +181,7 @@ export function RevealGroup({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T10:29:57.750Z
+                at 2026-04-03T15:02:17.689Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

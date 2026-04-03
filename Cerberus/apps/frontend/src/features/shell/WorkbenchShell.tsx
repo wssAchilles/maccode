@@ -1,4 +1,4 @@
-import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react'
+import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 
 import { useStrategySummaryResource } from '../../app/bootstrap/useResourceQueries'
 import type { FirebaseAuthState } from '../../auth/useFirebaseAuth'
@@ -6,7 +6,14 @@ import { useI18n } from '../../i18n/I18nProvider'
 import { cn } from '../../lib/cn'
 import { useCerberusStore } from '../../store'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { WORKSPACE_MODELS, buildHealthCards } from '../../view-models/workbench'
+import {
+  WORKSPACE_GROUPS,
+  WORKSPACE_INDEX_BY_ID,
+  WORKSPACE_MODEL_BY_ID,
+  WORKSPACE_MODELS,
+  buildHealthCards,
+  getWorkspaceAccent,
+} from '../../view-models/workbench'
 import { GlassPanel, MotionBackdrop, MotionSurface, RevealGroup, StatusPill } from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 
@@ -16,8 +23,17 @@ const LazyOverviewWorkspace = lazy(() =>
 const LazyMarketWorkspace = lazy(() =>
   import('../market/MarketWorkspace').then((module) => ({ default: module.MarketWorkspace })),
 )
+const LazyBookWorkspace = lazy(() =>
+  import('../book/BookWorkspace').then((module) => ({ default: module.BookWorkspace })),
+)
+const LazyStrategyWorkspace = lazy(() =>
+  import('../strategy/StrategyWorkspace').then((module) => ({ default: module.StrategyWorkspace })),
+)
 const LazyExecutionWorkspace = lazy(() =>
   import('../execution/ExecutionWorkspace').then((module) => ({ default: module.ExecutionWorkspace })),
+)
+const LazyInferenceWorkspace = lazy(() =>
+  import('../inference/InferenceWorkspace').then((module) => ({ default: module.InferenceWorkspace })),
 )
 const LazyHealthWorkspace = lazy(() =>
   import('../health/HealthWorkspace').then((module) => ({ default: module.HealthWorkspace })),
@@ -30,7 +46,10 @@ type Props = {
 const WORKSPACE_COMPONENTS: Record<WorkspaceId, ComponentType<any>> = {
   overview: LazyOverviewWorkspace,
   market: LazyMarketWorkspace,
+  book: LazyBookWorkspace,
+  strategy: LazyStrategyWorkspace,
   execution: LazyExecutionWorkspace,
+  inference: LazyInferenceWorkspace,
   health: LazyHealthWorkspace,
 }
 
@@ -48,8 +67,8 @@ function formatEndpointChip(url: string): string {
 function nextWorkspaceFromUrl(): WorkspaceId {
   const params = new URLSearchParams(window.location.search)
   const workspace = params.get('workspace')
-  if (workspace === 'market' || workspace === 'execution' || workspace === 'health') {
-    return workspace
+  if (workspace && workspace in WORKSPACE_MODEL_BY_ID) {
+    return workspace as WorkspaceId
   }
   return 'overview'
 }
@@ -67,6 +86,8 @@ export function WorkbenchShell({ auth }: Props) {
   useStrategySummaryResource(true)
 
   const [visited, setVisited] = useState<Array<WorkspaceId>>([workspace])
+  const currentWorkspace = WORKSPACE_MODEL_BY_ID[workspace]
+  const workspaceIndex = WORKSPACE_INDEX_BY_ID[workspace]
   const authUserLabel = useMemo(() => {
     if (!auth.user) {
       return undefined
@@ -77,11 +98,10 @@ export function WorkbenchShell({ auth }: Props) {
   const readyCount = healthCards.filter((card) => card.state === 'ready').length
   const attentionCount = healthCards.filter((card) => card.state === 'degraded' || card.state === 'error').length
   const loadingCount = healthCards.filter((card) => card.state === 'loading').length
-  const workspaceIndex = WORKSPACE_MODELS.findIndex((item) => item.id === workspace)
   const previousWorkspaceIndex = useRef(workspaceIndex)
   const [workspaceDirection, setWorkspaceDirection] = useState<'forward' | 'backward'>('forward')
   const shellPhase = useRafPresenceTransition(`${workspace}:${workspaceDirection}`, 620)
-  const shellAccent = workspace === 'execution' ? 'amber' : workspace === 'health' ? 'teal' : 'cyan'
+  const shellAccent = getWorkspaceAccent(workspace)
 
   useEffect(() => {
     setVisited((current) => (current.includes(workspace) ? current : [...current, workspace]))
@@ -130,11 +150,15 @@ export function WorkbenchShell({ auth }: Props) {
           <div className="wb-brand">
             <div className="wb-brand-row">
               <p className="wb-eyebrow">{t('app.kicker')}</p>
-              <p className="wb-workspace-pill">{t(WORKSPACE_MODELS[workspaceIndex].titleKey)}</p>
+              <p className="wb-workspace-pill">{currentWorkspace.indexLabel}</p>
             </div>
             <h1>{t('app.title')}</h1>
-            <p>{t('app.subtitle')}</p>
+            <div className="wb-stage-copy">
+              <p className="wb-stage-title">{t(currentWorkspace.titleKey)}</p>
+              <p className="wb-stage-summary">{t(currentWorkspace.descriptionKey)}</p>
+            </div>
           </div>
+
           <div className="wb-control-stack">
             <GlassPanel className="wb-control-card" tone="subtle">
               <div className="wb-control-head">
@@ -151,6 +175,7 @@ export function WorkbenchShell({ auth }: Props) {
                 ) : null}
               </div>
             </GlassPanel>
+
             <GlassPanel className="wb-control-card wb-control-card-compact" tone="subtle">
               <div className="wb-control-head">
                 <p className="subtle-label">{t('shell.session')}</p>
@@ -158,10 +183,18 @@ export function WorkbenchShell({ auth }: Props) {
               <div className="wb-session-row">
                 {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
                 <div className="locale-switch">
-                  <button type="button" className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('zh-CN')}>
+                  <button
+                    type="button"
+                    className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'}
+                    onClick={() => setLocale('zh-CN')}
+                  >
                     {t('lang.zh')}
                   </button>
-                  <button type="button" className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('en-US')}>
+                  <button
+                    type="button"
+                    className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'}
+                    onClick={() => setLocale('en-US')}
+                  >
                     {t('lang.en')}
                   </button>
                 </div>
@@ -184,6 +217,7 @@ export function WorkbenchShell({ auth }: Props) {
                 {loadingCount > 0 ? ` · ${loadingCount} ${t('shell.loading')}` : ''}
               </p>
             </div>
+            <p className="wb-stage-active">{t(currentWorkspace.titleKey)}</p>
           </div>
           <div className="wb-status-strip">
             {healthCards.map((card, index) => (
@@ -206,71 +240,80 @@ export function WorkbenchShell({ auth }: Props) {
         </div>
       </GlassPanel>
 
-      <div className="ws-nav-shell-block">
-        <div className="ws-nav-head">
-          <div>
-            <p className="subtle-label">{t('shell.navRail')}</p>
-            <p className="wb-strip-summary">
-              {t(WORKSPACE_MODELS[workspaceIndex].titleKey)} · {t(WORKSPACE_MODELS[workspaceIndex].descriptionKey)}
-            </p>
-          </div>
-        </div>
-        <nav
-          className="ws-nav"
-          aria-label={t('workspace.nav')}
-          style={{ '--ws-nav-index': String(workspaceIndex) } as CSSProperties}
-        >
-          {WORKSPACE_MODELS.map((item, index) => (
-            <RevealGroup key={item.id} revealIndex={index} className="ws-nav-shell">
-              <MotionSurface className="ws-nav-surface" mode="button">
-                <button
-                  type="button"
-                  className={workspace === item.id ? 'ws-nav-button ws-nav-button-active' : 'ws-nav-button'}
-                  onClick={() => handleWorkspaceChange(item.id)}
-                >
-                  <span className="subtle-label">0{index + 1}</span>
-                  <span>
-                    <span className="ws-nav-title">{t(item.titleKey)}</span>
-                    <span
-                      className={workspace === item.id ? 'ws-nav-description ws-nav-description-active' : 'ws-nav-description'}
-                    >
-                      {t(item.descriptionKey)}
-                    </span>
-                  </span>
-                  <span className="ws-nav-pulse" aria-hidden="true" />
-                </button>
-              </MotionSurface>
-            </RevealGroup>
-          ))}
-        </nav>
-      </div>
+      <div className="wb-frame">
+        <aside className="ws-rail-shell">
+          <GlassPanel className="ws-rail-panel" tone="subtle">
+            <div className="ws-nav-head">
+              <div>
+                <p className="subtle-label">{t('shell.navRail')}</p>
+                <p className="wb-strip-summary">
+                  {t(currentWorkspace.titleKey)} · {t(currentWorkspace.descriptionKey)}
+                </p>
+              </div>
+            </div>
 
-      <section className="ws-stage" data-workspace={workspace} data-phase={shellPhase} data-direction={workspaceDirection}>
-        <MotionBackdrop accent={shellAccent} intensity="stage" className="ws-stage-backdrop" />
-        <div className="ws-stage-stack">
-          <Suspense fallback={<GlassPanel className="ws-loading">{t('workspace.loading')}</GlassPanel>}>
-            {visited.map((visitedWorkspace) => {
-              const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]
-              return (
-                <div
-                  key={visitedWorkspace}
-                  className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}
-                  aria-hidden={workspace !== visitedWorkspace}
-                >
-                  {visitedWorkspace === 'overview' ? (
+            <div className="ws-rail-stack">
+              {WORKSPACE_GROUPS.map((group, groupIndex) => (
+                <section key={group.id} className="ws-rail-group" aria-label={t(group.titleKey)}>
+                  <div className="ws-rail-group-head">
+                    <p className="subtle-label">{t(group.titleKey)}</p>
+                    <p className="ws-rail-group-summary">{t(group.descriptionKey)}</p>
+                  </div>
+
+                  <nav className="ws-rail" aria-label={t(group.titleKey)}>
+                    {group.items.map((item, itemIndex) => (
+                      <RevealGroup
+                        key={item.id}
+                        revealIndex={groupIndex * 2 + itemIndex}
+                        className="ws-rail-shell-item"
+                      >
+                        <MotionSurface className="ws-rail-surface" mode="button">
+                          <button
+                            type="button"
+                            className={workspace === item.id ? 'ws-rail-item ws-rail-item-active' : 'ws-rail-item'}
+                            onClick={() => handleWorkspaceChange(item.id)}
+                            aria-current={workspace === item.id ? 'page' : undefined}
+                          >
+                            <span className="ws-rail-item-index">{item.indexLabel}</span>
+                            <span className="ws-rail-item-copy">
+                              <span className="ws-rail-item-title">{t(item.titleKey)}</span>
+                              <span className="ws-rail-item-description">{t(item.descriptionKey)}</span>
+                            </span>
+                            <span className="ws-rail-item-pulse" aria-hidden="true" />
+                          </button>
+                        </MotionSurface>
+                      </RevealGroup>
+                    ))}
+                  </nav>
+                </section>
+              ))}
+            </div>
+          </GlassPanel>
+        </aside>
+
+        <section className="ws-stage" data-workspace={workspace} data-phase={shellPhase} data-direction={workspaceDirection}>
+          <MotionBackdrop accent={shellAccent} intensity="stage" className="ws-stage-backdrop" />
+          <div className="ws-stage-stack">
+            <Suspense fallback={<GlassPanel className="ws-loading">{t('workspace.loading')}</GlassPanel>}>
+              {visited.map((visitedWorkspace) => {
+                const WorkspaceComponent = WORKSPACE_COMPONENTS[visitedWorkspace]
+                return (
+                  <div
+                    key={visitedWorkspace}
+                    className={cn('ws-host', workspace === visitedWorkspace ? 'ws-host-active' : 'ws-host-hidden')}
+                    aria-hidden={workspace !== visitedWorkspace}
+                  >
                     <WorkspaceComponent
                       active={workspace === visitedWorkspace}
                       onSelectWorkspace={handleWorkspaceChange}
                     />
-                  ) : (
-                    <WorkspaceComponent active={workspace === visitedWorkspace} />
-                  )}
-                </div>
-              )
-            })}
-          </Suspense>
-        </div>
-      </section>
+                  </div>
+                )
+              })}
+            </Suspense>
+          </div>
+        </section>
+      </div>
 
       <nav className="ws-mobile-nav" aria-label={t('workspace.nav')}>
         {WORKSPACE_MODELS.map((item) => (

@@ -1,5 +1,7 @@
 mod config;
+mod controller;
 mod handlers;
+mod models;
 mod proxy;
 
 use anyhow::{Context, Result};
@@ -8,6 +10,7 @@ use axum::{
     routing::{get, post},
 };
 use config::{AppConfig, AppState};
+use controller::DispatchController;
 use handlers::{
     approve_operation, cancel_operation, dispatch_operation, get_control_task, get_operation,
     get_operation_events, healthz, list_control_tasks, retry_operation, run_control_task,
@@ -32,6 +35,11 @@ async fn main() -> Result<()> {
     let config = Arc::new(AppConfig::from_env());
     let bind_addr = config.bind_addr()?;
     let state = AppState {
+        dispatch_controller: DispatchController::new(
+            config.max_light_parallel,
+            config.max_heavy_parallel,
+            std::time::Duration::from_secs(config.dispatch_timeout_secs),
+        ),
         config,
         http_client: Client::builder()
             .use_rustls_tls()

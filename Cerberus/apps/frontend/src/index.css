@@ -104,9 +104,9 @@ button {
 .app-shell {
   position: relative;
   isolation: isolate;
-  width: min(1510px, calc(100% - 48px));
+  width: min(1620px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 28px 0 128px;
+  padding: 24px 0 128px;
 }
 
 .app-shell::before {
@@ -142,13 +142,22 @@ button {
 }
 
 .app-shell[data-workspace='market'],
-.ws-grid-market {
+.app-shell[data-workspace='book'],
+.ws-grid-market,
+.ws-grid-book {
   --wrgb: var(--gl-cyan);
 }
 
 .app-shell[data-workspace='execution'],
 .ws-grid-execution {
   --wrgb: var(--gl-amber);
+}
+
+.app-shell[data-workspace='strategy'],
+.app-shell[data-workspace='inference'],
+.ws-grid-strategy,
+.ws-grid-inference {
+  --wrgb: var(--gl-teal);
 }
 
 .app-shell[data-workspace='health'],
@@ -473,8 +482,8 @@ button {
 .wb-header {
   position: relative;
   display: grid;
-  gap: 18px;
-  min-height: 312px;
+  gap: 16px;
+  min-height: 248px;
   isolation: isolate;
   overflow: hidden;
 }
@@ -495,14 +504,14 @@ button {
 .wb-header-top {
   display: flex;
   justify-content: space-between;
-  gap: 22px;
-  align-items: stretch;
+  gap: 18px;
+  align-items: flex-start;
 }
 
 .wb-brand {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -530,32 +539,54 @@ button {
 }
 
 .wb-brand h1 {
-  margin: 12px 0 0;
-  font: 700 clamp(2rem, 5vw, 3.2rem)/0.95 var(--fh);
+  margin: 8px 0 0;
+  font: 700 clamp(1.8rem, 4.4vw, 2.8rem)/0.95 var(--fh);
   letter-spacing: -0.02em;
   color: var(--t0);
 }
 
-.wb-brand p:last-child {
-  margin: 4px 0 0;
-  max-width: 44ch;
+.wb-stage-copy {
+  display: grid;
+  gap: 6px;
+  max-width: 48ch;
+}
+
+.wb-stage-title {
+  margin: 0;
+  color: var(--t0);
+  font: 700 1.08rem/1.08 var(--fh);
+  letter-spacing: -0.02em;
+}
+
+.wb-stage-summary {
+  margin: 0;
   color: var(--t1);
-  font-size: 1.02rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.wb-stage-active {
+  margin: 0;
+  color: rgba(var(--wrgb), 0.74);
+  font: 700 0.78rem/1.2 var(--fm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .wb-control-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  flex: 0 0 min(33rem, 38%);
-  min-width: min(100%, 19rem);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+  flex: 0 0 min(38rem, 44%);
+  min-width: min(100%, 24rem);
 }
 
 .wb-control-card {
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 12px 14px;
+  align-content: start;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(244, 250, 251, 0.84));
   border: 1px solid rgba(124, 180, 192, 0.14);
   box-shadow: 0 18px 34px -30px rgba(110, 149, 167, 0.32);
@@ -781,6 +812,209 @@ button {
   gap: 12px;
 }
 
+.ss-card {
+  min-height: 108px;
+  padding: 14px;
+  align-content: space-between;
+}
+
+.wb-frame {
+  display: grid;
+  grid-template-columns: minmax(248px, 286px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.ws-rail-shell {
+  min-width: 0;
+}
+
+.ws-rail-panel {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.ws-rail-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.ws-rail-group {
+  display: grid;
+  gap: 10px;
+}
+
+.ws-rail-group-head {
+  display: grid;
+  gap: 4px;
+}
+
+.ws-rail-group-summary {
+  margin: 0;
+  color: var(--t2);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.ws-rail {
+  display: grid;
+  gap: 10px;
+}
+
+.ws-rail-shell-item,
+.ws-rail-surface,
+.workspace-portal-shell,
+.workspace-portal-surface {
+  min-width: 0;
+}
+
+.ws-rail-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid rgba(124, 180, 192, 0.1);
+  border-radius: var(--r0);
+  background: rgba(255, 255, 255, 0.78);
+  padding: 14px;
+  text-align: left;
+  overflow: hidden;
+  backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.ws-rail-item::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(var(--wrgb), 0.78), rgba(var(--wrgb), 0.26));
+  transition: width var(--db) var(--ee), opacity var(--db) ease-out;
+  opacity: 0;
+}
+
+.ws-rail-item:hover,
+.ws-rail-item:focus-visible {
+  transform: translateY(var(--hl));
+}
+
+.ws-rail-item-active {
+  border-color: rgba(var(--wrgb), 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 18px 38px -32px rgba(var(--wrgb), 0.38);
+}
+
+.ws-rail-item-active::before,
+.ws-rail-item:hover::before,
+.ws-rail-item:focus-visible::before {
+  width: 4px;
+  opacity: 1;
+}
+
+.ws-rail-item-index {
+  color: rgba(var(--wrgb), 0.7);
+  font: 700 0.76rem/1 var(--fm);
+  letter-spacing: 0.08em;
+  padding-top: 3px;
+}
+
+.ws-rail-item-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ws-rail-item-title {
+  color: var(--t0);
+  font: 700 0.98rem/1.16 var(--fh);
+}
+
+.ws-rail-item-description {
+  color: var(--t1);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.ws-rail-item-pulse {
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(var(--wrgb), 0.16);
+  box-shadow: 0 0 0 6px rgba(var(--wrgb), 0.06);
+  transition: transform var(--db) var(--ee), box-shadow var(--db) var(--ee), background-color var(--db) ease-out;
+}
+
+.ws-rail-item-active .ws-rail-item-pulse {
+  background: rgba(var(--wrgb), 0.8);
+  box-shadow: 0 0 0 8px rgba(var(--wrgb), 0.12);
+  transform: scale(1.12);
+}
+
+.workspace-portal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workspace-portal {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.workspace-portal-card {
+  display: grid;
+  gap: 12px;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid rgba(124, 180, 192, 0.1);
+}
+
+.workspace-portal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.workspace-portal-title {
+  margin: 4px 0 0;
+  color: var(--t0);
+  font: 700 1rem/1.1 var(--fh);
+}
+
+.workspace-portal-description {
+  margin: 0;
+  color: var(--t1);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.workspace-portal-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(var(--wrgb), 0.14);
+  box-shadow: 0 0 0 8px rgba(var(--wrgb), 0.06);
+  transition: transform var(--db) var(--ee), box-shadow var(--db) var(--ee), background-color var(--db) ease-out;
+}
+
+.workspace-portal:hover .workspace-portal-pulse,
+.workspace-portal:focus-visible .workspace-portal-pulse {
+  background: rgba(var(--wrgb), 0.76);
+  box-shadow: 0 0 0 10px rgba(var(--wrgb), 0.12);
+  transform: scale(1.08);
+}
+
 .wb-strip-shell,
 .ws-nav-shell-block {
   position: relative;
@@ -971,7 +1205,10 @@ button {
 
 .ws-grid-overview,
 .ws-grid-market,
+.ws-grid-book,
+.ws-grid-strategy,
 .ws-grid-execution,
+.ws-grid-inference,
 .ws-grid-health {
   position: relative;
 }
@@ -2798,6 +3035,7 @@ button {
 }
 
 @media (max-width: 1120px) {
+  .wb-frame,
   .ws-grid,
   .xly,
   .tb,
@@ -2807,12 +3045,17 @@ button {
   .idt-grid,
   .so-row-grid,
   .overview-tail-grid,
+  .workspace-portal-grid,
   .od-rail {
     grid-template-columns: 1fr;
   }
 
   .core-flow-frame .flow-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ws-rail-panel {
+    position: static;
   }
 
   .ws-nav {
@@ -2845,6 +3088,7 @@ button {
   .metric-grid,
   .health-grid,
   .ws-hero-grid,
+  .wb-frame,
   .ids-grid,
   .tb-grid,
   .xec-metrics,
@@ -2860,6 +3104,10 @@ button {
   }
 
   .ws-nav {
+    display: none;
+  }
+
+  .ws-rail-shell {
     display: none;
   }
 

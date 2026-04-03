@@ -11,6 +11,6 @@
     "passed": false,
     "auditId": "interaction-to-next-paint",
     "level": "warn",
-    "url": "https://cerberus-9d94f.web.app/"
+    "url": "https://cerberus-9d94f.web.app/?workspace=overview"
   }
 ]

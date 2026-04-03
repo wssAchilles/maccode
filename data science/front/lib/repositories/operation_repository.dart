@@ -2,6 +2,7 @@
 library;
 
 import '../models/job_record.dart';
+import '../models/job_stream_frame.dart';
 import '../services/api_service.dart';
 
 abstract class OperationRepository {
@@ -22,7 +23,10 @@ abstract class OperationRepository {
 
   Future<JobRecord> getOperation(String operationId);
 
-  Future<List<JobEvent>> getOperationEvents(String operationId, {int limit = 50});
+  Future<List<JobEvent>> getOperationEvents(
+    String operationId, {
+    int limit = 50,
+  });
 
   Future<JobRecord> cancelOperation(String operationId);
 
@@ -32,6 +36,12 @@ abstract class OperationRepository {
     String operationId, {
     required bool approved,
     String? message,
+  });
+
+  Stream<JobStreamFrame> streamOperation(
+    String operationId, {
+    double pollInterval = 2.0,
+    double maxDuration = 55.0,
   });
 }
 
@@ -79,8 +89,14 @@ class ApiOperationRepository implements OperationRepository {
   }
 
   @override
-  Future<List<JobEvent>> getOperationEvents(String operationId, {int limit = 50}) async {
-    final items = await ApiService.getOperationEvents(operationId, limit: limit);
+  Future<List<JobEvent>> getOperationEvents(
+    String operationId, {
+    int limit = 50,
+  }) async {
+    final items = await ApiService.getOperationEvents(
+      operationId,
+      limit: limit,
+    );
     return items.map(JobEvent.fromJson).toList(growable: false);
   }
 
@@ -108,5 +124,18 @@ class ApiOperationRepository implements OperationRepository {
       message: message,
     );
     return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Stream<JobStreamFrame> streamOperation(
+    String operationId, {
+    double pollInterval = 2.0,
+    double maxDuration = 55.0,
+  }) {
+    return ApiService.streamOperation(
+      operationId,
+      pollInterval: pollInterval,
+      maxDuration: maxDuration,
+    );
   }
 }

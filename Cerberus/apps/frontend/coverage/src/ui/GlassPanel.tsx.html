@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>0/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/2</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>0/24</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -105,7 +105,7 @@
 <a name='L40'></a><a href='#L40'>40</a>
 <a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -117,35 +117,35 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">162x</span>
-<span class="cline-any cline-yes">162x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">162x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react'
 &nbsp;
-import { cn } from '../lib/cn'
+<span class="cstat-no" title="statement not covered" >import { cn } from '../lib/cn'</span>
 &nbsp;
 type Tone = 'default' | 'hero' | 'subtle' | 'danger'
 &nbsp;
@@ -157,32 +157,32 @@ type Props&lt;T extends ElementType&gt; = {
   padded?: boolean
 } &amp; Omit&lt;ComponentPropsWithoutRef&lt;T&gt;, 'as' | 'children' | 'className'&gt;
 &nbsp;
-const TONE_CLASS: Record&lt;Tone, string&gt; = {
-  default: 'glass-panel',
-  hero: 'glass-panel glass-panel-hero',
-  subtle: 'glass-panel glass-panel-subtle',
-  danger: 'glass-panel glass-panel-danger',
-}
+<span class="cstat-no" title="statement not covered" >const TONE_CLASS: Record&lt;Tone, string&gt; = {</span>
+<span class="cstat-no" title="statement not covered" >  default: 'glass-panel',</span>
+<span class="cstat-no" title="statement not covered" >  hero: 'glass-panel glass-panel-hero',</span>
+<span class="cstat-no" title="statement not covered" >  subtle: 'glass-panel glass-panel-subtle',</span>
+<span class="cstat-no" title="statement not covered" >  danger: 'glass-panel glass-panel-danger',</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-export function GlassPanel&lt;T extends ElementType = 'section'&gt;({
-  as,
-  children,
-  className,
-  tone = 'default',
-  padded = true,
-  ...props
-}: Props&lt;T&gt;) {
-  const Component = as ?? 'section'
-  return (
-    &lt;Component
-      data-tone={tone}
-      className={cn(TONE_CLASS[tone], padded ? <span class="branch-0 cbranch-no" title="branch not covered" >'glass-panel-padded' : '', c</span>lassName)}
-      {...props}
+<span class="cstat-no" title="statement not covered" >export function GlassPanel&lt;T extends ElementType = 'section'&gt;({</span>
+<span class="cstat-no" title="statement not covered" >  as,</span>
+<span class="cstat-no" title="statement not covered" >  children,</span>
+<span class="cstat-no" title="statement not covered" >  className,</span>
+<span class="cstat-no" title="statement not covered" >  tone = 'default',</span>
+<span class="cstat-no" title="statement not covered" >  padded = true,</span>
+<span class="cstat-no" title="statement not covered" >  ...props</span>
+<span class="cstat-no" title="statement not covered" >}: Props&lt;T&gt;) {</span>
+<span class="cstat-no" title="statement not covered" >  const Component = as ?? 'section'</span>
+<span class="cstat-no" title="statement not covered" >  return (</span>
+<span class="cstat-no" title="statement not covered" >    &lt;Component</span>
+<span class="cstat-no" title="statement not covered" >      data-tone={tone}</span>
+<span class="cstat-no" title="statement not covered" >      className={cn(TONE_CLASS[tone], padded ? 'glass-panel-padded' : '', className)}</span>
+<span class="cstat-no" title="statement not covered" >      {...props}</span>
     &gt;
-      {children}
-    &lt;/Component&gt;
+<span class="cstat-no" title="statement not covered" >      {children}</span>
+<span class="cstat-no" title="statement not covered" >    &lt;/Component&gt;</span>
   )
-}
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -190,7 +190,7 @@ export function GlassPanel&lt;T extends ElementType = 'section'&gt;({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T10:29:57.750Z
+                at 2026-04-03T15:02:17.689Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

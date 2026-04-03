@@ -3,15 +3,16 @@ import { Suspense } from 'react'
 import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../../app/lazyPanels'
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DataList, DiagnosticDrawer, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import type { WorkspaceId } from '../../store/slices/shared'
+import { DataList, DiagnosticDrawer, MetricTile, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
-import { InferenceDiagnosticsPanel } from '../inference-observability/components/InferenceDiagnosticsPanel'
 
 type Props = {
   active?: boolean
+  onSelectWorkspace?: (workspace: WorkspaceId) => void
 }
 
-export function HealthWorkspace({ active: _active = true }: Props) {
+export function HealthWorkspace({ active: _active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
   const model = useHealthWorkspaceModel(_active)
 
@@ -33,7 +34,17 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             <div className="hero-side-head">
               <p className="subtle-label">{t('workspace.hero.readings')}</p>
             </div>
-            <ServiceHealthPanel model={model.serviceHealthPanel} />
+            <div className="metric-grid ws-hero-metrics">
+              {model.serviceHealthPanel.band.items.slice(0, 4).map((item, index) => (
+                <MetricTile
+                  key={item.id}
+                  label={item.label}
+                  value={item.value}
+                  tone={item.tone === 'positive' || item.tone === 'negative' || item.tone === 'accent' ? item.tone : 'default'}
+                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </SectionFrame>
@@ -48,6 +59,17 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           bodyClassName="operator-shell"
         >
           <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.health.operatorServiceTitle')}
+          description={t('workspace.health.operatorServiceDescription')}
+          accent="teal"
+          stage="feature"
+          compactHeader
+          bodyClassName="tail-shell"
+        >
+          <ServiceHealthPanel model={model.serviceHealthPanel} />
         </SectionFrame>
 
         <SectionFrame
@@ -80,9 +102,26 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             </PanelSection>
           </div>
         </SectionFrame>
+      </div>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" compactHeader bodyClassName="tail-shell">
-          <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
+      <div className="ws-side stack wss">
+        <SectionFrame
+          title={t('workspace.inference.operationsTitle')}
+          description={t('workspace.inference.operatorNote')}
+          accent="cyan"
+          stage="inspector"
+          compactHeader
+          bodyClassName="inspector-shell"
+        >
+          <p className="empty-inline">{model.inferenceDiagnostics.summary}</p>
+          <div className="ws-actions">
+            <button type="button" className="soft-button sbp" onClick={() => onSelectWorkspace?.('inference')}>
+              {t('workspace.cta.inference')}
+            </button>
+            <button type="button" className="soft-button" onClick={() => onSelectWorkspace?.('execution')}>
+              {t('workspace.cta.execution')}
+            </button>
+          </div>
           <DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
             summary={model.inferenceDiagnostics.summary}
@@ -94,9 +133,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             </Suspense>
           </DiagnosticDrawer>
         </SectionFrame>
-      </div>
 
-      <div className="ws-side stack wss">
         <SectionFrame
           title={t('workspace.health.requestIds')}
           description={t('workspace.health.requestIdsDescription')}

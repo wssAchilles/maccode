@@ -8,6 +8,7 @@ from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from middleware.rate_limit import rate_limit
 from services.firebase_service import require_auth
+from services.operation_dispatcher import spawn_operation_worker
 from services.operation_service import JobBackendUnavailableError, OperationService
 from services.operation_stream import stream_operation_events
 from services.operation_tool_runner import execute_operation_tool
@@ -26,6 +27,14 @@ def _validate_internal_token() -> bool:
     if current_app.config.get('DEBUG') or current_app.config.get('TESTING'):
         return True
     return request.headers.get('X-Internal-Job-Token') == current_app.config.get('INTERNAL_JOB_TOKEN')
+
+
+def _orchestrator_managed_dispatch() -> bool:
+    return request.headers.get('X-Orchestrator-Managed', '').strip().lower() in {
+        '1',
+        'true',
+        'yes',
+    }
 
 
 @operations_bp.route('', methods=['GET'])
@@ -209,8 +218,13 @@ def internal_dispatch_operation(operation_id: str):
     operation = OperationService.get_operation_for_execution(operation_id)
     if not operation:
         return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
-    OperationService.execute_operation(operation_id)
-    return success_response({'operation_id': operation_id, 'status': 'processed'})
+    app = current_app._get_current_object()
+    spawn_operation_worker(
+        app,
+        operation_id,
+        OperationService.process_dispatch,
+    )
+    return success_response({'operation_id': operation_id, 'status': 'accepted'}, status_code=202)
 
 
 @internal_operations_bp.route('/internal/operations/<operation_id>/cancel', methods=['POST'])
@@ -234,7 +248,11 @@ def internal_retry_operation(operation_id: str):
         return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
     requested_by = str(operation.get('requested_by') or 'system')
     updated = OperationService.retry_operation(requested_by, operation_id)
-    if updated and updated.get('status') == 'queued':
+    if (
+        updated
+        and updated.get('status') == 'queued'
+        and not _orchestrator_managed_dispatch()
+    ):
         app = current_app._get_current_object()
         OperationService.dispatch_operation(app, updated['job_id'], updated['type'])
     return success_response(updated or {'operation_id': operation_id})
@@ -255,7 +273,12 @@ def internal_approve_operation(operation_id: str):
         approved=bool(payload.get('approved', True)),
         message=payload.get('message'),
     )
-    if bool(payload.get('approved', True)) and updated and updated.get('status') == 'queued':
+    if (
+        bool(payload.get('approved', True))
+        and updated
+        and updated.get('status') == 'queued'
+        and not _orchestrator_managed_dispatch()
+    ):
         app = current_app._get_current_object()
         OperationService.dispatch_operation(app, updated['job_id'], updated['type'])
     return success_response(updated or {'operation_id': operation_id})

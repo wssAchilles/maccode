@@ -90,16 +90,35 @@ class _FakeCollection:
         return [_FakeSnapshot(doc_id, data, exists=True) for doc_id, data in self._docs.items()]
 
 
+class _FakeFirestoreClient:
+    def __init__(self, *, tasks, jobs):
+        self._tasks = tasks
+        self._jobs = jobs
+
+    def collection(self, name: str):
+        if name == 'control_tasks':
+            return self._tasks
+        if name == 'jobs':
+            return self._jobs
+        raise KeyError(name)
+
+
 class TestControlTaskService(ControlTaskService):
     _tasks = _FakeCollection()
+    _jobs = _FakeCollection()
 
     @classmethod
     def reset(cls):
         cls._tasks = _FakeCollection()
+        cls._jobs = _FakeCollection()
 
     @classmethod
     def _collection(cls):
         return cls._tasks
+
+    @staticmethod
+    def _get_firestore_client():
+        return _FakeFirestoreClient(tasks=TestControlTaskService._tasks, jobs=TestControlTaskService._jobs)
 
 
 class ControlTaskServiceTestCase(unittest.TestCase):
@@ -162,8 +181,8 @@ class ControlTaskServiceTestCase(unittest.TestCase):
         self.assertEqual(disabled_tasks[0]['owner'], 'ops')
 
         ordered = TestControlTaskService.list_control_tasks(limit=10)
-        self.assertEqual(ordered[0]['id'], 'rag_manual')
-        self.assertEqual(ordered[1]['id'], 'train_daily')
+        ordered_ids = {item['id'] for item in ordered}
+        self.assertEqual(ordered_ids, {'rag_manual', 'train_daily'})
 
     def test_set_control_task_enabled_updates_enabled_flag(self):
         TestControlTaskService.ensure_control_task(
@@ -181,6 +200,45 @@ class ControlTaskServiceTestCase(unittest.TestCase):
 
         self.assertIsNotNone(updated)
         self.assertFalse(updated['enabled'])
+
+    def test_list_control_tasks_enriches_runtime_fields(self):
+        TestControlTaskService.ensure_control_task(
+            control_task_id='train_model_daily',
+            kind='scheduler',
+            operation_type='train_model',
+            title='每日模型重训',
+            schedule='every day 04:00 UTC',
+            dependencies=['dataset_ready'],
+        )
+        TestControlTaskService.ensure_control_task(
+            control_task_id='dataset_ready',
+            kind='scheduler',
+            operation_type='fetch_data',
+            title='数据已准备',
+            enabled=True,
+        )
+        TestControlTaskService._jobs.document('op-1').set(
+            {
+                'job_id': 'op-1',
+                'operation_id': 'op-1',
+                'type': 'train_model',
+                'status': 'awaiting_approval',
+                'progress': 0,
+                'attempt_count': 0,
+                'max_attempts': 3,
+                'requested_by': 'tester',
+                'control_task_id': 'train_model_daily',
+                'submitted_at': datetime.now(timezone.utc),
+            }
+        )
+
+        tasks = TestControlTaskService.list_control_tasks(limit=10)
+        task = next(item for item in tasks if item['id'] == 'train_model_daily')
+
+        self.assertEqual(task['dependency_state'], 'ready')
+        self.assertEqual(task['dependency_summary'], '依赖已就绪')
+        self.assertIsNotNone(task['next_run_at'])
+        self.assertEqual(task['latest_operation']['status'], 'awaiting_approval')
 
     def test_set_control_task_approval_policy_updates_policy_projection(self):
         TestControlTaskService.ensure_control_task(

@@ -3,6 +3,8 @@ library;
 
 import 'dart:convert';
 
+import '../models/control_task_schedule_draft.dart';
+
 final RegExp _hourlySchedulePattern = RegExp(
   r'^every\s+([1-9]\d*)\s+hours?$',
   caseSensitive: false,
@@ -11,7 +13,49 @@ final RegExp _dailySchedulePattern = RegExp(
   r'^every\s+day\s+([01]\d|2[0-3]):([0-5]\d)(?:\s+UTC)?$',
   caseSensitive: false,
 );
+final RegExp _timeTextPattern = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
 final RegExp _dependencyPattern = RegExp(r'^[A-Za-z][A-Za-z0-9_:-]{0,63}$');
+
+ControlTaskScheduleDraft parseControlTaskScheduleDraft(String? raw) {
+  final normalized = raw?.trim() ?? '';
+  if (normalized.isEmpty || normalized.toLowerCase() == 'manual') {
+    return const ControlTaskScheduleDraft(mode: ControlTaskScheduleMode.manual);
+  }
+
+  final hourlyMatch = _hourlySchedulePattern.firstMatch(normalized);
+  if (hourlyMatch != null) {
+    return ControlTaskScheduleDraft(
+      mode: ControlTaskScheduleMode.hourly,
+      intervalText: hourlyMatch.group(1) ?? '1',
+    );
+  }
+
+  final dailyMatch = _dailySchedulePattern.firstMatch(normalized);
+  if (dailyMatch != null) {
+    return ControlTaskScheduleDraft(
+      mode: ControlTaskScheduleMode.daily,
+      timeText: '${dailyMatch.group(1)}:${dailyMatch.group(2)}',
+    );
+  }
+
+  return ControlTaskScheduleDraft(
+    mode: ControlTaskScheduleMode.custom,
+    customText: normalized,
+  );
+}
+
+String formatControlTaskScheduleDraft(ControlTaskScheduleDraft draft) {
+  switch (draft.mode) {
+    case ControlTaskScheduleMode.manual:
+      return '';
+    case ControlTaskScheduleMode.hourly:
+      return 'every ${draft.intervalText.trim()} hours';
+    case ControlTaskScheduleMode.daily:
+      return 'every day ${draft.timeText.trim()} UTC';
+    case ControlTaskScheduleMode.custom:
+      return draft.customText.trim();
+  }
+}
 
 String? normalizeControlTaskScheduleInput(String raw) {
   final normalized = raw.trim();
@@ -42,6 +86,26 @@ String? validateControlTaskScheduleInput(String raw) {
   return '仅支持留空、manual、every N hours、every day HH:MM UTC';
 }
 
+String? validateControlTaskScheduleDraft(ControlTaskScheduleDraft draft) {
+  switch (draft.mode) {
+    case ControlTaskScheduleMode.manual:
+      return null;
+    case ControlTaskScheduleMode.hourly:
+      final interval = int.tryParse(draft.intervalText.trim());
+      if (interval == null || interval <= 0) {
+        return '小时间隔必须是大于 0 的整数';
+      }
+      return null;
+    case ControlTaskScheduleMode.daily:
+      if (!_timeTextPattern.hasMatch(draft.timeText.trim())) {
+        return '每日调度时间必须是 HH:MM';
+      }
+      return null;
+    case ControlTaskScheduleMode.custom:
+      return validateControlTaskScheduleInput(draft.customText);
+  }
+}
+
 String buildControlTaskSchedulePreview(String raw) {
   final normalized = normalizeControlTaskScheduleInput(raw);
   if (normalized == null) {
@@ -59,6 +123,10 @@ String buildControlTaskSchedulePreview(String raw) {
   }
 
   return normalized;
+}
+
+String buildControlTaskScheduleDraftPreview(ControlTaskScheduleDraft draft) {
+  return buildControlTaskSchedulePreview(formatControlTaskScheduleDraft(draft));
 }
 
 List<String> parseControlTaskDependencyEditorValue(String raw) {

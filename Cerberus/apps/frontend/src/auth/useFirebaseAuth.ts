@@ -28,34 +28,6 @@ export type FirebaseAuthState = {
   signOutCurrentUser: () => Promise<void>
 }
 
-function hasPersistedFirebaseSessionHint(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY
-  if (!apiKey) {
-    return false
-  }
-
-  try {
-    const prefix = `firebase:authUser:${apiKey}:`
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index)
-      if (!key || !key.startsWith(prefix)) {
-        continue
-      }
-      if (window.localStorage.getItem(key)) {
-        return true
-      }
-    }
-  } catch {
-    return false
-  }
-
-  return false
-}
-
 export function useFirebaseAuth(): FirebaseAuthState {
   const { locale } = useI18n()
   const authRequiredOverride = import.meta.env.VITE_AUTH_REQUIRED
@@ -65,10 +37,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
   const required =
     authRequiredOverride === 'true' ||
     (import.meta.env.PROD && authRequiredOverride !== 'false' && hasFirebaseConfig)
-  const sessionHintRef = useRef(required ? hasPersistedFirebaseSessionHint() : false)
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    required ? (sessionHintRef.current ? 'loading' : 'ready') : 'disabled',
-  )
+  const [status, setStatus] = useState<AuthStatus>(() => (required ? 'loading' : 'disabled'))
   const [user, setUser] = useState<User | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)
   const [signingIn, setSigningIn] = useState(false)
@@ -154,12 +123,8 @@ export function useFirebaseAuth(): FirebaseAuthState {
       return
     }
 
-    if (sessionHintRef.current) {
-      setStatus('loading')
-      void ensureServices()
-    } else {
-      setStatus('ready')
-    }
+    setStatus('loading')
+    void ensureServices()
 
     return () => {
       mountedRef.current = false

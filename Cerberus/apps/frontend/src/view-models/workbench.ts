@@ -75,6 +75,16 @@ export type WorkspaceSummaryModel = {
   id: WorkspaceId
   titleKey: TranslationKey
   descriptionKey: TranslationKey
+  indexLabel: string
+  accent: 'teal' | 'cyan' | 'amber'
+  groupId: 'command' | 'market' | 'decision' | 'execution' | 'runtime'
+}
+
+export type WorkspaceRailGroupModel = {
+  id: WorkspaceSummaryModel['groupId']
+  titleKey: TranslationKey
+  descriptionKey: TranslationKey
+  items: WorkspaceSummaryModel[]
 }
 
 export type HealthCardModel = {
@@ -175,23 +185,104 @@ export const WORKSPACE_MODELS: WorkspaceSummaryModel[] = [
     id: 'overview',
     titleKey: 'workspace.overview.title',
     descriptionKey: 'workspace.overview.description',
+    indexLabel: '01',
+    accent: 'cyan',
+    groupId: 'command',
   },
   {
     id: 'market',
     titleKey: 'workspace.market.title',
     descriptionKey: 'workspace.market.description',
+    indexLabel: '02',
+    accent: 'cyan',
+    groupId: 'market',
+  },
+  {
+    id: 'book',
+    titleKey: 'workspace.book.title',
+    descriptionKey: 'workspace.book.description',
+    indexLabel: '03',
+    accent: 'cyan',
+    groupId: 'market',
+  },
+  {
+    id: 'strategy',
+    titleKey: 'workspace.strategy.title',
+    descriptionKey: 'workspace.strategy.description',
+    indexLabel: '04',
+    accent: 'teal',
+    groupId: 'decision',
   },
   {
     id: 'execution',
     titleKey: 'workspace.execution.title',
     descriptionKey: 'workspace.execution.description',
+    indexLabel: '05',
+    accent: 'amber',
+    groupId: 'execution',
+  },
+  {
+    id: 'inference',
+    titleKey: 'workspace.inference.title',
+    descriptionKey: 'workspace.inference.description',
+    indexLabel: '06',
+    accent: 'teal',
+    groupId: 'decision',
   },
   {
     id: 'health',
     titleKey: 'workspace.health.title',
     descriptionKey: 'workspace.health.description',
+    indexLabel: '07',
+    accent: 'teal',
+    groupId: 'runtime',
   },
 ]
+
+export const WORKSPACE_GROUPS: WorkspaceRailGroupModel[] = [
+  {
+    id: 'command',
+    titleKey: 'shell.group.command',
+    descriptionKey: 'shell.group.commandDescription',
+    items: WORKSPACE_MODELS.filter((item) => item.groupId === 'command'),
+  },
+  {
+    id: 'market',
+    titleKey: 'shell.group.market',
+    descriptionKey: 'shell.group.marketDescription',
+    items: WORKSPACE_MODELS.filter((item) => item.groupId === 'market'),
+  },
+  {
+    id: 'decision',
+    titleKey: 'shell.group.decision',
+    descriptionKey: 'shell.group.decisionDescription',
+    items: WORKSPACE_MODELS.filter((item) => item.groupId === 'decision'),
+  },
+  {
+    id: 'execution',
+    titleKey: 'shell.group.execution',
+    descriptionKey: 'shell.group.executionDescription',
+    items: WORKSPACE_MODELS.filter((item) => item.groupId === 'execution'),
+  },
+  {
+    id: 'runtime',
+    titleKey: 'shell.group.runtime',
+    descriptionKey: 'shell.group.runtimeDescription',
+    items: WORKSPACE_MODELS.filter((item) => item.groupId === 'runtime'),
+  },
+]
+
+export const WORKSPACE_INDEX_BY_ID = Object.fromEntries(
+  WORKSPACE_MODELS.map((item, index) => [item.id, index]),
+) as Record<WorkspaceId, number>
+
+export const WORKSPACE_MODEL_BY_ID = Object.fromEntries(
+  WORKSPACE_MODELS.map((item) => [item.id, item]),
+) as Record<WorkspaceId, WorkspaceSummaryModel>
+
+export function getWorkspaceAccent(workspace: WorkspaceId): WorkspaceSummaryModel['accent'] {
+  return WORKSPACE_MODEL_BY_ID[workspace].accent
+}
 
 const CORE_FLOW_STEP_ORDER: CoreFlowStepId[] = ['bootstrap', 'market', 'precheck', 'submit', 'feedback', 'cancel']
 

@@ -8,12 +8,17 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/control_task_record.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
+import '../models/job_record.dart';
 import '../models/optimization_launch_intent.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
+import '../viewmodels/approval_queue_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
+import '../viewmodels/operation_console_view_model.dart';
 import '../widgets/operations/alert_panel.dart';
+import '../widgets/operations/approval_queue_board.dart';
+import '../widgets/operations/approval_resolution_dialog.dart';
 import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
@@ -29,6 +34,7 @@ import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/model_status_card.dart';
 import '../widgets/operations/operations_event_bus_board.dart';
 import '../widgets/operations/operations_narrative_board.dart';
+import '../widgets/operations/operation_console_board.dart';
 import '../widgets/operations/system_status_strip.dart';
 import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/operations/workbench_page_frame.dart';
@@ -43,6 +49,8 @@ class OperationsHubScreen extends StatefulWidget {
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
     this.controlTaskViewModel,
+    this.approvalQueueViewModel,
+    this.operationConsoleViewModel,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -52,6 +60,8 @@ class OperationsHubScreen extends StatefulWidget {
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
   final ControlTaskViewModel? controlTaskViewModel;
+  final ApprovalQueueViewModel? approvalQueueViewModel;
+  final OperationConsoleViewModel? operationConsoleViewModel;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -64,6 +74,18 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     super.initState();
     widget.viewModel.initialize();
     widget.controlTaskViewModel?.initialize();
+    widget.approvalQueueViewModel?.initialize();
+  }
+
+  Future<void> _openOperationConsole(
+    String operationId, {
+    JobRecord? seed,
+  }) async {
+    final viewModel = widget.operationConsoleViewModel;
+    if (viewModel == null) {
+      return;
+    }
+    await viewModel.selectOperation(operationId, seed: seed);
   }
 
   void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
@@ -154,6 +176,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
 
     final awaitingApproval = operation.status == 'awaiting_approval';
+    await _openOperationConsole(
+      operation.operationId ?? operation.jobId,
+      seed: operation,
+    );
     messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -280,6 +306,177 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       SnackBar(
         content: Text('已更新规划任务定义: ${task.title}'),
         backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _resolveApproval(JobRecord job, {required bool approved}) async {
+    final viewModel = widget.approvalQueueViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final message = await showApprovalResolutionDialog(
+      context,
+      approved: approved,
+      title: job.displayTitle,
+    );
+    if (!mounted || message == null) {
+      return;
+    }
+
+    final updated = await viewModel.resolve(
+      job,
+      approved: approved,
+      message: message.isEmpty ? null : message,
+    );
+    if (!mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? '审批操作失败'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    await _openOperationConsole(
+      updated.operationId ?? updated.jobId,
+      seed: updated,
+    );
+    await widget.controlTaskViewModel?.loadControlTasks();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          approved
+              ? '已批准任务: ${job.displayTitle}'
+              : '已驳回任务: ${job.displayTitle}',
+        ),
+        backgroundColor: approved ? AppColors.success : AppColors.warning,
+      ),
+    );
+  }
+
+  Future<void> _resolveSelectedOperationApproval({
+    required bool approved,
+  }) async {
+    final viewModel = widget.operationConsoleViewModel;
+    final operation = viewModel?.selectedOperation;
+    if (viewModel == null || operation == null) {
+      return;
+    }
+
+    final message = await showApprovalResolutionDialog(
+      context,
+      approved: approved,
+      title: operation.displayTitle,
+    );
+    if (!mounted || message == null) {
+      return;
+    }
+
+    final updated = await viewModel.resolveSelectedApproval(
+      approved: approved,
+      message: message.isEmpty ? null : message,
+    );
+    if (!mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (updated == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? '审批操作失败'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    await widget.approvalQueueViewModel?.loadQueue();
+    await widget.controlTaskViewModel?.loadControlTasks();
+    if (!mounted) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          approved
+              ? '已批准运行: ${operation.displayTitle}'
+              : '已驳回运行: ${operation.displayTitle}',
+        ),
+        backgroundColor: approved ? AppColors.success : AppColors.warning,
+      ),
+    );
+  }
+
+  Future<void> _retrySelectedOperation() async {
+    final viewModel = widget.operationConsoleViewModel;
+    final operation = viewModel?.selectedOperation;
+    if (viewModel == null || operation == null) {
+      return;
+    }
+
+    final updated = await viewModel.retrySelected();
+    if (!mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? '重试运行失败'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    await widget.controlTaskViewModel?.loadControlTasks();
+    if (!mounted) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('已重试运行: ${operation.displayTitle}'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _cancelSelectedOperation() async {
+    final viewModel = widget.operationConsoleViewModel;
+    final operation = viewModel?.selectedOperation;
+    if (viewModel == null || operation == null) {
+      return;
+    }
+
+    final updated = await viewModel.cancelSelected();
+    if (!mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? '取消运行失败'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    await widget.controlTaskViewModel?.loadControlTasks();
+    await widget.approvalQueueViewModel?.loadQueue();
+    if (!mounted) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('已取消运行: ${operation.displayTitle}'),
+        backgroundColor: AppColors.warning,
       ),
     );
   }
@@ -437,9 +634,14 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.controlTaskViewModel == null
-          ? widget.viewModel
-          : Listenable.merge([widget.viewModel, widget.controlTaskViewModel!]),
+      listenable: Listenable.merge([
+        widget.viewModel,
+        if (widget.controlTaskViewModel != null) widget.controlTaskViewModel!,
+        if (widget.approvalQueueViewModel != null)
+          widget.approvalQueueViewModel!,
+        if (widget.operationConsoleViewModel != null)
+          widget.operationConsoleViewModel!,
+      ]),
       builder: (context, _) {
         final summary = widget.viewModel.summary;
         final content = RefreshIndicator(
@@ -1093,6 +1295,32 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
             onToggleApproval: _toggleControlTaskApproval,
             onEditDefinition: _editControlTaskDefinition,
+            onOpenLatestOperation: (operation) =>
+                _openOperationConsole(operation.operationId),
+          ),
+        ],
+        if (widget.approvalQueueViewModel != null) ...[
+          const SizedBox(height: 20),
+          ApprovalQueueBoard(
+            jobs: widget.approvalQueueViewModel!.jobs,
+            isLoading: widget.approvalQueueViewModel!.isLoading,
+            errorMessage: widget.approvalQueueViewModel!.errorMessage,
+            onRefresh: () => widget.approvalQueueViewModel!.loadQueue(),
+            onApprove: (job) => _resolveApproval(job, approved: true),
+            onReject: (job) => _resolveApproval(job, approved: false),
+            isUpdating: widget.approvalQueueViewModel!.isUpdating,
+            onOpenDetails: (job) =>
+                _openOperationConsole(job.operationId ?? job.jobId, seed: job),
+          ),
+        ],
+        if (widget.operationConsoleViewModel != null) ...[
+          const SizedBox(height: 20),
+          OperationConsoleBoard(
+            viewModel: widget.operationConsoleViewModel!,
+            onApprove: () => _resolveSelectedOperationApproval(approved: true),
+            onReject: () => _resolveSelectedOperationApproval(approved: false),
+            onRetry: _retrySelectedOperation,
+            onCancel: _cancelSelectedOperation,
           ),
         ],
         const SizedBox(height: 20),

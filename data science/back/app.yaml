@@ -36,7 +36,7 @@ env_variables:
   TASKS_QUEUE_NAME: "industrial-jobs"
   TASKS_LOCATION: "asia-northeast1"
   INTERNAL_BASE_URL: "https://data-science-44398.an.r.appspot.com"
-  ORCHESTRATOR_BASE_URL: ""
+  ORCHESTRATOR_BASE_URL: "https://sentinel-orchestrator-nj4m3gcxqq-an.a.run.app"
   
   # 位置配置（非敏感）
   WEATHER_CITY_LAT: "34.05"   # Los Angeles Latitude

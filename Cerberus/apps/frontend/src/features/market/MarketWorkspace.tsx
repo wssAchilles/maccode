@@ -1,25 +1,27 @@
 import { Suspense } from 'react'
 
-import {
-  LazyCandlesChart,
-  LazyExecutionTimelinePanel,
-  LazyMatchingOrderBookPanel,
-  PanelSkeleton,
-} from '../../app/lazyPanels'
+import { LazyCandlesChart, PanelSkeleton } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
-import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import type { WorkspaceId } from '../../store/slices/shared'
+import {
+  DiagnosticDrawer,
+  GlassPanel,
+  MetricTile,
+  SectionFrame,
+  TerminalBand,
+  WorkspaceOperatorDeck,
+  WorkspaceSpotlight,
+} from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
-import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
-import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
-import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
 import { SymbolExecutionRail } from './components/SymbolExecutionRail'
 import { useMarketWorkspaceModel } from './useMarketWorkspaceModel'
 
 type Props = {
   active?: boolean
+  onSelectWorkspace?: (workspace: WorkspaceId) => void
 }
 
-export function MarketWorkspace({ active = true }: Props) {
+export function MarketWorkspace({ active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
   const model = useMarketWorkspaceModel({ active })
   const chartPhase = useRafPresenceTransition(model.activeSymbol, 320)
@@ -110,7 +112,17 @@ export function MarketWorkspace({ active = true }: Props) {
                 {model.chartContext.metrics.map((metric) => (
                   <div key={metric.id} className="cc-metric">
                     <p className="subtle-label">{metric.label}</p>
-                    <p className={metric.tone === 'negative' ? 'cc-value dl-value-negative' : metric.tone === 'positive' ? 'cc-value dl-value-positive' : metric.tone === 'accent' ? 'cc-value dl-value-accent' : 'cc-value'}>
+                    <p
+                      className={
+                        metric.tone === 'negative'
+                          ? 'cc-value dl-value-negative'
+                          : metric.tone === 'positive'
+                            ? 'cc-value dl-value-positive'
+                            : metric.tone === 'accent'
+                              ? 'cc-value dl-value-accent'
+                              : 'cc-value'
+                      }
+                    >
                       {metric.value}
                     </p>
                   </div>
@@ -140,13 +152,18 @@ export function MarketWorkspace({ active = true }: Props) {
           </div>
         </SectionFrame>
 
-        <SectionFrame
-          title={t('workspace.market.executionRailTitle')}
-          description={t('workspace.market.executionRailDescription')}
-          accent="amber"
-          stage="operator"
-        >
-          <SymbolExecutionRail model={model.executionRail} />
+        <SectionFrame title={t('workspace.nav')} description={t('workspace.market.linkageTitle')} accent="amber" stage="tail">
+          <div className="ws-actions">
+            <button type="button" className="soft-button sbp" onClick={() => onSelectWorkspace?.('book')}>
+              {t('workspace.cta.book')}
+            </button>
+            <button type="button" className="soft-button" onClick={() => onSelectWorkspace?.('execution')}>
+              {t('workspace.cta.execution')}
+            </button>
+            <button type="button" className="soft-button" onClick={() => onSelectWorkspace?.('strategy')}>
+              {t('workspace.cta.strategy')}
+            </button>
+          </div>
         </SectionFrame>
 
         {model.summaryError ? (
@@ -154,31 +171,6 @@ export function MarketWorkspace({ active = true }: Props) {
             <pre className="diagnostic-pre">{JSON.stringify(model.summaryError, null, 2)}</pre>
           </DiagnosticDrawer>
         ) : null}
-
-        <SectionFrame
-          title={t('workspace.strategy.title')}
-          description={t('workspace.strategy.description')}
-          accent="teal"
-          stage="feature"
-        >
-          <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
-          <StrategyDecisionMatrix model={model.strategyMatrix} />
-        </SectionFrame>
-
-        <SectionFrame
-          title={t('execution.timeline')}
-          description={t('workspace.market.executionRailDescription')}
-          className="xts"
-          accent="amber"
-          stage="tail"
-          compactHeader
-          bodyClassName="tail-shell"
-        >
-          {model.executionRail.band ? <TerminalBand model={model.executionRail.band} className="tail-band" compact hideHint hideEyebrow /> : null}
-          <Suspense fallback={<PanelSkeleton height="320px" />}>
-            <LazyExecutionTimelinePanel active={active} />
-          </Suspense>
-        </SectionFrame>
       </div>
 
       <div className="ws-side stack wss">
@@ -186,28 +178,15 @@ export function MarketWorkspace({ active = true }: Props) {
           <TerminalBand model={model.inspectorBand} className="inspector-band" compact hideHint hideEyebrow />
         </GlassPanel>
         <SectionFrame
-          title={t('workspace.strategy.portfolioTitle')}
-          description={t('workspace.strategy.portfolioDescription')}
-          accent="teal"
+          title={t('workspace.market.executionRailTitle')}
+          description={t('workspace.market.executionRailDescription')}
+          accent="amber"
           stage="inspector"
           compactHeader
           bodyClassName="inspector-shell"
         >
-          <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
+          <SymbolExecutionRail model={model.executionRail} />
         </SectionFrame>
-        <SectionFrame
-          title={t('workspace.strategy.registryTitle')}
-          description={t('workspace.strategy.registryDescription')}
-          accent="cyan"
-          stage="inspector"
-          compactHeader
-          bodyClassName="inspector-shell"
-        >
-          <StrategyRegistryPanel model={model.strategyRegistry} />
-        </SectionFrame>
-        <Suspense fallback={<PanelSkeleton height="300px" />}>
-          <LazyMatchingOrderBookPanel model={model.orderbookPanel} />
-        </Suspense>
       </div>
     </div>
   )

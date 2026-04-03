@@ -1,27 +1,23 @@
 import { Suspense } from 'react'
 
 import {
-  LazyExecutionStrategyOperationsDrawerContent,
   LazyExecutionConsole,
   LazyExecutionTimelinePanel,
-  LazyMatchingOrderBookPanel,
   PanelSkeleton,
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
+import type { WorkspaceId } from '../../store/slices/shared'
 import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
-import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
-import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
-import { StrategyPortfolioPanel } from '../strategy-orchestration/components/StrategyPortfolioPanel'
-import { StrategyRegistryPanel } from '../strategy-orchestration/components/StrategyRegistryPanel'
 import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
 
 type Props = {
   active?: boolean
+  onSelectWorkspace?: (workspace: WorkspaceId) => void
 }
 
-export function ExecutionWorkspace({ active = true }: Props) {
+export function ExecutionWorkspace({ active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
   const model = useExecutionWorkspaceModel({ active })
 
@@ -86,37 +82,28 @@ export function ExecutionWorkspace({ active = true }: Props) {
           <TerminalBand model={model.inspectorBand} className="inspector-band" compact hideHint hideEyebrow />
         </GlassPanel>
         <SectionFrame
-          title={t('workspace.strategy.matrixTitle')}
-          description={t('workspace.strategy.description')}
+          title={t('workspace.execution.linkageTitle')}
+          description={t('workspace.execution.linkageDetail')}
           bodyClassName="inspector-shell"
-          accent="teal"
+          accent="cyan"
           stage="inspector"
           compactHeader
         >
-          <div className="stack">
-            <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
-            <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
-            <StrategyDecisionMatrix model={model.strategyMatrix} />
-            <DiagnosticDrawer
-              title={t('workspace.strategy.registryTitle')}
-              summary={t('workspace.strategy.registryDescription')}
-              contentClassName="tail-drawer"
-            >
-              <StrategyRegistryPanel model={model.strategyRegistry} />
-            </DiagnosticDrawer>
-            <DiagnosticDrawer
-              title={t('workspace.strategy.auditTimelineTitle')}
-              summary={t('workspace.strategy.auditTimelineHint')}
-              contentClassName="tail-drawer"
-            >
-              <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
-            </DiagnosticDrawer>
+          <div className="stack-sm">
+            <p className="empty-inline">{t('workspace.execution.linkageHint').replace('{symbol}', model.selectedSymbol)}</p>
+            <div className="ws-actions">
+              <button type="button" className="soft-button sbp" onClick={() => onSelectWorkspace?.('book')}>
+                {t('workspace.cta.book')}
+              </button>
+              <button type="button" className="soft-button" onClick={() => onSelectWorkspace?.('market')}>
+                {t('workspace.cta.market')}
+              </button>
+              <button type="button" className="soft-button" onClick={() => onSelectWorkspace?.('strategy')}>
+                {t('workspace.cta.strategy')}
+              </button>
+            </div>
           </div>
         </SectionFrame>
-
-        <Suspense fallback={<PanelSkeleton height="300px" />}>
-          <LazyMatchingOrderBookPanel model={model.orderbookPanel} />
-        </Suspense>
 
         {model.summaryError ? (
           <DiagnosticDrawer title={t('workspace.execution.diagnostics')} summary={model.summaryError.message}>
@@ -146,27 +133,6 @@ export function ExecutionWorkspace({ active = true }: Props) {
         stage="operator"
       >
         <ExecutionOperationsPanel model={model.operationsPanel} />
-      </SectionFrame>
-
-      <SectionFrame
-        title={t('workspace.strategy.operationsTitle')}
-        description={t('workspace.strategy.operationsDescription')}
-        className="ws-span-full"
-        accent="teal"
-        stage="tail"
-        compactHeader
-        bodyClassName="tail-shell"
-      >
-        <DiagnosticDrawer
-          title={t('workspace.strategy.operationsTitle')}
-          summary={t('workspace.strategy.operationsDescription')}
-          testId="execution-strategy-operations-drawer"
-          contentClassName="tail-drawer"
-        >
-          <Suspense fallback={<PanelSkeleton height="420px" />}>
-            <LazyExecutionStrategyOperationsDrawerContent active={active} />
-          </Suspense>
-        </DiagnosticDrawer>
       </SectionFrame>
 
       <SectionFrame

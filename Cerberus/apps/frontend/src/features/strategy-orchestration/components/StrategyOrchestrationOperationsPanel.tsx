@@ -173,7 +173,8 @@ export function StrategyOrchestrationOperationsPanel({
                       className="field-input"
                       type="number"
                       min="0"
-                      step="0.05"
+                      max="1"
+                      step="any"
                       value={draft?.observeWeight ?? '0'}
                       onChange={(event) => onDraftFieldChange(row.id, 'observeWeight', event.target.value)}
                     />
@@ -186,7 +187,8 @@ export function StrategyOrchestrationOperationsPanel({
                       className="field-input"
                       type="number"
                       min="0"
-                      step="0.05"
+                      max="1"
+                      step="any"
                       value={draft?.primaryWeight ?? '0'}
                       onChange={(event) => onDraftFieldChange(row.id, 'primaryWeight', event.target.value)}
                     />

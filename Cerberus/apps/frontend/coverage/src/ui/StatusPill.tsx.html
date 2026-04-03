@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>0/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/2</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>0/13</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -86,7 +86,7 @@
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -94,21 +94,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">113x</span>
-<span class="cline-any cline-yes">113x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { LoadState } from '../types/contracts'
-import { cn } from '../lib/cn'
+<span class="cstat-no" title="statement not covered" >import { cn } from '../lib/cn'</span>
 &nbsp;
 type Props = {
   state: LoadState | 'active' | 'success'
@@ -116,19 +116,19 @@ type Props = {
   compact?: boolean
 }
 &nbsp;
-const STATE_CLASS: Record&lt;Props['state'], string&gt; = {
-  idle: 'stp',
-  loading: 'stp stpl',
-  ready: 'stp stpr',
-  degraded: 'stp stpd',
-  error: 'stp stpe',
-  active: 'stp stpl',
-  success: 'stp stpr',
-}
+<span class="cstat-no" title="statement not covered" >const STATE_CLASS: Record&lt;Props['state'], string&gt; = {</span>
+<span class="cstat-no" title="statement not covered" >  idle: 'stp',</span>
+<span class="cstat-no" title="statement not covered" >  loading: 'stp stpl',</span>
+<span class="cstat-no" title="statement not covered" >  ready: 'stp stpr',</span>
+<span class="cstat-no" title="statement not covered" >  degraded: 'stp stpd',</span>
+<span class="cstat-no" title="statement not covered" >  error: 'stp stpe',</span>
+<span class="cstat-no" title="statement not covered" >  active: 'stp stpl',</span>
+<span class="cstat-no" title="statement not covered" >  success: 'stp stpr',</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;
-export function StatusPill({ state, label, compact = false }: Props) {
-  return &lt;span className={cn(STATE_CLASS[state], compact ? <span class="branch-0 cbranch-no" title="branch not covered" >'stpc' : '')</span>}&gt;{label}&lt;/span&gt;
-}
+<span class="cstat-no" title="statement not covered" >export function StatusPill({ state, label, compact = false }: Props) {</span>
+<span class="cstat-no" title="statement not covered" >  return &lt;span className={cn(STATE_CLASS[state], compact ? 'stpc' : '')}&gt;{label}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -136,7 +136,7 @@ export function StatusPill({ state, label, compact = false }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T10:29:57.750Z
+                at 2026-04-03T15:02:17.689Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

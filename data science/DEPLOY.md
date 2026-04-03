@@ -98,3 +98,19 @@ gcloud run deploy sentinel-orchestrator \
 - App Engine / Python worker 继续保留现有 `INTERNAL_BASE_URL`
 - 当 Rust sidecar 上线后，将 `ORCHESTRATOR_BASE_URL` 指向该 Cloud Run 服务
 - 之后 Cloud Tasks 会优先把 `/internal/operations/{id}/dispatch` 投递给 Rust 控制面
+## Rust Orchestrator
+
+When `ORCHESTRATOR_BASE_URL` is configured on the Python worker plane, all new
+dispatches prefer the Rust control plane instead of local inline execution.
+
+Recommended deploy order:
+
+1. Deploy `sentinel-orchestrator`
+2. Set `ORCHESTRATOR_BASE_URL` and `INTERNAL_JOB_TOKEN` on the Python worker plane
+3. Keep `TASKS_EXECUTION_MODE=cloud_tasks` in production so Cloud Tasks still hits the orchestrator entrypoint
+
+Useful orchestrator env vars:
+
+- `MAX_LIGHT_PARALLEL`
+- `MAX_HEAVY_PARALLEL`
+- `DISPATCH_TIMEOUT_SECS`

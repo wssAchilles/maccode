@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/control_task_record.dart';
 import '../../utils/control_task_definition_validator.dart';
+import 'control_task_schedule_editor.dart';
 
 class ControlTaskDefinitionDraft {
   const ControlTaskDefinitionDraft({
@@ -44,20 +45,18 @@ class _ControlTaskEditDialog extends StatefulWidget {
 }
 
 class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
-  late final TextEditingController _scheduleController;
   late final TextEditingController _ownerController;
   late final TextEditingController _dependenciesController;
   late final TextEditingController _approvalReasonController;
   late final TextEditingController _defaultInputController;
   late bool _approvalRequired;
+  late String _scheduleValue;
   String? _errorText;
 
   @override
   void initState() {
     super.initState();
-    _scheduleController = TextEditingController(
-      text: widget.task.schedule ?? '',
-    );
+    _scheduleValue = widget.task.schedule ?? '';
     _ownerController = TextEditingController(
       text: widget.task.owner.isEmpty ? 'system' : widget.task.owner,
     );
@@ -77,7 +76,6 @@ class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
 
   @override
   void dispose() {
-    _scheduleController.dispose();
     _ownerController.dispose();
     _dependenciesController.dispose();
     _approvalReasonController.dispose();
@@ -86,9 +84,7 @@ class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
   }
 
   void _submit() {
-    final scheduleError = validateControlTaskScheduleInput(
-      _scheduleController.text,
-    );
+    final scheduleError = validateControlTaskScheduleInput(_scheduleValue);
     final dependencyError = validateControlTaskDependencyEditorValue(
       _dependenciesController.text,
     );
@@ -111,7 +107,7 @@ class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
     try {
       Navigator.of(context).pop(
         ControlTaskDefinitionDraft(
-          schedule: normalizeControlTaskScheduleInput(_scheduleController.text),
+          schedule: normalizeControlTaskScheduleInput(_scheduleValue),
           owner: owner.isEmpty ? 'system' : owner,
           dependencies: dependencies,
           approvalPolicy: _buildApprovalPolicy(
@@ -136,17 +132,12 @@ class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final scheduleError = validateControlTaskScheduleInput(
-      _scheduleController.text,
-    );
+    final scheduleError = validateControlTaskScheduleInput(_scheduleValue);
     final dependencyError = validateControlTaskDependencyEditorValue(
       _dependenciesController.text,
     );
     final jsonError = validateControlTaskJsonObjectInput(
       _defaultInputController.text,
-    );
-    final schedulePreview = buildControlTaskSchedulePreview(
-      _scheduleController.text,
     );
     final dependencies = parseControlTaskDependencyEditorValue(
       _dependenciesController.text,
@@ -163,20 +154,14 @@ class _ControlTaskEditDialogState extends State<_ControlTaskEditDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _scheduleController,
-                onChanged: (_) => setState(() => _errorText = null),
-                decoration: InputDecoration(
-                  labelText: '调度策略',
-                  hintText: '留空表示仅手动触发',
-                  errorText: scheduleError,
-                  helperText: '支持 every N hours 或 every day HH:MM UTC',
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '执行预览：$schedulePreview',
-                style: Theme.of(context).textTheme.bodySmall,
+              ControlTaskScheduleEditor(
+                initialSchedule: widget.task.schedule,
+                onChanged: (value) {
+                  setState(() {
+                    _errorText = null;
+                    _scheduleValue = value;
+                  });
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(

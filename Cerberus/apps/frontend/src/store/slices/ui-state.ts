@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 
 import type { Locale } from '../../i18n/messages'
 import { DEFAULT_UI_STATE } from '../../types/contracts'
+import { WORKSPACE_IDS } from './shared'
 import type {
   CoreFlowMap,
   CoreFlowStep,
@@ -100,7 +101,7 @@ const wsBase = resolveWebSocketBase(gatewayBase)
 const liveStreamEnabled = import.meta.env.VITE_DISABLE_LIVE_STREAM !== 'true'
 
 function isWorkspaceId(value: string | null): value is WorkspaceId {
-  return value === 'overview' || value === 'market' || value === 'execution' || value === 'health'
+  return value !== null && (WORKSPACE_IDS as readonly string[]).includes(value)
 }
 
 function resolveWorkspace(): WorkspaceId {

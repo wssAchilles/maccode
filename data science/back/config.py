@@ -44,6 +44,7 @@ class Config:
     INTERNAL_BASE_URL = os.getenv('INTERNAL_BASE_URL', 'http://localhost:8080')
     ORCHESTRATOR_BASE_URL = os.getenv('ORCHESTRATOR_BASE_URL', '')
     INTERNAL_JOB_TOKEN = os.getenv('INTERNAL_JOB_TOKEN', 'dev-internal-job-token')
+    ORCHESTRATOR_REQUEST_TIMEOUT_S = float(os.getenv('ORCHESTRATOR_REQUEST_TIMEOUT_S', '10'))
     RATE_LIMIT_BACKEND = os.getenv(
         'RATE_LIMIT_BACKEND',
         'memory' if DEBUG else 'firestore',

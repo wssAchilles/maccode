@@ -612,6 +612,43 @@ class OperationService:
             cls._wrap_backend_error(exc)
 
     @classmethod
+    def claim_dispatch(cls, operation_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            document = cls._operations_collection().document(operation_id)
+            snapshot = document.get()
+            if not snapshot.exists:
+                return None
+
+            record = snapshot.to_dict() or {}
+            status = str(record.get('status') or '').strip()
+            if status != 'queued':
+                return serialize_operation(record)
+
+            document.set(
+                {
+                    'status': 'dispatching',
+                    'status_message': 'Dispatching to execution worker',
+                },
+                merge=True,
+            )
+            event = build_event(
+                event_type='operation.dispatched',
+                phase='dispatch',
+                status='dispatching',
+                message='Dispatching to execution worker',
+                progress=int(record.get('progress', 0) or 0),
+            )
+            cls._append_event_projection(
+                operation_id,
+                cls.get_operation_for_execution(operation_id) or record,
+                event,
+            )
+            cls._persist_event(operation_id, event)
+            return cls.get_operation(None, operation_id, include_related=False)
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
+
+    @classmethod
     def ensure_not_cancelled(cls, operation_id: str) -> None:
         record = cls.get_operation_for_execution(operation_id)
         if record and bool(record.get('cancel_requested')):
@@ -1000,6 +1037,23 @@ class OperationService:
             )
 
     @classmethod
+    def process_dispatch(cls, operation_id: str):
+        operation = cls.claim_dispatch(operation_id)
+        if not operation:
+            logger.warning('Operation %s not found for dispatch', operation_id)
+            return
+
+        if operation.get('status') != 'dispatching':
+            logger.info(
+                'Operation %s dispatch ignored because status is %s',
+                operation_id,
+                operation.get('status'),
+            )
+            return
+
+        cls.execute_operation(operation_id)
+
+    @classmethod
     def execute_job(cls, job_id: str):
         cls.execute_operation(job_id)
 
@@ -1009,7 +1063,7 @@ class OperationService:
             app,
             operation_id,
             operation_type,
-            execute_callback=cls.execute_operation,
+            execute_callback=cls.process_dispatch,
         )
 
     @classmethod

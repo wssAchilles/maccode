@@ -10,6 +10,8 @@ from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 from config import Config
 from services.control_task_projection import serialize_control_task
+from services.control_task_registry import list_default_control_tasks
+from services.control_task_runtime_service import enrich_control_tasks
 from services.operation_policies import default_approval_policy
 from services.control_task_validation import (
     normalize_approval_policy,
@@ -28,6 +30,8 @@ _UNSET = object()
 
 class ControlTaskService:
     """Persistence and query helpers for control-plane task definitions."""
+
+    _defaults_seeded = False
 
     @staticmethod
     def _get_firestore_client():
@@ -57,10 +61,33 @@ class ControlTaskService:
         timestamp = item.get('updated_at') or item.get('created_at')
         if isinstance(timestamp, str):
             try:
-                return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                parsed = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                if parsed.tzinfo is None:
+                    return parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
             except ValueError:
-                return datetime.min
-        return datetime.min
+                return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+    @classmethod
+    def ensure_default_control_tasks(cls) -> None:
+        if cls._defaults_seeded:
+            return
+
+        for definition in list_default_control_tasks():
+            cls.ensure_control_task(
+                control_task_id=definition['control_task_id'],
+                kind=definition['kind'],
+                operation_type=definition.get('operation_type'),
+                title=definition['title'],
+                schedule=definition.get('schedule'),
+                default_input=definition.get('default_input'),
+                dependencies=definition.get('dependencies'),
+                approval_policy=definition.get('approval_policy'),
+                enabled=bool(definition.get('enabled', True)),
+                owner=str(definition.get('owner') or 'system'),
+            )
+        cls._defaults_seeded = True
 
     @classmethod
     def ensure_control_task(
@@ -112,10 +139,15 @@ class ControlTaskService:
     @classmethod
     def get_control_task(cls, control_task_id: str) -> Optional[Dict[str, Any]]:
         try:
+            cls.ensure_default_control_tasks()
             snapshot = cls._collection().document(control_task_id).get()
             if not snapshot.exists:
                 return None
-            return serialize_control_task(snapshot.to_dict() or {}, control_task_id=control_task_id)
+            [enriched] = enrich_control_tasks(
+                cls._get_firestore_client(),
+                [serialize_control_task(snapshot.to_dict() or {}, control_task_id=control_task_id)],
+            )
+            return enriched
         except Exception as exc:
             cls._wrap_backend_error(exc)
 
@@ -132,6 +164,7 @@ class ControlTaskService:
         default_input: Any = _UNSET,
     ) -> Optional[Dict[str, Any]]:
         try:
+            cls.ensure_default_control_tasks()
             document = cls._collection().document(control_task_id)
             snapshot = document.get()
             if not snapshot.exists:
@@ -216,6 +249,7 @@ class ControlTaskService:
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
         try:
+            cls.ensure_default_control_tasks()
             snapshots = cls._collection().stream()
             items: List[Dict[str, Any]] = []
             for snapshot in snapshots:
@@ -228,6 +262,6 @@ class ControlTaskService:
                     continue
                 items.append(record)
             items.sort(key=cls._sort_key, reverse=True)
-            return items[: max(1, limit)]
+            return enrich_control_tasks(cls._get_firestore_client(), items[: max(1, limit)])
         except Exception as exc:
             cls._wrap_backend_error(exc)

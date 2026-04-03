@@ -142,20 +142,7 @@ describe('useFirebaseAuth', () => {
     expect(mockCreateUserWithEmailAndPassword).not.toHaveBeenCalled()
   })
 
-  it('keeps the login shell ready when there is no persisted session hint', async () => {
-    render(
-      <I18nProvider>
-        <Harness />
-      </I18nProvider>,
-    )
-
-    expect(screen.getByTestId('auth-status').textContent).toBe('ready')
-    expect(mockLoadFirebaseAuthServices).not.toHaveBeenCalled()
-  })
-
-  it('shows loading when a persisted Firebase session hint exists', async () => {
-    window.localStorage.setItem('firebase:authUser:demo-api-key:[DEFAULT]', '{"uid":"user-1"}')
-
+  it('initializes Firebase auth even when there is no persisted session hint', async () => {
     render(
       <I18nProvider>
         <Harness />
