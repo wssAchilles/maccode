@@ -2,9 +2,12 @@
 library;
 
 import '../models/job_record.dart';
+import '../models/job_stream_frame.dart';
 import '../services/api_service.dart';
 
 abstract class JobRepository {
+  bool get supportsStreaming => false;
+
   Future<List<JobRecord>> listJobs({
     String? type,
     String? status,
@@ -14,6 +17,26 @@ abstract class JobRepository {
   Future<JobRecord> getJob(String jobId);
 
   Future<JobRecord> retryJob(String jobId);
+
+  Future<JobRecord> cancelJob(String jobId, {String? operationId}) {
+    throw UnsupportedError('Cancel is not supported by this repository');
+  }
+
+  Future<JobRecord> approveJob(
+    String jobId, {
+    required bool approved,
+    String? message,
+    String? operationId,
+  }) {
+    throw UnsupportedError('Approval is not supported by this repository');
+  }
+
+  Stream<JobStreamFrame> streamJob(
+    String jobId, {
+    String? operationId,
+  }) {
+    throw UnsupportedError('Streaming is not supported by this repository');
+  }
 
   Future<JobRecord> createOptimizationJob({
     required double initialSoc,
@@ -44,6 +67,9 @@ class ApiJobRepository implements JobRepository {
   const ApiJobRepository();
 
   @override
+  bool get supportsStreaming => true;
+
+  @override
   Future<List<JobRecord>> listJobs({
     String? type,
     String? status,
@@ -67,6 +93,35 @@ class ApiJobRepository implements JobRepository {
   Future<JobRecord> retryJob(String jobId) async {
     final payload = await ApiService.retryJob(jobId);
     return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> cancelJob(String jobId, {String? operationId}) async {
+    final payload = await ApiService.cancelOperation(operationId ?? jobId);
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Future<JobRecord> approveJob(
+    String jobId, {
+    required bool approved,
+    String? message,
+    String? operationId,
+  }) async {
+    final payload = await ApiService.approveOperation(
+      operationId ?? jobId,
+      approved: approved,
+      message: message,
+    );
+    return JobRecord.fromJson(payload);
+  }
+
+  @override
+  Stream<JobStreamFrame> streamJob(
+    String jobId, {
+    String? operationId,
+  }) {
+    return ApiService.streamOperation(operationId ?? jobId);
   }
 
   @override

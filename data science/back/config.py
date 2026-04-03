@@ -42,6 +42,7 @@ class Config:
     TASKS_LOCATION = os.getenv('TASKS_LOCATION', GCP_REGION)
     TASKS_MAX_ATTEMPTS = int(os.getenv('TASKS_MAX_ATTEMPTS', '3'))
     INTERNAL_BASE_URL = os.getenv('INTERNAL_BASE_URL', 'http://localhost:8080')
+    ORCHESTRATOR_BASE_URL = os.getenv('ORCHESTRATOR_BASE_URL', '')
     INTERNAL_JOB_TOKEN = os.getenv('INTERNAL_JOB_TOKEN', 'dev-internal-job-token')
     RATE_LIMIT_BACKEND = os.getenv(
         'RATE_LIMIT_BACKEND',

@@ -63,3 +63,38 @@ flutter build web --release
 # 2. 部署到 Firebase Hosting
 firebase deploy --only hosting
 ```
+
+---
+
+## 4. 部署 Rust 控制面 (Sentinel Orchestrator)
+**适用场景**: 修改了 `sentinel-orchestrator/` 或 Python 控制面调度边界，例如审批、取消、重试、Cloud Tasks 分发。
+
+### 方法 A: 使用独立部署脚本
+
+```bash
+cd "/Users/achilles/Documents/code/data science"
+
+chmod +x scripts/deploy_orchestrator.sh
+./scripts/deploy_orchestrator.sh
+```
+
+### 方法 B: 手动部署到 Cloud Run
+
+```bash
+cd "/Users/achilles/Documents/code/data science/sentinel-orchestrator"
+
+gcloud builds submit --tag gcr.io/<PROJECT_ID>/sentinel-orchestrator
+
+gcloud run deploy sentinel-orchestrator \
+  --image gcr.io/<PROJECT_ID>/sentinel-orchestrator \
+  --platform managed \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --set-env-vars PYTHON_WORKER_BASE_URL=https://<PROJECT_ID>.an.r.appspot.com,INTERNAL_JOB_TOKEN=<TOKEN>
+```
+
+### 接线说明
+
+- App Engine / Python worker 继续保留现有 `INTERNAL_BASE_URL`
+- 当 Rust sidecar 上线后，将 `ORCHESTRATOR_BASE_URL` 指向该 Cloud Run 服务
+- 之后 Cloud Tasks 会优先把 `/internal/operations/{id}/dispatch` 投递给 Rust 控制面

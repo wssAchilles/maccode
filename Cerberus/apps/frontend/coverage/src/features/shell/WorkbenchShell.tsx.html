@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/219</span>
+                <span class='fraction'>0/233</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/219</span>
+                <span class='fraction'>0/233</span>
             </div>
         
             
@@ -314,7 +314,21 @@
 <a name='L249'></a><a href='#L249'>249</a>
 <a name='L250'></a><a href='#L250'>250</a>
 <a name='L251'></a><a href='#L251'>251</a>
-<a name='L252'></a><a href='#L252'>252</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -435,6 +449,20 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -692,36 +720,50 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >        &lt;MotionBackdrop accent={shellAccent} intensity="hero" className="wb-backdrop" /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;div className="wb-header-top"&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;div className="wb-brand"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="wb-eyebrow"&gt;{t('app.kicker')}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div className="wb-brand-row"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;p className="wb-eyebrow"&gt;{t('app.kicker')}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;p className="wb-workspace-pill"&gt;{t(WORKSPACE_MODELS[workspaceIndex].titleKey)}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;h1&gt;{t('app.title')}&lt;/h1&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;p&gt;{t('app.subtitle')}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="account-pill"&gt;{t(WORKSPACE_MODELS[workspaceIndex].titleKey)}&lt;/p&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="wb-header-actions"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="env-chip-group"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;span className="env-chip"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/span&gt;</span>
-<span class="cstat-no" title="statement not covered" >              {env.strategy_base ? (</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div className="wb-control-stack"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;GlassPanel className="wb-control-card" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="wb-control-head"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;p className="subtle-label"&gt;{t('shell.system')}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="env-chip-group"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                &lt;span className="env-chip"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {t('env.strategy')}: {formatEndpointChip(env.strategy_base)}</span>
+<span class="cstat-no" title="statement not covered" >                  {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}</span>
 <span class="cstat-no" title="statement not covered" >                &lt;/span&gt;</span>
-<span class="cstat-no" title="statement not covered" >              ) : null}</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >            {authUserLabel ? &lt;span className="account-pill"&gt;{authUserLabel}&lt;/span&gt; : null}</span>
-<span class="cstat-no" title="statement not covered" >            {auth.required ? (</span>
-<span class="cstat-no" title="statement not covered" >              &lt;button type="button" className="soft-button" onClick={() =&gt; void auth.signOutCurrentUser()}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                {t('auth.signOut')}</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >            ) : null}</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="locale-switch"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;button type="button" className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() =&gt; setLocale('zh-CN')}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                {t('lang.zh')}</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;button type="button" className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() =&gt; setLocale('en-US')}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                {t('lang.en')}</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {env.strategy_base ? (</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;span className="env-chip"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('env.strategy')}: {formatEndpointChip(env.strategy_base)}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                ) : null}</span>
+<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/GlassPanel&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;GlassPanel className="wb-control-card wb-control-card-compact" tone="subtle"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="wb-control-head"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;p className="subtle-label"&gt;{t('shell.session')}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >              &lt;div className="wb-session-row"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {authUserLabel ? &lt;span className="account-pill"&gt;{authUserLabel}&lt;/span&gt; : null}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;div className="locale-switch"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() =&gt; setLocale('zh-CN')}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('lang.zh')}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() =&gt; setLocale('en-US')}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('lang.en')}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {auth.required ? (</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;button type="button" className="soft-button" onClick={() =&gt; void auth.signOutCurrentUser()}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {t('auth.signOut')}</span>
+<span class="cstat-no" title="statement not covered" >                  &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                ) : null}</span>
+<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/GlassPanel&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 &nbsp;
@@ -823,7 +865,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-03T01:06:41.941Z
+                at 2026-04-03T10:09:45.408Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -39,15 +39,20 @@ export function ExecutionWorkspace({ active = true }: Props) {
         <TerminalBand model={model.heroBand} className="hero-band" />
         <div className="ws-hero-grid">
           <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side">
+          <div className="ws-hero-side hero-side-shell">
+            <div className="hero-side-head">
+              <p className="subtle-label">{t('workspace.hero.readings')}</p>
+              <p className="panel-caption">{t('workspace.execution.description')}</p>
+            </div>
             <div className="metric-grid ws-hero-metrics">
-              {model.metricTiles.map((tile) => (
+              {model.metricTiles.map((tile, index) => (
                 <MetricTile
                   key={tile.id}
                   label={tile.label}
                   value={tile.value}
                   hint={tile.hint}
                   tone={tile.tone}
+                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
                 />
               ))}
             </div>

@@ -62,22 +62,27 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           stage="hero"
         >
           <TerminalBand model={model.contextBand} className="hero-band" />
-          <div className="ws-hero-grid">
-            <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-            <div className="ws-hero-side">
-              <div className="metric-grid ws-hero-metrics">
-                {model.metricTiles.map((tile) => (
-                  <MetricTile
-                    key={tile.id}
-                    label={tile.label}
-                    value={tile.value}
-                    tone={tile.tone}
-                    hint={tile.hint}
-                  />
-                ))}
-              </div>
+        <div className="ws-hero-grid">
+          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
+          <div className="ws-hero-side hero-side-shell">
+            <div className="hero-side-head">
+              <p className="subtle-label">{t('workspace.hero.readings')}</p>
+              <p className="panel-caption">{t('workspace.overview.description')}</p>
+            </div>
+            <div className="metric-grid ws-hero-metrics">
+              {model.metricTiles.map((tile, index) => (
+                <MetricTile
+                  key={tile.id}
+                  label={tile.label}
+                  value={tile.value}
+                  tone={tile.tone}
+                  hint={tile.hint}
+                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
+                />
+              ))}
             </div>
           </div>
+        </div>
         </SectionFrame>
 
         <SectionFrame

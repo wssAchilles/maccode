@@ -10,13 +10,17 @@ import 'package:http/http.dart' as http;
 
 import '../config/constants.dart';
 import '../models/analysis_result.dart';
+import '../models/job_stream_frame.dart';
 import '../models/optimization_result.dart';
+import 'operation_sse_parser.dart';
 import 'api_service_exception.dart';
 
 part 'api_service/api_service_auth_data.dart';
+part 'api_service/api_service_control_tasks.dart';
 part 'api_service/api_service_core.dart';
 part 'api_service/api_service_dashboard_jobs.dart';
 part 'api_service/api_service_history_ml.dart';
+part 'api_service/api_service_operation_stream.dart';
 part 'api_service/api_service_optimization.dart';
 
 class ApiService {
@@ -84,6 +88,40 @@ class ApiService {
     int limit = 20,
   }) => _listJobs(type: type, status: status, limit: limit);
 
+  static Future<List<Map<String, dynamic>>> listControlTasks({
+    String? kind,
+    bool? enabled,
+    String? owner,
+    int limit = 20,
+  }) => _listControlTasks(
+    kind: kind,
+    enabled: enabled,
+    owner: owner,
+    limit: limit,
+  );
+
+  static Future<Map<String, dynamic>> getControlTask(String controlTaskId) =>
+      _getControlTask(controlTaskId);
+
+  static Future<Map<String, dynamic>> runControlTask(
+    String controlTaskId, {
+    Map<String, dynamic>? input,
+    String trigger = 'manual',
+  }) => _runControlTask(controlTaskId, input: input, trigger: trigger);
+
+  static Future<Map<String, dynamic>> setControlTaskEnabled(
+    String controlTaskId, {
+    required bool enabled,
+  }) => _setControlTaskEnabled(controlTaskId, enabled: enabled);
+
+  static Future<Map<String, dynamic>> setControlTaskApprovalPolicy(
+    String controlTaskId, {
+    required Map<String, dynamic> approvalPolicy,
+  }) => _setControlTaskApprovalPolicy(
+    controlTaskId,
+    approvalPolicy: approvalPolicy,
+  );
+
   static Future<Map<String, dynamic>> getJob(String jobId) => _getJob(jobId);
 
   static Future<Map<String, dynamic>> retryJob(String jobId) =>
@@ -133,6 +171,16 @@ class ApiService {
     operationId,
     approved: approved,
     message: message,
+  );
+
+  static Stream<JobStreamFrame> streamOperation(
+    String operationId, {
+    double pollInterval = 2.0,
+    double maxDuration = 55.0,
+  }) => _streamOperation(
+    operationId,
+    pollInterval: pollInterval,
+    maxDuration: maxDuration,
   );
 
   static Future<Map<String, dynamic>> createOptimizationJob({

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from services.control_task_service import ControlTaskService
 from services.operation_service import OperationService
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,10 @@ class TaskMonitor:
 
     def record_task_start(self, task_name: str, metadata: Dict = None) -> Optional[str]:
         logger.warning('TaskMonitor.record_task_start is deprecated; creating compatibility operation for %s', task_name)
-        control_task = OperationService.ensure_control_task(
+        control_task = ControlTaskService.ensure_control_task(
             control_task_id=f'{task_name}_compat',
             kind='scheduler',
+            operation_type=task_name,
             title=f'Compatibility task monitor for {task_name}',
             schedule=None,
             default_input=metadata or {},

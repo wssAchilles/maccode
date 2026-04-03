@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -18,6 +17,24 @@ from services.job_workflows import (
     run_deep_learning_workflow,
     run_optimization_workflow,
     run_rag_ingest_workflow,
+)
+from services.operation_dispatcher import dispatch_operation as dispatch_operation_task
+from services.operation_policies import (
+    approval_state_from_policy,
+    default_approval_policy,
+    infer_approval_policy,
+)
+from services.operation_projection import (
+    build_event,
+    coerce_datetime,
+    extract_artifacts_from_result,
+    finalize_step,
+    now_iso,
+    serialize_artifact,
+    serialize_event,
+    serialize_operation,
+    serialize_step,
+    upsert_step_summary,
 )
 from services.operation_tools import get_tool_contract, resolve_tool_name
 
@@ -61,31 +78,15 @@ class OperationService:
 
     @staticmethod
     def _coerce_datetime(value: Any) -> Optional[datetime]:
-        if value is None:
-            return None
-        if isinstance(value, datetime):
-            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-        iso_value = HistoryService._as_iso(value)
-        if not iso_value:
-            return None
-        try:
-            parsed = datetime.fromisoformat(str(iso_value))
-        except Exception:
-            return None
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        return coerce_datetime(value)
 
     @staticmethod
     def _now_iso() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return now_iso()
 
     @staticmethod
     def _default_approval_policy(required: bool = False, *, reason: Optional[str] = None) -> Dict[str, Any]:
-        policy = {
-            'required': required,
-            'mode': 'manual' if required else 'auto',
-            'reason': reason,
-        }
-        return {key: value for key, value in policy.items() if value is not None}
+        return default_approval_policy(required, reason=reason)
 
     @classmethod
     def _infer_approval_policy(
@@ -94,36 +95,11 @@ class OperationService:
         payload: Dict[str, Any],
         explicit_policy: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if explicit_policy:
-            return {
-                'required': bool(explicit_policy.get('required')),
-                'mode': explicit_policy.get('mode', 'manual' if explicit_policy.get('required') else 'auto'),
-                'reason': explicit_policy.get('reason'),
-            }
-
-        if operation_type == 'rag_ingest' and bool(payload.get('reset')):
-            return cls._default_approval_policy(True, reason='Resetting an existing knowledge collection requires approval')
-        if operation_type in {'ml_train', 'train_model'} and bool(
-            payload.get('overwrite_existing')
-            or payload.get('replace_existing_model')
-            or payload.get('force_overwrite_artifact')
-        ):
-            return cls._default_approval_policy(True, reason='Overwriting an existing model artifact requires approval')
-        if operation_type == 'optimization' and int(payload.get('scenario_count', 0) or 0) >= 100:
-            return cls._default_approval_policy(True, reason='Large-scale optimization requires approval')
-        return cls._default_approval_policy(False)
+        return infer_approval_policy(operation_type, payload, explicit_policy)
 
     @classmethod
     def _approval_state_from_policy(cls, policy: Dict[str, Any]) -> Dict[str, Any]:
-        required = bool(policy.get('required'))
-        return {
-            'required': required,
-            'state': 'pending' if required else 'not_required',
-            'reason': policy.get('reason'),
-            'approved_by': None,
-            'approved_at': None,
-            'message': None,
-        }
+        return approval_state_from_policy(policy)
 
     @staticmethod
     def _get_firestore_client():
@@ -234,7 +210,7 @@ class OperationService:
                 'events': [],
             }
             document.set(record)
-            event = cls._build_event(
+            event = build_event(
                 event_type='operation.created',
                 phase='queued',
                 status=initial_status,
@@ -245,7 +221,7 @@ class OperationService:
             cls._append_event_projection(document.id, record, event)
             cls._persist_event(document.id, event)
             if approval_state['state'] == 'pending':
-                approval_event = cls._build_event(
+                approval_event = build_event(
                     event_type='approval.requested',
                     phase='approval',
                     status='awaiting_approval',
@@ -302,7 +278,7 @@ class OperationService:
             record = snapshot.to_dict() or {}
             if uid is not None and record.get('requested_by') != uid:
                 return None
-            serialized = cls._serialize_operation(record)
+            serialized = serialize_operation(record)
             if include_related:
                 if not serialized.get('events'):
                     serialized['events'] = cls.list_operation_events(uid, operation_id, limit=cls.EVENT_PROJECTION_LIMIT)
@@ -332,7 +308,7 @@ class OperationService:
                 continue
             if status and record.get('status') != status:
                 continue
-            items.append(cls._serialize_operation(record))
+            items.append(serialize_operation(record))
         items.sort(
             key=lambda record: cls._coerce_datetime(record.get('submitted_at')) or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True,
@@ -363,7 +339,7 @@ class OperationService:
                     continue
                 if status and record.get('status') != status:
                     continue
-                items.append(cls._serialize_operation(record))
+                items.append(serialize_operation(record))
                 if len(items) >= limit:
                     break
             return items
@@ -436,7 +412,7 @@ class OperationService:
                 .stream()
             )
             snapshots.reverse()
-            events = [cls._serialize_event(snapshot.to_dict() or {}) for snapshot in snapshots]
+            events = [serialize_event(snapshot.to_dict() or {}) for snapshot in snapshots]
             if events:
                 return events
         except Exception:
@@ -462,7 +438,7 @@ class OperationService:
                 .stream()
             )
             snapshots.reverse()
-            artifacts = [cls._serialize_artifact(snapshot.to_dict() or {}) for snapshot in snapshots]
+            artifacts = [serialize_artifact(snapshot.to_dict() or {}) for snapshot in snapshots]
             if artifacts:
                 return artifacts
         except Exception:
@@ -510,7 +486,7 @@ class OperationService:
                 },
                 merge=True,
             )
-            event = cls._build_event(
+            event = build_event(
                 event_type='operation.retried',
                 phase='queued',
                 status=status,
@@ -566,7 +542,7 @@ class OperationService:
                 )
             document.set(updates, merge=True)
             event_type = 'operation.cancelled' if updates.get('status') == 'cancelled' else 'operation.cancel_requested'
-            event = cls._build_event(
+            event = build_event(
                 event_type=event_type,
                 phase='cancel',
                 status=updates.get('status', record.get('status', 'running')),
@@ -621,7 +597,7 @@ class OperationService:
                 updates['cancel_requested'] = True
             document.set(updates, merge=True)
 
-            event = cls._build_event(
+            event = build_event(
                 event_type='approval.resolved',
                 phase='approval',
                 status=next_status,
@@ -657,7 +633,7 @@ class OperationService:
             },
             merge=True,
         )
-        event = cls._build_event(
+        event = build_event(
             event_type='operation.started',
             phase='started',
             status='running',
@@ -683,9 +659,9 @@ class OperationService:
         previous_running = bool(current_step) and current_step.get('status') == 'running'
 
         if previous_running and previous_phase and previous_phase != phase:
-            completed_step = cls._finalize_step(current_step, status='succeeded', ended_at=now_iso)
-            steps = cls._upsert_step_summary(steps, completed_step)
-            completion_event = cls._build_event(
+            completed_step = finalize_step(current_step, status='succeeded', ended_at=now_iso)
+            steps = upsert_step_summary(steps, completed_step)
+            completion_event = build_event(
                 event_type='step.completed',
                 phase=previous_phase,
                 status='succeeded',
@@ -712,8 +688,8 @@ class OperationService:
                 'artifact_policy': tool_contract.artifact_policy if tool_contract else None,
                 'concurrency_key': tool_contract.concurrency_key if tool_contract else None,
             }
-            steps = cls._upsert_step_summary(steps, next_step)
-            started_event = cls._build_event(
+            steps = upsert_step_summary(steps, next_step)
+            started_event = build_event(
                 event_type='step.started',
                 phase=phase,
                 status='running',
@@ -732,7 +708,7 @@ class OperationService:
                 'message': message,
                 'tool_name': tool_name,
             }
-            steps = cls._upsert_step_summary(steps, current_step)
+            steps = upsert_step_summary(steps, current_step)
 
         cls._operations_collection().document(operation_id).set(
             {
@@ -745,7 +721,7 @@ class OperationService:
             merge=True,
         )
         current = cls.get_operation_for_execution(operation_id) or current
-        progress_event = cls._build_event(
+        progress_event = build_event(
             event_type='step.progress',
             phase=phase,
             status='running',
@@ -764,9 +740,9 @@ class OperationService:
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
         if current_step and current_step.get('status') == 'running':
-            current_step = cls._finalize_step(current_step, status='succeeded', ended_at=now_iso, progress=100)
-            steps = cls._upsert_step_summary(steps, current_step)
-            completion_event = cls._build_event(
+            current_step = finalize_step(current_step, status='succeeded', ended_at=now_iso, progress=100)
+            steps = upsert_step_summary(steps, current_step)
+            completion_event = build_event(
                 event_type='step.completed',
                 phase=current_step.get('phase', 'completed'),
                 status='succeeded',
@@ -777,7 +753,7 @@ class OperationService:
             cls._append_event_projection(operation_id, current, completion_event)
             cls._persist_event(operation_id, completion_event)
 
-        artifacts = cls._extract_artifacts_from_result(result)
+        artifacts = extract_artifacts_from_result(result)
         cls._operations_collection().document(operation_id).set(
             {
                 'status': 'succeeded',
@@ -804,7 +780,7 @@ class OperationService:
                 metadata=artifact.get('metadata'),
             )
 
-        event = cls._build_event(
+        event = build_event(
             event_type='operation.completed',
             phase='completed',
             status='succeeded',
@@ -829,9 +805,9 @@ class OperationService:
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
         if current_step and current_step.get('status') == 'running':
-            current_step = cls._finalize_step(current_step, status='failed', ended_at=now_iso)
-            steps = cls._upsert_step_summary(steps, current_step)
-            failure_step_event = cls._build_event(
+            current_step = finalize_step(current_step, status='failed', ended_at=now_iso)
+            steps = upsert_step_summary(steps, current_step)
+            failure_step_event = build_event(
                 event_type='step.completed',
                 phase=current_step.get('phase', 'failed'),
                 status='failed',
@@ -855,7 +831,7 @@ class OperationService:
             },
             merge=True,
         )
-        event = cls._build_event(
+        event = build_event(
             event_type='operation.failed',
             phase='failed',
             status='failed',
@@ -873,9 +849,9 @@ class OperationService:
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
         if current_step and current_step.get('status') == 'running':
-            current_step = cls._finalize_step(current_step, status='cancelled', ended_at=now_iso)
-            steps = cls._upsert_step_summary(steps, current_step)
-            cancelled_step_event = cls._build_event(
+            current_step = finalize_step(current_step, status='cancelled', ended_at=now_iso)
+            steps = upsert_step_summary(steps, current_step)
+            cancelled_step_event = build_event(
                 event_type='step.completed',
                 phase=current_step.get('phase', 'cancelled'),
                 status='cancelled',
@@ -897,7 +873,7 @@ class OperationService:
             },
             merge=True,
         )
-        event = cls._build_event(
+        event = build_event(
             event_type='operation.cancelled',
             phase='cancelled',
             status='cancelled',
@@ -934,7 +910,7 @@ class OperationService:
             {'artifacts': root_artifacts[-cls.ARTIFACT_PROJECTION_LIMIT:]},
             merge=True,
         )
-        event = cls._build_event(
+        event = build_event(
             event_type='artifact.published',
             phase='artifact',
             status='ready',
@@ -1029,112 +1005,16 @@ class OperationService:
 
     @classmethod
     def dispatch_operation(cls, app, operation_id: str, operation_type: str):
-        mode = (app.config.get('TASKS_EXECUTION_MODE') or 'inline').lower()
-        if mode == 'cloud_tasks' and cls._enqueue_cloud_task(app, operation_id, operation_type):
-            return
-
-        thread = threading.Thread(
-            target=cls._execute_in_app_context,
-            args=(app, operation_id),
-            daemon=True,
+        dispatch_operation_task(
+            app,
+            operation_id,
+            operation_type,
+            execute_callback=cls.execute_operation,
         )
-        thread.start()
 
     @classmethod
     def dispatch_job(cls, app, job_id: str, job_type: str):
         cls.dispatch_operation(app, job_id, job_type)
-
-    @classmethod
-    def _execute_in_app_context(cls, app, operation_id: str):
-        with app.app_context():
-            cls.execute_operation(operation_id)
-
-    @classmethod
-    def _enqueue_cloud_task(cls, app, operation_id: str, operation_type: str) -> bool:
-        try:
-            from google.cloud import tasks_v2
-        except ImportError:
-            logger.warning('google-cloud-tasks unavailable, falling back to inline execution')
-            return False
-
-        try:
-            client = tasks_v2.CloudTasksClient()
-            project = app.config.get('GCP_PROJECT_ID')
-            location = app.config.get('TASKS_LOCATION')
-            queue = app.config.get('TASKS_QUEUE_NAME')
-            queue_path = client.queue_path(project, location, queue)
-            url = f"{app.config.get('INTERNAL_BASE_URL').rstrip('/')}/internal/jobs/{operation_type}/{operation_id}"
-            task = {
-                'http_request': {
-                    'http_method': tasks_v2.HttpMethod.POST,
-                    'url': url,
-                    'headers': {
-                        'Content-Type': 'application/json',
-                        'X-Internal-Job-Token': app.config.get('INTERNAL_JOB_TOKEN', 'dev-internal-job-token'),
-                    },
-                    'body': b'{}',
-                }
-            }
-            client.create_task(parent=queue_path, task=task)
-            logger.info('Enqueued Cloud Task for operation %s', operation_id)
-            return True
-        except Exception as exc:
-            logger.warning('Failed to enqueue Cloud Task for operation %s: %s', operation_id, exc)
-            return False
-
-    @classmethod
-    def _serialize_operation(cls, record: Dict[str, Any]) -> Dict[str, Any]:
-        serialized = dict(record)
-        serialized['id'] = str(serialized.get('operation_id') or serialized.get('job_id') or '')
-        serialized['job_id'] = str(serialized.get('job_id') or serialized.get('operation_id') or '')
-        serialized['operation_id'] = serialized['job_id']
-        for field in ('submitted_at', 'started_at', 'completed_at'):
-            serialized[field] = HistoryService._as_iso(serialized.get(field))
-        current_step = serialized.get('current_step')
-        if isinstance(current_step, dict):
-            serialized['current_step'] = cls._serialize_step(current_step)
-        raw_steps = serialized.get('steps')
-        if isinstance(raw_steps, list):
-            serialized['steps'] = [cls._serialize_step(step) for step in raw_steps if isinstance(step, dict)]
-        raw_events = serialized.get('events')
-        if isinstance(raw_events, list):
-            serialized['events'] = [cls._serialize_event(event) for event in raw_events if isinstance(event, dict)]
-        raw_artifacts = serialized.get('artifacts')
-        if isinstance(raw_artifacts, list):
-            serialized['artifacts'] = [
-                cls._serialize_artifact(artifact)
-                for artifact in raw_artifacts
-                if isinstance(artifact, dict)
-            ]
-        approval_state = serialized.get('approval_state')
-        if isinstance(approval_state, dict):
-            serialized['approval_state'] = {
-                **approval_state,
-                'approved_at': HistoryService._as_iso(approval_state.get('approved_at')),
-            }
-        return serialized
-
-    @staticmethod
-    def _serialize_step(step: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            **step,
-            'started_at': HistoryService._as_iso(step.get('started_at')),
-            'ended_at': HistoryService._as_iso(step.get('ended_at')),
-        }
-
-    @staticmethod
-    def _serialize_event(event: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            **event,
-            'timestamp': HistoryService._as_iso(event.get('timestamp') or event.get('timestamp_iso')),
-        }
-
-    @staticmethod
-    def _serialize_artifact(artifact: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            **artifact,
-            'created_at': HistoryService._as_iso(artifact.get('created_at')),
-        }
 
     @classmethod
     def _persist_event(cls, operation_id: str, event: Dict[str, Any]) -> None:
@@ -1174,114 +1054,3 @@ class OperationService:
             {'events': events[-cls.EVENT_PROJECTION_LIMIT:]},
             merge=True,
         )
-
-    @staticmethod
-    def _build_event(
-        *,
-        event_type: str,
-        phase: str,
-        status: str,
-        message: str,
-        progress: int,
-        timestamp: Optional[str] = None,
-        step: Optional[Dict[str, Any]] = None,
-        extra: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        event = {
-            'type': event_type,
-            'phase': phase,
-            'status': status,
-            'message': message,
-            'progress': progress,
-            'timestamp': timestamp or OperationService._now_iso(),
-        }
-        if step:
-            event['step'] = step
-        if extra:
-            event.update(extra)
-        return event
-
-    @staticmethod
-    def _duration_ms(started_at: Optional[str], ended_at: Optional[str]) -> Optional[int]:
-        start_dt = OperationService._coerce_datetime(started_at)
-        end_dt = OperationService._coerce_datetime(ended_at)
-        if not start_dt or not end_dt:
-            return None
-        return max(int((end_dt - start_dt).total_seconds() * 1000), 0)
-
-    @classmethod
-    def _finalize_step(
-        cls,
-        step: Dict[str, Any],
-        *,
-        status: str,
-        ended_at: str,
-        progress: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        finalized = {
-            **step,
-            'status': status,
-            'ended_at': ended_at,
-        }
-        if progress is not None:
-            finalized['progress'] = progress
-        finalized['duration_ms'] = cls._duration_ms(
-            str(finalized.get('started_at') or ''),
-            ended_at,
-        )
-        return finalized
-
-    @staticmethod
-    def _upsert_step_summary(steps: List[Dict[str, Any]], step: Dict[str, Any]) -> List[Dict[str, Any]]:
-        phase = step.get('phase')
-        updated = []
-        replaced = False
-        for existing in steps:
-            if not replaced and existing.get('phase') == phase:
-                updated.append(step)
-                replaced = True
-            else:
-                updated.append(existing)
-        if not replaced:
-            updated.append(step)
-        return updated
-
-    @staticmethod
-    def _extract_artifacts_from_result(result: Dict[str, Any]) -> List[Dict[str, Any]]:
-        artifacts: List[Dict[str, Any]] = []
-        if not isinstance(result, dict):
-            return artifacts
-
-        def add_if_present(key: str, artifact_type: str, name: str):
-            value = result.get(key)
-            if value:
-                artifacts.append(
-                    {
-                        'type': artifact_type,
-                        'name': name,
-                        'uri': str(value),
-                        'metadata': {'source_key': key},
-                    }
-                )
-
-        add_if_present('storage_path', 'dataset', 'Source dataset')
-        add_if_present('model_path', 'model', 'Trained model')
-        add_if_present('firebase_model_path', 'model', 'Published model')
-        add_if_present('history_record_id', 'history_record', 'Analysis history record')
-        add_if_present('collection_name', 'knowledge_snapshot', 'Knowledge collection')
-        add_if_present('collection', 'knowledge_snapshot', 'Knowledge collection')
-        add_if_present('report_path', 'report', 'Operation report')
-
-        explicit_artifacts = result.get('artifacts')
-        if isinstance(explicit_artifacts, list):
-            for item in explicit_artifacts:
-                if isinstance(item, dict) and item.get('type') and item.get('name'):
-                    artifacts.append(
-                        {
-                            'type': str(item.get('type')),
-                            'name': str(item.get('name')),
-                            'uri': item.get('uri'),
-                            'metadata': dict(item.get('metadata') or {}),
-                        }
-                    )
-        return artifacts

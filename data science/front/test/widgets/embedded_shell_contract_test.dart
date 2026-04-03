@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:front/models/analysis_result.dart';
 import 'package:front/models/dashboard_summary.dart';
 import 'package:front/models/job_record.dart';
+import 'package:front/models/job_stream_frame.dart';
 import 'package:front/repositories/audit_repository.dart';
 import 'package:front/repositories/dashboard_repository.dart';
 import 'package:front/repositories/job_repository.dart';
@@ -196,6 +197,9 @@ class _FakeJobRepository implements JobRepository {
   final List<JobRecord> jobs;
 
   @override
+  bool get supportsStreaming => false;
+
+  @override
   Future<List<JobRecord>> listJobs({String? type, String? status, int limit = 20}) async => jobs;
 
   @override
@@ -203,6 +207,22 @@ class _FakeJobRepository implements JobRepository {
 
   @override
   Future<JobRecord> retryJob(String jobId) => throw UnimplementedError();
+
+  @override
+  Future<JobRecord> cancelJob(String jobId, {String? operationId}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<JobRecord> approveJob(
+    String jobId, {
+    required bool approved,
+    String? message,
+    String? operationId,
+  }) => throw UnimplementedError();
+
+  @override
+  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) =>
+      const Stream<JobStreamFrame>.empty();
 
   @override
   Future<JobRecord> createOptimizationJob({required double initialSoc, DateTime? targetDate, double? batteryCapacity, double? batteryPower, double? batteryEfficiency, double? temperatureAdjust}) => throw UnimplementedError();

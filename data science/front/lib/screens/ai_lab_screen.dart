@@ -1362,6 +1362,23 @@ class _AiLabScreenState extends State<AiLabScreen> {
               onRetry: focusJob.retryable
                   ? () => _retryJob(_trainingJobsViewModel, focusJob)
                   : null,
+              onCancel: focusJob.isTerminal
+                  ? null
+                  : () => _cancelJob(_trainingJobsViewModel, focusJob),
+              onApprove: focusJob.isAwaitingApproval
+                  ? () => _resolveApproval(
+                      _trainingJobsViewModel,
+                      focusJob,
+                      approved: true,
+                    )
+                  : null,
+              onReject: focusJob.isAwaitingApproval
+                  ? () => _resolveApproval(
+                      _trainingJobsViewModel,
+                      focusJob,
+                      approved: false,
+                    )
+                  : null,
             ),
           ],
           const SizedBox(height: 16),
@@ -1418,6 +1435,23 @@ class _AiLabScreenState extends State<AiLabScreen> {
               emptyMessage: '提交知识库任务后，这里会显示文档抓取、切片和向量化阶段。',
               onRetry: focusJob.retryable
                   ? () => _retryJob(_ragJobsViewModel, focusJob)
+                  : null,
+              onCancel: focusJob.isTerminal
+                  ? null
+                  : () => _cancelJob(_ragJobsViewModel, focusJob),
+              onApprove: focusJob.isAwaitingApproval
+                  ? () => _resolveApproval(
+                      _ragJobsViewModel,
+                      focusJob,
+                      approved: true,
+                    )
+                  : null,
+              onReject: focusJob.isAwaitingApproval
+                  ? () => _resolveApproval(
+                      _ragJobsViewModel,
+                      focusJob,
+                      approved: false,
+                    )
                   : null,
             ),
             const SizedBox(height: 16),
@@ -1511,6 +1545,53 @@ class _AiLabScreenState extends State<AiLabScreen> {
           ? _chainForKey('model')
           : _chainForKey('knowledge');
       _showFeedback(_chainFeedbackMessage(chain, prefix: '任务已重新排队'));
+      widget.dashboardViewModel.loadSummary();
+      return;
+    }
+    final message = _normalizeJobErrorMessage(viewModel.errorMessage);
+    if (message != null) {
+      _showFeedback(message, color: AppColors.error);
+    }
+  }
+
+  Future<void> _cancelJob(JobViewModel viewModel, JobRecord job) async {
+    final cancelled = await viewModel.cancelJob(job);
+    if (!mounted) {
+      return;
+    }
+    if (cancelled != null) {
+      final chain = viewModel == _trainingJobsViewModel
+          ? _chainForKey('model')
+          : _chainForKey('knowledge');
+      _showFeedback(_chainFeedbackMessage(chain, prefix: '任务已提交取消'));
+      widget.dashboardViewModel.loadSummary();
+      return;
+    }
+    final message = _normalizeJobErrorMessage(viewModel.errorMessage);
+    if (message != null) {
+      _showFeedback(message, color: AppColors.error);
+    }
+  }
+
+  Future<void> _resolveApproval(
+    JobViewModel viewModel,
+    JobRecord job, {
+    required bool approved,
+  }) async {
+    final updated = await viewModel.resolveApproval(job, approved: approved);
+    if (!mounted) {
+      return;
+    }
+    if (updated != null) {
+      final chain = viewModel == _trainingJobsViewModel
+          ? _chainForKey('model')
+          : _chainForKey('knowledge');
+      _showFeedback(
+        _chainFeedbackMessage(
+          chain,
+          prefix: approved ? '任务已批准执行' : '任务已驳回',
+        ),
+      );
       widget.dashboardViewModel.loadSummary();
       return;
     }

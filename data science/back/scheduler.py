@@ -19,6 +19,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from services.control_task_service import ControlTaskService
 from services.external_data_service import ExternalDataService
 from services.ml_service import EnergyPredictor
 from services.operation_service import OperationCancelledError, OperationService
@@ -65,9 +66,10 @@ class DataPipelineScheduler:
         logger.info("⏰ 开始执行数据抓取任务")
         logger.info("="*80)
         
-        control_task = OperationService.ensure_control_task(
+        control_task = ControlTaskService.ensure_control_task(
             control_task_id='fetch_data_hourly',
             kind='scheduler',
+            operation_type='fetch_data',
             title='Hourly data fetching from CAISO and OpenWeather',
             schedule='every 1 hours',
             default_input={'task_name': 'fetch_data'},
@@ -145,9 +147,10 @@ class DataPipelineScheduler:
         logger.info("⏰ 开始执行模型训练任务")
         logger.info("="*80)
         
-        control_task = OperationService.ensure_control_task(
+        control_task = ControlTaskService.ensure_control_task(
             control_task_id='train_model_daily',
             kind='scheduler',
+            operation_type='train_model',
             title='Daily forecast model retraining',
             schedule='every day 04:00 UTC',
             default_input={'task_name': 'train_model', 'n_estimators': 100},

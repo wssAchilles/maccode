@@ -67,8 +67,9 @@ def retry_job(job_id: str):
         job = JobService.retry_job(uid, job_id)
         if not job:
             return error_response('JOB_NOT_FOUND', '任务不存在', status_code=404)
-        app = current_app._get_current_object()
-        JobService.dispatch_job(app, job['job_id'], job['type'])
+        if job.get('status') == 'queued':
+            app = current_app._get_current_object()
+            JobService.dispatch_job(app, job['job_id'], job['type'])
         return success_response(job, status_code=202)
     except JobBackendUnavailableError as exc:
         logger.warning('Job backend unavailable while retrying job %s: %s', job_id, exc)
@@ -127,8 +128,9 @@ def _create_job(job_type: str):
         uid = request.user.get('uid')
         payload = request.get_json() or {}
         job = JobService.create_job(uid, job_type, payload)
-        app = current_app._get_current_object()
-        JobService.dispatch_job(app, job['job_id'], job_type)
+        if job.get('status') == 'queued':
+            app = current_app._get_current_object()
+            JobService.dispatch_job(app, job['job_id'], job_type)
         return success_response(job, status_code=202)
     except JobBackendUnavailableError as exc:
         logger.warning('Job backend unavailable while creating %s job: %s', job_type, exc)

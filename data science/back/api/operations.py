@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from middleware.rate_limit import rate_limit
 from services.firebase_service import require_auth
 from services.operation_service import JobBackendUnavailableError, OperationService
+from services.operation_stream import stream_operation_events
 from services.operation_tool_runner import execute_operation_tool
 from utils.exceptions import ValidationError
 from utils.responses import error_response, success_response
@@ -117,6 +118,35 @@ def get_operation_events(operation_id: str):
     return success_response({'events': events})
 
 
+@operations_bp.route('/<operation_id>/stream', methods=['GET'])
+@require_auth
+@rate_limit(max_requests=30, window_seconds=60)
+def stream_operation(operation_id: str):
+    uid = request.user.get('uid')
+    operation = OperationService.get_operation(uid, operation_id, include_related=False)
+    if not operation:
+        return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
+
+    poll_interval = request.args.get('poll_interval', default=2.0, type=float) or 2.0
+    max_duration = request.args.get('max_duration', default=55.0, type=float) or 55.0
+    generator = stream_operation_events(
+        operation_id=operation_id,
+        fetch_operation=lambda: OperationService.get_operation(uid, operation_id),
+        list_events=lambda: OperationService.list_operation_events(uid, operation_id, limit=200),
+        poll_interval_s=max(0.5, min(poll_interval, 10.0)),
+        max_duration_s=max(5.0, min(max_duration, 300.0)),
+    )
+    return Response(
+        stream_with_context(generator),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        },
+    )
+
+
 @operations_bp.route('/<operation_id>/cancel', methods=['POST'])
 @require_auth
 @rate_limit(max_requests=20, window_seconds=300)
@@ -204,6 +234,9 @@ def internal_retry_operation(operation_id: str):
         return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
     requested_by = str(operation.get('requested_by') or 'system')
     updated = OperationService.retry_operation(requested_by, operation_id)
+    if updated and updated.get('status') == 'queued':
+        app = current_app._get_current_object()
+        OperationService.dispatch_operation(app, updated['job_id'], updated['type'])
     return success_response(updated or {'operation_id': operation_id})
 
 
@@ -222,6 +255,9 @@ def internal_approve_operation(operation_id: str):
         approved=bool(payload.get('approved', True)),
         message=payload.get('message'),
     )
+    if bool(payload.get('approved', True)) and updated and updated.get('status') == 'queued':
+        app = current_app._get_current_object()
+        OperationService.dispatch_operation(app, updated['job_id'], updated['type'])
     return success_response(updated or {'operation_id': operation_id})
 
 
@@ -242,6 +278,34 @@ def internal_get_operation_events(operation_id: str):
     limit = request.args.get('limit', default=100, type=int) or 100
     events = OperationService.list_operation_events(None, operation_id, limit=min(limit, 500))
     return success_response({'events': events})
+
+
+@internal_operations_bp.route('/internal/operations/<operation_id>/stream', methods=['GET'])
+def internal_stream_operation(operation_id: str):
+    if not _validate_internal_token():
+        return error_response('UNAUTHORIZED', 'Internal operation token missing', status_code=403)
+    operation = OperationService.get_operation(None, operation_id, include_related=False)
+    if not operation:
+        return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
+
+    poll_interval = request.args.get('poll_interval', default=2.0, type=float) or 2.0
+    max_duration = request.args.get('max_duration', default=55.0, type=float) or 55.0
+    generator = stream_operation_events(
+        operation_id=operation_id,
+        fetch_operation=lambda: OperationService.get_operation(None, operation_id),
+        list_events=lambda: OperationService.list_operation_events(None, operation_id, limit=500),
+        poll_interval_s=max(0.5, min(poll_interval, 10.0)),
+        max_duration_s=max(5.0, min(max_duration, 300.0)),
+    )
+    return Response(
+        stream_with_context(generator),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        },
+    )
 
 
 @internal_operations_bp.route('/internal/tools/<tool_name>/execute', methods=['POST'])

@@ -125,36 +125,50 @@ export function WorkbenchShell({ auth }: Props) {
         <MotionBackdrop accent={shellAccent} intensity="hero" className="wb-backdrop" />
         <div className="wb-header-top">
           <div className="wb-brand">
-            <p className="wb-eyebrow">{t('app.kicker')}</p>
+            <div className="wb-brand-row">
+              <p className="wb-eyebrow">{t('app.kicker')}</p>
+              <p className="wb-workspace-pill">{t(WORKSPACE_MODELS[workspaceIndex].titleKey)}</p>
+            </div>
             <h1>{t('app.title')}</h1>
             <p>{t('app.subtitle')}</p>
-            <p className="account-pill">{t(WORKSPACE_MODELS[workspaceIndex].titleKey)}</p>
           </div>
-          <div className="wb-header-actions">
-            <div className="env-chip-group">
-              <span className="env-chip">
-                {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}
-              </span>
-              {env.strategy_base ? (
+          <div className="wb-control-stack">
+            <GlassPanel className="wb-control-card" tone="subtle">
+              <div className="wb-control-head">
+                <p className="subtle-label">{t('shell.system')}</p>
+              </div>
+              <div className="env-chip-group">
                 <span className="env-chip">
-                  {t('env.strategy')}: {formatEndpointChip(env.strategy_base)}
+                  {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}
                 </span>
-              ) : null}
-            </div>
-            {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
-            {auth.required ? (
-              <button type="button" className="soft-button" onClick={() => void auth.signOutCurrentUser()}>
-                {t('auth.signOut')}
-              </button>
-            ) : null}
-            <div className="locale-switch">
-              <button type="button" className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('zh-CN')}>
-                {t('lang.zh')}
-              </button>
-              <button type="button" className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('en-US')}>
-                {t('lang.en')}
-              </button>
-            </div>
+                {env.strategy_base ? (
+                  <span className="env-chip">
+                    {t('env.strategy')}: {formatEndpointChip(env.strategy_base)}
+                  </span>
+                ) : null}
+              </div>
+            </GlassPanel>
+            <GlassPanel className="wb-control-card wb-control-card-compact" tone="subtle">
+              <div className="wb-control-head">
+                <p className="subtle-label">{t('shell.session')}</p>
+              </div>
+              <div className="wb-session-row">
+                {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
+                <div className="locale-switch">
+                  <button type="button" className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('zh-CN')}>
+                    {t('lang.zh')}
+                  </button>
+                  <button type="button" className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'} onClick={() => setLocale('en-US')}>
+                    {t('lang.en')}
+                  </button>
+                </div>
+                {auth.required ? (
+                  <button type="button" className="soft-button" onClick={() => void auth.signOutCurrentUser()}>
+                    {t('auth.signOut')}
+                  </button>
+                ) : null}
+              </div>
+            </GlassPanel>
           </div>
         </div>
 

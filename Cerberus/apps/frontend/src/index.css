@@ -495,8 +495,38 @@ button {
 .wb-header-top {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
+  gap: 22px;
+  align-items: stretch;
+}
+
+.wb-brand {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wb-brand-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.wb-workspace-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--wrgb), 0.14);
+  background: linear-gradient(135deg, rgba(var(--wrgb), 0.08), rgba(255, 255, 255, 0.72));
+  color: var(--a0);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .wb-brand h1 {
@@ -507,18 +537,47 @@ button {
 }
 
 .wb-brand p:last-child {
-  margin: 12px 0 0;
+  margin: 4px 0 0;
   max-width: 44ch;
   color: var(--t1);
   font-size: 1.02rem;
 }
 
-.wb-header-actions {
+.wb-control-stack {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  flex: 0 0 min(33rem, 38%);
+  min-width: min(100%, 19rem);
+}
+
+.wb-control-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(244, 250, 251, 0.84));
+  border: 1px solid rgba(124, 180, 192, 0.14);
+  box-shadow: 0 18px 34px -30px rgba(110, 149, 167, 0.32);
+}
+
+.wb-control-card-compact {
+  gap: 12px;
+}
+
+.wb-control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wb-session-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .env-chip-group,
@@ -548,6 +607,10 @@ button {
 .account-pill {
   color: var(--t0);
   font-weight: 600;
+}
+
+.env-chip-group {
+  justify-content: flex-end;
 }
 
 .soft-button,
@@ -684,6 +747,10 @@ button {
 .ws-nav-title {
   font: 700 1rem/1.1 var(--fh);
   color: var(--t0);
+}
+
+.ws-nav-button .subtle-label {
+  color: rgba(var(--wrgb), 0.72);
 }
 
 .ws-nav-description {
@@ -927,16 +994,31 @@ button {
 
 .ws-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.28fr) minmax(320px, 0.72fr);
+  gap: 22px;
   align-items: start;
 }
 
 .ws-hero-side {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   align-content: start;
   min-width: 0;
+}
+
+.hero-side-shell {
+  padding: 16px;
+  border-radius: calc(var(--r1) - 2px);
+  border: 1px solid rgba(127, 216, 210, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(247, 251, 253, 0.94)),
+    radial-gradient(circle at top right, rgba(var(--pa, var(--wrgb)), 0.08), transparent 48%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.hero-side-head {
+  display: grid;
+  gap: 4px;
 }
 
 .ws-hero-metrics {
@@ -964,10 +1046,20 @@ button {
   gap: 8px;
 }
 
+.hero-metric-primary {
+  grid-column: 1 / -1;
+}
+
 .ws-hero-metrics .glass-panel {
   background: rgba(255, 255, 255, 0.82);
   border-color: rgba(124, 180, 192, 0.12);
   box-shadow: 0 18px 34px -32px rgba(15, 23, 42, 0.12);
+}
+
+.hero-metric-primary .glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(var(--pa, var(--wrgb)), 0.16);
+  box-shadow: 0 24px 42px -34px rgba(var(--pa, var(--wrgb)), 0.18);
 }
 
 .ws-hero-metrics .metric-tile {
@@ -991,6 +1083,10 @@ button {
 
 .ws-hero-metrics .met-value {
   font-size: clamp(1.22rem, 2.4vw, 1.8rem);
+}
+
+.hero-metric-primary .met-value {
+  font-size: clamp(1.48rem, 2.8vw, 2rem);
 }
 
 .met-caption {
@@ -2693,6 +2789,16 @@ button {
   .wb-header-top,
   .sf-header {
     flex-direction: column;
+  }
+
+  .wb-control-stack {
+    min-width: 0;
+    flex-basis: auto;
+  }
+
+  .wb-session-row,
+  .env-chip-group {
+    justify-content: flex-start;
   }
 
   .wb-status-strip,

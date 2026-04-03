@@ -695,6 +695,13 @@ class _ModelingScreenState extends State<ModelingScreen> {
               title: '最近后台任务轨迹',
               emptyMessage: '后台优化开始执行后，这里会显示预测、求解和结果封装阶段。',
               onRetry: latestJob.retryable ? () => _retryJob(latestJob) : null,
+              onCancel: latestJob.isTerminal ? null : () => _cancelJob(latestJob),
+              onApprove: latestJob.isAwaitingApproval
+                  ? () => _resolveApproval(latestJob, approved: true)
+                  : null,
+              onReject: latestJob.isAwaitingApproval
+                  ? () => _resolveApproval(latestJob, approved: false)
+                  : null,
             ),
           ],
           const SizedBox(height: 16),
@@ -1166,6 +1173,45 @@ class _ModelingScreenState extends State<ModelingScreen> {
     }
     if (retried != null) {
       _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已重新排队'));
+      widget.dashboardViewModel?.loadSummary();
+      return;
+    }
+    final error = _jobViewModel.errorMessage;
+    if (error != null) {
+      _showErrorSnackBar(error);
+    }
+  }
+
+  Future<void> _cancelJob(JobRecord job) async {
+    final cancelled = await _jobViewModel.cancelJob(job);
+    if (!mounted) {
+      return;
+    }
+    if (cancelled != null) {
+      _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已提交取消'));
+      widget.dashboardViewModel?.loadSummary();
+      return;
+    }
+    final error = _jobViewModel.errorMessage;
+    if (error != null) {
+      _showErrorSnackBar(error);
+    }
+  }
+
+  Future<void> _resolveApproval(
+    JobRecord job, {
+    required bool approved,
+  }) async {
+    final updated = await _jobViewModel.resolveApproval(job, approved: approved);
+    if (!mounted) {
+      return;
+    }
+    if (updated != null) {
+      _showSuccessSnackBar(
+        _optimizationFeedbackMessage(
+          approved ? '后台优化任务已批准执行' : '后台优化任务已驳回',
+        ),
+      );
       widget.dashboardViewModel?.loadSummary();
       return;
     }

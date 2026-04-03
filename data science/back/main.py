@@ -20,6 +20,7 @@ from api.ml import ml_bp
 from api.optimization import optimization_bp
 from api.rag import rag_bp
 from api.dashboard import dashboard_bp
+from api.control_tasks import control_tasks_bp, internal_control_tasks_bp
 from api.jobs import internal_jobs_bp, jobs_bp
 from api.operations import internal_operations_bp, operations_bp
 
@@ -55,6 +56,8 @@ def create_app(config_name=None):
     app.register_blueprint(ml_bp)
     app.register_blueprint(rag_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(control_tasks_bp)
+    app.register_blueprint(internal_control_tasks_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(internal_jobs_bp)
     app.register_blueprint(operations_bp)

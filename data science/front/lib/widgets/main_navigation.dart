@@ -20,6 +20,7 @@ import '../screens/operations_hub_screen.dart';
 import '../services/auth_gateway.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
+import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import 'operations/workbench_page_frame.dart';
 import 'operations/system_status_strip.dart';
@@ -32,9 +33,11 @@ class MainNavigation extends StatefulWidget {
     AuthRepository? authRepository,
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
+    ControlTaskViewModel? controlTaskViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
+       _controlTaskViewModel = controlTaskViewModel,
        _customPages = null,
        assert(
          authRepository == null || authGateway == null,
@@ -48,9 +51,11 @@ class MainNavigation extends StatefulWidget {
     AuthRepository? authRepository,
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
+    ControlTaskViewModel? controlTaskViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
+       _controlTaskViewModel = controlTaskViewModel,
        _customPages = pages,
        assert(
          authRepository == null || authGateway == null,
@@ -64,6 +69,7 @@ class MainNavigation extends StatefulWidget {
   final AuthRepository? _authRepository;
   final AuthGateway? _authGateway;
   final DashboardViewModel? _dashboardViewModel;
+  final ControlTaskViewModel? _controlTaskViewModel;
   final List<Widget>? _customPages;
 
   @override
@@ -83,6 +89,8 @@ class _MainNavigationState extends State<MainNavigation> {
   late final AuthRepository _authRepository;
   late final DashboardViewModel _dashboardViewModel;
   late final bool _ownsDashboardViewModel;
+  late final ControlTaskViewModel _controlTaskViewModel;
+  late final bool _ownsControlTaskViewModel;
   StreamSubscription<User?>? _authSubscription;
   User? _currentUser;
   AiLabLaunchIntent? _pendingAiLabIntent;
@@ -99,6 +107,9 @@ class _MainNavigationState extends State<MainNavigation> {
         GatewayAuthRepository(authGateway: widget._authGateway);
     _dashboardViewModel = widget._dashboardViewModel ?? DashboardViewModel();
     _ownsDashboardViewModel = widget._dashboardViewModel == null;
+    _controlTaskViewModel =
+        widget._controlTaskViewModel ?? ControlTaskViewModel();
+    _ownsControlTaskViewModel = widget._controlTaskViewModel == null;
     _currentUser = _authRepository.currentUser;
     _authSubscription = _authRepository.authStateChanges.listen((user) {
       if (!mounted || user == _currentUser) {
@@ -116,6 +127,9 @@ class _MainNavigationState extends State<MainNavigation> {
     _authSubscription?.cancel();
     if (_ownsDashboardViewModel) {
       _dashboardViewModel.dispose();
+    }
+    if (_ownsControlTaskViewModel) {
+      _controlTaskViewModel.dispose();
     }
     super.dispose();
   }
@@ -429,6 +443,7 @@ class _MainNavigationState extends State<MainNavigation> {
         // Default product pages always render as shell content.
         OperationsHubScreen(
           viewModel: _dashboardViewModel,
+          controlTaskViewModel: _controlTaskViewModel,
           onNavigateToTab: _onNavTap,
           onOpenAiLab: _openAiLabWithIntent,
           onOpenDataAnalysis: _openDataAnalysisWithIntent,

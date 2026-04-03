@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
+import '../models/control_task_record.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/optimization_launch_intent.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
+import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../widgets/operations/alert_panel.dart';
 import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
+import '../widgets/operations/control_task_board.dart';
 import '../widgets/operations/dataset_asset_card.dart';
 import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/duty_section_block.dart';
@@ -38,6 +41,7 @@ class OperationsHubScreen extends StatefulWidget {
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
+    this.controlTaskViewModel,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -46,6 +50,7 @@ class OperationsHubScreen extends StatefulWidget {
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+  final ControlTaskViewModel? controlTaskViewModel;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -57,6 +62,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   void initState() {
     super.initState();
     widget.viewModel.initialize();
+    widget.controlTaskViewModel?.initialize();
   }
 
   void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
@@ -124,6 +130,111 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       default:
         widget.onNavigateToTab(0);
     }
+  }
+
+  Future<void> _runControlTask(ControlTaskRecord task) async {
+    final viewModel = widget.controlTaskViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final operation = await viewModel.runControlTask(task);
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (operation == null) {
+      final errorMessage = viewModel.errorMessage ?? '触发规划任务失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    final awaitingApproval = operation.status == 'awaiting_approval';
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          awaitingApproval
+              ? '已创建待审批运行: ${task.title}'
+              : '已触发规划任务: ${task.title}',
+        ),
+        backgroundColor: awaitingApproval ? AppColors.warning : AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _toggleControlTask(ControlTaskRecord task) async {
+    final viewModel = widget.controlTaskViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final updated = await viewModel.setControlTaskEnabled(
+      task,
+      enabled: !task.enabled,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      final errorMessage = viewModel.errorMessage ?? '更新规划任务状态失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(updated.enabled ? '已恢复规划任务: ${task.title}' : '已暂停规划任务: ${task.title}'),
+        backgroundColor: updated.enabled ? AppColors.success : AppColors.warning,
+      ),
+    );
+  }
+
+  Future<void> _toggleControlTaskApproval(ControlTaskRecord task) async {
+    final viewModel = widget.controlTaskViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final requiredApproval = task.approvalPolicy['required'] == true;
+    final nextPolicy = <String, dynamic>{
+      ...task.approvalPolicy,
+      'required': !requiredApproval,
+      'mode': requiredApproval ? 'auto' : 'manual',
+    };
+
+    final updated = await viewModel.setControlTaskApprovalPolicy(
+      task,
+      approvalPolicy: nextPolicy,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      final errorMessage = viewModel.errorMessage ?? '更新规划任务审批策略失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    final nextRequired = updated.approvalPolicy['required'] == true;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          nextRequired ? '已切换为审批执行: ${task.title}' : '已切换为自动执行: ${task.title}',
+        ),
+        backgroundColor: nextRequired ? AppColors.warning : AppColors.success,
+      ),
+    );
   }
 
   AssetChainSummary? _chainFor(DashboardSummary summary, String key) {
@@ -279,7 +390,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.viewModel,
+      listenable: widget.controlTaskViewModel == null
+          ? widget.viewModel
+          : Listenable.merge([widget.viewModel, widget.controlTaskViewModel!]),
       builder: (context, _) {
         final summary = widget.viewModel.summary;
         final content = RefreshIndicator(
@@ -920,6 +1033,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             _openChainWorkspace(chain, source: '处置清单');
           },
         ),
+        if (widget.controlTaskViewModel != null) ...[
+          const SizedBox(height: 20),
+          ControlTaskBoard(
+            tasks: widget.controlTaskViewModel!.tasks,
+            isLoading: widget.controlTaskViewModel!.isLoading,
+            errorMessage: widget.controlTaskViewModel!.errorMessage,
+            onRetry: () => widget.controlTaskViewModel!.loadControlTasks(),
+            onRunTask: _runControlTask,
+            isTaskRunning: widget.controlTaskViewModel!.isRunningTask,
+            onToggleTask: _toggleControlTask,
+            isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
+            onToggleApproval: _toggleControlTaskApproval,
+          ),
+        ],
         const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {

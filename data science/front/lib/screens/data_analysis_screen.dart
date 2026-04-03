@@ -732,6 +732,15 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
               onRetry: latestJob.retryable
                   ? () => _retryAnalysisJob(latestJob)
                   : null,
+              onCancel: latestJob.isTerminal
+                  ? null
+                  : () => _cancelAnalysisJob(latestJob),
+              onApprove: latestJob.isAwaitingApproval
+                  ? () => _resolveAnalysisApproval(latestJob, approved: true)
+                  : null,
+              onReject: latestJob.isAwaitingApproval
+                  ? () => _resolveAnalysisApproval(latestJob, approved: false)
+                  : null,
             ),
             const SizedBox(height: 16),
           ],
@@ -1007,6 +1016,46 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     }
     if (retried != null) {
       _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已重新排队'));
+      return;
+    }
+    final message = _analysisJobsViewModel.errorMessage;
+    if (message != null) {
+      _showFeedback(message: message, backgroundColor: AppColors.error);
+    }
+  }
+
+  Future<void> _cancelAnalysisJob(JobRecord job) async {
+    final cancelled = await _analysisJobsViewModel.cancelJob(job);
+    if (!mounted) {
+      return;
+    }
+    if (cancelled != null) {
+      _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已提交取消'));
+      return;
+    }
+    final message = _analysisJobsViewModel.errorMessage;
+    if (message != null) {
+      _showFeedback(message: message, backgroundColor: AppColors.error);
+    }
+  }
+
+  Future<void> _resolveAnalysisApproval(
+    JobRecord job, {
+    required bool approved,
+  }) async {
+    final updated = await _analysisJobsViewModel.resolveApproval(
+      job,
+      approved: approved,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (updated != null) {
+      _showSuccessFeedback(
+        _datasetFeedbackMessage(
+          approved ? '后台分析任务已批准执行' : '后台分析任务已驳回',
+        ),
+      );
       return;
     }
     final message = _analysisJobsViewModel.errorMessage;

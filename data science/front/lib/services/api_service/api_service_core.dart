@@ -126,6 +126,27 @@ Future<http.Response> _authorizedPost(
   );
 }
 
+Future<http.Response> _authorizedPatch(
+  String baseUrl,
+  String path, {
+  Object? body,
+  Map<String, Object?>? queryParameters,
+  Duration? timeout,
+  String timeoutMessage = _defaultTimeoutError,
+  Map<String, String>? headers,
+}) async {
+  final authHeaders = headers ?? await _getAuthHeaders();
+  return _requestWithTimeout(
+    _httpClient.patch(
+      _buildUri(baseUrl, path, queryParameters: queryParameters),
+      headers: authHeaders,
+      body: body,
+    ),
+    timeout: timeout,
+    timeoutMessage: timeoutMessage,
+  );
+}
+
 Future<http.Response> _authorizedDelete(
   String baseUrl,
   String path, {

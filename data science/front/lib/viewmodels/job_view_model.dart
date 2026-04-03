@@ -7,8 +7,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../models/job_record.dart';
+import '../models/job_stream_frame.dart';
 import '../repositories/job_repository.dart';
 import '../services/api_service_exception.dart';
+import '../utils/job_stream_merge.dart';
 
 class JobViewModel extends ChangeNotifier {
   JobViewModel({
@@ -35,6 +37,7 @@ class JobViewModel extends ChangeNotifier {
   bool _isDisposed = false;
   bool _isPolling = false;
   String? _activeJobId;
+  Future<void>? _pollingTask;
 
   List<JobRecord> get jobs => List.unmodifiable(_jobs);
   bool get isLoading => _isLoading;
@@ -144,15 +147,79 @@ class JobViewModel extends ChangeNotifier {
     );
   }
 
+  Future<JobRecord?> cancelJob(JobRecord job) {
+    return _runJobAction(
+      () => _repository.cancelJob(job.jobId, operationId: job.operationId),
+      failureLabel: '取消任务失败',
+      startPollingAfterSuccess: false,
+    );
+  }
+
+  Future<JobRecord?> resolveApproval(
+    JobRecord job, {
+    required bool approved,
+    String? message,
+  }) {
+    return _runJobAction(
+      () => _repository.approveJob(
+        job.jobId,
+        approved: approved,
+        message: message,
+        operationId: job.operationId,
+      ),
+      failureLabel: approved ? '批准任务失败' : '驳回任务失败',
+      startPollingAfterSuccess: approved,
+    );
+  }
+
   Future<void> startPolling({
     Duration interval = const Duration(seconds: 4),
   }) async {
-    if (_isPolling || _isDisposed) {
+    if (_isDisposed) {
+      return;
+    }
+
+    if (_isPolling) {
+      await (_pollingTask ?? Future<void>.value());
       return;
     }
 
     _isPolling = true;
+    final pollingTask = _runPollingLoop(interval);
+    _pollingTask = pollingTask;
+    try {
+      await pollingTask;
+    } finally {
+      if (identical(_pollingTask, pollingTask)) {
+        _pollingTask = null;
+      }
+      _isPolling = false;
+    }
+  }
+
+  Future<void> _runPollingLoop(Duration interval) async {
     while (_isPolling && !_isDisposed) {
+      final currentActive = activeJob;
+      if (currentActive != null && _repository.supportsStreaming) {
+        final shouldContinue = await _streamJob(currentActive);
+        if (!_isPolling || _isDisposed) {
+          break;
+        }
+        final streamed = activeJob;
+        if (!shouldContinue || streamed == null || streamed.isTerminal) {
+          _isPolling = false;
+          break;
+        }
+        await loadJobs();
+        final refreshed = activeJob;
+        if (refreshed == null || refreshed.isTerminal) {
+          _isPolling = false;
+          break;
+        }
+        await _delay(const Duration(milliseconds: 400));
+        continue;
+      }
+
       await loadJobs();
       final active = activeJob;
       if (active == null || active.isTerminal) {
@@ -165,6 +232,42 @@ class JobViewModel extends ChangeNotifier {
       }
       await _delay(interval);
     }
+  }
+
+  Future<bool> _streamJob(JobRecord job) async {
+    try {
+      await for (final frame
+          in _repository.streamJob(job.jobId, operationId: job.operationId)) {
+        if (!_isPolling || _isDisposed) {
+          return false;
+        }
+        _applyStreamFrame(job, frame);
+        final refreshed = activeJob;
+        if (refreshed == null || refreshed.isTerminal) {
+          return false;
+        }
+      }
+    } catch (e) {
+      if (!_isTransientApiError(e)) {
+        _errorMessage = '任务流订阅失败: ${_readableErrorMessage(e)}';
+        _notifySafely();
+      }
+    }
+
+    final refreshed = activeJob;
+    return refreshed != null && !refreshed.isTerminal;
+  }
+
+  void _applyStreamFrame(JobRecord seedJob, JobStreamFrame frame) {
+    final current = _jobs.cast<JobRecord?>().firstWhere(
+      (job) => job?.jobId == seedJob.jobId,
+      orElse: () => seedJob,
+    );
+    final nextJob = mergeJobStreamFrame(current ?? seedJob, frame);
+    _activeJobId = nextJob.jobId;
+    _jobs = [nextJob, ..._jobs.where((item) => item.jobId != nextJob.jobId)]
+        .toList(growable: false);
+    _notifySafely();
   }
 
   void stopPolling() {
@@ -206,6 +309,33 @@ class JobViewModel extends ChangeNotifier {
     } finally {
       _isSubmitting = false;
       _notifySafely();
+    }
+  }
+
+  Future<JobRecord?> _runJobAction(
+    Future<JobRecord> Function() action, {
+    required String failureLabel,
+    required bool startPollingAfterSuccess,
+  }) async {
+    _errorMessage = null;
+    _notifySafely();
+
+    try {
+      final job = await action();
+      _activeJobId = job.jobId;
+      _jobs = [job, ..._jobs.where((item) => item.jobId != job.jobId)].toList();
+      _notifySafely();
+      if (startPollingAfterSuccess && !job.isTerminal) {
+        unawaited(startPolling());
+      }
+      return job;
+    } catch (e) {
+      final detail = _readableErrorMessage(e);
+      _errorMessage = detail.startsWith(failureLabel)
+          ? detail
+          : '$failureLabel: $detail';
+      _notifySafely();
+      return null;
     }
   }
 
@@ -300,6 +430,7 @@ class JobViewModel extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _isPolling = false;
+    _pollingTask = null;
     super.dispose();
   }
 }

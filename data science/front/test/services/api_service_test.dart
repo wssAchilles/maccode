@@ -215,6 +215,183 @@ void main() {
     });
   });
 
+  group('ApiService control tasks API', () {
+    test('listControlTasks unwraps planning task list', () async {
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'control_tasks': [
+                  {
+                    'id': 'fetch_data_hourly',
+                    'kind': 'scheduler',
+                    'title': '每小时抓取',
+                    'enabled': true,
+                  },
+                ],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+
+      final tasks = await ApiService.listControlTasks(kind: 'scheduler');
+
+      expect(tasks, hasLength(1));
+      expect(tasks.single['id'], 'fetch_data_hourly');
+    });
+
+    test('getControlTask unwraps planning task payload', () async {
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'id': 'train_model_daily',
+                'kind': 'scheduler',
+                'title': '每日模型重训',
+                'enabled': true,
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+
+      final task = await ApiService.getControlTask('train_model_daily');
+
+      expect(task['id'], 'train_model_daily');
+      expect(task['title'], '每日模型重训');
+    });
+
+    test('runControlTask posts trigger request to planning endpoint', () async {
+      late http.Request capturedRequest;
+
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient((request) async {
+          capturedRequest = request;
+          return http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'job_id': 'op-9',
+                'operation_id': 'op-9',
+                'type': 'train_model',
+                'status': 'queued',
+                'progress': 0,
+                'requested_by': 'tester',
+                'attempt_count': 0,
+                'max_attempts': 3,
+              },
+            }),
+            202,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final payload = await ApiService.runControlTask(
+        'train_model_daily',
+        trigger: 'manual',
+        input: const {'n_estimators': 200},
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+      expect(capturedRequest.url.path, '/api/control-tasks/train_model_daily/run');
+      expect(body['trigger'], 'manual');
+      expect(body['input']['n_estimators'], 200);
+      expect(payload['operation_id'], 'op-9');
+    });
+
+    test('setControlTaskEnabled patches enabled flag to planning endpoint', () async {
+      late http.Request capturedRequest;
+
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient((request) async {
+          capturedRequest = request;
+          return http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'id': 'train_model_daily',
+                'kind': 'scheduler',
+                'operation_type': 'train_model',
+                'title': '每日模型重训',
+                'enabled': false,
+              },
+            }),
+            202,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final payload = await ApiService.setControlTaskEnabled(
+        'train_model_daily',
+        enabled: false,
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+      expect(capturedRequest.method, 'PATCH');
+      expect(capturedRequest.url.path, '/api/control-tasks/train_model_daily');
+      expect(body['enabled'], isFalse);
+      expect(payload['enabled'], isFalse);
+    });
+
+    test('setControlTaskApprovalPolicy patches approval policy to planning endpoint', () async {
+      late http.Request capturedRequest;
+
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient((request) async {
+          capturedRequest = request;
+          return http.Response(
+            jsonEncode(const {
+              'success': true,
+              'data': {
+                'id': 'train_model_daily',
+                'kind': 'scheduler',
+                'operation_type': 'train_model',
+                'title': '每日模型重训',
+                'enabled': true,
+                'approval_policy': {
+                  'required': true,
+                  'mode': 'manual',
+                },
+              },
+            }),
+            202,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final payload = await ApiService.setControlTaskApprovalPolicy(
+        'train_model_daily',
+        approvalPolicy: const {'required': true, 'mode': 'manual'},
+      );
+
+      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+      expect(capturedRequest.method, 'PATCH');
+      expect(body['approval_policy']['required'], isTrue);
+      expect(body['approval_policy']['mode'], 'manual');
+      expect(payload['approval_policy']['mode'], 'manual');
+    });
+  });
+
   test(
     'throws unauthenticated error when test token provider returns null',
     () async {

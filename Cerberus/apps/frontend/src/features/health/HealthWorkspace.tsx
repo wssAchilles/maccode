@@ -29,7 +29,11 @@ export function HealthWorkspace({ active: _active = true }: Props) {
         <TerminalBand model={model.contextBand} className="hero-band" />
         <div className="ws-hero-grid">
           <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side">
+          <div className="ws-hero-side hero-side-shell">
+            <div className="hero-side-head">
+              <p className="subtle-label">{t('workspace.hero.readings')}</p>
+              <p className="panel-caption">{t('workspace.health.description')}</p>
+            </div>
             <ServiceHealthPanel model={model.serviceHealthPanel} />
           </div>
         </div>

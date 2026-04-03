@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:front/models/ai_lab_launch_intent.dart';
 import 'package:front/models/dashboard_summary.dart';
 import 'package:front/models/job_record.dart';
+import 'package:front/models/job_stream_frame.dart';
 import 'package:front/repositories/audit_repository.dart';
 import 'package:front/repositories/dashboard_repository.dart';
 import 'package:front/repositories/job_repository.dart';
@@ -30,6 +31,9 @@ class _FakeJobRepository implements JobRepository {
   final List<JobRecord> jobs;
 
   @override
+  bool get supportsStreaming => false;
+
+  @override
   Future<List<JobRecord>> listJobs({
     String? type,
     String? status,
@@ -45,6 +49,10 @@ class _FakeJobRepository implements JobRepository {
   Future<JobRecord> retryJob(String jobId) {
     throw UnimplementedError();
   }
+
+  @override
+  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) =>
+      const Stream<JobStreamFrame>.empty();
 
   @override
   Future<JobRecord> createOptimizationJob({

@@ -1,0 +1,205 @@
+"""Tests for the control-task planning service."""
+
+from __future__ import annotations
+
+import copy
+import sys
+import types
+import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+BACK_ROOT = Path(__file__).resolve().parents[2]
+if str(BACK_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACK_ROOT))
+
+SERVER_TIMESTAMP = object()
+
+google_module = types.ModuleType('google')
+cloud_module = types.ModuleType('google.cloud')
+firestore_module = types.ModuleType('google.cloud.firestore')
+firestore_v1_module = types.ModuleType('google.cloud.firestore_v1')
+
+
+class _FirestoreClient:
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+firestore_module.Client = _FirestoreClient
+firestore_v1_module.SERVER_TIMESTAMP = SERVER_TIMESTAMP
+cloud_module.firestore = firestore_module
+cloud_module.firestore_v1 = firestore_v1_module
+google_module.cloud = cloud_module
+
+sys.modules.setdefault('google', google_module)
+sys.modules.setdefault('google.cloud', cloud_module)
+sys.modules.setdefault('google.cloud.firestore', firestore_module)
+sys.modules.setdefault('google.cloud.firestore_v1', firestore_v1_module)
+
+from services.control_task_service import ControlTaskService
+
+
+def _replace_server_timestamps(value):
+    if value is SERVER_TIMESTAMP:
+        return datetime.now(timezone.utc)
+    if isinstance(value, dict):
+        return {key: _replace_server_timestamps(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_replace_server_timestamps(item) for item in value]
+    return copy.deepcopy(value)
+
+
+class _FakeSnapshot:
+    def __init__(self, doc_id: str, data=None, exists: bool = False):
+        self.id = doc_id
+        self._data = copy.deepcopy(data) if data is not None else None
+        self.exists = exists
+
+    def to_dict(self):
+        return copy.deepcopy(self._data) if self._data is not None else None
+
+
+class _FakeDocumentReference:
+    def __init__(self, collection, doc_id: str):
+        self._collection = collection
+        self.id = doc_id
+
+    def get(self):
+        data = self._collection._docs.get(self.id)
+        return _FakeSnapshot(self.id, data, exists=data is not None)
+
+    def set(self, payload, merge: bool = False):
+        normalized = _replace_server_timestamps(payload)
+        if merge and self.id in self._collection._docs:
+            current = copy.deepcopy(self._collection._docs[self.id])
+            current.update(normalized)
+            self._collection._docs[self.id] = current
+        else:
+            self._collection._docs[self.id] = copy.deepcopy(normalized)
+
+
+class _FakeCollection:
+    def __init__(self):
+        self._docs = {}
+
+    def document(self, doc_id: str):
+        return _FakeDocumentReference(self, doc_id)
+
+    def stream(self):
+        return [_FakeSnapshot(doc_id, data, exists=True) for doc_id, data in self._docs.items()]
+
+
+class TestControlTaskService(ControlTaskService):
+    _tasks = _FakeCollection()
+
+    @classmethod
+    def reset(cls):
+        cls._tasks = _FakeCollection()
+
+    @classmethod
+    def _collection(cls):
+        return cls._tasks
+
+
+class ControlTaskServiceTestCase(unittest.TestCase):
+    def setUp(self):
+        TestControlTaskService.reset()
+
+    def test_ensure_and_get_control_task(self):
+        created = TestControlTaskService.ensure_control_task(
+            control_task_id='fetch_data_hourly',
+            kind='scheduler',
+            operation_type='fetch_data',
+            title='每小时抓取',
+            schedule='every 1 hours',
+            default_input={'task_name': 'fetch_data'},
+            dependencies=['dataset_ready'],
+            owner='system',
+        )
+
+        self.assertEqual(created['id'], 'fetch_data_hourly')
+        self.assertEqual(created['kind'], 'scheduler')
+        self.assertEqual(created['operation_type'], 'fetch_data')
+        self.assertEqual(created['default_input']['task_name'], 'fetch_data')
+        self.assertEqual(created['dependencies'], ['dataset_ready'])
+        self.assertTrue(created['enabled'])
+
+        fetched = TestControlTaskService.get_control_task('fetch_data_hourly')
+        self.assertIsNotNone(fetched)
+        self.assertEqual(fetched['title'], '每小时抓取')
+        self.assertEqual(fetched['schedule'], 'every 1 hours')
+
+    def test_list_control_tasks_filters_and_sorts(self):
+        TestControlTaskService.ensure_control_task(
+            control_task_id='train_daily',
+            kind='scheduler',
+            operation_type='train_model',
+            title='每日训练',
+            owner='system',
+            enabled=True,
+        )
+        TestControlTaskService.ensure_control_task(
+            control_task_id='rag_manual',
+            kind='manual',
+            operation_type='rag_ingest',
+            title='知识库重建',
+            owner='ops',
+            enabled=False,
+        )
+
+        # Simulate an older update time so sorting is deterministic.
+        TestControlTaskService._tasks._docs['train_daily']['updated_at'] = datetime.now(
+            timezone.utc,
+        ) - timedelta(days=1)
+
+        manual_tasks = TestControlTaskService.list_control_tasks(kind='manual', limit=10)
+        self.assertEqual(len(manual_tasks), 1)
+        self.assertEqual(manual_tasks[0]['id'], 'rag_manual')
+
+        disabled_tasks = TestControlTaskService.list_control_tasks(enabled=False, limit=10)
+        self.assertEqual(len(disabled_tasks), 1)
+        self.assertEqual(disabled_tasks[0]['owner'], 'ops')
+
+        ordered = TestControlTaskService.list_control_tasks(limit=10)
+        self.assertEqual(ordered[0]['id'], 'rag_manual')
+        self.assertEqual(ordered[1]['id'], 'train_daily')
+
+    def test_set_control_task_enabled_updates_enabled_flag(self):
+        TestControlTaskService.ensure_control_task(
+            control_task_id='fetch_data_hourly',
+            kind='scheduler',
+            operation_type='fetch_data',
+            title='每小时抓取',
+            enabled=True,
+        )
+
+        updated = TestControlTaskService.set_control_task_enabled(
+            'fetch_data_hourly',
+            enabled=False,
+        )
+
+        self.assertIsNotNone(updated)
+        self.assertFalse(updated['enabled'])
+
+    def test_set_control_task_approval_policy_updates_policy_projection(self):
+        TestControlTaskService.ensure_control_task(
+            control_task_id='train_model_daily',
+            kind='scheduler',
+            operation_type='train_model',
+            title='每日模型重训',
+            approval_policy={'required': False, 'mode': 'auto'},
+        )
+
+        updated = TestControlTaskService.set_control_task_approval_policy(
+            'train_model_daily',
+            approval_policy={'required': True, 'mode': 'manual'},
+        )
+
+        self.assertIsNotNone(updated)
+        self.assertTrue(updated['approval_policy']['required'])
+        self.assertEqual(updated['approval_policy']['mode'], 'manual')
+
+
+if __name__ == '__main__':
+    unittest.main()
