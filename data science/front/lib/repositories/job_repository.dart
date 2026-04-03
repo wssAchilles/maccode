@@ -12,6 +12,7 @@ abstract class JobRepository {
     String? type,
     String? status,
     int limit = 20,
+    String scope = 'private',
   });
 
   Future<JobRecord> getJob(String jobId);
@@ -74,11 +75,13 @@ class ApiJobRepository implements JobRepository {
     String? type,
     String? status,
     int limit = 20,
+    String scope = 'private',
   }) async {
     final items = await ApiService.listJobs(
       type: type,
       status: status,
       limit: limit,
+      scope: scope,
     );
     return items.map(JobRecord.fromJson).toList(growable: false);
   }

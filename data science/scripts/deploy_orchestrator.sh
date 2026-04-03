@@ -64,8 +64,8 @@ SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
 echo "✅ Orchestrator deployment complete."
 echo "🌐 Service URL: ${SERVICE_URL}"
 
-echo "🩺 Verifying /healthz ..."
-curl --fail --silent --show-error "${SERVICE_URL}/healthz" >/dev/null
+echo "🩺 Verifying /readyz ..."
+curl --fail --silent --show-error "${SERVICE_URL}/readyz" >/dev/null
 echo "✅ Health check passed."
 echo ""
 echo "👉 Next step:"

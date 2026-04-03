@@ -47,12 +47,14 @@ Future<List<Map<String, dynamic>>> _listJobs({
   String? type,
   String? status,
   int limit = 20,
+  String scope = 'private',
 }) async {
   final response = await _authorizedGet(
     _baseUrl,
     '/api/jobs',
     queryParameters: <String, Object?>{
       'limit': limit,
+      if (scope != 'private') 'scope': scope,
       ...?type == null ? null : <String, Object?>{'type': type},
       ...?status == null ? null : <String, Object?>{'status': status},
     },

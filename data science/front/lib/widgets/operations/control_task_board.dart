@@ -22,6 +22,8 @@ class ControlTaskBoard extends StatelessWidget {
     required this.onToggleApproval,
     required this.onEditDefinition,
     this.onOpenLatestOperation,
+    this.onInspectTaskId,
+    this.highlightedTaskId,
     this.errorMessage,
   });
 
@@ -36,6 +38,8 @@ class ControlTaskBoard extends StatelessWidget {
   final ValueChanged<ControlTaskRecord> onToggleApproval;
   final ValueChanged<ControlTaskRecord> onEditDefinition;
   final ValueChanged<ControlTaskLatestOperation>? onOpenLatestOperation;
+  final ValueChanged<String>? onInspectTaskId;
+  final String? highlightedTaskId;
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +74,8 @@ class ControlTaskBoard extends StatelessWidget {
                     onToggleTask: () => onToggleTask(tasks[i]),
                     onToggleApproval: () => onToggleApproval(tasks[i]),
                     onEditDefinition: () => onEditDefinition(tasks[i]),
+                    onInspectTaskId: onInspectTaskId,
+                    highlightedTaskId: highlightedTaskId,
                     onOpenLatestOperation:
                         tasks[i].latestOperation == null ||
                             onOpenLatestOperation == null
@@ -96,6 +102,8 @@ class _ControlTaskTile extends StatelessWidget {
     required this.onToggleTask,
     required this.onToggleApproval,
     required this.onEditDefinition,
+    this.onInspectTaskId,
+    this.highlightedTaskId,
     this.onOpenLatestOperation,
   });
 
@@ -106,6 +114,8 @@ class _ControlTaskTile extends StatelessWidget {
   final VoidCallback onToggleTask;
   final VoidCallback onToggleApproval;
   final VoidCallback onEditDefinition;
+  final ValueChanged<String>? onInspectTaskId;
+  final String? highlightedTaskId;
   final VoidCallback? onOpenLatestOperation;
 
   @override
@@ -122,12 +132,40 @@ class _ControlTaskTile extends StatelessWidget {
     final nextRunLabel = _formatNextRunAt(task.nextRunAt);
     final dependencyState = _dependencyStatePresentation(task.dependencyState);
     final latestOperation = task.latestOperation;
+    final canRun = task.enabled && task.canRunByDependency && !isRunning;
+    final runLabel = !task.enabled
+        ? '已暂停'
+        : !task.canRunByDependency
+        ? '依赖阻塞'
+        : isRunning
+        ? '触发中'
+        : '立即运行';
+    final isHighlighted = highlightedTaskId == task.id;
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return AnimatedContainer(
+      duration: AppDecorations.animationFast,
+      padding: isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
+      decoration: isHighlighted
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AppDecorations.radiusLg + 2),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.28),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            )
+          : null,
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -234,11 +272,18 @@ class _ControlTaskTile extends StatelessWidget {
             ),
           if (approvalReason.isNotEmpty)
             _DetailRow(label: '审批原因', value: approvalReason),
+          if (task.isDependencyBlocked) ...[
+            const SizedBox(height: 8),
+            _InlineNotice(message: task.dependencyGateMessage),
+          ],
           if (task.dependencies.isNotEmpty) ...[
             const SizedBox(height: 8),
             ControlTaskDependencyGraph(
               taskId: task.id,
               dependencies: task.dependencies,
+              dependencyDetails: task.dependencyDetails,
+              highlightedTaskId: highlightedTaskId,
+              onNodeTap: onInspectTaskId,
             ),
           ],
           const SizedBox(height: 8),
@@ -247,7 +292,7 @@ class _ControlTaskTile extends StatelessWidget {
             runSpacing: 10,
             children: [
               FilledButton.tonalIcon(
-                onPressed: task.enabled && !isRunning ? onRunTask : null,
+                onPressed: canRun ? onRunTask : null,
                 icon: isRunning
                     ? const SizedBox(
                         width: 14,
@@ -255,7 +300,7 @@ class _ControlTaskTile extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.play_arrow_rounded),
-                label: Text(isRunning ? '触发中' : '立即运行'),
+                label: Text(runLabel),
               ),
               OutlinedButton.icon(
                 onPressed: !isUpdating ? onToggleTask : null,
@@ -296,7 +341,8 @@ class _ControlTaskTile extends StatelessWidget {
                 ),
             ],
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -409,6 +455,29 @@ class _DetailRow extends StatelessWidget {
           ),
           Expanded(child: Text(value, style: AppTextStyles.bodySmall)),
         ],
+      ),
+    );
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.warningLight,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.16)),
+      ),
+      child: Text(
+        message,
+        style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
       ),
     );
   }

@@ -44,6 +44,9 @@ def list_operations():
     uid = request.user.get('uid')
     operation_type = request.args.get('type')
     status = request.args.get('status')
+    scope = str(request.args.get('scope') or 'private').strip().lower()
+    if scope not in {'private', 'control_plane'}:
+        return error_response('INVALID_SCOPE', 'scope 仅支持 private 或 control_plane', status_code=400)
     limit = request.args.get('limit', default=20, type=int) or 20
     try:
         return success_response(
@@ -53,6 +56,7 @@ def list_operations():
                     operation_type=operation_type,
                     status=status,
                     limit=min(limit, 50),
+                    scope=scope,
                 )
             }
         )

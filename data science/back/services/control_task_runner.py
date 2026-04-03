@@ -20,6 +20,10 @@ class ControlTaskConfigurationError(ValueError):
     """Raised when a control task does not contain enough execution metadata."""
 
 
+class ControlTaskDependencyBlockedError(ValueError):
+    """Raised when a control task is blocked by unresolved dependencies."""
+
+
 def _resolve_operation_type(task: Dict[str, Any]) -> str:
     operation_type = str(
         task.get('operation_type')
@@ -44,6 +48,12 @@ def run_control_task(
         raise ControlTaskNotFoundError('规划任务不存在')
     if not bool(task.get('enabled', True)):
         raise ControlTaskDisabledError('规划任务已暂停，无法触发运行')
+    dependency_state = str(task.get('dependency_state') or '').strip().lower()
+    if dependency_state in {'blocked', 'missing'}:
+        dependency_summary = str(task.get('dependency_summary') or '依赖未就绪').strip()
+        raise ControlTaskDependencyBlockedError(
+            f'规划任务依赖未就绪，当前无法触发运行: {dependency_summary}',
+        )
 
     payload = dict(task.get('default_input') or {})
     payload.update(input_overrides or {})

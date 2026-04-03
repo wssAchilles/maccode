@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod controller;
 mod handlers;
@@ -5,15 +6,16 @@ mod models;
 mod proxy;
 
 use anyhow::{Context, Result};
+use auth::require_internal_token;
 use axum::{
-    Router,
+    Router, middleware,
     routing::{get, post},
 };
 use config::{AppConfig, AppState};
 use controller::DispatchController;
 use handlers::{
     approve_operation, cancel_operation, dispatch_operation, get_control_task, get_operation,
-    get_operation_events, healthz, list_control_tasks, retry_operation, run_control_task,
+    get_operation_events, healthz, list_control_tasks, retry_operation, run_control_task, statusz,
     stream_operation, update_control_task,
 };
 use reqwest::Client;
@@ -47,8 +49,7 @@ async fn main() -> Result<()> {
             .context("failed to build reqwest client")?,
     };
 
-    let app = Router::new()
-        .route("/healthz", get(healthz))
+    let internal_routes = Router::new()
         .route(
             "/internal/operations/{operation_id}/dispatch",
             post(dispatch_operation),
@@ -83,6 +84,16 @@ async fn main() -> Result<()> {
             "/internal/control-tasks/{control_task_id}/run",
             post(run_control_task),
         )
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_internal_token,
+        ));
+
+    let app = Router::new()
+        .route("/healthz", get(healthz))
+        .route("/readyz", get(healthz))
+        .route("/statusz", get(statusz))
+        .merge(internal_routes)
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

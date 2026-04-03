@@ -40,6 +40,22 @@ class ControlTaskRecord {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  bool get canRunByDependency =>
+      dependencyState.isEmpty || dependencyState == 'none' || dependencyState == 'ready';
+
+  bool get isDependencyBlocked =>
+      dependencyState == 'blocked' || dependencyState == 'missing';
+
+  String get dependencyGateMessage {
+    if (dependencyState == 'missing') {
+      return dependencySummary.isEmpty ? '存在未定义依赖' : dependencySummary;
+    }
+    if (dependencyState == 'blocked') {
+      return dependencySummary.isEmpty ? '存在已暂停依赖' : dependencySummary;
+    }
+    return '依赖已就绪';
+  }
+
   ControlTaskRecord copyWith({
     String? id,
     String? kind,

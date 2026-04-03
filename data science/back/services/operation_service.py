@@ -37,6 +37,7 @@ from services.operation_projection import (
     upsert_step_summary,
 )
 from services.operation_tools import get_tool_contract, resolve_tool_name
+from services.scheduled_operation_runner import run_fetch_data, run_train_model
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,48 @@ class OperationService:
     @staticmethod
     def _get_firestore_client():
         return firestore.Client(database=Config.FIRESTORE_DATABASE)
+
+    @staticmethod
+    def _infer_access_scope(
+        *,
+        uid: str,
+        control_task_id: Optional[str],
+        trigger: str,
+        metadata: Optional[Dict[str, Any]],
+    ) -> str:
+        metadata = metadata or {}
+        if control_task_id or metadata.get('control_task_run') or uid == 'system':
+            return 'control_plane'
+        if trigger in {'scheduler', 'scheduled', 'cron', 'compat'}:
+            return 'control_plane'
+        return 'private'
+
+    @staticmethod
+    def _is_control_plane_operation(record: Dict[str, Any]) -> bool:
+        if str(record.get('access_scope') or '').strip().lower() == 'control_plane':
+            return True
+        if str(record.get('control_task_id') or '').strip():
+            return True
+        metadata = record.get('metadata') if isinstance(record.get('metadata'), dict) else {}
+        if metadata.get('control_task_run'):
+            return True
+        return str(record.get('requested_by') or '').strip().lower() == 'system'
+
+    @classmethod
+    def _has_operation_access(
+        cls,
+        uid: Optional[str],
+        record: Dict[str, Any],
+        *,
+        write: bool = False,
+    ) -> bool:
+        if uid is None:
+            return True
+        if str(record.get('requested_by') or '') == uid:
+            return True
+        if cls._is_control_plane_operation(record):
+            return True
+        return False
 
     @classmethod
     def _operations_collection(cls):
@@ -180,6 +223,12 @@ class OperationService:
             approval_state = cls._approval_state_from_policy(policy)
             initial_status = 'awaiting_approval' if approval_state['state'] == 'pending' else 'queued'
             created_at = cls._now_iso()
+            access_scope = cls._infer_access_scope(
+                uid=uid,
+                control_task_id=control_task_id,
+                trigger=trigger,
+                metadata=metadata,
+            )
             record = {
                 'job_id': document.id,
                 'operation_id': document.id,
@@ -192,6 +241,7 @@ class OperationService:
                 'started_at': None,
                 'completed_at': None,
                 'requested_by': uid,
+                'access_scope': access_scope,
                 'trigger': trigger,
                 'control_task_id': control_task_id,
                 'input': payload,
@@ -276,7 +326,7 @@ class OperationService:
             if not snapshot.exists:
                 return None
             record = snapshot.to_dict() or {}
-            if uid is not None and record.get('requested_by') != uid:
+            if not cls._has_operation_access(uid, record):
                 return None
             serialized = serialize_operation(record)
             if include_related:
@@ -299,11 +349,20 @@ class OperationService:
         operation_type: Optional[str],
         status: Optional[str],
         limit: int,
+        scope: str = 'private',
     ) -> List[Dict[str, Any]]:
-        snapshots = cls._operations_collection().where('requested_by', '==', uid).stream()
+        if scope == 'control_plane':
+            snapshots = cls._operations_collection().stream()
+        else:
+            snapshots = cls._operations_collection().where('requested_by', '==', uid).stream()
         items: List[Dict[str, Any]] = []
         for snapshot in snapshots:
             record = snapshot.to_dict() or {}
+            if scope == 'control_plane':
+                if not cls._is_control_plane_operation(record):
+                    continue
+            elif record.get('requested_by') != uid:
+                continue
             if operation_type and record.get('type') != operation_type:
                 continue
             if status and record.get('status') != status:
@@ -323,18 +382,31 @@ class OperationService:
         operation_type: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 20,
+        scope: str = 'private',
     ) -> List[Dict[str, Any]]:
         try:
-            snapshots = (
-                cls._operations_collection()
-                .where('requested_by', '==', uid)
-                .order_by('submitted_at', direction=firestore.Query.DESCENDING)
-                .limit(max(limit, 20))
-                .stream()
+            base_query = cls._operations_collection().order_by(
+                'submitted_at',
+                direction=firestore.Query.DESCENDING,
             )
+            if scope == 'control_plane':
+                snapshots = base_query.limit(max(limit * 3, 20)).stream()
+            else:
+                snapshots = (
+                    cls._operations_collection()
+                    .where('requested_by', '==', uid)
+                    .order_by('submitted_at', direction=firestore.Query.DESCENDING)
+                    .limit(max(limit, 20))
+                    .stream()
+                )
             items: List[Dict[str, Any]] = []
             for snapshot in snapshots:
                 record = snapshot.to_dict() or {}
+                if scope == 'control_plane':
+                    if not cls._is_control_plane_operation(record):
+                        continue
+                elif record.get('requested_by') != uid:
+                    continue
                 if operation_type and record.get('type') != operation_type:
                     continue
                 if status and record.get('status') != status:
@@ -351,6 +423,7 @@ class OperationService:
                     operation_type=operation_type,
                     status=status,
                     limit=limit,
+                    scope=scope,
                 )
             cls._wrap_backend_error(exc)
         except Exception as exc:
@@ -390,8 +463,15 @@ class OperationService:
         job_type: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 20,
+        scope: str = 'private',
     ) -> List[Dict[str, Any]]:
-        return cls.list_operations(uid, operation_type=job_type, status=status, limit=limit)
+        return cls.list_operations(
+            uid,
+            operation_type=job_type,
+            status=status,
+            limit=limit,
+            scope=scope,
+        )
 
     @classmethod
     def list_operation_events(
@@ -453,7 +533,7 @@ class OperationService:
             if not snapshot.exists:
                 return None
             record = snapshot.to_dict() or {}
-            if record.get('requested_by') != uid:
+            if not cls._has_operation_access(uid, record, write=True):
                 return None
             if record.get('status') not in {'failed', 'cancelled'}:
                 raise ValueError('只有失败或取消的任务支持重试')
@@ -523,7 +603,7 @@ class OperationService:
             if not snapshot.exists:
                 return None
             record = snapshot.to_dict() or {}
-            if record.get('requested_by') != uid:
+            if not cls._has_operation_access(uid, record, write=True):
                 return None
             if record.get('status') in cls.TERMINAL_STATUSES:
                 return cls.get_operation(uid, operation_id)
@@ -570,7 +650,7 @@ class OperationService:
             if not snapshot.exists:
                 return None
             record = snapshot.to_dict() or {}
-            if record.get('requested_by') != uid:
+            if not cls._has_operation_access(uid, record, write=True):
                 return None
 
             current_state = dict(record.get('approval_state') or {})
@@ -720,6 +800,7 @@ class OperationService:
                 'ended_at': None,
                 'duration_ms': None,
                 'execution_target': tool_contract.execution_target if tool_contract else None,
+                'timeout_s': tool_contract.timeout_s if tool_contract else None,
                 'retry_policy': tool_contract.retry_policy if tool_contract else None,
                 'approval_policy': tool_contract.approval_policy if tool_contract else None,
                 'artifact_policy': tool_contract.artifact_policy if tool_contract else None,
@@ -744,6 +825,8 @@ class OperationService:
                 'progress': progress,
                 'message': message,
                 'tool_name': tool_name,
+                'timeout_s': current_step.get('timeout_s')
+                or (tool_contract.timeout_s if tool_contract else None),
             }
             steps = upsert_step_summary(steps, current_step)
 
@@ -1002,9 +1085,21 @@ class OperationService:
                 cls.update_progress(operation_id, 25, 'Loading and chunking documents', phase='fetch_documents')
                 result = run_rag_ingest_workflow(uid, payload, job_id=operation_id)
             elif operation_type == 'fetch_data':
-                raise ValueError('Scheduled fetch_data should be executed by the scheduler adapter')
+                cls.update_progress(
+                    operation_id,
+                    35,
+                    'Fetching CAISO load and OpenWeather data',
+                    phase='fetch_external_data',
+                )
+                result = run_fetch_data(payload)
             elif operation_type == 'train_model':
-                raise ValueError('Scheduled train_model should be executed by the scheduler adapter')
+                cls.update_progress(
+                    operation_id,
+                    35,
+                    'Loading training dataset from Cloud Storage',
+                    phase='prepare_dataset',
+                )
+                result = run_train_model(payload)
             else:
                 raise ValueError(f'Unsupported operation type: {operation_type}')
 

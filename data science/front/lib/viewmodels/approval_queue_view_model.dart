@@ -41,6 +41,7 @@ class ApprovalQueueViewModel extends ChangeNotifier {
       _jobs = await _repository.listJobs(
         status: 'awaiting_approval',
         limit: 20,
+        scope: 'control_plane',
       );
     } catch (e) {
       _errorMessage = '加载审批队列失败: ${_readableError(e)}';

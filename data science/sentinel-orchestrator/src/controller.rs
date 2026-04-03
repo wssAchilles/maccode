@@ -14,7 +14,19 @@ pub struct DispatchController {
     active_operations: Arc<Mutex<HashSet<String>>>,
     light_lane: Arc<Semaphore>,
     heavy_lane: Arc<Semaphore>,
+    max_light_parallel: usize,
+    max_heavy_parallel: usize,
     dispatch_timeout: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub struct DispatchControllerSnapshot {
+    pub active_operations: usize,
+    pub light_capacity: usize,
+    pub light_available: usize,
+    pub heavy_capacity: usize,
+    pub heavy_available: usize,
+    pub dispatch_timeout_secs: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -41,7 +53,23 @@ impl DispatchController {
             active_operations: Arc::new(Mutex::new(HashSet::new())),
             light_lane: Arc::new(Semaphore::new(max_light_parallel.max(1))),
             heavy_lane: Arc::new(Semaphore::new(max_heavy_parallel.max(1))),
+            max_light_parallel: max_light_parallel.max(1),
+            max_heavy_parallel: max_heavy_parallel.max(1),
             dispatch_timeout,
+        }
+    }
+
+    pub async fn snapshot(&self) -> DispatchControllerSnapshot {
+        let active_operations = self.active_operations.lock().await.len();
+        let light_available = self.light_lane.available_permits();
+        let heavy_available = self.heavy_lane.available_permits();
+        DispatchControllerSnapshot {
+            active_operations,
+            light_capacity: self.max_light_parallel,
+            light_available,
+            heavy_capacity: self.max_heavy_parallel,
+            heavy_available,
+            dispatch_timeout_secs: self.dispatch_timeout.as_secs(),
         }
     }
 
@@ -123,6 +151,7 @@ impl DispatchController {
             .post(&dispatch_url)
             .header(header::CONTENT_TYPE, "application/json")
             .header("X-Internal-Job-Token", &state.config.internal_job_token)
+            .body("{}")
             .timeout(self.dispatch_timeout);
 
         match request.send().await {

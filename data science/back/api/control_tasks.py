@@ -8,6 +8,7 @@ from flask import Blueprint, current_app, request
 
 from services.control_task_runner import (
     ControlTaskConfigurationError,
+    ControlTaskDependencyBlockedError,
     ControlTaskDisabledError,
     ControlTaskNotFoundError,
     run_control_task as trigger_control_task_run,
@@ -222,6 +223,8 @@ def run_control_task(control_task_id: str):
         return error_response('CONTROL_TASK_NOT_FOUND', str(exc), status_code=404)
     except ControlTaskDisabledError as exc:
         return error_response('CONTROL_TASK_DISABLED', str(exc), status_code=409)
+    except ControlTaskDependencyBlockedError as exc:
+        return error_response('CONTROL_TASK_DEPENDENCY_BLOCKED', str(exc), status_code=409)
     except ControlTaskConfigurationError as exc:
         return error_response('CONTROL_TASK_INVALID', str(exc), status_code=400)
     except Exception as exc:
@@ -257,6 +260,8 @@ def internal_run_control_task(control_task_id: str):
         return error_response('CONTROL_TASK_NOT_FOUND', str(exc), status_code=404)
     except ControlTaskDisabledError as exc:
         return error_response('CONTROL_TASK_DISABLED', str(exc), status_code=409)
+    except ControlTaskDependencyBlockedError as exc:
+        return error_response('CONTROL_TASK_DEPENDENCY_BLOCKED', str(exc), status_code=409)
     except ControlTaskConfigurationError as exc:
         return error_response('CONTROL_TASK_INVALID', str(exc), status_code=400)
     except Exception as exc:

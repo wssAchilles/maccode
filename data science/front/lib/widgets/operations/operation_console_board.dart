@@ -8,6 +8,7 @@ import '../../viewmodels/operation_console_view_model.dart';
 import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 import 'job_event_timeline.dart';
+import 'operation_execution_policy_strip.dart';
 
 class OperationConsoleBoard extends StatelessWidget {
   const OperationConsoleBoard({
@@ -158,6 +159,8 @@ class OperationConsoleBoard extends StatelessWidget {
                               .toList(growable: false),
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      OperationExecutionPolicyStrip(operation: operation),
                     ],
                   ),
                 ),

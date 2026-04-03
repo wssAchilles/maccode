@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from config import Config
+from services.control_plane_status_service import ControlPlaneStatusService
 from services.history_service import HistoryService
 from services.job_service import JobService
 from services.ml_service import EnergyPredictor
@@ -336,7 +337,7 @@ class DashboardService:
             }
 
     @staticmethod
-    def _service_statuses() -> List[Dict[str, Any]]:
+    def _service_statuses(control_plane_status: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
         try:
             model_ready = EnergyPredictor.get_model_metadata() is not None
         except Exception as exc:
@@ -351,7 +352,7 @@ class DashboardService:
             rag_status = {}
             rag_available = False
 
-        return [
+        statuses = [
             {
                 'key': 'api',
                 'label': 'API',
@@ -376,6 +377,17 @@ class DashboardService:
                 ) if rag_available else 'Knowledge service not configured',
             },
         ]
+        if control_plane_status:
+            statuses.append(
+                {
+                    'key': 'orchestrator',
+                    'label': 'Orchestrator',
+                    'status': control_plane_status.get('status') or 'warning',
+                    'message': control_plane_status.get('message')
+                    or 'Rust orchestrator status unavailable',
+                }
+            )
+        return statuses
 
     @staticmethod
     def _version_label(value: Any) -> str:
@@ -2003,10 +2015,16 @@ class DashboardService:
         dataset_count = HistoryService.count_history_records(uid)
         analysis_count = HistoryService.count_activity(uid, activity_type='analysis', status='success')
         model_count = JobService.count_jobs(uid, job_type='ml_train', status='succeeded')
+        control_plane = cls._safe_dependency(
+            'control_plane_status',
+            ControlPlaneStatusService.get_status,
+            ControlPlaneStatusService.get_status(),
+            degraded_dependencies,
+        )
 
         service_statuses = cls._safe_dependency(
             'service_statuses',
-            cls._service_statuses,
+            lambda: cls._service_statuses(control_plane),
             [
                 {
                     'key': 'api',
@@ -2106,4 +2124,5 @@ class DashboardService:
             'recent_history': activity,
             'asset_summary': asset_summary,
             'alerts': alerts,
+            'control_plane': control_plane,
         }

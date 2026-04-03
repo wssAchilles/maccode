@@ -199,6 +199,7 @@ class JobStep {
     this.endedAt,
     this.durationMs,
     this.executionTarget,
+    this.timeoutS,
     this.retryPolicy,
     this.approvalPolicy,
     this.artifactPolicy,
@@ -214,6 +215,7 @@ class JobStep {
   final DateTime? endedAt;
   final int? durationMs;
   final String? executionTarget;
+  final int? timeoutS;
   final Map<String, dynamic>? retryPolicy;
   final Map<String, dynamic>? approvalPolicy;
   final Map<String, dynamic>? artifactPolicy;
@@ -230,6 +232,7 @@ class JobStep {
       endedAt: _parseDateTime(json['ended_at']),
       durationMs: _asInt(json['duration_ms']),
       executionTarget: json['execution_target']?.toString(),
+      timeoutS: _asInt(json['timeout_s']),
       retryPolicy: json['retry_policy'] is Map
           ? Map<String, dynamic>.from(json['retry_policy'] as Map)
           : null,

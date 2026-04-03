@@ -90,6 +90,19 @@ class ControlTaskService:
         cls._defaults_seeded = True
 
     @classmethod
+    def _list_serialized_tasks(cls) -> List[Dict[str, Any]]:
+        items: List[Dict[str, Any]] = []
+        for snapshot in cls._collection().stream():
+            items.append(
+                serialize_control_task(
+                    snapshot.to_dict() or {},
+                    control_task_id=snapshot.id,
+                )
+            )
+        items.sort(key=cls._sort_key, reverse=True)
+        return items
+
+    @classmethod
     def ensure_control_task(
         cls,
         *,
@@ -140,14 +153,14 @@ class ControlTaskService:
     def get_control_task(cls, control_task_id: str) -> Optional[Dict[str, Any]]:
         try:
             cls.ensure_default_control_tasks()
-            snapshot = cls._collection().document(control_task_id).get()
-            if not snapshot.exists:
+            items = cls._list_serialized_tasks()
+            if not any(item.get('id') == control_task_id for item in items):
                 return None
-            [enriched] = enrich_control_tasks(
-                cls._get_firestore_client(),
-                [serialize_control_task(snapshot.to_dict() or {}, control_task_id=control_task_id)],
-            )
-            return enriched
+            enriched_items = enrich_control_tasks(cls._get_firestore_client(), items)
+            for item in enriched_items:
+                if item.get('id') == control_task_id:
+                    return item
+            return None
         except Exception as exc:
             cls._wrap_backend_error(exc)
 
@@ -197,24 +210,27 @@ class ControlTaskService:
                 updated['default_input'] = normalized_default_input
 
             if len(changes) == 1:
-                return serialize_control_task(updated, control_task_id=control_task_id)
+                return cls.get_control_task(control_task_id)
 
             document.set(changes, merge=True)
-            updated = snapshot.to_dict() or {}
+            updated = cls.get_control_task(control_task_id)
+            if updated is not None:
+                return updated
+            fallback = snapshot.to_dict() or {}
             if enabled is not None:
-                updated['enabled'] = enabled
+                fallback['enabled'] = enabled
             if approval_policy is not None:
-                updated['approval_policy'] = normalize_approval_policy(approval_policy)
+                fallback['approval_policy'] = normalize_approval_policy(approval_policy)
             if dependencies is not _UNSET:
-                updated['dependencies'] = normalize_dependencies(dependencies)
+                fallback['dependencies'] = normalize_dependencies(dependencies)
             if schedule is not _UNSET:
-                updated['schedule'] = normalize_schedule(schedule)
+                fallback['schedule'] = normalize_schedule(schedule)
             if owner is not _UNSET:
-                updated['owner'] = normalize_owner(owner)
+                fallback['owner'] = normalize_owner(owner)
             if default_input is not _UNSET:
-                updated['default_input'] = dict(default_input or {})
-            updated['updated_at'] = datetime.now(timezone.utc).isoformat()
-            return serialize_control_task(updated, control_task_id=control_task_id)
+                fallback['default_input'] = dict(default_input or {})
+            fallback['updated_at'] = datetime.now(timezone.utc).isoformat()
+            return serialize_control_task(fallback, control_task_id=control_task_id)
         except Exception as exc:
             cls._wrap_backend_error(exc)
 
@@ -250,18 +266,16 @@ class ControlTaskService:
     ) -> List[Dict[str, Any]]:
         try:
             cls.ensure_default_control_tasks()
-            snapshots = cls._collection().stream()
-            items: List[Dict[str, Any]] = []
-            for snapshot in snapshots:
-                record = serialize_control_task(snapshot.to_dict() or {}, control_task_id=snapshot.id)
+            items = cls._list_serialized_tasks()
+            filtered: List[Dict[str, Any]] = []
+            for record in items:
                 if kind and record.get('kind') != kind:
                     continue
                 if enabled is not None and bool(record.get('enabled')) != enabled:
                     continue
                 if owner and record.get('owner') != owner:
                     continue
-                items.append(record)
-            items.sort(key=cls._sort_key, reverse=True)
-            return enrich_control_tasks(cls._get_firestore_client(), items[: max(1, limit)])
+                filtered.append(record)
+            return enrich_control_tasks(cls._get_firestore_client(), filtered[: max(1, limit)])
         except Exception as exc:
             cls._wrap_backend_error(exc)

@@ -86,7 +86,8 @@ class ApiService {
     String? type,
     String? status,
     int limit = 20,
-  }) => _listJobs(type: type, status: status, limit: limit);
+    String scope = 'private',
+  }) => _listJobs(type: type, status: status, limit: limit, scope: scope);
 
   static Future<List<Map<String, dynamic>>> listControlTasks({
     String? kind,

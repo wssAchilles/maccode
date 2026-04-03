@@ -46,11 +46,50 @@ pub struct HealthResponse {
     pub python_worker_configured: bool,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ControlPlaneStatusResponse {
+    pub status: &'static str,
+    pub service: &'static str,
+    pub python_worker_configured: bool,
+    pub active_operations: usize,
+    pub dispatch_timeout_secs: u64,
+    pub light_lane: ControlPlaneLaneStatus,
+    pub heavy_lane: ControlPlaneLaneStatus,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ControlPlaneLaneStatus {
+    pub capacity: usize,
+    pub available: usize,
+    pub in_use: usize,
+}
+
 pub async fn healthz(State(state): State<AppState>) -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         service: "sentinel-orchestrator",
         python_worker_configured: state.config.python_worker_base_url.is_some(),
+    })
+}
+
+pub async fn statusz(State(state): State<AppState>) -> Json<ControlPlaneStatusResponse> {
+    let snapshot = state.dispatch_controller.snapshot().await;
+    Json(ControlPlaneStatusResponse {
+        status: "ok",
+        service: "sentinel-orchestrator",
+        python_worker_configured: state.config.python_worker_base_url.is_some(),
+        active_operations: snapshot.active_operations,
+        dispatch_timeout_secs: snapshot.dispatch_timeout_secs,
+        light_lane: ControlPlaneLaneStatus {
+            capacity: snapshot.light_capacity,
+            available: snapshot.light_available,
+            in_use: snapshot.light_capacity.saturating_sub(snapshot.light_available),
+        },
+        heavy_lane: ControlPlaneLaneStatus {
+            capacity: snapshot.heavy_capacity,
+            available: snapshot.heavy_available,
+            in_use: snapshot.heavy_capacity.saturating_sub(snapshot.heavy_available),
+        },
     })
 }
 

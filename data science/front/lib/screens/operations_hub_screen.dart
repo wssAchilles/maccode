@@ -24,6 +24,7 @@ import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/control_task_board.dart';
 import '../widgets/operations/control_task_edit_dialog.dart';
+import '../widgets/operations/control_plane_status_board.dart';
 import '../widgets/operations/dataset_asset_card.dart';
 import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/duty_section_block.dart';
@@ -69,12 +70,20 @@ class OperationsHubScreen extends StatefulWidget {
 }
 
 class _OperationsHubScreenState extends State<OperationsHubScreen> {
+  String? _highlightedControlTaskId;
+
   @override
   void initState() {
     super.initState();
     widget.viewModel.initialize();
     widget.controlTaskViewModel?.initialize();
     widget.approvalQueueViewModel?.initialize();
+  }
+
+  void _inspectControlTask(String taskId) {
+    setState(() {
+      _highlightedControlTaskId = taskId;
+    });
   }
 
   Future<void> _openOperationConsole(
@@ -176,6 +185,8 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
 
     final awaitingApproval = operation.status == 'awaiting_approval';
+    await widget.controlTaskViewModel?.loadControlTasks();
+    await widget.approvalQueueViewModel?.loadQueue();
     await _openOperationConsole(
       operation.operationId ?? operation.jobId,
       seed: operation,
@@ -1283,6 +1294,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           },
         ),
         if (widget.controlTaskViewModel != null) ...[
+          if (safeSummary.controlPlane.enabled || safeSummary.controlPlane.message.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            ControlPlaneStatusBoard(status: safeSummary.controlPlane),
+          ],
           const SizedBox(height: 20),
           ControlTaskBoard(
             tasks: widget.controlTaskViewModel!.tasks,
@@ -1295,6 +1310,8 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
             onToggleApproval: _toggleControlTaskApproval,
             onEditDefinition: _editControlTaskDefinition,
+            onInspectTaskId: _inspectControlTask,
+            highlightedTaskId: _highlightedControlTaskId,
             onOpenLatestOperation: (operation) =>
                 _openOperationConsole(operation.operationId),
           ),

@@ -20,9 +20,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from services.control_task_service import ControlTaskService
-from services.external_data_service import ExternalDataService
-from services.ml_service import EnergyPredictor
-from services.operation_service import OperationCancelledError, OperationService
+from services.operation_service import OperationService
 
 # 配置日志
 logging.basicConfig(
@@ -46,9 +44,6 @@ class DataPipelineScheduler:
                 'misfire_grace_time': 300  # 错过任务的宽限时间 (秒)
             }
         )
-        
-        self.external_data_service = ExternalDataService()
-        self.energy_predictor = EnergyPredictor()
         
         logger.info("✓ DataPipelineScheduler 初始化完成")
     
@@ -87,49 +82,7 @@ class DataPipelineScheduler:
         )
         operation_id = operation['job_id']
 
-        try:
-            OperationService.mark_running(operation_id, message='Running scheduled fetch_data task')
-            OperationService.update_progress(
-                operation_id,
-                35,
-                'Fetching CAISO load and OpenWeather data',
-                phase='fetch_external_data',
-            )
-            success = self.external_data_service.fetch_and_publish()
-            
-            if success:
-                logger.info("✅ 数据抓取任务完成")
-                OperationService.add_artifact(
-                    operation_id,
-                    artifact_type='dataset',
-                    name='Processed energy dataset',
-                    uri='data/processed/cleaned_energy_data_all.csv',
-                    metadata={'source': 'scheduled-fetch'},
-                )
-                OperationService.mark_succeeded(
-                    operation_id,
-                    {
-                        'task_name': 'fetch_data',
-                        'success': True,
-                        'storage_path': 'data/processed/cleaned_energy_data_all.csv',
-                    },
-                    message='Scheduled data fetch completed',
-                )
-            else:
-                logger.error("❌ 数据抓取任务失败")
-                OperationService.mark_failed(
-                    operation_id,
-                    code='FETCH_FAILED',
-                    message='fetch_and_publish returned False',
-                )
-        
-        except OperationCancelledError:
-            logger.info("⏹️ 数据抓取任务被取消")
-        except Exception as e:
-            logger.error(f"❌ 数据抓取任务异常: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            OperationService.mark_failed(operation_id, code='FETCH_FAILED', message=str(e))
+        OperationService.execute_operation(operation_id)
         
         logger.info("="*80 + "\n")
     
@@ -170,48 +123,7 @@ class DataPipelineScheduler:
         )
         operation_id = operation['job_id']
         
-        try:
-            OperationService.mark_running(operation_id, message='Running scheduled train_model task')
-            OperationService.update_progress(
-                operation_id,
-                35,
-                'Loading training dataset from Cloud Storage',
-                phase='prepare_dataset',
-            )
-            # 使用 Firebase Storage 数据训练
-            metrics = self.energy_predictor.train_model(
-                use_firebase_storage=True,
-                n_estimators=100
-            )
-            
-            logger.info("✅ 模型训练任务完成")
-            logger.info(f"   - 测试集 MAE: {metrics['test_mae']:.2f} kW")
-            logger.info(f"   - 测试集 RMSE: {metrics['test_rmse']:.2f} kW")
-            
-            OperationService.add_artifact(
-                operation_id,
-                artifact_type='model',
-                name='Daily forecast model',
-                uri=self.energy_predictor.firebase_model_path,
-                metadata={'model_type': metrics.get('model_type')},
-            )
-            OperationService.mark_succeeded(
-                operation_id,
-                {
-                    **metrics,
-                    'task_name': 'train_model',
-                    'model_path': self.energy_predictor.firebase_model_path,
-                },
-                message='Scheduled model training completed',
-            )
-        
-        except OperationCancelledError:
-            logger.info("⏹️ 模型训练任务被取消")
-        except Exception as e:
-            logger.error(f"❌ 模型训练任务异常: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            OperationService.mark_failed(operation_id, code='TRAIN_FAILED', message=str(e))
+        OperationService.execute_operation(operation_id)
         
         logger.info("="*80 + "\n")
     

@@ -6,6 +6,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 from config import Config
+from services.control_task_dependency_state import (
+    build_task_index,
+    evaluate_dependency_state,
+)
 from services.control_task_validation import normalize_schedule
 from services.operation_projection import coerce_datetime, serialize_operation
 
@@ -52,7 +56,13 @@ def _latest_operations_by_control_task(client) -> Dict[str, Dict[str, Any]]:
     snapshots = _jobs_collection(client).stream()
     latest: Dict[str, Dict[str, Any]] = {}
     for snapshot in snapshots:
-        record = snapshot.to_dict() or {}
+        record = serialize_operation(
+            {
+                **(snapshot.to_dict() or {}),
+                'job_id': snapshot.id,
+                'operation_id': snapshot.id,
+            }
+        )
         control_task_id = str(record.get('control_task_id') or '').strip()
         if not control_task_id:
             continue
@@ -64,71 +74,17 @@ def _latest_operations_by_control_task(client) -> Dict[str, Dict[str, Any]]:
     return latest
 
 
-def _dependency_details(
-    task: Dict[str, Any],
-    *,
-    tasks_by_id: Dict[str, Dict[str, Any]],
-) -> Dict[str, Any]:
-    dependencies = list(task.get('dependencies') or [])
-    if not dependencies:
-        return {
-            'dependency_state': 'none',
-            'dependency_summary': '无依赖',
-            'dependency_details': [],
-        }
-
-    details: List[Dict[str, Any]] = []
-    has_missing = False
-    has_blocked = False
-    for dependency_id in dependencies:
-        dependency = tasks_by_id.get(dependency_id)
-        if dependency is None:
-            has_missing = True
-            details.append({
-                'id': dependency_id,
-                'state': 'missing',
-                'title': dependency_id,
-            })
-            continue
-
-        enabled = bool(dependency.get('enabled'))
-        state = 'ready' if enabled else 'paused'
-        if not enabled:
-            has_blocked = True
-        details.append({
-            'id': dependency_id,
-            'state': state,
-            'title': dependency.get('title') or dependency_id,
-        })
-
-    if has_missing:
-        summary = '存在未定义依赖'
-        state = 'missing'
-    elif has_blocked:
-        summary = '存在已暂停依赖'
-        state = 'blocked'
-    else:
-        summary = '依赖已就绪'
-        state = 'ready'
-
-    return {
-        'dependency_state': state,
-        'dependency_summary': summary,
-        'dependency_details': details,
-    }
-
-
 def enrich_control_tasks(
     client,
     tasks: Iterable[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     raw_tasks = list(tasks)
-    tasks_by_id = {str(task.get('id') or ''): task for task in raw_tasks}
+    tasks_by_id = build_task_index(raw_tasks)
     latest_operations = _latest_operations_by_control_task(client)
     enriched: List[Dict[str, Any]] = []
     for task in raw_tasks:
         task_id = str(task.get('id') or '')
-        runtime = _dependency_details(task, tasks_by_id=tasks_by_id)
+        runtime = evaluate_dependency_state(task, tasks_by_id=tasks_by_id)
         latest_operation = latest_operations.get(task_id)
         enriched.append(
             {

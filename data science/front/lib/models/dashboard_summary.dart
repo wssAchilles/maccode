@@ -13,6 +13,7 @@ class DashboardSummary {
     required this.recentHistory,
     required this.assetSummary,
     required this.alerts,
+    this.controlPlane = const ControlPlaneStatus.empty(),
   });
 
   final List<SystemStatusItem> systemStatus;
@@ -23,6 +24,7 @@ class DashboardSummary {
   final List<AuditActivity> recentHistory;
   final AssetSummary assetSummary;
   final List<DashboardAlert> alerts;
+  final ControlPlaneStatus controlPlane;
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
     return DashboardSummary(
@@ -46,6 +48,97 @@ class DashboardSummary {
             : const {},
       ),
       alerts: _mapList(json['alerts'], DashboardAlert.fromJson),
+      controlPlane: ControlPlaneStatus.fromJson(
+        json['control_plane'] is Map
+            ? Map<String, dynamic>.from(json['control_plane'] as Map)
+            : const {},
+      ),
+    );
+  }
+}
+
+class ControlPlaneStatus {
+  const ControlPlaneStatus({
+    required this.enabled,
+    required this.executionMode,
+    required this.orchestratorUrl,
+    required this.status,
+    required this.message,
+    required this.dispatchTimeoutS,
+    required this.activeOperations,
+    required this.pythonWorkerConfigured,
+    this.lightLane = const ControlPlaneLane.empty(),
+    this.heavyLane = const ControlPlaneLane.empty(),
+  });
+
+  const ControlPlaneStatus.empty()
+    : enabled = false,
+      executionMode = '',
+      orchestratorUrl = '',
+      status = 'info',
+      message = '',
+      dispatchTimeoutS = 0,
+      activeOperations = 0,
+      pythonWorkerConfigured = false,
+      lightLane = const ControlPlaneLane.empty(),
+      heavyLane = const ControlPlaneLane.empty();
+
+  final bool enabled;
+  final String executionMode;
+  final String orchestratorUrl;
+  final String status;
+  final String message;
+  final int dispatchTimeoutS;
+  final int activeOperations;
+  final bool pythonWorkerConfigured;
+  final ControlPlaneLane lightLane;
+  final ControlPlaneLane heavyLane;
+
+  factory ControlPlaneStatus.fromJson(Map<String, dynamic> json) {
+    return ControlPlaneStatus(
+      enabled: _asBool(json['enabled']) ?? false,
+      executionMode: (json['execution_mode'] ?? '').toString(),
+      orchestratorUrl: (json['orchestrator_url'] ?? '').toString(),
+      status: (json['status'] ?? 'info').toString(),
+      message: (json['message'] ?? '').toString(),
+      dispatchTimeoutS: _asInt(json['dispatch_timeout_s']) ?? 0,
+      activeOperations: _asInt(json['active_operations']) ?? 0,
+      pythonWorkerConfigured: _asBool(json['python_worker_configured']) ?? false,
+      lightLane: ControlPlaneLane.fromJson(
+        json['light_lane'] is Map
+            ? Map<String, dynamic>.from(json['light_lane'] as Map)
+            : const {},
+      ),
+      heavyLane: ControlPlaneLane.fromJson(
+        json['heavy_lane'] is Map
+            ? Map<String, dynamic>.from(json['heavy_lane'] as Map)
+            : const {},
+      ),
+    );
+  }
+}
+
+class ControlPlaneLane {
+  const ControlPlaneLane({
+    required this.capacity,
+    required this.available,
+    required this.inUse,
+  });
+
+  const ControlPlaneLane.empty()
+    : capacity = 0,
+      available = 0,
+      inUse = 0;
+
+  final int capacity;
+  final int available;
+  final int inUse;
+
+  factory ControlPlaneLane.fromJson(Map<String, dynamic> json) {
+    return ControlPlaneLane(
+      capacity: _asInt(json['capacity']) ?? 0,
+      available: _asInt(json['available']) ?? 0,
+      inUse: _asInt(json['in_use']) ?? 0,
     );
   }
 }

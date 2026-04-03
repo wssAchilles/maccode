@@ -37,6 +37,9 @@ env_variables:
   TASKS_LOCATION: "asia-northeast1"
   INTERNAL_BASE_URL: "https://data-science-44398.an.r.appspot.com"
   ORCHESTRATOR_BASE_URL: "https://sentinel-orchestrator-nj4m3gcxqq-an.a.run.app"
+  ORCHESTRATOR_MAX_LIGHT_PARALLEL: "4"
+  ORCHESTRATOR_MAX_HEAVY_PARALLEL: "2"
+  ORCHESTRATOR_DISPATCH_TIMEOUT_S: "1800"
   
   # 位置配置（非敏感）
   WEATHER_CITY_LAT: "34.05"   # Los Angeles Latitude
