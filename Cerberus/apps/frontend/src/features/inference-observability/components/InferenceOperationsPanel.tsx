@@ -27,7 +27,7 @@ export function InferenceOperationsPanel({
 
   return (
     <div className="stack">
-      <TerminalBand model={model.band} className="iop-band" compact />
+      <TerminalBand model={model.band} className="iop-band" compact hideHint hideEyebrow />
       <div className="health-grid">
         <PanelSection
           className="ifp iop-panel"
@@ -35,6 +35,7 @@ export function InferenceOperationsPanel({
           title={model.summary}
           hint={t('workspace.inference.operationStatus')}
           aside={<StatusPill state={model.state} label={model.stateLabel} compact />}
+          compact
         >
           <DataList
             items={[
@@ -65,6 +66,7 @@ export function InferenceOperationsPanel({
           eyebrow={t('workspace.inference.operatorNote')}
           title={t('workspace.inference.operationStatus')}
           hint={t('workspace.inference.operatorNote')}
+          compact
         >
           <div className="iop-form">
             <label className="field-label">

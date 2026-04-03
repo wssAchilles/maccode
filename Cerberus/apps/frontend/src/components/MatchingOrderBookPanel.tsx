@@ -59,7 +59,7 @@ export function MatchingOrderBookPanel({ model }: Props) {
       title={model.title}
       description={model.description}
     >
-      <TerminalBand model={model.band} className="ob-band" compact />
+      <TerminalBand model={model.band} className="ob-band" compact hideHint hideEyebrow />
       <div className="obs-grid">
         <GlassPanel className="obs-card" tone="subtle">
           <p className="subtle-label">{model.bestBidTitle}</p>
@@ -103,9 +103,8 @@ export function MatchingOrderBookPanel({ model }: Props) {
       </div>
       <PanelSection
         className="obf"
-        eyebrow={model.title}
         title={model.totalDepthLabel}
-        hint={`${model.depthBalanceTitle}: ${model.depthBalanceLabel}`}
+        compact
       >
         <div className="obfc">
           <div className="obs-card obu">

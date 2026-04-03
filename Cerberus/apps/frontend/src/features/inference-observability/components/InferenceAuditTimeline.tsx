@@ -11,12 +11,13 @@ export function InferenceAuditTimeline({ model }: Props) {
 
   return (
     <div className="stack ip-detail">
-      <TerminalBand model={model.auditBand} className="if-sub-band" compact />
+      <TerminalBand model={model.auditBand} className="if-sub-band" compact hideHint hideEyebrow />
       <PanelSection
         className="ifp ip-detail-section"
         eyebrow={t('workspace.inference.auditTimeline')}
         title={model.auditBand.title}
-        hint={model.auditBand.hint}
+        hideEyebrow
+        compact
       >
         {model.auditTimeline.length > 0 ? (
           <div className="iad-list">

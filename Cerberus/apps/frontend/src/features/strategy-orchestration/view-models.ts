@@ -1283,22 +1283,22 @@ export function buildExecutionLifecyclePanelModel({
       {
         id: 'latestRequestId',
         label: t('workspace.execution.lifecycleRequestId'),
-        value: latestLifecycleEvent?.requestId ?? t('common.na'),
+        value: latestLifecycleEvent?.requestId ?? formatEmptyStateLabel('request-id'),
       },
       {
         id: 'latestOrderId',
         label: t('workspace.execution.lifecycleOrderId'),
-        value: latestLifecycleEvent?.orderId ?? t('common.na'),
+        value: latestLifecycleEvent?.orderId ?? formatEmptyStateLabel('order-id'),
       },
       {
         id: 'latestExecutionId',
         label: t('workspace.execution.lifecycleExecutionId'),
-        value: latestLifecycleEvent?.executionIds[0] ?? t('common.na'),
+        value: latestLifecycleEvent?.executionIds[0] ?? formatEmptyStateLabel('execution-id'),
       },
       {
         id: 'latestClientOrderId',
         label: t('workspace.execution.lifecycleClientOrderId'),
-        value: latestLifecycleEvent?.clientOrderId ?? t('common.na'),
+        value: latestLifecycleEvent?.clientOrderId ?? formatEmptyStateLabel('client-order-id'),
       },
     ],
     telemetryItems: [

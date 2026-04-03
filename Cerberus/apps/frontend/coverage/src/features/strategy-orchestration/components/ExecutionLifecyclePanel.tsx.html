@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.71% </span>
+                <span class="strong">95.94% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>67/70</span>
+                <span class='fraction'>71/74</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.71% </span>
+                <span class="strong">95.94% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>67/70</span>
+                <span class='fraction'>71/74</span>
             </div>
         
             
@@ -151,7 +151,11 @@
 <a name='L86'></a><a href='#L86'>86</a>
 <a name='L87'></a><a href='#L87'>87</a>
 <a name='L88'></a><a href='#L88'>88</a>
-<a name='L89'></a><a href='#L89'>89</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -176,21 +180,23 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -213,12 +219,14 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -257,13 +265,14 @@ export function ExecutionLifecyclePanel({ model }: Props) {
 &nbsp;
   return (
     &lt;div className="xl-panel"&gt;
-      &lt;TerminalBand model={model.band} className="xtl" compact /&gt;
+      &lt;TerminalBand model={model.band} className="xtl" compact hideHint hideEyebrow /&gt;
       &lt;PanelSection
         className="xl-stage-section"
         eyebrow={t('workspace.execution.lifecycleTitle')}
         title={model.summary}
         hint={t('workspace.execution.lifecycleDescription')}
         aside={&lt;StatusPill state={model.state} label={model.stateLabel} compact /&gt;}
+        compact
       &gt;
         &lt;div className="xl-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
           {model.stages.map((stage) =&gt; (
@@ -284,6 +293,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
         eyebrow={t('workspace.execution.lifecycleDistributionTitle')}
         title={t('workspace.execution.lifecycleTitle')}
         hint={t('workspace.execution.lifecycleDescription')}
+        compact
       &gt;
         &lt;div className="obs-grid" role="list" aria-label={t('workspace.execution.lifecycleTitle')}&gt;
           {model.summaryItems.map((item) =&gt; (
@@ -301,6 +311,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
           eyebrow={t('workspace.execution.lifecycleIdentifiersTitle')}
           title={t('workspace.execution.lifecycleIdentifiersTitle')}
           hint={t('workspace.execution.lifecycleIdentifiersHint')}
+          compact
         &gt;
           &lt;div className="exec-scroll-list exec-identity-list"&gt;
             &lt;DataList items={model.identifierItems} dense /&gt;
@@ -312,6 +323,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
           eyebrow={t('workspace.execution.lifecycleTelemetryTitle')}
           title={t('workspace.execution.lifecycleTelemetryTitle')}
           hint={t('workspace.execution.lifecycleTelemetryHint')}
+          compact
         &gt;
           &lt;div className="exec-scroll-list"&gt;
             &lt;DataList items={model.telemetryItems} dense /&gt;
@@ -334,7 +346,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T13:43:04.912Z
+                at 2026-04-02T15:53:48.889Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -12,7 +12,7 @@ export function StrategyDecisionMatrix({ model }: Props) {
   if (model.items.length === 0) {
     return (
       <GlassPanel className="sp sp-empty" tone="subtle">
-        {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
+        {model.band ? <TerminalBand model={model.band} className="sp-band" compact hideHint hideEyebrow /> : null}
         <EmptyState title={model.emptyTitle ?? model.summary} body={model.emptyHint ?? model.hint} />
       </GlassPanel>
     )
@@ -20,13 +20,15 @@ export function StrategyDecisionMatrix({ model }: Props) {
 
   return (
     <GlassPanel className="sp" tone="subtle">
-      {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
+      {model.band ? <TerminalBand model={model.band} className="sp-band" compact hideHint hideEyebrow /> : null}
       <PanelSection
         className="sp-section"
         eyebrow={t('workspace.strategy.matrixTitle')}
         title={model.summary}
         hint={model.hint}
+        hideEyebrow
         aside={model.signalId ? <p className="sp-signal-id">rid: {model.signalId}</p> : null}
+        compact
       />
 
       <div className="sd-list" role="list" aria-label={t('workspace.strategy.matrixTitle')}>

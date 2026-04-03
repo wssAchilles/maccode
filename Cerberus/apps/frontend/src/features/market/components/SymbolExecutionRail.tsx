@@ -11,12 +11,13 @@ export function SymbolExecutionRail({ model }: Props) {
 
   return (
     <div className="market-execution-rail">
-      {model.band ? <TerminalBand model={model.band} className="mer-band" compact /> : null}
+      {model.band ? <TerminalBand model={model.band} className="mer-band" compact hideHint hideEyebrow /> : null}
       <PanelSection
         className="mer-section"
         eyebrow={t('workspace.market.executionRailTitle')}
         title={model.summary}
         hint={model.staleHint ?? t('workspace.market.executionRailDescription')}
+        compact
       >
         {model.items.length === 0 ? (
           <EmptyState

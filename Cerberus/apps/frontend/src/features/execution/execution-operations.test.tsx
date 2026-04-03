@@ -75,7 +75,6 @@ describe('Execution operations panel', () => {
       </I18nProvider>,
     )
 
-    expect(screen.getByText('workspace.execution.operationsTitle')).toBeInTheDocument()
     expect(screen.getByText(model.band.title)).toBeInTheDocument()
     expect(model.band.title).toContain('BTCUSDT')
     expect(model.band.items).toEqual(

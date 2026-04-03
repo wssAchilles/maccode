@@ -89,7 +89,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="cyan"
           stage="feature"
         >
-          <TerminalBand model={model.chartBand} className="cc-band" compact />
+          <TerminalBand model={model.chartBand} className="cc-band" compact hideHint hideEyebrow />
           <div className="cc" data-phase={chartPhase}>
             <div className="cc-copy">
               <p className="subtle-label">{model.chartContext.eyebrow}</p>
@@ -159,7 +159,7 @@ export function MarketWorkspace({ active = true }: Props) {
           accent="teal"
           stage="feature"
         >
-          <TerminalBand model={model.strategyBand} className="strategy-band" compact />
+          <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
         </SectionFrame>
 
@@ -169,9 +169,10 @@ export function MarketWorkspace({ active = true }: Props) {
           className="xts"
           accent="amber"
           stage="tail"
+          compactHeader
           bodyClassName="tail-shell"
         >
-          {model.executionRail.band ? <TerminalBand model={model.executionRail.band} className="tail-band" compact /> : null}
+          {model.executionRail.band ? <TerminalBand model={model.executionRail.band} className="tail-band" compact hideHint hideEyebrow /> : null}
           <Suspense fallback={<PanelSkeleton height="320px" />}>
             <LazyExecutionTimelinePanel active={active} />
           </Suspense>
@@ -180,13 +181,14 @@ export function MarketWorkspace({ active = true }: Props) {
 
       <div className="ws-side stack wss">
         <GlassPanel className="rail-shell" tone="subtle">
-          <TerminalBand model={model.inspectorBand} className="inspector-band" compact />
+          <TerminalBand model={model.inspectorBand} className="inspector-band" compact hideHint hideEyebrow />
         </GlassPanel>
         <SectionFrame
           title={t('workspace.strategy.portfolioTitle')}
           description={t('workspace.strategy.portfolioDescription')}
           accent="teal"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         >
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
@@ -196,6 +198,7 @@ export function MarketWorkspace({ active = true }: Props) {
           description={t('workspace.strategy.registryDescription')}
           accent="cyan"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         >
           <StrategyRegistryPanel model={model.strategyRegistry} />

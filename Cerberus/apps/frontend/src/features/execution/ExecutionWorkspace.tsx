@@ -81,7 +81,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
 
       <div className="ws-side stack xsd wss">
         <GlassPanel className="rail-shell" tone="subtle">
-          <TerminalBand model={model.inspectorBand} className="inspector-band" compact />
+          <TerminalBand model={model.inspectorBand} className="inspector-band" compact hideHint hideEyebrow />
         </GlassPanel>
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
@@ -89,9 +89,10 @@ export function ExecutionWorkspace({ active = true }: Props) {
           bodyClassName="xsfb inspector-shell"
           accent="teal"
           stage="inspector"
+          compactHeader
         >
           <div className="stack">
-            <TerminalBand model={model.strategyBand} className="strategy-band" compact />
+            <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
             <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
             <StrategyDecisionMatrix model={model.strategyMatrix} />
             <DiagnosticDrawer
@@ -126,6 +127,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
           className="xts"
           accent="cyan"
           stage="tail"
+          compactHeader
           bodyClassName="tail-shell"
         >
           <Suspense fallback={<PanelSkeleton height="320px" />}>
@@ -150,6 +152,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         className="ws-span-full"
         accent="teal"
         stage="tail"
+        compactHeader
         bodyClassName="tail-shell"
       >
         <DiagnosticDrawer
@@ -170,6 +173,7 @@ export function ExecutionWorkspace({ active = true }: Props) {
         className="ws-span-full"
         accent="amber"
         stage="tail"
+        compactHeader
         bodyClassName="tail-shell"
       >
         <Suspense fallback={<PanelSkeleton height="540px" />}>

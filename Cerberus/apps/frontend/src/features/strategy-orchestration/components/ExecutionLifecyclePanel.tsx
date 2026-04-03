@@ -16,13 +16,14 @@ export function ExecutionLifecyclePanel({ model }: Props) {
 
   return (
     <div className="xl-panel">
-      <TerminalBand model={model.band} className="xtl" compact />
+      <TerminalBand model={model.band} className="xtl" compact hideHint hideEyebrow />
       <PanelSection
         className="xl-stage-section"
         eyebrow={t('workspace.execution.lifecycleTitle')}
         title={model.summary}
         hint={t('workspace.execution.lifecycleDescription')}
         aside={<StatusPill state={model.state} label={model.stateLabel} compact />}
+        compact
       >
         <div className="xl-stages" role="list" aria-label={t('workspace.execution.lifecycleTitle')}>
           {model.stages.map((stage) => (
@@ -43,6 +44,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
         eyebrow={t('workspace.execution.lifecycleDistributionTitle')}
         title={t('workspace.execution.lifecycleTitle')}
         hint={t('workspace.execution.lifecycleDescription')}
+        compact
       >
         <div className="obs-grid" role="list" aria-label={t('workspace.execution.lifecycleTitle')}>
           {model.summaryItems.map((item) => (
@@ -60,6 +62,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
           eyebrow={t('workspace.execution.lifecycleIdentifiersTitle')}
           title={t('workspace.execution.lifecycleIdentifiersTitle')}
           hint={t('workspace.execution.lifecycleIdentifiersHint')}
+          compact
         >
           <div className="exec-scroll-list exec-identity-list">
             <DataList items={model.identifierItems} dense />
@@ -71,6 +74,7 @@ export function ExecutionLifecyclePanel({ model }: Props) {
           eyebrow={t('workspace.execution.lifecycleTelemetryTitle')}
           title={t('workspace.execution.lifecycleTelemetryTitle')}
           hint={t('workspace.execution.lifecycleTelemetryHint')}
+          compact
         >
           <div className="exec-scroll-list">
             <DataList items={model.telemetryItems} dense />

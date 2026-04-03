@@ -38,7 +38,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
     <section className="xoc" data-testid="execution-console">
       <MotionSurface className="xec-shell" mode="spotlight">
         <GlassPanel className="xec-header" tone="subtle">
-          <TerminalBand model={deskContext} className="xec-band" compact />
+          <TerminalBand model={deskContext} className="xec-band" compact hideHint hideEyebrow />
           <div className="xec-copy">
             {deskSpotlight.postureLabel ? <p className="subtle-label">{deskSpotlight.postureLabel}</p> : null}
             <p className="xec-summary">{deskSpotlight.summary}</p>

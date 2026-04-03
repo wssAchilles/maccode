@@ -13,14 +13,15 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
 
   return (
     <div className="stack">
-      <TerminalBand model={model.band} className="if-band" compact />
+      <TerminalBand model={model.band} className="if-band" compact hideHint hideEyebrow />
       <div className="health-grid">
         <PanelSection
           className="ifp"
           eyebrow={t('workspace.inference.runtimeStatus')}
           title={model.summary}
-          hint={model.reason ?? t('workspace.inference.description')}
+          hideEyebrow
           aside={<StatusPill state={model.state} label={model.stateLabel} compact />}
+          compact
         >
           <DataList items={model.runtimeItems} />
           {model.reason ? (
@@ -34,7 +35,8 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
           className="ifp"
           eyebrow={t('workspace.inference.rolloutSummary')}
           title={model.rolloutItems[0]?.value ?? model.stateLabel}
-          hint={t('workspace.inference.description')}
+          hideEyebrow
+          compact
         >
           <DataList items={model.rolloutItems} />
         </PanelSection>
@@ -43,7 +45,8 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
           className="ifp"
           eyebrow={t('workspace.inference.comparisonSummary')}
           title={model.symbolBand.title}
-          hint={t('workspace.inference.symbolComparison')}
+          hideEyebrow
+          compact
         >
           <DataList items={model.comparisonItems} />
         </PanelSection>
@@ -52,7 +55,8 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
           className="ifp"
           eyebrow={t('workspace.inference.model')}
           title={model.summary}
-          hint={t('workspace.inference.model')}
+          hideEyebrow
+          compact
         >
           <DataList items={model.modelItems} />
         </PanelSection>
@@ -61,7 +65,8 @@ export function InferenceDiagnosticsPanel({ model }: Props) {
           className="ifp"
           eyebrow={t('workspace.inference.recentAudit')}
           title={model.auditBand.title}
-          hint={model.auditBand.hint}
+          hideEyebrow
+          compact
         >
           <DataList items={model.auditItems} />
         </PanelSection>

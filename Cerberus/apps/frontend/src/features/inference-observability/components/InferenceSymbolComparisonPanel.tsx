@@ -11,12 +11,13 @@ export function InferenceSymbolComparisonPanel({ model }: Props) {
 
   return (
     <div className="stack ip-detail">
-      <TerminalBand model={model.symbolBand} className="if-sub-band" compact />
+      <TerminalBand model={model.symbolBand} className="if-sub-band" compact hideHint hideEyebrow />
       <PanelSection
         className="ifp ip-detail-section"
         eyebrow={t('workspace.inference.symbolComparison')}
         title={model.symbolBand.title}
-        hint={t('workspace.inference.comparisonSummary')}
+        hideEyebrow
+        compact
       >
         {model.symbolComparisons.length > 0 ? (
           <div className="isy-list">
@@ -49,8 +50,9 @@ export function InferenceSymbolComparisonPanel({ model }: Props) {
               <PanelSection
                 key={group.id}
                 className="ids-group"
-                eyebrow={t('workspace.inference.comparisonSummary')}
                 title={group.label}
+                hideEyebrow
+                compact
               >
                 <DataList dense items={group.items} />
               </PanelSection>

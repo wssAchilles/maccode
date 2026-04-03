@@ -12,7 +12,7 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
   if (model.items.length === 0) {
     return (
       <GlassPanel className="so-audit-panel" tone="subtle">
-        {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
+        {model.band ? <TerminalBand model={model.band} className="sp-band" compact hideHint hideEyebrow /> : null}
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.strategy.auditTimelineHint')}
@@ -23,12 +23,13 @@ export function StrategyOrchestrationAuditTimeline({ model }: Props) {
 
   return (
     <GlassPanel className="so-audit-panel" tone="subtle">
-      {model.band ? <TerminalBand model={model.band} className="sp-band" compact /> : null}
+      {model.band ? <TerminalBand model={model.band} className="sp-band" compact hideHint hideEyebrow /> : null}
       <PanelSection
         className="so-audit-section"
         eyebrow={t('workspace.strategy.auditTimelineTitle')}
         title={model.summary}
         hint={t('workspace.strategy.auditTimelineHint')}
+        compact
       />
 
       <div className="so-audit-list" role="list" aria-label={t('workspace.strategy.auditTimelineTitle')}>

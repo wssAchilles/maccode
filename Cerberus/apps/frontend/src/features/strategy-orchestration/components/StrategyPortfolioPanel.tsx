@@ -12,12 +12,13 @@ export function StrategyPortfolioPanel({ model, onSelectSymbol }: Props) {
 
   return (
     <div className="sp">
-      <TerminalBand model={model.band} className="sp-band" compact />
+      <TerminalBand model={model.band} className="sp-band" compact hideHint hideEyebrow />
       <PanelSection
         className="spf-section"
         eyebrow={t('workspace.strategy.portfolioTitle')}
         title={model.summary}
-        hint={t('workspace.strategy.portfolioDescription')}
+        hideEyebrow
+        compact
         aside={
           <div className="spf-status">
             <p className="spf-bias">{model.biasLabel}</p>

@@ -8,9 +8,17 @@ type Props = {
   model: WorkspaceContextBandModel
   className?: string
   compact?: boolean
+  hideHint?: boolean
+  hideEyebrow?: boolean
 }
 
-export function TerminalBand({ model, className, compact = false }: Props) {
+export function TerminalBand({
+  model,
+  className,
+  compact = false,
+  hideHint = false,
+  hideEyebrow = false,
+}: Props) {
   const style = {
     '--pa': accentVar(model.accent ?? 'cyan'),
   } as CSSProperties
@@ -18,9 +26,9 @@ export function TerminalBand({ model, className, compact = false }: Props) {
   return (
     <div className={cn('tb', compact && 'tb-compact', className)} style={style}>
       <div className="tb-copy">
-        <p className="subtle-label">{model.eyebrow}</p>
+        {!hideEyebrow ? <p className="subtle-label">{model.eyebrow}</p> : null}
         <p className="tb-title">{model.title}</p>
-        <p className="panel-caption">{model.hint}</p>
+        {!hideHint ? <p className="panel-caption">{model.hint}</p> : null}
       </div>
       <div className="tb-grid">
         {model.items.map((item) => (

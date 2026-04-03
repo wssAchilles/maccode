@@ -96,10 +96,11 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           description={t('workspace.health.description')}
           accent="amber"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         >
           <div className="stack-sm">
-            <TerminalBand model={model.healthDigestBand} className="overview-health-band" compact />
+            <TerminalBand model={model.healthDigestBand} className="overview-health-band" compact hideHint hideEyebrow />
             {model.healthCards.map((card) => (
               <PanelSection
                 key={card.id}
@@ -108,6 +109,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
                 title={card.stateLabel}
                 hint={`${card.staleLabel} · ${t('common.updatedAt')}: ${card.updatedAt}`}
                 aside={<StatusPill state={card.state} label={card.stateLabel} compact />}
+                compact
               >
                 <DataList
                   dense
@@ -126,9 +128,10 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           description={t('workspace.inference.description')}
           accent="teal"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         >
-          <TerminalBand model={model.inferenceBand} className="inspector-band" compact />
+          <TerminalBand model={model.inferenceBand} className="inspector-band" compact hideHint hideEyebrow />
           <InferenceStatusCard model={model.inferenceCard} onOpenHealth={model.openHealth} />
         </SectionFrame>
       </div>
@@ -145,7 +148,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         stage="feature"
       >
         <div className="stack">
-          <TerminalBand model={model.strategyBand} className="strategy-band" compact />
+          <TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow />
           <StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} />
           <StrategyDecisionMatrix model={model.strategyMatrix} />
           <DiagnosticDrawer
@@ -166,8 +169,8 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
       </SectionFrame>
 
       <div className="overview-tail-grid ws-span-full">
-        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail" bodyClassName="tail-shell">
-          <TerminalBand model={model.tailBand} className="tail-band" compact />
+        <SectionFrame title={t('strategy.recent')} description={t('workspace.overview.signalsDescription')} accent="cyan" stage="tail" compactHeader bodyClassName="tail-shell">
+          <TerminalBand model={model.tailBand} className="tail-band" compact hideHint hideEyebrow />
           {model.recentSignals.length === 0 ? (
             <p className="empty-inline">{t('strategy.noData')}</p>
           ) : (
@@ -179,6 +182,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
                   eyebrow={signal.eyebrow}
                   title={signal.title}
                   hint={`${t('common.updatedAt')}: ${signal.hint}`}
+                  compact
                 >
                   <DataList dense items={signal.items} />
                 </PanelSection>
@@ -195,12 +199,13 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail" bodyClassName="tail-shell">
+        <SectionFrame title={t('strategy.persistence')} description={t('workspace.health.persistenceDescription')} accent="amber" stage="tail" compactHeader bodyClassName="tail-shell">
           <PanelSection
             className="tail-card"
             eyebrow={t('strategy.persistence')}
             title={t('workspace.health.persistenceTitle')}
             hint={t('workspace.health.persistenceDescription')}
+            compact
           >
             <DataList items={model.persistenceItems} />
           </PanelSection>

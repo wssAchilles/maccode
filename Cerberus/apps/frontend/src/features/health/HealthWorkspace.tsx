@@ -49,15 +49,17 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           description={t('workspace.health.persistenceDescription')}
           accent="amber"
           stage="feature"
+          compactHeader
           bodyClassName="tail-shell"
         >
-          <TerminalBand model={model.persistenceBand} className="tail-band" compact />
+          <TerminalBand model={model.persistenceBand} className="tail-band" compact hideHint hideEyebrow />
           <div className="health-grid hp-tail-grid">
             <PanelSection
               className="hp-tail-section"
               eyebrow={t('workspace.health.operatorPersistenceTitle')}
               title={t('workspace.health.workerSnapshotTitle')}
               hint={t('workspace.health.operatorPersistenceDescription')}
+              compact
             >
               <DataList items={model.workerItems} />
             </PanelSection>
@@ -66,13 +68,14 @@ export function HealthWorkspace({ active: _active = true }: Props) {
               eyebrow={t('workspace.health.persistenceTitle')}
               title={t('workspace.health.storeSnapshotTitle')}
               hint={t('workspace.health.persistenceDescription')}
+              compact
             >
               <DataList items={model.storeItems} />
             </PanelSection>
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" bodyClassName="tail-shell">
+        <SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" compactHeader bodyClassName="tail-shell">
           <InferenceDiagnosticsPanel model={model.inferenceDiagnostics} />
           <DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
@@ -93,9 +96,10 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           description={t('workspace.health.requestIdsDescription')}
           accent="cyan"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         >
-          <TerminalBand model={model.diagnosticsBand} className="diag-band" compact />
+          <TerminalBand model={model.diagnosticsBand} className="diag-band" compact hideHint hideEyebrow />
           <DiagnosticDrawer
             title={t('workspace.health.requestIds')}
             summary={t('workspace.health.requestIdsDescription')}

@@ -6,26 +6,30 @@ type Props = {
   eyebrow?: string
   title: string
   hint?: string
+  hideEyebrow?: boolean
   aside?: ReactNode
   className?: string
   bodyClassName?: string
   children?: ReactNode
+  compact?: boolean
 }
 
 export function PanelSection({
   eyebrow,
   title,
   hint,
+  hideEyebrow = false,
   aside,
   className,
   bodyClassName,
   children,
+  compact = false,
 }: Props) {
   return (
-    <section className={cn('psx', className)}>
+    <section className={cn('psx', compact && 'psx-compact', className)}>
       <div className="psx-head">
         <div className="psx-copy">
-          {eyebrow ? <p className="subtle-label">{eyebrow}</p> : null}
+          {eyebrow && !hideEyebrow ? <p className="subtle-label">{eyebrow}</p> : null}
           <p className="psx-title">{title}</p>
           {hint ? <p className="psx-hint">{hint}</p> : null}
         </div>

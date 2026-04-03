@@ -17,7 +17,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
   if (model.headlineItems.length === 0) {
     return (
       <GlassPanel className="xo-panel" tone="subtle">
-        <TerminalBand model={model.band} className="xo-band" compact />
+        <TerminalBand model={model.band} className="xo-band" compact hideHint hideEyebrow />
         <EmptyState
           title={model.emptyTitle ?? model.summary}
           body={model.emptyHint ?? t('workspace.execution.operationsDescription')}
@@ -28,13 +28,15 @@ export function ExecutionOperationsPanel({ model }: Props) {
 
   return (
     <GlassPanel className="xo-panel" tone="subtle">
-      <TerminalBand model={model.band} className="xo-band" compact />
+      <TerminalBand model={model.band} className="xo-band" compact hideHint hideEyebrow />
 
       <PanelSection
         className="xo-section"
         eyebrow={t('workspace.execution.operationsTitle')}
         title={t('workspace.execution.operationsHeadlineTitle')}
         hint={t('workspace.execution.operationsFlowHint')}
+        hideEyebrow
+        compact
       >
         <div className="obs-grid" role="list" aria-label={t('workspace.execution.operationsHeadlineTitle')}>
           {model.headlineItems.map((item) => (
@@ -51,6 +53,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
           className="xo-section"
           title={t('workspace.execution.operationsLatencyTitle')}
           hint={t('workspace.execution.operationsLatencyHint')}
+          compact
         >
           <DataList items={model.latencyItems} dense />
         </PanelSection>
@@ -59,6 +62,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
           className="xo-section"
           title={t('workspace.execution.operationsVenueTitle')}
           hint={t('workspace.execution.operationsVenueHint')}
+          compact
         >
           <DataList items={model.venueItems} dense />
         </PanelSection>
@@ -70,6 +74,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
             className="xo-section"
             title={t('workspace.execution.lifecycleDistributionTitle')}
             hint={t('workspace.execution.operationsFlowHint')}
+            compact
           >
             <DataList items={model.lifecycleSummary} dense />
           </PanelSection>
@@ -80,6 +85,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
               title={t('workspace.execution.reasonDistributionTitle')}
               hint={t('workspace.execution.operationsReasonHint')}
               bodyClassName="exec-scroll-list"
+              compact
             >
                 <DataList items={model.reasonSummary} dense />
             </PanelSection>
@@ -91,6 +97,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         className="xo-section xo-diagnosis"
         title={t('workspace.execution.diagnosisTitle')}
         hint={model.diagnosisHint}
+        compact
         aside={
           <StatusPill
             state={model.diagnosisTone === 'danger' ? 'error' : model.diagnosisTone === 'accent' ? 'degraded' : 'idle'}
@@ -108,6 +115,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
           title={t('workspace.execution.accountSummary')}
           hint={t('workspace.execution.accountSummaryHint')}
           bodyClassName="exec-scroll-list"
+          compact
         >
             <DataList items={model.accountSummary} dense />
         </PanelSection>
@@ -117,6 +125,7 @@ export function ExecutionOperationsPanel({ model }: Props) {
         className="xo-section xo-alerts"
         title={t('workspace.execution.operationsAnomalies')}
         hint={t('workspace.execution.operationsReasonHint')}
+        compact
       >
         {model.anomalies.length > 0 ? (
           <ul className="xo-alert-list">

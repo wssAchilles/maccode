@@ -11,12 +11,13 @@ export function ServiceHealthPanel({ model }: Props) {
 
   return (
     <div className="stack" data-testid="service-health-panel">
-      <TerminalBand model={model.band} className="hp-band" compact />
+      <TerminalBand model={model.band} className="hp-band" compact hideHint hideEyebrow />
       <PanelSection
         className="hp-section"
         eyebrow={t('workspace.health.operatorServiceTitle')}
         title={model.band.title}
-        hint={t('workspace.health.operatorServiceDescription')}
+        hideEyebrow
+        compact
       >
         <div className="health-grid">
           {model.cards.map((card) => (
@@ -41,7 +42,8 @@ export function ServiceHealthPanel({ model }: Props) {
           className="hp-section"
           eyebrow={t('workspace.health.operatorPersistenceTitle')}
           title={t('workspace.health.persistenceTitle')}
-          hint={t('workspace.health.operatorPersistenceDescription')}
+          hideEyebrow
+          compact
         >
           <div className="health-grid">
             {model.persistenceGroups.map((items) => (

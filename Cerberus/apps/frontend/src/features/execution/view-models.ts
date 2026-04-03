@@ -846,7 +846,10 @@ export function buildExecutionOperationsPanel({
       {
         id: 'latency',
         label: t('workspace.execution.operationsSubmitToAccepted'),
-        value: formatInteger(avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : undefined),
+        value:
+          avgSubmitToAcceptedMs !== undefined
+            ? formatInteger(Math.round(avgSubmitToAcceptedMs))
+            : t('execution.noLatencySample'),
         tone: avgSubmitToAcceptedMs !== undefined && avgSubmitToAcceptedMs > 10_000 ? 'negative' : 'default',
       },
     ],
@@ -905,12 +908,18 @@ export function buildExecutionOperationsPanel({
       {
         id: 'submitToAccepted',
         label: t('workspace.execution.operationsSubmitToAccepted'),
-        value: formatInteger(avgSubmitToAcceptedMs ? Math.round(avgSubmitToAcceptedMs) : undefined),
+        value:
+          avgSubmitToAcceptedMs !== undefined
+            ? formatInteger(Math.round(avgSubmitToAcceptedMs))
+            : t('execution.noLatencySample'),
       },
       {
         id: 'submitToFill',
         label: t('workspace.execution.operationsSubmitToFill'),
-        value: formatInteger(avgSubmitToFillMs ? Math.round(avgSubmitToFillMs) : undefined),
+        value:
+          avgSubmitToFillMs !== undefined
+            ? formatInteger(Math.round(avgSubmitToFillMs))
+            : t('execution.noLatencySample'),
       },
       {
         id: 'partialFillRatio',

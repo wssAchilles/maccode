@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/175</span>
+                <span class='fraction'>0/178</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/175</span>
+                <span class='fraction'>0/178</span>
             </div>
         
             
@@ -272,7 +272,10 @@
 <a name='L207'></a><a href='#L207'>207</a>
 <a name='L208'></a><a href='#L208'>208</a>
 <a name='L209'></a><a href='#L209'>209</a>
-<a name='L210'></a><a href='#L210'>210</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -444,12 +447,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -458,11 +455,20 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -572,7 +578,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          accent="cyan"</span>
 <span class="cstat-no" title="statement not covered" >          stage="feature"</span>
         &gt;
-<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.chartBand} className="cc-band" compact /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.chartBand} className="cc-band" compact hideHint hideEyebrow /&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;div className="cc" data-phase={chartPhase}&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;div className="cc-copy"&gt;</span>
 <span class="cstat-no" title="statement not covered" >              &lt;p className="subtle-label"&gt;{model.chartContext.eyebrow}&lt;/p&gt;</span>
@@ -642,7 +648,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          accent="teal"</span>
 <span class="cstat-no" title="statement not covered" >          stage="feature"</span>
         &gt;
-<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.strategyBand} className="strategy-band" compact /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.strategyBand} className="strategy-band" compact hideHint hideEyebrow /&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;StrategyDecisionMatrix model={model.strategyMatrix} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/SectionFrame&gt;</span>
 &nbsp;
@@ -652,9 +658,10 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          className="xts"</span>
 <span class="cstat-no" title="statement not covered" >          accent="amber"</span>
 <span class="cstat-no" title="statement not covered" >          stage="tail"</span>
+<span class="cstat-no" title="statement not covered" >          compactHeader</span>
 <span class="cstat-no" title="statement not covered" >          bodyClassName="tail-shell"</span>
         &gt;
-<span class="cstat-no" title="statement not covered" >          {model.executionRail.band ? &lt;TerminalBand model={model.executionRail.band} className="tail-band" compact /&gt; : null}</span>
+<span class="cstat-no" title="statement not covered" >          {model.executionRail.band ? &lt;TerminalBand model={model.executionRail.band} className="tail-band" compact hideHint hideEyebrow /&gt; : null}</span>
 <span class="cstat-no" title="statement not covered" >          &lt;Suspense fallback={&lt;PanelSkeleton height="320px" /&gt;}&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;LazyExecutionTimelinePanel active={active} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >          &lt;/Suspense&gt;</span>
@@ -663,13 +670,14 @@ type Props = {
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      &lt;div className="ws-side stack wss"&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;GlassPanel className="rail-shell" tone="subtle"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.inspectorBand} className="inspector-band" compact /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;TerminalBand model={model.inspectorBand} className="inspector-band" compact hideHint hideEyebrow /&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/GlassPanel&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;SectionFrame</span>
 <span class="cstat-no" title="statement not covered" >          title={t('workspace.strategy.portfolioTitle')}</span>
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.strategy.portfolioDescription')}</span>
 <span class="cstat-no" title="statement not covered" >          accent="teal"</span>
 <span class="cstat-no" title="statement not covered" >          stage="inspector"</span>
+<span class="cstat-no" title="statement not covered" >          compactHeader</span>
 <span class="cstat-no" title="statement not covered" >          bodyClassName="inspector-shell"</span>
         &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;StrategyPortfolioPanel model={model.portfolioPanel} onSelectSymbol={model.selectSymbol} /&gt;</span>
@@ -679,6 +687,7 @@ type Props = {
 <span class="cstat-no" title="statement not covered" >          description={t('workspace.strategy.registryDescription')}</span>
 <span class="cstat-no" title="statement not covered" >          accent="cyan"</span>
 <span class="cstat-no" title="statement not covered" >          stage="inspector"</span>
+<span class="cstat-no" title="statement not covered" >          compactHeader</span>
 <span class="cstat-no" title="statement not covered" >          bodyClassName="inspector-shell"</span>
         &gt;
 <span class="cstat-no" title="statement not covered" >          &lt;StrategyRegistryPanel model={model.strategyRegistry} /&gt;</span>
@@ -697,7 +706,7 @@ type Props = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T13:43:04.912Z
+                at 2026-04-02T15:53:48.889Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

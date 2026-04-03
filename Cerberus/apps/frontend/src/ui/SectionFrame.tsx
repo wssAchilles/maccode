@@ -14,6 +14,7 @@ type Props = {
   children: ReactNode
   className?: string
   bodyClassName?: string
+  compactHeader?: boolean
   tone?: 'default' | 'hero' | 'subtle'
   accent?: AccentTone
   stage?: 'hero' | 'feature' | 'operator' | 'inspector' | 'tail'
@@ -27,6 +28,7 @@ export function SectionFrame({
   children,
   className,
   bodyClassName,
+  compactHeader = false,
   tone = 'default',
   accent = 'teal',
   stage = 'feature',
@@ -39,7 +41,7 @@ export function SectionFrame({
     <RevealGroup className={cn('sf-shell', className)} data-stage={stage} style={style}>
       <MotionSurface className="sf-surface" mode={tone === 'hero' ? 'spotlight' : 'panel'} data-stage={stage}>
         <GlassPanel className="sf" tone={tone} data-stage={stage}>
-          <div className="sf-header">
+          <div className={cn('sf-header', compactHeader && 'sf-header-compact')}>
             <div className="sf-copy">
               {eyebrow ? <p className="sf-eyebrow">{eyebrow}</p> : null}
               <h2 className="sf-title">{title}</h2>

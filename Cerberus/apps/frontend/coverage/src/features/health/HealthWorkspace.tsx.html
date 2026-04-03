@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>90/90</span>
+                <span class='fraction'>94/94</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>90/90</span>
+                <span class='fraction'>94/94</span>
             </div>
         
             
@@ -174,7 +174,11 @@
 <a name='L109'></a><a href='#L109'>109</a>
 <a name='L110'></a><a href='#L110'>110</a>
 <a name='L111'></a><a href='#L111'>111</a>
-<a name='L112'></a><a href='#L112'>112</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -226,6 +230,30 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -241,28 +269,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -336,15 +344,17 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           description={t('workspace.health.persistenceDescription')}
           accent="amber"
           stage="feature"
+          compactHeader
           bodyClassName="tail-shell"
         &gt;
-          &lt;TerminalBand model={model.persistenceBand} className="tail-band" compact /&gt;
+          &lt;TerminalBand model={model.persistenceBand} className="tail-band" compact hideHint hideEyebrow /&gt;
           &lt;div className="health-grid hp-tail-grid"&gt;
             &lt;PanelSection
               className="hp-tail-section"
               eyebrow={t('workspace.health.operatorPersistenceTitle')}
               title={t('workspace.health.workerSnapshotTitle')}
               hint={t('workspace.health.operatorPersistenceDescription')}
+              compact
             &gt;
               &lt;DataList items={model.workerItems} /&gt;
             &lt;/PanelSection&gt;
@@ -353,13 +363,14 @@ export function HealthWorkspace({ active: _active = true }: Props) {
               eyebrow={t('workspace.health.persistenceTitle')}
               title={t('workspace.health.storeSnapshotTitle')}
               hint={t('workspace.health.persistenceDescription')}
+              compact
             &gt;
               &lt;DataList items={model.storeItems} /&gt;
             &lt;/PanelSection&gt;
           &lt;/div&gt;
         &lt;/SectionFrame&gt;
 &nbsp;
-        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" bodyClassName="tail-shell"&gt;
+        &lt;SectionFrame title={t('workspace.inference.title')} description={t('workspace.inference.description')} accent="cyan" stage="tail" compactHeader bodyClassName="tail-shell"&gt;
           &lt;InferenceDiagnosticsPanel model={model.inferenceDiagnostics} /&gt;
           &lt;DiagnosticDrawer
             title={t('workspace.inference.operationsTitle')}
@@ -380,9 +391,10 @@ export function HealthWorkspace({ active: _active = true }: Props) {
           description={t('workspace.health.requestIdsDescription')}
           accent="cyan"
           stage="inspector"
+          compactHeader
           bodyClassName="inspector-shell"
         &gt;
-          &lt;TerminalBand model={model.diagnosticsBand} className="diag-band" compact /&gt;
+          &lt;TerminalBand model={model.diagnosticsBand} className="diag-band" compact hideHint hideEyebrow /&gt;
           &lt;DiagnosticDrawer
             title={t('workspace.health.requestIds')}
             summary={t('workspace.health.requestIdsDescription')}
@@ -403,7 +415,7 @@ export function HealthWorkspace({ active: _active = true }: Props) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-02T13:43:04.912Z
+                at 2026-04-02T15:53:48.889Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

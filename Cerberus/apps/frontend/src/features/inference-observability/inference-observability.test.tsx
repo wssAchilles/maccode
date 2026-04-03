@@ -224,7 +224,7 @@ describe('inference observability module', () => {
     expect(screen.getAllByText(/workspace\.inference\.blocker\.agreementUnavailable/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/common\.na/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/workspace\.inference\.stateBackend/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/No symbol-level comparison data yet|暂无标的级对照数据/i)).toBeTruthy()
+    expect(screen.getByText(/Symbol comparison pending|标的对照待生成/i)).toBeTruthy()
   })
 
   it('builds a controlled-operations band from rollout posture', () => {
@@ -263,8 +263,8 @@ describe('inference observability module', () => {
     expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/推广状态|Promotion state/i)).toBeTruthy()
     expect(screen.getAllByText(/状态后端|State backend/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/标的级对照|Symbol-level comparison/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/审计时间线|Audit timeline/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/已对照 Tick 数|Compared ticks/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/restored from persistent storage/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/受控操作|Controlled operations/i)).toBeTruthy()
 
     await user.click(screen.getByTestId('health-inference-operations-drawer-trigger'))
