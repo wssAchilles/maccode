@@ -58,6 +58,7 @@ class EnergyDataProcessor:
         
         # 确保输出目录存在
         # self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.last_compute_metrics = {}
         
         print(f"📁 原始数据目录: {self.raw_data_dir}")
         print(f"📁 输出数据目录: {self.output_dir}")
@@ -318,7 +319,13 @@ class EnergyDataProcessor:
         
         return df
 
-    def add_advanced_features(self, df: pd.DataFrame, dropna: bool = True, use_enhanced: bool = True) -> pd.DataFrame:
+    def add_advanced_features(
+        self,
+        df: pd.DataFrame,
+        dropna: bool = True,
+        use_enhanced: bool = True,
+        compute_context: str = 'feature_pipeline',
+    ) -> pd.DataFrame:
         """
         添加高级特征 (Lag, Rolling, Interaction)
         实现论文第3章描述的特征工程
@@ -329,105 +336,38 @@ class EnergyDataProcessor:
             use_enhanced: 是否使用增强特征（需要先调用 add_enhanced_time_features）
         """
         print("🚀 正在添加高级特征 (Lag, Rolling, Interaction)...")
-        
-        # 确保数据按时间排序
-        df = df.sort_values('Date').reset_index(drop=True)
-        
-        # 1. 滞后特征 (Lag Features)
-        # Lag 1h: 上一小时负载
-        df['Lag_1h'] = df['Site_Load'].shift(1)
-        # Lag 24h: 昨日此时
-        df['Lag_24h'] = df['Site_Load'].shift(24)
-        # Lag 168h: 上周此时
-        df['Lag_168h'] = df['Site_Load'].shift(168)
-        
-        # 2. 滑动窗口特征 (Rolling Window Statistics)
-        # 必须先 shift(1) 避免未来信息泄露 (Data Leakage)
-        # 使用 shift(1) 后，rolling 取的是 t-1, t-2... 的数据
-        
-        # 过去6小时均值
-        df['Rolling_Mean_6h'] = df['Site_Load'].shift(1).rolling(window=6).mean()
-        # 过去6小时标准差
-        df['Rolling_Std_6h'] = df['Site_Load'].shift(1).rolling(window=6).std()
-        # 过去24小时均值
-        df['Rolling_Mean_24h'] = df['Site_Load'].shift(1).rolling(window=24).mean()
-        
-        # ================================================================
-        # 新增: 分位数与波动率特征 (Quantile & Volatility Features)
-        # ================================================================
-        
-        # 分位数特征 (捕捉极端值分布，用于识别峰值负载模式)
-        # 95% 分位数：过去24小时的高负载阈值
-        df['Quantile_95_24h'] = df['Site_Load'].shift(1).rolling(window=24).quantile(0.95)
-        # 5% 分位数：过去24小时的低负载阈值
-        df['Quantile_05_24h'] = df['Site_Load'].shift(1).rolling(window=24).quantile(0.05)
-        
-        # 波动率特征 (捕捉负载变化剧烈程度，变异系数 CV)
-        rolling_mean = df['Site_Load'].shift(1).rolling(window=24).mean()
-        rolling_std = df['Site_Load'].shift(1).rolling(window=24).std()
-        # 变异系数 = 标准差 / 均值，值越大表示波动越剧烈
-        df['Volatility_24h'] = rolling_std / rolling_mean.replace(0, np.nan)
-        
-        # 价格变化特征 (峰谷电价切换敏感度)
-        df['Price_Change'] = df['Price'].diff().abs()
-        
-        # 负载变化率 (小时级负载变化)
-        df['Load_Change_1h'] = df['Site_Load'].diff()
-        df['Load_Change_Pct_1h'] = df['Site_Load'].pct_change() * 100
-        
-        # ================================================================
-        
-        # 3. 基础交互特征 (Interaction Features)
-        # Temperature x Hour: 捕捉不同时段温度的影响差异 (如中午高温vs深夜高温)
-        df['Temp_x_Hour'] = df['Temperature'] * df['Hour']
-        
-        # Lag_24h x DayOfWeek: 捕捉历史负载在不同星期的惯性差异
-        df['Lag24_x_DayOfWeek'] = df['Lag_24h'] * df['DayOfWeek']
-        
-        # 4. 增强交互特征（如果有增强时间特征）
-        enhanced_features_added = []
-        if use_enhanced and 'Season' in df.columns:
-            # Temperature x Season: 捕捉不同季节的温度效应差异
-            df['Temp_x_Season'] = df['Temperature'] * df['Season']
-            enhanced_features_added.append('Temp*Season')
-            
-            # Load_Lag24 x IsWeekend: 周末与工作日的历史惯性差异
-            if 'IsWeekend' in df.columns:
-                df['Lag24_x_IsWeekend'] = df['Lag_24h'] * df['IsWeekend']
-                enhanced_features_added.append('Lag24*IsWeekend')
-            
-            # Hour x IsHoliday: 节假日不同时段的用电模式
-            if 'IsHoliday' in df.columns:
-                df['Hour_x_IsHoliday'] = df['Hour'] * df['IsHoliday']
-                enhanced_features_added.append('Hour*IsHoliday')
-            
-            # 季节性周期编码 (正弦/余弦变换捕捉周期性)
-            # 月份周期 (12个月)
-            df['Month_Sin'] = np.sin(2 * np.pi * df['Month'] / 12)
-            df['Month_Cos'] = np.cos(2 * np.pi * df['Month'] / 12)
-            enhanced_features_added.extend(['Month_Sin', 'Month_Cos'])
-            
-            # 小时周期 (24小时)
-            df['Hour_Sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
-            df['Hour_Cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
-            enhanced_features_added.extend(['Hour_Sin', 'Hour_Cos'])
-        
-        # 5. 清洗 NaN (由于 shift/rolling 产生的头部缺失)
-        original_len = len(df)
-        
+
+        from services.feature_engineering_service import FeatureEngineeringService
+
+        processed_df, metrics = FeatureEngineeringService.build_advanced_features(
+            df,
+            dropna=dropna,
+            use_enhanced=use_enhanced,
+            context=compute_context,
+        )
+        self.last_compute_metrics = metrics
+
+        print("   ✓ 已添加 Lag: 1h, 24h, 168h")
+        print("   ✓ 已添加 Rolling: Mean(6h, 24h), Std(6h)")
+        print("   ✓ 已添加 Interaction: Temp*Hour, Lag24*DoW")
+        if metrics.get('enhanced_features_added'):
+            print(f"   ✓ 已添加增强交互特征: {', '.join(metrics['enhanced_features_added'])}")
+        print(
+            "   ✓ 计算后端: "
+            f"{metrics.get('backend', 'python_pandas')} · "
+            f"{metrics.get('duration_ms', 0)} ms · "
+            f"{metrics.get('input_rows', 0)} -> {metrics.get('output_rows', 0)} 行",
+        )
+        if metrics.get('fallback_reason') and metrics.get('native_enabled'):
+            print(f"   ⚠️  native fallback: {metrics['fallback_reason']}")
         if dropna:
-            df = df.dropna().reset_index(drop=True)
-            dropped_len = original_len - len(df)
-            print(f"   ✓ 已添加 Lag: 1h, 24h, 168h")
-            print(f"   ✓ 已添加 Rolling: Mean(6h, 24h), Std(6h)")
-            print(f"   ✓ 已添加 Interaction: Temp*Hour, Lag24*DoW")
-            if enhanced_features_added:
-                print(f"   ✓ 已添加增强交互特征: {', '.join(enhanced_features_added)}")
-            print(f"   ⚠️  因特征构建剔除了前 {dropped_len} 行数据 (Warm-up Period)")
+            print(
+                f"   ⚠️  因特征构建剔除了前 {metrics.get('dropped_rows', 0)} 行数据 (Warm-up Period)",
+            )
         else:
-            print(f"   ✓ 已添加高级特征 (保留 NaN 行，共 {original_len} 行)")
-        
-        return df
+            print(f"   ✓ 已添加高级特征 (保留 NaN 行，共 {metrics.get('output_rows', len(processed_df))} 行)")
+
+        return processed_df
     
     def save_processed_data(self, df: pd.DataFrame, filename: str = 'cleaned_energy_data.csv') -> Path:
         """

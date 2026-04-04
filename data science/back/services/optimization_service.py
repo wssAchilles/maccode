@@ -6,12 +6,14 @@ Energy Optimization Service - Battery Energy Storage System Scheduling
 """
 
 import os
+from time import perf_counter
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
 import warnings
 
 from services.secrets import get_secret
+from services.compute_acceleration_service import ComputeAccelerationService
 
 warnings.filterwarnings('ignore')
 
@@ -628,7 +630,8 @@ class EnergyOptimizer:
         self,
         load_profile: List[float],
         price_profile: List[float],
-        variations: Optional[Dict[str, List]] = None
+        variations: Optional[Dict[str, List]] = None,
+        profile_context: str = 'scenario_simulation',
     ) -> List[Dict]:
         """
         批量模拟多种参数配置的敏感性分析
@@ -652,6 +655,7 @@ class EnergyOptimizer:
                 'max_power': [self.max_power * 0.5, self.max_power, self.max_power * 1.5]
             }
         
+        started_at = perf_counter()
         results = []
         original_capacity = self.battery_capacity
         original_power = self.max_power
@@ -704,7 +708,25 @@ class EnergyOptimizer:
         if results and results[0].get('savings'):
             best = results[0]
             print(f"   🏆 最佳配置: {best['params']}, 节省 {best['savings']:.2f} 元")
+
+        duration_ms = (perf_counter() - started_at) * 1000.0
+        ComputeAccelerationService.record_component_sample(
+            component='scenario_simulation',
+            duration_ms=duration_ms,
+            rows=len(results),
+            backend='python_numpy',
+            context=profile_context,
+            native_enabled=False,
+            native_available=False,
+            preferred_backend='python_numpy',
+            metadata={
+                'load_points': len(load_profile),
+                'price_points': len(price_profile),
+                'scenario_count': len(results),
+                'variation_keys': param_names,
+            },
+        )
+        print(f"   ✓ 情景模拟耗时: {duration_ms:.2f} ms")
         
         return results
-
 

@@ -1030,7 +1030,12 @@ class EnergyPredictor:
                 
                 # 补算 Lag/Rolling/Interaction 特征
                 if missing_engineered:
-                    df = processor.add_advanced_features(df, dropna=False, use_enhanced=use_enhanced_features)
+                    df = processor.add_advanced_features(
+                        df,
+                        dropna=False,
+                        use_enhanced=use_enhanced_features,
+                        compute_context='training_backfill',
+                    )
                     print(f"   ✓ 已补算 Lag/Rolling/Interaction 特征")
                 
                 print(f"   ✓ 特征补算完成，当前列数: {len(df.columns)}")
@@ -2142,7 +2147,12 @@ class EnergyPredictor:
                     # 补算 Lag/Rolling 特征
                     lag_cols = ['Lag_1h', 'Lag_24h', 'Lag_168h', 'Rolling_Mean_6h', 'Rolling_Std_6h']
                     if any(c in missing_features for c in lag_cols):
-                        recent_df = processor.add_advanced_features(recent_df, dropna=False, use_enhanced=True)
+                        recent_df = processor.add_advanced_features(
+                            recent_df,
+                            dropna=False,
+                            use_enhanced=True,
+                            compute_context='online_evaluation_backfill',
+                        )
                     
                     # 再次检查是否还有缺失
                     still_missing = [col for col in self.feature_columns if col not in recent_df.columns]

@@ -52,6 +52,16 @@ class Config:
         'RATE_LIMIT_BACKEND',
         'memory' if DEBUG else 'firestore',
     ).lower()
+    COMPUTE_ACCELERATION_COLLECTION = os.getenv(
+        'COMPUTE_ACCELERATION_COLLECTION',
+        'compute_acceleration',
+    )
+    COMPUTE_PROFILE_ENABLED = os.getenv('COMPUTE_PROFILE_ENABLED', 'true').lower() == 'true'
+    COMPUTE_PROFILE_WINDOW = int(os.getenv('COMPUTE_PROFILE_WINDOW', '24'))
+    COMPUTE_FEATURE_WARNING_MS = float(os.getenv('COMPUTE_FEATURE_WARNING_MS', '200'))
+    COMPUTE_SCENARIO_WARNING_MS = float(os.getenv('COMPUTE_SCENARIO_WARNING_MS', '450'))
+    COMPUTE_NATIVE_ENABLED = os.getenv('COMPUTE_NATIVE_ENABLED', 'false').lower() == 'true'
+    COMPUTE_NATIVE_MODULE = os.getenv('COMPUTE_NATIVE_MODULE', 'rolling_features_native')
 
     # 优化业务配置
     BATTERY_CONFIG = {

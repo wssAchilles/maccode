@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from config import Config
+from services.compute_acceleration_service import ComputeAccelerationService
 from services.control_plane_status_service import ControlPlaneStatusService
 from services.history_service import HistoryService
 from services.job_service import JobService
@@ -337,7 +338,10 @@ class DashboardService:
             }
 
     @staticmethod
-    def _service_statuses(control_plane_status: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+    def _service_statuses(
+        control_plane_status: Dict[str, Any] | None = None,
+        compute_acceleration_status: Dict[str, Any] | None = None,
+    ) -> List[Dict[str, Any]]:
         try:
             model_ready = EnergyPredictor.get_model_metadata() is not None
         except Exception as exc:
@@ -385,6 +389,16 @@ class DashboardService:
                     'status': control_plane_status.get('status') or 'warning',
                     'message': control_plane_status.get('message')
                     or 'Rust orchestrator status unavailable',
+                }
+            )
+        if compute_acceleration_status:
+            statuses.append(
+                {
+                    'key': 'compute',
+                    'label': 'Compute',
+                    'status': compute_acceleration_status.get('status') or 'info',
+                    'message': compute_acceleration_status.get('message')
+                    or 'Compute acceleration status unavailable',
                 }
             )
         return statuses
@@ -2021,10 +2035,16 @@ class DashboardService:
             ControlPlaneStatusService.get_status(),
             degraded_dependencies,
         )
+        compute_acceleration = cls._safe_dependency(
+            'compute_acceleration_status',
+            ComputeAccelerationService.get_status,
+            ComputeAccelerationService.empty_status(),
+            degraded_dependencies,
+        )
 
         service_statuses = cls._safe_dependency(
             'service_statuses',
-            lambda: cls._service_statuses(control_plane),
+            lambda: cls._service_statuses(control_plane, compute_acceleration),
             [
                 {
                     'key': 'api',
@@ -2102,6 +2122,15 @@ class DashboardService:
                     'message': f'以下摘要依赖暂时不可用: {", ".join(dependency_alerts)}。页面已按可用数据继续渲染。',
                 }
             )
+        if compute_acceleration.get('status') in ('warning', 'error'):
+            alerts.append(
+                {
+                    'severity': 'warning' if compute_acceleration.get('status') == 'warning' else 'error',
+                    'title': '计算加速层需要关注',
+                    'message': compute_acceleration.get('message')
+                    or '热点计算正在回退或耗时偏高，建议检查 profiling 摘要。',
+                }
+            )
 
         duty_summary = cls._build_duty_summary(
             asset_summary=asset_summary,
@@ -2125,4 +2154,5 @@ class DashboardService:
             'asset_summary': asset_summary,
             'alerts': alerts,
             'control_plane': control_plane,
+            'compute_acceleration': compute_acceleration,
         }

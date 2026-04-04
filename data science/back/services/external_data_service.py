@@ -329,7 +329,12 @@ class ExternalDataService:
             # 我们传入 dropna=False，这样前面 168 行会有 NaN (因为没有更早的历史)，
             # 但最新的行 (我们刚追加的) 会有完整的 Lag/Rolling 特征 (因为有之前的 4800+ 行做支撑)。
             # 这样我们就保证了最新数据的完整性。
-            df_processed = processor.add_advanced_features(df, dropna=False, use_enhanced=True)
+            df_processed = processor.add_advanced_features(
+                df,
+                dropna=False,
+                use_enhanced=True,
+                compute_context='hourly_ingest',
+            )
             
             # 检查最后一行是否有 NaN (理论上不应该，除非数据太少)
             last_row = df_processed.iloc[-1]
