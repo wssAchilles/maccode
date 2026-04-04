@@ -45,6 +45,7 @@ class ExternalDataService:
         
         # 数据存储路径
         self.csv_file_path = 'data/processed/cleaned_energy_data_all.csv'
+        self.last_runtime_metrics = {}
         
         print("✓ ExternalDataService 初始化完成")
     
@@ -249,6 +250,7 @@ class ExternalDataService:
         print("\n" + "="*80)
         print("🚀 开始数据采集任务 (Feature-Ready Pipeline)")
         print("="*80)
+        self.last_runtime_metrics = {}
         
         temp_file_path = None
         
@@ -335,6 +337,16 @@ class ExternalDataService:
                 use_enhanced=True,
                 compute_context='hourly_ingest',
             )
+            self.last_runtime_metrics = {
+                'compute_metrics': {
+                    'feature_engineering': dict(processor.last_compute_metrics or {}),
+                },
+                'backend': str(
+                    (processor.last_compute_metrics or {}).get('backend')
+                    or 'python_pandas'
+                ),
+                'context': 'hourly_ingest',
+            }
             
             # 检查最后一行是否有 NaN (理论上不应该，除非数据太少)
             last_row = df_processed.iloc[-1]

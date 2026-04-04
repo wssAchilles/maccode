@@ -21,6 +21,7 @@ import '../services/auth_gateway.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/approval_queue_view_model.dart';
+import '../viewmodels/compute_governance_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
@@ -35,12 +36,14 @@ class MainNavigation extends StatefulWidget {
     AuthRepository? authRepository,
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
+    ComputeGovernanceViewModel? computeGovernanceViewModel,
     ControlTaskViewModel? controlTaskViewModel,
     ApprovalQueueViewModel? approvalQueueViewModel,
     OperationConsoleViewModel? operationConsoleViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
+       _computeGovernanceViewModel = computeGovernanceViewModel,
        _controlTaskViewModel = controlTaskViewModel,
        _approvalQueueViewModel = approvalQueueViewModel,
        _operationConsoleViewModel = operationConsoleViewModel,
@@ -57,12 +60,14 @@ class MainNavigation extends StatefulWidget {
     AuthRepository? authRepository,
     AuthGateway? authGateway,
     DashboardViewModel? dashboardViewModel,
+    ComputeGovernanceViewModel? computeGovernanceViewModel,
     ControlTaskViewModel? controlTaskViewModel,
     ApprovalQueueViewModel? approvalQueueViewModel,
     OperationConsoleViewModel? operationConsoleViewModel,
   }) : _authRepository = authRepository,
        _authGateway = authGateway,
        _dashboardViewModel = dashboardViewModel,
+       _computeGovernanceViewModel = computeGovernanceViewModel,
        _controlTaskViewModel = controlTaskViewModel,
        _approvalQueueViewModel = approvalQueueViewModel,
        _operationConsoleViewModel = operationConsoleViewModel,
@@ -79,6 +84,7 @@ class MainNavigation extends StatefulWidget {
   final AuthRepository? _authRepository;
   final AuthGateway? _authGateway;
   final DashboardViewModel? _dashboardViewModel;
+  final ComputeGovernanceViewModel? _computeGovernanceViewModel;
   final ControlTaskViewModel? _controlTaskViewModel;
   final ApprovalQueueViewModel? _approvalQueueViewModel;
   final OperationConsoleViewModel? _operationConsoleViewModel;
@@ -103,6 +109,8 @@ class _MainNavigationState extends State<MainNavigation> {
   late final bool _ownsDashboardViewModel;
   late final ControlTaskViewModel _controlTaskViewModel;
   late final bool _ownsControlTaskViewModel;
+  late final ComputeGovernanceViewModel _computeGovernanceViewModel;
+  late final bool _ownsComputeGovernanceViewModel;
   late final ApprovalQueueViewModel _approvalQueueViewModel;
   late final bool _ownsApprovalQueueViewModel;
   late final OperationConsoleViewModel _operationConsoleViewModel;
@@ -123,6 +131,9 @@ class _MainNavigationState extends State<MainNavigation> {
         GatewayAuthRepository(authGateway: widget._authGateway);
     _dashboardViewModel = widget._dashboardViewModel ?? DashboardViewModel();
     _ownsDashboardViewModel = widget._dashboardViewModel == null;
+    _computeGovernanceViewModel =
+        widget._computeGovernanceViewModel ?? ComputeGovernanceViewModel();
+    _ownsComputeGovernanceViewModel = widget._computeGovernanceViewModel == null;
     _controlTaskViewModel =
         widget._controlTaskViewModel ?? ControlTaskViewModel();
     _ownsControlTaskViewModel = widget._controlTaskViewModel == null;
@@ -149,6 +160,9 @@ class _MainNavigationState extends State<MainNavigation> {
     _authSubscription?.cancel();
     if (_ownsDashboardViewModel) {
       _dashboardViewModel.dispose();
+    }
+    if (_ownsComputeGovernanceViewModel) {
+      _computeGovernanceViewModel.dispose();
     }
     if (_ownsControlTaskViewModel) {
       _controlTaskViewModel.dispose();
@@ -471,6 +485,7 @@ class _MainNavigationState extends State<MainNavigation> {
         // Default product pages always render as shell content.
         OperationsHubScreen(
           viewModel: _dashboardViewModel,
+          computeGovernanceViewModel: _computeGovernanceViewModel,
           controlTaskViewModel: _controlTaskViewModel,
           approvalQueueViewModel: _approvalQueueViewModel,
           operationConsoleViewModel: _operationConsoleViewModel,

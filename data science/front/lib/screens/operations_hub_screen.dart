@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
+import '../models/compute_rollout_policy.dart';
 import '../models/control_task_record.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
@@ -13,6 +14,7 @@ import '../models/optimization_launch_intent.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/approval_queue_view_model.dart';
+import '../viewmodels/compute_governance_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
@@ -23,6 +25,7 @@ import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/compute_acceleration_board.dart';
+import '../widgets/operations/compute_rollout_governance_board.dart';
 import '../widgets/operations/control_task_board.dart';
 import '../widgets/operations/control_task_edit_dialog.dart';
 import '../widgets/operations/control_plane_status_board.dart';
@@ -50,6 +53,7 @@ class OperationsHubScreen extends StatefulWidget {
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
+    this.computeGovernanceViewModel,
     this.controlTaskViewModel,
     this.approvalQueueViewModel,
     this.operationConsoleViewModel,
@@ -61,6 +65,7 @@ class OperationsHubScreen extends StatefulWidget {
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+  final ComputeGovernanceViewModel? computeGovernanceViewModel;
   final ControlTaskViewModel? controlTaskViewModel;
   final ApprovalQueueViewModel? approvalQueueViewModel;
   final OperationConsoleViewModel? operationConsoleViewModel;
@@ -77,6 +82,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   void initState() {
     super.initState();
     widget.viewModel.initialize();
+    widget.computeGovernanceViewModel?.initialize();
     widget.controlTaskViewModel?.initialize();
     widget.approvalQueueViewModel?.initialize();
   }
@@ -237,6 +243,41 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         backgroundColor: updated.enabled
             ? AppColors.success
             : AppColors.warning,
+      ),
+    );
+  }
+
+  Future<void> _setComputeRolloutMode(
+    ComputeRolloutComponentPolicy component,
+    String rolloutMode,
+  ) async {
+    final viewModel = widget.computeGovernanceViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final updated = await viewModel.updateRolloutMode(
+      component.key,
+      rolloutMode: rolloutMode,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (updated == null) {
+      final errorMessage = viewModel.errorMessage ?? '更新计算治理策略失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    await widget.viewModel.loadSummary();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('已更新 ${component.label} 的 rollout 模式'),
+        backgroundColor: AppColors.success,
       ),
     );
   }
@@ -1303,6 +1344,18 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             safeSummary.computeAcceleration.message.isNotEmpty) ...[
           const SizedBox(height: 20),
           ComputeAccelerationBoard(status: safeSummary.computeAcceleration),
+        ],
+        if (widget.computeGovernanceViewModel != null) ...[
+          const SizedBox(height: 20),
+          ComputeRolloutGovernanceBoard(
+            policy: widget.computeGovernanceViewModel!.policy.components.isEmpty
+                ? safeSummary.computeAcceleration.rollout
+                : widget.computeGovernanceViewModel!.policy,
+            isLoading: widget.computeGovernanceViewModel!.isLoading,
+            isUpdatingComponent:
+                widget.computeGovernanceViewModel!.isUpdatingComponent,
+            onSetRolloutMode: _setComputeRolloutMode,
+          ),
         ],
         if (widget.controlTaskViewModel != null) ...[
           const SizedBox(height: 20),

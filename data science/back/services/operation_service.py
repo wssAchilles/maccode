@@ -19,6 +19,11 @@ from services.job_workflows import (
     run_rag_ingest_workflow,
 )
 from services.operation_dispatcher import dispatch_operation as dispatch_operation_task
+from services.operation_metrics import (
+    attach_step_metrics,
+    extract_operation_metrics,
+    merge_operation_metrics,
+)
 from services.operation_policies import (
     approval_state_from_policy,
     default_approval_policy,
@@ -761,13 +766,22 @@ class OperationService:
         cls._persist_event(operation_id, event)
 
     @classmethod
-    def update_progress(cls, operation_id: str, progress: int, message: str, *, phase: str = 'progress'):
+    def update_progress(
+        cls,
+        operation_id: str,
+        progress: int,
+        message: str,
+        *,
+        phase: str = 'progress',
+        step_metrics: Optional[Dict[str, Any]] = None,
+    ):
         cls.ensure_not_cancelled(operation_id)
         snapshot = cls._operations_collection().document(operation_id).get()
         current = snapshot.to_dict() or {}
         operation_type = str(current.get('type') or '')
         tool_name = resolve_tool_name(operation_type, phase)
         tool_contract = get_tool_contract(tool_name)
+        normalized_step_metrics = merge_operation_metrics({}, step_metrics or {})
 
         now_iso = cls._now_iso()
         steps = list(current.get('steps') or [])
@@ -785,6 +799,7 @@ class OperationService:
                 message=completed_step.get('message', 'Step completed'),
                 progress=int(completed_step.get('progress', progress) or progress),
                 step=completed_step,
+                extra={'metrics': completed_step.get('metrics') or {}},
             )
             cls._append_event_projection(operation_id, current, completion_event)
             cls._persist_event(operation_id, completion_event)
@@ -806,18 +821,19 @@ class OperationService:
                 'artifact_policy': tool_contract.artifact_policy if tool_contract else None,
                 'concurrency_key': tool_contract.concurrency_key if tool_contract else None,
             }
-            steps = upsert_step_summary(steps, next_step)
+            current_step = attach_step_metrics(next_step, normalized_step_metrics)
+            steps = upsert_step_summary(steps, current_step)
             started_event = build_event(
                 event_type='step.started',
                 phase=phase,
                 status='running',
                 message=message,
                 progress=progress,
-                step=next_step,
+                step=current_step,
+                extra={'metrics': normalized_step_metrics},
             )
             cls._append_event_projection(operation_id, current, started_event)
             cls._persist_event(operation_id, started_event)
-            current_step = next_step
         else:
             current_step = {
                 **current_step,
@@ -828,6 +844,7 @@ class OperationService:
                 'timeout_s': current_step.get('timeout_s')
                 or (tool_contract.timeout_s if tool_contract else None),
             }
+            current_step = attach_step_metrics(current_step, normalized_step_metrics)
             steps = upsert_step_summary(steps, current_step)
 
         cls._operations_collection().document(operation_id).set(
@@ -848,6 +865,7 @@ class OperationService:
             message=message,
             progress=progress,
             step=current_step,
+            extra={'metrics': current_step.get('metrics') or normalized_step_metrics},
         )
         cls._append_event_projection(operation_id, current, progress_event)
         cls._persist_event(operation_id, progress_event)
@@ -859,7 +877,9 @@ class OperationService:
         now_iso = cls._now_iso()
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
+        operation_metrics = extract_operation_metrics(result)
         if current_step and current_step.get('status') == 'running':
+            current_step = attach_step_metrics(current_step, operation_metrics)
             current_step = finalize_step(current_step, status='succeeded', ended_at=now_iso, progress=100)
             steps = upsert_step_summary(steps, current_step)
             completion_event = build_event(
@@ -869,11 +889,13 @@ class OperationService:
                 message=current_step.get('message', message),
                 progress=100,
                 step=current_step,
+                extra={'metrics': current_step.get('metrics') or operation_metrics},
             )
             cls._append_event_projection(operation_id, current, completion_event)
             cls._persist_event(operation_id, completion_event)
 
         artifacts = extract_artifacts_from_result(result)
+        merged_metrics = merge_operation_metrics(current.get('metrics'), operation_metrics)
         cls._operations_collection().document(operation_id).set(
             {
                 'status': 'succeeded',
@@ -887,7 +909,7 @@ class OperationService:
                 'steps': steps[-cls.STEP_PROJECTION_LIMIT:],
                 'retryable': False,
                 'cancel_requested': False,
-                'metrics': dict(result.get('performance') or result.get('metrics') or {}),
+                'metrics': merged_metrics,
             },
             merge=True,
         )
@@ -906,6 +928,7 @@ class OperationService:
             status='succeeded',
             message=message,
             progress=100,
+            extra={'metrics': merged_metrics},
         )
         cls._append_event_projection(operation_id, cls.get_operation_for_execution(operation_id) or current, event)
         cls._persist_event(operation_id, event)
@@ -934,6 +957,7 @@ class OperationService:
                 message=current_step.get('message', message),
                 progress=int(current_step.get('progress', current.get('progress', 0)) or 0),
                 step=current_step,
+                extra={'metrics': current_step.get('metrics') or {}},
             )
             cls._append_event_projection(operation_id, current, failure_step_event)
             cls._persist_event(operation_id, failure_step_event)
@@ -957,6 +981,7 @@ class OperationService:
             status='failed',
             message=message,
             progress=int(current.get('progress', 0) or 0),
+            extra={'metrics': dict(current.get('metrics') or {})},
         )
         cls._append_event_projection(operation_id, cls.get_operation_for_execution(operation_id) or current, event)
         cls._persist_event(operation_id, event)
@@ -978,6 +1003,7 @@ class OperationService:
                 message=current_step.get('message', message),
                 progress=int(current_step.get('progress', current.get('progress', 0)) or 0),
                 step=current_step,
+                extra={'metrics': current_step.get('metrics') or {}},
             )
             cls._append_event_projection(operation_id, current, cancelled_step_event)
             cls._persist_event(operation_id, cancelled_step_event)
@@ -999,6 +1025,7 @@ class OperationService:
             status='cancelled',
             message=message,
             progress=int(current.get('progress', 0) or 0),
+            extra={'metrics': dict(current.get('metrics') or {})},
         )
         cls._append_event_projection(operation_id, cls.get_operation_for_execution(operation_id) or current, event)
         cls._persist_event(operation_id, event)

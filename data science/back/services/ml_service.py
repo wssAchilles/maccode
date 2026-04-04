@@ -82,6 +82,7 @@ class EnergyPredictor:
         
         # 初始化模型
         self.model: Optional[RandomForestRegressor] = None
+        self.last_compute_metrics: Dict[str, Dict[str, Any]] = {}
         
         # 基础特征列表（向后兼容）
         self.base_feature_columns = [
@@ -110,6 +111,12 @@ class EnergyPredictor:
         
         print(f"📁 Firebase Storage 模型路径: {self.firebase_model_path}")
         print(f"📁 本地兜底模型路径: {self.local_model_path}")
+
+    def _capture_compute_metrics(self, stage: str, metrics: Dict[str, Any] | None):
+        """Capture lightweight compute telemetry for runtime operations."""
+        if not isinstance(metrics, dict) or not metrics:
+            return
+        self.last_compute_metrics[stage] = dict(metrics)
     
     def _load_feature_columns_from_metadata(self):
         """
@@ -918,6 +925,7 @@ class EnergyPredictor:
         print("\n" + "="*80)
         print("🚀 开始训练能源负载预测模型")
         print("="*80 + "\n")
+        self.last_compute_metrics = {}
         
         # Set target column
         self.target_column = target_col
@@ -1035,6 +1043,10 @@ class EnergyPredictor:
                         dropna=False,
                         use_enhanced=use_enhanced_features,
                         compute_context='training_backfill',
+                    )
+                    self._capture_compute_metrics(
+                        'feature_engineering',
+                        processor.last_compute_metrics,
                     )
                     print(f"   ✓ 已补算 Lag/Rolling/Interaction 特征")
                 
@@ -1510,7 +1522,15 @@ class EnergyPredictor:
                     'cv_folds': cv_folds if use_time_series_cv else None,
                     'summary': validation_summary
                 },
-                'data_coverage': data_coverage
+                'data_coverage': data_coverage,
+                'metrics': {
+                    'model_type': model_type_name,
+                    'train_rmse': train_rmse,
+                    'test_rmse': test_rmse,
+                    'r2_score': test_r2,
+                    'compute_metrics': dict(self.last_compute_metrics or {}),
+                },
+                'compute_metrics': dict(self.last_compute_metrics or {}),
             }
         
         finally:
@@ -2152,6 +2172,10 @@ class EnergyPredictor:
                             dropna=False,
                             use_enhanced=True,
                             compute_context='online_evaluation_backfill',
+                        )
+                        self._capture_compute_metrics(
+                            'online_evaluation_backfill',
+                            processor.last_compute_metrics,
                         )
                     
                     # 再次检查是否还有缺失

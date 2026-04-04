@@ -14,6 +14,7 @@ import warnings
 
 from services.secrets import get_secret
 from services.compute_acceleration_service import ComputeAccelerationService
+from services.scenario_simulation_service import ScenarioSimulationService
 
 warnings.filterwarnings('ignore')
 
@@ -59,6 +60,7 @@ class EnergyOptimizer:
         self.battery_capacity = battery_capacity
         self.max_power = max_power
         self.efficiency = efficiency
+        self.last_compute_metrics = {}
         
         # Gurobi 环境
         self.env = None
@@ -655,78 +657,30 @@ class EnergyOptimizer:
                 'max_power': [self.max_power * 0.5, self.max_power, self.max_power * 1.5]
             }
         
-        started_at = perf_counter()
-        results = []
-        original_capacity = self.battery_capacity
-        original_power = self.max_power
-        
         print(f"\n📊 开始敏感性分析...")
         print(f"   参数范围:")
-        for param, values in variations.items():
+        for param, values in (variations or {}).items():
             print(f"   - {param}: {values}")
-        
-        # 生成所有参数组合
-        from itertools import product
-        
-        param_names = list(variations.keys())
-        param_values = list(variations.values())
-        
-        for combo in product(*param_values):
-            # 设置参数
-            params = dict(zip(param_names, combo))
-            
-            if 'battery_capacity' in params:
-                self.battery_capacity = params['battery_capacity']
-            if 'max_power' in params:
-                self.max_power = params['max_power']
-            
-            print(f"\n   🔄 测试配置: {params}")
-            
-            try:
-                # 使用贪心算法快速模拟 (避免每次都调用 Gurobi)
-                result = self._greedy_fallback(load_profile, price_profile)
-                result['params'] = params
-                results.append(result)
-                
-                print(f"      节省: {result['savings']:.2f} 元 ({result['savings_percent']:.1f}%)")
-                
-            except Exception as e:
-                results.append({
-                    'params': params,
-                    'status': 'Error',
-                    'error': str(e)
-                })
-        
-        # 恢复原始参数
-        self.battery_capacity = original_capacity
-        self.max_power = original_power
-        
-        # 按节省金额排序
-        results.sort(key=lambda x: x.get('savings', 0), reverse=True)
-        
+
+        results, metrics = ScenarioSimulationService.simulate(
+            load_profile=load_profile,
+            price_profile=price_profile,
+            variations=variations,
+            battery_capacity=self.battery_capacity,
+            max_power=self.max_power,
+            efficiency=self.efficiency,
+            context=profile_context,
+        )
+        self.last_compute_metrics = metrics
+
         print(f"\n✅ 敏感性分析完成: {len(results)} 种配置")
         if results and results[0].get('savings'):
             best = results[0]
             print(f"   🏆 最佳配置: {best['params']}, 节省 {best['savings']:.2f} 元")
-
-        duration_ms = (perf_counter() - started_at) * 1000.0
-        ComputeAccelerationService.record_component_sample(
-            component='scenario_simulation',
-            duration_ms=duration_ms,
-            rows=len(results),
-            backend='python_numpy',
-            context=profile_context,
-            native_enabled=False,
-            native_available=False,
-            preferred_backend='python_numpy',
-            metadata={
-                'load_points': len(load_profile),
-                'price_points': len(price_profile),
-                'scenario_count': len(results),
-                'variation_keys': param_names,
-            },
+        print(
+            "   ✓ 情景模拟后端: "
+            f"{metrics.get('backend', 'python_loop')} · "
+            f"{metrics.get('duration_ms', 0)} ms",
         )
-        print(f"   ✓ 情景模拟耗时: {duration_ms:.2f} ms")
         
         return results
-

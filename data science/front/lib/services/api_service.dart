@@ -18,6 +18,7 @@ import 'api_service_exception.dart';
 part 'api_service/api_service_auth_data.dart';
 part 'api_service/api_service_control_tasks.dart';
 part 'api_service/api_service_core.dart';
+part 'api_service/api_service_compute_governance.dart';
 part 'api_service/api_service_dashboard_jobs.dart';
 part 'api_service/api_service_history_ml.dart';
 part 'api_service/api_service_operation_stream.dart';
@@ -81,6 +82,13 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getDashboardAssets() =>
       _getDashboardAssets();
+
+  static Future<Map<String, dynamic>> getComputeRollout() =>
+      _getComputeRollout();
+
+  static Future<Map<String, dynamic>> updateComputeRollout({
+    required Map<String, dynamic> components,
+  }) => _updateComputeRollout(components: components);
 
   static Future<List<Map<String, dynamic>>> listJobs({
     String? type,

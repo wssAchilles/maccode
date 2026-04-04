@@ -12,6 +12,7 @@ from google.cloud import firestore
 
 from config import Config
 from services.compute_native_loader import get_native_backend_status
+from services.compute_rollout_service import ComputeRolloutService
 
 logger = logging.getLogger(__name__)
 
@@ -265,6 +266,16 @@ class ComputeAccelerationService:
         if not bool(getattr(Config, 'COMPUTE_PROFILE_ENABLED', True)):
             return
 
+        if 'benchmark' in str(context or '').lower():
+            try:
+                ComputeRolloutService.record_benchmark(
+                    component,
+                    context=context,
+                    backend=backend,
+                )
+            except Exception as exc:
+                logger.warning('Failed to update benchmark marker for %s: %s', component, exc)
+
         label = cls.COMPONENT_LABELS.get(component, component)
         metadata = dict(metadata or {})
         max_samples = int(getattr(Config, 'COMPUTE_PROFILE_WINDOW', 24) or 24)
@@ -329,6 +340,7 @@ class ComputeAccelerationService:
             'hottest_component': '--',
             'last_updated_at': '',
             'components': [],
+            'rollout': ComputeRolloutService.serialize_policy(),
         }
 
     @classmethod
@@ -337,6 +349,7 @@ class ComputeAccelerationService:
 
         native_status = get_native_backend_status()
         base = cls.empty_status()
+        rollout_policy = ComputeRolloutService.get_policy()
         source_label = 'firestore'
         try:
             client = cls._get_firestore_client()
@@ -356,9 +369,11 @@ class ComputeAccelerationService:
         normalized_components: List[Dict[str, Any]] = []
         overall_status = 'info'
         last_updated_at = None
+        rollout_refreshed = False
         for item in docs:
             if not item:
                 continue
+            component_key = str(item.get('component') or '')
             component_status = str(item.get('status') or 'info')
             if cls.STATUS_ORDER.get(component_status, 0) > cls.STATUS_ORDER.get(overall_status, 0):
                 overall_status = component_status
@@ -372,9 +387,38 @@ class ComputeAccelerationService:
                 last_updated_at is None or updated_at > last_updated_at
             ):
                 last_updated_at = updated_at
+            contexts = list(item.get('contexts') or [])
+            last_context = item.get('last_context') or ''
+            benchmark_context = next(
+                (
+                    str(context)
+                    for context in ([last_context] + contexts)
+                    if 'benchmark' in str(context).lower()
+                ),
+                '',
+            )
+            rollout_component = (
+                rollout_policy.get('components', {}).get(component_key)
+                if isinstance(rollout_policy.get('components'), dict)
+                else {}
+            )
+            if (
+                component_key
+                and benchmark_context
+                and isinstance(rollout_component, dict)
+                and not str(rollout_component.get('last_benchmark_at') or '')
+            ):
+                ComputeRolloutService.record_benchmark(
+                    component_key,
+                    context=benchmark_context,
+                    backend=str(item.get('active_backend') or ''),
+                    updated_by='telemetry_sync',
+                )
+                rollout_policy = ComputeRolloutService.get_policy(force_refresh=True)
+                rollout_refreshed = True
             normalized_components.append(
                 {
-                    'key': item.get('component') or '',
+                    'key': component_key,
                     'label': item.get('label') or '--',
                     'status': component_status,
                     'active_backend': item.get('active_backend') or 'python_pandas',
@@ -426,6 +470,12 @@ class ComputeAccelerationService:
             overall_status = 'warning'
             message = native_status.reason
 
+        rollout_payload = (
+            ComputeRolloutService.serialize_policy(rollout_policy)
+            if rollout_refreshed
+            else ComputeRolloutService.serialize_policy()
+        )
+
         return {
             'enabled': bool(getattr(Config, 'COMPUTE_PROFILE_ENABLED', True)),
             'status': overall_status,
@@ -439,4 +489,5 @@ class ComputeAccelerationService:
             'hottest_component': hottest_component,
             'last_updated_at': last_updated_at.isoformat() if isinstance(last_updated_at, datetime) else '',
             'components': normalized_components[:4],
+            'rollout': rollout_payload,
         }

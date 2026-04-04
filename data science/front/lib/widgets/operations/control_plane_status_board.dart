@@ -100,6 +100,38 @@ class ControlPlaneStatusBoard extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Pill(
+                  label:
+                      'COMPUTE · ${status.computeAcceleration.activeBackend.toUpperCase()}',
+                  foreground: AppColors.textPrimary,
+                  background: AppColors.surfaceVariant,
+                ),
+                _Pill(
+                  label:
+                      'HOTTEST · ${status.computeAcceleration.hottestComponent}',
+                  foreground: AppColors.textPrimary,
+                  background: AppColors.surfaceVariant,
+                ),
+                _Pill(
+                  label:
+                      'PROFILED · ${status.computeAcceleration.profiledComponents}',
+                  foreground: AppColors.textPrimary,
+                  background: AppColors.surfaceVariant,
+                ),
+                if (status.computeRollout.components.isNotEmpty)
+                  _Pill(
+                    label:
+                        'ROLLOUT · ${_rolloutLead(status.computeRollout.components.first.rolloutMode)}',
+                    foreground: AppColors.textPrimary,
+                    background: AppColors.surfaceVariant,
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -209,4 +241,17 @@ class _StatusTone {
 
   final Color foreground;
   final Color background;
+}
+
+String _rolloutLead(String mode) {
+  switch (mode) {
+    case 'native_candidate':
+      return 'Native Canary';
+    case 'native_enforced':
+      return 'Native Forced';
+    case 'vectorized_python':
+      return 'Vectorized';
+    default:
+      return 'Python Stable';
+  }
 }

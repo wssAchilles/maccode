@@ -18,6 +18,30 @@ def _default_lane(capacity: int = 0) -> Dict[str, Any]:
     }
 
 
+def _default_compute_acceleration() -> Dict[str, Any]:
+    return {
+        'status': 'info',
+        'message': 'Compute telemetry not linked',
+        'active_backend': 'python_pandas',
+        'preferred_backend': 'python_pandas',
+        'native_enabled': False,
+        'native_available': False,
+        'profiled_components': 0,
+        'benchmark_ready': False,
+        'hottest_component': '--',
+        'last_updated_at': '',
+    }
+
+
+def _default_compute_rollout() -> Dict[str, Any]:
+    return {
+        'enabled': False,
+        'updated_at': '',
+        'updated_by': '',
+        'components': [],
+    }
+
+
 class ControlPlaneStatusService:
     """Fetch and normalize orchestrator/control-plane health."""
 
@@ -42,6 +66,8 @@ class ControlPlaneStatusService:
             'python_worker_configured': False,
             'light_lane': _default_lane(configured_light),
             'heavy_lane': _default_lane(configured_heavy),
+            'compute_acceleration': _default_compute_acceleration(),
+            'compute_rollout': _default_compute_rollout(),
         }
 
         if not orchestrator_url:
@@ -54,7 +80,7 @@ class ControlPlaneStatusService:
             return {
                 **base_status,
                 'status': 'ok',
-                'message': 'Rust orchestrator ready',
+                'message': cls._build_status_message(payload),
                 'active_operations': int(payload.get('active_operations') or 0),
                 'python_worker_configured': bool(payload.get('python_worker_configured')),
                 'dispatch_timeout_s': int(payload.get('dispatch_timeout_secs') or 0)
@@ -66,6 +92,14 @@ class ControlPlaneStatusService:
                 'heavy_lane': {
                     **_default_lane(),
                     **heavy_lane,
+                },
+                'compute_acceleration': {
+                    **_default_compute_acceleration(),
+                    **dict(payload.get('compute_acceleration') or {}),
+                },
+                'compute_rollout': {
+                    **_default_compute_rollout(),
+                    **dict(payload.get('compute_rollout') or {}),
                 },
             }
         except Exception as exc:
@@ -86,21 +120,42 @@ class ControlPlaneStatusService:
             }
 
     @staticmethod
+    def _build_status_message(payload: Dict[str, Any]) -> str:
+        compute = payload.get('compute_acceleration')
+        if not isinstance(compute, dict):
+            return 'Rust orchestrator ready'
+
+        active_backend = str(compute.get('active_backend') or 'python_pandas')
+        hottest = str(compute.get('hottest_component') or '--')
+        profiled_components = int(compute.get('profiled_components') or 0)
+        if profiled_components <= 0:
+            return 'Rust orchestrator ready · compute telemetry waiting for samples'
+        return f'Rust orchestrator ready · compute {active_backend} · hottest {hottest}'
+
+    @staticmethod
     def _fetch_status_payload(orchestrator_url: str) -> Dict[str, Any]:
-        request = urllib.request.Request(
-            f'{orchestrator_url}/statusz',
-            headers={'Accept': 'application/json'},
-            method='GET',
-        )
-        with urllib.request.urlopen(
-            request,
-            timeout=max(float(Config.ORCHESTRATOR_REQUEST_TIMEOUT_S), 1.0),
-        ) as response:
-            body = response.read().decode('utf-8')
-        payload = json.loads(body or '{}')
-        if not isinstance(payload, dict):
-            raise ValueError('invalid orchestrator status payload')
-        return payload
+        last_error: Exception | None = None
+        for path in ('/statusz', '/readyz'):
+            request = urllib.request.Request(
+                f'{orchestrator_url}{path}',
+                headers={'Accept': 'application/json'},
+                method='GET',
+            )
+            try:
+                with urllib.request.urlopen(
+                    request,
+                    timeout=max(float(Config.ORCHESTRATOR_REQUEST_TIMEOUT_S), 1.0),
+                ) as response:
+                    body = response.read().decode('utf-8')
+                payload = json.loads(body or '{}')
+                if isinstance(payload, dict):
+                    return payload
+                raise ValueError('invalid orchestrator status payload')
+            except Exception as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise ValueError('orchestrator status payload unavailable')
 
     @staticmethod
     def _verify_ready(orchestrator_url: str) -> None:

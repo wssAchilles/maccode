@@ -4,6 +4,7 @@ mod controller;
 mod handlers;
 mod models;
 mod proxy;
+mod telemetry;
 
 use anyhow::{Context, Result};
 use auth::require_internal_token;
@@ -91,7 +92,7 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .route("/healthz", get(healthz))
-        .route("/readyz", get(healthz))
+        .route("/readyz", get(statusz))
         .route("/statusz", get(statusz))
         .merge(internal_routes)
         .with_state(state)

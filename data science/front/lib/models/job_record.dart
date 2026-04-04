@@ -204,6 +204,7 @@ class JobStep {
     this.approvalPolicy,
     this.artifactPolicy,
     this.concurrencyKey,
+    this.metrics = const <String, dynamic>{},
   });
 
   final String phase;
@@ -220,6 +221,7 @@ class JobStep {
   final Map<String, dynamic>? approvalPolicy;
   final Map<String, dynamic>? artifactPolicy;
   final String? concurrencyKey;
+  final Map<String, dynamic> metrics;
 
   factory JobStep.fromJson(Map<String, dynamic> json) {
     return JobStep(
@@ -243,6 +245,9 @@ class JobStep {
           ? Map<String, dynamic>.from(json['artifact_policy'] as Map)
           : null,
       concurrencyKey: json['concurrency_key']?.toString(),
+      metrics: json['metrics'] is Map
+          ? Map<String, dynamic>.from(json['metrics'] as Map)
+          : const <String, dynamic>{},
     );
   }
 }
@@ -257,6 +262,7 @@ class JobEvent {
     this.timestamp,
     this.step,
     this.artifact,
+    this.metrics = const <String, dynamic>{},
   });
 
   final String type;
@@ -267,6 +273,7 @@ class JobEvent {
   final DateTime? timestamp;
   final JobStep? step;
   final JobArtifact? artifact;
+  final Map<String, dynamic> metrics;
 
   factory JobEvent.fromJson(Map<String, dynamic> json) {
     return JobEvent(
@@ -286,6 +293,9 @@ class JobEvent {
           : json['artifact'] is Map
           ? JobArtifact.fromJson(Map<String, dynamic>.from(json['artifact'] as Map))
           : null,
+      metrics: json['metrics'] is Map
+          ? Map<String, dynamic>.from(json['metrics'] as Map)
+          : const <String, dynamic>{},
     );
   }
 }

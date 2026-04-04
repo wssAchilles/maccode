@@ -56,6 +56,10 @@ class Config:
         'COMPUTE_ACCELERATION_COLLECTION',
         'compute_acceleration',
     )
+    COMPUTE_GOVERNANCE_COLLECTION = os.getenv(
+        'COMPUTE_GOVERNANCE_COLLECTION',
+        'runtime_governance',
+    )
     COMPUTE_PROFILE_ENABLED = os.getenv('COMPUTE_PROFILE_ENABLED', 'true').lower() == 'true'
     COMPUTE_PROFILE_WINDOW = int(os.getenv('COMPUTE_PROFILE_WINDOW', '24'))
     COMPUTE_FEATURE_WARNING_MS = float(os.getenv('COMPUTE_FEATURE_WARNING_MS', '200'))

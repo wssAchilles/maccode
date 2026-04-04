@@ -14,7 +14,9 @@ use crate::{
         proxy_empty_post, proxy_get, proxy_json_patch, proxy_json_post,
         proxy_json_post_with_headers, proxy_sse_get,
     },
+    telemetry::{ComputeAccelerationTelemetry, fetch_compute_acceleration},
 };
+use crate::telemetry::{ComputeRolloutTelemetry, fetch_compute_rollout};
 
 #[derive(Debug, Deserialize)]
 pub struct ApprovalRequest {
@@ -55,6 +57,8 @@ pub struct ControlPlaneStatusResponse {
     pub dispatch_timeout_secs: u64,
     pub light_lane: ControlPlaneLaneStatus,
     pub heavy_lane: ControlPlaneLaneStatus,
+    pub compute_acceleration: ComputeAccelerationTelemetry,
+    pub compute_rollout: ComputeRolloutTelemetry,
 }
 
 #[derive(Debug, Serialize)]
@@ -74,6 +78,8 @@ pub async fn healthz(State(state): State<AppState>) -> Json<HealthResponse> {
 
 pub async fn statusz(State(state): State<AppState>) -> Json<ControlPlaneStatusResponse> {
     let snapshot = state.dispatch_controller.snapshot().await;
+    let compute_acceleration = fetch_compute_acceleration(&state).await;
+    let compute_rollout = fetch_compute_rollout(&state).await;
     Json(ControlPlaneStatusResponse {
         status: "ok",
         service: "sentinel-orchestrator",
@@ -90,6 +96,8 @@ pub async fn statusz(State(state): State<AppState>) -> Json<ControlPlaneStatusRe
             available: snapshot.heavy_available,
             in_use: snapshot.heavy_capacity.saturating_sub(snapshot.heavy_available),
         },
+        compute_acceleration,
+        compute_rollout,
     })
 }
 

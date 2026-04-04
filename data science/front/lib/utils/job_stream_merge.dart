@@ -1,6 +1,8 @@
 /// 作业流式帧合并工具
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../models/job_record.dart';
 import '../models/job_stream_frame.dart';
 
@@ -27,6 +29,7 @@ JobRecord mergeJobStreamFrame(JobRecord current, JobStreamFrame frame) {
               Map<String, dynamic>.from(frame.data['approval_state'] as Map),
             )
           : current.approvalState,
+      metrics: _mergeMetrics(current.metrics, frame.data['metrics']),
     );
   }
 
@@ -37,6 +40,7 @@ JobRecord mergeJobStreamFrame(JobRecord current, JobStreamFrame frame) {
       progress: frame.data['status']?.toString() == 'succeeded'
           ? 100
           : current.progress,
+      metrics: _mergeMetrics(current.metrics, frame.data['metrics']),
     );
   }
 
@@ -63,6 +67,7 @@ JobRecord mergeJobStreamFrame(JobRecord current, JobStreamFrame frame) {
     steps: nextSteps,
     artifacts: nextArtifacts,
     events: nextEvents,
+    metrics: _mergeMetrics(current.metrics, event.metrics),
   );
 }
 
@@ -133,7 +138,8 @@ List<JobEvent> _appendEvent(List<JobEvent> events, JobEvent event) {
       last.phase == event.phase &&
       last.status == event.status &&
       last.message == event.message &&
-      last.progress == event.progress) {
+      last.progress == event.progress &&
+      mapEquals(last.metrics, event.metrics)) {
     return next;
   }
   next.add(event);
@@ -208,4 +214,36 @@ bool? _asBool(Object? value) {
     }
   }
   return null;
+}
+
+Map<String, dynamic> _mergeMetrics(
+  Map<String, dynamic> current,
+  Object? incoming,
+) {
+  if (incoming is! Map) {
+    return current;
+  }
+  final next = Map<String, dynamic>.from(current);
+  incoming.forEach((key, value) {
+    if (key == 'compute_metrics' && value is Map) {
+      final currentCompute = next[key] is Map
+          ? Map<String, dynamic>.from(next[key] as Map)
+          : <String, dynamic>{};
+      for (final entry in value.entries) {
+        if (entry.value is Map) {
+          final existing = currentCompute[entry.key] is Map
+              ? Map<String, dynamic>.from(currentCompute[entry.key] as Map)
+              : <String, dynamic>{};
+          currentCompute[entry.key.toString()] = {
+            ...existing,
+            ...Map<String, dynamic>.from(entry.value as Map),
+          };
+        }
+      }
+      next[key] = currentCompute;
+      return;
+    }
+    next[key.toString()] = value;
+  });
+  return next;
 }

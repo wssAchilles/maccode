@@ -1,6 +1,7 @@
 /// 驾驶舱摘要模型
 library;
 
+import 'compute_rollout_policy.dart';
 import 'job_record.dart';
 
 class DashboardSummary {
@@ -76,6 +77,8 @@ class ControlPlaneStatus {
     required this.pythonWorkerConfigured,
     this.lightLane = const ControlPlaneLane.empty(),
     this.heavyLane = const ControlPlaneLane.empty(),
+    this.computeAcceleration = const ComputeAccelerationStatus.empty(),
+    this.computeRollout = const ComputeRolloutPolicy.empty(),
   });
 
   const ControlPlaneStatus.empty()
@@ -88,7 +91,9 @@ class ControlPlaneStatus {
       activeOperations = 0,
       pythonWorkerConfigured = false,
       lightLane = const ControlPlaneLane.empty(),
-      heavyLane = const ControlPlaneLane.empty();
+      heavyLane = const ControlPlaneLane.empty(),
+      computeAcceleration = const ComputeAccelerationStatus.empty(),
+      computeRollout = const ComputeRolloutPolicy.empty();
 
   final bool enabled;
   final String executionMode;
@@ -100,6 +105,8 @@ class ControlPlaneStatus {
   final bool pythonWorkerConfigured;
   final ControlPlaneLane lightLane;
   final ControlPlaneLane heavyLane;
+  final ComputeAccelerationStatus computeAcceleration;
+  final ComputeRolloutPolicy computeRollout;
 
   factory ControlPlaneStatus.fromJson(Map<String, dynamic> json) {
     return ControlPlaneStatus(
@@ -119,6 +126,16 @@ class ControlPlaneStatus {
       heavyLane: ControlPlaneLane.fromJson(
         json['heavy_lane'] is Map
             ? Map<String, dynamic>.from(json['heavy_lane'] as Map)
+            : const {},
+      ),
+      computeAcceleration: ComputeAccelerationStatus.fromJson(
+        json['compute_acceleration'] is Map
+            ? Map<String, dynamic>.from(json['compute_acceleration'] as Map)
+            : const {},
+      ),
+      computeRollout: ComputeRolloutPolicy.fromJson(
+        json['compute_rollout'] is Map
+            ? Map<String, dynamic>.from(json['compute_rollout'] as Map)
             : const {},
       ),
     );
@@ -164,6 +181,7 @@ class ComputeAccelerationStatus {
     required this.hottestComponent,
     required this.lastUpdatedAt,
     this.components = const [],
+    this.rollout = const ComputeRolloutPolicy.empty(),
   });
 
   const ComputeAccelerationStatus.empty()
@@ -178,7 +196,8 @@ class ComputeAccelerationStatus {
       benchmarkReady = false,
       hottestComponent = '--',
       lastUpdatedAt = '',
-      components = const [];
+      components = const [],
+      rollout = const ComputeRolloutPolicy.empty();
 
   final bool enabled;
   final String status;
@@ -192,6 +211,7 @@ class ComputeAccelerationStatus {
   final String hottestComponent;
   final String lastUpdatedAt;
   final List<ComputeAccelerationComponent> components;
+  final ComputeRolloutPolicy rollout;
 
   factory ComputeAccelerationStatus.fromJson(Map<String, dynamic> json) {
     return ComputeAccelerationStatus(
@@ -210,6 +230,11 @@ class ComputeAccelerationStatus {
       components: _mapList(
         json['components'],
         ComputeAccelerationComponent.fromJson,
+      ),
+      rollout: ComputeRolloutPolicy.fromJson(
+        json['rollout'] is Map
+            ? Map<String, dynamic>.from(json['rollout'] as Map)
+            : const {},
       ),
     );
   }

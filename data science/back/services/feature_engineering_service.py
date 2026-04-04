@@ -25,7 +25,10 @@ class FeatureEngineeringService:
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         started_at = perf_counter()
         working_df = df.sort_values('Date').reset_index(drop=True).copy()
-        load_features, kernel_meta = compute_load_features(working_df['Site_Load'])
+        load_features, kernel_meta = compute_load_features(
+            working_df['Site_Load'],
+            context=context,
+        )
 
         for column, series in load_features.items():
             working_df[column] = series
@@ -65,6 +68,10 @@ class FeatureEngineeringService:
             'native_available': kernel_meta['native_available'],
             'module_name': kernel_meta['module_name'],
             'fallback_reason': kernel_meta.get('fallback_reason') or '',
+            'rollout_mode': kernel_meta.get('rollout_mode') or '',
+            'rollout_reason': kernel_meta.get('rollout_reason') or '',
+            'canary_percent': int(kernel_meta.get('canary_percent') or 0),
+            'benchmark_ready': bool(kernel_meta.get('benchmark_ready')),
             'duration_ms': round(duration_ms, 3),
             'input_rows': original_len,
             'output_rows': len(working_df),
@@ -88,6 +95,9 @@ class FeatureEngineeringService:
                 'output_rows': len(working_df),
                 'dropped_rows': dropped_len,
                 'fallback_reason': kernel_meta.get('fallback_reason') or '',
+                'rollout_mode': kernel_meta.get('rollout_mode') or '',
+                'rollout_reason': kernel_meta.get('rollout_reason') or '',
+                'benchmark_ready': bool(kernel_meta.get('benchmark_ready')),
             },
         )
 

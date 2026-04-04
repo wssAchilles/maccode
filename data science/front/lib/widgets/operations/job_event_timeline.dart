@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
 import '../../utils/job_presentation.dart';
+import '../../utils/operation_compute_metrics.dart';
 import '../common/glass_card.dart';
 
 class JobEventTimeline extends StatelessWidget {
@@ -336,6 +337,9 @@ class _EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final phaseLabel = _phaseLabel(event.phase);
     final statusColor = _statusColor(event.status);
+    final computeSummary = buildComputeSummaryLine(
+      event.metrics.isNotEmpty ? event.metrics : event.step?.metrics ?? const {},
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,6 +411,15 @@ class _EventRow extends StatelessWidget {
                   buildJobEventMessage(job, event),
                   style: AppTextStyles.bodyMedium,
                 ),
+                if (computeSummary.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Compute · $computeSummary',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

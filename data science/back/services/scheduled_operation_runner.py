@@ -13,14 +13,18 @@ from services.ml_service import EnergyPredictor
 
 
 def run_fetch_data(payload: Dict[str, Any]) -> Dict[str, Any]:
-    success = ExternalDataService().fetch_and_publish()
+    service = ExternalDataService()
+    success = service.fetch_and_publish()
     if not success:
         raise RuntimeError('fetch_and_publish returned False')
+    runtime_metrics = dict(service.last_runtime_metrics or {})
 
     return {
         'task_name': str(payload.get('task_name') or 'fetch_data'),
         'success': True,
         'storage_path': 'data/processed/cleaned_energy_data_all.csv',
+        'compute_metrics': dict(runtime_metrics.get('compute_metrics') or {}),
+        'metrics': runtime_metrics,
         'artifacts': [
             {
                 'type': 'dataset',
@@ -40,11 +44,20 @@ def run_train_model(payload: Dict[str, Any]) -> Dict[str, Any]:
         use_firebase_storage=use_firebase_storage,
         n_estimators=n_estimators,
     )
+    operation_metrics = {
+        'model_type': metrics.get('model_type'),
+        'train_rmse': metrics.get('train_rmse'),
+        'test_rmse': metrics.get('test_rmse'),
+        'r2_score': metrics.get('r2_score'),
+        'compute_metrics': dict(predictor.last_compute_metrics or {}),
+    }
 
     return {
         **metrics,
         'task_name': str(payload.get('task_name') or 'train_model'),
         'model_path': predictor.firebase_model_path,
+        'compute_metrics': dict(predictor.last_compute_metrics or {}),
+        'metrics': operation_metrics,
         'artifacts': [
             {
                 'type': 'model',

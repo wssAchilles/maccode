@@ -7,7 +7,8 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from services.compute_native_loader import get_native_backend_status, load_native_module
+from services.compute_backend_selector import select_feature_engineering_backend
+from services.compute_native_loader import load_native_module
 
 
 def _python_load_features(site_load: pd.Series) -> Dict[str, pd.Series]:
@@ -56,20 +57,28 @@ def _native_load_features(site_load: pd.Series) -> Dict[str, pd.Series]:
     }
 
 
-def compute_load_features(site_load: pd.Series) -> Tuple[Dict[str, pd.Series], Dict[str, Any]]:
+def compute_load_features(
+    site_load: pd.Series,
+    *,
+    context: str = '',
+) -> Tuple[Dict[str, pd.Series], Dict[str, Any]]:
     """Compute lag and rolling features via the configured backend."""
 
-    backend_status = get_native_backend_status()
-    backend = backend_status.active_backend
+    selection = select_feature_engineering_backend(context=context)
+    backend = selection['backend']
 
-    if backend_status.native_enabled and backend_status.native_available:
+    if selection['backend'] == 'native_cpp':
         try:
             return _native_load_features(site_load), {
                 'backend': 'native_cpp',
-                'native_enabled': True,
-                'native_available': True,
-                'module_name': backend_status.module_name,
+                'native_enabled': selection['native_enabled'],
+                'native_available': selection['native_available'],
+                'module_name': selection['module_name'],
                 'fallback_reason': '',
+                'rollout_mode': selection['rollout_mode'],
+                'rollout_reason': selection['rollout_reason'],
+                'canary_percent': selection['canary_percent'],
+                'benchmark_ready': selection['benchmark_ready'],
             }
         except Exception as exc:
             backend = 'python_pandas'
@@ -77,13 +86,16 @@ def compute_load_features(site_load: pd.Series) -> Tuple[Dict[str, pd.Series], D
         else:
             fallback_reason = ''
     else:
-        fallback_reason = backend_status.reason
+        fallback_reason = selection['rollout_reason']
 
     return _python_load_features(site_load), {
         'backend': backend,
-        'native_enabled': backend_status.native_enabled,
-        'native_available': backend_status.native_available,
-        'module_name': backend_status.module_name,
+        'native_enabled': selection['native_enabled'],
+        'native_available': selection['native_available'],
+        'module_name': selection['module_name'],
         'fallback_reason': fallback_reason,
+        'rollout_mode': selection['rollout_mode'],
+        'rollout_reason': selection['rollout_reason'],
+        'canary_percent': selection['canary_percent'],
+        'benchmark_ready': selection['benchmark_ready'],
     }
-

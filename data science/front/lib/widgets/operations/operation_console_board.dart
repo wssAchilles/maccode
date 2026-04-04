@@ -8,6 +8,7 @@ import '../../viewmodels/operation_console_view_model.dart';
 import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 import 'job_event_timeline.dart';
+import 'operation_compute_metrics_strip.dart';
 import 'operation_execution_policy_strip.dart';
 
 class OperationConsoleBoard extends StatelessWidget {
@@ -29,6 +30,12 @@ class OperationConsoleBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final operation = viewModel.selectedOperation;
+    final scalarMetrics = operation == null
+        ? const <MapEntry<String, dynamic>>[]
+        : operation.metrics.entries
+              .where((entry) => entry.value is! Map && entry.key != 'compute_metrics')
+              .take(4)
+              .toList(growable: false);
     return DutySectionBlock(
       title: '运行控制台',
       subtitle: '实时查看当前选中的 Operation 执行轨迹、审批状态和产物发布。',
@@ -146,11 +153,14 @@ class OperationConsoleBoard extends StatelessWidget {
                       ),
                       if (operation.metrics.isNotEmpty) ...[
                         const SizedBox(height: 12),
+                        OperationComputeMetricsStrip(metrics: operation.metrics),
+                      ],
+                      if (scalarMetrics.isNotEmpty) ...[
+                        const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: operation.metrics.entries
-                              .take(4)
+                          children: scalarMetrics
                               .map((entry) {
                                 return _NeutralPill(
                                   label: '${entry.key} · ${entry.value}',

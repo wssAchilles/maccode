@@ -51,6 +51,13 @@ class ComputeAccelerationBoard extends StatelessWidget {
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
+                if (status.rollout.components.isNotEmpty)
+                  _Pill(
+                    label:
+                        'ROLLOUT · ${_rolloutHeadline(status.rollout.components.first.rolloutMode)}',
+                    foreground: AppColors.textPrimary,
+                    background: AppColors.surfaceVariant,
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -319,6 +326,10 @@ String _backendLabel(String backend) {
   switch (backend) {
     case 'native_cpp':
       return 'Native C++';
+    case 'python_vectorized':
+      return 'Python Vectorized';
+    case 'python_loop':
+      return 'Python Loop';
     case 'python_numpy':
       return 'Python NumPy';
     default:
@@ -344,4 +355,17 @@ class _StatusTone {
 
   final Color foreground;
   final Color background;
+}
+
+String _rolloutHeadline(String mode) {
+  switch (mode) {
+    case 'native_candidate':
+      return 'Native Canary';
+    case 'native_enforced':
+      return 'Native Forced';
+    case 'vectorized_python':
+      return 'Vectorized';
+    default:
+      return 'Python Stable';
+  }
 }
