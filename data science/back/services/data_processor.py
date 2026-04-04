@@ -7,7 +7,6 @@ Data Preprocessing Module for Home Microgrid Energy Optimization System
 """
 
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from typing import Tuple, List
 import warnings

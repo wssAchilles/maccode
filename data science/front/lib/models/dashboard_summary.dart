@@ -14,6 +14,7 @@ class DashboardSummary {
     required this.assetSummary,
     required this.alerts,
     this.controlPlane = const ControlPlaneStatus.empty(),
+    this.computeAcceleration = const ComputeAccelerationStatus.empty(),
   });
 
   final List<SystemStatusItem> systemStatus;
@@ -25,6 +26,7 @@ class DashboardSummary {
   final AssetSummary assetSummary;
   final List<DashboardAlert> alerts;
   final ControlPlaneStatus controlPlane;
+  final ComputeAccelerationStatus computeAcceleration;
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
     return DashboardSummary(
@@ -51,6 +53,11 @@ class DashboardSummary {
       controlPlane: ControlPlaneStatus.fromJson(
         json['control_plane'] is Map
             ? Map<String, dynamic>.from(json['control_plane'] as Map)
+            : const {},
+      ),
+      computeAcceleration: ComputeAccelerationStatus.fromJson(
+        json['compute_acceleration'] is Map
+            ? Map<String, dynamic>.from(json['compute_acceleration'] as Map)
             : const {},
       ),
     );
@@ -139,6 +146,128 @@ class ControlPlaneLane {
       capacity: _asInt(json['capacity']) ?? 0,
       available: _asInt(json['available']) ?? 0,
       inUse: _asInt(json['in_use']) ?? 0,
+    );
+  }
+}
+
+class ComputeAccelerationStatus {
+  const ComputeAccelerationStatus({
+    required this.enabled,
+    required this.status,
+    required this.message,
+    required this.preferredBackend,
+    required this.activeBackend,
+    required this.nativeEnabled,
+    required this.nativeAvailable,
+    required this.profiledComponents,
+    required this.benchmarkReady,
+    required this.hottestComponent,
+    required this.lastUpdatedAt,
+    this.components = const [],
+  });
+
+  const ComputeAccelerationStatus.empty()
+    : enabled = false,
+      status = 'info',
+      message = '',
+      preferredBackend = 'python_pandas',
+      activeBackend = 'python_pandas',
+      nativeEnabled = false,
+      nativeAvailable = false,
+      profiledComponents = 0,
+      benchmarkReady = false,
+      hottestComponent = '--',
+      lastUpdatedAt = '',
+      components = const [];
+
+  final bool enabled;
+  final String status;
+  final String message;
+  final String preferredBackend;
+  final String activeBackend;
+  final bool nativeEnabled;
+  final bool nativeAvailable;
+  final int profiledComponents;
+  final bool benchmarkReady;
+  final String hottestComponent;
+  final String lastUpdatedAt;
+  final List<ComputeAccelerationComponent> components;
+
+  factory ComputeAccelerationStatus.fromJson(Map<String, dynamic> json) {
+    return ComputeAccelerationStatus(
+      enabled: _asBool(json['enabled']) ?? false,
+      status: (json['status'] ?? 'info').toString(),
+      message: (json['message'] ?? '').toString(),
+      preferredBackend: (json['preferred_backend'] ?? 'python_pandas')
+          .toString(),
+      activeBackend: (json['active_backend'] ?? 'python_pandas').toString(),
+      nativeEnabled: _asBool(json['native_enabled']) ?? false,
+      nativeAvailable: _asBool(json['native_available']) ?? false,
+      profiledComponents: _asInt(json['profiled_components']) ?? 0,
+      benchmarkReady: _asBool(json['benchmark_ready']) ?? false,
+      hottestComponent: (json['hottest_component'] ?? '--').toString(),
+      lastUpdatedAt: (json['last_updated_at'] ?? '').toString(),
+      components: _mapList(
+        json['components'],
+        ComputeAccelerationComponent.fromJson,
+      ),
+    );
+  }
+}
+
+class ComputeAccelerationComponent {
+  const ComputeAccelerationComponent({
+    required this.key,
+    required this.label,
+    required this.status,
+    required this.activeBackend,
+    required this.preferredBackend,
+    required this.nativeEnabled,
+    required this.nativeAvailable,
+    required this.lastDurationMs,
+    required this.avgDurationMs,
+    required this.p95DurationMs,
+    required this.invocationCount,
+    required this.lastRows,
+    required this.lastContext,
+    required this.contexts,
+    required this.recommendedAction,
+  });
+
+  final String key;
+  final String label;
+  final String status;
+  final String activeBackend;
+  final String preferredBackend;
+  final bool nativeEnabled;
+  final bool nativeAvailable;
+  final double lastDurationMs;
+  final double avgDurationMs;
+  final double p95DurationMs;
+  final int invocationCount;
+  final int lastRows;
+  final String lastContext;
+  final List<String> contexts;
+  final String recommendedAction;
+
+  factory ComputeAccelerationComponent.fromJson(Map<String, dynamic> json) {
+    return ComputeAccelerationComponent(
+      key: (json['key'] ?? '').toString(),
+      label: (json['label'] ?? '--').toString(),
+      status: (json['status'] ?? 'info').toString(),
+      activeBackend: (json['active_backend'] ?? 'python_pandas').toString(),
+      preferredBackend: (json['preferred_backend'] ?? 'python_pandas')
+          .toString(),
+      nativeEnabled: _asBool(json['native_enabled']) ?? false,
+      nativeAvailable: _asBool(json['native_available']) ?? false,
+      lastDurationMs: _asDouble(json['last_duration_ms']) ?? 0.0,
+      avgDurationMs: _asDouble(json['avg_duration_ms']) ?? 0.0,
+      p95DurationMs: _asDouble(json['p95_duration_ms']) ?? 0.0,
+      invocationCount: _asInt(json['invocation_count']) ?? 0,
+      lastRows: _asInt(json['last_rows']) ?? 0,
+      lastContext: (json['last_context'] ?? '').toString(),
+      contexts: _mapPrimitiveList(json['contexts']),
+      recommendedAction: (json['recommended_action'] ?? '保持监控').toString(),
     );
   }
 }

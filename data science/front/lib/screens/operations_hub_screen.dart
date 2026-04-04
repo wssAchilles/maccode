@@ -22,6 +22,7 @@ import '../widgets/operations/approval_resolution_dialog.dart';
 import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
+import '../widgets/operations/compute_acceleration_board.dart';
 import '../widgets/operations/control_task_board.dart';
 import '../widgets/operations/control_task_edit_dialog.dart';
 import '../widgets/operations/control_plane_status_board.dart';
@@ -1293,11 +1294,17 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             _openChainWorkspace(chain, source: '处置清单');
           },
         ),
+        if (safeSummary.controlPlane.enabled || safeSummary.controlPlane.message.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          ControlPlaneStatusBoard(status: safeSummary.controlPlane),
+        ],
+        if (safeSummary.computeAcceleration.enabled ||
+            safeSummary.computeAcceleration.components.isNotEmpty ||
+            safeSummary.computeAcceleration.message.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          ComputeAccelerationBoard(status: safeSummary.computeAcceleration),
+        ],
         if (widget.controlTaskViewModel != null) ...[
-          if (safeSummary.controlPlane.enabled || safeSummary.controlPlane.message.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            ControlPlaneStatusBoard(status: safeSummary.controlPlane),
-          ],
           const SizedBox(height: 20),
           ControlTaskBoard(
             tasks: widget.controlTaskViewModel!.tasks,

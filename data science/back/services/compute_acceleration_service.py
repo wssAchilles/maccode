@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List
 
 from google.cloud import firestore
@@ -41,6 +43,14 @@ def _default_component_doc(component: str, label: str) -> Dict[str, Any]:
     }
 
 
+def _serialize_snapshot_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    serialized = dict(item)
+    updated_at = serialized.get('last_updated_at')
+    if isinstance(updated_at, datetime):
+        serialized['last_updated_at'] = updated_at.isoformat()
+    return serialized
+
+
 class ComputeAccelerationService:
     """Persist compute hotspot telemetry and build dashboard-ready summaries."""
 
@@ -63,12 +73,47 @@ class ComputeAccelerationService:
 
     @staticmethod
     def _get_firestore_client():
-        return firestore.Client(database=Config.FIRESTORE_DATABASE)
+        return firestore.Client(
+            project=Config.GCP_PROJECT_ID,
+            database=Config.FIRESTORE_DATABASE,
+        )
 
     @classmethod
-    def _collection(cls):
-        return cls._get_firestore_client().collection(
+    def _collection(cls, client=None):
+        client = client or cls._get_firestore_client()
+        return client.collection(
             getattr(Config, 'COMPUTE_ACCELERATION_COLLECTION', 'compute_acceleration'),
+        )
+
+    @staticmethod
+    def _local_snapshot_path() -> Path:
+        project_root = Path(__file__).resolve().parent.parent.parent
+        return project_root / 'outputs' / 'compute_acceleration_local.json'
+
+    @classmethod
+    def _load_local_snapshot(cls) -> Dict[str, Dict[str, Any]]:
+        snapshot_path = cls._local_snapshot_path()
+        if not snapshot_path.exists():
+            return {}
+        try:
+            payload = json.loads(snapshot_path.read_text(encoding='utf-8'))
+            if isinstance(payload, dict):
+                return {
+                    str(key): value
+                    for key, value in payload.items()
+                    if isinstance(value, dict)
+                }
+        except Exception as exc:
+            logger.warning('Failed to read local compute snapshot: %s', exc)
+        return {}
+
+    @classmethod
+    def _write_local_snapshot(cls, payload: Dict[str, Dict[str, Any]]) -> None:
+        snapshot_path = cls._local_snapshot_path()
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding='utf-8',
         )
 
     @classmethod
@@ -124,13 +169,82 @@ class ComputeAccelerationService:
     ) -> str:
         if native_enabled and not native_available:
             return '本地 native 模块未安装，继续使用 Python fallback 并按需构建 C++ 插件。'
-        if status in ('warning', 'error') and active_backend == 'python_pandas':
+        if status in ('warning', 'error') and str(active_backend).startswith('python'):
             return '优先复核热点样本规模并运行 benchmark，再决定是否启用 C++ backend。'
         if status in ('warning', 'error'):
             return '热点计算已加速，但耗时仍偏高，建议继续做数据规模与窗口配置剖析。'
         if active_backend == 'native_cpp':
             return '当前热点已走 native backend，保持灰度监控即可。'
         return '当前热点运行平稳，继续保留 profiling 观测。'
+
+    @classmethod
+    def _build_component_payload(
+        cls,
+        *,
+        component: str,
+        label: str,
+        current: Dict[str, Any],
+        duration_ms: float,
+        rows: int,
+        backend: str,
+        context: str,
+        native_enabled: bool,
+        native_available: bool,
+        preferred_backend: str,
+        metadata: Dict[str, Any],
+        max_samples: int,
+    ) -> Dict[str, Any]:
+        recent_durations = list(current.get('recent_durations_ms') or [])
+        recent_durations.append(float(duration_ms))
+        recent_durations = recent_durations[-max_samples:]
+
+        previous_count = int(current.get('invocation_count') or 0)
+        invocation_count = previous_count + 1
+        previous_avg = float(current.get('avg_duration_ms') or 0.0)
+        avg_duration_ms = (
+            (previous_avg * previous_count) + float(duration_ms)
+        ) / invocation_count
+        p95_duration_ms = cls._percentile(recent_durations, 95.0)
+
+        contexts = list(current.get('contexts') or [])
+        if context:
+            contexts = [item for item in contexts if item != context]
+            contexts.append(context)
+            contexts = contexts[-6:]
+
+        component_status = cls._component_status(
+            component=component,
+            duration_ms=float(duration_ms),
+            p95_duration_ms=p95_duration_ms,
+            active_backend=backend,
+            native_enabled=native_enabled,
+            native_available=native_available,
+        )
+        return {
+            'component': component,
+            'label': label,
+            'status': component_status,
+            'active_backend': backend,
+            'native_enabled': bool(native_enabled),
+            'native_available': bool(native_available),
+            'preferred_backend': preferred_backend,
+            'invocation_count': invocation_count,
+            'last_duration_ms': round(float(duration_ms), 3),
+            'avg_duration_ms': round(float(avg_duration_ms), 3),
+            'p95_duration_ms': round(float(p95_duration_ms), 3),
+            'recent_durations_ms': [round(float(value), 3) for value in recent_durations],
+            'contexts': contexts,
+            'last_context': context,
+            'last_rows': int(rows or 0),
+            'last_updated_at': _utc_now(),
+            'recommended_action': cls._recommended_action(
+                status=component_status,
+                active_backend=backend,
+                native_enabled=native_enabled,
+                native_available=native_available,
+            ),
+            'metadata': metadata,
+        }
 
     @classmethod
     def record_component_sample(
@@ -154,75 +268,50 @@ class ComputeAccelerationService:
         label = cls.COMPONENT_LABELS.get(component, component)
         metadata = dict(metadata or {})
         max_samples = int(getattr(Config, 'COMPUTE_PROFILE_WINDOW', 24) or 24)
-        doc_ref = cls._collection().document(component)
-        transaction = cls._get_firestore_client().transaction()
-
-        @firestore.transactional
-        def _update(transaction):
-            snapshot = doc_ref.get(transaction=transaction)
+        try:
+            client = cls._get_firestore_client()
+            doc_ref = cls._collection(client).document(component)
+            snapshot = doc_ref.get()
             current = snapshot.to_dict() if snapshot.exists else _default_component_doc(component, label)
-            recent_durations = list(current.get('recent_durations_ms') or [])
-            recent_durations.append(float(duration_ms))
-            recent_durations = recent_durations[-max_samples:]
-
-            previous_count = int(current.get('invocation_count') or 0)
-            invocation_count = previous_count + 1
-            previous_avg = float(current.get('avg_duration_ms') or 0.0)
-            avg_duration_ms = (
-                (previous_avg * previous_count) + float(duration_ms)
-            ) / invocation_count
-            p95_duration_ms = cls._percentile(recent_durations, 95.0)
-
-            contexts = list(current.get('contexts') or [])
-            if context:
-                contexts = [item for item in contexts if item != context]
-                contexts.append(context)
-                contexts = contexts[-6:]
-
-            component_status = cls._component_status(
+            payload = cls._build_component_payload(
                 component=component,
-                duration_ms=float(duration_ms),
-                p95_duration_ms=p95_duration_ms,
-                active_backend=backend,
+                label=label,
+                current=current,
+                duration_ms=duration_ms,
+                rows=rows,
+                backend=backend,
+                context=context,
                 native_enabled=native_enabled,
                 native_available=native_available,
+                preferred_backend=preferred_backend,
+                metadata=metadata,
+                max_samples=max_samples,
             )
-            payload = {
-                'component': component,
-                'label': label,
-                'status': component_status,
-                'active_backend': backend,
-                'native_enabled': bool(native_enabled),
-                'native_available': bool(native_available),
-                'preferred_backend': preferred_backend,
-                'invocation_count': invocation_count,
-                'last_duration_ms': round(float(duration_ms), 3),
-                'avg_duration_ms': round(float(avg_duration_ms), 3),
-                'p95_duration_ms': round(float(p95_duration_ms), 3),
-                'recent_durations_ms': [round(float(value), 3) for value in recent_durations],
-                'contexts': contexts,
-                'last_context': context,
-                'last_rows': int(rows or 0),
-                'last_updated_at': _utc_now(),
-                'recommended_action': cls._recommended_action(
-                    status=component_status,
-                    active_backend=backend,
-                    native_enabled=native_enabled,
-                    native_available=native_available,
-                ),
-                'metadata': metadata,
-            }
-            transaction.set(doc_ref, payload, merge=True)
-
-        try:
-            _update(transaction)
+            doc_ref.set(payload, merge=True)
         except Exception as exc:
             logger.warning(
                 'Failed to persist compute sample for %s: %s',
                 component,
                 exc,
-                exc_info=True,
             )
+            local_snapshot = cls._load_local_snapshot()
+            current = local_snapshot.get(component) or _default_component_doc(component, label)
+            payload = cls._build_component_payload(
+                component=component,
+                label=label,
+                current=current,
+                duration_ms=duration_ms,
+                rows=rows,
+                backend=backend,
+                context=context,
+                native_enabled=native_enabled,
+                native_available=native_available,
+                preferred_backend=preferred_backend,
+                metadata=metadata,
+                max_samples=max_samples,
+            )
+            local_snapshot[component] = _serialize_snapshot_item(payload)
+            cls._write_local_snapshot(local_snapshot)
 
     @classmethod
     def empty_status(cls) -> Dict[str, Any]:
@@ -248,15 +337,21 @@ class ComputeAccelerationService:
 
         native_status = get_native_backend_status()
         base = cls.empty_status()
+        source_label = 'firestore'
         try:
-            docs = [doc.to_dict() for doc in cls._collection().stream()]
+            client = cls._get_firestore_client()
+            docs = [doc.to_dict() for doc in cls._collection(client).stream()]
         except Exception as exc:
-            logger.warning('Failed to load compute acceleration status: %s', exc, exc_info=True)
-            return {
-                **base,
-                'status': 'warning',
-                'message': f'Compute acceleration telemetry unavailable: {exc}',
-            }
+            logger.warning('Failed to load compute acceleration status: %s', exc)
+            local_snapshot = cls._load_local_snapshot()
+            docs = list(local_snapshot.values())
+            source_label = 'local'
+            if not docs:
+                return {
+                    **base,
+                    'status': 'warning',
+                    'message': f'Compute acceleration telemetry unavailable: {exc}',
+                }
 
         normalized_components: List[Dict[str, Any]] = []
         overall_status = 'info'
@@ -268,6 +363,11 @@ class ComputeAccelerationService:
             if cls.STATUS_ORDER.get(component_status, 0) > cls.STATUS_ORDER.get(overall_status, 0):
                 overall_status = component_status
             updated_at = item.get('last_updated_at')
+            if isinstance(updated_at, str):
+                try:
+                    updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                except Exception:
+                    updated_at = None
             if isinstance(updated_at, datetime) and (
                 last_updated_at is None or updated_at > last_updated_at
             ):
@@ -316,6 +416,8 @@ class ComputeAccelerationService:
                 if active_backend == 'python_pandas'
                 else 'Native compute backend is active'
             )
+            if source_label == 'local':
+                message = 'Compute acceleration telemetry active (local snapshot)'
         else:
             overall_status = 'info'
             message = 'Compute acceleration telemetry is waiting for the first hotspot sample'
@@ -338,4 +440,3 @@ class ComputeAccelerationService:
             'last_updated_at': last_updated_at.isoformat() if isinstance(last_updated_at, datetime) else '',
             'components': normalized_components[:4],
         }
-

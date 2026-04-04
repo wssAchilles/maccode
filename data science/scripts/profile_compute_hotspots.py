@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -57,16 +56,19 @@ def main() -> int:
         compute_context='benchmark_feature_engineering',
     )
 
-    optimizer = EnergyOptimizer()
-    optimizer.simulate_scenarios(
-        load_profile=profiled['Site_Load'].tail(24).astype(float).tolist(),
-        price_profile=profiled['Price'].tail(24).astype(float).tolist(),
-        variations={
-            'battery_capacity': [50, 100, 150],
-            'max_power': [20, 40, 60],
-        },
-        profile_context='benchmark_scenario_simulation',
-    )
+    try:
+        optimizer = EnergyOptimizer()
+        optimizer.simulate_scenarios(
+            load_profile=profiled['Site_Load'].tail(24).astype(float).tolist(),
+            price_profile=profiled['Price'].tail(24).astype(float).tolist(),
+            variations={
+                'battery_capacity': [50, 100, 150],
+                'max_power': [20, 40, 60],
+            },
+            profile_context='benchmark_scenario_simulation',
+        )
+    except Exception as exc:
+        print(f'⚠️ Scenario simulation benchmark skipped: {exc}')
 
     snapshot = ComputeAccelerationService.get_status()
     output_dir = ROOT_DIR / 'outputs'
