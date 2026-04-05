@@ -152,6 +152,85 @@ STANDARD_TOOL_CONTRACTS: Dict[str, OperationToolContract] = {
         concurrency_key='rag:ingest',
         artifact_policy=_DEFAULT_ARTIFACT_POLICY,
     ),
+    'prepare_compute_rollout_change': OperationToolContract(
+        name='prepare_compute_rollout_change',
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'component': {'type': 'string'},
+                'target_policy': {'type': 'object'},
+            },
+        },
+        output_schema={'type': 'object', 'properties': {'preview_policy': {'type': 'object'}}},
+        timeout_s=120,
+        retry_policy=_DEFAULT_RETRY_POLICY,
+        approval_policy=_MANUAL_APPROVAL,
+        execution_target='light_worker',
+        concurrency_key='governance:compute:prepare',
+        artifact_policy=_DEFAULT_ARTIFACT_POLICY,
+    ),
+    'apply_compute_rollout_change': OperationToolContract(
+        name='apply_compute_rollout_change',
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'component': {'type': 'string'},
+                'target_policy': {'type': 'object'},
+            },
+        },
+        output_schema={'type': 'object', 'properties': {'after_policy': {'type': 'object'}}},
+        timeout_s=180,
+        retry_policy=_DEFAULT_RETRY_POLICY,
+        approval_policy=_MANUAL_APPROVAL,
+        execution_target='light_worker',
+        concurrency_key='governance:compute:apply',
+        artifact_policy=_DEFAULT_ARTIFACT_POLICY,
+    ),
+    'prepare_compute_benchmark': OperationToolContract(
+        name='prepare_compute_benchmark',
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'component': {'type': 'string'},
+                'sample_rows': {'type': 'integer'},
+            },
+        },
+        output_schema={'type': 'object', 'properties': {'component': {'type': 'string'}}},
+        timeout_s=120,
+        retry_policy=_DEFAULT_RETRY_POLICY,
+        approval_policy=_NO_APPROVAL,
+        execution_target='operation_target',
+        concurrency_key='governance:compute:benchmark:prepare',
+        artifact_policy=_DEFAULT_ARTIFACT_POLICY,
+    ),
+    'run_compute_benchmark': OperationToolContract(
+        name='run_compute_benchmark',
+        input_schema={
+            'type': 'object',
+            'properties': {
+                'component': {'type': 'string'},
+                'sample_rows': {'type': 'integer'},
+            },
+        },
+        output_schema={'type': 'object', 'properties': {'metrics': {'type': 'object'}}},
+        timeout_s=900,
+        retry_policy=_DEFAULT_RETRY_POLICY,
+        approval_policy=_NO_APPROVAL,
+        execution_target='operation_target',
+        concurrency_key='governance:compute:benchmark:run',
+        artifact_policy=_DEFAULT_ARTIFACT_POLICY,
+    ),
+    'publish_compute_benchmark': OperationToolContract(
+        name='publish_compute_benchmark',
+        input_schema={'type': 'object', 'properties': {'artifacts': {'type': 'array'}}},
+        output_schema={'type': 'object', 'properties': {'artifacts': {'type': 'array'}}},
+        timeout_s=180,
+        retry_policy=_DEFAULT_RETRY_POLICY,
+        approval_policy=_NO_APPROVAL,
+        execution_target='operation_target',
+        concurrency_key='governance:compute:benchmark:publish',
+        artifact_policy=_DEFAULT_ARTIFACT_POLICY,
+    ),
 }
 
 
@@ -196,6 +275,15 @@ PHASE_TOOL_MAP: Dict[str, Dict[str, str]] = {
         'prepare_dataset': 'prepare_dataset',
         'train_forecast_model': 'train_forecast_model',
         'publish_artifacts': 'publish_artifacts',
+    },
+    'compute_rollout_change': {
+        'compute_rollout_prepare': 'prepare_compute_rollout_change',
+        'compute_rollout_apply': 'apply_compute_rollout_change',
+    },
+    'compute_benchmark': {
+        'compute_benchmark_prepare': 'prepare_compute_benchmark',
+        'compute_benchmark_run': 'run_compute_benchmark',
+        'compute_benchmark_publish': 'publish_compute_benchmark',
     },
 }
 

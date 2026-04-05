@@ -9,6 +9,11 @@ import pandas as pd
 
 from services.analysis_pipeline_service import AnalysisPipelineService
 from services.analysis_service import AnalysisService
+from services.compute_benchmark_service import ComputeBenchmarkService
+from services.compute_rollout_operation_service import (
+    apply_rollout_change,
+    normalize_rollout_change_request,
+)
 from services.external_data_service import ExternalDataService
 from services.job_workflows import (
     run_optimization_workflow,
@@ -171,6 +176,77 @@ def _ingest_knowledge_base(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _prepare_compute_rollout_change(payload: Dict[str, Any]) -> Dict[str, Any]:
+    prepared = normalize_rollout_change_request(payload)
+    return {
+        'status': 'succeeded',
+        'output': prepared,
+        'metrics': {
+            'governance_component': prepared.get('component') or '',
+            'target_rollout_mode': str(
+                (prepared.get('preview_policy') or {}).get('rollout_mode') or '',
+            ),
+            'canary_percent': int(
+                (prepared.get('preview_policy') or {}).get('canary_percent') or 0,
+            ),
+            'approval_required': bool(
+                (prepared.get('component_status') or {}).get('rollout_status')
+                == 'blocked',
+            ),
+        },
+        'artifacts': [],
+    }
+
+
+def _apply_compute_rollout_change(payload: Dict[str, Any]) -> Dict[str, Any]:
+    requested_by = str(
+        payload.get('requested_by')
+        or payload.get('uid')
+        or 'system',
+    )
+    result, _audit = apply_rollout_change(payload, updated_by=requested_by)
+    return {
+        'status': 'succeeded',
+        'output': result,
+        'metrics': dict(result.get('metrics') or {}),
+        'artifacts': result.get('artifacts') or [],
+    }
+
+
+def _prepare_compute_benchmark(payload: Dict[str, Any]) -> Dict[str, Any]:
+    component = str(payload.get('component') or '').strip()
+    sample_rows = int(payload.get('sample_rows') or 5000)
+    if not component:
+        raise ValidationError('缺少 benchmark component')
+    return {
+        'status': 'succeeded',
+        'output': {
+            'component': component,
+            'sample_rows': sample_rows,
+        },
+        'metrics': {
+            'benchmark_component': component,
+            'sample_rows': sample_rows,
+        },
+        'artifacts': [],
+    }
+
+
+def _run_compute_benchmark(payload: Dict[str, Any]) -> Dict[str, Any]:
+    operation_id = str(payload.get('operation_id') or payload.get('job_id') or '').strip()
+    result = ComputeBenchmarkService.run(payload, operation_id=operation_id)
+    return {
+        'status': 'succeeded',
+        'output': result,
+        'metrics': dict(result.get('metrics') or {}),
+        'artifacts': result.get('artifacts') or [],
+    }
+
+
+def _publish_compute_benchmark(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return _publish_artifacts(payload)
+
+
 _EXECUTORS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     'fetch_external_data': _fetch_external_data,
     'prepare_dataset': _prepare_dataset,
@@ -182,6 +258,11 @@ _EXECUTORS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     'generate_report': _generate_report,
     'publish_artifacts': _publish_artifacts,
     'ingest_knowledge_base': _ingest_knowledge_base,
+    'prepare_compute_rollout_change': _prepare_compute_rollout_change,
+    'apply_compute_rollout_change': _apply_compute_rollout_change,
+    'prepare_compute_benchmark': _prepare_compute_benchmark,
+    'run_compute_benchmark': _run_compute_benchmark,
+    'publish_compute_benchmark': _publish_compute_benchmark,
 }
 
 

@@ -22,6 +22,7 @@ class JobRecord {
     this.operationId,
     this.controlTaskId,
     this.trigger,
+    this.executionTarget,
     this.cancelRequested = false,
     this.currentStep,
     this.steps = const <JobStep>[],
@@ -45,6 +46,7 @@ class JobRecord {
   final DateTime? completedAt;
   final String? controlTaskId;
   final String? trigger;
+  final String? executionTarget;
   final Map<String, dynamic> input;
   final Map<String, dynamic> result;
   final JobError? error;
@@ -86,6 +88,10 @@ class JobRecord {
         return '小时数据抓取';
       case 'train_model':
         return '每日模型重训';
+      case 'compute_rollout_change':
+        return '计算治理变更';
+      case 'compute_benchmark':
+        return '计算基准验证';
       default:
         return type;
     }
@@ -117,6 +123,7 @@ class JobRecord {
       completedAt: _parseDateTime(json['completed_at']),
       controlTaskId: json['control_task_id']?.toString(),
       trigger: json['trigger']?.toString(),
+      executionTarget: json['execution_target']?.toString(),
       input: input is Map ? Map<String, dynamic>.from(input) : const {},
       result: result is Map ? Map<String, dynamic>.from(result) : const {},
       error: error is Map<String, dynamic>
@@ -152,7 +159,9 @@ class JobRecord {
                     return JobArtifact.fromJson(item);
                   }
                   if (item is Map) {
-                    return JobArtifact.fromJson(Map<String, dynamic>.from(item));
+                    return JobArtifact.fromJson(
+                      Map<String, dynamic>.from(item),
+                    );
                   }
                   return null;
                 })
@@ -291,7 +300,9 @@ class JobEvent {
       artifact: json['artifact'] is Map<String, dynamic>
           ? JobArtifact.fromJson(json['artifact'] as Map<String, dynamic>)
           : json['artifact'] is Map
-          ? JobArtifact.fromJson(Map<String, dynamic>.from(json['artifact'] as Map))
+          ? JobArtifact.fromJson(
+              Map<String, dynamic>.from(json['artifact'] as Map),
+            )
           : null,
       metrics: json['metrics'] is Map
           ? Map<String, dynamic>.from(json['metrics'] as Map)

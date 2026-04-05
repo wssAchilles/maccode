@@ -7,12 +7,33 @@
 
 set -euo pipefail
 
+GCLOUD_BIN="${GCLOUD_BIN:-}"
+CLOUDSDK_PYTHON_BIN="${CLOUDSDK_PYTHON:-}"
+if [ -z "$CLOUDSDK_PYTHON_BIN" ] && [ -x "/Users/achilles/Documents/code/data science/venv/bin/python" ]; then
+  CLOUDSDK_PYTHON_BIN="/Users/achilles/Documents/code/data science/venv/bin/python"
+fi
+if [ -z "$GCLOUD_BIN" ]; then
+  if command -v gcloud >/dev/null 2>&1; then
+    GCLOUD_BIN="$(command -v gcloud)"
+  elif [ -x "/Users/achilles/development/google-cloud-sdk/bin/gcloud" ]; then
+    GCLOUD_BIN="/Users/achilles/development/google-cloud-sdk/bin/gcloud"
+  else
+    echo "❌ Error: gcloud is required to deploy the orchestrator."
+    exit 1
+  fi
+fi
+
+if [ -n "$CLOUDSDK_PYTHON_BIN" ]; then
+  export CLOUDSDK_PYTHON="$CLOUDSDK_PYTHON_BIN"
+fi
+
 echo "🚀 Starting Sentinel Orchestrator deployment..."
 
-PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
+PROJECT_ID=$("$GCLOUD_BIN" config get-value project 2>/dev/null)
 REGION="${REGION:-asia-northeast1}"
 SERVICE_NAME="${ORCHESTRATOR_SERVICE_NAME:-sentinel-orchestrator}"
 PYTHON_WORKER_BASE_URL="${PYTHON_WORKER_BASE_URL:-https://${PROJECT_ID}.an.r.appspot.com}"
+HEAVY_WORKER_BASE_URL="${HEAVY_WORKER_BASE_URL:-https://sentinel-backend-cloudrun-nj4m3gcxqq-uc.a.run.app}"
 INTERNAL_JOB_TOKEN="${INTERNAL_JOB_TOKEN:-dev-internal-job-token}"
 MAX_LIGHT_PARALLEL="${MAX_LIGHT_PARALLEL:-4}"
 MAX_HEAVY_PARALLEL="${MAX_HEAVY_PARALLEL:-2}"
@@ -33,16 +54,17 @@ fi
 echo "✅ Project ID: ${PROJECT_ID}"
 echo "✅ Region: ${REGION}"
 echo "✅ Python Worker Base URL: ${PYTHON_WORKER_BASE_URL}"
+echo "✅ Heavy Worker Base URL: ${HEAVY_WORKER_BASE_URL}"
 echo "✅ Light Parallelism: ${MAX_LIGHT_PARALLEL}"
 echo "✅ Heavy Parallelism: ${MAX_HEAVY_PARALLEL}"
 
 echo "🏗️  Building orchestrator image..."
-gcloud builds submit "sentinel-orchestrator" \
+"$GCLOUD_BIN" builds submit "sentinel-orchestrator" \
   --tag "gcr.io/${PROJECT_ID}/${SERVICE_NAME}" \
   --quiet
 
 echo "📦 Deploying orchestrator to Cloud Run..."
-gcloud run deploy "${SERVICE_NAME}" \
+"$GCLOUD_BIN" run deploy "${SERVICE_NAME}" \
   --image "gcr.io/${PROJECT_ID}/${SERVICE_NAME}" \
   --platform managed \
   --region "${REGION}" \
@@ -53,10 +75,10 @@ gcloud run deploy "${SERVICE_NAME}" \
   --concurrency 80 \
   --min-instances 0 \
   --max-instances 2 \
-  --set-env-vars "PYTHON_WORKER_BASE_URL=${PYTHON_WORKER_BASE_URL},INTERNAL_JOB_TOKEN=${INTERNAL_JOB_TOKEN},MAX_LIGHT_PARALLEL=${MAX_LIGHT_PARALLEL},MAX_HEAVY_PARALLEL=${MAX_HEAVY_PARALLEL},DISPATCH_TIMEOUT_SECS=${DISPATCH_TIMEOUT_SECS}" \
+  --set-env-vars "PYTHON_WORKER_BASE_URL=${PYTHON_WORKER_BASE_URL},HEAVY_WORKER_BASE_URL=${HEAVY_WORKER_BASE_URL},INTERNAL_JOB_TOKEN=${INTERNAL_JOB_TOKEN},MAX_LIGHT_PARALLEL=${MAX_LIGHT_PARALLEL},MAX_HEAVY_PARALLEL=${MAX_HEAVY_PARALLEL},DISPATCH_TIMEOUT_SECS=${DISPATCH_TIMEOUT_SECS}" \
   --quiet
 
-SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
+SERVICE_URL=$("$GCLOUD_BIN" run services describe "${SERVICE_NAME}" \
   --platform managed \
   --region "${REGION}" \
   --format 'value(status.url)')

@@ -7,22 +7,46 @@ class OperationComputeMetric {
     required this.label,
     required this.backend,
     required this.rolloutMode,
+    required this.rolloutReason,
+    required this.fallbackReason,
     required this.durationMs,
     required this.rows,
     required this.context,
     required this.nativeEnabled,
     required this.nativeAvailable,
+    required this.benchmarkReady,
+    required this.benchmarkStatus,
+    required this.benchmarkSummary,
+    required this.benchmarkSpeedupRatio,
+    required this.guardRecentFailureCount,
+    required this.guardFailureThreshold,
+    required this.guardWindowMinutes,
+    required this.guardAutoRollbackApplied,
+    required this.guardLastAutoRollbackAt,
+    required this.guardLastAutoRollbackReason,
   });
 
   final String key;
   final String label;
   final String backend;
   final String rolloutMode;
+  final String rolloutReason;
+  final String fallbackReason;
   final double durationMs;
   final int rows;
   final String context;
   final bool nativeEnabled;
   final bool nativeAvailable;
+  final bool benchmarkReady;
+  final String benchmarkStatus;
+  final String benchmarkSummary;
+  final double? benchmarkSpeedupRatio;
+  final int guardRecentFailureCount;
+  final int guardFailureThreshold;
+  final int guardWindowMinutes;
+  final bool guardAutoRollbackApplied;
+  final String guardLastAutoRollbackAt;
+  final String guardLastAutoRollbackReason;
 }
 
 List<OperationComputeMetric> extractOperationComputeMetrics(
@@ -42,11 +66,26 @@ List<OperationComputeMetric> extractOperationComputeMetrics(
       label: (payload['label'] ?? _defaultLabel(entry.key.toString())).toString(),
       backend: (payload['backend'] ?? 'python_pandas').toString(),
       rolloutMode: (payload['rollout_mode'] ?? '').toString(),
+      rolloutReason: (payload['rollout_reason'] ?? '').toString(),
+      fallbackReason: (payload['fallback_reason'] ?? '').toString(),
       durationMs: _asDouble(payload['duration_ms']) ?? 0,
       rows: _asInt(payload['rows']) ?? 0,
       context: (payload['context'] ?? '').toString(),
       nativeEnabled: _asBool(payload['native_enabled']) ?? false,
       nativeAvailable: _asBool(payload['native_available']) ?? false,
+      benchmarkReady: _asBool(payload['benchmark_ready']) ?? false,
+      benchmarkStatus: (payload['benchmark_status'] ?? '').toString(),
+      benchmarkSummary: (payload['benchmark_summary'] ?? '').toString(),
+      benchmarkSpeedupRatio: _asDouble(payload['benchmark_speedup_ratio']),
+      guardRecentFailureCount: _asInt(payload['guard_recent_failure_count']) ?? 0,
+      guardFailureThreshold: _asInt(payload['guard_failure_threshold']) ?? 0,
+      guardWindowMinutes: _asInt(payload['guard_window_minutes']) ?? 0,
+      guardAutoRollbackApplied:
+          _asBool(payload['guard_auto_rollback_applied']) ?? false,
+      guardLastAutoRollbackAt:
+          (payload['guard_last_auto_rollback_at'] ?? '').toString(),
+      guardLastAutoRollbackReason:
+          (payload['guard_last_auto_rollback_reason'] ?? '').toString(),
     );
   }).toList(growable: false);
 }
@@ -60,7 +99,8 @@ String buildComputeSummaryLine(Map<String, dynamic> metrics) {
   final suffix = items.length > 1 ? ' +${items.length - 1}' : '';
   final context = lead.context.isEmpty ? '' : ' · ${lead.context}';
   final rollout = lead.rolloutMode.isEmpty ? '' : ' · ${lead.rolloutMode}';
-  return '${lead.label} · ${lead.durationMs.toStringAsFixed(1)}ms · ${lead.backend}$rollout$context$suffix';
+  final fallback = lead.fallbackReason.isEmpty ? '' : ' · fallback';
+  return '${lead.label} · ${lead.durationMs.toStringAsFixed(1)}ms · ${lead.backend}$rollout$context$fallback$suffix';
 }
 
 String _defaultLabel(String key) {

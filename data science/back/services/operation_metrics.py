@@ -60,6 +60,11 @@ def normalize_compute_metrics(payload: Any) -> Dict[str, Dict[str, Any]]:
             'rollout_mode': str(raw_metrics.get('rollout_mode') or ''),
             'rollout_reason': str(raw_metrics.get('rollout_reason') or ''),
             'benchmark_ready': bool(raw_metrics.get('benchmark_ready')),
+            'benchmark_status': str(raw_metrics.get('benchmark_status') or ''),
+            'benchmark_summary': str(raw_metrics.get('benchmark_summary') or ''),
+            'benchmark_speedup_ratio': _as_float(
+                raw_metrics.get('benchmark_speedup_ratio'),
+            ),
         }
     return normalized
 

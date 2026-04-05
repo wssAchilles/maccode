@@ -1,10 +1,13 @@
 /// 工业驾驶舱概览页
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
+import '../models/compute_governance_activity_entry.dart';
 import '../models/compute_rollout_policy.dart';
 import '../models/control_task_record.dart';
 import '../models/data_analysis_launch_intent.dart';
@@ -25,6 +28,8 @@ import '../widgets/operations/asset_governance_queue.dart';
 import '../widgets/operations/asset_inventory_board.dart';
 import '../widgets/operations/asset_version_timeline_board.dart';
 import '../widgets/operations/compute_acceleration_board.dart';
+import '../widgets/operations/compute_governance_activity_board.dart';
+import '../widgets/operations/compute_rollout_change_dialog.dart';
 import '../widgets/operations/compute_rollout_governance_board.dart';
 import '../widgets/operations/control_task_board.dart';
 import '../widgets/operations/control_task_edit_dialog.dart';
@@ -77,6 +82,7 @@ class OperationsHubScreen extends StatefulWidget {
 
 class _OperationsHubScreenState extends State<OperationsHubScreen> {
   String? _highlightedControlTaskId;
+  String? _lastGovernanceSyncedOperationId;
 
   @override
   void initState() {
@@ -85,6 +91,53 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     widget.computeGovernanceViewModel?.initialize();
     widget.controlTaskViewModel?.initialize();
     widget.approvalQueueViewModel?.initialize();
+    widget.operationConsoleViewModel?.addListener(
+      _handleOperationConsoleUpdate,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant OperationsHubScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.operationConsoleViewModel !=
+        widget.operationConsoleViewModel) {
+      oldWidget.operationConsoleViewModel?.removeListener(
+        _handleOperationConsoleUpdate,
+      );
+      widget.operationConsoleViewModel?.addListener(
+        _handleOperationConsoleUpdate,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.operationConsoleViewModel?.removeListener(
+      _handleOperationConsoleUpdate,
+    );
+    super.dispose();
+  }
+
+  void _handleOperationConsoleUpdate() {
+    unawaited(_syncGovernanceAfterOperation());
+  }
+
+  Future<void> _syncGovernanceAfterOperation() async {
+    final operation = widget.operationConsoleViewModel?.selectedOperation;
+    if (operation == null ||
+        (operation.type != 'compute_rollout_change' &&
+            operation.type != 'compute_benchmark')) {
+      return;
+    }
+    final operationId = operation.operationId ?? operation.jobId;
+    if (!operation.isTerminal ||
+        _lastGovernanceSyncedOperationId == operationId) {
+      return;
+    }
+    _lastGovernanceSyncedOperationId = operationId;
+    await widget.computeGovernanceViewModel?.loadPolicy();
+    await widget.viewModel.loadSummary();
+    await widget.approvalQueueViewModel?.loadQueue();
   }
 
   void _inspectControlTask(String taskId) {
@@ -247,7 +300,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     );
   }
 
-  Future<void> _setComputeRolloutMode(
+  Future<void> _requestComputeRolloutModeChange(
     ComputeRolloutComponentPolicy component,
     String rolloutMode,
   ) async {
@@ -256,30 +309,94 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    final updated = await viewModel.updateRolloutMode(
+    final draft = await showComputeRolloutChangeDialog(
+      context,
+      component: component,
+      targetRolloutMode: rolloutMode,
+    );
+    if (!mounted || draft == null) {
+      return;
+    }
+
+    final operation = await viewModel.requestRolloutModeChange(
       component.key,
-      rolloutMode: rolloutMode,
+      targetPolicy: draft.targetPolicy,
+      changeReason: draft.changeReason,
+      requestKind: draft.requestKind,
     );
     if (!mounted) {
       return;
     }
 
     final messenger = ScaffoldMessenger.of(context);
-    if (updated == null) {
-      final errorMessage = viewModel.errorMessage ?? '更新计算治理策略失败';
+    if (operation == null) {
+      final errorMessage = viewModel.errorMessage ?? '提交计算治理变更失败';
       messenger.showSnackBar(
         SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
       );
       return;
     }
 
-    await widget.viewModel.loadSummary();
+    await widget.approvalQueueViewModel?.loadQueue();
+    await _openOperationConsole(
+      operation.operationId ?? operation.jobId,
+      seed: operation,
+    );
     messenger.showSnackBar(
       SnackBar(
-        content: Text('已更新 ${component.label} 的 rollout 模式'),
+        content: Text(
+          operation.isAwaitingApproval
+              ? '已提交 ${component.label} 的治理变更，等待审批'
+              : '已提交 ${component.label} 的治理运行',
+        ),
+        backgroundColor: operation.isAwaitingApproval
+            ? AppColors.warning
+            : AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _runComputeBenchmark(
+    ComputeRolloutComponentPolicy component,
+  ) async {
+    final viewModel = widget.computeGovernanceViewModel;
+    if (viewModel == null) {
+      return;
+    }
+
+    final operation = await viewModel.requestBenchmark(component.key);
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (operation == null) {
+      final errorMessage = viewModel.errorMessage ?? '提交 benchmark 失败';
+      messenger.showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    await _openOperationConsole(
+      operation.operationId ?? operation.jobId,
+      seed: operation,
+    );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('已提交 ${component.label} 的 benchmark 运行'),
         backgroundColor: AppColors.success,
       ),
     );
+  }
+
+  Future<void> _openComputeGovernanceActivity(
+    ComputeGovernanceActivityEntry entry,
+  ) async {
+    if (!entry.hasLinkedOperation) {
+      return;
+    }
+    await _openOperationConsole(entry.operationId);
   }
 
   Future<void> _toggleControlTaskApproval(ControlTaskRecord task) async {
@@ -1335,7 +1452,8 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             _openChainWorkspace(chain, source: '处置清单');
           },
         ),
-        if (safeSummary.controlPlane.enabled || safeSummary.controlPlane.message.isNotEmpty) ...[
+        if (safeSummary.controlPlane.enabled ||
+            safeSummary.controlPlane.message.isNotEmpty) ...[
           const SizedBox(height: 20),
           ControlPlaneStatusBoard(status: safeSummary.controlPlane),
         ],
@@ -1354,7 +1472,14 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             isLoading: widget.computeGovernanceViewModel!.isLoading,
             isUpdatingComponent:
                 widget.computeGovernanceViewModel!.isUpdatingComponent,
-            onSetRolloutMode: _setComputeRolloutMode,
+            onRequestRolloutMode: _requestComputeRolloutModeChange,
+            onRunBenchmark: _runComputeBenchmark,
+          ),
+          const SizedBox(height: 20),
+          ComputeGovernanceActivityBoard(
+            entries: widget.computeGovernanceViewModel!.recentActivity,
+            isLoading: widget.computeGovernanceViewModel!.isLoading,
+            onOpenOperation: _openComputeGovernanceActivity,
           ),
         ],
         if (widget.controlTaskViewModel != null) ...[

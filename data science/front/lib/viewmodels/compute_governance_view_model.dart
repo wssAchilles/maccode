@@ -3,7 +3,9 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../models/compute_governance_activity_entry.dart';
 import '../models/compute_rollout_policy.dart';
+import '../models/job_record.dart';
 import '../repositories/compute_governance_repository.dart';
 import '../services/api_service_exception.dart';
 
@@ -14,6 +16,8 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
   final ComputeGovernanceRepository _repository;
 
   ComputeRolloutPolicy _policy = const ComputeRolloutPolicy.empty();
+  List<ComputeGovernanceActivityEntry> _recentActivity =
+      const <ComputeGovernanceActivityEntry>[];
   bool _isLoading = false;
   String? _errorMessage;
   bool _isDisposed = false;
@@ -21,6 +25,7 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
   final Set<String> _updatingComponents = <String>{};
 
   ComputeRolloutPolicy get policy => _policy;
+  List<ComputeGovernanceActivityEntry> get recentActivity => _recentActivity;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool isUpdatingComponent(String componentKey) =>
@@ -41,6 +46,7 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
 
     try {
       _policy = await _repository.getPolicy();
+      _recentActivity = await _repository.getRecentActivity();
     } catch (e) {
       _errorMessage = '加载计算层治理策略失败: ${_readableErrorMessage(e)}';
     } finally {
@@ -49,9 +55,11 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
     }
   }
 
-  Future<ComputeRolloutPolicy?> updateRolloutMode(
+  Future<JobRecord?> requestRolloutModeChange(
     String componentKey, {
-    required String rolloutMode,
+    required Map<String, dynamic> targetPolicy,
+    String? changeReason,
+    String requestKind = 'rollout_change',
   }) async {
     if (_updatingComponents.contains(componentKey)) {
       return null;
@@ -62,15 +70,52 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      final updated = await _repository.updateComponentPolicy(
+      final operation = await _repository.requestComponentPolicyChange(
         componentKey,
-        rolloutMode: rolloutMode,
+        targetPolicy: targetPolicy,
+        changeReason: changeReason,
+        requestKind: requestKind,
       );
-      _policy = updated;
-      _notifySafely();
-      return updated;
+      return operation;
     } catch (e) {
-      _errorMessage = '更新计算层治理策略失败: ${_readableErrorMessage(e)}';
+      _errorMessage = '提交计算层治理变更失败: ${_readableErrorMessage(e)}';
+      _notifySafely();
+      return null;
+    } finally {
+      _updatingComponents.remove(componentKey);
+      _notifySafely();
+    }
+  }
+
+  Future<JobRecord?> updateRolloutMode(
+    String componentKey, {
+    required String rolloutMode,
+  }) {
+    return requestRolloutModeChange(
+      componentKey,
+      targetPolicy: <String, dynamic>{'rollout_mode': rolloutMode},
+    );
+  }
+
+  Future<JobRecord?> requestBenchmark(
+    String componentKey, {
+    int sampleRows = 5000,
+  }) async {
+    if (_updatingComponents.contains(componentKey)) {
+      return null;
+    }
+
+    _updatingComponents.add(componentKey);
+    _errorMessage = null;
+    _notifySafely();
+
+    try {
+      return await _repository.requestComponentBenchmark(
+        componentKey,
+        sampleRows: sampleRows,
+      );
+    } catch (e) {
+      _errorMessage = '提交 benchmark 失败: ${_readableErrorMessage(e)}';
       _notifySafely();
       return null;
     } finally {

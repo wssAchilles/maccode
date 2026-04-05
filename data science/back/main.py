@@ -3,9 +3,9 @@ GAE 后端服务入口文件
 """
 
 from flask import Flask, jsonify, request
-from flask_cors import CORS
 from config import config
 from services.firebase_service import FirebaseService
+from middleware.cors import configure_cors
 from middleware.logging import setup_logging
 from utils.exceptions import register_error_handlers
 from scheduler import get_scheduler  # 改为导入 get_scheduler，而不是 init_scheduler
@@ -35,12 +35,7 @@ def create_app(config_name=None):
         config_name = os.getenv('FLASK_ENV', 'development')
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
-    
-    CORS(app, 
-         origins=app.config['CORS_ORIGINS'],
-         supports_credentials=app.config.get('CORS_SUPPORTS_CREDENTIALS', True),
-         allow_headers=app.config.get('CORS_ALLOW_HEADERS', ['Content-Type', 'Authorization']),
-         methods=app.config.get('CORS_METHODS', ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']))
+    configure_cors(app)
     
     setup_logging(app)
     register_error_handlers(app)

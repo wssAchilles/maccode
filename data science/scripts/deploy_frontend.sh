@@ -6,48 +6,73 @@
 
 set -e  # 遇到错误立即退出
 
+FLUTTER_BIN="${FLUTTER_BIN:-}"
+if [ -z "$FLUTTER_BIN" ]; then
+    if command -v flutter >/dev/null 2>&1; then
+        FLUTTER_BIN="$(command -v flutter)"
+    elif [ -x "/Users/achilles/development/flutter/bin/flutter" ]; then
+        FLUTTER_BIN="/Users/achilles/development/flutter/bin/flutter"
+    else
+        echo "❌ 错误: 未安装 Flutter"
+        exit 1
+    fi
+fi
+
+FIREBASE_BIN="${FIREBASE_BIN:-}"
+if [ -z "$FIREBASE_BIN" ]; then
+    if command -v firebase >/dev/null 2>&1; then
+        FIREBASE_BIN="$(command -v firebase)"
+    elif [ -x "/Users/achilles/.nvm/versions/node/v24.11.0/bin/firebase" ]; then
+        FIREBASE_BIN="/Users/achilles/.nvm/versions/node/v24.11.0/bin/firebase"
+    elif [ -x "/Users/achilles/.nvm/versions/node/v22.21.1/bin/firebase" ]; then
+        FIREBASE_BIN="/Users/achilles/.nvm/versions/node/v22.21.1/bin/firebase"
+    else
+        echo "❌ 错误: 未安装 Firebase CLI"
+        exit 1
+    fi
+fi
+
+NODE_BIN_DIR="$(dirname "$FIREBASE_BIN")"
+if [ -x "$NODE_BIN_DIR/node" ]; then
+    export PATH="$NODE_BIN_DIR:$PATH"
+fi
+
 echo "🚀 开始部署前端到 Firebase Hosting..."
 
 # 检查是否在正确的目录
-if [ ! -f "pubspec.yaml" ]; then
-    echo "❌ 错误: 请在 front/ 目录下运行此脚本"
+if [ -f "pubspec.yaml" ]; then
+    FRONTEND_DIR="$(pwd)"
+elif [ -f "front/pubspec.yaml" ]; then
+    FRONTEND_DIR="$(pwd)/front"
+else
+    echo "❌ 错误: 未找到 front/pubspec.yaml"
     exit 1
 fi
 
-# 检查是否安装 Flutter
-if ! command -v flutter &> /dev/null; then
-    echo "❌ 错误: 未安装 Flutter"
-    echo "请访问: https://flutter.dev/docs/get-started/install"
-    exit 1
-fi
-
-# 检查是否安装 Firebase CLI
-if ! command -v firebase &> /dev/null; then
-    echo "❌ 错误: 未安装 Firebase CLI"
-    echo "运行: npm install -g firebase-tools"
-    exit 1
-fi
+cd "$FRONTEND_DIR"
 
 # 确认部署
 echo "📋 即将部署到 Firebase Hosting..."
-read -p "确认部署? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ 部署已取消"
-    exit 0
+if [ "${AUTO_CONFIRM:-false}" != "true" ]; then
+    read -p "确认部署? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ 部署已取消"
+        exit 0
+    fi
 fi
 
 # 安装依赖
 echo "📦 安装依赖..."
-flutter pub get
+"$FLUTTER_BIN" pub get
 
 # 构建 Web 版本
 echo "🔨 构建 Web 应用..."
-flutter build web --release
+"$FLUTTER_BIN" build web --release
 
 # 部署到 Firebase
 echo "🚀 部署到 Firebase Hosting..."
-firebase deploy --only hosting
+"$FIREBASE_BIN" deploy --only hosting
 
 echo "✅ 部署成功!"
 echo "🌐 访问你的应用: https://data-science-44398.web.app"

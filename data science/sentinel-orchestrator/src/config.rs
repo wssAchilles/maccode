@@ -10,6 +10,7 @@ pub struct AppConfig {
     pub host: String,
     pub port: u16,
     pub python_worker_base_url: Option<String>,
+    pub heavy_worker_base_url: Option<String>,
     pub internal_job_token: String,
     pub max_light_parallel: usize,
     pub max_heavy_parallel: usize,
@@ -25,6 +26,10 @@ impl AppConfig {
                 .and_then(|value| value.parse().ok())
                 .unwrap_or(8080),
             python_worker_base_url: std::env::var("PYTHON_WORKER_BASE_URL")
+                .ok()
+                .map(|value| value.trim_end_matches('/').to_string())
+                .filter(|value| !value.is_empty()),
+            heavy_worker_base_url: std::env::var("HEAVY_WORKER_BASE_URL")
                 .ok()
                 .map(|value| value.trim_end_matches('/').to_string())
                 .filter(|value| !value.is_empty()),

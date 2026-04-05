@@ -36,6 +36,7 @@ env_variables:
   TASKS_QUEUE_NAME: "industrial-jobs"
   TASKS_LOCATION: "asia-northeast1"
   INTERNAL_BASE_URL: "https://data-science-44398.an.r.appspot.com"
+  HEAVY_SERVICE_URL: "https://sentinel-backend-cloudrun-nj4m3gcxqq-uc.a.run.app"
   ORCHESTRATOR_BASE_URL: "https://sentinel-orchestrator-nj4m3gcxqq-an.a.run.app"
   ORCHESTRATOR_MAX_LIGHT_PARALLEL: "4"
   ORCHESTRATOR_MAX_HEAVY_PARALLEL: "2"
@@ -47,6 +48,12 @@ env_variables:
   COMPUTE_SCENARIO_WARNING_MS: "450"
   COMPUTE_NATIVE_ENABLED: "false"
   COMPUTE_NATIVE_MODULE: "rolling_features_native"
+  COMPUTE_NATIVE_GUARD_ENABLED: "true"
+  COMPUTE_NATIVE_GUARD_FAILURE_THRESHOLD: "3"
+  COMPUTE_NATIVE_GUARD_WINDOW_MINUTES: "30"
+  COMPUTE_FEATURE_NATIVE_MIN_SPEEDUP: "1.15"
+  COMPUTE_SCENARIO_VECTOR_MIN_SPEEDUP: "1.05"
+  COMPUTE_BENCHMARK_STALE_HOURS: "168"
   
   # 位置配置（非敏感）
   WEATHER_CITY_LAT: "34.05"   # Los Angeles Latitude

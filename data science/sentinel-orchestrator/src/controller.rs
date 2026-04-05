@@ -35,6 +35,8 @@ struct OperationRecord {
     r#type: String,
     #[serde(default)]
     status: String,
+    #[serde(default)]
+    execution_target: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -124,7 +126,7 @@ impl DispatchController {
             return;
         }
 
-        let lane = classify_lane(&operation.r#type);
+        let lane = classify_lane(&operation.r#type, &operation.execution_target);
         let permit = match lane {
             DispatchLane::Light => self.light_lane.clone().acquire_owned().await,
             DispatchLane::Heavy => self.heavy_lane.clone().acquire_owned().await,
@@ -139,8 +141,8 @@ impl DispatchController {
             }
         };
 
-        let Some(base_url) = state.config.python_worker_base_url.as_ref() else {
-            warn!(operation_id = %operation_id, "python worker base url not configured");
+        let Some(base_url) = resolve_worker_base_url(&state, &operation) else {
+            warn!(operation_id = %operation_id, "worker base url not configured");
             drop(release);
             return;
         };
@@ -212,10 +214,27 @@ async fn fetch_operation(state: &AppState, operation_id: &str) -> Option<Operati
     }
 }
 
-fn classify_lane(operation_type: &str) -> DispatchLane {
+fn classify_lane(operation_type: &str, execution_target: &str) -> DispatchLane {
+    if execution_target == "heavy_worker" {
+        return DispatchLane::Heavy;
+    }
     match operation_type {
         "ml_train" | "rag_ingest" => DispatchLane::Heavy,
         _ => DispatchLane::Light,
+    }
+}
+
+fn resolve_worker_base_url<'a>(
+    state: &'a AppState,
+    operation: &OperationRecord,
+) -> Option<&'a String> {
+    match operation.execution_target.as_str() {
+        "heavy_worker" => state
+            .config
+            .heavy_worker_base_url
+            .as_ref()
+            .or(state.config.python_worker_base_url.as_ref()),
+        _ => state.config.python_worker_base_url.as_ref(),
     }
 }
 

@@ -126,7 +126,8 @@ class JobEventTimeline extends StatelessWidget {
               ),
             ],
           ),
-          if (job.isAwaitingApproval && (onApprove != null || onReject != null)) ...[
+          if (job.isAwaitingApproval &&
+              (onApprove != null || onReject != null)) ...[
             const SizedBox(height: 16),
             Wrap(
               spacing: 10,
@@ -189,21 +190,29 @@ class JobEventTimeline extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: job.artifacts.take(3).map((artifact) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
-                  ),
-                  child: Text(
-                    '${artifact.type} · ${artifact.name}',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                );
-              }).toList(growable: false),
+              children: job.artifacts
+                  .take(3)
+                  .map((artifact) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(
+                          AppDecorations.radiusFull,
+                        ),
+                      ),
+                      child: Text(
+                        '${artifact.type} · ${artifact.name}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
             ),
           ],
         ],
@@ -269,6 +278,16 @@ String _phaseLabel(String value) {
       return '产物发布';
     case 'ingest_knowledge_base':
       return '知识入库';
+    case 'compute_rollout_prepare':
+      return '治理预检';
+    case 'compute_rollout_apply':
+      return '治理应用';
+    case 'compute_benchmark_prepare':
+      return '准备 benchmark';
+    case 'compute_benchmark_run':
+      return '执行 benchmark';
+    case 'compute_benchmark_publish':
+      return '发布 benchmark';
     case 'queued':
       return '排队';
     case 'started':
@@ -338,7 +357,9 @@ class _EventRow extends StatelessWidget {
     final phaseLabel = _phaseLabel(event.phase);
     final statusColor = _statusColor(event.status);
     final computeSummary = buildComputeSummaryLine(
-      event.metrics.isNotEmpty ? event.metrics : event.step?.metrics ?? const {},
+      event.metrics.isNotEmpty
+          ? event.metrics
+          : event.step?.metrics ?? const {},
     );
 
     return Row(
@@ -489,6 +510,16 @@ class _EventRow extends StatelessWidget {
         return '切片';
       case 'embedding':
         return '向量化';
+      case 'compute_rollout_prepare':
+        return '治理预检';
+      case 'compute_rollout_apply':
+        return '治理应用';
+      case 'compute_benchmark_prepare':
+        return '准备 benchmark';
+      case 'compute_benchmark_run':
+        return '执行 benchmark';
+      case 'compute_benchmark_publish':
+        return '发布 benchmark';
       case 'completed':
         return '完成';
       case 'failed':

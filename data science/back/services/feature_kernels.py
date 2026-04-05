@@ -79,6 +79,8 @@ def compute_load_features(
                 'rollout_reason': selection['rollout_reason'],
                 'canary_percent': selection['canary_percent'],
                 'benchmark_ready': selection['benchmark_ready'],
+                'benchmark_status': selection.get('benchmark_status') or '',
+                'benchmark_summary': selection.get('benchmark_summary') or '',
             }
         except Exception as exc:
             backend = 'python_pandas'
@@ -98,4 +100,6 @@ def compute_load_features(
         'rollout_reason': selection['rollout_reason'],
         'canary_percent': selection['canary_percent'],
         'benchmark_ready': selection['benchmark_ready'],
+        'benchmark_status': selection.get('benchmark_status') or '',
+        'benchmark_summary': selection.get('benchmark_summary') or '',
     }

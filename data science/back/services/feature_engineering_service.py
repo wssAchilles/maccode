@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from services.compute_acceleration_service import ComputeAccelerationService
+from services.compute_rollout_guard_service import ComputeRolloutGuardService
 from services.feature_kernels import compute_load_features
 
 
@@ -62,6 +63,35 @@ class FeatureEngineeringService:
         dropped_len = original_len - len(working_df)
 
         duration_ms = (perf_counter() - started_at) * 1000.0
+        guard_context = f'{context}:feature_engineering'
+        guard_state: Dict[str, Any] = {}
+        native_modes = {'native_candidate', 'native_enforced'}
+        if kernel_meta['backend'] == 'native_cpp':
+            guard_state = ComputeRolloutGuardService.record_native_success(
+                'feature_engineering',
+                context=guard_context,
+            )
+        elif (
+            str(kernel_meta.get('rollout_mode') or '') in native_modes
+            and str(kernel_meta.get('fallback_reason') or '').strip()
+        ):
+            guard_state = ComputeRolloutGuardService.record_native_failure(
+                'feature_engineering',
+                reason=str(kernel_meta.get('fallback_reason') or ''),
+                context=guard_context,
+                rollout_mode=str(kernel_meta.get('rollout_mode') or ''),
+            )
+
+        component_guard = (
+            dict(guard_state.get('component_state') or {})
+            if isinstance(guard_state, dict)
+            else {}
+        )
+        auto_rollback = (
+            dict(guard_state.get('auto_rollback') or {})
+            if isinstance(guard_state, dict) and isinstance(guard_state.get('auto_rollback'), dict)
+            else {}
+        )
         metrics = {
             'backend': kernel_meta['backend'],
             'native_enabled': kernel_meta['native_enabled'],
@@ -72,12 +102,34 @@ class FeatureEngineeringService:
             'rollout_reason': kernel_meta.get('rollout_reason') or '',
             'canary_percent': int(kernel_meta.get('canary_percent') or 0),
             'benchmark_ready': bool(kernel_meta.get('benchmark_ready')),
+            'benchmark_status': str(kernel_meta.get('benchmark_status') or ''),
+            'benchmark_summary': str(kernel_meta.get('benchmark_summary') or ''),
             'duration_ms': round(duration_ms, 3),
             'input_rows': original_len,
             'output_rows': len(working_df),
             'dropped_rows': dropped_len,
             'enhanced_features_added': enhanced_features_added,
             'context': context,
+            'guard_recent_failure_count': int(
+                component_guard.get('recent_failure_count') or 0,
+            ),
+            'guard_last_failure_at': str(component_guard.get('last_failure_at') or ''),
+            'guard_last_failure_reason': str(
+                component_guard.get('last_failure_reason') or '',
+            ),
+            'guard_last_auto_rollback_at': str(
+                component_guard.get('last_auto_rollback_at') or '',
+            ),
+            'guard_last_auto_rollback_reason': str(
+                component_guard.get('last_auto_rollback_reason') or '',
+            ),
+            'guard_auto_rollback_applied': bool(auto_rollback),
+            'guard_failure_threshold': int(guard_state.get('failure_threshold') or 0)
+            if isinstance(guard_state, dict)
+            else 0,
+            'guard_window_minutes': int(guard_state.get('window_minutes') or 0)
+            if isinstance(guard_state, dict)
+            else 0,
         }
 
         ComputeAccelerationService.record_component_sample(
@@ -98,6 +150,18 @@ class FeatureEngineeringService:
                 'rollout_mode': kernel_meta.get('rollout_mode') or '',
                 'rollout_reason': kernel_meta.get('rollout_reason') or '',
                 'benchmark_ready': bool(kernel_meta.get('benchmark_ready')),
+                'benchmark_status': str(kernel_meta.get('benchmark_status') or ''),
+                'benchmark_summary': str(kernel_meta.get('benchmark_summary') or ''),
+                'guard_recent_failure_count': int(
+                    component_guard.get('recent_failure_count') or 0,
+                ),
+                'guard_last_auto_rollback_at': str(
+                    component_guard.get('last_auto_rollback_at') or '',
+                ),
+                'guard_last_auto_rollback_reason': str(
+                    component_guard.get('last_auto_rollback_reason') or '',
+                ),
+                'guard_auto_rollback_applied': bool(auto_rollback),
             },
         )
 

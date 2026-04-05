@@ -86,9 +86,28 @@ class ApiService {
   static Future<Map<String, dynamic>> getComputeRollout() =>
       _getComputeRollout();
 
+  static Future<Map<String, dynamic>> requestComputeRolloutChange({
+    required Map<String, dynamic> components,
+    String? changeReason,
+    String requestKind = 'rollout_change',
+  }) => _requestComputeRolloutChange(
+    components: components,
+    changeReason: changeReason,
+    requestKind: requestKind,
+  );
+
+  static Future<Map<String, dynamic>> requestComputeBenchmark({
+    required String component,
+    int sampleRows = 5000,
+  }) => _requestComputeBenchmark(component: component, sampleRows: sampleRows);
+
+  static Future<List<Map<String, dynamic>>> getComputeGovernanceActivity({
+    int limit = 8,
+  }) => _getComputeGovernanceActivity(limit: limit);
+
   static Future<Map<String, dynamic>> updateComputeRollout({
     required Map<String, dynamic> components,
-  }) => _updateComputeRollout(components: components);
+  }) => requestComputeRolloutChange(components: components);
 
   static Future<List<Map<String, dynamic>>> listJobs({
     String? type,

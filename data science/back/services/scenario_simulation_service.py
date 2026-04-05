@@ -71,6 +71,9 @@ class ScenarioSimulationService:
             'price_points': len(price_profile),
             'variation_keys': param_names,
             'context': context,
+            'benchmark_ready': bool(selection.get('benchmark_ready')),
+            'benchmark_status': str(selection.get('benchmark_status') or ''),
+            'benchmark_summary': str(selection.get('benchmark_summary') or ''),
         }
 
         ComputeAccelerationService.record_component_sample(
@@ -89,6 +92,8 @@ class ScenarioSimulationService:
                 'variation_keys': param_names,
                 'rollout_mode': selection['rollout_mode'],
                 'rollout_reason': selection['rollout_reason'],
+                'benchmark_status': str(selection.get('benchmark_status') or ''),
+                'benchmark_summary': str(selection.get('benchmark_summary') or ''),
             },
         )
 

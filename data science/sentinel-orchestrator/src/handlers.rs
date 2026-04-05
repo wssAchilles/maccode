@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
+use crate::telemetry::{ComputeRolloutTelemetry, fetch_compute_rollout};
 use crate::{
     config::AppState,
     proxy::{
@@ -16,7 +17,6 @@ use crate::{
     },
     telemetry::{ComputeAccelerationTelemetry, fetch_compute_acceleration},
 };
-use crate::telemetry::{ComputeRolloutTelemetry, fetch_compute_rollout};
 
 #[derive(Debug, Deserialize)]
 pub struct ApprovalRequest {
@@ -89,12 +89,16 @@ pub async fn statusz(State(state): State<AppState>) -> Json<ControlPlaneStatusRe
         light_lane: ControlPlaneLaneStatus {
             capacity: snapshot.light_capacity,
             available: snapshot.light_available,
-            in_use: snapshot.light_capacity.saturating_sub(snapshot.light_available),
+            in_use: snapshot
+                .light_capacity
+                .saturating_sub(snapshot.light_available),
         },
         heavy_lane: ControlPlaneLaneStatus {
             capacity: snapshot.heavy_capacity,
             available: snapshot.heavy_available,
-            in_use: snapshot.heavy_capacity.saturating_sub(snapshot.heavy_available),
+            in_use: snapshot
+                .heavy_capacity
+                .saturating_sub(snapshot.heavy_available),
         },
         compute_acceleration,
         compute_rollout,

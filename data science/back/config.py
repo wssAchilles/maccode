@@ -23,8 +23,8 @@ class Config:
     
     # Firebase 配置
     FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', GCP_PROJECT_ID)
-    # Firestore database id defaults to the primary database, not the storage bucket.
-    FIRESTORE_DATABASE = os.getenv('FIRESTORE_DATABASE', '(default)')
+    # This project runs Firestore in Datastore compatibility mode on a named database.
+    FIRESTORE_DATABASE = os.getenv('FIRESTORE_DATABASE', 'my-datasci-project-bucket')
     
     # Cloud Storage 配置
     STORAGE_BUCKET_NAME = os.getenv('STORAGE_BUCKET_NAME', 'data-science-44398.firebasestorage.app')
@@ -66,6 +66,25 @@ class Config:
     COMPUTE_SCENARIO_WARNING_MS = float(os.getenv('COMPUTE_SCENARIO_WARNING_MS', '450'))
     COMPUTE_NATIVE_ENABLED = os.getenv('COMPUTE_NATIVE_ENABLED', 'false').lower() == 'true'
     COMPUTE_NATIVE_MODULE = os.getenv('COMPUTE_NATIVE_MODULE', 'rolling_features_native')
+    COMPUTE_NATIVE_GUARD_ENABLED = os.getenv(
+        'COMPUTE_NATIVE_GUARD_ENABLED',
+        'true',
+    ).lower() == 'true'
+    COMPUTE_NATIVE_GUARD_FAILURE_THRESHOLD = int(
+        os.getenv('COMPUTE_NATIVE_GUARD_FAILURE_THRESHOLD', '3'),
+    )
+    COMPUTE_NATIVE_GUARD_WINDOW_MINUTES = int(
+        os.getenv('COMPUTE_NATIVE_GUARD_WINDOW_MINUTES', '30'),
+    )
+    COMPUTE_FEATURE_NATIVE_MIN_SPEEDUP = float(
+        os.getenv('COMPUTE_FEATURE_NATIVE_MIN_SPEEDUP', '1.15'),
+    )
+    COMPUTE_SCENARIO_VECTOR_MIN_SPEEDUP = float(
+        os.getenv('COMPUTE_SCENARIO_VECTOR_MIN_SPEEDUP', '1.05'),
+    )
+    COMPUTE_BENCHMARK_STALE_HOURS = int(
+        os.getenv('COMPUTE_BENCHMARK_STALE_HOURS', '168'),
+    )
 
     # 优化业务配置
     BATTERY_CONFIG = {
@@ -97,7 +116,7 @@ class Config:
     # CORS 详细配置
     CORS_SUPPORTS_CREDENTIALS = True
     CORS_ALLOW_HEADERS = ['Content-Type', 'Authorization']
-    CORS_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    CORS_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
     
     # API 配置
     API_VERSION = 'v1'

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict
 
+from services.compute_benchmark_gate_service import ComputeBenchmarkGateService
 from services.compute_native_loader import get_native_backend_status
 from services.compute_rollout_service import ComputeRolloutService
 
@@ -17,11 +18,14 @@ def _bucket_for_seed(seed: str) -> int:
 def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
     policy = ComputeRolloutService.get_component_policy('feature_engineering')
     native_status = get_native_backend_status()
-    benchmark_ready = bool(policy.get('last_benchmark_at'))
+    benchmark_gate = ComputeBenchmarkGateService.summarize_policy(policy)
+    benchmark_ready = bool(benchmark_gate.get('benchmark_ready'))
     require_benchmark = bool(policy.get('require_benchmark'))
     rollout_mode = str(policy.get('rollout_mode') or 'python_stable')
     canary_percent = int(policy.get('canary_percent') or 0)
     preferred_backend = str(policy.get('preferred_backend') or 'python_pandas')
+    benchmark_status = str(benchmark_gate.get('benchmark_status') or 'pending')
+    benchmark_summary = str(benchmark_gate.get('benchmark_summary') or '')
 
     if rollout_mode == 'python_stable':
         return {
@@ -31,6 +35,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -44,6 +50,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -57,6 +65,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -66,10 +76,12 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
         return {
             'backend': 'python_pandas',
             'rollout_mode': rollout_mode,
-            'rollout_reason': 'benchmark gate not satisfied for native rollout',
+            'rollout_reason': benchmark_summary or 'benchmark gate not satisfied for native rollout',
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -83,6 +95,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -98,6 +112,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
             'preferred_backend': preferred_backend,
             'canary_percent': canary_percent,
             'benchmark_ready': benchmark_ready,
+            'benchmark_status': benchmark_status,
+            'benchmark_summary': benchmark_summary,
             'native_enabled': native_status.native_enabled,
             'native_available': native_status.native_available,
             'module_name': native_status.module_name,
@@ -110,6 +126,8 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
         'preferred_backend': preferred_backend,
         'canary_percent': canary_percent,
         'benchmark_ready': benchmark_ready,
+        'benchmark_status': benchmark_status,
+        'benchmark_summary': benchmark_summary,
         'native_enabled': native_status.native_enabled,
         'native_available': native_status.native_available,
         'module_name': native_status.module_name,
@@ -118,6 +136,7 @@ def select_feature_engineering_backend(context: str = '') -> Dict[str, Any]:
 
 def select_scenario_simulation_backend(context: str = '') -> Dict[str, Any]:
     policy = ComputeRolloutService.get_component_policy('scenario_simulation')
+    benchmark_gate = ComputeBenchmarkGateService.summarize_policy(policy)
     rollout_mode = str(policy.get('rollout_mode') or 'vectorized_python')
     preferred_backend = str(policy.get('preferred_backend') or 'python_vectorized')
     backend = 'python_vectorized' if rollout_mode == 'vectorized_python' else 'python_loop'
@@ -129,7 +148,9 @@ def select_scenario_simulation_backend(context: str = '') -> Dict[str, Any]:
         else 'loop scenario backend pinned by rollout policy',
         'preferred_backend': preferred_backend,
         'canary_percent': int(policy.get('canary_percent') or 100),
-        'benchmark_ready': bool(policy.get('last_benchmark_at')),
+        'benchmark_ready': bool(benchmark_gate.get('benchmark_ready')),
+        'benchmark_status': str(benchmark_gate.get('benchmark_status') or 'pending'),
+        'benchmark_summary': str(benchmark_gate.get('benchmark_summary') or ''),
         'native_enabled': False,
         'native_available': False,
         'module_name': '',

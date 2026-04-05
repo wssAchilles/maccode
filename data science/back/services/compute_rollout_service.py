@@ -17,6 +17,7 @@ from typing import Any, Dict
 from google.cloud import firestore
 
 from config import Config
+from services.compute_benchmark_gate_service import ComputeBenchmarkGateService
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,12 @@ class ComputeRolloutService:
             'last_benchmark_at': '',
             'last_benchmark_context': '',
             'last_benchmark_backend': '',
+            'benchmark_status': 'pending',
+            'benchmark_passed': False,
+            'benchmark_summary': '',
+            'benchmark_speedup_ratio': None,
+            'benchmark_threshold': ComputeBenchmarkGateService._threshold_for(component),
+            'benchmark_sample_rows': 0,
             'notes': '',
             'updated_at': '',
             'updated_by': 'system',
@@ -195,6 +202,48 @@ class ComputeRolloutService:
             or current.get('last_benchmark_backend')
             or '',
         )
+        benchmark_status = str(
+            incoming.get('benchmark_status')
+            or current.get('benchmark_status')
+            or 'pending',
+        )[:40]
+        benchmark_passed = incoming.get(
+            'benchmark_passed',
+            current.get('benchmark_passed', False),
+        )
+        benchmark_summary = str(
+            incoming.get('benchmark_summary')
+            or current.get('benchmark_summary')
+            or '',
+        )[:240]
+        benchmark_speedup_ratio = incoming.get(
+            'benchmark_speedup_ratio',
+            current.get('benchmark_speedup_ratio'),
+        )
+        try:
+            benchmark_speedup_ratio = (
+                round(float(benchmark_speedup_ratio), 3)
+                if benchmark_speedup_ratio not in (None, '')
+                else None
+            )
+        except Exception:
+            benchmark_speedup_ratio = None
+        benchmark_threshold = incoming.get(
+            'benchmark_threshold',
+            current.get('benchmark_threshold', ComputeBenchmarkGateService._threshold_for(component)),
+        )
+        try:
+            benchmark_threshold = round(float(benchmark_threshold), 3)
+        except Exception:
+            benchmark_threshold = ComputeBenchmarkGateService._threshold_for(component)
+        benchmark_sample_rows = incoming.get(
+            'benchmark_sample_rows',
+            current.get('benchmark_sample_rows', 0),
+        )
+        try:
+            benchmark_sample_rows = max(0, int(benchmark_sample_rows))
+        except Exception:
+            benchmark_sample_rows = 0
 
         return {
             'key': component,
@@ -206,6 +255,12 @@ class ComputeRolloutService:
             'last_benchmark_at': last_benchmark_at,
             'last_benchmark_context': last_benchmark_context,
             'last_benchmark_backend': last_benchmark_backend,
+            'benchmark_status': benchmark_status,
+            'benchmark_passed': bool(benchmark_passed),
+            'benchmark_summary': benchmark_summary,
+            'benchmark_speedup_ratio': benchmark_speedup_ratio,
+            'benchmark_threshold': benchmark_threshold,
+            'benchmark_sample_rows': benchmark_sample_rows,
             'notes': notes[:240],
             'updated_at': updated_at,
             'updated_by': updated_by,
@@ -297,6 +352,33 @@ class ComputeRolloutService:
         }
 
     @classmethod
+    def preview_component_policy(
+        cls,
+        component: str,
+        patch: Dict[str, Any] | None = None,
+        *,
+        updated_by: str = 'preview',
+    ) -> Dict[str, Any]:
+        if component not in cls.COMPONENT_METADATA:
+            return {}
+
+        base = cls.get_component_policy(component, force_refresh=True)
+        return cls._normalize_component_policy(
+            component,
+            {
+                **dict(patch or {}),
+                'updated_at': _utc_now_iso(),
+                'updated_by': str(updated_by or 'preview')[:120],
+            },
+            base=base,
+        )
+
+    @classmethod
+    def stable_rollout_mode(cls, component: str) -> str:
+        metadata = cls.COMPONENT_METADATA.get(component) or {}
+        return str(metadata.get('default_mode') or '')
+
+    @classmethod
     def update_policy(
         cls,
         *,
@@ -342,11 +424,49 @@ class ComputeRolloutService:
 
         current = cls.get_policy(force_refresh=True)
         component_policy = current['components'][component]
+        previous_summary = str(component_policy.get('benchmark_summary') or '')
         update_payload = {
             component: {
-                'last_benchmark_at': _utc_now_iso(),
-                'last_benchmark_context': str(context or ''),
-                'last_benchmark_backend': str(backend or ''),
+                **ComputeBenchmarkGateService.build_recorded_patch(
+                    component,
+                    context=context,
+                    backend=backend,
+                ),
+                'benchmark_summary': previous_summary
+                or 'Benchmark sample recorded; rerun governed benchmark for rollout admission',
+                'updated_by': updated_by,
+                'updated_at': _utc_now_iso(),
+            },
+        }
+        return cls.update_policy(components=update_payload, updated_by=updated_by)
+
+    @classmethod
+    def record_benchmark_result(
+        cls,
+        component: str,
+        *,
+        context: str,
+        backend: str,
+        baseline_duration_ms: float | None,
+        candidate_duration_ms: float | None,
+        sample_rows: int = 0,
+        error: str = '',
+        updated_by: str = 'benchmark',
+    ) -> Dict[str, Any]:
+        if component not in cls.COMPONENT_METADATA:
+            return cls.get_policy()
+
+        update_payload = {
+            component: {
+                **ComputeBenchmarkGateService.build_policy_patch(
+                    component,
+                    context=context,
+                    backend=backend,
+                    baseline_duration_ms=baseline_duration_ms,
+                    candidate_duration_ms=candidate_duration_ms,
+                    sample_rows=sample_rows,
+                    error=error,
+                ),
                 'updated_by': updated_by,
                 'updated_at': _utc_now_iso(),
             },

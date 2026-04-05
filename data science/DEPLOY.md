@@ -32,6 +32,12 @@ chmod +x scripts/deploy_cloud_run.sh
 ./scripts/deploy_cloud_run.sh
 ```
 
+当前脚本会一并：
+
+- 构建 `rolling_features_native` C++ 模块
+- 为 heavy worker 打开 `COMPUTE_NATIVE_ENABLED=true`
+- 注入 `INTERNAL_JOB_TOKEN`，供 orchestrator 和 App Engine 的内部治理链路调用
+
 ### 方法 B: 手动命令行部署
 如果您想手动控制每一步：
 
@@ -90,7 +96,7 @@ gcloud run deploy sentinel-orchestrator \
   --platform managed \
   --region asia-northeast1 \
   --allow-unauthenticated \
-  --set-env-vars PYTHON_WORKER_BASE_URL=https://<PROJECT_ID>.an.r.appspot.com,INTERNAL_JOB_TOKEN=<TOKEN>
+  --set-env-vars PYTHON_WORKER_BASE_URL=https://<PROJECT_ID>.an.r.appspot.com,HEAVY_WORKER_BASE_URL=https://<HEAVY_SERVICE_URL>,INTERNAL_JOB_TOKEN=<TOKEN>
 ```
 
 ### 接线说明
@@ -114,3 +120,4 @@ Useful orchestrator env vars:
 - `MAX_LIGHT_PARALLEL`
 - `MAX_HEAVY_PARALLEL`
 - `DISPATCH_TIMEOUT_SECS`
+- `HEAVY_WORKER_BASE_URL`

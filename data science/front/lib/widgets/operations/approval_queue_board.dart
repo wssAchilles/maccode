@@ -130,6 +130,14 @@ class _ApprovalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final reason = (job.approvalPolicy?['reason'] ?? '').toString().trim();
     final currentStep = job.currentStep;
+    final targetPolicy = job.input['target_policy'];
+    final targetPolicyMap = targetPolicy is Map
+        ? Map<String, dynamic>.from(targetPolicy)
+        : const <String, dynamic>{};
+    final rolloutMode = (targetPolicyMap['rollout_mode'] ?? '').toString();
+    final requestKind = (job.input['request_kind'] ?? '').toString();
+    final componentKey = (job.input['component'] ?? '').toString();
+    final componentLabel = _componentLabel(componentKey);
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -172,6 +180,17 @@ class _ApprovalCard extends StatelessWidget {
             Text(
               '当前步骤 · ${currentStep.phase} · ${currentStep.toolName}',
               style: AppTextStyles.bodySmall,
+            ),
+          ],
+          if (job.type == 'compute_rollout_change' &&
+              componentLabel.isNotEmpty &&
+              rolloutMode.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              '${requestKind == "rollback" ? "回退目标" : "目标组件"} · $componentLabel · ${_rolloutLabel(rolloutMode)}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
           if (reason.isNotEmpty) ...[
@@ -237,5 +256,33 @@ class _SummaryChip extends StatelessWidget {
         style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
       ),
     );
+  }
+}
+
+String _componentLabel(String componentKey) {
+  switch (componentKey) {
+    case 'feature_engineering':
+      return '高级特征工程';
+    case 'scenario_simulation':
+      return '批量情景模拟';
+    default:
+      return componentKey;
+  }
+}
+
+String _rolloutLabel(String mode) {
+  switch (mode) {
+    case 'python_stable':
+      return '稳定 Python';
+    case 'native_candidate':
+      return '灰度 Native';
+    case 'native_enforced':
+      return '强制 Native';
+    case 'python_loop':
+      return '逐场景循环';
+    case 'vectorized_python':
+      return '向量化';
+    default:
+      return mode;
   }
 }

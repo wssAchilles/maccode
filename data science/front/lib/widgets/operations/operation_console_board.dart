@@ -8,6 +8,8 @@ import '../../viewmodels/operation_console_view_model.dart';
 import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 import 'job_event_timeline.dart';
+import 'operation_compute_benchmark_summary.dart';
+import 'operation_compute_governance_summary.dart';
 import 'operation_compute_metrics_strip.dart';
 import 'operation_execution_policy_strip.dart';
 
@@ -33,7 +35,10 @@ class OperationConsoleBoard extends StatelessWidget {
     final scalarMetrics = operation == null
         ? const <MapEntry<String, dynamic>>[]
         : operation.metrics.entries
-              .where((entry) => entry.value is! Map && entry.key != 'compute_metrics')
+              .where(
+                (entry) =>
+                    entry.value is! Map && entry.key != 'compute_metrics',
+              )
               .take(4)
               .toList(growable: false);
     return DutySectionBlock(
@@ -153,7 +158,9 @@ class OperationConsoleBoard extends StatelessWidget {
                       ),
                       if (operation.metrics.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        OperationComputeMetricsStrip(metrics: operation.metrics),
+                        OperationComputeMetricsStrip(
+                          metrics: operation.metrics,
+                        ),
                       ],
                       if (scalarMetrics.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -171,6 +178,8 @@ class OperationConsoleBoard extends StatelessWidget {
                       ],
                       const SizedBox(height: 12),
                       OperationExecutionPolicyStrip(operation: operation),
+                      OperationComputeBenchmarkSummary(operation: operation),
+                      OperationComputeGovernanceSummary(operation: operation),
                     ],
                   ),
                 ),

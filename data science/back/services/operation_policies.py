@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from services.compute_rollout_operation_service import (
+    infer_rollout_change_approval_policy,
+)
+
 
 def default_approval_policy(
     required: bool = False,
@@ -51,6 +55,12 @@ def infer_approval_policy(
         return default_approval_policy(
             True,
             reason='Large-scale optimization requires approval',
+        )
+    if operation_type == 'compute_rollout_change':
+        inferred = infer_rollout_change_approval_policy(payload)
+        return default_approval_policy(
+            bool(inferred.get('required')),
+            reason=inferred.get('reason'),
         )
     return default_approval_policy(False)
 

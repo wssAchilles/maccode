@@ -18,7 +18,20 @@ from services.job_workflows import (
     run_optimization_workflow,
     run_rag_ingest_workflow,
 )
+from services.compute_rollout_operation_service import (
+    apply_rollout_change,
+    normalize_rollout_change_request,
+)
+from services.compute_benchmark_service import ComputeBenchmarkService
+from services.operation_execution_target import (
+    resolve_operation_execution_target,
+    resolve_step_execution_target,
+)
 from services.operation_dispatcher import dispatch_operation as dispatch_operation_task
+from services.operation_compute_events import (
+    build_compute_rollout_change_event,
+    build_compute_runtime_events,
+)
 from services.operation_metrics import (
     attach_step_metrics,
     extract_operation_metrics,
@@ -115,11 +128,16 @@ class OperationService:
     def _infer_access_scope(
         *,
         uid: str,
+        operation_type: str,
         control_task_id: Optional[str],
         trigger: str,
         metadata: Optional[Dict[str, Any]],
     ) -> str:
         metadata = metadata or {}
+        if operation_type in {'compute_rollout_change', 'compute_benchmark'}:
+            return 'control_plane'
+        if metadata.get('control_plane_operation'):
+            return 'control_plane'
         if control_task_id or metadata.get('control_task_run') or uid == 'system':
             return 'control_plane'
         if trigger in {'scheduler', 'scheduled', 'cron', 'compat'}:
@@ -128,11 +146,18 @@ class OperationService:
 
     @staticmethod
     def _is_control_plane_operation(record: Dict[str, Any]) -> bool:
+        if str(record.get('type') or '').strip().lower() in {
+            'compute_rollout_change',
+            'compute_benchmark',
+        }:
+            return True
         if str(record.get('access_scope') or '').strip().lower() == 'control_plane':
             return True
         if str(record.get('control_task_id') or '').strip():
             return True
         metadata = record.get('metadata') if isinstance(record.get('metadata'), dict) else {}
+        if metadata.get('control_plane_operation'):
+            return True
         if metadata.get('control_task_run'):
             return True
         return str(record.get('requested_by') or '').strip().lower() == 'system'
@@ -230,6 +255,7 @@ class OperationService:
             created_at = cls._now_iso()
             access_scope = cls._infer_access_scope(
                 uid=uid,
+                operation_type=operation_type,
                 control_task_id=control_task_id,
                 trigger=trigger,
                 metadata=metadata,
@@ -238,6 +264,11 @@ class OperationService:
                 'job_id': document.id,
                 'operation_id': document.id,
                 'type': operation_type,
+                'execution_target': resolve_operation_execution_target(
+                    operation_type,
+                    payload,
+                    metadata,
+                ),
                 'status': initial_status,
                 'progress': 0,
                 'attempt_count': 0,
@@ -699,23 +730,44 @@ class OperationService:
     @classmethod
     def claim_dispatch(cls, operation_id: str) -> Optional[Dict[str, Any]]:
         try:
-            document = cls._operations_collection().document(operation_id)
-            snapshot = document.get()
-            if not snapshot.exists:
+            client = cls._get_firestore_client()
+            document = client.collection(Config.JOBS_COLLECTION).document(operation_id)
+            transaction = client.transaction()
+
+            @firestore.transactional
+            def _claim(transaction):
+                snapshot = document.get(transaction=transaction)
+                if not snapshot.exists:
+                    return None
+
+                record = snapshot.to_dict() or {}
+                status = str(record.get('status') or '').strip()
+                if status != 'queued':
+                    return {
+                        'applied': False,
+                        'record': record,
+                    }
+
+                transaction.set(
+                    document,
+                    {
+                        'status': 'dispatching',
+                        'status_message': 'Dispatching to execution worker',
+                    },
+                    merge=True,
+                )
+                return {
+                    'applied': True,
+                    'record': record,
+                }
+
+            claimed = _claim(transaction)
+            if claimed is None:
                 return None
+            if not claimed.get('applied'):
+                return serialize_operation(claimed.get('record') or {})
 
-            record = snapshot.to_dict() or {}
-            status = str(record.get('status') or '').strip()
-            if status != 'queued':
-                return serialize_operation(record)
-
-            document.set(
-                {
-                    'status': 'dispatching',
-                    'status_message': 'Dispatching to execution worker',
-                },
-                merge=True,
-            )
+            record = claimed.get('record') or {}
             event = build_event(
                 event_type='operation.dispatched',
                 phase='dispatch',
@@ -730,6 +782,77 @@ class OperationService:
             )
             cls._persist_event(operation_id, event)
             return cls.get_operation(None, operation_id, include_related=False)
+        except Exception as exc:
+            cls._wrap_backend_error(exc)
+
+    @classmethod
+    def mark_running_if_dispatching(
+        cls,
+        operation_id: str,
+        *,
+        progress: int = 10,
+        message: str = 'Operation started',
+    ) -> bool:
+        try:
+            client = cls._get_firestore_client()
+            document = client.collection(Config.JOBS_COLLECTION).document(operation_id)
+            transaction = client.transaction()
+
+            @firestore.transactional
+            def _promote(transaction):
+                snapshot = document.get(transaction=transaction)
+                if not snapshot.exists:
+                    return None
+
+                record = snapshot.to_dict() or {}
+                if str(record.get('status') or '').strip() != 'dispatching':
+                    return {
+                        'applied': False,
+                        'record': record,
+                    }
+
+                attempt_count = int(record.get('attempt_count', 0)) + 1
+                transaction.set(
+                    document,
+                    {
+                        'status': 'running',
+                        'progress': progress,
+                        'attempt_count': attempt_count,
+                        'started_at': SERVER_TIMESTAMP,
+                        'status_message': message,
+                    },
+                    merge=True,
+                )
+                return {
+                    'applied': True,
+                    'record': {
+                        **record,
+                        'status': 'running',
+                        'progress': progress,
+                        'attempt_count': attempt_count,
+                        'status_message': message,
+                    },
+                }
+
+            promoted = _promote(transaction)
+            if not promoted or not promoted.get('applied'):
+                return False
+
+            current = promoted.get('record') or {}
+            event = build_event(
+                event_type='operation.started',
+                phase='started',
+                status='running',
+                message=message,
+                progress=progress,
+            )
+            cls._append_event_projection(
+                operation_id,
+                cls.get_operation_for_execution(operation_id) or current,
+                event,
+            )
+            cls._persist_event(operation_id, event)
+            return True
         except Exception as exc:
             cls._wrap_backend_error(exc)
 
@@ -782,10 +905,12 @@ class OperationService:
         tool_name = resolve_tool_name(operation_type, phase)
         tool_contract = get_tool_contract(tool_name)
         normalized_step_metrics = merge_operation_metrics({}, step_metrics or {})
+        operation_target = str(current.get('execution_target') or '')
 
         now_iso = cls._now_iso()
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
+        current_step_before = dict(current_step)
         previous_phase = current_step.get('phase')
         previous_running = bool(current_step) and current_step.get('status') == 'running'
 
@@ -814,7 +939,12 @@ class OperationService:
                 'started_at': now_iso,
                 'ended_at': None,
                 'duration_ms': None,
-                'execution_target': tool_contract.execution_target if tool_contract else None,
+                'execution_target': resolve_step_execution_target(
+                    operation_target,
+                    tool_contract.execution_target if tool_contract else None,
+                )
+                if tool_contract
+                else operation_target or None,
                 'timeout_s': tool_contract.timeout_s if tool_contract else None,
                 'retry_policy': tool_contract.retry_policy if tool_contract else None,
                 'approval_policy': tool_contract.approval_policy if tool_contract else None,
@@ -869,6 +999,18 @@ class OperationService:
         )
         cls._append_event_projection(operation_id, current, progress_event)
         cls._persist_event(operation_id, progress_event)
+        previous_metrics = merge_operation_metrics(
+            current.get('metrics'),
+            current_step_before.get('metrics') if isinstance(current_step_before, dict) else None,
+        )
+        for compute_event in build_compute_runtime_events(
+            previous_metrics,
+            current_step.get('metrics') or normalized_step_metrics,
+            phase=phase,
+            progress=progress,
+        ):
+            cls._append_event_projection(operation_id, current, compute_event)
+            cls._persist_event(operation_id, compute_event)
 
     @classmethod
     def mark_succeeded(cls, operation_id: str, result: Dict[str, Any], message: str = 'Operation completed'):
@@ -877,6 +1019,7 @@ class OperationService:
         now_iso = cls._now_iso()
         steps = list(current.get('steps') or [])
         current_step = dict(current.get('current_step') or {})
+        operation_type = str(current.get('type') or '')
         operation_metrics = extract_operation_metrics(result)
         if current_step and current_step.get('status') == 'running':
             current_step = attach_step_metrics(current_step, operation_metrics)
@@ -922,6 +1065,23 @@ class OperationService:
                 metadata=artifact.get('metadata'),
             )
 
+        current_after_update = cls.get_operation_for_execution(operation_id) or current
+        phase = str(current_step.get('phase') or 'completed')
+        for compute_event in build_compute_runtime_events(
+            dict(current.get('metrics') or {}),
+            merged_metrics,
+            phase=phase,
+            progress=100,
+        ):
+            cls._append_event_projection(operation_id, current_after_update, compute_event)
+            cls._persist_event(operation_id, compute_event)
+
+        if operation_type == 'compute_rollout_change':
+            rollout_event = build_compute_rollout_change_event(result, progress=100)
+            if rollout_event:
+                cls._append_event_projection(operation_id, current_after_update, rollout_event)
+                cls._persist_event(operation_id, rollout_event)
+
         event = build_event(
             event_type='operation.completed',
             phase='completed',
@@ -930,7 +1090,7 @@ class OperationService:
             progress=100,
             extra={'metrics': merged_metrics},
         )
-        cls._append_event_projection(operation_id, cls.get_operation_for_execution(operation_id) or current, event)
+        cls._append_event_projection(operation_id, current_after_update, event)
         cls._persist_event(operation_id, event)
 
     @classmethod
@@ -1087,18 +1247,29 @@ class OperationService:
         operation_type = operation.get('type')
         payload = operation.get('input') or {}
 
-        cls.mark_running(operation_id, message=f'Running {operation_type}')
-        HistoryService.add_history(
-            uid=uid,
-            action='job_started',
-            status='running',
-            source=operation_type,
-            resource_type='job',
-            resource_id=operation_id,
-            title=f'开始任务: {operation_type}',
-        )
-
         try:
+            if not cls.mark_running_if_dispatching(
+                operation_id,
+                message=f'Running {operation_type}',
+            ):
+                current = cls.get_operation_for_execution(operation_id) or {}
+                logger.info(
+                    'Operation %s startup skipped because status is %s',
+                    operation_id,
+                    current.get('status'),
+                )
+                return
+
+            HistoryService.add_history(
+                uid=uid,
+                action='job_started',
+                status='running',
+                source=operation_type,
+                resource_type='job',
+                resource_id=operation_id,
+                title=f'开始任务: {operation_type}',
+            )
+
             if operation_type == 'optimization':
                 cls.update_progress(operation_id, 25, 'Predicting demand and pricing', phase='forecast')
                 result = run_optimization_workflow(uid, payload, job_id=operation_id)
@@ -1127,6 +1298,71 @@ class OperationService:
                     phase='prepare_dataset',
                 )
                 result = run_train_model(payload)
+            elif operation_type == 'compute_rollout_change':
+                prepared_change = normalize_rollout_change_request(payload)
+                cls.update_progress(
+                    operation_id,
+                    30,
+                    f'Preparing compute rollout change for {prepared_change["component_label"]}',
+                    phase='compute_rollout_prepare',
+                )
+                cls.update_progress(
+                    operation_id,
+                    70,
+                    f'Applying compute rollout change for {prepared_change["component_label"]}',
+                    phase='compute_rollout_apply',
+                )
+                result, audit_details = apply_rollout_change(
+                    payload,
+                    updated_by=str(uid or 'system'),
+                )
+                HistoryService.add_history(
+                    uid=str(uid or 'system'),
+                    action='compute_rollout_updated',
+                    status='success',
+                    source='compute_governance',
+                    resource_type='job',
+                    resource_id=operation_id,
+                    title=f'计算治理变更: {prepared_change["component_label"]}',
+                    details=audit_details,
+                )
+            elif operation_type == 'compute_benchmark':
+                component = str(payload.get('component') or '').strip()
+                label = '高级特征工程' if component == 'feature_engineering' else '批量情景模拟'
+                cls.update_progress(
+                    operation_id,
+                    20,
+                    f'Preparing benchmark workload for {label}',
+                    phase='compute_benchmark_prepare',
+                )
+                cls.update_progress(
+                    operation_id,
+                    65,
+                    f'Running benchmark on {label}',
+                    phase='compute_benchmark_run',
+                )
+                result = ComputeBenchmarkService.run(payload, operation_id=operation_id)
+                cls.update_progress(
+                    operation_id,
+                    90,
+                    f'Publishing benchmark artifacts for {label}',
+                    phase='compute_benchmark_publish',
+                    step_metrics=result.get('metrics') if isinstance(result, dict) else None,
+                )
+                HistoryService.add_history(
+                    uid=str(uid or 'system'),
+                    action='compute_benchmark_completed',
+                    status='success',
+                    source='compute_governance',
+                    resource_type='job',
+                    resource_id=operation_id,
+                    title=f'计算 benchmark: {label}',
+                    details={
+                        'component': component,
+                        'summary': result.get('summary') if isinstance(result, dict) else '',
+                        'metrics': result.get('metrics') if isinstance(result, dict) else {},
+                    },
+                )
             else:
                 raise ValueError(f'Unsupported operation type: {operation_type}')
 
@@ -1146,6 +1382,38 @@ class OperationService:
         except Exception as exc:
             logger.exception('Operation %s failed', operation_id)
             cls.mark_failed(operation_id, code='JOB_FAILED', message=str(exc))
+            if operation_type == 'compute_rollout_change':
+                HistoryService.add_history(
+                    uid=str(uid or 'system'),
+                    action='compute_rollout_update_failed',
+                    status='failed',
+                    source='compute_governance',
+                    resource_type='job',
+                    resource_id=operation_id,
+                    title='计算治理变更失败',
+                    details={
+                        'job_type': operation_type,
+                        'message': str(exc),
+                        'payload': payload,
+                    },
+                    severity='error',
+                )
+            elif operation_type == 'compute_benchmark':
+                HistoryService.add_history(
+                    uid=str(uid or 'system'),
+                    action='compute_benchmark_failed',
+                    status='failed',
+                    source='compute_governance',
+                    resource_type='job',
+                    resource_id=operation_id,
+                    title='计算 benchmark 失败',
+                    details={
+                        'job_type': operation_type,
+                        'message': str(exc),
+                        'payload': payload,
+                    },
+                    severity='error',
+                )
             HistoryService.add_history(
                 uid=uid,
                 action='job_failed',

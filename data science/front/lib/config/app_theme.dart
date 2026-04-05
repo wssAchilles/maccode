@@ -5,7 +5,6 @@ library;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 part 'theme/app_colors.dart';
 part 'theme/app_decorations.dart';

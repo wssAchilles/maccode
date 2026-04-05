@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from google.cloud import firestore
 
 from config import Config
+from services.compute_governance_status_service import ComputeGovernanceStatusService
 from services.compute_native_loader import get_native_backend_status
 from services.compute_rollout_service import ComputeRolloutService
 
@@ -260,13 +261,14 @@ class ComputeAccelerationService:
         native_available: bool = False,
         preferred_backend: str = 'python_pandas',
         metadata: Dict[str, Any] | None = None,
+        skip_benchmark_marker: bool = False,
     ) -> None:
         """Persist a sampled hotspot invocation without breaking the caller."""
 
         if not bool(getattr(Config, 'COMPUTE_PROFILE_ENABLED', True)):
             return
 
-        if 'benchmark' in str(context or '').lower():
+        if not skip_benchmark_marker and 'benchmark' in str(context or '').lower():
             try:
                 ComputeRolloutService.record_benchmark(
                     component,
@@ -340,7 +342,7 @@ class ComputeAccelerationService:
             'hottest_component': '--',
             'last_updated_at': '',
             'components': [],
-            'rollout': ComputeRolloutService.serialize_policy(),
+            'rollout': ComputeGovernanceStatusService.get_policy_view(),
         }
 
     @classmethod
@@ -402,11 +404,20 @@ class ComputeAccelerationService:
                 if isinstance(rollout_policy.get('components'), dict)
                 else {}
             )
+            if component_key and benchmark_context and isinstance(rollout_component, dict):
+                if not str(rollout_component.get('last_benchmark_at') or ''):
+                    rollout_policy = ComputeRolloutService.get_policy(force_refresh=True)
+                    rollout_refreshed = True
+                    rollout_component = (
+                        rollout_policy.get('components', {}).get(component_key)
+                        if isinstance(rollout_policy.get('components'), dict)
+                        else {}
+                    )
             if (
                 component_key
                 and benchmark_context
                 and isinstance(rollout_component, dict)
-                and not str(rollout_component.get('last_benchmark_at') or '')
+                and cls._should_record_benchmark_sample(rollout_component)
             ):
                 ComputeRolloutService.record_benchmark(
                     component_key,
@@ -441,49 +452,74 @@ class ComputeAccelerationService:
             reverse=True,
         )
         hottest_component = normalized_components[0]['label'] if normalized_components else '--'
-        benchmark_ready = any(
-            'benchmark' in str(component.get('last_context') or '')
-            or any('benchmark' in str(ctx) for ctx in component.get('contexts') or [])
-            for component in normalized_components
-        )
         active_backend = (
             'native_cpp'
             if any(item.get('active_backend') == 'native_cpp' for item in normalized_components)
             else native_status.active_backend
         )
 
+        rollout_payload = ComputeGovernanceStatusService.get_policy_view(
+            rollout_policy if rollout_refreshed else None,
+        )
+        global_capability = cls._derive_global_runtime_capability(
+            native_status=native_status,
+            normalized_components=normalized_components,
+            rollout_payload=rollout_payload,
+        )
+
         if normalized_components:
             if overall_status == 'info':
                 overall_status = 'ok'
-            message = (
-                'Compute acceleration telemetry active'
-                if active_backend == 'python_pandas'
-                else 'Native compute backend is active'
-            )
-            if source_label == 'local':
-                message = 'Compute acceleration telemetry active (local snapshot)'
         else:
             overall_status = 'info'
-            message = 'Compute acceleration telemetry is waiting for the first hotspot sample'
 
-        if native_status.native_enabled and not native_status.native_available:
+        message = cls._overall_message(
+            overall_status=overall_status,
+            active_backend=active_backend,
+            source_label=source_label,
+            normalized_components=normalized_components,
+            global_native_enabled=bool(global_capability.get('native_enabled')),
+            global_native_available=bool(global_capability.get('native_available')),
+            native_status=native_status,
+        )
+
+        if (
+            bool(global_capability.get('native_enabled'))
+            and not bool(global_capability.get('native_available'))
+            and active_backend != 'native_cpp'
+        ):
             overall_status = 'warning'
             message = native_status.reason
 
-        rollout_payload = (
-            ComputeRolloutService.serialize_policy(rollout_policy)
-            if rollout_refreshed
-            else ComputeRolloutService.serialize_policy()
+        benchmark_ready = any(
+            bool(component.get('benchmark_passed'))
+            for component in rollout_payload.get('components', [])
+            if isinstance(component, dict)
         )
+        auto_rollback_components = [
+            str(component.get('label') or '--')
+            for component in rollout_payload.get('components', [])
+            if isinstance(component, dict)
+            and str(component.get('rollout_status') or '') == 'auto_rolled_back'
+        ]
+        if auto_rollback_components:
+            overall_status = 'warning'
+            message = (
+                f'Compute guard auto-rolled back {auto_rollback_components[0]}'
+                if len(auto_rollback_components) == 1
+                else 'Compute guard auto-rolled back multiple components'
+            )
 
         return {
             'enabled': bool(getattr(Config, 'COMPUTE_PROFILE_ENABLED', True)),
             'status': overall_status,
             'message': message,
-            'preferred_backend': native_status.preferred_backend,
+            'preferred_backend': str(
+                global_capability.get('preferred_backend') or native_status.preferred_backend,
+            ),
             'active_backend': active_backend,
-            'native_enabled': native_status.native_enabled,
-            'native_available': native_status.native_available,
+            'native_enabled': bool(global_capability.get('native_enabled')),
+            'native_available': bool(global_capability.get('native_available')),
             'profiled_components': len(normalized_components),
             'benchmark_ready': benchmark_ready,
             'hottest_component': hottest_component,
@@ -491,3 +527,83 @@ class ComputeAccelerationService:
             'components': normalized_components[:4],
             'rollout': rollout_payload,
         }
+
+    @staticmethod
+    def _derive_global_runtime_capability(
+        *,
+        native_status: Any,
+        normalized_components: List[Dict[str, Any]],
+        rollout_payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        runtime_targets = [
+            dict(target)
+            for target in (rollout_payload.get('runtime_targets') or [])
+            if isinstance(target, dict)
+        ]
+        native_enabled = any(bool(target.get('native_enabled')) for target in runtime_targets) or any(
+            bool(item.get('native_enabled'))
+            for item in normalized_components
+        )
+        native_available = any(
+            bool(target.get('native_available'))
+            for target in runtime_targets
+        ) or any(bool(item.get('native_available')) for item in normalized_components)
+        preferred_backend = native_status.preferred_backend
+        if any(
+            str(target.get('preferred_backend') or '') == 'native_cpp'
+            for target in runtime_targets
+        ) or any(
+            str(item.get('preferred_backend') or '') == 'native_cpp'
+            for item in normalized_components
+        ):
+            preferred_backend = 'native_cpp'
+        return {
+            'native_enabled': native_enabled,
+            'native_available': native_available,
+            'preferred_backend': preferred_backend,
+        }
+
+    @staticmethod
+    def _overall_message(
+        *,
+        overall_status: str,
+        active_backend: str,
+        source_label: str,
+        normalized_components: List[Dict[str, Any]],
+        global_native_enabled: bool,
+        global_native_available: bool,
+        native_status: Any,
+    ) -> str:
+        if not normalized_components:
+            return 'Compute acceleration telemetry is waiting for the first hotspot sample'
+
+        hottest = normalized_components[0]
+        hottest_label = str(hottest.get('label') or '--')
+        recommended_action = str(hottest.get('recommended_action') or '').strip()
+
+        if source_label == 'local':
+            return 'Compute acceleration telemetry active (local snapshot)'
+        if overall_status == 'error':
+            return f'{hottest_label} compute telemetry is over budget'
+        if overall_status == 'warning':
+            if global_native_enabled and not global_native_available:
+                return native_status.reason
+            if recommended_action:
+                return recommended_action
+        if active_backend == 'native_cpp':
+            return 'Native compute backend is active'
+        return 'Compute acceleration telemetry active'
+
+    @staticmethod
+    def _should_record_benchmark_sample(component_policy: Dict[str, Any]) -> bool:
+        """Only backfill a recorded benchmark marker when no governed result exists."""
+
+        if str(component_policy.get('last_benchmark_at') or '').strip():
+            return False
+        benchmark_status = str(component_policy.get('benchmark_status') or '').strip().lower()
+        benchmark_summary = str(component_policy.get('benchmark_summary') or '').strip()
+        if benchmark_status and benchmark_status != 'pending':
+            return False
+        if benchmark_summary:
+            return False
+        return True

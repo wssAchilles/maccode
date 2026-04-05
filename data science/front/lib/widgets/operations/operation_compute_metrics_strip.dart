@@ -62,6 +62,12 @@ class _ComputePill extends StatelessWidget {
         : (AppColors.primary, AppColors.infoLight);
     final contextLabel = item.context.isEmpty ? '--' : item.context;
     final rolloutLabel = item.rolloutMode.isEmpty ? '--' : item.rolloutMode;
+    final benchmarkLabel = item.benchmarkStatus.isEmpty
+        ? (item.benchmarkReady ? 'benchmark ready' : 'benchmark pending')
+        : 'benchmark ${item.benchmarkStatus}';
+    final guardLabel = item.guardFailureThreshold > 0
+        ? 'guard ${item.guardRecentFailureCount}/${item.guardFailureThreshold}'
+        : 'guard --';
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 0 : 10,
@@ -91,9 +97,39 @@ class _ComputePill extends StatelessWidget {
           ),
           if (!compact)
             Text(
-              'Rows ${item.rows} · $contextLabel · $rolloutLabel',
+              'Rows ${item.rows} · $contextLabel · $rolloutLabel · $benchmarkLabel · $guardLabel',
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textMuted,
+              ),
+            ),
+          if (!compact && item.rolloutReason.isNotEmpty)
+            Text(
+              item.rolloutReason,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          if (!compact && item.benchmarkSummary.isNotEmpty)
+            Text(
+              item.benchmarkSpeedupRatio == null
+                  ? item.benchmarkSummary
+                  : '${item.benchmarkSummary} · ${item.benchmarkSpeedupRatio!.toStringAsFixed(2)}x',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+          if (!compact && item.fallbackReason.isNotEmpty)
+            Text(
+              'fallback · ${item.fallbackReason}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.warning,
+              ),
+            ),
+          if (!compact && item.guardAutoRollbackApplied)
+            Text(
+              'auto rollback · ${item.guardLastAutoRollbackReason.isEmpty ? "stable python" : item.guardLastAutoRollbackReason}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.warning,
               ),
             ),
         ],

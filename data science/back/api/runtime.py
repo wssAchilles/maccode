@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, request
 
 from middleware.rate_limit import rate_limit
 from services.compute_acceleration_service import ComputeAccelerationService
+from services.compute_worker_capability_service import ComputeWorkerCapabilityService
 from services.firebase_service import require_auth
 from utils.responses import error_response, success_response
 
@@ -28,6 +29,13 @@ def get_compute_status():
     return success_response(ComputeAccelerationService.get_status())
 
 
+@runtime_bp.route('/worker-capability', methods=['GET'])
+@require_auth
+@rate_limit(max_requests=60, window_seconds=60)
+def get_worker_capability():
+    return success_response(ComputeWorkerCapabilityService.get_local_capability())
+
+
 @internal_runtime_bp.route('/internal/runtime/compute-status', methods=['GET'])
 def internal_get_compute_status():
     if not _validate_internal_token():
@@ -37,3 +45,17 @@ def internal_get_compute_status():
             status_code=403,
         )
     return success_response(ComputeAccelerationService.get_status())
+
+
+@internal_runtime_bp.route('/internal/runtime/worker-capability', methods=['GET'])
+def internal_get_worker_capability():
+    if not _validate_internal_token():
+        return error_response(
+            'UNAUTHORIZED',
+            'Internal runtime token missing',
+            status_code=403,
+        )
+    worker_key = str(request.args.get('worker_key') or 'light_worker')
+    return success_response(
+        ComputeWorkerCapabilityService.get_local_capability(worker_key=worker_key),
+    )

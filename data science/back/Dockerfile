@@ -37,8 +37,21 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     "tensorflow-cpu>=2.15.0" \
     "tf-keras>=2.15.0" \
+    "pybind11>=2.11.0" \
+    "setuptools>=68.0.0" \
+    "wheel>=0.41.0" && \
+    # 显式固定 CPU-only Torch，避免 Cloud Run CPU 镜像误拉 CUDA 依赖
+    pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    --extra-index-url https://pypi.org/simple \
+    "torch>=2.4.0,<2.7.0" && \
+    pip install --no-cache-dir \
     "sentence-transformers>=2.2.0" \
     "chromadb>=0.4.0"
+
+# 复制源码并构建可选 native 计算模块
+COPY . .
+RUN cd /app/native/rolling_features && python setup.py build_ext --inplace
 
 # =============================================================================
 # Stage 2: 运行阶段 - 最小化镜像
@@ -66,8 +79,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 复制应用代码
+# 复制应用代码和已构建的 native 模块
 COPY . .
+COPY --from=builder /app/native/rolling_features /app/native/rolling_features
 
 # 创建非 root 用户运行应用（安全最佳实践）
 RUN useradd --create-home --shell /bin/bash appuser && \

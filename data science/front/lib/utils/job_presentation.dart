@@ -2,12 +2,10 @@ library;
 
 import '../models/job_record.dart';
 
-String buildJobPrimaryText(
-  JobRecord job, {
-  String fallback = '任务已提交',
-}) {
+String buildJobPrimaryText(JobRecord job, {String fallback = '任务已提交'}) {
   final statusMessage = _normalized(job.statusMessage);
-  if (statusMessage != null && !_isGenericStatusMessage(job.status, statusMessage)) {
+  if (statusMessage != null &&
+      !_isGenericStatusMessage(job.status, statusMessage)) {
     return _translateKnownJobMessage(job, statusMessage) ?? statusMessage;
   }
 
@@ -72,6 +70,16 @@ String buildJobEventMessage(JobRecord job, JobEvent event) {
       return '发布产物';
     case 'ingest_knowledge_base':
       return '知识入库';
+    case 'compute_rollout_prepare':
+      return '治理预检';
+    case 'compute_rollout_apply':
+      return '治理应用';
+    case 'compute_benchmark_prepare':
+      return '准备 benchmark';
+    case 'compute_benchmark_run':
+      return '执行 benchmark';
+    case 'compute_benchmark_publish':
+      return '发布 benchmark 结果';
     case 'queued':
       return '$jobLabel已排队';
     case 'started':
@@ -216,6 +224,24 @@ String? _translateKnownJobMessage(JobRecord job, String message) {
   if (normalized.contains('artifact published')) {
     return '产物已发布';
   }
+  if (normalized.contains('preparing compute rollout change')) {
+    return '正在校验并预览计算治理变更';
+  }
+  if (normalized.contains('applying compute rollout change')) {
+    return '正在应用计算治理策略';
+  }
+  if (normalized.contains('preparing benchmark workload')) {
+    return '正在准备 benchmark 样本';
+  }
+  if (normalized.contains('running benchmark on')) {
+    return '正在执行 benchmark';
+  }
+  if (normalized.contains('publishing benchmark artifacts')) {
+    return '正在发布 benchmark 结果';
+  }
+  if (normalized.contains('rollout')) {
+    return message;
+  }
 
   if (normalized == 'running') {
     return '${_jobLabel(job.type)}运行中';
@@ -238,6 +264,10 @@ String _jobLabel(String type) {
       return '抓取任务';
     case 'train_model':
       return '重训任务';
+    case 'compute_rollout_change':
+      return '计算治理任务';
+    case 'compute_benchmark':
+      return '计算基准任务';
     default:
       return '任务';
   }

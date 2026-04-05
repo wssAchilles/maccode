@@ -77,9 +77,7 @@ impl Default for ComputeRolloutTelemetry {
     }
 }
 
-pub async fn fetch_compute_acceleration(
-    state: &AppState,
-) -> ComputeAccelerationTelemetry {
+pub async fn fetch_compute_acceleration(state: &AppState) -> ComputeAccelerationTelemetry {
     let Some(base_url) = state.config.python_worker_base_url.as_ref() else {
         return ComputeAccelerationTelemetry::unavailable(
             "Python worker not configured for compute telemetry",
@@ -120,9 +118,7 @@ pub async fn fetch_compute_acceleration(
         Ok(envelope) => envelope.data,
         Err(error) => {
             warn!("failed to decode compute telemetry envelope: {}", error);
-            ComputeAccelerationTelemetry::unavailable(
-                "Compute telemetry payload decode failed",
-            )
+            ComputeAccelerationTelemetry::unavailable("Compute telemetry payload decode failed")
         }
     }
 }

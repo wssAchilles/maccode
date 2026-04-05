@@ -8,7 +8,7 @@ from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from middleware.rate_limit import rate_limit
 from services.firebase_service import require_auth
-from services.operation_dispatcher import spawn_operation_worker
+from services.operation_execution_runtime import start_internal_operation_dispatch
 from services.operation_service import JobBackendUnavailableError, OperationService
 from services.operation_stream import stream_operation_events
 from services.operation_tool_runner import execute_operation_tool
@@ -20,7 +20,14 @@ logger = logging.getLogger(__name__)
 operations_bp = Blueprint('operations', __name__, url_prefix='/api/operations')
 internal_operations_bp = Blueprint('internal_operations', __name__)
 
-_ALLOWED_TYPES = {'analysis', 'optimization', 'ml_train', 'rag_ingest'}
+_ALLOWED_TYPES = {
+    'analysis',
+    'optimization',
+    'ml_train',
+    'rag_ingest',
+    'compute_rollout_change',
+    'compute_benchmark',
+}
 
 
 def _validate_internal_token() -> bool:
@@ -223,12 +230,13 @@ def internal_dispatch_operation(operation_id: str):
     if not operation:
         return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
     app = current_app._get_current_object()
-    spawn_operation_worker(
+    dispatch_result = start_internal_operation_dispatch(
         app,
         operation_id,
-        OperationService.process_dispatch,
+        process_callback=OperationService.process_dispatch,
+        fetch_callback=OperationService.get_operation_for_execution,
     )
-    return success_response({'operation_id': operation_id, 'status': 'accepted'}, status_code=202)
+    return success_response(dispatch_result, status_code=202)
 
 
 @internal_operations_bp.route('/internal/operations/<operation_id>/cancel', methods=['POST'])

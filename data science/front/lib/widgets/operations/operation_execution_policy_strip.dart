@@ -7,29 +7,31 @@ import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
 
 class OperationExecutionPolicyStrip extends StatelessWidget {
-  const OperationExecutionPolicyStrip({
-    super.key,
-    required this.operation,
-  });
+  const OperationExecutionPolicyStrip({super.key, required this.operation});
 
   final JobRecord operation;
 
   @override
   Widget build(BuildContext context) {
     final step = operation.currentStep;
-    if (step == null) {
+    final stepExecutionTarget = step?.executionTarget ?? '';
+    final stepTimeout = step?.timeoutS;
+    final stepConcurrencyKey = step?.concurrencyKey ?? '';
+    final stepRetryAttempts = step?.retryPolicy?['max_attempts'];
+    final stepDuration = step?.durationMs;
+
+    if (step == null && (operation.executionTarget ?? '').isEmpty) {
       return const SizedBox.shrink();
     }
 
     final chips = <String>[
-      if ((step.executionTarget ?? '').isNotEmpty)
-        '执行平面 · ${step.executionTarget}',
-      if (step.timeoutS != null) '超时 · ${step.timeoutS}s',
-      if ((step.concurrencyKey ?? '').isNotEmpty)
-        '并发键 · ${step.concurrencyKey}',
-      if ((step.retryPolicy?['max_attempts']) != null)
-        '重试预算 · ${step.retryPolicy!['max_attempts']} 次',
-      if (step.durationMs != null) '耗时 · ${step.durationMs} ms',
+      if ((operation.executionTarget ?? '').isNotEmpty)
+        '运行目标 · ${operation.executionTarget}',
+      if (stepExecutionTarget.isNotEmpty) '执行平面 · $stepExecutionTarget',
+      if (stepTimeout != null) '超时 · ${stepTimeout}s',
+      if (stepConcurrencyKey.isNotEmpty) '并发键 · $stepConcurrencyKey',
+      if (stepRetryAttempts != null) '重试预算 · $stepRetryAttempts 次',
+      if (stepDuration != null) '耗时 · $stepDuration ms',
     ];
 
     if (chips.isEmpty) {
