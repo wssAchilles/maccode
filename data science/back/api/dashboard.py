@@ -9,6 +9,7 @@ from flask import Blueprint, request
 from middleware.rate_limit import rate_limit
 from services.dashboard_service import DashboardService
 from services.firebase_service import require_auth
+from services.runtime_cache_service import RuntimeCacheService
 from utils.responses import error_response, success_response
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,11 @@ def get_dashboard_summary():
 
     try:
         uid = request.user.get('uid')
-        payload = DashboardService.build_summary(uid)
+        payload = RuntimeCacheService.get_or_set(
+            f'dashboard:summary:{uid}',
+            lambda: DashboardService.build_summary(uid),
+            ttl_s=20,
+        )
         return success_response(payload)
     except Exception as exc:
         logger.error('Failed to build dashboard summary: %s', exc, exc_info=True)
@@ -42,7 +47,11 @@ def get_dashboard_assets():
     try:
         uid = request.user.get('uid')
         limit = int(request.args.get('limit', 6))
-        payload = DashboardService.build_asset_summary(uid, limit=limit)
+        payload = RuntimeCacheService.get_or_set(
+            f'dashboard:assets:{uid}:{limit}',
+            lambda: DashboardService.build_asset_summary(uid, limit=limit),
+            ttl_s=30,
+        )
         return success_response(payload)
     except Exception as exc:
         logger.error('Failed to build asset summary: %s', exc, exc_info=True)

@@ -600,6 +600,10 @@ resource "google_cloud_run_v2_service" "strategy" {
         name  = "EVENT_STREAM_PUBLISH_LEGACY_PUBSUB"
         value = tostring(var.redis_order_events_legacy_pubsub_fallback)
       }
+      env {
+        name  = "EXECUTION_RELAY_INTERVAL_SECONDS"
+        value = tostring(var.execution_relay_interval_seconds)
+      }
 
       env {
         name = "GRB_LICENSEID"

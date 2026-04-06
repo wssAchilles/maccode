@@ -83,6 +83,7 @@ class OperationsHubScreen extends StatefulWidget {
 class _OperationsHubScreenState extends State<OperationsHubScreen> {
   String? _highlightedControlTaskId;
   String? _lastGovernanceSyncedOperationId;
+  bool _deferredSectionsReady = false;
 
   @override
   void initState() {
@@ -94,6 +95,18 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     widget.operationConsoleViewModel?.addListener(
       _handleOperationConsoleUpdate,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      Future<void>.delayed(const Duration(milliseconds: 220)).then((_) {
+        if (mounted) {
+          setState(() {
+            _deferredSectionsReady = true;
+          });
+        }
+      });
+    });
   }
 
   @override
@@ -1526,54 +1539,56 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           ),
         ],
         const SizedBox(height: 20),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final stacked = constraints.maxWidth < 1040;
-            if (stacked) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < orderedSections.length; i++) ...[
-                    orderedSections[i].value,
-                    if (i < orderedSections.length - 1)
-                      const SizedBox(height: 20),
-                  ],
-                ],
-              );
-            }
+        _deferredSectionsReady
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 1040;
+                  if (stacked) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < orderedSections.length; i++) ...[
+                          orderedSections[i].value,
+                          if (i < orderedSections.length - 1)
+                            const SizedBox(height: 20),
+                        ],
+                      ],
+                    );
+                  }
 
-            final leftSections = <Widget>[];
-            final rightSections = <Widget>[];
-            for (var i = 0; i < orderedSections.length; i++) {
-              final target = i.isEven ? leftSections : rightSections;
-              target.add(orderedSections[i].value);
-              if (i + 2 < orderedSections.length) {
-                target.add(const SizedBox(height: 20));
-              }
-            }
+                  final leftSections = <Widget>[];
+                  final rightSections = <Widget>[];
+                  for (var i = 0; i < orderedSections.length; i++) {
+                    final target = i.isEven ? leftSections : rightSections;
+                    target.add(orderedSections[i].value);
+                    if (i + 2 < orderedSections.length) {
+                      target.add(const SizedBox(height: 20));
+                    }
+                  }
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 7,
-                  child: Column(
+                  return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: leftSections,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: rightSections,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+                    children: [
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: leftSections,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: rightSections,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              )
+            : const _DeferredSectionsPlaceholder(),
       ],
     );
   }
@@ -1741,6 +1756,41 @@ class _EmptySection extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Text(message, style: AppTextStyles.bodyMedium),
+    );
+  }
+}
+
+class _DeferredSectionsPlaceholder extends StatelessWidget {
+  const _DeferredSectionsPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.2),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              '正在延迟加载资产与审计区块，优先保证首屏控制面响应。',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

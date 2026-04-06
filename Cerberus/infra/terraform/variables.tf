@@ -748,6 +748,12 @@ variable "market_stream_legacy_pubsub_fallback" {
   default     = true
 }
 
+variable "execution_relay_interval_seconds" {
+  description = "Strategy execution relay polling interval in seconds"
+  type        = number
+  default     = 2
+}
+
 variable "strategy_event_stream_maxlen" {
   description = "Approximate max length of strategy event stream writes"
   type        = number

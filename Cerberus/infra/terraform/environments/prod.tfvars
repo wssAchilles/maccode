@@ -27,10 +27,15 @@ market_stream_legacy_pubsub_fallback        = false
 redis_market_events_publish_legacy_pubsub   = false
 redis_order_events_legacy_pubsub_fallback   = false
 redis_market_events_single_writer_enabled   = true
-redis_market_events_min_publish_interval_ms = 100
+redis_market_events_min_publish_interval_ms = 250
+redis_order_events_read_block_ms            = 30000
+redis_order_events_reclaim_interval_ms      = 60000
+market_stream_read_block_ms                 = 30000
+market_stream_reclaim_interval_ms           = 60000
+execution_relay_interval_seconds            = 2
 
 cloud_run_gateway = {
-  min_instance_count               = 2
+  min_instance_count               = 1
   max_instance_count               = 80
   max_instance_request_concurrency = 100
   timeout_seconds                  = 900

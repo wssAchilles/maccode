@@ -1,6 +1,8 @@
 /// Compute governance repository.
 library;
 
+import 'dart:async';
+
 import '../models/compute_rollout_policy.dart';
 import '../models/compute_governance_activity_entry.dart';
 import '../models/job_record.dart';
@@ -26,20 +28,64 @@ abstract class ComputeGovernanceRepository {
 class ApiComputeGovernanceRepository implements ComputeGovernanceRepository {
   const ApiComputeGovernanceRepository();
 
+  static ComputeRolloutPolicy? _cachedPolicy;
+  static DateTime? _cachedPolicyAt;
+  static Future<ComputeRolloutPolicy>? _policyInFlight;
+  static final Map<int, List<ComputeGovernanceActivityEntry>> _activityCache =
+      <int, List<ComputeGovernanceActivityEntry>>{};
+  static final Map<int, DateTime> _activityCacheAt = <int, DateTime>{};
+  static final Map<int, Future<List<ComputeGovernanceActivityEntry>>>
+  _activityInFlight = <int, Future<List<ComputeGovernanceActivityEntry>>>{};
+  static const Duration _cacheTtl = Duration(seconds: 20);
+
   @override
   Future<ComputeRolloutPolicy> getPolicy() async {
-    final payload = await ApiService.getComputeRollout();
-    return ComputeRolloutPolicy.fromJson(payload);
+    final now = DateTime.now();
+    if (_cachedPolicy != null &&
+        _cachedPolicyAt != null &&
+        now.difference(_cachedPolicyAt!) < _cacheTtl) {
+      return _cachedPolicy!;
+    }
+    final inflight = _policyInFlight;
+    if (inflight != null) {
+      return inflight;
+    }
+    final request = _loadPolicy();
+    _policyInFlight = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_policyInFlight, request)) {
+        _policyInFlight = null;
+      }
+    }
   }
 
   @override
   Future<List<ComputeGovernanceActivityEntry>> getRecentActivity({
     int limit = 8,
   }) async {
-    final items = await ApiService.getComputeGovernanceActivity(limit: limit);
-    return items
-        .map(ComputeGovernanceActivityEntry.fromJson)
-        .toList(growable: false);
+    final now = DateTime.now();
+    final cached = _activityCache[limit];
+    final cachedAt = _activityCacheAt[limit];
+    if (cached != null &&
+        cachedAt != null &&
+        now.difference(cachedAt) < _cacheTtl) {
+      return cached;
+    }
+    final inflight = _activityInFlight[limit];
+    if (inflight != null) {
+      return inflight;
+    }
+    final request = _loadRecentActivity(limit);
+    _activityInFlight[limit] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_activityInFlight[limit], request)) {
+        _activityInFlight.remove(limit);
+      }
+    }
   }
 
   @override
@@ -54,6 +100,7 @@ class ApiComputeGovernanceRepository implements ComputeGovernanceRepository {
       changeReason: changeReason,
       requestKind: requestKind,
     );
+    _clearCache();
     return JobRecord.fromJson(payload);
   }
 
@@ -76,6 +123,34 @@ class ApiComputeGovernanceRepository implements ComputeGovernanceRepository {
       component: componentKey,
       sampleRows: sampleRows,
     );
+    _clearCache();
     return JobRecord.fromJson(payload);
+  }
+
+  Future<ComputeRolloutPolicy> _loadPolicy() async {
+    final payload = await ApiService.getComputeRollout();
+    final policy = ComputeRolloutPolicy.fromJson(payload);
+    _cachedPolicy = policy;
+    _cachedPolicyAt = DateTime.now();
+    return policy;
+  }
+
+  Future<List<ComputeGovernanceActivityEntry>> _loadRecentActivity(
+    int limit,
+  ) async {
+    final items = await ApiService.getComputeGovernanceActivity(limit: limit);
+    final records = items
+        .map(ComputeGovernanceActivityEntry.fromJson)
+        .toList(growable: false);
+    _activityCache[limit] = records;
+    _activityCacheAt[limit] = DateTime.now();
+    return records;
+  }
+
+  static void _clearCache() {
+    _cachedPolicy = null;
+    _cachedPolicyAt = null;
+    _activityCache.clear();
+    _activityCacheAt.clear();
   }
 }

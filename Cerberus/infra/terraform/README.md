@@ -45,11 +45,13 @@ Use them as base overlays with your secret-bearing `terraform.tfvars`.
   - `redis_market_events_leader_ttl_ms`, `redis_market_events_leader_heartbeat_ms`
   - `redis_market_events_min_publish_interval_ms`, `redis_market_events_publish_on_price_change_only`
 - Strategy market ingestion uses Redis Stream consumer group (`market_stream_consumer_group`) with optional Pub/Sub fallback.
+  - `market_stream_read_block_ms`
 - Strategy market stream reliability knobs are exposed for reclaim/poison/backlog:
   - `market_stream_reclaim_enabled`, `market_stream_reclaim_interval_ms`, `market_stream_reclaim_idle_ms`, `market_stream_reclaim_batch_size`
   - `market_stream_max_delivery_attempts`, `market_stream_pending_warn_threshold`, `market_stream_lag_warn_threshold`
   - `market_stream_poison_stream_key`, `market_stream_poison_stream_maxlen`
 - Gateway order stream reliability knobs are exposed for reclaim/poison/backlog:
+  - `redis_order_events_read_block_ms`
   - `redis_order_events_reclaim_enabled`, `redis_order_events_reclaim_interval_ms`, `redis_order_events_reclaim_idle_ms`, `redis_order_events_reclaim_batch_size`
   - `redis_order_events_max_delivery_attempts`, `redis_order_events_pending_warn_threshold`, `redis_order_events_lag_warn_threshold`
   - `redis_order_events_poison_stream_key`, `redis_order_events_poison_stream_maxlen`
@@ -57,6 +59,7 @@ Use them as base overlays with your secret-bearing `terraform.tfvars`.
 - Matching capacity tunables are exposed:
   - `matching_execution_stream_limit`, `matching_submit_latency_window_size`
   - `matching_max_inflight_requests`, `matching_inflight_acquire_timeout_ms`, `matching_backpressure_retry_sleep_ms`
+- Strategy execution relay polling can be tuned with `execution_relay_interval_seconds`.
 - Matching gRPC thread/CQ tuning is exposed (`matching_grpc_max_pollers`, `matching_grpc_min_pollers`, `matching_grpc_num_cqs`).
 - Cloud Run runtime/capacity is parameterized per service:
   - `cloud_run_gateway`, `cloud_run_strategy`, `cloud_run_matching`

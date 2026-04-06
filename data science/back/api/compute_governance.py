@@ -10,6 +10,7 @@ from services.compute_governance_status_service import ComputeGovernanceStatusSe
 from services.compute_rollout_service import ComputeRolloutService
 from services.firebase_service import require_auth
 from services.operation_service import JobBackendUnavailableError, OperationService
+from services.runtime_cache_service import RuntimeCacheService
 from utils.exceptions import ValidationError
 from utils.responses import error_response, success_response
 
@@ -36,7 +37,14 @@ def _validate_internal_token() -> bool:
 @require_auth
 @rate_limit(max_requests=60, window_seconds=60)
 def get_compute_rollout():
-    return success_response(ComputeGovernanceStatusService.get_policy_view())
+    uid = str(request.user.get('uid') or '')
+    return success_response(
+        RuntimeCacheService.get_or_set(
+            f'compute:rollout:{uid}',
+            ComputeGovernanceStatusService.get_policy_view,
+            ttl_s=20,
+        )
+    )
 
 
 @compute_governance_bp.route('/activity', methods=['GET'])
@@ -47,9 +55,13 @@ def get_compute_governance_activity():
     limit = min(max(request.args.get('limit', default=8, type=int) or 8, 1), 20)
     return success_response(
         {
-            'entries': ComputeGovernanceActivityService.list_recent_activity(
-                uid,
-                limit=limit,
+            'entries': RuntimeCacheService.get_or_set(
+                f'compute:activity:{uid}:{limit}',
+                lambda: ComputeGovernanceActivityService.list_recent_activity(
+                    uid,
+                    limit=limit,
+                ),
+                ttl_s=20,
             )
         }
     )
@@ -108,6 +120,7 @@ def update_compute_rollout():
                 operation['job_id'],
                 operation['type'],
             )
+        RuntimeCacheService.invalidate_prefix('compute:')
         return success_response(operation, status_code=202)
     except ValidationError as exc:
         return error_response('VALIDATION_ERROR', str(exc), status_code=400)
@@ -159,6 +172,7 @@ def create_compute_benchmark():
                 operation['job_id'],
                 operation['type'],
             )
+        RuntimeCacheService.invalidate_prefix('compute:')
         return success_response(operation, status_code=202)
     except ValidationError as exc:
         return error_response('VALIDATION_ERROR', str(exc), status_code=400)
@@ -203,4 +217,5 @@ def internal_update_compute_rollout():
         components=components if isinstance(components, dict) else {},
         updated_by=str(payload.get('updated_by') or 'internal-runtime'),
     )
+    RuntimeCacheService.invalidate_prefix('compute:')
     return success_response(ComputeRolloutService.serialize_policy(updated))
