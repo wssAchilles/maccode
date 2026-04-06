@@ -5,7 +5,7 @@ use axum::{
 };
 
 use crate::gateway_types::{
-    AppState, InferenceActivateModelRequest, InferenceActionRequest, RequestContext,
+    AppState, InferenceActionRequest, InferenceActivateModelRequest, RequestContext,
     REQUEST_ID_HEADER,
 };
 use crate::gateway_utils::to_axum_status;
@@ -129,10 +129,17 @@ async fn proxy_strategy_json(
     )))
 }
 
-fn strategy_url(state: &AppState, path: &str) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
+fn strategy_url(
+    state: &AppState,
+    path: &str,
+) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
     let strategy_base = state.strategy_base_url.as_ref().ok_or((
         StatusCode::SERVICE_UNAVAILABLE,
-        error_body("config_error", "STRATEGY_BASE_URL not configured", "gateway"),
+        error_body(
+            "config_error",
+            "STRATEGY_BASE_URL not configured",
+            "gateway",
+        ),
     ))?;
     Ok(format!("{}{}", strategy_base.trim_end_matches('/'), path))
 }

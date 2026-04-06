@@ -21,7 +21,10 @@ pub(crate) async fn get_strategy_orchestration_status(
         "/api/v1/strategy/orchestration/status",
         state
             .http_client
-            .get(strategy_url(&state, "/api/v1/strategy/orchestration/status")?)
+            .get(strategy_url(
+                &state,
+                "/api/v1/strategy/orchestration/status",
+            )?)
             .header(REQUEST_ID_HEADER, ctx.request_id.as_str()),
     )
     .await
@@ -58,7 +61,10 @@ pub(crate) async fn update_strategy_orchestration_policies(
         "/api/v1/strategy/orchestration/policies",
         state
             .http_client
-            .post(strategy_url(&state, "/api/v1/strategy/orchestration/policies")?)
+            .post(strategy_url(
+                &state,
+                "/api/v1/strategy/orchestration/policies",
+            )?)
             .header(REQUEST_ID_HEADER, ctx.request_id.as_str())
             .json(&body),
     )
@@ -110,10 +116,17 @@ async fn proxy_strategy_json(
     )))
 }
 
-fn strategy_url(state: &AppState, path: &str) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
+fn strategy_url(
+    state: &AppState,
+    path: &str,
+) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
     let strategy_base = state.strategy_base_url.as_ref().ok_or((
         StatusCode::SERVICE_UNAVAILABLE,
-        error_body("config_error", "STRATEGY_BASE_URL not configured", "gateway"),
+        error_body(
+            "config_error",
+            "STRATEGY_BASE_URL not configured",
+            "gateway",
+        ),
     ))?;
     Ok(format!("{}{}", strategy_base.trim_end_matches('/'), path))
 }

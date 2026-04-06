@@ -3,22 +3,22 @@ runtime: python311  # 运行时环境：指定 Python 3.11
 # 启动命令：
 # GAE 将使用 gunicorn 来启动 Flask 应用
 # --timeout 300: 增加工作进程超时时间到 5 分钟（用于模型训练任务）
-# --workers 1: 保持单 worker，避免在 F4 上因多进程重复加载大型依赖导致内存抖动
-# --threads 8: 提高 I/O 并发，减少 Cloud Tasks 执行期间 jobs/dashboard 轮询排队
-entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 --threads 8 main:app
+# --workers 1: 保持单 worker，避免多进程重复加载大型依赖导致内存抖动
+# --threads 6: 保留控制面 I/O 并发，同时降低小规格实例的常驻内存压力
+entrypoint: gunicorn -b :$PORT --timeout 300 --workers 1 --threads 6 main:app
 
-instance_class: F4  # 实例类型：F4 高性能实例，解决 Pandas/Scikit-learn 内存溢出问题
+instance_class: F2  # 默认服务只承担轻量 API 与控制面，中重计算已迁往 Cloud Run
 
 # 自动扩缩容配置（成本控制的关键！）
 automatic_scaling:
   min_instances: 0      # 最小实例数：0 (没有流量时关闭，不产生费用)
-  max_instances: 4      # 最大实例数：4 (允许内部任务和前台轮询并行)
+  max_instances: 3      # 最大实例数：3 (控制面足够，避免无意义扩容)
   min_idle_instances: 0 # 最小空闲实例：0
-  max_idle_instances: 2 # 最大空闲实例：2
+  max_idle_instances: 1 # 最大空闲实例：1，减少空闲保活成本
   min_pending_latency: 500ms    # 更快触发扩容，减少轮询请求排队
   max_pending_latency: automatic
-  target_cpu_utilization: 0.8   # CPU 利用率目标 80%
-  target_throughput_utilization: 0.8
+  target_cpu_utilization: 0.75  # 更早触发扩容，避免降配后前台体感变差
+  target_throughput_utilization: 0.75
 
 # 请求超时配置
 inbound_services:

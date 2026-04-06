@@ -4,7 +4,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../models/job_record.dart';
 import '../models/job_stream_frame.dart';
@@ -12,7 +12,7 @@ import '../repositories/job_repository.dart';
 import '../services/api_service_exception.dart';
 import '../utils/job_stream_merge.dart';
 
-class JobViewModel extends ChangeNotifier {
+class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   JobViewModel({
     JobRepository? repository,
     String? jobType,
@@ -22,7 +22,9 @@ class JobViewModel extends ChangeNotifier {
   }) : _jobType = jobType,
        _statusFilter = statusFilter,
        _repository = repository ?? const ApiJobRepository(),
-       _delay = delay ?? Future<void>.delayed;
+       _delay = delay ?? Future<void>.delayed {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   final JobRepository _repository;
   final Future<void> Function(Duration) _delay;
@@ -36,6 +38,7 @@ class JobViewModel extends ChangeNotifier {
   String? _errorMessage;
   bool _isDisposed = false;
   bool _isPolling = false;
+  bool _isForeground = true;
   String? _activeJobId;
   Future<void>? _pollingTask;
 
@@ -73,7 +76,7 @@ class JobViewModel extends ChangeNotifier {
         limit: limit,
       );
       _promoteActiveJob();
-      if (!_isPolling && activeJob?.isRunning == true) {
+      if (!_isPolling && _isForeground && activeJob?.isRunning == true) {
         unawaited(startPolling());
       }
     } catch (e) {
@@ -178,6 +181,9 @@ class JobViewModel extends ChangeNotifier {
     if (_isDisposed) {
       return;
     }
+    if (!_isForeground) {
+      return;
+    }
 
     if (_isPolling) {
       await (_pollingTask ?? Future<void>.value());
@@ -198,11 +204,11 @@ class JobViewModel extends ChangeNotifier {
   }
 
   Future<void> _runPollingLoop(Duration interval) async {
-    while (_isPolling && !_isDisposed) {
+    while (_isPolling && !_isDisposed && _isForeground) {
       final currentActive = activeJob;
       if (currentActive != null && _repository.supportsStreaming) {
         final shouldContinue = await _streamJob(currentActive);
-        if (!_isPolling || _isDisposed) {
+        if (!_isPolling || _isDisposed || !_isForeground) {
           break;
         }
         final streamed = activeJob;
@@ -238,7 +244,7 @@ class JobViewModel extends ChangeNotifier {
     try {
       await for (final frame
           in _repository.streamJob(job.jobId, operationId: job.operationId)) {
-        if (!_isPolling || _isDisposed) {
+        if (!_isPolling || _isDisposed || !_isForeground) {
           return false;
         }
         _applyStreamFrame(job, frame);
@@ -255,7 +261,29 @@ class JobViewModel extends ChangeNotifier {
     }
 
     final refreshed = activeJob;
-    return refreshed != null && !refreshed.isTerminal;
+    return _isForeground && refreshed != null && !refreshed.isTerminal;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasForeground = _isForeground;
+    _isForeground = switch (state) {
+      AppLifecycleState.resumed => true,
+      AppLifecycleState.inactive => false,
+      AppLifecycleState.hidden => false,
+      AppLifecycleState.paused => false,
+      AppLifecycleState.detached => false,
+    };
+    if (_isDisposed || wasForeground == _isForeground) {
+      return;
+    }
+    if (!_isForeground) {
+      _isPolling = false;
+      return;
+    }
+    if (activeJob?.isRunning == true) {
+      unawaited(startPolling());
+    }
   }
 
   void _applyStreamFrame(JobRecord seedJob, JobStreamFrame frame) {
@@ -431,6 +459,7 @@ class JobViewModel extends ChangeNotifier {
     _isDisposed = true;
     _isPolling = false;
     _pollingTask = null;
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

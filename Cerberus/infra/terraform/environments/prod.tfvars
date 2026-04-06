@@ -23,9 +23,11 @@ strategy_upstream_circuit_enabled           = true
 strategy_upstream_circuit_failure_threshold = 5
 strategy_upstream_circuit_open_ms           = 20000
 
-market_stream_legacy_pubsub_fallback      = false
-redis_market_events_publish_legacy_pubsub = false
-redis_order_events_legacy_pubsub_fallback = false
+market_stream_legacy_pubsub_fallback        = false
+redis_market_events_publish_legacy_pubsub   = false
+redis_order_events_legacy_pubsub_fallback   = false
+redis_market_events_single_writer_enabled   = true
+redis_market_events_min_publish_interval_ms = 100
 
 cloud_run_gateway = {
   min_instance_count               = 2

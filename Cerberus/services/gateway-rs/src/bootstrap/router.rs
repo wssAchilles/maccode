@@ -16,12 +16,11 @@ use crate::handlers::{
     market::{get_klines, get_recent_order_events, get_snapshot},
     system::{get_metrics, get_metrics_json, health, ready, request_context_middleware},
     trading::{
-        activate_inference_model,
-        binance_order_test, cancel_alpaca_order, create_alpaca_order, get_alpaca_account,
-        get_binance_symbol_rules, get_external_status, get_inference_models,
+        activate_inference_model, binance_order_test, cancel_alpaca_order, create_alpaca_order,
+        get_alpaca_account, get_binance_symbol_rules, get_external_status, get_inference_models,
         get_strategy_orchestration_status, get_strategy_summary, get_trading_policy,
-        promote_inference_rollout, rollback_inference_rollout,
-        update_strategy_orchestration_entry, update_strategy_orchestration_policies,
+        promote_inference_rollout, rollback_inference_rollout, update_strategy_orchestration_entry,
+        update_strategy_orchestration_policies,
     },
 };
 use crate::ws::{ws_market, ws_orders};
@@ -43,9 +42,18 @@ pub(crate) fn build_router(state: AppState, cors_allow_origins: &str) -> Router 
             post(update_strategy_orchestration_policies),
         )
         .route("/api/v1/inference/models", get(get_inference_models))
-        .route("/api/v1/inference/rollout/promote", post(promote_inference_rollout))
-        .route("/api/v1/inference/rollout/rollback", post(rollback_inference_rollout))
-        .route("/api/v1/inference/models/activate", post(activate_inference_model))
+        .route(
+            "/api/v1/inference/rollout/promote",
+            post(promote_inference_rollout),
+        )
+        .route(
+            "/api/v1/inference/rollout/rollback",
+            post(rollback_inference_rollout),
+        )
+        .route(
+            "/api/v1/inference/models/activate",
+            post(activate_inference_model),
+        )
         .route("/api/v1/trading/policy", get(get_trading_policy))
         .route(
             "/api/v1/binance/symbol-rules",

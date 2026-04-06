@@ -25,7 +25,7 @@ pub(crate) fn load_order_event_stream_config() -> OrderEventsStreamConfig {
             .unwrap_or(64),
         read_block_ms: parse_env_usize("REDIS_ORDER_EVENTS_READ_BLOCK_MS")
             .filter(|value| *value > 0)
-            .unwrap_or(3_000),
+            .unwrap_or(10_000),
         pending_replay_count: parse_env_usize("REDIS_ORDER_EVENTS_PENDING_REPLAY_COUNT")
             .filter(|value| *value > 0)
             .unwrap_or(128),
@@ -42,7 +42,7 @@ pub(crate) fn load_order_event_stream_config() -> OrderEventsStreamConfig {
             .unwrap_or(5_000),
         reclaim_enabled: env_flag("REDIS_ORDER_EVENTS_RECLAIM_ENABLED", true),
         reclaim_interval_ms: parse_env_u64("REDIS_ORDER_EVENTS_RECLAIM_INTERVAL_MS")
-            .unwrap_or(5_000),
+            .unwrap_or(30_000),
         reclaim_idle_ms: parse_env_u64("REDIS_ORDER_EVENTS_RECLAIM_IDLE_MS")
             .filter(|value| *value > 0)
             .unwrap_or(30_000),

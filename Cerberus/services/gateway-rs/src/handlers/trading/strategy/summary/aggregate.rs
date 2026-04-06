@@ -191,11 +191,8 @@ mod tests {
             orderbook_depth: 10,
         };
 
-        let payload = build_summary_payload_from_aggregate(
-            "https://strategy.example",
-            &aggregate,
-            &request,
-        );
+        let payload =
+            build_summary_payload_from_aggregate("https://strategy.example", &aggregate, &request);
 
         assert!(payload.inference_status.ok);
         assert_eq!(
@@ -234,11 +231,8 @@ mod tests {
             orderbook_depth: 10,
         };
 
-        let payload = build_summary_payload_from_aggregate(
-            "https://strategy.example",
-            &aggregate,
-            &request,
-        );
+        let payload =
+            build_summary_payload_from_aggregate("https://strategy.example", &aggregate, &request);
 
         assert!(!payload.inference_status.ok);
         assert_eq!(payload.inference_status.status_code, 503);

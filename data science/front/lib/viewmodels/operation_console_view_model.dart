@@ -3,7 +3,7 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../models/job_record.dart';
 import '../models/job_stream_frame.dart';
@@ -11,12 +11,15 @@ import '../repositories/operation_repository.dart';
 import '../services/api_service_exception.dart';
 import '../utils/job_stream_merge.dart';
 
-class OperationConsoleViewModel extends ChangeNotifier {
+class OperationConsoleViewModel extends ChangeNotifier
+    with WidgetsBindingObserver {
   OperationConsoleViewModel({
     OperationRepository? repository,
     Future<void> Function(Duration)? delay,
   }) : _repository = repository ?? const ApiOperationRepository(),
-       _delay = delay ?? Future<void>.delayed;
+       _delay = delay ?? Future<void>.delayed {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   final OperationRepository _repository;
   final Future<void> Function(Duration) _delay;
@@ -28,6 +31,7 @@ class OperationConsoleViewModel extends ChangeNotifier {
   bool _isActing = false;
   String? _errorMessage;
   bool _isDisposed = false;
+  bool _isForeground = true;
   int _streamToken = 0;
 
   JobRecord? get selectedOperation => _selectedOperation;
@@ -153,7 +157,10 @@ class OperationConsoleViewModel extends ChangeNotifier {
     final current = _selectedOperation;
     final operationId = _selectedOperationId;
     _streamToken += 1;
-    if (current == null || operationId == null || current.isTerminal) {
+    if (!_isForeground ||
+        current == null ||
+        operationId == null ||
+        current.isTerminal) {
       _isStreaming = false;
       _notifySafely();
       return;
@@ -164,6 +171,7 @@ class OperationConsoleViewModel extends ChangeNotifier {
 
   Future<void> _streamLoop(String operationId, int token) async {
     while (!_isDisposed &&
+        _isForeground &&
         _selectedOperationId == operationId &&
         token == _streamToken) {
       final current = _selectedOperation;
@@ -178,6 +186,7 @@ class OperationConsoleViewModel extends ChangeNotifier {
       try {
         await for (final frame in _repository.streamOperation(operationId)) {
           if (_isDisposed ||
+              !_isForeground ||
               token != _streamToken ||
               _selectedOperationId != operationId) {
             return;
@@ -206,6 +215,7 @@ class OperationConsoleViewModel extends ChangeNotifier {
       }
 
       if (_isDisposed ||
+          !_isForeground ||
           token != _streamToken ||
           _selectedOperationId != operationId) {
         return;
@@ -223,6 +233,28 @@ class OperationConsoleViewModel extends ChangeNotifier {
       }
       await _delay(const Duration(milliseconds: 400));
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasForeground = _isForeground;
+    _isForeground = switch (state) {
+      AppLifecycleState.resumed => true,
+      AppLifecycleState.inactive => false,
+      AppLifecycleState.hidden => false,
+      AppLifecycleState.paused => false,
+      AppLifecycleState.detached => false,
+    };
+    if (_isDisposed || wasForeground == _isForeground) {
+      return;
+    }
+    if (!_isForeground) {
+      _streamToken += 1;
+      _isStreaming = false;
+      _notifySafely();
+      return;
+    }
+    _restartStreaming();
   }
 
   void _applyStreamFrame(JobStreamFrame frame) {
@@ -259,6 +291,7 @@ class OperationConsoleViewModel extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _streamToken += 1;
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

@@ -16,14 +16,14 @@ class Settings(BaseSettings):
     market_stream_consumer_group: str = "strategy-market"
     market_stream_consumer_name: str = ""
     market_stream_read_batch_size: int = 64
-    market_stream_read_block_ms: int = 3000
+    market_stream_read_block_ms: int = 10000
     market_stream_pending_replay_count: int = 128
     market_stream_batch_window_ms: int = 100
     market_stream_max_retries_before_fallback: int = 6
     market_stream_retry_backoff_ms: int = 200
     market_stream_retry_backoff_max_ms: int = 5000
     market_stream_reclaim_enabled: bool = True
-    market_stream_reclaim_interval_ms: int = 5000
+    market_stream_reclaim_interval_ms: int = 30000
     market_stream_reclaim_idle_ms: int = 30000
     market_stream_reclaim_batch_size: int = 64
     market_stream_max_delivery_attempts: int = 8

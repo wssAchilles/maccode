@@ -452,7 +452,7 @@ variable "redis_order_events_read_batch_size" {
 variable "redis_order_events_read_block_ms" {
   description = "Gateway order stream read block timeout in milliseconds"
   type        = number
-  default     = 3000
+  default     = 10000
 }
 
 variable "redis_order_events_pending_replay_count" {
@@ -515,7 +515,7 @@ variable "redis_order_events_reclaim_enabled" {
 variable "redis_order_events_reclaim_interval_ms" {
   description = "Gateway order stream reclaim interval in milliseconds"
   type        = number
-  default     = 5000
+  default     = 30000
 }
 
 variable "redis_order_events_reclaim_idle_ms" {
@@ -618,10 +618,52 @@ variable "redis_market_events_publish_legacy_pubsub" {
   default     = true
 }
 
+variable "redis_market_events_single_writer_enabled" {
+  description = "Ensure only one gateway instance publishes market events into Redis at a time"
+  type        = bool
+  default     = true
+}
+
+variable "redis_market_events_leader_lock_key" {
+  description = "Redis key used for gateway market publish leader election"
+  type        = string
+  default     = "cerberus:market-events:publisher"
+}
+
+variable "redis_market_events_leader_ttl_ms" {
+  description = "Leader lease TTL for gateway market publish single-writer mode in milliseconds"
+  type        = number
+  default     = 30000
+}
+
+variable "redis_market_events_leader_heartbeat_ms" {
+  description = "Leader lease renewal interval for gateway market publish single-writer mode in milliseconds"
+  type        = number
+  default     = 10000
+}
+
+variable "redis_market_events_min_publish_interval_ms" {
+  description = "Minimum interval between Redis market event publishes per symbol in milliseconds"
+  type        = number
+  default     = 100
+}
+
+variable "redis_market_events_publish_on_price_change_only" {
+  description = "Skip Redis market event publishes when bid/ask is unchanged"
+  type        = bool
+  default     = true
+}
+
 variable "market_stream_enabled" {
   description = "Enable strategy market stream consumer-group ingest path"
   type        = bool
   default     = true
+}
+
+variable "market_stream_read_block_ms" {
+  description = "Strategy market stream read block timeout in milliseconds"
+  type        = number
+  default     = 10000
 }
 
 variable "market_stream_consumer_group" {
@@ -639,7 +681,7 @@ variable "market_stream_reclaim_enabled" {
 variable "market_stream_reclaim_interval_ms" {
   description = "Strategy market stream reclaim interval in milliseconds"
   type        = number
-  default     = 5000
+  default     = 30000
 }
 
 variable "market_stream_reclaim_idle_ms" {

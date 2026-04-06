@@ -40,6 +40,10 @@ Use them as base overlays with your secret-bearing `terraform.tfvars`.
 - Gateway exchange credentials (`BINANCE_API_KEY/BINANCE_API_SECRET/ALPACA_API_KEY/ALPACA_API_SECRET`) are managed via Secret Manager and injected at runtime.
 - Strategy service receives `MATCHING_GRPC_TARGET` from Terraform (`cloud_run_matching_url`) so matching gRPC can be wired without manual env edits.
 - Gateway market events are published to Redis Stream (`redis_market_events_stream_key`) with optional legacy Pub/Sub dual-write.
+- Gateway market event Redis publish path can be cost-capped with single-writer leader election and per-symbol throttling:
+  - `redis_market_events_single_writer_enabled`, `redis_market_events_leader_lock_key`
+  - `redis_market_events_leader_ttl_ms`, `redis_market_events_leader_heartbeat_ms`
+  - `redis_market_events_min_publish_interval_ms`, `redis_market_events_publish_on_price_change_only`
 - Strategy market ingestion uses Redis Stream consumer group (`market_stream_consumer_group`) with optional Pub/Sub fallback.
 - Strategy market stream reliability knobs are exposed for reclaim/poison/backlog:
   - `market_stream_reclaim_enabled`, `market_stream_reclaim_interval_ms`, `market_stream_reclaim_idle_ms`, `market_stream_reclaim_batch_size`

@@ -541,6 +541,10 @@ resource "google_cloud_run_v2_service" "strategy" {
         value = var.market_stream_consumer_group
       }
       env {
+        name  = "MARKET_STREAM_READ_BLOCK_MS"
+        value = tostring(var.market_stream_read_block_ms)
+      }
+      env {
         name  = "MARKET_STREAM_RECLAIM_ENABLED"
         value = tostring(var.market_stream_reclaim_enabled)
       }
@@ -970,6 +974,30 @@ resource "google_cloud_run_v2_service" "gateway" {
       env {
         name  = "REDIS_MARKET_EVENTS_PUBLISH_LEGACY_PUBSUB"
         value = tostring(var.redis_market_events_publish_legacy_pubsub)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_SINGLE_WRITER_ENABLED"
+        value = tostring(var.redis_market_events_single_writer_enabled)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_LEADER_LOCK_KEY"
+        value = var.redis_market_events_leader_lock_key
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_LEADER_TTL_MS"
+        value = tostring(var.redis_market_events_leader_ttl_ms)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_LEADER_HEARTBEAT_MS"
+        value = tostring(var.redis_market_events_leader_heartbeat_ms)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_MIN_PUBLISH_INTERVAL_MS"
+        value = tostring(var.redis_market_events_min_publish_interval_ms)
+      }
+      env {
+        name  = "REDIS_MARKET_EVENTS_PUBLISH_ON_PRICE_CHANGE_ONLY"
+        value = tostring(var.redis_market_events_publish_on_price_change_only)
       }
       env {
         name  = "CERBERUS_EVENT_SCHEMA_VERSION"

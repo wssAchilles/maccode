@@ -24,29 +24,34 @@ pub(super) async fn publish_market_event(
     redis_conn: &mut Option<MultiplexedConnection>,
     event: &MarketEvent,
     payload: &str,
-) {
+) -> bool {
     if redis_conn.is_none() {
-        return;
+        return false;
     }
 
     let symbol_channel = market_symbol_channel(state, event);
+    let mut published = false;
 
     if state.market_event_stream.enabled {
         match publish_market_event_stream(state, redis_conn, event, &symbol_channel).await {
             Ok(stream_id) => {
                 record_market_stream_success(state, stream_id).await;
+                published = true;
+                if !state.market_event_stream.publish_legacy_pubsub {
+                    return true;
+                }
             }
             Err(()) => {
                 increment_market_stream_publish_failure(state).await;
                 if !state.market_event_stream.publish_legacy_pubsub {
-                    return;
+                    return false;
                 }
             }
         }
     }
 
     if !state.market_event_stream.publish_legacy_pubsub {
-        return;
+        return false;
     }
 
     let channels = market_pubsub_channels(state, &symbol_channel, &event.symbol);
@@ -56,9 +61,10 @@ pub(super) async fn publish_market_event(
             .is_err()
         {
             increment_redis_publish_failure(state).await;
-            return;
+            return published;
         }
     }
+    published = true;
 
     if let Some(tick_payload) = build_tick_payload(event) {
         let tick_channel = market_tick_channel(state, event);
@@ -67,8 +73,11 @@ pub(super) async fn publish_market_event(
             .is_err()
         {
             increment_redis_publish_failure(state).await;
+            return published;
         }
     }
+
+    published
 }
 
 async fn publish_market_event_stream(
