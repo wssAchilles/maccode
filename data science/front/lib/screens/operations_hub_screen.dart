@@ -13,6 +13,7 @@ import '../models/control_task_record.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
+import '../models/main_shell_projection.dart';
 import '../models/optimization_launch_intent.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
@@ -62,6 +63,7 @@ class OperationsHubScreen extends StatefulWidget {
     this.controlTaskViewModel,
     this.approvalQueueViewModel,
     this.operationConsoleViewModel,
+    this.shellProjection,
     this.isActive = true,
     this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
@@ -76,6 +78,7 @@ class OperationsHubScreen extends StatefulWidget {
   final ControlTaskViewModel? controlTaskViewModel;
   final ApprovalQueueViewModel? approvalQueueViewModel;
   final OperationConsoleViewModel? operationConsoleViewModel;
+  final MainShellProjection? shellProjection;
   final bool isActive;
   final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
@@ -845,19 +848,56 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
   }
 
+  DashboardSummary? get _summary =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.summary ?? widget.viewModel.summary)
+          : widget.viewModel.summary;
+
+  List<ControlTaskRecord> get _controlTasks =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.controlTasks ??
+                widget.controlTaskViewModel?.tasks ??
+                const <ControlTaskRecord>[])
+          : (widget.controlTaskViewModel?.tasks ?? const <ControlTaskRecord>[]);
+
+  List<JobRecord> get _approvalJobs =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.pendingApprovalJobs ??
+                widget.approvalQueueViewModel?.jobs ??
+                const <JobRecord>[])
+          : (widget.approvalQueueViewModel?.jobs ?? const <JobRecord>[]);
+
+  ComputeRolloutPolicy get _computePolicy {
+    if (widget.sharedRuntimeManaged && widget.shellProjection != null) {
+      return widget.shellProjection!.computePolicy;
+    }
+    return widget.computeGovernanceViewModel?.policy ??
+        const ComputeRolloutPolicy.empty();
+  }
+
+  List<ComputeGovernanceActivityEntry> get _computeActivity =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.computeActivity ??
+                widget.computeGovernanceViewModel?.recentActivity ??
+                const <ComputeGovernanceActivityEntry>[])
+          : (widget.computeGovernanceViewModel?.recentActivity ??
+                const <ComputeGovernanceActivityEntry>[]);
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
         widget.viewModel,
+        if (widget.computeGovernanceViewModel != null)
+          widget.computeGovernanceViewModel!,
         if (widget.controlTaskViewModel != null) widget.controlTaskViewModel!,
         if (widget.approvalQueueViewModel != null)
           widget.approvalQueueViewModel!,
         if (widget.operationConsoleViewModel != null)
           widget.operationConsoleViewModel!,
-      ]),
+        ]),
       builder: (context, _) {
-        final summary = widget.viewModel.summary;
+        final summary = _summary;
         final content = RefreshIndicator(
           onRefresh: widget.viewModel.loadSummary,
           child: CustomScrollView(
@@ -1510,9 +1550,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         if (widget.computeGovernanceViewModel != null) ...[
           const SizedBox(height: 20),
           ComputeRolloutGovernanceBoard(
-            policy: widget.computeGovernanceViewModel!.policy.components.isEmpty
+            policy: _computePolicy.components.isEmpty
                 ? safeSummary.computeAcceleration.rollout
-                : widget.computeGovernanceViewModel!.policy,
+                : _computePolicy,
             isLoading: widget.computeGovernanceViewModel!.isLoading,
             isUpdatingComponent:
                 widget.computeGovernanceViewModel!.isUpdatingComponent,
@@ -1521,7 +1561,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           ),
           const SizedBox(height: 20),
           ComputeGovernanceActivityBoard(
-            entries: widget.computeGovernanceViewModel!.recentActivity,
+            entries: _computeActivity,
             isLoading: widget.computeGovernanceViewModel!.isLoading,
             onOpenOperation: _openComputeGovernanceActivity,
           ),
@@ -1529,7 +1569,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         if (widget.controlTaskViewModel != null) ...[
           const SizedBox(height: 20),
           ControlTaskBoard(
-            tasks: widget.controlTaskViewModel!.tasks,
+            tasks: _controlTasks,
             isLoading: widget.controlTaskViewModel!.isLoading,
             errorMessage: widget.controlTaskViewModel!.errorMessage,
             onRetry: () => widget.controlTaskViewModel!.loadControlTasks(),
@@ -1548,7 +1588,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         if (widget.approvalQueueViewModel != null) ...[
           const SizedBox(height: 20),
           ApprovalQueueBoard(
-            jobs: widget.approvalQueueViewModel!.jobs,
+            jobs: _approvalJobs,
             isLoading: widget.approvalQueueViewModel!.isLoading,
             errorMessage: widget.approvalQueueViewModel!.errorMessage,
             onRefresh: () => widget.approvalQueueViewModel!.loadQueue(),

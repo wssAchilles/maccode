@@ -8,8 +8,9 @@ use crate::gateway_types::{
     AppState, RequestContext, StrategyOrchestrationEntryUpdateRequest,
     StrategyOrchestrationPolicyUpdateRequest, REQUEST_ID_HEADER,
 };
-use crate::handlers::common::{error_body, with_request_context};
+use crate::handlers::common::{error_body, error_body_value, with_request_context};
 use crate::handlers::trading::strategy::upstream::send_strategy_request;
+use super::summary::downstream_errors::normalize_downstream_error;
 
 pub(crate) async fn get_strategy_orchestration_status(
     State(state): State<AppState>,
@@ -97,15 +98,10 @@ async fn proxy_strategy_json(
         .unwrap_or_else(|_| serde_json::json!({}));
 
     if !status.is_success() {
+        let error_payload = normalize_downstream_error(&body, status, ctx.request_id.as_str());
         return Err((
             status,
-            error_body(
-                "strategy_request_failed",
-                body.get("detail")
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_else(|| format!("{path} failed")),
-                ctx.request_id.as_str(),
-            ),
+            error_body_value(error_payload, ctx.request_id.as_str()),
         ));
     }
 

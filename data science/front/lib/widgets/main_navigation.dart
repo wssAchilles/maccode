@@ -528,6 +528,7 @@ class _MainNavigationState extends State<MainNavigation> {
         controlTaskViewModel: _controlTaskViewModel,
         approvalQueueViewModel: _approvalQueueViewModel,
         operationConsoleViewModel: _operationConsoleViewModel,
+        shellProjection: _shellRuntime.projection,
         onNavigateToTab: _onNavTap,
         onOpenAiLab: _openAiLabWithIntent,
         onOpenDataAnalysis: _openDataAnalysisWithIntent,

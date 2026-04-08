@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.http import request_id_from
 from app.strategy_orchestration_service import StrategyOrchestrationService
 
 
@@ -28,16 +29,19 @@ def build_strategy_orchestration_router(service: StrategyOrchestrationService) -
     router = APIRouter()
 
     @router.get("/api/v1/strategy/orchestration/status")
-    async def strategy_orchestration_status() -> dict[str, object]:
-        return await service.status()
+    async def strategy_orchestration_status(request: Request) -> dict[str, object]:
+        return await service.status(request_id=request_id_from(request))
 
     @router.get("/api/v1/strategy/orchestration/audit")
-    async def strategy_orchestration_audit(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, object]:
-        return service.audit(limit=limit)
+    async def strategy_orchestration_audit(
+        request: Request, limit: int = Query(default=20, ge=1, le=100)
+    ) -> dict[str, object]:
+        return service.audit(limit=limit, request_id=request_id_from(request))
 
     @router.post("/api/v1/strategy/orchestration/entries/{strategy_id}")
     async def update_strategy_orchestration_entry(
         strategy_id: str,
+        request: Request,
         body: StrategyOrchestrationEntryUpdateRequest,
     ) -> dict[str, object]:
         try:
@@ -60,12 +64,14 @@ def build_strategy_orchestration_router(service: StrategyOrchestrationService) -
                 downgrade_action=body.downgrade_action,
                 actor=body.actor,
                 reason=body.reason,
+                request_id=request_id_from(request),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/v1/strategy/orchestration/policies")
     async def update_strategy_orchestration_policies(
+        request: Request,
         body: StrategyOrchestrationPolicyUpdateRequest,
     ) -> dict[str, object]:
         return await service.update_policies(
@@ -73,6 +79,7 @@ def build_strategy_orchestration_router(service: StrategyOrchestrationService) -
             downgrade_policy=body.downgrade_policy,
             actor=body.actor,
             reason=body.reason,
+            request_id=request_id_from(request),
         )
 
     return router

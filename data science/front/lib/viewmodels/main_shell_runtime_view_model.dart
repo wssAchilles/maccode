@@ -234,6 +234,8 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
       summary: _dashboardViewModel.summary,
       approvalJobs: _approvalQueueViewModel.jobs,
       controlTasks: _controlTaskViewModel.tasks,
+      computePolicy: _computeGovernanceViewModel.policy,
+      computeActivity: _computeGovernanceViewModel.recentActivity,
       selectedOperation: _operationConsoleViewModel.selectedOperation,
     );
   }

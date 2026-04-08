@@ -216,7 +216,7 @@ class SummaryApplicationService:
 
     async def _build_inference_status_component(self, *, request_id: str) -> SummaryComponent:
         try:
-            payload = (await self._inference_application.status()).to_dict()
+            payload = (await self._inference_application.status(request_id=request_id)).to_dict()
         except Exception as exc:
             return SummaryComponent.error_result(
                 code="summary_inference_status_failed",

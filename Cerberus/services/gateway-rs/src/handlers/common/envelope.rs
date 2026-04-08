@@ -27,6 +27,13 @@ pub(crate) fn error_body(
     ))
 }
 
+pub(crate) fn error_body_value(
+    error: serde_json::Value,
+    request_id: &str,
+) -> Json<serde_json::Value> {
+    Json(api_envelope(request_id, None, Some(error), None))
+}
+
 pub(crate) fn error_body_code(
     code: GatewayErrorCode,
     message: impl Into<String>,
@@ -83,7 +90,7 @@ fn api_envelope(
 
 #[cfg(test)]
 mod tests {
-    use super::{with_request_context, with_request_id};
+    use super::{error_body_value, with_request_context, with_request_id};
 
     #[test]
     fn wraps_payload_into_api_envelope() {
@@ -114,5 +121,29 @@ mod tests {
         let payload = serde_json::json!({ "ok": true });
         let updated = with_request_context(payload, "rid-9", Some("idem-1"));
         assert_eq!(updated["idempotency_key"], serde_json::json!("idem-1"));
+    }
+
+    #[test]
+    fn wraps_structured_error_without_dropping_fields() {
+        let error = serde_json::json!({
+            "code": "validation_error",
+            "message": "validation failed",
+            "request_id": "rid-strategy-422",
+            "details": [
+                {
+                    "loc": ["body", "symbol"],
+                    "msg": "Field required"
+                }
+            ]
+        });
+
+        let wrapped = error_body_value(error, "rid-gateway-001").0;
+
+        assert_eq!(wrapped["request_id"], serde_json::json!("rid-gateway-001"));
+        assert_eq!(wrapped["error"]["request_id"], serde_json::json!("rid-strategy-422"));
+        assert_eq!(
+            wrapped["error"]["details"][0]["loc"],
+            serde_json::json!(["body", "symbol"])
+        );
     }
 }

@@ -60,8 +60,9 @@ class _StaticInferenceRollout:
         target_mode: str,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None:
-        del target_mode, actor, reason
+        del target_mode, actor, reason, request_id
 
     async def set_active_model(
         self,
@@ -69,8 +70,9 @@ class _StaticInferenceRollout:
         model: RegisteredModel | None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None:
-        del model, actor, reason
+        del model, actor, reason, request_id
 
     async def flush(self) -> None:
         return
@@ -100,6 +102,7 @@ class InferenceStatusResult:
         )
     )
     audit: tuple[InferenceAuditEvent, ...] = ()
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         payload = self.engine_status.to_dict()
@@ -107,6 +110,8 @@ class InferenceStatusResult:
         payload["rollout"] = self.rollout.to_dict()
         payload["comparison"] = self.comparison.to_dict()
         payload["audit"] = [item.to_dict() for item in self.audit]
+        if self.request_id is not None:
+            payload["request_id"] = self.request_id
         return payload
 
 
@@ -114,13 +119,17 @@ class InferenceStatusResult:
 class InferenceCatalogResult:
     active_model: RegisteredModel | None
     models: tuple[RegisteredModel, ...]
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload = {
             "count": len(self.models),
             "active_model": None if self.active_model is None else self.active_model.to_dict(),
             "models": [item.to_dict() for item in self.models],
         }
+        if self.request_id is not None:
+            payload["request_id"] = self.request_id
+        return payload
 
 
 class InferenceApplicationService:
@@ -141,7 +150,7 @@ class InferenceApplicationService:
     async def shutdown(self) -> None:
         await self._rollout.flush()
 
-    async def status(self) -> InferenceStatusResult:
+    async def status(self, *, request_id: str | None = None) -> InferenceStatusResult:
         rollout = self._rollout.snapshot()
         engine_status = await self._engine.status()
         engine_status = InferenceEngineStatus(
@@ -158,36 +167,44 @@ class InferenceApplicationService:
             rollout=rollout,
             comparison=self._rollout.comparison(),
             audit=self._rollout.recent_audit_events(),
+            request_id=request_id,
         )
 
-    def models(self) -> InferenceCatalogResult:
+    def models(self, *, request_id: str | None = None) -> InferenceCatalogResult:
         return InferenceCatalogResult(
             active_model=self._model_registry.active_model(),
             models=self._model_registry.list_models(),
+            request_id=request_id,
         )
 
-    def audit(self, *, limit: int = 20) -> dict[str, object]:
-        return {
+    def audit(self, *, limit: int = 20, request_id: str | None = None) -> dict[str, object]:
+        payload = {
             "count": len(self._rollout.recent_audit_events(limit=limit)),
             "events": [item.to_dict() for item in self._rollout.recent_audit_events(limit=limit)],
         }
+        if request_id is not None:
+            payload["request_id"] = request_id
+        return payload
 
     async def promote(
         self,
         *,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> InferenceControlResult:
         await self._rollout.set_target_mode(
             target_mode="primary",
             actor=actor,
             reason=reason,
+            request_id=request_id,
         )
         return await self._build_control_result(
             action="promote",
             actor=actor,
             reason=reason,
             requested_mode="primary",
+            request_id=request_id,
         )
 
     async def rollback(
@@ -195,17 +212,20 @@ class InferenceApplicationService:
         *,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> InferenceControlResult:
         await self._rollout.set_target_mode(
             target_mode="observe",
             actor=actor,
             reason=reason,
+            request_id=request_id,
         )
         return await self._build_control_result(
             action="rollback",
             actor=actor,
             reason=reason,
             requested_mode="observe",
+            request_id=request_id,
         )
 
     async def activate_model(
@@ -215,6 +235,7 @@ class InferenceApplicationService:
         version: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> InferenceControlResult:
         selected_model = self._model_registry.activate_model(
             model_id=model_id,
@@ -224,12 +245,14 @@ class InferenceApplicationService:
             model=selected_model,
             actor=actor,
             reason=reason,
+            request_id=request_id,
         )
         return await self._build_control_result(
             action="activate_model",
             actor=actor,
             reason=reason,
             selected_model=selected_model,
+            request_id=request_id,
         )
 
     async def _build_control_result(
@@ -240,8 +263,9 @@ class InferenceApplicationService:
         reason: str | None,
         requested_mode: str | None = None,
         selected_model: RegisteredModel | None = None,
+        request_id: str | None = None,
     ) -> InferenceControlResult:
-        status = await self.status()
+        status = await self.status(request_id=request_id)
         rollout = status.rollout
         accepted = True
         message = "inference rollout updated"
@@ -268,4 +292,5 @@ class InferenceApplicationService:
             comparison=status.comparison,
             audit=status.audit,
             models=self._model_registry.list_models(),
+            request_id=request_id,
         )

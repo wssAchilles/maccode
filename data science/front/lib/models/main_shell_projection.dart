@@ -1,5 +1,7 @@
 library;
 
+import 'compute_governance_activity_entry.dart';
+import 'compute_rollout_policy.dart';
 import 'control_task_record.dart';
 import 'dashboard_summary.dart';
 import 'job_record.dart';
@@ -16,7 +18,10 @@ class MainShellProjection {
     this.focusAlert,
     this.selectedOperation,
     this.nextControlTask,
+    this.computePolicy = const ComputeRolloutPolicy.empty(),
+    this.computeActivity = const <ComputeGovernanceActivityEntry>[],
     this.pendingApprovalJobs = const <JobRecord>[],
+    this.controlTasks = const <ControlTaskRecord>[],
     this.visibleControlTasks = const <ControlTaskRecord>[],
   });
 
@@ -30,7 +35,10 @@ class MainShellProjection {
       focusAlert = null,
       selectedOperation = null,
       nextControlTask = null,
+      computePolicy = const ComputeRolloutPolicy.empty(),
+      computeActivity = const <ComputeGovernanceActivityEntry>[],
       pendingApprovalJobs = const <JobRecord>[],
+      controlTasks = const <ControlTaskRecord>[],
       visibleControlTasks = const <ControlTaskRecord>[];
 
   final WorkbenchTab activeTab;
@@ -42,7 +50,10 @@ class MainShellProjection {
   final DashboardAlert? focusAlert;
   final JobRecord? selectedOperation;
   final ControlTaskRecord? nextControlTask;
+  final ComputeRolloutPolicy computePolicy;
+  final List<ComputeGovernanceActivityEntry> computeActivity;
   final List<JobRecord> pendingApprovalJobs;
+  final List<ControlTaskRecord> controlTasks;
   final List<ControlTaskRecord> visibleControlTasks;
 
   bool get hasPendingApprovals => pendingApprovalCount > 0;

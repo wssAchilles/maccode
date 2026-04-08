@@ -58,7 +58,10 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
     main_module.worker.matching_client._enabled = True  # type: ignore[attr-defined]
     main_module.worker.matching_client.get_order_book = fake_orderbook  # type: ignore[method-assign]
 
-    async def fake_inference_status() -> InferenceStatusResult:
+    async def fake_inference_status(
+        request_id: str | None = None,
+    ) -> InferenceStatusResult:
+        assert request_id in {"rid-summary-001", "rid-summary-direct-001"}
         return InferenceStatusResult(
             engine_status=InferenceEngineStatus(
                 enabled=True,
@@ -98,6 +101,7 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
                 agreement_count=12,
                 divergence_count=12,
             ),
+            request_id=request_id,
         )
 
     main_module.inference_service._application.status = fake_inference_status  # type: ignore[method-assign, attr-defined]
@@ -125,8 +129,9 @@ def test_strategy_summary_endpoint_aggregates_components() -> None:
 
 def test_strategy_summary_inference_status_matches_standalone_endpoint_shape() -> None:
     client = TestClient(app)
-    direct = client.get("/api/v1/inference/status")
-    summary = client.get("/api/v1/summary")
+    headers = {"x-request-id": "rid-summary-direct-001"}
+    direct = client.get("/api/v1/inference/status", headers=headers)
+    summary = client.get("/api/v1/summary", headers=headers)
 
     assert direct.status_code == 200
     assert summary.status_code == 200

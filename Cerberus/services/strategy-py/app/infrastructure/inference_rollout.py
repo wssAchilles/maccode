@@ -247,6 +247,7 @@ class RuntimeInferenceRolloutManager:
         target_mode: str,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None:
         normalized_target = target_mode.strip().lower()
         if normalized_target not in {"observe", "primary", "disabled"}:
@@ -265,6 +266,7 @@ class RuntimeInferenceRolloutManager:
                     "reason": reason,
                     "target_mode": normalized_target,
                 },
+                request_id=request_id,
             )
             await self._persist_state(force=True)
             return
@@ -282,6 +284,7 @@ class RuntimeInferenceRolloutManager:
                 "to_target_mode": normalized_target,
                 "override_active": normalized_target != self._configured_mode,
             },
+            request_id=request_id,
         )
         if previous_mode != next_mode:
             self._effective_mode = next_mode
@@ -298,6 +301,7 @@ class RuntimeInferenceRolloutManager:
                     "agreement_ratio": self._agreement_ratio(),
                 },
                 created_at=self._last_transition_at,
+                request_id=request_id,
             )
         elif normalized_target == "primary" and self._last_blockers:
             self._append_audit(
@@ -308,6 +312,7 @@ class RuntimeInferenceRolloutManager:
                     "reason": reason,
                     "blockers": list(self._last_blockers),
                 },
+                request_id=request_id,
             )
         await self._persist_state(force=True)
 
@@ -317,6 +322,7 @@ class RuntimeInferenceRolloutManager:
         model: RegisteredModel | None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None:
         previous_model = self._active_model
         previous_key = _model_key(previous_model)
@@ -331,6 +337,7 @@ class RuntimeInferenceRolloutManager:
                     "model_id": model.model_id if model is not None else None,
                     "version": model.version if model is not None else None,
                 },
+                request_id=request_id,
             )
             await self._persist_state(force=True)
             return
@@ -361,6 +368,7 @@ class RuntimeInferenceRolloutManager:
                 "version": model.version if model is not None else None,
             },
             created_at=self._last_transition_at,
+            request_id=request_id,
         )
         if previous_mode != self._effective_mode:
             self._append_audit(
@@ -374,6 +382,7 @@ class RuntimeInferenceRolloutManager:
                     "reason_code": "active_model_changed",
                 },
                 created_at=self._last_transition_at,
+                request_id=request_id,
             )
         await self._persist_state(force=True)
 
@@ -452,6 +461,7 @@ class RuntimeInferenceRolloutManager:
         metadata: dict[str, object | None],
         *,
         created_at: str | None = None,
+        request_id: str | None = None,
     ) -> None:
         sanitized = {key: value for key, value in metadata.items() if value is not None}
         self._audit_events.append(
@@ -460,6 +470,7 @@ class RuntimeInferenceRolloutManager:
                 created_at=created_at or _utc_now_iso(),
                 message=message,
                 metadata=sanitized,
+                request_id=request_id,
             )
         )
 
@@ -573,6 +584,12 @@ class RuntimeInferenceRolloutManager:
                     created_at=str(event_payload.get("created_at", self._started_at)),
                     message=str(event_payload.get("message", "")),
                     metadata=dict(event_payload.get("metadata", {})),
+                    request_id=(
+                        str(event_payload.get("request_id"))
+                        if isinstance(event_payload.get("request_id"), str)
+                        and str(event_payload.get("request_id")).strip()
+                        else None
+                    ),
                 )
             )
         current_blockers = tuple(self._compute_blockers())

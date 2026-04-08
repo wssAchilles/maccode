@@ -150,6 +150,13 @@ class RuntimeStrategyOrchestrationManager:
                 created_at=str(item.get("created_at", "")),
                 message=str(item.get("message", "")),
                 metadata=dict(item.get("metadata", {})) if isinstance(item, dict) else {},
+                request_id=(
+                    str(item.get("request_id"))
+                    if isinstance(item, dict)
+                    and isinstance(item.get("request_id"), str)
+                    and str(item.get("request_id")).strip()
+                    else None
+                ),
             )
             for item in reversed(events[-max(limit, 0):])
             if isinstance(item, dict)
@@ -173,6 +180,7 @@ class RuntimeStrategyOrchestrationManager:
         downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> StrategyOrchestrationControlResult:
         entry = self._find_entry(strategy_id)
         if entry is None:
@@ -232,6 +240,7 @@ class RuntimeStrategyOrchestrationManager:
                 "previous": previous,
                 "current": current,
             },
+            request_id=request_id,
         )
         await self._persist_state()
         snapshot = self.snapshot(
@@ -247,6 +256,7 @@ class RuntimeStrategyOrchestrationManager:
             actor=actor,
             reason=reason,
             snapshot=snapshot,
+            request_id=request_id,
         )
 
     async def update_policies(
@@ -260,6 +270,7 @@ class RuntimeStrategyOrchestrationManager:
         downgrade_policy: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> StrategyOrchestrationControlResult:
         previous = {
             "conflict_policy": self._state["conflict_policy"],
@@ -293,6 +304,7 @@ class RuntimeStrategyOrchestrationManager:
                 "previous": previous,
                 "current": current,
             },
+            request_id=request_id,
         )
         await self._persist_state()
         snapshot = self.snapshot(
@@ -308,6 +320,7 @@ class RuntimeStrategyOrchestrationManager:
             actor=actor,
             reason=reason,
             snapshot=snapshot,
+            request_id=request_id,
         )
 
     def _default_state(self) -> dict[str, Any]:
@@ -452,19 +465,27 @@ class RuntimeStrategyOrchestrationManager:
             return
         await self._state_store.save_state(self._serialize_state())
 
-    def _append_audit(self, event_type: str, message: str, *, metadata: dict[str, Any] | None = None) -> None:
+    def _append_audit(
+        self,
+        event_type: str,
+        message: str,
+        *,
+        metadata: dict[str, Any] | None = None,
+        request_id: str | None = None,
+    ) -> None:
         audit = self._state.setdefault("audit", [])
         if not isinstance(audit, list):
             audit = []
             self._state["audit"] = audit
-        audit.append(
-            {
-                "event_type": event_type,
-                "created_at": _utc_now(),
-                "message": message,
-                "metadata": dict(metadata or {}),
-            }
-        )
+        payload = {
+            "event_type": event_type,
+            "created_at": _utc_now(),
+            "message": message,
+            "metadata": dict(metadata or {}),
+        }
+        if request_id is not None:
+            payload["request_id"] = request_id
+        audit.append(payload)
         max_events = max(settings.inference_audit_max_events, 20)
         if len(audit) > max_events:
             del audit[:-max_events]
@@ -619,6 +640,12 @@ def _coerce_audit(value: Any) -> list[dict[str, Any]]:
                 "metadata": dict(item.get("metadata", {}))
                 if isinstance(item.get("metadata"), dict)
                 else {},
+                "request_id": (
+                    str(item.get("request_id"))
+                    if isinstance(item.get("request_id"), str)
+                    and str(item.get("request_id")).strip()
+                    else None
+                ),
             }
         )
     return normalized

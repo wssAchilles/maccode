@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.http import request_id_from
 from app.inference_service import InferenceService
 
 
@@ -18,33 +19,46 @@ def build_inference_router(service: InferenceService) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/v1/inference/status")
-    async def inference_status() -> dict[str, object]:
-        return await service.status()
+    async def inference_status(request: Request) -> dict[str, object]:
+        return await service.status(request_id=request_id_from(request))
 
     @router.get("/api/v1/inference/models")
-    async def inference_models() -> dict[str, object]:
-        return service.models()
+    async def inference_models(request: Request) -> dict[str, object]:
+        return service.models(request_id=request_id_from(request))
 
     @router.get("/api/v1/inference/audit")
-    async def inference_audit(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, object]:
-        return service.audit(limit=limit)
+    async def inference_audit(
+        request: Request, limit: int = Query(default=20, ge=1, le=100)
+    ) -> dict[str, object]:
+        return service.audit(limit=limit, request_id=request_id_from(request))
 
     @router.post("/api/v1/inference/rollout/promote")
     async def inference_promote(
+        request: Request,
         body: InferenceActionRequest | None = None,
     ) -> dict[str, object]:
         payload = body or InferenceActionRequest()
-        return await service.promote(actor=payload.actor, reason=payload.reason)
+        return await service.promote(
+            actor=payload.actor,
+            reason=payload.reason,
+            request_id=request_id_from(request),
+        )
 
     @router.post("/api/v1/inference/rollout/rollback")
     async def inference_rollback(
+        request: Request,
         body: InferenceActionRequest | None = None,
     ) -> dict[str, object]:
         payload = body or InferenceActionRequest()
-        return await service.rollback(actor=payload.actor, reason=payload.reason)
+        return await service.rollback(
+            actor=payload.actor,
+            reason=payload.reason,
+            request_id=request_id_from(request),
+        )
 
     @router.post("/api/v1/inference/models/activate")
     async def inference_activate_model(
+        request: Request,
         body: InferenceActivateModelRequest,
     ) -> dict[str, object]:
         try:
@@ -53,6 +67,7 @@ def build_inference_router(service: InferenceService) -> APIRouter:
                 version=body.version,
                 actor=body.actor,
                 reason=body.reason,
+                request_id=request_id_from(request),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

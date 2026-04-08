@@ -9,8 +9,9 @@ use crate::gateway_types::{
     REQUEST_ID_HEADER,
 };
 use crate::gateway_utils::to_axum_status;
-use crate::handlers::common::{error_body, with_request_context};
+use crate::handlers::common::{error_body, error_body_value, with_request_context};
 use crate::handlers::trading::strategy::upstream::send_strategy_request;
+use super::summary::downstream_errors::normalize_downstream_error;
 
 pub(crate) async fn get_inference_models(
     State(state): State<AppState>,
@@ -102,23 +103,17 @@ async fn proxy_strategy_json(
         })?;
 
     let status = response.status();
+    let status = to_axum_status(status);
     let body = response
         .json::<serde_json::Value>()
         .await
         .unwrap_or_else(|_| serde_json::json!({}));
 
     if !status.is_success() {
-        let error_payload = body
-            .get("detail")
-            .cloned()
-            .unwrap_or_else(|| serde_json::json!({"message": format!("{path} failed")}));
+        let error_payload = normalize_downstream_error(&body, status, ctx.request_id.as_str());
         return Err((
-            to_axum_status(status),
-            error_body(
-                "strategy_request_failed",
-                error_payload.to_string(),
-                ctx.request_id.as_str(),
-            ),
+            status,
+            error_body_value(error_payload, ctx.request_id.as_str()),
         ));
     }
 

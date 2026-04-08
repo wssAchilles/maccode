@@ -14,9 +14,13 @@ from app.ports.signal import SignalRuntimePort
 @dataclass(frozen=True, slots=True)
 class StrategyOrchestrationStatusResult:
     snapshot: StrategyOrchestrationSnapshot
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return self.snapshot.to_dict()
+        payload = self.snapshot.to_dict()
+        if self.request_id is not None:
+            payload["request_id"] = self.request_id
+        return payload
 
 
 class StrategyOrchestrationApplicationService:
@@ -31,15 +35,23 @@ class StrategyOrchestrationApplicationService:
         self._signal_runtime = signal_runtime
         self._inference_application = inference_application
 
-    async def status(self) -> StrategyOrchestrationStatusResult:
-        return StrategyOrchestrationStatusResult(snapshot=await self._snapshot())
+    async def status(
+        self, *, request_id: str | None = None
+    ) -> StrategyOrchestrationStatusResult:
+        return StrategyOrchestrationStatusResult(
+            snapshot=await self._snapshot(),
+            request_id=request_id,
+        )
 
-    def audit(self, *, limit: int = 20) -> dict[str, object]:
+    def audit(self, *, limit: int = 20, request_id: str | None = None) -> dict[str, object]:
         events = self._orchestration.audit(limit=limit)
-        return {
+        payload = {
             "count": len(events),
             "events": [item.to_dict() for item in events],
         }
+        if request_id is not None:
+            payload["request_id"] = request_id
+        return payload
 
     async def update_entry(
         self,
@@ -54,6 +66,7 @@ class StrategyOrchestrationApplicationService:
         downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> StrategyOrchestrationControlResult:
         context = await self._context()
         return await self._orchestration.update_entry(
@@ -67,6 +80,7 @@ class StrategyOrchestrationApplicationService:
             downgrade_action=downgrade_action,
             actor=actor,
             reason=reason,
+            request_id=request_id,
             **context,
         )
 
@@ -77,6 +91,7 @@ class StrategyOrchestrationApplicationService:
         downgrade_policy: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> StrategyOrchestrationControlResult:
         context = await self._context()
         return await self._orchestration.update_policies(
@@ -84,6 +99,7 @@ class StrategyOrchestrationApplicationService:
             downgrade_policy=downgrade_policy,
             actor=actor,
             reason=reason,
+            request_id=request_id,
             **context,
         )
 

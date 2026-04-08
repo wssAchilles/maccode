@@ -229,7 +229,8 @@ class FakePersistenceStatus:
 
 
 class FakeInferenceApplication:
-    async def status(self) -> InferenceStatusResult:
+    async def status(self, request_id: str | None = None) -> InferenceStatusResult:
+        assert request_id == "rid-summary-typed-001"
         return InferenceStatusResult(
             engine_status=InferenceEngineStatus(
                 enabled=True,
@@ -269,6 +270,7 @@ class FakeInferenceApplication:
                 agreement_count=9,
                 divergence_count=9,
             ),
+            request_id=request_id,
         )
 
 

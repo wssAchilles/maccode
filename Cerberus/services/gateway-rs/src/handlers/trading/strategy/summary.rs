@@ -1,6 +1,6 @@
 mod aggregate;
 mod cache;
-mod downstream_errors;
+pub(crate) mod downstream_errors;
 mod fanout;
 mod model;
 mod params;

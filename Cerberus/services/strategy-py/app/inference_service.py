@@ -13,20 +13,44 @@ class InferenceService:
     async def shutdown(self) -> None:
         await self._application.shutdown()
 
-    async def status(self) -> dict[str, object]:
-        return (await self._application.status()).to_dict()
+    async def status(self, *, request_id: str | None = None) -> dict[str, object]:
+        return (await self._application.status(request_id=request_id)).to_dict()
 
-    def models(self) -> dict[str, object]:
-        return self._application.models().to_dict()
+    def models(self, *, request_id: str | None = None) -> dict[str, object]:
+        return self._application.models(request_id=request_id).to_dict()
 
-    def audit(self, *, limit: int = 20) -> dict[str, object]:
-        return self._application.audit(limit=limit)
+    def audit(self, *, limit: int = 20, request_id: str | None = None) -> dict[str, object]:
+        return self._application.audit(limit=limit, request_id=request_id)
 
-    async def promote(self, *, actor: str | None = None, reason: str | None = None) -> dict[str, object]:
-        return (await self._application.promote(actor=actor, reason=reason)).to_dict()
+    async def promote(
+        self,
+        *,
+        actor: str | None = None,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        return (
+            await self._application.promote(
+                actor=actor,
+                reason=reason,
+                request_id=request_id,
+            )
+        ).to_dict()
 
-    async def rollback(self, *, actor: str | None = None, reason: str | None = None) -> dict[str, object]:
-        return (await self._application.rollback(actor=actor, reason=reason)).to_dict()
+    async def rollback(
+        self,
+        *,
+        actor: str | None = None,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, object]:
+        return (
+            await self._application.rollback(
+                actor=actor,
+                reason=reason,
+                request_id=request_id,
+            )
+        ).to_dict()
 
     async def activate_model(
         self,
@@ -35,6 +59,7 @@ class InferenceService:
         version: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> dict[str, object]:
         return (
             await self._application.activate_model(
@@ -42,5 +67,6 @@ class InferenceService:
                 version=version,
                 actor=actor,
                 reason=reason,
+                request_id=request_id,
             )
         ).to_dict()

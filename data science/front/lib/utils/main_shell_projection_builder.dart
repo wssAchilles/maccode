@@ -1,6 +1,8 @@
 library;
 
 import '../models/control_task_record.dart';
+import '../models/compute_governance_activity_entry.dart';
+import '../models/compute_rollout_policy.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/main_shell_projection.dart';
@@ -13,6 +15,8 @@ MainShellProjection buildMainShellProjection({
   required DashboardSummary? summary,
   required List<JobRecord> approvalJobs,
   required List<ControlTaskRecord> controlTasks,
+  required ComputeRolloutPolicy computePolicy,
+  required List<ComputeGovernanceActivityEntry> computeActivity,
   required JobRecord? selectedOperation,
 }) {
   final sortedAlerts = [...?summary?.alerts]..sort(_compareAlertPriority);
@@ -30,7 +34,10 @@ MainShellProjection buildMainShellProjection({
     focusAlert: focusAlert,
     selectedOperation: selectedOperation,
     nextControlTask: visibleControlTasks.isEmpty ? null : visibleControlTasks.first,
+    computePolicy: computePolicy,
+    computeActivity: computeActivity,
     pendingApprovalJobs: approvalJobs.take(3).toList(growable: false),
+    controlTasks: controlTasks,
     visibleControlTasks: visibleControlTasks.take(4).toList(growable: false),
   );
 }

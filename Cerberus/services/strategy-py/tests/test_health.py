@@ -34,9 +34,10 @@ def test_ready_endpoint_shape() -> None:
 
 def test_inference_status_endpoint_shape() -> None:
     client = TestClient(app)
-    response = client.get("/api/v1/inference/status")
+    response = client.get("/api/v1/inference/status", headers={"x-request-id": "rid-inference-status-001"})
     assert response.status_code == 200
     payload = response.json()
+    assert payload["request_id"] == "rid-inference-status-001"
     assert "enabled" in payload
     assert "engine" in payload
     assert "active_model" in payload
@@ -47,20 +48,75 @@ def test_inference_status_endpoint_shape() -> None:
 
 def test_inference_models_endpoint_shape() -> None:
     client = TestClient(app)
-    response = client.get("/api/v1/inference/models")
+    response = client.get("/api/v1/inference/models", headers={"x-request-id": "rid-inference-models-001"})
     assert response.status_code == 200
     payload = response.json()
+    assert payload["request_id"] == "rid-inference-models-001"
     assert "count" in payload
     assert "models" in payload
 
 
 def test_inference_audit_endpoint_shape() -> None:
     client = TestClient(app)
-    response = client.get("/api/v1/inference/audit?limit=5")
+    response = client.get("/api/v1/inference/audit?limit=5", headers={"x-request-id": "rid-inference-audit-001"})
     assert response.status_code == 200
     payload = response.json()
+    assert payload["request_id"] == "rid-inference-audit-001"
     assert "count" in payload
     assert "events" in payload
+
+
+def test_inference_rollout_response_and_audit_event_include_request_id() -> None:
+    client = TestClient(app)
+
+    mutate_response = client.post(
+        "/api/v1/inference/rollout/rollback",
+        headers={"x-request-id": "rid-inference-rollout-001"},
+        json={"actor": "tester", "reason": "capture request id"},
+    )
+    assert mutate_response.status_code == 200
+    mutate_payload = mutate_response.json()
+    assert mutate_payload["request_id"] == "rid-inference-rollout-001"
+
+    audit_response = client.get(
+        "/api/v1/inference/audit?limit=1",
+        headers={"x-request-id": "rid-inference-audit-query-001"},
+    )
+    assert audit_response.status_code == 200
+    audit_payload = audit_response.json()
+    assert audit_payload["request_id"] == "rid-inference-audit-query-001"
+    assert audit_payload["events"][0]["request_id"] == "rid-inference-rollout-001"
+
+
+def test_strategy_orchestration_response_and_audit_event_include_request_id() -> None:
+    client = TestClient(app)
+
+    status_response = client.get(
+        "/api/v1/strategy/orchestration/status",
+        headers={"x-request-id": "rid-orch-status-001"},
+    )
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["request_id"] == "rid-orch-status-001"
+    assert "entries" in status_payload
+
+    mutate_response = client.post(
+        "/api/v1/strategy/orchestration/policies",
+        headers={"x-request-id": "rid-orch-update-001"},
+        json={"reason": "capture request id"},
+    )
+    assert mutate_response.status_code == 200
+    mutate_payload = mutate_response.json()
+    assert mutate_payload["request_id"] == "rid-orch-update-001"
+
+    audit_response = client.get(
+        "/api/v1/strategy/orchestration/audit?limit=1",
+        headers={"x-request-id": "rid-orch-audit-query-001"},
+    )
+    assert audit_response.status_code == 200
+    audit_payload = audit_response.json()
+    assert audit_payload["request_id"] == "rid-orch-audit-query-001"
+    assert audit_payload["events"][0]["request_id"] == "rid-orch-update-001"
 
 
 def test_optimize_validation() -> None:
@@ -129,6 +185,23 @@ def test_matching_submit_returns_503_when_disabled() -> None:
     payload = response.json()
     assert payload["error"]["code"] == "matching_disabled"
     assert payload["error"]["request_id"]
+
+
+def test_validation_error_preserves_structured_details() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/matching/orders",
+        headers={"x-request-id": "rid-validation-001"},
+        json={},
+    )
+    assert response.status_code == 422
+    assert response.headers.get("x-request-id") == "rid-validation-001"
+    payload = response.json()
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["message"] == "validation failed"
+    assert payload["error"]["request_id"] == "rid-validation-001"
+    assert isinstance(payload["error"]["details"], list)
+    assert payload["error"]["details"][0]["loc"] == ["body", "symbol"]
 
 
 def test_matching_submit_endpoint_uses_client() -> None:

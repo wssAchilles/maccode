@@ -7,11 +7,11 @@ class StrategyOrchestrationService:
     def __init__(self, *, application: StrategyOrchestrationApplicationService) -> None:
         self._application = application
 
-    async def status(self) -> dict[str, object]:
-        return (await self._application.status()).to_dict()
+    async def status(self, *, request_id: str | None = None) -> dict[str, object]:
+        return (await self._application.status(request_id=request_id)).to_dict()
 
-    def audit(self, *, limit: int = 20) -> dict[str, object]:
-        return self._application.audit(limit=limit)
+    def audit(self, *, limit: int = 20, request_id: str | None = None) -> dict[str, object]:
+        return self._application.audit(limit=limit, request_id=request_id)
 
     async def update_entry(
         self,
@@ -26,6 +26,7 @@ class StrategyOrchestrationService:
         downgrade_action: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> dict[str, object]:
         return (
             await self._application.update_entry(
@@ -39,6 +40,7 @@ class StrategyOrchestrationService:
                 downgrade_action=downgrade_action,
                 actor=actor,
                 reason=reason,
+                request_id=request_id,
             )
         ).to_dict()
 
@@ -49,6 +51,7 @@ class StrategyOrchestrationService:
         downgrade_policy: str | None = None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> dict[str, object]:
         return (
             await self._application.update_policies(
@@ -56,5 +59,6 @@ class StrategyOrchestrationService:
                 downgrade_policy=downgrade_policy,
                 actor=actor,
                 reason=reason,
+                request_id=request_id,
             )
         ).to_dict()

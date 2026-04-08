@@ -61,14 +61,18 @@ class InferenceAuditEvent:
     created_at: str
     message: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "event_type": self.event_type,
             "created_at": self.created_at,
             "message": self.message,
             "metadata": dict(self.metadata),
         }
+        if self.request_id is not None:
+            payload["request_id"] = self.request_id
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,9 +204,10 @@ class InferenceControlResult:
     )
     audit: tuple[InferenceAuditEvent, ...] = ()
     models: tuple[RegisteredModel, ...] = ()
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "accepted": self.accepted,
             "action": self.action,
             "message": self.message,
@@ -216,6 +221,9 @@ class InferenceControlResult:
             "audit": [item.to_dict() for item in self.audit],
             "models": [item.to_dict() for item in self.models],
         }
+        if self.request_id is not None:
+            payload["request_id"] = self.request_id
+        return payload
 
 
 class ModelRegistryPort(Protocol):
@@ -273,6 +281,7 @@ class InferenceRolloutPort(Protocol):
         target_mode: str,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None: ...
 
     async def set_active_model(
@@ -281,6 +290,7 @@ class InferenceRolloutPort(Protocol):
         model: RegisteredModel | None,
         actor: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> None: ...
 
     async def flush(self) -> None: ...
