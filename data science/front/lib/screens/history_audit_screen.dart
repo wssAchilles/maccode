@@ -9,6 +9,7 @@ import '../models/data_analysis_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/history_record.dart';
 import '../models/job_record.dart';
+import '../models/main_shell_projection.dart';
 import '../models/optimization_launch_intent.dart';
 import '../utils/asset_chain_context.dart';
 import '../viewmodels/audit_view_model.dart';
@@ -37,6 +38,7 @@ class HistoryAuditScreen extends StatefulWidget {
     this.jobsViewModel,
     this.auditViewModel,
     this.historyViewModel,
+    this.shellProjection,
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
@@ -49,6 +51,7 @@ class HistoryAuditScreen extends StatefulWidget {
   final JobViewModel? jobsViewModel;
   final AuditViewModel? auditViewModel;
   final HistoryViewModel? historyViewModel;
+  final MainShellProjection? shellProjection;
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
@@ -72,6 +75,10 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   String? _selectedType;
   String? _selectedStatus;
   bool _didActivateWorkspace = false;
+  DashboardSummary? get _sharedSummary =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
+          : _dashboardViewModel.summary;
 
   @override
   void initState() {
@@ -149,7 +156,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
         _historyViewModel,
       ]),
       builder: (context, _) {
-        final summary = _dashboardViewModel.summary;
+        final summary = _sharedSummary;
         final activity = _auditViewModel.activity;
         final orderedSections =
             <MapEntry<String, Widget>>[
@@ -440,7 +447,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
 
   void _handleGovernanceAction(AssetGovernanceItem item) {
     final sourceLabel = _chainSourceLabel(item.key, prefix: '风险处置中心');
-    final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+    final chain = _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((entry) => entry?.key == item.key, orElse: () => null);
     final context = buildLaunchContextFromChain(chain, prefix: '风险处置中心');
@@ -511,7 +518,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   void _handleDutyAction(DutyAction action) {
     switch (action.command) {
       case 'open_workspace':
-        final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+        final chain = _sharedSummary?.assetSummary.chainSummaries
             .cast<AssetChainSummary?>()
             .firstWhere(
               (item) => item?.key == action.chainKey,
@@ -596,7 +603,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
 
   void _openChainWorkspace(String key) {
     final sourceLabel = _chainSourceLabel(key, prefix: '统一审计事件流');
-    final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+    final chain = _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == key, orElse: () => null);
     final context = buildLaunchContextFromChain(chain, prefix: '统一审计事件流');
@@ -671,7 +678,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
 
   void _handleReplayAction(String key) {
     final chain = findChainSummary(
-      _dashboardViewModel.summary?.assetSummary,
+      _sharedSummary?.assetSummary,
       key,
     );
     switch (key) {
@@ -808,8 +815,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleFailureChainAction(AssetFailureChain chain) {
-    final chainSummary = _dashboardViewModel
-        .summary
+    final chainSummary = _sharedSummary
         ?.assetSummary
         .chainSummaries
         .cast<AssetChainSummary?>()
@@ -858,7 +864,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   String _chainSourceLabel(String key, {required String prefix}) {
-    final chain = _dashboardViewModel.summary?.assetSummary.chainSummaries
+    final chain = _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == key, orElse: () => null);
     if (chain == null) {

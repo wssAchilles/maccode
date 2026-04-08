@@ -12,6 +12,7 @@ import '../models/data_analysis_launch_intent.dart';
 import '../models/optimization_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
+import '../models/shell_action_outcome.dart';
 import '../models/workbench_runtime_models.dart';
 import '../repositories/auth_repository.dart';
 import '../screens/ai_lab_screen.dart';
@@ -424,6 +425,7 @@ class _MainNavigationState extends State<MainNavigation> {
       projection: _shellRuntime.projection,
       onOpenApprovals: _openApprovalPanel,
       onOpenOperations: _openOperationPanel,
+      onOpenNotifications: _openNotificationsPanel,
       onShowUserInfo: _showUserInfo,
       onSignOut: _handleSignOut,
       compact: compact,
@@ -540,6 +542,7 @@ class _MainNavigationState extends State<MainNavigation> {
       1 => ModelingScreen(
         dashboardViewModel: _dashboardViewModel,
         jobsViewModel: _shellRuntime.jobFeeds.optimizationFeed,
+        shellProjection: _shellRuntime.projection,
         launchIntent: _pendingOptimizationIntent,
         onLaunchIntentHandled: _clearOptimizationIntent,
         isActive: isActive,
@@ -551,6 +554,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onSendToAiLab: _openAiLabWithIntent,
         dashboardViewModel: _dashboardViewModel,
         analysisJobsViewModel: _shellRuntime.jobFeeds.analysisFeed,
+        shellProjection: _shellRuntime.projection,
         launchIntent: _pendingDataAnalysisIntent,
         onLaunchIntentHandled: _clearDataAnalysisIntent,
         isActive: isActive,
@@ -561,6 +565,7 @@ class _MainNavigationState extends State<MainNavigation> {
         dashboardViewModel: _dashboardViewModel,
         trainingJobsViewModel: _shellRuntime.jobFeeds.mlTrainFeed,
         ragJobsViewModel: _shellRuntime.jobFeeds.ragIngestFeed,
+        shellProjection: _shellRuntime.projection,
         launchIntent: _pendingAiLabIntent,
         onLaunchIntentHandled: _clearAiLabIntent,
         isActive: isActive,
@@ -570,6 +575,7 @@ class _MainNavigationState extends State<MainNavigation> {
       4 => HistoryAuditScreen(
         dashboardViewModel: _dashboardViewModel,
         jobsViewModel: _shellRuntime.jobFeeds.historyAuditFeed,
+        shellProjection: _shellRuntime.projection,
         onOpenAiLab: _openAiLabWithIntent,
         onOpenDataAnalysis: _openDataAnalysisWithIntent,
         onOpenOptimization: _openOptimizationWithIntent,
@@ -594,12 +600,17 @@ class _MainNavigationState extends State<MainNavigation> {
       onOpenOperation: (job) => unawaited(
         _shellRuntime.openOperation(job.operationId ?? job.jobId),
       ),
+      onOpenOperationId: (operationId) =>
+          unawaited(_shellRuntime.openOperation(operationId)),
       onApproveSelected: () =>
           _resolveSelectedOperationApproval(approved: true),
       onRejectSelected: () =>
           _resolveSelectedOperationApproval(approved: false),
       onRetrySelected: _retrySelectedOperation,
       onCancelSelected: _cancelSelectedOperation,
+      onMarkNotificationRead: _shellRuntime.markNotificationRead,
+      onMarkAllNotificationsRead: _shellRuntime.markAllNotificationsRead,
+      onDismissNotification: _shellRuntime.dismissNotification,
     );
   }
 
@@ -615,6 +626,13 @@ class _MainNavigationState extends State<MainNavigation> {
       return;
     }
     _openShellPanel(ShellRuntimePanelKind.operations);
+  }
+
+  void _openNotificationsPanel() {
+    if (!_usesDefaultShell) {
+      return;
+    }
+    _openShellPanel(ShellRuntimePanelKind.notifications);
   }
 
   void _openShellPanel(ShellRuntimePanelKind kind) {
@@ -665,7 +683,7 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!mounted || message == null) {
       return;
     }
-    final updated = await _shellRuntime.resolveQueuedApproval(
+    final outcome = await _shellRuntime.resolveQueuedApprovalAction(
       job,
       approved: approved,
       message: message.isEmpty ? null : message,
@@ -673,16 +691,7 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!mounted) {
       return;
     }
-    _showShellSnackBar(
-      updated == null
-          ? (_approvalQueueViewModel.errorMessage ?? '审批操作失败')
-          : (approved
-                ? '已批准任务: ${job.displayTitle}'
-                : '已驳回任务: ${job.displayTitle}'),
-      backgroundColor: updated == null
-          ? AppColors.error
-          : (approved ? AppColors.success : AppColors.warning),
-    );
+    _showShellActionOutcome(outcome);
   }
 
   Future<void> _resolveSelectedOperationApproval({
@@ -699,57 +708,30 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!mounted || message == null) {
       return;
     }
-    final updated = await _shellRuntime.resolveSelectedOperationApproval(
+    final outcome = await _shellRuntime.resolveSelectedOperationApprovalAction(
       approved: approved,
       message: message.isEmpty ? null : message,
     );
     if (!mounted) {
       return;
     }
-    _showShellSnackBar(
-      updated == null
-          ? (_operationConsoleViewModel.errorMessage ?? '审批操作失败')
-          : (approved
-                ? '已批准运行: ${operation.displayTitle}'
-                : '已驳回运行: ${operation.displayTitle}'),
-      backgroundColor: updated == null
-          ? AppColors.error
-          : (approved ? AppColors.success : AppColors.warning),
-    );
+    _showShellActionOutcome(outcome);
   }
 
   Future<void> _retrySelectedOperation() async {
-    final operation = _operationConsoleViewModel.selectedOperation;
-    if (operation == null) {
-      return;
-    }
-    final updated = await _shellRuntime.retrySelectedOperation();
+    final outcome = await _shellRuntime.retrySelectedOperationAction();
     if (!mounted) {
       return;
     }
-    _showShellSnackBar(
-      updated == null
-          ? (_operationConsoleViewModel.errorMessage ?? '重试运行失败')
-          : '已重试运行: ${operation.displayTitle}',
-      backgroundColor: updated == null ? AppColors.error : AppColors.success,
-    );
+    _showShellActionOutcome(outcome);
   }
 
   Future<void> _cancelSelectedOperation() async {
-    final operation = _operationConsoleViewModel.selectedOperation;
-    if (operation == null) {
-      return;
-    }
-    final updated = await _shellRuntime.cancelSelectedOperation();
+    final outcome = await _shellRuntime.cancelSelectedOperationAction();
     if (!mounted) {
       return;
     }
-    _showShellSnackBar(
-      updated == null
-          ? (_operationConsoleViewModel.errorMessage ?? '取消运行失败')
-          : '已取消运行: ${operation.displayTitle}',
-      backgroundColor: updated == null ? AppColors.error : AppColors.warning,
-    );
+    _showShellActionOutcome(outcome);
   }
 
   Future<String?> _showApprovalDialog({
@@ -770,6 +752,22 @@ class _MainNavigationState extends State<MainNavigation> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: backgroundColor),
     );
+  }
+
+  void _showShellActionOutcome(ShellActionOutcome outcome) {
+    _showShellSnackBar(
+      outcome.message,
+      backgroundColor: _colorForActionTone(outcome.tone),
+    );
+  }
+
+  Color _colorForActionTone(ShellActionTone tone) {
+    return switch (tone) {
+      ShellActionTone.success => AppColors.success,
+      ShellActionTone.warning => AppColors.warning,
+      ShellActionTone.error => AppColors.error,
+      ShellActionTone.info => AppColors.primary,
+    };
   }
 
   void _openAiLabWithIntent(AiLabLaunchIntent intent) {

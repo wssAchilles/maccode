@@ -11,6 +11,7 @@ class ShellRuntimeActionBar extends StatelessWidget {
     required this.projection,
     required this.onOpenApprovals,
     required this.onOpenOperations,
+    required this.onOpenNotifications,
     required this.onShowUserInfo,
     required this.onSignOut,
     this.compact = false,
@@ -20,6 +21,7 @@ class ShellRuntimeActionBar extends StatelessWidget {
   final MainShellProjection projection;
   final VoidCallback onOpenApprovals;
   final VoidCallback onOpenOperations;
+  final VoidCallback onOpenNotifications;
   final VoidCallback onShowUserInfo;
   final VoidCallback onSignOut;
   final bool compact;
@@ -58,6 +60,34 @@ class ShellRuntimeActionBar extends StatelessWidget {
           ),
           label: Text(operationLabel),
         ),
+        OutlinedButton.icon(
+          onPressed: onOpenNotifications,
+          icon: Icon(
+            projection.unreadNotificationCount > 0
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_none_rounded,
+          ),
+          label: Text(
+            compact
+                ? '通知 ${projection.unreadNotificationCount}'
+                : '通知中心 · ${projection.unreadNotificationCount}',
+          ),
+        ),
+        if (projection.hasActiveAction)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+            ),
+            child: Text(
+              projection.activeActionLabel,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         OutlinedButton.icon(
           key: const ValueKey('main-nav-user-info'),
           onPressed: enableAccountActions ? onShowUserInfo : null,

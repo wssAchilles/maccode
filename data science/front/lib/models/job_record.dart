@@ -1,6 +1,8 @@
 /// 作业与审计模型
 library;
 
+import 'job_session_projection.dart';
+
 class JobRecord {
   const JobRecord({
     required this.jobId,
@@ -30,6 +32,7 @@ class JobRecord {
     this.approvalState,
     this.approvalPolicy,
     this.metrics = const <String, dynamic>{},
+    this.sessionProjection,
   });
 
   final String jobId;
@@ -59,6 +62,7 @@ class JobRecord {
   final Map<String, dynamic>? approvalPolicy;
   final Map<String, dynamic> metrics;
   final List<JobEvent> events;
+  final JobSessionProjection? sessionProjection;
 
   bool get isTerminal =>
       status == 'succeeded' || status == 'failed' || status == 'cancelled';
@@ -106,6 +110,7 @@ class JobRecord {
     final rawArtifacts = json['artifacts'];
     final currentStep = json['current_step'];
     final approvalState = json['approval_state'];
+    final sessionProjection = json['session_projection'];
 
     return JobRecord(
       jobId: (json['job_id'] ?? json['id'] ?? '').toString(),
@@ -179,6 +184,11 @@ class JobRecord {
       metrics: json['metrics'] is Map
           ? Map<String, dynamic>.from(json['metrics'] as Map)
           : const <String, dynamic>{},
+      sessionProjection: sessionProjection is Map<String, dynamic>
+          ? JobSessionProjection.fromJson(sessionProjection)
+          : sessionProjection is Map
+          ? JobSessionProjection.fromJson(Map<String, dynamic>.from(sessionProjection))
+          : null,
       events: rawEvents is List
           ? rawEvents
                 .map((item) {

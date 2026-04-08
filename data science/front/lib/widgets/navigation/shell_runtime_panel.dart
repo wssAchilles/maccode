@@ -10,6 +10,7 @@ import '../../viewmodels/approval_queue_view_model.dart';
 import '../../viewmodels/operation_console_view_model.dart';
 import '../operations/approval_queue_board.dart';
 import '../operations/operation_console_board.dart';
+import 'shell_notification_center_panel.dart';
 import 'shell_runtime_projection_banner.dart';
 
 class ShellRuntimePanel extends StatelessWidget {
@@ -24,10 +25,14 @@ class ShellRuntimePanel extends StatelessWidget {
     required this.onApproveQueued,
     required this.onRejectQueued,
     required this.onOpenOperation,
+    required this.onOpenOperationId,
     required this.onApproveSelected,
     required this.onRejectSelected,
     required this.onRetrySelected,
     required this.onCancelSelected,
+    required this.onMarkNotificationRead,
+    required this.onMarkAllNotificationsRead,
+    required this.onDismissNotification,
   });
 
   final MainShellProjection projection;
@@ -39,10 +44,14 @@ class ShellRuntimePanel extends StatelessWidget {
   final ValueChanged<JobRecord> onApproveQueued;
   final ValueChanged<JobRecord> onRejectQueued;
   final ValueChanged<JobRecord> onOpenOperation;
+  final ValueChanged<String> onOpenOperationId;
   final VoidCallback onApproveSelected;
   final VoidCallback onRejectSelected;
   final VoidCallback onRetrySelected;
   final VoidCallback onCancelSelected;
+  final ValueChanged<String> onMarkNotificationRead;
+  final VoidCallback onMarkAllNotificationsRead;
+  final ValueChanged<String> onDismissNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +81,13 @@ class ShellRuntimePanel extends StatelessWidget {
                         selected: panelKind == ShellRuntimePanelKind.operations,
                         onTap: () =>
                             onSelectPanel(ShellRuntimePanelKind.operations),
+                      ),
+                      _PanelChip(
+                        label: '通知',
+                        selected:
+                            panelKind == ShellRuntimePanelKind.notifications,
+                        onTap: () =>
+                            onSelectPanel(ShellRuntimePanelKind.notifications),
                       ),
                     ],
                   ),
@@ -103,12 +119,23 @@ class ShellRuntimePanel extends StatelessWidget {
                           isUpdating: approvalQueueViewModel.isUpdating,
                           onOpenDetails: onOpenOperation,
                         )
-                      : OperationConsoleBoard(
+                      : panelKind == ShellRuntimePanelKind.operations
+                      ? OperationConsoleBoard(
                           viewModel: operationConsoleViewModel,
                           onApprove: onApproveSelected,
                           onReject: onRejectSelected,
                           onRetry: onRetrySelected,
                           onCancel: onCancelSelected,
+                        )
+                      : ShellNotificationCenterPanel(
+                          notifications: projection.notifications,
+                          onMarkAllRead: onMarkAllNotificationsRead,
+                          onMarkRead: onMarkNotificationRead,
+                          onDismiss: onDismissNotification,
+                          onOpenOperation: (operationId) {
+                            onSelectPanel(ShellRuntimePanelKind.operations);
+                            onOpenOperationId(operationId);
+                          },
                         ),
                 ],
               ),

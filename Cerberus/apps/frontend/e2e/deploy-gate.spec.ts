@@ -47,7 +47,7 @@ async function assertWorkbenchChrome(page: Page, projectName: string): Promise<v
     return
   }
 
-  await expect(page.locator('.ws-nav')).toBeVisible()
+  await expect(page.locator('.ws-rail-panel')).toBeVisible()
 }
 
 async function assertCoreFlowHealthy(page: Page): Promise<void> {
@@ -74,10 +74,14 @@ test.describe('deploy gate', () => {
     await assertWorkbenchChrome(page, testInfo.project.name)
     await expect(page.getByTestId('core-flow-panel')).toBeVisible()
 
-    await page.goto('/?workspace=execution', { waitUntil: 'domcontentloaded' })
+    await page.goto('/?workspace=book', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('app-shell')).toBeVisible()
     await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
+
+    await page.goto('/?workspace=execution', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('app-shell')).toBeVisible()
     await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
+    await expect(page.getByTestId('execution-console')).toBeVisible()
 
     await page.getByTestId('run-precheck-button').click()
     await expect(page.getByTestId('binance-precheck-status')).toBeVisible()

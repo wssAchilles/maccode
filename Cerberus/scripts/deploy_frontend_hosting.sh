@@ -10,6 +10,7 @@ REGION="${REGION:-asia-east2}"
 FIREBASE_APP_ID="${FIREBASE_APP_ID:-1:836238907711:web:c3fc58bfbd45d370c51b8a}"
 HOSTING_URL="${HOSTING_URL:-https://${PROJECT_ID}.web.app}"
 RUN_POST_DEPLOY_GATES="${RUN_POST_DEPLOY_GATES:-true}"
+SKIP_BUNDLE_BUDGET="${SKIP_BUNDLE_BUDGET:-false}"
 
 if ! command -v firebase >/dev/null 2>&1; then
   echo "firebase CLI is required" >&2
@@ -43,6 +44,7 @@ echo "building frontend against cloud endpoints"
 (
   cd "${FRONTEND_DIR}"
   VITE_GATEWAY_BASE="${GATEWAY_URL}" \
+  VITE_STRATEGY_BASE="${STRATEGY_URL}" \
   VITE_PUBLIC_APP_URL="${HOSTING_URL}" \
   VITE_AUTH_REQUIRED="true" \
   VITE_FIREBASE_API_KEY="${API_KEY}" \
@@ -53,7 +55,11 @@ echo "building frontend against cloud endpoints"
   VITE_FIREBASE_APP_ID="${APP_ID}" \
   npm run build
 
-  npm run check:bundle-budget
+  if [[ "${SKIP_BUNDLE_BUDGET}" == "true" ]]; then
+    echo "skipping bundle budget gate"
+  else
+    npm run check:bundle-budget
+  fi
 )
 
 echo "deploying frontend to Firebase Hosting"

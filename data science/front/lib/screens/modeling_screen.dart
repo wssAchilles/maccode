@@ -10,9 +10,11 @@ import 'package:intl/intl.dart';
 import '../config/app_theme.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
+import '../models/main_shell_projection.dart';
 import '../models/modeling_controls_state.dart';
 import '../models/optimization_result.dart';
 import '../models/optimization_launch_intent.dart';
+import '../models/shell_action_outcome.dart';
 import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/job_presentation.dart';
@@ -43,6 +45,7 @@ class ModelingScreen extends StatefulWidget {
     this.viewModel,
     this.dashboardViewModel,
     this.jobsViewModel,
+    this.shellProjection,
     this.nowBuilder,
     this.launchIntent,
     this.onLaunchIntentHandled,
@@ -54,6 +57,7 @@ class ModelingScreen extends StatefulWidget {
   final ModelingViewModel? viewModel;
   final DashboardViewModel? dashboardViewModel;
   final JobViewModel? jobsViewModel;
+  final MainShellProjection? shellProjection;
   final DateTime Function()? nowBuilder;
   final OptimizationLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
@@ -78,6 +82,10 @@ class _ModelingScreenState extends State<ModelingScreen> {
   OptimizationResponse? get _result => _viewModel.result;
   OptimizationResponse? get _previousResult => _viewModel.previousResult;
   String? get _errorMessage => _viewModel.errorMessage;
+  DashboardSummary? get _sharedSummary =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.summary ?? widget.dashboardViewModel?.summary)
+          : widget.dashboardViewModel?.summary;
 
   @override
   void initState() {
@@ -267,7 +275,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   AssetChainSummary? _optimizationChain() {
-    return widget.dashboardViewModel?.summary?.assetSummary.chainSummaries
+    return _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == 'optimization', orElse: () => null);
   }
@@ -434,7 +442,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
         if (widget.dashboardViewModel != null) widget.dashboardViewModel!,
       ]),
       builder: (context, _) {
-        final assetSummary = widget.dashboardViewModel?.summary?.assetSummary;
+        final assetSummary = _sharedSummary?.assetSummary;
         final optimizationChain = assetSummary?.chainSummaries
             .cast<AssetChainSummary?>()
             .firstWhere(
@@ -1200,6 +1208,18 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   Future<void> _retryJob(JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.retrySharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final retried = await _jobViewModel.retryJob(job.jobId);
     if (!mounted) {
       return;
@@ -1217,6 +1237,18 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   Future<void> _cancelJob(JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.cancelSharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final cancelled = await _jobViewModel.cancelJob(job);
     if (!mounted) {
       return;
@@ -1237,6 +1269,21 @@ class _ModelingScreenState extends State<ModelingScreen> {
     JobRecord job, {
     required bool approved,
   }) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.resolveSharedJobApproval(
+        job,
+        approved: approved,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final updated = await _jobViewModel.resolveApproval(job, approved: approved);
     if (!mounted) {
       return;
@@ -1266,6 +1313,26 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
     await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
+  }
+
+  void _showSharedActionOutcome(ShellActionOutcome outcome) {
+    final backgroundColor = switch (outcome.tone) {
+      ShellActionTone.success => AppColors.success,
+      ShellActionTone.warning => AppColors.warning,
+      ShellActionTone.error => AppColors.error,
+      ShellActionTone.info => AppColors.primary,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(outcome.message),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   String _buildScenarioDigest() {

@@ -25,4 +25,5 @@ enum JobFeedKey {
 enum ShellRuntimePanelKind {
   approvals,
   operations,
+  notifications,
 }

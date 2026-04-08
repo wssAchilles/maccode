@@ -4,8 +4,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/compute_rollout_policy.dart';
+import '../models/control_task_record.dart';
+import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/main_shell_projection.dart';
+import '../models/shell_action_outcome.dart';
+import '../models/shell_runtime_intent.dart';
 import '../models/workbench_runtime_models.dart';
 import '../utils/main_shell_projection_builder.dart';
 import 'approval_queue_view_model.dart';
@@ -13,7 +18,11 @@ import 'compute_governance_view_model.dart';
 import 'control_task_view_model.dart';
 import 'dashboard_view_model.dart';
 import 'job_feed_registry.dart';
+import 'main_shell_action_coordinator.dart';
 import 'operation_console_view_model.dart';
+import 'shell_operation_session_controller.dart';
+import 'shell_runtime_action_state_machine.dart';
+import 'shell_runtime_notification_center.dart';
 
 class MainShellRuntimeViewModel extends ChangeNotifier {
   MainShellRuntimeViewModel({
@@ -38,6 +47,9 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
        _ownsOperationConsoleViewModel = operationConsoleViewModel == null,
        _jobFeedRegistry = jobFeedRegistry ?? JobFeedRegistry(),
        _ownsJobFeedRegistry = jobFeedRegistry == null {
+    _actionStateMachine = ShellRuntimeActionStateMachine();
+    _notificationCenter = ShellRuntimeNotificationCenter();
+    _operationSessionController = ShellOperationSessionController();
     _childListenables = <Listenable>[
       _dashboardViewModel,
       _computeGovernanceViewModel,
@@ -45,10 +57,21 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
       _approvalQueueViewModel,
       _operationConsoleViewModel,
       _jobFeedRegistry,
+      _actionStateMachine,
+      _notificationCenter,
+      _operationSessionController,
     ];
     for (final listenable in _childListenables) {
       listenable.addListener(_relayChildUpdate);
     }
+    _actionCoordinator = MainShellActionCoordinator(
+      dashboardViewModel: _dashboardViewModel,
+      computeGovernanceViewModel: _computeGovernanceViewModel,
+      controlTaskViewModel: _controlTaskViewModel,
+      approvalQueueViewModel: _approvalQueueViewModel,
+      operationConsoleViewModel: _operationConsoleViewModel,
+      jobFeedRegistry: _jobFeedRegistry,
+    );
     _projection = _buildProjection();
   }
 
@@ -65,10 +88,15 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   final bool _ownsOperationConsoleViewModel;
   final JobFeedRegistry _jobFeedRegistry;
   final bool _ownsJobFeedRegistry;
+  late final MainShellActionCoordinator _actionCoordinator;
+  late final ShellRuntimeActionStateMachine _actionStateMachine;
+  late final ShellRuntimeNotificationCenter _notificationCenter;
+  late final ShellOperationSessionController _operationSessionController;
 
   bool _isDisposed = false;
   bool _isInitialized = false;
   bool _operationsWorkspaceReady = false;
+  int _intentSequence = 0;
   WorkbenchTab _activeTab = WorkbenchTab.operationsHub;
   bool _panelVisible = false;
   ShellRuntimePanelKind _panelKind = ShellRuntimePanelKind.approvals;
@@ -82,6 +110,9 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   OperationConsoleViewModel get operationConsoleViewModel =>
       _operationConsoleViewModel;
   JobFeedRegistry get jobFeeds => _jobFeedRegistry;
+  ShellRuntimeNotificationCenter get notificationCenter => _notificationCenter;
+  ShellOperationSessionController get operationSession =>
+      _operationSessionController;
 
   WorkbenchTab get activeTab => _activeTab;
   bool get panelVisible => _panelVisible;
@@ -146,6 +177,10 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     JobRecord? seed,
     bool openPanel = true,
   }) async {
+    _operationSessionController.beginSelection(
+      operationId: operationId,
+      originTab: _activeTab,
+    );
     await _operationConsoleViewModel.selectOperation(operationId, seed: seed);
     _panelKind = ShellRuntimePanelKind.operations;
     _panelVisible = openPanel;
@@ -153,66 +188,304 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     _notifySafely(rebuildProjection: true);
   }
 
+  void markNotificationRead(String notificationId) {
+    _notificationCenter.markRead(notificationId);
+  }
+
+  void markAllNotificationsRead() {
+    _notificationCenter.markAllRead();
+  }
+
+  void dismissNotification(String notificationId) {
+    _notificationCenter.dismiss(notificationId);
+  }
+
   Future<JobRecord?> resolveQueuedApproval(
     JobRecord job, {
     required bool approved,
     String? message,
-  }) async {
-    final updated = await _approvalQueueViewModel.resolve(
-      job,
-      approved: approved,
-      message: message,
+  }) async =>
+      (await resolveQueuedApprovalAction(
+        job,
+        approved: approved,
+        message: message,
+      ))
+          .data;
+
+  Future<ShellActionOutcome<JobRecord>> resolveQueuedApprovalAction(
+    JobRecord job, {
+    required bool approved,
+    String? message,
+  }) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.approval,
+      kind: ShellIntentKind.resolveApproval,
+      label: approved ? '批准待审批任务' : '驳回待审批任务',
+      resourceId: job.operationId ?? job.jobId,
+      resourceLabel: job.displayTitle,
+      run: () => _actionCoordinator.resolveQueuedApproval(
+        job,
+        approved: approved,
+        message: message,
+      ),
     );
-    if (updated == null) {
-      return null;
-    }
-    await Future.wait([
-      _controlTaskViewModel.loadControlTasks(),
-      _approvalQueueViewModel.loadQueue(),
-    ]);
-    await openOperation(
-      updated.operationId ?? updated.jobId,
-      seed: updated,
-      openPanel: true,
-    );
-    return updated;
   }
 
   Future<JobRecord?> resolveSelectedOperationApproval({
     required bool approved,
     String? message,
-  }) async {
-    final updated = await _operationConsoleViewModel.resolveSelectedApproval(
-      approved: approved,
-      message: message,
+  }) async =>
+      (await resolveSelectedOperationApprovalAction(
+        approved: approved,
+        message: message,
+      ))
+          .data;
+
+  Future<ShellActionOutcome<JobRecord>> resolveSelectedOperationApprovalAction({
+    required bool approved,
+    String? message,
+  }) {
+    final current = _operationConsoleViewModel.selectedOperation;
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.operation,
+      kind: ShellIntentKind.resolveApproval,
+      label: approved ? '批准当前运行' : '驳回当前运行',
+      resourceId: current?.operationId ?? current?.jobId,
+      resourceLabel: current?.displayTitle,
+      run: () => _actionCoordinator.resolveSelectedOperationApproval(
+        approved: approved,
+        message: message,
+      ),
     );
-    if (updated == null) {
-      return null;
-    }
-    await Future.wait([
-      _approvalQueueViewModel.loadQueue(),
-      _controlTaskViewModel.loadControlTasks(),
-    ]);
-    return updated;
   }
 
-  Future<JobRecord?> retrySelectedOperation() async {
-    final updated = await _operationConsoleViewModel.retrySelected();
-    if (updated != null) {
-      await _controlTaskViewModel.loadControlTasks();
-    }
-    return updated;
+  Future<JobRecord?> retrySelectedOperation() async =>
+      (await retrySelectedOperationAction()).data;
+
+  Future<ShellActionOutcome<JobRecord>> retrySelectedOperationAction() {
+    final current = _operationConsoleViewModel.selectedOperation;
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.operation,
+      kind: ShellIntentKind.retryOperation,
+      label: '重试当前运行',
+      resourceId: current?.operationId ?? current?.jobId,
+      resourceLabel: current?.displayTitle,
+      run: _actionCoordinator.retrySelectedOperation,
+    );
   }
 
-  Future<JobRecord?> cancelSelectedOperation() async {
-    final updated = await _operationConsoleViewModel.cancelSelected();
-    if (updated != null) {
-      await Future.wait([
-        _controlTaskViewModel.loadControlTasks(),
-        _approvalQueueViewModel.loadQueue(),
-      ]);
+  Future<JobRecord?> cancelSelectedOperation() async =>
+      (await cancelSelectedOperationAction()).data;
+
+  Future<ShellActionOutcome<JobRecord>> cancelSelectedOperationAction() {
+    final current = _operationConsoleViewModel.selectedOperation;
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.operation,
+      kind: ShellIntentKind.cancelOperation,
+      label: '取消当前运行',
+      resourceId: current?.operationId ?? current?.jobId,
+      resourceLabel: current?.displayTitle,
+      run: _actionCoordinator.cancelSelectedOperation,
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> runControlTask(
+    ControlTaskRecord task, {
+    Map<String, dynamic>? inputOverrides,
+    String trigger = 'manual',
+  }) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.controlTask,
+      kind: ShellIntentKind.runControlTask,
+      label: '触发规划任务',
+      resourceId: task.id,
+      resourceLabel: task.title,
+      run: () => _actionCoordinator.runControlTask(
+        task,
+        inputOverrides: inputOverrides,
+        trigger: trigger,
+      ),
+    );
+  }
+
+  Future<ShellActionOutcome<ControlTaskRecord>> setControlTaskEnabled(
+    ControlTaskRecord task, {
+    required bool enabled,
+  }) {
+    return _dispatchIntent<ControlTaskRecord>(
+      domain: ShellIntentDomain.controlTask,
+      kind: ShellIntentKind.updateControlTask,
+      label: enabled ? '恢复规划任务' : '暂停规划任务',
+      resourceId: task.id,
+      resourceLabel: task.title,
+      run: () =>
+          _actionCoordinator.setControlTaskEnabled(task, enabled: enabled),
+      openOperationsPanel: false,
+    );
+  }
+
+  Future<ShellActionOutcome<ControlTaskRecord>> setControlTaskApprovalPolicy(
+    ControlTaskRecord task, {
+    required Map<String, dynamic> approvalPolicy,
+  }) {
+    return _dispatchIntent<ControlTaskRecord>(
+      domain: ShellIntentDomain.controlTask,
+      kind: ShellIntentKind.updateControlTask,
+      label: '更新规划任务审批策略',
+      resourceId: task.id,
+      resourceLabel: task.title,
+      run: () => _actionCoordinator.setControlTaskApprovalPolicy(
+        task,
+        approvalPolicy: approvalPolicy,
+      ),
+      openOperationsPanel: false,
+    );
+  }
+
+  Future<ShellActionOutcome<ControlTaskRecord>> updateControlTaskDefinition(
+    ControlTaskRecord task, {
+    String? schedule,
+    String? owner,
+    required List<String> dependencies,
+    required Map<String, dynamic> approvalPolicy,
+    required Map<String, dynamic> defaultInput,
+  }) {
+    return _dispatchIntent<ControlTaskRecord>(
+      domain: ShellIntentDomain.controlTask,
+      kind: ShellIntentKind.updateControlTask,
+      label: '更新规划任务定义',
+      resourceId: task.id,
+      resourceLabel: task.title,
+      run: () => _actionCoordinator.updateControlTaskDefinition(
+        task,
+        schedule: schedule,
+        owner: owner,
+        dependencies: dependencies,
+        approvalPolicy: approvalPolicy,
+        defaultInput: defaultInput,
+      ),
+      openOperationsPanel: false,
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> requestComputeRolloutModeChange(
+    ComputeRolloutComponentPolicy component, {
+    required Map<String, dynamic> targetPolicy,
+    String? changeReason,
+    String requestKind = 'rollout_change',
+  }) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.computeGovernance,
+      kind: ShellIntentKind.requestRolloutChange,
+      label: '提交计算治理变更',
+      resourceId: component.key,
+      resourceLabel: component.label,
+      run: () => _actionCoordinator.requestComputeRolloutModeChange(
+        component,
+        targetPolicy: targetPolicy,
+        changeReason: changeReason,
+        requestKind: requestKind,
+      ),
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> requestComputeBenchmark(
+    ComputeRolloutComponentPolicy component, {
+    int sampleRows = 5000,
+  }) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.computeGovernance,
+      kind: ShellIntentKind.requestBenchmark,
+      label: '提交 benchmark 运行',
+      resourceId: component.key,
+      resourceLabel: component.label,
+      run: () => _actionCoordinator.requestComputeBenchmark(
+        component,
+        sampleRows: sampleRows,
+      ),
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> retrySharedJob(JobRecord job) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.operation,
+      kind: ShellIntentKind.retryOperation,
+      label: '重试共享任务',
+      resourceId: job.operationId ?? job.jobId,
+      resourceLabel: job.displayTitle,
+      run: () => _actionCoordinator.retrySharedJob(job),
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> cancelSharedJob(JobRecord job) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.operation,
+      kind: ShellIntentKind.cancelOperation,
+      label: '取消共享任务',
+      resourceId: job.operationId ?? job.jobId,
+      resourceLabel: job.displayTitle,
+      run: () => _actionCoordinator.cancelSharedJob(job),
+    );
+  }
+
+  Future<ShellActionOutcome<JobRecord>> resolveSharedJobApproval(
+    JobRecord job, {
+    required bool approved,
+    String? message,
+  }) {
+    return _dispatchIntent<JobRecord>(
+      domain: ShellIntentDomain.approval,
+      kind: ShellIntentKind.resolveApproval,
+      label: approved ? '批准共享任务' : '驳回共享任务',
+      resourceId: job.operationId ?? job.jobId,
+      resourceLabel: job.displayTitle,
+      run: () => _actionCoordinator.resolveSharedJobApproval(
+        job,
+        approved: approved,
+        message: message,
+      ),
+    );
+  }
+
+  Future<ShellActionOutcome<T>> _dispatchIntent<T>({
+    required ShellIntentDomain domain,
+    required ShellIntentKind kind,
+    required String label,
+    required Future<ShellActionOutcome<T>> Function() run,
+    String? resourceId,
+    String? resourceLabel,
+    bool openOperationsPanel = true,
+  }) async {
+    final intent = ShellRuntimeIntent(
+      id: 'intent-${++_intentSequence}',
+      domain: domain,
+      kind: kind,
+      label: label,
+      sourceTab: _activeTab,
+      issuedAt: DateTime.now(),
+      resourceId: resourceId,
+      resourceLabel: resourceLabel,
+    );
+    final outcome = await _actionStateMachine.dispatch<T>(
+      intent: intent,
+      run: run,
+    );
+    _notificationCenter.recordActionOutcome(intent, outcome);
+    final operation = outcome.data is JobRecord ? outcome.data as JobRecord : null;
+    if (operation != null && openOperationsPanel) {
+      _panelKind = ShellRuntimePanelKind.operations;
+      _panelVisible = true;
+      final operationId = operation.operationId ?? operation.jobId;
+      if (_operationConsoleViewModel.selectedOperationId != operationId) {
+        _operationSessionController.beginSelection(
+          operationId: operationId,
+          originTab: _activeTab,
+        );
+      }
     }
-    return updated;
+    _syncOperationConsoleActivity();
+    _notifySafely(rebuildProjection: true);
+    return outcome;
   }
 
   void _syncOperationConsoleActivity() {
@@ -223,6 +496,12 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   }
 
   void _relayChildUpdate() {
+    _operationSessionController.syncFromConsole(_operationConsoleViewModel);
+    _notificationCenter.recordBackendAlerts(
+      _dashboardViewModel.summary?.alerts ?? const <DashboardAlert>[],
+      sourceTab: _activeTab,
+    );
+    _notificationCenter.recordSessionUpdate(_operationSessionController.session);
     _notifySafely(rebuildProjection: true);
   }
 
@@ -237,6 +516,10 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
       computePolicy: _computeGovernanceViewModel.policy,
       computeActivity: _computeGovernanceViewModel.recentActivity,
       selectedOperation: _operationConsoleViewModel.selectedOperation,
+      activeAction: _actionStateMachine.activeAction,
+      recentActions: _actionStateMachine.recentActions,
+      notifications: _notificationCenter.notifications,
+      operationSession: _operationSessionController.session,
     );
   }
 

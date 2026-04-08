@@ -6,6 +6,9 @@ import '../models/compute_rollout_policy.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/main_shell_projection.dart';
+import '../models/shell_operation_session.dart';
+import '../models/shell_runtime_action_state.dart';
+import '../models/shell_runtime_notification.dart';
 import '../models/workbench_runtime_models.dart';
 
 MainShellProjection buildMainShellProjection({
@@ -18,6 +21,10 @@ MainShellProjection buildMainShellProjection({
   required ComputeRolloutPolicy computePolicy,
   required List<ComputeGovernanceActivityEntry> computeActivity,
   required JobRecord? selectedOperation,
+  required ShellRuntimeActionState? activeAction,
+  required List<ShellRuntimeActionState> recentActions,
+  required List<ShellRuntimeNotification> notifications,
+  required ShellOperationSession operationSession,
 }) {
   final sortedAlerts = [...?summary?.alerts]..sort(_compareAlertPriority);
   final focusAlert = sortedAlerts.isEmpty ? null : sortedAlerts.first;
@@ -36,9 +43,13 @@ MainShellProjection buildMainShellProjection({
     nextControlTask: visibleControlTasks.isEmpty ? null : visibleControlTasks.first,
     computePolicy: computePolicy,
     computeActivity: computeActivity,
-    pendingApprovalJobs: approvalJobs.take(3).toList(growable: false),
+    pendingApprovalJobs: approvalJobs,
     controlTasks: controlTasks,
     visibleControlTasks: visibleControlTasks.take(4).toList(growable: false),
+    activeAction: activeAction,
+    recentActions: recentActions,
+    notifications: notifications,
+    operationSession: operationSession,
   );
 }
 

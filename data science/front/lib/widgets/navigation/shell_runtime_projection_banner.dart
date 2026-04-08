@@ -17,6 +17,7 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final focusAlert = projection.focusAlert;
     final nextTask = projection.nextControlTask;
+    final operationSession = projection.operationSession;
 
     return Container(
       width: double.infinity,
@@ -50,6 +51,21 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
                     ? const Color(0xFFFFF4E5)
                     : AppColors.successLight,
               ),
+              _StatusChip(
+                label: operationSession.statusLabel,
+                foreground: operationSession.hasSelection
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
+                background: operationSession.hasSelection
+                    ? AppColors.primaryLight
+                    : AppColors.surface,
+              ),
+              if (projection.unreadNotificationCount > 0)
+                _StatusChip(
+                  label: '未读通知 ${projection.unreadNotificationCount}',
+                  foreground: AppColors.warning,
+                  background: const Color(0xFFFFF4E5),
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -57,6 +73,24 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
             projection.selectedOperationLabel,
             style: AppTextStyles.labelLarge,
           ),
+          if (projection.hasActiveAction) ...[
+            const SizedBox(height: 6),
+            Text(
+              '控制动作 · ${projection.activeActionLabel}',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+          if ((operationSession.latestMessage ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              operationSession.latestMessage!,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             nextTask == null

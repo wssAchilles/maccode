@@ -15,13 +15,16 @@ import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
 import '../models/main_shell_projection.dart';
 import '../models/optimization_launch_intent.dart';
+import '../models/shell_action_outcome.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/responsive_helper.dart';
 import '../viewmodels/approval_queue_view_model.dart';
 import '../viewmodels/compute_governance_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
+import '../viewmodels/main_shell_runtime_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
+import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/alert_panel.dart';
 import '../widgets/operations/approval_queue_board.dart';
 import '../widgets/operations/approval_resolution_dialog.dart';
@@ -92,6 +95,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   String? _lastGovernanceSyncedOperationId;
   bool _deferredSectionsReady = false;
   bool _didActivateWorkspace = false;
+
+  MainShellRuntimeViewModel? get _runtime =>
+      widget.sharedRuntimeManaged ? MainShellRuntimeScope.maybeOf(context) : null;
   Timer? _deferredSectionsTimer;
 
   @override
@@ -197,11 +203,35 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     String operationId, {
     JobRecord? seed,
   }) async {
+    final runtime = _runtime;
+    if (runtime != null) {
+      await runtime.openOperation(operationId, seed: seed);
+      return;
+    }
     final viewModel = widget.operationConsoleViewModel;
     if (viewModel == null) {
       return;
     }
     await viewModel.selectOperation(operationId, seed: seed);
+  }
+
+  void _showActionOutcome(ShellActionOutcome outcome) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(outcome.message),
+        backgroundColor: _colorForActionTone(outcome.tone),
+      ),
+    );
+  }
+
+  Color _colorForActionTone(ShellActionTone tone) {
+    return switch (tone) {
+      ShellActionTone.success => AppColors.success,
+      ShellActionTone.warning => AppColors.warning,
+      ShellActionTone.error => AppColors.error,
+      ShellActionTone.info => AppColors.primary,
+    };
   }
 
   void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
@@ -272,6 +302,16 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _runControlTask(ControlTaskRecord task) async {
+    final runtime = _runtime;
+    if (runtime != null) {
+      final outcome = await runtime.runControlTask(task);
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
     final viewModel = widget.controlTaskViewModel;
     if (viewModel == null) {
       return;
@@ -313,6 +353,19 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _toggleControlTask(ControlTaskRecord task) async {
+    final runtime = _runtime;
+    if (runtime != null) {
+      final outcome = await runtime.setControlTaskEnabled(
+        task,
+        enabled: !task.enabled,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
     final viewModel = widget.controlTaskViewModel;
     if (viewModel == null) {
       return;
@@ -351,8 +404,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     ComputeRolloutComponentPolicy component,
     String rolloutMode,
   ) async {
+    final runtime = _runtime;
     final viewModel = widget.computeGovernanceViewModel;
-    if (viewModel == null) {
+    if (viewModel == null && runtime == null) {
       return;
     }
 
@@ -365,7 +419,21 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    final operation = await viewModel.requestRolloutModeChange(
+    if (runtime != null) {
+      final outcome = await runtime.requestComputeRolloutModeChange(
+        component,
+        targetPolicy: draft.targetPolicy,
+        changeReason: draft.changeReason,
+        requestKind: draft.requestKind,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final operation = await viewModel!.requestRolloutModeChange(
       component.key,
       targetPolicy: draft.targetPolicy,
       changeReason: draft.changeReason,
@@ -406,6 +474,16 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   Future<void> _runComputeBenchmark(
     ComputeRolloutComponentPolicy component,
   ) async {
+    final runtime = _runtime;
+    if (runtime != null) {
+      final outcome = await runtime.requestComputeBenchmark(component);
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
     final viewModel = widget.computeGovernanceViewModel;
     if (viewModel == null) {
       return;
@@ -447,8 +525,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _toggleControlTaskApproval(ControlTaskRecord task) async {
+    final runtime = _runtime;
     final viewModel = widget.controlTaskViewModel;
-    if (viewModel == null) {
+    if (viewModel == null && runtime == null) {
       return;
     }
 
@@ -459,7 +538,19 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       'mode': requiredApproval ? 'auto' : 'manual',
     };
 
-    final updated = await viewModel.setControlTaskApprovalPolicy(
+    if (runtime != null) {
+      final outcome = await runtime.setControlTaskApprovalPolicy(
+        task,
+        approvalPolicy: nextPolicy,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.setControlTaskApprovalPolicy(
       task,
       approvalPolicy: nextPolicy,
     );
@@ -488,8 +579,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _editControlTaskDefinition(ControlTaskRecord task) async {
+    final runtime = _runtime;
     final viewModel = widget.controlTaskViewModel;
-    if (viewModel == null) {
+    if (viewModel == null && runtime == null) {
       return;
     }
 
@@ -498,7 +590,23 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    final updated = await viewModel.updateControlTaskDefinition(
+    if (runtime != null) {
+      final outcome = await runtime.updateControlTaskDefinition(
+        task,
+        schedule: draft.schedule,
+        owner: draft.owner,
+        dependencies: draft.dependencies,
+        approvalPolicy: draft.approvalPolicy,
+        defaultInput: draft.defaultInput,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.updateControlTaskDefinition(
       task,
       schedule: draft.schedule,
       owner: draft.owner,
@@ -528,8 +636,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _resolveApproval(JobRecord job, {required bool approved}) async {
+    final runtime = _runtime;
     final viewModel = widget.approvalQueueViewModel;
-    if (viewModel == null) {
+    if (viewModel == null && runtime == null) {
       return;
     }
 
@@ -542,7 +651,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    final updated = await viewModel.resolve(
+    if (runtime != null) {
+      final outcome = await runtime.resolveQueuedApprovalAction(
+        job,
+        approved: approved,
+        message: message.isEmpty ? null : message,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.resolve(
       job,
       approved: approved,
       message: message.isEmpty ? null : message,
@@ -580,9 +702,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   Future<void> _resolveSelectedOperationApproval({
     required bool approved,
   }) async {
+    final runtime = _runtime;
     final viewModel = widget.operationConsoleViewModel;
     final operation = viewModel?.selectedOperation;
-    if (viewModel == null || operation == null) {
+    if ((viewModel == null && runtime == null) || operation == null) {
       return;
     }
 
@@ -595,7 +718,19 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    final updated = await viewModel.resolveSelectedApproval(
+    if (runtime != null) {
+      final outcome = await runtime.resolveSelectedOperationApprovalAction(
+        approved: approved,
+        message: message.isEmpty ? null : message,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.resolveSelectedApproval(
       approved: approved,
       message: message.isEmpty ? null : message,
     );
@@ -632,13 +767,23 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _retrySelectedOperation() async {
+    final runtime = _runtime;
     final viewModel = widget.operationConsoleViewModel;
     final operation = viewModel?.selectedOperation;
-    if (viewModel == null || operation == null) {
+    if ((viewModel == null && runtime == null) || operation == null) {
       return;
     }
 
-    final updated = await viewModel.retrySelected();
+    if (runtime != null) {
+      final outcome = await runtime.retrySelectedOperationAction();
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.retrySelected();
     if (!mounted) {
       return;
     }
@@ -665,13 +810,23 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   Future<void> _cancelSelectedOperation() async {
+    final runtime = _runtime;
     final viewModel = widget.operationConsoleViewModel;
     final operation = viewModel?.selectedOperation;
-    if (viewModel == null || operation == null) {
+    if ((viewModel == null && runtime == null) || operation == null) {
       return;
     }
 
-    final updated = await viewModel.cancelSelected();
+    if (runtime != null) {
+      final outcome = await runtime.cancelSelectedOperationAction();
+      if (!mounted) {
+        return;
+      }
+      _showActionOutcome(outcome);
+      return;
+    }
+
+    final updated = await viewModel!.cancelSelected();
     if (!mounted) {
       return;
     }

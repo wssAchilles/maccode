@@ -5,6 +5,9 @@ import 'compute_rollout_policy.dart';
 import 'control_task_record.dart';
 import 'dashboard_summary.dart';
 import 'job_record.dart';
+import 'shell_operation_session.dart';
+import 'shell_runtime_action_state.dart';
+import 'shell_runtime_notification.dart';
 import 'workbench_runtime_models.dart';
 
 class MainShellProjection {
@@ -23,6 +26,10 @@ class MainShellProjection {
     this.pendingApprovalJobs = const <JobRecord>[],
     this.controlTasks = const <ControlTaskRecord>[],
     this.visibleControlTasks = const <ControlTaskRecord>[],
+    this.activeAction,
+    this.recentActions = const <ShellRuntimeActionState>[],
+    this.notifications = const <ShellRuntimeNotification>[],
+    this.operationSession = const ShellOperationSession.idle(),
   });
 
   const MainShellProjection.empty()
@@ -39,7 +46,11 @@ class MainShellProjection {
       computeActivity = const <ComputeGovernanceActivityEntry>[],
       pendingApprovalJobs = const <JobRecord>[],
       controlTasks = const <ControlTaskRecord>[],
-      visibleControlTasks = const <ControlTaskRecord>[];
+      visibleControlTasks = const <ControlTaskRecord>[],
+      activeAction = null,
+      recentActions = const <ShellRuntimeActionState>[],
+      notifications = const <ShellRuntimeNotification>[],
+      operationSession = const ShellOperationSession.idle();
 
   final WorkbenchTab activeTab;
   final String activeTabLabel;
@@ -55,9 +66,16 @@ class MainShellProjection {
   final List<JobRecord> pendingApprovalJobs;
   final List<ControlTaskRecord> controlTasks;
   final List<ControlTaskRecord> visibleControlTasks;
+  final ShellRuntimeActionState? activeAction;
+  final List<ShellRuntimeActionState> recentActions;
+  final List<ShellRuntimeNotification> notifications;
+  final ShellOperationSession operationSession;
 
   bool get hasPendingApprovals => pendingApprovalCount > 0;
   bool get hasSelectedOperation => selectedOperation != null;
+  bool get hasActiveAction => activeAction != null;
+  int get unreadNotificationCount =>
+      notifications.where((item) => !item.isRead).length;
 
   String get selectedOperationLabel {
     final operation = selectedOperation;
@@ -77,5 +95,13 @@ class MainShellProjection {
       return task.title;
     }
     return '${task.title} · $schedule';
+  }
+
+  String get activeActionLabel {
+    final action = activeAction;
+    if (action == null) {
+      return '当前没有进行中的控制动作';
+    }
+    return '${action.intent.label} · ${action.phaseLabel}';
   }
 }

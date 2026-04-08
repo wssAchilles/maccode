@@ -56,6 +56,7 @@ def serialize_operation(record: Dict[str, Any]) -> Dict[str, Any]:
             **approval_state,
             'approved_at': HistoryService._as_iso(approval_state.get('approved_at')),
         }
+    serialized['session_projection'] = build_session_projection(serialized)
     return serialized
 
 
@@ -78,6 +79,47 @@ def serialize_artifact(artifact: Dict[str, Any]) -> Dict[str, Any]:
     return {
         **artifact,
         'created_at': HistoryService._as_iso(artifact.get('created_at')),
+    }
+
+
+def build_session_projection(record: Dict[str, Any]) -> Dict[str, Any]:
+    events = record.get('events')
+    events_list = events if isinstance(events, list) else []
+    steps = record.get('steps')
+    steps_list = steps if isinstance(steps, list) else []
+    artifacts = record.get('artifacts')
+    artifacts_list = artifacts if isinstance(artifacts, list) else []
+    latest_event = _latest_event(events_list)
+    current_step = record.get('current_step')
+    current_step_label = _current_step_label(current_step)
+    latest_event_at = HistoryService._as_iso(
+        latest_event.get('timestamp') if isinstance(latest_event, dict) else None
+    )
+    status = str(record.get('status') or 'queued')
+    phase = _session_phase(record, status)
+    last_transition_at = (
+        latest_event_at
+        or HistoryService._as_iso(record.get('completed_at'))
+        or HistoryService._as_iso(record.get('started_at'))
+        or HistoryService._as_iso(record.get('submitted_at'))
+    )
+    terminal = status in {'succeeded', 'failed', 'cancelled'}
+    return {
+        'phase': phase,
+        'latest_event_type': str(latest_event.get('type') or '')
+        if isinstance(latest_event, dict)
+        else None,
+        'latest_event_message': str(latest_event.get('message') or '')
+        if isinstance(latest_event, dict)
+        else None,
+        'latest_event_at': latest_event_at,
+        'last_transition_at': last_transition_at,
+        'current_step_label': current_step_label,
+        'event_count': len(events_list),
+        'step_count': len(steps_list),
+        'artifact_count': len(artifacts_list),
+        'stream_recommended': not terminal,
+        'terminal': terminal,
     }
 
 
@@ -105,6 +147,54 @@ def build_event(
     if extra:
         event.update(extra)
     return event
+
+
+def _latest_event(events: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not events:
+        return None
+    latest: Optional[Dict[str, Any]] = None
+    latest_time: Optional[datetime] = None
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        event_time = coerce_datetime(event.get('timestamp') or event.get('timestamp_iso'))
+        if latest is None:
+            latest = event
+            latest_time = event_time
+            continue
+        if event_time and (latest_time is None or event_time >= latest_time):
+            latest = event
+            latest_time = event_time
+        elif latest_time is None:
+            latest = event
+    return latest or events[-1]
+
+
+def _current_step_label(step: Any) -> Optional[str]:
+    if not isinstance(step, dict):
+        return None
+    phase = str(step.get('phase') or '').strip()
+    tool_name = str(step.get('tool_name') or step.get('toolName') or '').strip()
+    if phase and tool_name:
+        return f'{phase} · {tool_name}'
+    if tool_name:
+        return tool_name
+    if phase:
+        return phase
+    return None
+
+
+def _session_phase(record: Dict[str, Any], status: str) -> str:
+    approval_state = record.get('approval_state')
+    if isinstance(approval_state, dict) and str(approval_state.get('state') or '') == 'pending':
+        return 'awaiting_approval'
+    if status in {'succeeded', 'failed', 'cancelled'}:
+        return 'terminal'
+    if status in {'queued', 'dispatching'}:
+        return 'loading'
+    if status in {'running', 'retrying'}:
+        return 'live'
+    return status or 'idle'
 
 
 def duration_ms(started_at: Optional[str], ended_at: Optional[str]) -> Optional[int]:

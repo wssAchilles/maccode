@@ -10,6 +10,8 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/deep_learning_config_state.dart';
 import '../models/job_record.dart';
+import '../models/main_shell_projection.dart';
+import '../models/shell_action_outcome.dart';
 import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../utils/job_presentation.dart';
@@ -41,6 +43,7 @@ class AiLabScreen extends StatefulWidget {
     required this.dashboardViewModel,
     this.trainingJobsViewModel,
     this.ragJobsViewModel,
+    this.shellProjection,
     this.launchIntent,
     this.onLaunchIntentHandled,
     this.isActive = true,
@@ -51,6 +54,7 @@ class AiLabScreen extends StatefulWidget {
   final DashboardViewModel dashboardViewModel;
   final JobViewModel? trainingJobsViewModel;
   final JobViewModel? ragJobsViewModel;
+  final MainShellProjection? shellProjection;
   final AiLabLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
   final bool isActive;
@@ -86,6 +90,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
   bool _didSeedKnowledgeDefaults = false;
   bool _suppressInputRefresh = false;
   bool _didActivateWorkspace = false;
+  DashboardSummary? get _sharedSummary =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.summary ?? widget.dashboardViewModel.summary)
+          : widget.dashboardViewModel.summary;
 
   @override
   void initState() {
@@ -164,10 +172,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
   Future<void> _submitTrainingJob() async {
     final chain = _chainForKey('model');
     final resolvedStoragePath = _resolvedTrainingStoragePath(
-      widget.dashboardViewModel.summary?.assetSummary,
+      _sharedSummary?.assetSummary,
     );
     final resolvedTargetColumn = _resolvedTrainingTargetColumn(
-      widget.dashboardViewModel.summary?.assetSummary,
+      _sharedSummary?.assetSummary,
     );
     if (resolvedStoragePath != null &&
         resolvedStoragePath != _trainingStorageController.text.trim()) {
@@ -272,7 +280,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   AssetChainSummary? _chainForKey(String key) {
-    return widget.dashboardViewModel.summary?.assetSummary.chainSummaries
+    return _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == key, orElse: () => null);
   }
@@ -313,7 +321,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   void _handleDashboardSummaryChanged() {
-    final summary = widget.dashboardViewModel.summary;
+    final summary = _sharedSummary;
     if (summary == null) {
       return;
     }
@@ -827,7 +835,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
         _ragViewModel,
       ]),
       builder: (context, _) {
-        final summary = widget.dashboardViewModel.summary;
+        final summary = _sharedSummary;
         final assetSummary = summary?.assetSummary;
         final modelChain = assetSummary?.chainSummaries
             .cast<AssetChainSummary?>()
@@ -1576,6 +1584,18 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   Future<void> _retryJob(JobViewModel viewModel, JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.retrySharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final retried = await viewModel.retryJob(job.jobId);
     if (!mounted) {
       return;
@@ -1596,6 +1616,18 @@ class _AiLabScreenState extends State<AiLabScreen> {
   }
 
   Future<void> _cancelJob(JobViewModel viewModel, JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.cancelSharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final cancelled = await viewModel.cancelJob(job);
     if (!mounted) {
       return;
@@ -1620,6 +1652,21 @@ class _AiLabScreenState extends State<AiLabScreen> {
     JobRecord job, {
     required bool approved,
   }) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.resolveSharedJobApproval(
+        job,
+        approved: approved,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final updated = await viewModel.resolveApproval(job, approved: approved);
     if (!mounted) {
       return;
@@ -1653,6 +1700,16 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
     await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
+  }
+
+  void _showSharedActionOutcome(ShellActionOutcome outcome) {
+    final color = switch (outcome.tone) {
+      ShellActionTone.success => AppColors.success,
+      ShellActionTone.warning => AppColors.warning,
+      ShellActionTone.error => AppColors.error,
+      ShellActionTone.info => AppColors.primary,
+    };
+    _showFeedback(outcome.message, color: color);
   }
 
   void _applyLaunchIntent(AiLabLaunchIntent? intent) {

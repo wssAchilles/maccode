@@ -10,7 +10,9 @@ import '../config/app_theme.dart';
 import '../models/ai_lab_launch_intent.dart';
 import '../models/dashboard_summary.dart';
 import '../models/job_record.dart';
+import '../models/main_shell_projection.dart';
 import '../models/data_analysis_launch_intent.dart';
+import '../models/shell_action_outcome.dart';
 import '../models/workbench_launch_context.dart';
 import '../utils/asset_chain_context.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -46,6 +48,7 @@ class DataAnalysisScreen extends StatefulWidget {
     this.dashboardViewModel,
     this.viewModel,
     this.analysisJobsViewModel,
+    this.shellProjection,
     this.launchIntent,
     this.onLaunchIntentHandled,
     this.isActive = true,
@@ -58,6 +61,7 @@ class DataAnalysisScreen extends StatefulWidget {
   final DashboardViewModel? dashboardViewModel;
   final DataAnalysisViewModel? viewModel;
   final JobViewModel? analysisJobsViewModel;
+  final MainShellProjection? shellProjection;
   final DataAnalysisLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
   final bool isActive;
@@ -95,6 +99,10 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   bool get _saveToStorage => _viewModel.saveToStorage;
   String? get _errorMessage => _viewModel.errorMessage;
   String get _authMode => _viewModel.authMode;
+  DashboardSummary? get _sharedSummary =>
+      widget.sharedRuntimeManaged
+          ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
+          : _dashboardViewModel.summary;
 
   static const _defaultErrorDuration = Duration(seconds: 4);
   static const _analysisErrorDuration = Duration(seconds: 5);
@@ -293,8 +301,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         _driftViewModel,
       ]),
       builder: (context, _) {
-        final datasetChain = _dashboardViewModel
-            .summary
+        final datasetChain = _sharedSummary
             ?.assetSummary
             .chainSummaries
             .cast<AssetChainSummary?>()
@@ -1044,6 +1051,18 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   Future<void> _retryAnalysisJob(JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.retrySharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final retried = await _analysisJobsViewModel.retryJob(job.jobId);
     if (!mounted) {
       return;
@@ -1060,6 +1079,18 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   Future<void> _cancelAnalysisJob(JobRecord job) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.cancelSharedJob(job);
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final cancelled = await _analysisJobsViewModel.cancelJob(job);
     if (!mounted) {
       return;
@@ -1079,6 +1110,21 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     JobRecord job, {
     required bool approved,
   }) async {
+    final runtime = widget.sharedRuntimeManaged
+        ? MainShellRuntimeScope.maybeOf(context)
+        : null;
+    if (runtime != null) {
+      final outcome = await runtime.resolveSharedJobApproval(
+        job,
+        approved: approved,
+      );
+      if (!mounted) {
+        return;
+      }
+      _showSharedActionOutcome(outcome);
+      return;
+    }
+
     final updated = await _analysisJobsViewModel.resolveApproval(
       job,
       approved: approved,
@@ -1114,6 +1160,16 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
 
   void _showSuccessFeedback(String message) {
     _showFeedback(message: message, backgroundColor: AppColors.success);
+  }
+
+  void _showSharedActionOutcome(ShellActionOutcome outcome) {
+    final backgroundColor = switch (outcome.tone) {
+      ShellActionTone.success => AppColors.success,
+      ShellActionTone.warning => AppColors.warning,
+      ShellActionTone.error => AppColors.error,
+      ShellActionTone.info => AppColors.primary,
+    };
+    _showFeedback(message: outcome.message, backgroundColor: backgroundColor);
   }
 
   void _showViewModelError({Duration duration = _defaultErrorDuration}) {
@@ -1201,7 +1257,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   AssetChainSummary? _datasetChain() {
-    return _dashboardViewModel.summary?.assetSummary.chainSummaries
+    return _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == 'dataset', orElse: () => null);
   }
