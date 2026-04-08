@@ -10,10 +10,16 @@ import '../../utils/job_presentation.dart';
 import '../common/glass_card.dart';
 
 class JobProgressCard extends StatelessWidget {
-  const JobProgressCard({super.key, required this.job, this.compact = false});
+  const JobProgressCard({
+    super.key,
+    required this.job,
+    this.compact = false,
+    this.onOpenDetails,
+  });
 
   final JobRecord job;
   final bool compact;
+  final VoidCallback? onOpenDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +60,13 @@ class JobProgressCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                job.displayTitle,
-                style: AppTextStyles.labelLarge.copyWith(
-                  color: AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  job.displayTitle,
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -138,6 +147,17 @@ class JobProgressCard extends StatelessWidget {
             Text(
               job.error!.message,
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+            ),
+          ],
+          if (onOpenDetails != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onOpenDetails,
+                icon: const Icon(Icons.travel_explore_rounded),
+                label: const Text('查看运行详情'),
+              ),
             ),
           ],
         ],

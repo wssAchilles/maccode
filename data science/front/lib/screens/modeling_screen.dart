@@ -21,6 +21,7 @@ import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/job_view_model.dart';
 import '../viewmodels/modeling_view_model.dart';
 import '../widgets/common/glass_card.dart';
+import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/embedded_page_header.dart';
 import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
@@ -41,19 +42,23 @@ class ModelingScreen extends StatefulWidget {
     super.key,
     this.viewModel,
     this.dashboardViewModel,
+    this.jobsViewModel,
     this.nowBuilder,
     this.launchIntent,
     this.onLaunchIntentHandled,
     this.isActive = true,
+    this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
   final ModelingViewModel? viewModel;
   final DashboardViewModel? dashboardViewModel;
+  final JobViewModel? jobsViewModel;
   final DateTime Function()? nowBuilder;
   final OptimizationLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
   final bool isActive;
+  final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -64,6 +69,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   late final ModelingViewModel _viewModel;
   late final JobViewModel _jobViewModel;
   late final bool _ownsViewModel;
+  late final bool _ownsJobViewModel;
   late ModelingControlsState _controls;
   WorkbenchLaunchContext? _activeLaunchContext;
   bool _didActivateWorkspace = false;
@@ -77,8 +83,10 @@ class _ModelingScreenState extends State<ModelingScreen> {
   void initState() {
     super.initState();
     _viewModel = widget.viewModel ?? ModelingViewModel();
-    _jobViewModel = JobViewModel(jobType: 'optimization', limit: 8);
+    _jobViewModel =
+        widget.jobsViewModel ?? JobViewModel(jobType: 'optimization', limit: 8);
     _ownsViewModel = widget.viewModel == null;
+    _ownsJobViewModel = widget.jobsViewModel == null;
     _controls = ModelingControlsState.initial(now: _now);
     _applyLaunchIntent(widget.launchIntent);
     _handleWorkspaceActivation(widget.isActive);
@@ -99,7 +107,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
 
   @override
   void dispose() {
-    _jobViewModel.dispose();
+    if (_ownsJobViewModel) {
+      _jobViewModel.dispose();
+    }
     if (_ownsViewModel) {
       _viewModel.dispose();
     }
@@ -107,14 +117,18 @@ class _ModelingScreenState extends State<ModelingScreen> {
   }
 
   void _handleWorkspaceActivation(bool isActive) {
-    _jobViewModel.setWorkspaceActive(isActive);
+    if (!widget.sharedRuntimeManaged) {
+      _jobViewModel.setWorkspaceActive(isActive);
+    }
     if (!isActive) {
       return;
     }
     if (!_didActivateWorkspace) {
       _didActivateWorkspace = true;
-      widget.dashboardViewModel?.initialize();
-      _jobViewModel.loadJobs();
+      if (!widget.sharedRuntimeManaged) {
+        widget.dashboardViewModel?.initialize();
+        _jobViewModel.loadJobs();
+      }
     }
   }
 
@@ -711,6 +725,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
               job: latestJob,
               title: '最近后台任务轨迹',
               emptyMessage: '后台优化开始执行后，这里会显示预测、求解和结果封装阶段。',
+              onOpenOperation: () => _openJobInShellRuntime(latestJob),
               onRetry: latestJob.retryable ? () => _retryJob(latestJob) : null,
               onCancel: latestJob.isTerminal ? null : () => _cancelJob(latestJob),
               onApprove: latestJob.isAwaitingApproval
@@ -726,6 +741,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
             jobs: _jobViewModel.jobs,
             emptyMessage: '暂无后台优化任务。提交后可在这里观察排队、运行和完成状态。',
             compact: true,
+            onOpenJob: _openJobInShellRuntime,
           ),
         ],
       ),
@@ -1189,6 +1205,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
     if (retried != null) {
+      await _openJobInShellRuntime(retried);
       _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已重新排队'));
       widget.dashboardViewModel?.loadSummary();
       return;
@@ -1205,6 +1222,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
     if (cancelled != null) {
+      await _openJobInShellRuntime(cancelled);
       _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已提交取消'));
       widget.dashboardViewModel?.loadSummary();
       return;
@@ -1224,6 +1242,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
     if (updated != null) {
+      await _openJobInShellRuntime(updated);
       _showSuccessSnackBar(
         _optimizationFeedbackMessage(
           approved ? '后台优化任务已批准执行' : '后台优化任务已驳回',
@@ -1236,6 +1255,17 @@ class _ModelingScreenState extends State<ModelingScreen> {
     if (error != null) {
       _showErrorSnackBar(error);
     }
+  }
+
+  Future<void> _openJobInShellRuntime(JobRecord job) async {
+    if (!widget.sharedRuntimeManaged) {
+      return;
+    }
+    final runtime = MainShellRuntimeScope.maybeOf(context);
+    if (runtime == null) {
+      return;
+    }
+    await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
   }
 
   String _buildScenarioDigest() {

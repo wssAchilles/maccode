@@ -29,6 +29,7 @@ import '../viewmodels/data_analysis_view_model.dart';
 import '../viewmodels/data_drift_view_model.dart';
 import '../viewmodels/history_view_model.dart';
 import '../viewmodels/job_view_model.dart';
+import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
 import '../widgets/operations/workbench_page_frame.dart';
@@ -44,9 +45,11 @@ class DataAnalysisScreen extends StatefulWidget {
     this.onSendToAiLab,
     this.dashboardViewModel,
     this.viewModel,
+    this.analysisJobsViewModel,
     this.launchIntent,
     this.onLaunchIntentHandled,
     this.isActive = true,
+    this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -54,9 +57,11 @@ class DataAnalysisScreen extends StatefulWidget {
   final ValueChanged<AiLabLaunchIntent>? onSendToAiLab;
   final DashboardViewModel? dashboardViewModel;
   final DataAnalysisViewModel? viewModel;
+  final JobViewModel? analysisJobsViewModel;
   final DataAnalysisLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
   final bool isActive;
+  final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -75,6 +80,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   late final DataDriftViewModel _driftViewModel;
   late final bool _ownsViewModel;
   late final bool _ownsDashboardViewModel;
+  late final bool _ownsAnalysisJobsViewModel;
   WorkbenchLaunchContext? _activeLaunchContext;
   String? _selectedReferencePath;
   Set<String>? _selectedDriftFeatures;
@@ -100,7 +106,10 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     _ownsDashboardViewModel = widget.dashboardViewModel == null;
     _viewModel = widget.viewModel ?? DataAnalysisViewModel();
     _dashboardViewModel = widget.dashboardViewModel ?? DashboardViewModel();
-    _analysisJobsViewModel = JobViewModel(jobType: 'analysis', limit: 8);
+    _analysisJobsViewModel =
+        widget.analysisJobsViewModel ??
+        JobViewModel(jobType: 'analysis', limit: 8);
+    _ownsAnalysisJobsViewModel = widget.analysisJobsViewModel == null;
     _historyViewModel = HistoryViewModel();
     _driftViewModel = DataDriftViewModel();
     _applyLaunchIntent(widget.launchIntent);
@@ -126,7 +135,9 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     if (_ownsDashboardViewModel) {
       _dashboardViewModel.dispose();
     }
-    _analysisJobsViewModel.dispose();
+    if (_ownsAnalysisJobsViewModel) {
+      _analysisJobsViewModel.dispose();
+    }
     _historyViewModel.dispose();
     _driftViewModel.dispose();
     _emailController.dispose();
@@ -135,15 +146,19 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   }
 
   void _handleWorkspaceActivation(bool isActive) {
-    _analysisJobsViewModel.setWorkspaceActive(isActive);
+    if (!widget.sharedRuntimeManaged) {
+      _analysisJobsViewModel.setWorkspaceActive(isActive);
+    }
     if (!isActive) {
       return;
     }
     if (!_didActivateWorkspace) {
       _didActivateWorkspace = true;
       _viewModel.initialize();
-      _dashboardViewModel.initialize();
-      _analysisJobsViewModel.loadJobs();
+      if (!widget.sharedRuntimeManaged) {
+        _dashboardViewModel.initialize();
+        _analysisJobsViewModel.loadJobs();
+      }
       _historyViewModel.loadHistory(limit: 12);
     }
   }
@@ -746,6 +761,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
               job: latestJob,
               title: '最近分析任务轨迹',
               emptyMessage: '后台分析开始执行后，这里会显示基础剖析、质量检查和统计检验阶段。',
+              onOpenOperation: () => _openJobInShellRuntime(latestJob),
               onRetry: latestJob.retryable
                   ? () => _retryAnalysisJob(latestJob)
                   : null,
@@ -765,6 +781,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
             jobs: _analysisJobsViewModel.jobs,
             emptyMessage: '暂无后台分析任务。提交后可在这里观察上传后的分析进度。',
             compact: true,
+            onOpenJob: _openJobInShellRuntime,
           ),
         ],
       ),
@@ -1032,6 +1049,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
     if (retried != null) {
+      await _openJobInShellRuntime(retried);
       _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已重新排队'));
       return;
     }
@@ -1047,6 +1065,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
     if (cancelled != null) {
+      await _openJobInShellRuntime(cancelled);
       _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已提交取消'));
       return;
     }
@@ -1068,6 +1087,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
     if (updated != null) {
+      await _openJobInShellRuntime(updated);
       _showSuccessFeedback(
         _datasetFeedbackMessage(
           approved ? '后台分析任务已批准执行' : '后台分析任务已驳回',
@@ -1079,6 +1099,17 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     if (message != null) {
       _showFeedback(message: message, backgroundColor: AppColors.error);
     }
+  }
+
+  Future<void> _openJobInShellRuntime(JobRecord job) async {
+    if (!widget.sharedRuntimeManaged) {
+      return;
+    }
+    final runtime = MainShellRuntimeScope.maybeOf(context);
+    if (runtime == null) {
+      return;
+    }
+    await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
   }
 
   void _showSuccessFeedback(String message) {

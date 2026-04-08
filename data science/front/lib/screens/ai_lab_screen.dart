@@ -19,6 +19,7 @@ import '../viewmodels/rag_view_model.dart';
 import '../widgets/common/glass_card.dart';
 import '../widgets/deep_learning/deep_learning_config_panel.dart';
 import '../widgets/deep_learning/deep_learning_terminal_panel.dart';
+import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/ai_lab_operations_board.dart';
 import '../widgets/operations/ai_lab_asset_control_board.dart';
 import '../widgets/operations/embedded_page_header.dart';
@@ -38,16 +39,22 @@ class AiLabScreen extends StatefulWidget {
   const AiLabScreen({
     super.key,
     required this.dashboardViewModel,
+    this.trainingJobsViewModel,
+    this.ragJobsViewModel,
     this.launchIntent,
     this.onLaunchIntentHandled,
     this.isActive = true,
+    this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
   final DashboardViewModel dashboardViewModel;
+  final JobViewModel? trainingJobsViewModel;
+  final JobViewModel? ragJobsViewModel;
   final AiLabLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
   final bool isActive;
+  final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -67,6 +74,8 @@ class _AiLabScreenState extends State<AiLabScreen> {
   late final JobViewModel _trainingJobsViewModel;
   late final JobViewModel _ragJobsViewModel;
   late final RagViewModel _ragViewModel;
+  late final bool _ownsTrainingJobsViewModel;
+  late final bool _ownsRagJobsViewModel;
 
   DeepLearningConfigState _config = const DeepLearningConfigState.initial();
   _AiLabTab _currentTab = _AiLabTab.deepLearning;
@@ -86,8 +95,14 @@ class _AiLabScreenState extends State<AiLabScreen> {
     _trainingTargetController.addListener(_handleInputControllersChanged);
     _ragStorageController.addListener(_handleInputControllersChanged);
     _ragCollectionController.addListener(_handleInputControllersChanged);
-    _trainingJobsViewModel = JobViewModel(jobType: 'ml_train', limit: 8);
-    _ragJobsViewModel = JobViewModel(jobType: 'rag_ingest', limit: 8);
+    _trainingJobsViewModel =
+        widget.trainingJobsViewModel ??
+        JobViewModel(jobType: 'ml_train', limit: 8);
+    _ownsTrainingJobsViewModel = widget.trainingJobsViewModel == null;
+    _ragJobsViewModel =
+        widget.ragJobsViewModel ??
+        JobViewModel(jobType: 'rag_ingest', limit: 8);
+    _ownsRagJobsViewModel = widget.ragJobsViewModel == null;
     _ragViewModel = RagViewModel();
     _applyLaunchIntent(widget.launchIntent);
     _handleWorkspaceActivation(widget.isActive);
@@ -117,23 +132,31 @@ class _AiLabScreenState extends State<AiLabScreen> {
     _ragCollectionController.dispose();
     _ragQuestionController.dispose();
     _ragScrollController.dispose();
-    _trainingJobsViewModel.dispose();
-    _ragJobsViewModel.dispose();
+    if (_ownsTrainingJobsViewModel) {
+      _trainingJobsViewModel.dispose();
+    }
+    if (_ownsRagJobsViewModel) {
+      _ragJobsViewModel.dispose();
+    }
     _ragViewModel.dispose();
     super.dispose();
   }
 
   void _handleWorkspaceActivation(bool isActive) {
-    _trainingJobsViewModel.setWorkspaceActive(isActive);
-    _ragJobsViewModel.setWorkspaceActive(isActive);
+    if (!widget.sharedRuntimeManaged) {
+      _trainingJobsViewModel.setWorkspaceActive(isActive);
+      _ragJobsViewModel.setWorkspaceActive(isActive);
+    }
     if (!isActive) {
       return;
     }
     if (!_didActivateWorkspace) {
       _didActivateWorkspace = true;
-      widget.dashboardViewModel.initialize();
-      _trainingJobsViewModel.loadJobs();
-      _ragJobsViewModel.loadJobs();
+      if (!widget.sharedRuntimeManaged) {
+        widget.dashboardViewModel.initialize();
+        _trainingJobsViewModel.loadJobs();
+        _ragJobsViewModel.loadJobs();
+      }
     }
     _handleDashboardSummaryChanged();
   }
@@ -1372,6 +1395,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
               job: focusJob,
               title: '训练阶段轨迹',
               emptyMessage: '提交训练任务后，这里会显示数据加载、序列构造、训练与产物上传阶段。',
+              onOpenOperation: () => _openJobInShellRuntime(focusJob),
               onRetry: focusJob.retryable
                   ? () => _retryJob(_trainingJobsViewModel, focusJob)
                   : null,
@@ -1401,6 +1425,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
             jobs: _trainingJobsViewModel.jobs,
             emptyMessage: '暂无训练任务，先提交一次模型训练。',
             compact: true,
+            onOpenJob: _openJobInShellRuntime,
           ),
         ],
       ),
@@ -1435,6 +1460,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
             jobs: _ragJobsViewModel.jobs,
             emptyMessage: '暂无知识库构建任务。',
             compact: true,
+            onOpenJob: _openJobInShellRuntime,
           ),
         ],
       ),
@@ -1446,6 +1472,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
               job: focusJob,
               title: '知识库构建轨迹',
               emptyMessage: '提交知识库任务后，这里会显示文档抓取、切片和向量化阶段。',
+              onOpenOperation: () => _openJobInShellRuntime(focusJob),
               onRetry: focusJob.retryable
                   ? () => _retryJob(_ragJobsViewModel, focusJob)
                   : null,
@@ -1554,6 +1581,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
     if (retried != null) {
+      await _openJobInShellRuntime(retried);
       final chain = viewModel == _trainingJobsViewModel
           ? _chainForKey('model')
           : _chainForKey('knowledge');
@@ -1573,6 +1601,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
     if (cancelled != null) {
+      await _openJobInShellRuntime(cancelled);
       final chain = viewModel == _trainingJobsViewModel
           ? _chainForKey('model')
           : _chainForKey('knowledge');
@@ -1596,6 +1625,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
     if (updated != null) {
+      await _openJobInShellRuntime(updated);
       final chain = viewModel == _trainingJobsViewModel
           ? _chainForKey('model')
           : _chainForKey('knowledge');
@@ -1612,6 +1642,17 @@ class _AiLabScreenState extends State<AiLabScreen> {
     if (message != null) {
       _showFeedback(message, color: AppColors.error);
     }
+  }
+
+  Future<void> _openJobInShellRuntime(JobRecord job) async {
+    if (!widget.sharedRuntimeManaged) {
+      return;
+    }
+    final runtime = MainShellRuntimeScope.maybeOf(context);
+    if (runtime == null) {
+      return;
+    }
+    await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
   }
 
   void _applyLaunchIntent(AiLabLaunchIntent? intent) {

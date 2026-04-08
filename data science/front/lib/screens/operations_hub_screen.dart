@@ -63,6 +63,7 @@ class OperationsHubScreen extends StatefulWidget {
     this.approvalQueueViewModel,
     this.operationConsoleViewModel,
     this.isActive = true,
+    this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -76,6 +77,7 @@ class OperationsHubScreen extends StatefulWidget {
   final ApprovalQueueViewModel? approvalQueueViewModel;
   final OperationConsoleViewModel? operationConsoleViewModel;
   final bool isActive;
+  final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -125,7 +127,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   void _handleWorkspaceActivation(bool isActive) {
-    widget.operationConsoleViewModel?.setWorkspaceActive(isActive);
+    if (!widget.sharedRuntimeManaged) {
+      widget.operationConsoleViewModel?.setWorkspaceActive(isActive);
+    }
     if (!isActive) {
       _deferredSectionsTimer?.cancel();
       _deferredSectionsTimer = null;
@@ -133,10 +137,12 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
     if (!_didActivateWorkspace) {
       _didActivateWorkspace = true;
-      widget.viewModel.initialize();
-      widget.computeGovernanceViewModel?.initialize();
-      widget.controlTaskViewModel?.initialize();
-      widget.approvalQueueViewModel?.initialize();
+      if (!widget.sharedRuntimeManaged) {
+        widget.viewModel.initialize();
+        widget.computeGovernanceViewModel?.initialize();
+        widget.controlTaskViewModel?.initialize();
+        widget.approvalQueueViewModel?.initialize();
+      }
     }
     _scheduleDeferredSections();
   }

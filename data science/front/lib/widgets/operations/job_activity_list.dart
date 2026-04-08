@@ -13,11 +13,13 @@ class JobActivityList extends StatelessWidget {
     required this.jobs,
     this.emptyMessage = '暂无任务记录',
     this.compact = false,
+    this.onOpenJob,
   });
 
   final List<JobRecord> jobs;
   final String emptyMessage;
   final bool compact;
+  final ValueChanged<JobRecord>? onOpenJob;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +32,11 @@ class JobActivityList extends StatelessWidget {
           .map(
             (job) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: JobProgressCard(job: job, compact: compact),
+              child: JobProgressCard(
+                job: job,
+                compact: compact,
+                onOpenDetails: onOpenJob == null ? null : () => onOpenJob!(job),
+              ),
             ),
           )
           .toList(growable: false),

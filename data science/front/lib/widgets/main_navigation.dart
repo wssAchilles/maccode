@@ -11,6 +11,8 @@ import '../models/ai_lab_launch_intent.dart';
 import '../models/data_analysis_launch_intent.dart';
 import '../models/optimization_launch_intent.dart';
 import '../models/dashboard_summary.dart';
+import '../models/job_record.dart';
+import '../models/workbench_runtime_models.dart';
 import '../repositories/auth_repository.dart';
 import '../screens/ai_lab_screen.dart';
 import '../screens/data_analysis_screen.dart';
@@ -24,8 +26,13 @@ import '../viewmodels/approval_queue_view_model.dart';
 import '../viewmodels/compute_governance_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
+import '../viewmodels/main_shell_runtime_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
 import 'navigation/lazy_workspace_stack.dart';
+import 'navigation/main_shell_runtime_scope.dart';
+import 'navigation/shell_runtime_action_bar.dart';
+import 'navigation/shell_runtime_panel.dart';
+import 'operations/approval_resolution_dialog.dart';
 import 'operations/workbench_page_frame.dart';
 import 'operations/system_status_strip.dart';
 
@@ -106,16 +113,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   int _currentIndex = 0;
   late final AuthRepository _authRepository;
-  late final DashboardViewModel _dashboardViewModel;
-  late final bool _ownsDashboardViewModel;
-  late final ControlTaskViewModel _controlTaskViewModel;
-  late final bool _ownsControlTaskViewModel;
-  late final ComputeGovernanceViewModel _computeGovernanceViewModel;
-  late final bool _ownsComputeGovernanceViewModel;
-  late final ApprovalQueueViewModel _approvalQueueViewModel;
-  late final bool _ownsApprovalQueueViewModel;
-  late final OperationConsoleViewModel _operationConsoleViewModel;
-  late final bool _ownsOperationConsoleViewModel;
+  late final MainShellRuntimeViewModel _shellRuntime;
   StreamSubscription<User?>? _authSubscription;
   User? _currentUser;
   AiLabLaunchIntent? _pendingAiLabIntent;
@@ -123,6 +121,16 @@ class _MainNavigationState extends State<MainNavigation> {
   OptimizationLaunchIntent? _pendingOptimizationIntent;
 
   bool get _hasAuthenticatedUser => _currentUser != null;
+  bool get _usesDefaultShell => widget._customPages == null;
+  DashboardViewModel get _dashboardViewModel => _shellRuntime.dashboardViewModel;
+  ComputeGovernanceViewModel get _computeGovernanceViewModel =>
+      _shellRuntime.computeGovernanceViewModel;
+  ControlTaskViewModel get _controlTaskViewModel =>
+      _shellRuntime.controlTaskViewModel;
+  ApprovalQueueViewModel get _approvalQueueViewModel =>
+      _shellRuntime.approvalQueueViewModel;
+  OperationConsoleViewModel get _operationConsoleViewModel =>
+      _shellRuntime.operationConsoleViewModel;
 
   @override
   void initState() {
@@ -130,20 +138,13 @@ class _MainNavigationState extends State<MainNavigation> {
     _authRepository =
         widget._authRepository ??
         GatewayAuthRepository(authGateway: widget._authGateway);
-    _dashboardViewModel = widget._dashboardViewModel ?? DashboardViewModel();
-    _ownsDashboardViewModel = widget._dashboardViewModel == null;
-    _computeGovernanceViewModel =
-        widget._computeGovernanceViewModel ?? ComputeGovernanceViewModel();
-    _ownsComputeGovernanceViewModel = widget._computeGovernanceViewModel == null;
-    _controlTaskViewModel =
-        widget._controlTaskViewModel ?? ControlTaskViewModel();
-    _ownsControlTaskViewModel = widget._controlTaskViewModel == null;
-    _approvalQueueViewModel =
-        widget._approvalQueueViewModel ?? ApprovalQueueViewModel();
-    _ownsApprovalQueueViewModel = widget._approvalQueueViewModel == null;
-    _operationConsoleViewModel =
-        widget._operationConsoleViewModel ?? OperationConsoleViewModel();
-    _ownsOperationConsoleViewModel = widget._operationConsoleViewModel == null;
+    _shellRuntime = MainShellRuntimeViewModel(
+      dashboardViewModel: widget._dashboardViewModel,
+      computeGovernanceViewModel: widget._computeGovernanceViewModel,
+      controlTaskViewModel: widget._controlTaskViewModel,
+      approvalQueueViewModel: widget._approvalQueueViewModel,
+      operationConsoleViewModel: widget._operationConsoleViewModel,
+    );
     _currentUser = _authRepository.currentUser;
     _authSubscription = _authRepository.authStateChanges.listen((user) {
       if (!mounted || user == _currentUser) {
@@ -153,26 +154,15 @@ class _MainNavigationState extends State<MainNavigation> {
         _currentUser = user;
       });
     });
+    if (_usesDefaultShell) {
+      unawaited(_shellRuntime.activateTab(WorkbenchTab.fromIndex(_currentIndex)));
+    }
   }
 
   @override
   void dispose() {
     _authSubscription?.cancel();
-    if (_ownsDashboardViewModel) {
-      _dashboardViewModel.dispose();
-    }
-    if (_ownsComputeGovernanceViewModel) {
-      _computeGovernanceViewModel.dispose();
-    }
-    if (_ownsControlTaskViewModel) {
-      _controlTaskViewModel.dispose();
-    }
-    if (_ownsApprovalQueueViewModel) {
-      _approvalQueueViewModel.dispose();
-    }
-    if (_ownsOperationConsoleViewModel) {
-      _operationConsoleViewModel.dispose();
-    }
+    _shellRuntime.dispose();
     super.dispose();
   }
 
@@ -213,6 +203,7 @@ class _MainNavigationState extends State<MainNavigation> {
         _currentUser = null;
         _currentIndex = 0;
       });
+      _shellRuntime.closePanel();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('已退出登录'),
@@ -262,150 +253,181 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    final desktopShell = ResponsiveHelper.isDesktop(context);
-    final statusItems =
-        _dashboardViewModel.summary?.systemStatus ?? const <dynamic>[];
+    return MainShellRuntimeScope(
+      runtime: _shellRuntime,
+      child: ListenableBuilder(
+        listenable: _shellRuntime,
+        builder: (context, _) {
+          final desktopShell = ResponsiveHelper.isDesktop(context);
+          final projection = _shellRuntime.projection;
+          final statusItems = projection.summary?.systemStatus ?? const <dynamic>[];
 
-    if (desktopShell) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            SystemStatusStrip(
-              items: statusItems.cast(),
-              compact: true,
-              trailing: _buildAccountActions(compact: true),
-            ),
-            Expanded(
-              child: Row(
+          if (desktopShell) {
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: Column(
                 children: [
-                  NavigationRail(
-                    selectedIndex: _currentIndex,
-                    onDestinationSelected: _onNavTap,
-                    extended: MediaQuery.of(context).size.width >= 1280,
-                    minWidth: 88,
-                    labelType: NavigationRailLabelType.none,
-                    leading: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              borderRadius: BorderRadius.circular(
-                                AppDecorations.radiusLg,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.hub_rounded,
-                              color: Colors.white,
+                  SystemStatusStrip(
+                    items: statusItems.cast(),
+                    compact: true,
+                    trailing: _buildAccountActions(compact: true),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        NavigationRail(
+                          selectedIndex: _currentIndex,
+                          onDestinationSelected: _onNavTap,
+                          extended: MediaQuery.of(context).size.width >= 1280,
+                          minWidth: 88,
+                          labelType: NavigationRailLabelType.none,
+                          leading: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    gradient: AppColors.primaryGradient,
+                                    borderRadius: BorderRadius.circular(
+                                      AppDecorations.radiusLg,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.hub_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Sentinel Ops',
+                                  style: AppTextStyles.labelMedium,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Sentinel Ops',
-                            style: AppTextStyles.labelMedium,
+                          destinations: _destinations
+                              .asMap()
+                              .entries
+                              .map(
+                                (entry) => NavigationRailDestination(
+                                  icon: Icon(entry.value.icon),
+                                  selectedIcon: Icon(entry.value.icon),
+                                  label: Text(entry.value.label),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        const VerticalDivider(width: 1),
+                        Expanded(
+                          child: SafeArea(
+                            top: false,
+                            bottom: false,
+                            child: LazyWorkspaceStack(
+                              currentIndex: _currentIndex,
+                              pageCount: _pageCount,
+                              pageBuilder: _buildPage,
+                            ),
+                          ),
+                        ),
+                        if (_usesDefaultShell && _shellRuntime.panelVisible) ...[
+                          const VerticalDivider(width: 1),
+                          SizedBox(
+                            width: 420,
+                            child: _buildRuntimePanel(),
                           ),
                         ],
-                      ),
-                    ),
-                    destinations: _destinations
-                        .asMap()
-                        .entries
-                        .map(
-                          (entry) => NavigationRailDestination(
-                            icon: Icon(entry.value.icon),
-                            selectedIcon: Icon(entry.value.icon),
-                            label: Text(entry.value.label),
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const VerticalDivider(width: 1),
-                  Expanded(
-                    child: SafeArea(
-                      top: false,
-                      bottom: false,
-                      child: LazyWorkspaceStack(
-                        currentIndex: _currentIndex,
-                        pageCount: _pageCount,
-                        pageBuilder: _buildPage,
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      );
-    }
+            );
+          }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: LazyWorkspaceStack(
-          currentIndex: _currentIndex,
-          pageCount: _pageCount,
-          pageBuilder: _buildPage,
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: const Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: Row(children: [Expanded(child: _buildAccountActions())]),
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              bottom: false,
+              child: LazyWorkspaceStack(
+                currentIndex: _currentIndex,
+                pageCount: _pageCount,
+                pageBuilder: _buildPage,
               ),
-              NavigationBar(
-                selectedIndex: _currentIndex,
-                onDestinationSelected: _onNavTap,
-                destinations: _destinations
-                    .map(
-                      (item) => NavigationDestination(
-                        icon: Icon(item.icon),
-                        label: item.label,
+            ),
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: const Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      child: Row(
+                        children: [Expanded(child: _buildAccountActions())],
                       ),
-                    )
-                    .toList(growable: false),
+                    ),
+                    NavigationBar(
+                      selectedIndex: _currentIndex,
+                      onDestinationSelected: _onNavTap,
+                      destinations: _destinations
+                          .map(
+                            (item) => NavigationDestination(
+                              icon: Icon(item.icon),
+                              label: item.label,
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildAccountActions({bool compact = false}) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.end,
-      children: [
-        OutlinedButton.icon(
-          key: const ValueKey('main-nav-user-info'),
-          onPressed: _hasAuthenticatedUser ? _showUserInfo : null,
-          icon: const Icon(Icons.account_circle_outlined),
-          label: Text(compact ? '用户' : '用户信息'),
-        ),
-        FilledButton.tonalIcon(
-          key: const ValueKey('main-nav-sign-out'),
-          onPressed: _hasAuthenticatedUser ? _handleSignOut : null,
-          icon: const Icon(Icons.logout_rounded),
-          label: Text(compact ? '退出' : '退出登录'),
-        ),
-      ],
+    if (!_usesDefaultShell) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.end,
+        children: [
+          OutlinedButton.icon(
+            key: const ValueKey('main-nav-user-info'),
+            onPressed: _hasAuthenticatedUser ? _showUserInfo : null,
+            icon: const Icon(Icons.account_circle_outlined),
+            label: Text(compact ? '用户' : '用户信息'),
+          ),
+          FilledButton.tonalIcon(
+            key: const ValueKey('main-nav-sign-out'),
+            onPressed: _hasAuthenticatedUser ? _handleSignOut : null,
+            icon: const Icon(Icons.logout_rounded),
+            label: Text(compact ? '退出' : '退出登录'),
+          ),
+        ],
+      );
+    }
+
+    return ShellRuntimeActionBar(
+      projection: _shellRuntime.projection,
+      onOpenApprovals: _openApprovalPanel,
+      onOpenOperations: _openOperationPanel,
+      onShowUserInfo: _showUserInfo,
+      onSignOut: _handleSignOut,
+      compact: compact,
+      enableAccountActions: _hasAuthenticatedUser,
     );
   }
 
@@ -418,14 +440,21 @@ class _MainNavigationState extends State<MainNavigation> {
       if (defaultAiIntent != null) {
         setState(() {
           _pendingAiLabIntent = defaultAiIntent;
-          _currentIndex = index;
         });
+        _setCurrentIndex(index);
         return;
       }
     }
+    _setCurrentIndex(index);
+  }
+
+  void _setCurrentIndex(int index) {
     setState(() {
       _currentIndex = index;
     });
+    if (_usesDefaultShell) {
+      unawaited(_shellRuntime.activateTab(WorkbenchTab.fromIndex(index)));
+    }
   }
 
   AiLabLaunchIntent? _defaultAiLabIntent() {
@@ -504,62 +533,263 @@ class _MainNavigationState extends State<MainNavigation> {
         onOpenDataAnalysis: _openDataAnalysisWithIntent,
         onOpenOptimization: _openOptimizationWithIntent,
         isActive: isActive,
+        sharedRuntimeManaged: true,
         surfaceMode: WorkbenchSurfaceMode.embedded,
       ),
       1 => ModelingScreen(
         dashboardViewModel: _dashboardViewModel,
+        jobsViewModel: _shellRuntime.jobFeeds.optimizationFeed,
         launchIntent: _pendingOptimizationIntent,
         onLaunchIntentHandled: _clearOptimizationIntent,
         isActive: isActive,
+        sharedRuntimeManaged: true,
         surfaceMode: WorkbenchSurfaceMode.embedded,
       ),
       2 => DataAnalysisScreen(
         onOpenHistory: () => _onNavTap(4),
         onSendToAiLab: _openAiLabWithIntent,
         dashboardViewModel: _dashboardViewModel,
+        analysisJobsViewModel: _shellRuntime.jobFeeds.analysisFeed,
         launchIntent: _pendingDataAnalysisIntent,
         onLaunchIntentHandled: _clearDataAnalysisIntent,
         isActive: isActive,
+        sharedRuntimeManaged: true,
         surfaceMode: WorkbenchSurfaceMode.embedded,
       ),
       3 => AiLabScreen(
         dashboardViewModel: _dashboardViewModel,
+        trainingJobsViewModel: _shellRuntime.jobFeeds.mlTrainFeed,
+        ragJobsViewModel: _shellRuntime.jobFeeds.ragIngestFeed,
         launchIntent: _pendingAiLabIntent,
         onLaunchIntentHandled: _clearAiLabIntent,
         isActive: isActive,
+        sharedRuntimeManaged: true,
         surfaceMode: WorkbenchSurfaceMode.embedded,
       ),
       4 => HistoryAuditScreen(
         dashboardViewModel: _dashboardViewModel,
+        jobsViewModel: _shellRuntime.jobFeeds.historyAuditFeed,
         onOpenAiLab: _openAiLabWithIntent,
         onOpenDataAnalysis: _openDataAnalysisWithIntent,
         onOpenOptimization: _openOptimizationWithIntent,
         isActive: isActive,
+        sharedRuntimeManaged: true,
         surfaceMode: WorkbenchSurfaceMode.embedded,
       ),
       _ => const SizedBox.shrink(),
     };
   }
 
+  Widget _buildRuntimePanel() {
+    return ShellRuntimePanel(
+      projection: _shellRuntime.projection,
+      panelKind: _shellRuntime.panelKind,
+      approvalQueueViewModel: _approvalQueueViewModel,
+      operationConsoleViewModel: _operationConsoleViewModel,
+      onSelectPanel: (kind) => unawaited(_shellRuntime.showPanel(kind)),
+      onClose: _shellRuntime.closePanel,
+      onApproveQueued: (job) => _resolveQueuedApproval(job, approved: true),
+      onRejectQueued: (job) => _resolveQueuedApproval(job, approved: false),
+      onOpenOperation: (job) => unawaited(
+        _shellRuntime.openOperation(job.operationId ?? job.jobId),
+      ),
+      onApproveSelected: () =>
+          _resolveSelectedOperationApproval(approved: true),
+      onRejectSelected: () =>
+          _resolveSelectedOperationApproval(approved: false),
+      onRetrySelected: _retrySelectedOperation,
+      onCancelSelected: _cancelSelectedOperation,
+    );
+  }
+
+  void _openApprovalPanel() {
+    if (!_usesDefaultShell) {
+      return;
+    }
+    _openShellPanel(ShellRuntimePanelKind.approvals);
+  }
+
+  void _openOperationPanel() {
+    if (!_usesDefaultShell) {
+      return;
+    }
+    _openShellPanel(ShellRuntimePanelKind.operations);
+  }
+
+  void _openShellPanel(ShellRuntimePanelKind kind) {
+    if (ResponsiveHelper.isDesktop(context)) {
+      unawaited(_shellRuntime.showPanel(kind));
+      return;
+    }
+    unawaited(_showMobileShellPanel(kind));
+  }
+
+  Future<void> _showMobileShellPanel(ShellRuntimePanelKind kind) async {
+    await _shellRuntime.showPanel(kind);
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.92,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ListenableBuilder(
+              listenable: _shellRuntime,
+              builder: (context, _) => _buildRuntimePanel(),
+            ),
+          ),
+        );
+      },
+    );
+    _shellRuntime.closePanel();
+  }
+
+  Future<void> _resolveQueuedApproval(
+    JobRecord job, {
+    required bool approved,
+  }) async {
+    final message = await _showApprovalDialog(
+      approved: approved,
+      title: job.displayTitle,
+    );
+    if (!mounted || message == null) {
+      return;
+    }
+    final updated = await _shellRuntime.resolveQueuedApproval(
+      job,
+      approved: approved,
+      message: message.isEmpty ? null : message,
+    );
+    if (!mounted) {
+      return;
+    }
+    _showShellSnackBar(
+      updated == null
+          ? (_approvalQueueViewModel.errorMessage ?? '审批操作失败')
+          : (approved
+                ? '已批准任务: ${job.displayTitle}'
+                : '已驳回任务: ${job.displayTitle}'),
+      backgroundColor: updated == null
+          ? AppColors.error
+          : (approved ? AppColors.success : AppColors.warning),
+    );
+  }
+
+  Future<void> _resolveSelectedOperationApproval({
+    required bool approved,
+  }) async {
+    final operation = _operationConsoleViewModel.selectedOperation;
+    if (operation == null) {
+      return;
+    }
+    final message = await _showApprovalDialog(
+      approved: approved,
+      title: operation.displayTitle,
+    );
+    if (!mounted || message == null) {
+      return;
+    }
+    final updated = await _shellRuntime.resolveSelectedOperationApproval(
+      approved: approved,
+      message: message.isEmpty ? null : message,
+    );
+    if (!mounted) {
+      return;
+    }
+    _showShellSnackBar(
+      updated == null
+          ? (_operationConsoleViewModel.errorMessage ?? '审批操作失败')
+          : (approved
+                ? '已批准运行: ${operation.displayTitle}'
+                : '已驳回运行: ${operation.displayTitle}'),
+      backgroundColor: updated == null
+          ? AppColors.error
+          : (approved ? AppColors.success : AppColors.warning),
+    );
+  }
+
+  Future<void> _retrySelectedOperation() async {
+    final operation = _operationConsoleViewModel.selectedOperation;
+    if (operation == null) {
+      return;
+    }
+    final updated = await _shellRuntime.retrySelectedOperation();
+    if (!mounted) {
+      return;
+    }
+    _showShellSnackBar(
+      updated == null
+          ? (_operationConsoleViewModel.errorMessage ?? '重试运行失败')
+          : '已重试运行: ${operation.displayTitle}',
+      backgroundColor: updated == null ? AppColors.error : AppColors.success,
+    );
+  }
+
+  Future<void> _cancelSelectedOperation() async {
+    final operation = _operationConsoleViewModel.selectedOperation;
+    if (operation == null) {
+      return;
+    }
+    final updated = await _shellRuntime.cancelSelectedOperation();
+    if (!mounted) {
+      return;
+    }
+    _showShellSnackBar(
+      updated == null
+          ? (_operationConsoleViewModel.errorMessage ?? '取消运行失败')
+          : '已取消运行: ${operation.displayTitle}',
+      backgroundColor: updated == null ? AppColors.error : AppColors.warning,
+    );
+  }
+
+  Future<String?> _showApprovalDialog({
+    required bool approved,
+    required String title,
+  }) async {
+    return showApprovalResolutionDialog(
+      context,
+      approved: approved,
+      title: title,
+    );
+  }
+
+  void _showShellSnackBar(
+    String message, {
+    required Color backgroundColor,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: backgroundColor),
+    );
+  }
+
   void _openAiLabWithIntent(AiLabLaunchIntent intent) {
     setState(() {
       _pendingAiLabIntent = intent;
-      _currentIndex = 3;
     });
+    _setCurrentIndex(3);
   }
 
   void _openDataAnalysisWithIntent(DataAnalysisLaunchIntent intent) {
     setState(() {
       _pendingDataAnalysisIntent = intent;
-      _currentIndex = 2;
     });
+    _setCurrentIndex(2);
   }
 
   void _openOptimizationWithIntent(OptimizationLaunchIntent intent) {
     setState(() {
       _pendingOptimizationIntent = intent;
-      _currentIndex = 1;
     });
+    _setCurrentIndex(1);
   }
 
   void _clearAiLabIntent() {

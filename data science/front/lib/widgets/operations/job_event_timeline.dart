@@ -19,6 +19,7 @@ class JobEventTimeline extends StatelessWidget {
     this.title = '任务阶段轨迹',
     this.emptyMessage = '等待任务事件写入。',
     this.maxVisibleEvents = 8,
+    this.onOpenOperation,
     this.onRetry,
     this.onCancel,
     this.onApprove,
@@ -29,6 +30,7 @@ class JobEventTimeline extends StatelessWidget {
   final String title;
   final String emptyMessage;
   final int maxVisibleEvents;
+  final VoidCallback? onOpenOperation;
   final VoidCallback? onRetry;
   final VoidCallback? onCancel;
   final VoidCallback? onApprove;
@@ -103,6 +105,14 @@ class JobEventTimeline extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onOpenOperation != null) ...[
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: onOpenOperation,
+                      icon: const Icon(Icons.travel_explore_rounded),
+                      label: const Text('查看运行'),
+                    ),
+                  ],
                   if (job.retryable && onRetry != null) ...[
                     const SizedBox(height: 10),
                     OutlinedButton.icon(

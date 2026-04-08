@@ -41,6 +41,7 @@ class HistoryAuditScreen extends StatefulWidget {
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
     this.isActive = true,
+    this.sharedRuntimeManaged = false,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -52,6 +53,7 @@ class HistoryAuditScreen extends StatefulWidget {
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
   final bool isActive;
+  final bool sharedRuntimeManaged;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -111,14 +113,18 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleWorkspaceActivation(bool isActive) {
-    _jobsViewModel.setWorkspaceActive(isActive);
+    if (!widget.sharedRuntimeManaged) {
+      _jobsViewModel.setWorkspaceActive(isActive);
+    }
     if (!isActive) {
       return;
     }
     if (!_didActivateWorkspace) {
       _didActivateWorkspace = true;
-      _dashboardViewModel.initialize();
-      _jobsViewModel.loadJobs();
+      if (!widget.sharedRuntimeManaged) {
+        _dashboardViewModel.initialize();
+        _jobsViewModel.loadJobs();
+      }
       _auditViewModel.initialize();
       _historyViewModel.initialize();
     }
