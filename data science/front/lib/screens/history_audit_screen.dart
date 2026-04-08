@@ -40,6 +40,7 @@ class HistoryAuditScreen extends StatefulWidget {
     this.onOpenAiLab,
     this.onOpenDataAnalysis,
     this.onOpenOptimization,
+    this.isActive = true,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -50,6 +51,7 @@ class HistoryAuditScreen extends StatefulWidget {
   final ValueChanged<AiLabLaunchIntent>? onOpenAiLab;
   final ValueChanged<DataAnalysisLaunchIntent>? onOpenDataAnalysis;
   final ValueChanged<OptimizationLaunchIntent>? onOpenOptimization;
+  final bool isActive;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -67,22 +69,28 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   late final bool _ownsHistoryViewModel;
   String? _selectedType;
   String? _selectedStatus;
+  bool _didActivateWorkspace = false;
 
   @override
   void initState() {
     super.initState();
     _dashboardViewModel = widget.dashboardViewModel ?? DashboardViewModel();
     _ownsDashboardViewModel = widget.dashboardViewModel == null;
-    _dashboardViewModel.initialize();
     _jobsViewModel = widget.jobsViewModel ?? JobViewModel(limit: 20);
     _ownsJobsViewModel = widget.jobsViewModel == null;
     _auditViewModel = widget.auditViewModel ?? AuditViewModel();
     _ownsAuditViewModel = widget.auditViewModel == null;
     _historyViewModel = widget.historyViewModel ?? HistoryViewModel();
     _ownsHistoryViewModel = widget.historyViewModel == null;
-    _jobsViewModel.loadJobs();
-    _auditViewModel.initialize();
-    _historyViewModel.initialize();
+    _handleWorkspaceActivation(widget.isActive);
+  }
+
+  @override
+  void didUpdateWidget(covariant HistoryAuditScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      _handleWorkspaceActivation(widget.isActive);
+    }
   }
 
   @override
@@ -100,6 +108,20 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       _historyViewModel.dispose();
     }
     super.dispose();
+  }
+
+  void _handleWorkspaceActivation(bool isActive) {
+    _jobsViewModel.setWorkspaceActive(isActive);
+    if (!isActive) {
+      return;
+    }
+    if (!_didActivateWorkspace) {
+      _didActivateWorkspace = true;
+      _dashboardViewModel.initialize();
+      _jobsViewModel.loadJobs();
+      _auditViewModel.initialize();
+      _historyViewModel.initialize();
+    }
   }
 
   Future<void> _refreshAll() async {

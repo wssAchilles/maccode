@@ -40,7 +40,7 @@ class AiLabScreen extends StatefulWidget {
     required this.dashboardViewModel,
     this.launchIntent,
     this.onLaunchIntentHandled,
-    this.isActive = false,
+    this.isActive = true,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -76,11 +76,11 @@ class _AiLabScreenState extends State<AiLabScreen> {
   bool _didSeedTrainingDefaults = false;
   bool _didSeedKnowledgeDefaults = false;
   bool _suppressInputRefresh = false;
+  bool _didActivateWorkspace = false;
 
   @override
   void initState() {
     super.initState();
-    widget.dashboardViewModel.initialize();
     widget.dashboardViewModel.addListener(_handleDashboardSummaryChanged);
     _trainingStorageController.addListener(_handleInputControllersChanged);
     _trainingTargetController.addListener(_handleInputControllersChanged);
@@ -90,9 +90,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     _ragJobsViewModel = JobViewModel(jobType: 'rag_ingest', limit: 8);
     _ragViewModel = RagViewModel();
     _applyLaunchIntent(widget.launchIntent);
-    _handleDashboardSummaryChanged();
-    _trainingJobsViewModel.loadJobs();
-    _ragJobsViewModel.loadJobs();
+    _handleWorkspaceActivation(widget.isActive);
   }
 
   @override
@@ -101,8 +99,8 @@ class _AiLabScreenState extends State<AiLabScreen> {
     if (widget.launchIntent != oldWidget.launchIntent) {
       _applyLaunchIntent(widget.launchIntent);
     }
-    if (widget.isActive && !oldWidget.isActive) {
-      _handleDashboardSummaryChanged();
+    if (widget.isActive != oldWidget.isActive) {
+      _handleWorkspaceActivation(widget.isActive);
     }
   }
 
@@ -123,6 +121,21 @@ class _AiLabScreenState extends State<AiLabScreen> {
     _ragJobsViewModel.dispose();
     _ragViewModel.dispose();
     super.dispose();
+  }
+
+  void _handleWorkspaceActivation(bool isActive) {
+    _trainingJobsViewModel.setWorkspaceActive(isActive);
+    _ragJobsViewModel.setWorkspaceActive(isActive);
+    if (!isActive) {
+      return;
+    }
+    if (!_didActivateWorkspace) {
+      _didActivateWorkspace = true;
+      widget.dashboardViewModel.initialize();
+      _trainingJobsViewModel.loadJobs();
+      _ragJobsViewModel.loadJobs();
+    }
+    _handleDashboardSummaryChanged();
   }
 
   Future<void> _submitTrainingJob() async {

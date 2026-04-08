@@ -25,6 +25,7 @@ import '../viewmodels/compute_governance_view_model.dart';
 import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
+import 'navigation/lazy_workspace_stack.dart';
 import 'operations/workbench_page_frame.dart';
 import 'operations/system_status_strip.dart';
 
@@ -152,7 +153,6 @@ class _MainNavigationState extends State<MainNavigation> {
         _currentUser = user;
       });
     });
-    _dashboardViewModel.initialize();
   }
 
   @override
@@ -329,9 +329,10 @@ class _MainNavigationState extends State<MainNavigation> {
                     child: SafeArea(
                       top: false,
                       bottom: false,
-                      child: IndexedStack(
-                        index: _currentIndex,
-                        children: _pages,
+                      child: LazyWorkspaceStack(
+                        currentIndex: _currentIndex,
+                        pageCount: _pageCount,
+                        pageBuilder: _buildPage,
                       ),
                     ),
                   ),
@@ -347,7 +348,11 @@ class _MainNavigationState extends State<MainNavigation> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(index: _currentIndex, children: _pages),
+        child: LazyWorkspaceStack(
+          currentIndex: _currentIndex,
+          pageCount: _pageCount,
+          pageBuilder: _buildPage,
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -479,51 +484,62 @@ class _MainNavigationState extends State<MainNavigation> {
     return null;
   }
 
-  List<Widget> get _pages =>
-      widget._customPages ??
-      [
-        // Default product pages always render as shell content.
-        OperationsHubScreen(
-          viewModel: _dashboardViewModel,
-          computeGovernanceViewModel: _computeGovernanceViewModel,
-          controlTaskViewModel: _controlTaskViewModel,
-          approvalQueueViewModel: _approvalQueueViewModel,
-          operationConsoleViewModel: _operationConsoleViewModel,
-          onNavigateToTab: _onNavTap,
-          onOpenAiLab: _openAiLabWithIntent,
-          onOpenDataAnalysis: _openDataAnalysisWithIntent,
-          onOpenOptimization: _openOptimizationWithIntent,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-        ),
-        ModelingScreen(
-          dashboardViewModel: _dashboardViewModel,
-          launchIntent: _pendingOptimizationIntent,
-          onLaunchIntentHandled: _clearOptimizationIntent,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-        ),
-        DataAnalysisScreen(
-          onOpenHistory: () => _onNavTap(4),
-          onSendToAiLab: _openAiLabWithIntent,
-          dashboardViewModel: _dashboardViewModel,
-          launchIntent: _pendingDataAnalysisIntent,
-          onLaunchIntentHandled: _clearDataAnalysisIntent,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-        ),
-        AiLabScreen(
-          dashboardViewModel: _dashboardViewModel,
-          launchIntent: _pendingAiLabIntent,
-          onLaunchIntentHandled: _clearAiLabIntent,
-          isActive: _currentIndex == 3,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-        ),
-        HistoryAuditScreen(
-          dashboardViewModel: _dashboardViewModel,
-          onOpenAiLab: _openAiLabWithIntent,
-          onOpenDataAnalysis: _openDataAnalysisWithIntent,
-          onOpenOptimization: _openOptimizationWithIntent,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-        ),
-      ];
+  int get _pageCount => widget._customPages?.length ?? _destinations.length;
+
+  Widget _buildPage(BuildContext context, int index, bool isActive) {
+    final customPages = widget._customPages;
+    if (customPages != null) {
+      return customPages[index];
+    }
+
+    return switch (index) {
+      0 => OperationsHubScreen(
+        viewModel: _dashboardViewModel,
+        computeGovernanceViewModel: _computeGovernanceViewModel,
+        controlTaskViewModel: _controlTaskViewModel,
+        approvalQueueViewModel: _approvalQueueViewModel,
+        operationConsoleViewModel: _operationConsoleViewModel,
+        onNavigateToTab: _onNavTap,
+        onOpenAiLab: _openAiLabWithIntent,
+        onOpenDataAnalysis: _openDataAnalysisWithIntent,
+        onOpenOptimization: _openOptimizationWithIntent,
+        isActive: isActive,
+        surfaceMode: WorkbenchSurfaceMode.embedded,
+      ),
+      1 => ModelingScreen(
+        dashboardViewModel: _dashboardViewModel,
+        launchIntent: _pendingOptimizationIntent,
+        onLaunchIntentHandled: _clearOptimizationIntent,
+        isActive: isActive,
+        surfaceMode: WorkbenchSurfaceMode.embedded,
+      ),
+      2 => DataAnalysisScreen(
+        onOpenHistory: () => _onNavTap(4),
+        onSendToAiLab: _openAiLabWithIntent,
+        dashboardViewModel: _dashboardViewModel,
+        launchIntent: _pendingDataAnalysisIntent,
+        onLaunchIntentHandled: _clearDataAnalysisIntent,
+        isActive: isActive,
+        surfaceMode: WorkbenchSurfaceMode.embedded,
+      ),
+      3 => AiLabScreen(
+        dashboardViewModel: _dashboardViewModel,
+        launchIntent: _pendingAiLabIntent,
+        onLaunchIntentHandled: _clearAiLabIntent,
+        isActive: isActive,
+        surfaceMode: WorkbenchSurfaceMode.embedded,
+      ),
+      4 => HistoryAuditScreen(
+        dashboardViewModel: _dashboardViewModel,
+        onOpenAiLab: _openAiLabWithIntent,
+        onOpenDataAnalysis: _openDataAnalysisWithIntent,
+        onOpenOptimization: _openOptimizationWithIntent,
+        isActive: isActive,
+        surfaceMode: WorkbenchSurfaceMode.embedded,
+      ),
+      _ => const SizedBox.shrink(),
+    };
+  }
 
   void _openAiLabWithIntent(AiLabLaunchIntent intent) {
     setState(() {

@@ -46,6 +46,7 @@ class DataAnalysisScreen extends StatefulWidget {
     this.viewModel,
     this.launchIntent,
     this.onLaunchIntentHandled,
+    this.isActive = true,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -55,6 +56,7 @@ class DataAnalysisScreen extends StatefulWidget {
   final DataAnalysisViewModel? viewModel;
   final DataAnalysisLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
+  final bool isActive;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -76,6 +78,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   WorkbenchLaunchContext? _activeLaunchContext;
   String? _selectedReferencePath;
   Set<String>? _selectedDriftFeatures;
+  bool _didActivateWorkspace = false;
 
   User? get _currentUser => _viewModel.currentUser;
   PlatformFile? get _pickedFile => _viewModel.pickedFile;
@@ -100,11 +103,8 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     _analysisJobsViewModel = JobViewModel(jobType: 'analysis', limit: 8);
     _historyViewModel = HistoryViewModel();
     _driftViewModel = DataDriftViewModel();
-    _viewModel.initialize();
-    _dashboardViewModel.initialize();
     _applyLaunchIntent(widget.launchIntent);
-    _analysisJobsViewModel.loadJobs();
-    _historyViewModel.loadHistory(limit: 12);
+    _handleWorkspaceActivation(widget.isActive);
   }
 
   @override
@@ -112,6 +112,9 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.launchIntent != oldWidget.launchIntent) {
       _applyLaunchIntent(widget.launchIntent);
+    }
+    if (widget.isActive != oldWidget.isActive) {
+      _handleWorkspaceActivation(widget.isActive);
     }
   }
 
@@ -129,6 +132,20 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleWorkspaceActivation(bool isActive) {
+    _analysisJobsViewModel.setWorkspaceActive(isActive);
+    if (!isActive) {
+      return;
+    }
+    if (!_didActivateWorkspace) {
+      _didActivateWorkspace = true;
+      _viewModel.initialize();
+      _dashboardViewModel.initialize();
+      _analysisJobsViewModel.loadJobs();
+      _historyViewModel.loadHistory(limit: 12);
+    }
   }
 
   /// 使用 Google 登录

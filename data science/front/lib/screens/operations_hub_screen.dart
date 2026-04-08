@@ -62,6 +62,7 @@ class OperationsHubScreen extends StatefulWidget {
     this.controlTaskViewModel,
     this.approvalQueueViewModel,
     this.operationConsoleViewModel,
+    this.isActive = true,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -74,6 +75,7 @@ class OperationsHubScreen extends StatefulWidget {
   final ControlTaskViewModel? controlTaskViewModel;
   final ApprovalQueueViewModel? approvalQueueViewModel;
   final OperationConsoleViewModel? operationConsoleViewModel;
+  final bool isActive;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -84,29 +86,16 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   String? _highlightedControlTaskId;
   String? _lastGovernanceSyncedOperationId;
   bool _deferredSectionsReady = false;
+  bool _didActivateWorkspace = false;
+  Timer? _deferredSectionsTimer;
 
   @override
   void initState() {
     super.initState();
-    widget.viewModel.initialize();
-    widget.computeGovernanceViewModel?.initialize();
-    widget.controlTaskViewModel?.initialize();
-    widget.approvalQueueViewModel?.initialize();
     widget.operationConsoleViewModel?.addListener(
       _handleOperationConsoleUpdate,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      Future<void>.delayed(const Duration(milliseconds: 220)).then((_) {
-        if (mounted) {
-          setState(() {
-            _deferredSectionsReady = true;
-          });
-        }
-      });
-    });
+    _handleWorkspaceActivation(widget.isActive);
   }
 
   @override
@@ -121,14 +110,50 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         _handleOperationConsoleUpdate,
       );
     }
+    if (oldWidget.isActive != widget.isActive) {
+      _handleWorkspaceActivation(widget.isActive);
+    }
   }
 
   @override
   void dispose() {
+    _deferredSectionsTimer?.cancel();
     widget.operationConsoleViewModel?.removeListener(
       _handleOperationConsoleUpdate,
     );
     super.dispose();
+  }
+
+  void _handleWorkspaceActivation(bool isActive) {
+    widget.operationConsoleViewModel?.setWorkspaceActive(isActive);
+    if (!isActive) {
+      _deferredSectionsTimer?.cancel();
+      _deferredSectionsTimer = null;
+      return;
+    }
+    if (!_didActivateWorkspace) {
+      _didActivateWorkspace = true;
+      widget.viewModel.initialize();
+      widget.computeGovernanceViewModel?.initialize();
+      widget.controlTaskViewModel?.initialize();
+      widget.approvalQueueViewModel?.initialize();
+    }
+    _scheduleDeferredSections();
+  }
+
+  void _scheduleDeferredSections() {
+    if (_deferredSectionsReady || _deferredSectionsTimer != null) {
+      return;
+    }
+    _deferredSectionsTimer = Timer(const Duration(milliseconds: 220), () {
+      _deferredSectionsTimer = null;
+      if (!mounted || !widget.isActive) {
+        return;
+      }
+      setState(() {
+        _deferredSectionsReady = true;
+      });
+    });
   }
 
   void _handleOperationConsoleUpdate() {

@@ -39,8 +39,10 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   bool _isDisposed = false;
   bool _isPolling = false;
   bool _isForeground = true;
+  bool _isWorkspaceActive = true;
   String? _activeJobId;
   Future<void>? _pollingTask;
+  StreamSubscription<JobStreamFrame>? _streamSubscription;
 
   List<JobRecord> get jobs => List.unmodifiable(_jobs);
   bool get isLoading => _isLoading;
@@ -76,7 +78,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
         limit: limit,
       );
       _promoteActiveJob();
-      if (!_isPolling && _isForeground && activeJob?.isRunning == true) {
+      if (!_isPolling && _isRuntimeActive && activeJob?.isRunning == true) {
         unawaited(startPolling());
       }
     } catch (e) {
@@ -181,7 +183,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
     if (_isDisposed) {
       return;
     }
-    if (!_isForeground) {
+    if (!_isRuntimeActive) {
       return;
     }
 
@@ -204,11 +206,11 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _runPollingLoop(Duration interval) async {
-    while (_isPolling && !_isDisposed && _isForeground) {
+    while (_isPolling && !_isDisposed && _isRuntimeActive) {
       final currentActive = activeJob;
       if (currentActive != null && _repository.supportsStreaming) {
         final shouldContinue = await _streamJob(currentActive);
-        if (!_isPolling || _isDisposed || !_isForeground) {
+        if (!_isPolling || _isDisposed || !_isRuntimeActive) {
           break;
         }
         final streamed = activeJob;
@@ -241,27 +243,60 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<bool> _streamJob(JobRecord job) async {
-    try {
-      await for (final frame
-          in _repository.streamJob(job.jobId, operationId: job.operationId)) {
-        if (!_isPolling || _isDisposed || !_isForeground) {
-          return false;
-        }
-        _applyStreamFrame(job, frame);
-        final refreshed = activeJob;
-        if (refreshed == null || refreshed.isTerminal) {
-          return false;
-        }
+    final completer = Completer<bool>();
+    StreamSubscription<JobStreamFrame>? subscription;
+
+    void complete(bool shouldContinue) {
+      if (!completer.isCompleted) {
+        completer.complete(shouldContinue);
       }
+    }
+
+    try {
+      subscription = _repository
+          .streamJob(job.jobId, operationId: job.operationId)
+          .listen(
+            (frame) {
+              if (!_isPolling || _isDisposed || !_isRuntimeActive) {
+                complete(false);
+                unawaited(subscription?.cancel() ?? Future<void>.value());
+                return;
+              }
+              _applyStreamFrame(job, frame);
+              final refreshed = activeJob;
+              if (refreshed == null || refreshed.isTerminal) {
+                complete(false);
+                unawaited(subscription?.cancel() ?? Future<void>.value());
+              }
+            },
+            onError: (Object error, StackTrace _) {
+              if (!_isTransientApiError(error)) {
+                _errorMessage = '任务流订阅失败: ${_readableErrorMessage(error)}';
+                _notifySafely();
+              }
+              complete(_isRuntimeActive && activeJob?.isRunning == true);
+            },
+            onDone: () {
+              complete(_isRuntimeActive && activeJob?.isRunning == true);
+            },
+            cancelOnError: false,
+          );
+      _streamSubscription = subscription;
+      return await completer.future;
     } catch (e) {
       if (!_isTransientApiError(e)) {
         _errorMessage = '任务流订阅失败: ${_readableErrorMessage(e)}';
         _notifySafely();
       }
+    } finally {
+      if (identical(_streamSubscription, subscription)) {
+        _streamSubscription = null;
+      }
+      await subscription?.cancel();
     }
 
     final refreshed = activeJob;
-    return _isForeground && refreshed != null && !refreshed.isTerminal;
+    return _isRuntimeActive && refreshed != null && !refreshed.isTerminal;
   }
 
   @override
@@ -277,8 +312,22 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
     if (_isDisposed || wasForeground == _isForeground) {
       return;
     }
-    if (!_isForeground) {
-      _isPolling = false;
+    if (!_isRuntimeActive) {
+      stopPolling();
+      return;
+    }
+    if (activeJob?.isRunning == true) {
+      unawaited(startPolling());
+    }
+  }
+
+  void setWorkspaceActive(bool isActive) {
+    if (_isDisposed || _isWorkspaceActive == isActive) {
+      return;
+    }
+    _isWorkspaceActive = isActive;
+    if (!_isRuntimeActive) {
+      stopPolling();
       return;
     }
     if (activeJob?.isRunning == true) {
@@ -300,7 +349,14 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   void stopPolling() {
     _isPolling = false;
+    final subscription = _streamSubscription;
+    _streamSubscription = null;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
   }
+
+  bool get _isRuntimeActive => _isForeground && _isWorkspaceActive;
 
   Future<void> applyFilters({String? jobType, String? statusFilter}) {
     _jobType = jobType;
@@ -457,7 +513,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _isDisposed = true;
-    _isPolling = false;
+    stopPolling();
     _pollingTask = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

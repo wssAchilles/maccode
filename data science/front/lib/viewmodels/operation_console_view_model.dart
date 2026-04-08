@@ -32,7 +32,9 @@ class OperationConsoleViewModel extends ChangeNotifier
   String? _errorMessage;
   bool _isDisposed = false;
   bool _isForeground = true;
+  bool _isWorkspaceActive = true;
   int _streamToken = 0;
+  StreamSubscription<JobStreamFrame>? _streamSubscription;
 
   JobRecord? get selectedOperation => _selectedOperation;
   String? get selectedOperationId => _selectedOperationId;
@@ -72,6 +74,7 @@ class OperationConsoleViewModel extends ChangeNotifier
 
   void clearSelection() {
     _streamToken += 1;
+    _cancelActiveStream();
     _selectedOperation = null;
     _selectedOperationId = null;
     _isStreaming = false;
@@ -157,7 +160,8 @@ class OperationConsoleViewModel extends ChangeNotifier
     final current = _selectedOperation;
     final operationId = _selectedOperationId;
     _streamToken += 1;
-    if (!_isForeground ||
+    _cancelActiveStream();
+    if (!_isRuntimeActive ||
         current == null ||
         operationId == null ||
         current.isTerminal) {
@@ -171,7 +175,7 @@ class OperationConsoleViewModel extends ChangeNotifier
 
   Future<void> _streamLoop(String operationId, int token) async {
     while (!_isDisposed &&
-        _isForeground &&
+        _isRuntimeActive &&
         _selectedOperationId == operationId &&
         token == _streamToken) {
       final current = _selectedOperation;
@@ -184,20 +188,9 @@ class OperationConsoleViewModel extends ChangeNotifier
       _isStreaming = true;
       _notifySafely();
       try {
-        await for (final frame in _repository.streamOperation(operationId)) {
-          if (_isDisposed ||
-              !_isForeground ||
-              token != _streamToken ||
-              _selectedOperationId != operationId) {
-            return;
-          }
-          _applyStreamFrame(frame);
-          final refreshed = _selectedOperation;
-          if (refreshed == null || refreshed.isTerminal) {
-            _isStreaming = false;
-            _notifySafely();
-            return;
-          }
+        final shouldContinue = await _consumeOperationStream(operationId, token);
+        if (!shouldContinue) {
+          return;
         }
       } catch (error) {
         if (!_isDisposed &&
@@ -215,7 +208,7 @@ class OperationConsoleViewModel extends ChangeNotifier
       }
 
       if (_isDisposed ||
-          !_isForeground ||
+          !_isRuntimeActive ||
           token != _streamToken ||
           _selectedOperationId != operationId) {
         return;
@@ -235,6 +228,68 @@ class OperationConsoleViewModel extends ChangeNotifier
     }
   }
 
+  Future<bool> _consumeOperationStream(String operationId, int token) async {
+    final completer = Completer<bool>();
+    StreamSubscription<JobStreamFrame>? subscription;
+
+    void finish(bool shouldContinue) {
+      if (!completer.isCompleted) {
+        completer.complete(shouldContinue);
+      }
+    }
+
+    subscription = _repository.streamOperation(operationId).listen(
+      (frame) {
+        if (_isDisposed ||
+            !_isRuntimeActive ||
+            token != _streamToken ||
+            _selectedOperationId != operationId) {
+          finish(false);
+          unawaited(subscription?.cancel() ?? Future<void>.value());
+          return;
+        }
+        _applyStreamFrame(frame);
+        final refreshed = _selectedOperation;
+        if (refreshed == null || refreshed.isTerminal) {
+          finish(false);
+          unawaited(subscription?.cancel() ?? Future<void>.value());
+        }
+      },
+      onError: (Object error, StackTrace _) {
+        if (!_isDisposed &&
+            token == _streamToken &&
+            _selectedOperationId == operationId &&
+            !_isTransientApiError(error)) {
+          _errorMessage = '实时流连接失败: ${_readableError(error)}';
+          _notifySafely();
+        }
+        finish(
+          _isRuntimeActive &&
+              token == _streamToken &&
+              _selectedOperationId == operationId,
+        );
+      },
+      onDone: () {
+        finish(
+          _isRuntimeActive &&
+              token == _streamToken &&
+              _selectedOperationId == operationId,
+        );
+      },
+      cancelOnError: false,
+    );
+
+    _streamSubscription = subscription;
+    try {
+      return await completer.future;
+    } finally {
+      if (identical(_streamSubscription, subscription)) {
+        _streamSubscription = null;
+      }
+      await subscription.cancel();
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final wasForeground = _isForeground;
@@ -248,10 +303,22 @@ class OperationConsoleViewModel extends ChangeNotifier
     if (_isDisposed || wasForeground == _isForeground) {
       return;
     }
-    if (!_isForeground) {
+    if (!_isRuntimeActive) {
       _streamToken += 1;
-      _isStreaming = false;
-      _notifySafely();
+      _cancelActiveStream();
+      return;
+    }
+    _restartStreaming();
+  }
+
+  void setWorkspaceActive(bool isActive) {
+    if (_isDisposed || _isWorkspaceActive == isActive) {
+      return;
+    }
+    _isWorkspaceActive = isActive;
+    if (!_isRuntimeActive) {
+      _streamToken += 1;
+      _cancelActiveStream();
       return;
     }
     _restartStreaming();
@@ -287,10 +354,23 @@ class OperationConsoleViewModel extends ChangeNotifier
     }
   }
 
+  bool get _isRuntimeActive => _isForeground && _isWorkspaceActive;
+
+  void _cancelActiveStream() {
+    final subscription = _streamSubscription;
+    _streamSubscription = null;
+    _isStreaming = false;
+    _notifySafely();
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
     _streamToken += 1;
+    _cancelActiveStream();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

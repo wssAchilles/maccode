@@ -44,6 +44,7 @@ class ModelingScreen extends StatefulWidget {
     this.nowBuilder,
     this.launchIntent,
     this.onLaunchIntentHandled,
+    this.isActive = true,
     this.surfaceMode = WorkbenchSurfaceMode.standalone,
   });
 
@@ -52,6 +53,7 @@ class ModelingScreen extends StatefulWidget {
   final DateTime Function()? nowBuilder;
   final OptimizationLaunchIntent? launchIntent;
   final VoidCallback? onLaunchIntentHandled;
+  final bool isActive;
   final WorkbenchSurfaceMode surfaceMode;
 
   @override
@@ -64,6 +66,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
   late final bool _ownsViewModel;
   late ModelingControlsState _controls;
   WorkbenchLaunchContext? _activeLaunchContext;
+  bool _didActivateWorkspace = false;
 
   bool get _isLoading => _viewModel.isLoading;
   OptimizationResponse? get _result => _viewModel.result;
@@ -77,9 +80,8 @@ class _ModelingScreenState extends State<ModelingScreen> {
     _jobViewModel = JobViewModel(jobType: 'optimization', limit: 8);
     _ownsViewModel = widget.viewModel == null;
     _controls = ModelingControlsState.initial(now: _now);
-    widget.dashboardViewModel?.initialize();
     _applyLaunchIntent(widget.launchIntent);
-    _jobViewModel.loadJobs();
+    _handleWorkspaceActivation(widget.isActive);
   }
 
   @override
@@ -87,6 +89,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.launchIntent != oldWidget.launchIntent) {
       _applyLaunchIntent(widget.launchIntent);
+    }
+    if (widget.isActive != oldWidget.isActive) {
+      _handleWorkspaceActivation(widget.isActive);
     }
   }
 
@@ -99,6 +104,18 @@ class _ModelingScreenState extends State<ModelingScreen> {
       _viewModel.dispose();
     }
     super.dispose();
+  }
+
+  void _handleWorkspaceActivation(bool isActive) {
+    _jobViewModel.setWorkspaceActive(isActive);
+    if (!isActive) {
+      return;
+    }
+    if (!_didActivateWorkspace) {
+      _didActivateWorkspace = true;
+      widget.dashboardViewModel?.initialize();
+      _jobViewModel.loadJobs();
+    }
   }
 
   Future<void> _runOptimization({bool saveForComparison = true}) async {
