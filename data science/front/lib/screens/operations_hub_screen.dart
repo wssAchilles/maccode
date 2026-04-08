@@ -96,8 +96,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   bool _deferredSectionsReady = false;
   bool _didActivateWorkspace = false;
 
-  MainShellRuntimeViewModel? get _runtime =>
-      widget.sharedRuntimeManaged ? MainShellRuntimeScope.maybeOf(context) : null;
+  MainShellRuntimeViewModel? get _runtime => widget.sharedRuntimeManaged
+      ? MainShellRuntimeScope.maybeOf(context)
+      : null;
   Timer? _deferredSectionsTimer;
 
   @override
@@ -188,6 +189,11 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
     _lastGovernanceSyncedOperationId = operationId;
+    final runtime = _runtime;
+    if (runtime != null) {
+      await runtime.refreshSharedSnapshot(force: true);
+      return;
+    }
     await widget.computeGovernanceViewModel?.loadPolicy();
     await widget.viewModel.loadSummary();
     await widget.approvalQueueViewModel?.loadQueue();
@@ -332,8 +338,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
 
     final awaitingApproval = operation.status == 'awaiting_approval';
-    await widget.controlTaskViewModel?.loadControlTasks();
-    await widget.approvalQueueViewModel?.loadQueue();
+    await _refreshSharedProjection();
     await _openOperationConsole(
       operation.operationId ?? operation.jobId,
       seed: operation,
@@ -452,7 +457,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
       return;
     }
 
-    await widget.approvalQueueViewModel?.loadQueue();
+    await _refreshSharedProjection();
     await _openOperationConsole(
       operation.operationId ?? operation.jobId,
       seed: operation,
@@ -859,6 +864,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         .firstWhere((chain) => chain?.key == key, orElse: () => null);
   }
 
+  Future<void> _refreshSharedProjection() async {
+    final runtime = _runtime;
+    if (runtime != null) {
+      await runtime.refreshSharedSnapshot(force: true);
+      return;
+    }
+    await Future.wait([
+      widget.viewModel.loadSummary(),
+      widget.computeGovernanceViewModel?.loadPolicy() ?? Future<void>.value(),
+      widget.controlTaskViewModel?.loadControlTasks() ?? Future<void>.value(),
+      widget.approvalQueueViewModel?.loadQueue() ?? Future<void>.value(),
+    ]);
+  }
+
   DutyAction _fallbackDutyAction({
     required String chainKey,
     required String label,
@@ -1003,24 +1022,21 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     }
   }
 
-  DashboardSummary? get _summary =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.summary ?? widget.viewModel.summary)
-          : widget.viewModel.summary;
+  DashboardSummary? get _summary => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.summary ?? widget.viewModel.summary)
+      : widget.viewModel.summary;
 
-  List<ControlTaskRecord> get _controlTasks =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.controlTasks ??
-                widget.controlTaskViewModel?.tasks ??
-                const <ControlTaskRecord>[])
-          : (widget.controlTaskViewModel?.tasks ?? const <ControlTaskRecord>[]);
+  List<ControlTaskRecord> get _controlTasks => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.controlTasks ??
+            widget.controlTaskViewModel?.tasks ??
+            const <ControlTaskRecord>[])
+      : (widget.controlTaskViewModel?.tasks ?? const <ControlTaskRecord>[]);
 
-  List<JobRecord> get _approvalJobs =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.pendingApprovalJobs ??
-                widget.approvalQueueViewModel?.jobs ??
-                const <JobRecord>[])
-          : (widget.approvalQueueViewModel?.jobs ?? const <JobRecord>[]);
+  List<JobRecord> get _approvalJobs => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.pendingApprovalJobs ??
+            widget.approvalQueueViewModel?.jobs ??
+            const <JobRecord>[])
+      : (widget.approvalQueueViewModel?.jobs ?? const <JobRecord>[]);
 
   ComputeRolloutPolicy get _computePolicy {
     if (widget.sharedRuntimeManaged && widget.shellProjection != null) {
@@ -1032,11 +1048,11 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
 
   List<ComputeGovernanceActivityEntry> get _computeActivity =>
       widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.computeActivity ??
-                widget.computeGovernanceViewModel?.recentActivity ??
-                const <ComputeGovernanceActivityEntry>[])
-          : (widget.computeGovernanceViewModel?.recentActivity ??
-                const <ComputeGovernanceActivityEntry>[]);
+      ? (widget.shellProjection?.computeActivity ??
+            widget.computeGovernanceViewModel?.recentActivity ??
+            const <ComputeGovernanceActivityEntry>[])
+      : (widget.computeGovernanceViewModel?.recentActivity ??
+            const <ComputeGovernanceActivityEntry>[]);
 
   @override
   Widget build(BuildContext context) {
@@ -1050,7 +1066,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           widget.approvalQueueViewModel!,
         if (widget.operationConsoleViewModel != null)
           widget.operationConsoleViewModel!,
-        ]),
+      ]),
       builder: (context, _) {
         final summary = _summary;
         final content = RefreshIndicator(
@@ -1727,7 +1743,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             tasks: _controlTasks,
             isLoading: widget.controlTaskViewModel!.isLoading,
             errorMessage: widget.controlTaskViewModel!.errorMessage,
-            onRetry: () => widget.controlTaskViewModel!.loadControlTasks(),
+            onRetry: _refreshSharedProjection,
             onRunTask: _runControlTask,
             isTaskRunning: widget.controlTaskViewModel!.isRunningTask,
             onToggleTask: _toggleControlTask,
@@ -1746,7 +1762,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             jobs: _approvalJobs,
             isLoading: widget.approvalQueueViewModel!.isLoading,
             errorMessage: widget.approvalQueueViewModel!.errorMessage,
-            onRefresh: () => widget.approvalQueueViewModel!.loadQueue(),
+            onRefresh: _refreshSharedProjection,
             onApprove: (job) => _resolveApproval(job, approved: true),
             onReject: (job) => _resolveApproval(job, approved: false),
             isUpdating: widget.approvalQueueViewModel!.isUpdating,

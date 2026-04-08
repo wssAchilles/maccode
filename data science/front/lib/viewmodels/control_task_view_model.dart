@@ -65,6 +65,14 @@ class ControlTaskViewModel extends ChangeNotifier {
     }
   }
 
+  void hydrateTasks(List<ControlTaskRecord> tasks) {
+    _tasks = List<ControlTaskRecord>.unmodifiable(tasks);
+    _isInitialized = true;
+    _isLoading = false;
+    _errorMessage = null;
+    _notifySafely();
+  }
+
   Future<JobRecord?> runControlTask(
     ControlTaskRecord task, {
     Map<String, dynamic>? inputOverrides,

@@ -8,6 +8,7 @@ import '../models/shell_action_outcome.dart';
 import '../models/shell_operation_session.dart';
 import '../models/shell_runtime_intent.dart';
 import '../models/shell_runtime_notification.dart';
+import '../models/shell_runtime_snapshot.dart';
 import '../models/workbench_runtime_models.dart';
 
 class ShellRuntimeNotificationCenter extends ChangeNotifier {
@@ -16,6 +17,7 @@ class ShellRuntimeNotificationCenter extends ChangeNotifier {
   final List<ShellRuntimeNotification> _notifications =
       <ShellRuntimeNotification>[];
   final Set<String> _knownAlertKeys = <String>{};
+  final Set<String> _knownRuntimeKeys = <String>{};
   String? _lastSessionFingerprint;
 
   List<ShellRuntimeNotification> get notifications =>
@@ -65,9 +67,7 @@ class ShellRuntimeNotificationCenter extends ChangeNotifier {
           tone: _toneForSeverity(alert.severity),
           createdAt: DateTime.now(),
           sourceTab: sourceTab,
-          metadata: <String, dynamic>{
-            'severity': alert.severity,
-          },
+          metadata: <String, dynamic>{'severity': alert.severity},
         ),
       );
     }
@@ -110,8 +110,35 @@ class ShellRuntimeNotificationCenter extends ChangeNotifier {
     );
   }
 
+  void recordProjectionDegraded(
+    List<ShellRuntimeDegradedSection> degradedSections, {
+    required WorkbenchTab sourceTab,
+  }) {
+    for (final section in degradedSections) {
+      final dedupeKey = '${section.section}:${section.message}';
+      if (_knownRuntimeKeys.contains(dedupeKey)) {
+        continue;
+      }
+      _knownRuntimeKeys.add(dedupeKey);
+      _push(
+        ShellRuntimeNotification(
+          id: 'runtime-$dedupeKey',
+          kind: ShellRuntimeNotificationKind.runtime,
+          title: '共享快照降级',
+          message: '${section.section}: ${section.message}',
+          tone: ShellActionTone.warning,
+          createdAt: DateTime.now(),
+          sourceTab: sourceTab,
+          metadata: <String, dynamic>{'section': section.section},
+        ),
+      );
+    }
+  }
+
   void markRead(String notificationId) {
-    final index = _notifications.indexWhere((item) => item.id == notificationId);
+    final index = _notifications.indexWhere(
+      (item) => item.id == notificationId,
+    );
     if (index == -1) {
       return;
     }

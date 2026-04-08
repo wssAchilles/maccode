@@ -31,9 +31,7 @@ class ShellNotificationCenterPanel extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text('全局通知中心', style: AppTextStyles.labelLarge),
-            ),
+            Expanded(child: Text('全局通知中心', style: AppTextStyles.labelLarge)),
             if (notifications.isNotEmpty)
               TextButton.icon(
                 onPressed: onMarkAllRead,
@@ -192,6 +190,8 @@ class _NotificationCard extends StatelessWidget {
         return '运行状态';
       case ShellRuntimeNotificationKind.alert:
         return '系统告警';
+      case ShellRuntimeNotificationKind.runtime:
+        return '运行时快照';
     }
   }
 
@@ -219,10 +219,7 @@ class _NotificationCard extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.label,
-    this.foreground = AppColors.primary,
-  });
+  const _MetaChip({required this.label, this.foreground = AppColors.primary});
 
   final String label;
   final Color foreground;
@@ -244,10 +241,7 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _ToneDot extends StatelessWidget {
-  const _ToneDot({
-    required this.tone,
-    required this.emphasized,
-  });
+  const _ToneDot({required this.tone, required this.emphasized});
 
   final ShellActionTone tone;
   final bool emphasized;

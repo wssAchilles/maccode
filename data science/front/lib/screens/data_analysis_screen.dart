@@ -99,10 +99,9 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   bool get _saveToStorage => _viewModel.saveToStorage;
   String? get _errorMessage => _viewModel.errorMessage;
   String get _authMode => _viewModel.authMode;
-  DashboardSummary? get _sharedSummary =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
-          : _dashboardViewModel.summary;
+  DashboardSummary? get _sharedSummary => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
+      : _dashboardViewModel.summary;
 
   static const _defaultErrorDuration = Duration(seconds: 4);
   static const _analysisErrorDuration = Duration(seconds: 5);
@@ -253,7 +252,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     if (!mounted) return;
 
     if (success) {
-      await _dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       _showSuccessFeedback(_datasetFeedbackMessage('分析完成'));
       return;
     }
@@ -268,9 +267,10 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     }
 
     if (job != null) {
+      await _openJobInShellRuntime(job);
       _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已提交'));
       await _analysisJobsViewModel.loadJobs();
-      await _dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
 
@@ -301,9 +301,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         _driftViewModel,
       ]),
       builder: (context, _) {
-        final datasetChain = _sharedSummary
-            ?.assetSummary
-            .chainSummaries
+        final datasetChain = _sharedSummary?.assetSummary.chainSummaries
             .cast<AssetChainSummary?>()
             .firstWhere((item) => item?.key == 'dataset', orElse: () => null);
         final content = _isLoading
@@ -1135,9 +1133,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     if (updated != null) {
       await _openJobInShellRuntime(updated);
       _showSuccessFeedback(
-        _datasetFeedbackMessage(
-          approved ? '后台分析任务已批准执行' : '后台分析任务已驳回',
-        ),
+        _datasetFeedbackMessage(approved ? '后台分析任务已批准执行' : '后台分析任务已驳回'),
       );
       return;
     }
@@ -1156,6 +1152,17 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
     await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
+  }
+
+  Future<void> _refreshSharedProjection() async {
+    if (widget.sharedRuntimeManaged) {
+      final runtime = MainShellRuntimeScope.maybeOf(context);
+      if (runtime != null) {
+        await runtime.refreshSharedSnapshot(force: true);
+        return;
+      }
+    }
+    await _dashboardViewModel.loadSummary();
   }
 
   void _showSuccessFeedback(String message) {

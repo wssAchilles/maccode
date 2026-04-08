@@ -8,6 +8,7 @@ import 'job_record.dart';
 import 'shell_operation_session.dart';
 import 'shell_runtime_action_state.dart';
 import 'shell_runtime_notification.dart';
+import 'shell_runtime_snapshot.dart';
 import 'workbench_runtime_models.dart';
 
 class MainShellProjection {
@@ -30,6 +31,8 @@ class MainShellProjection {
     this.recentActions = const <ShellRuntimeActionState>[],
     this.notifications = const <ShellRuntimeNotification>[],
     this.operationSession = const ShellOperationSession.idle(),
+    this.snapshotGeneratedAt,
+    this.degradedSections = const <ShellRuntimeDegradedSection>[],
   });
 
   const MainShellProjection.empty()
@@ -50,7 +53,9 @@ class MainShellProjection {
       activeAction = null,
       recentActions = const <ShellRuntimeActionState>[],
       notifications = const <ShellRuntimeNotification>[],
-      operationSession = const ShellOperationSession.idle();
+      operationSession = const ShellOperationSession.idle(),
+      snapshotGeneratedAt = null,
+      degradedSections = const <ShellRuntimeDegradedSection>[];
 
   final WorkbenchTab activeTab;
   final String activeTabLabel;
@@ -70,10 +75,13 @@ class MainShellProjection {
   final List<ShellRuntimeActionState> recentActions;
   final List<ShellRuntimeNotification> notifications;
   final ShellOperationSession operationSession;
+  final DateTime? snapshotGeneratedAt;
+  final List<ShellRuntimeDegradedSection> degradedSections;
 
   bool get hasPendingApprovals => pendingApprovalCount > 0;
   bool get hasSelectedOperation => selectedOperation != null;
   bool get hasActiveAction => activeAction != null;
+  bool get isDegraded => degradedSections.isNotEmpty;
   int get unreadNotificationCount =>
       notifications.where((item) => !item.isRead).length;
 

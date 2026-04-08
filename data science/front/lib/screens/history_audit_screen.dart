@@ -28,6 +28,7 @@ import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/workbench_page_frame.dart';
 import '../widgets/operations/workbench_command_strip.dart';
 import '../widgets/operations/workspace_action_lane.dart';
+import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/responsive_wrapper.dart';
 import 'analysis_detail_screen.dart';
 
@@ -75,10 +76,9 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   String? _selectedType;
   String? _selectedStatus;
   bool _didActivateWorkspace = false;
-  DashboardSummary? get _sharedSummary =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
-          : _dashboardViewModel.summary;
+  DashboardSummary? get _sharedSummary => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.summary ?? _dashboardViewModel.summary)
+      : _dashboardViewModel.summary;
 
   @override
   void initState() {
@@ -139,11 +139,22 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
 
   Future<void> _refreshAll() async {
     await Future.wait([
-      _dashboardViewModel.loadSummary(),
+      _refreshSharedProjection(),
       _jobsViewModel.loadJobs(),
       _auditViewModel.loadActivity(),
       _historyViewModel.loadHistory(limit: 30),
     ]);
+  }
+
+  Future<void> _refreshSharedProjection() async {
+    if (widget.sharedRuntimeManaged) {
+      final runtime = MainShellRuntimeScope.maybeOf(context);
+      if (runtime != null) {
+        await runtime.refreshSharedSnapshot(force: true);
+        return;
+      }
+    }
+    await _dashboardViewModel.loadSummary();
   }
 
   @override
@@ -187,8 +198,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                   IncidentRunbookBoard(
                     summary: summary!.assetSummary,
                     title: '处置清单',
-                    description:
-                        '审计页直接复用驾驶舱链路处置清单，把快速回放、失败筛选和值班动作压成统一处置视图。',
+                    description: '审计页直接复用驾驶舱链路处置清单，把快速回放、失败筛选和值班动作压成统一处置视图。',
                     dutySummary: summary.dutySummary,
                     trailing:
                         _isHistoryFocusSection('runbook', summary.dutySummary)
@@ -677,10 +687,7 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleReplayAction(String key) {
-    final chain = findChainSummary(
-      _sharedSummary?.assetSummary,
-      key,
-    );
+    final chain = findChainSummary(_sharedSummary?.assetSummary, key);
     switch (key) {
       case 'dataset':
         final context = buildLaunchContext(
@@ -815,17 +822,14 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 
   void _handleFailureChainAction(AssetFailureChain chain) {
-    final chainSummary = _sharedSummary
-        ?.assetSummary
-        .chainSummaries
+    final chainSummary = _sharedSummary?.assetSummary.chainSummaries
         .cast<AssetChainSummary?>()
         .firstWhere((item) => item?.key == chain.key, orElse: () => null);
     final context = buildLaunchContextFromChain(
       chainSummary,
       prefix: chain.label,
     );
-    final sourceLabel =
-        context != null
+    final sourceLabel = context != null
         ? buildWorkbenchSourceLabel(context, prefix: chain.label)
         : chain.label;
     switch (chain.key) {

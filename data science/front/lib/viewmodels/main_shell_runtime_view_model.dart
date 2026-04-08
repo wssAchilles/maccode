@@ -11,6 +11,7 @@ import '../models/job_record.dart';
 import '../models/main_shell_projection.dart';
 import '../models/shell_action_outcome.dart';
 import '../models/shell_runtime_intent.dart';
+import '../models/shell_runtime_snapshot.dart';
 import '../models/workbench_runtime_models.dart';
 import '../utils/main_shell_projection_builder.dart';
 import 'approval_queue_view_model.dart';
@@ -23,6 +24,7 @@ import 'operation_console_view_model.dart';
 import 'shell_operation_session_controller.dart';
 import 'shell_runtime_action_state_machine.dart';
 import 'shell_runtime_notification_center.dart';
+import 'shell_runtime_snapshot_view_model.dart';
 
 class MainShellRuntimeViewModel extends ChangeNotifier {
   MainShellRuntimeViewModel({
@@ -32,6 +34,7 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     ApprovalQueueViewModel? approvalQueueViewModel,
     OperationConsoleViewModel? operationConsoleViewModel,
     JobFeedRegistry? jobFeedRegistry,
+    ShellRuntimeSnapshotViewModel? snapshotViewModel,
   }) : _dashboardViewModel = dashboardViewModel ?? DashboardViewModel(),
        _ownsDashboardViewModel = dashboardViewModel == null,
        _computeGovernanceViewModel =
@@ -46,11 +49,15 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
            operationConsoleViewModel ?? OperationConsoleViewModel(),
        _ownsOperationConsoleViewModel = operationConsoleViewModel == null,
        _jobFeedRegistry = jobFeedRegistry ?? JobFeedRegistry(),
-       _ownsJobFeedRegistry = jobFeedRegistry == null {
+       _ownsJobFeedRegistry = jobFeedRegistry == null,
+       _snapshotViewModel =
+           snapshotViewModel ?? ShellRuntimeSnapshotViewModel(),
+       _ownsSnapshotViewModel = snapshotViewModel == null {
     _actionStateMachine = ShellRuntimeActionStateMachine();
     _notificationCenter = ShellRuntimeNotificationCenter();
     _operationSessionController = ShellOperationSessionController();
     _childListenables = <Listenable>[
+      _snapshotViewModel,
       _dashboardViewModel,
       _computeGovernanceViewModel,
       _controlTaskViewModel,
@@ -65,7 +72,6 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
       listenable.addListener(_relayChildUpdate);
     }
     _actionCoordinator = MainShellActionCoordinator(
-      dashboardViewModel: _dashboardViewModel,
       computeGovernanceViewModel: _computeGovernanceViewModel,
       controlTaskViewModel: _controlTaskViewModel,
       approvalQueueViewModel: _approvalQueueViewModel,
@@ -88,6 +94,8 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   final bool _ownsOperationConsoleViewModel;
   final JobFeedRegistry _jobFeedRegistry;
   final bool _ownsJobFeedRegistry;
+  final ShellRuntimeSnapshotViewModel _snapshotViewModel;
+  final bool _ownsSnapshotViewModel;
   late final MainShellActionCoordinator _actionCoordinator;
   late final ShellRuntimeActionStateMachine _actionStateMachine;
   late final ShellRuntimeNotificationCenter _notificationCenter;
@@ -120,16 +128,23 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   MainShellProjection get projection => _projection;
   bool get hasSelectedOperation =>
       _operationConsoleViewModel.selectedOperation != null;
+  ShellRuntimeSnapshot? get sharedSnapshot => _snapshotViewModel.snapshot;
 
   Future<void> initialize() async {
     if (_isInitialized) {
       return;
     }
     _isInitialized = true;
-    await Future.wait([
-      _dashboardViewModel.initialize(),
-      _approvalQueueViewModel.initialize(),
-    ]);
+    await _snapshotViewModel.initialize();
+    final snapshot = _snapshotViewModel.snapshot;
+    if (snapshot != null) {
+      _hydrateSharedSnapshot(snapshot);
+    } else {
+      await Future.wait([
+        _dashboardViewModel.initialize(),
+        _approvalQueueViewModel.initialize(),
+      ]);
+    }
     _syncOperationConsoleActivity();
     _notifySafely(rebuildProjection: true);
   }
@@ -139,12 +154,23 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     await initialize();
     if (tab == WorkbenchTab.operationsHub && !_operationsWorkspaceReady) {
       _operationsWorkspaceReady = true;
-      await Future.wait([
-        _computeGovernanceViewModel.initialize(),
-        _controlTaskViewModel.initialize(),
-      ]);
+      if (_snapshotViewModel.snapshot == null) {
+        await Future.wait([
+          _computeGovernanceViewModel.initialize(),
+          _controlTaskViewModel.initialize(),
+        ]);
+      }
     }
     await _jobFeedRegistry.activateForTab(tab);
+    _syncOperationConsoleActivity();
+    _notifySafely(rebuildProjection: true);
+  }
+
+  Future<void> refreshSharedSnapshot({bool force = false}) async {
+    final snapshot = await _snapshotViewModel.loadSnapshot(force: force);
+    if (snapshot != null) {
+      _hydrateSharedSnapshot(snapshot);
+    }
     _syncOperationConsoleActivity();
     _notifySafely(rebuildProjection: true);
   }
@@ -204,13 +230,11 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     JobRecord job, {
     required bool approved,
     String? message,
-  }) async =>
-      (await resolveQueuedApprovalAction(
-        job,
-        approved: approved,
-        message: message,
-      ))
-          .data;
+  }) async => (await resolveQueuedApprovalAction(
+    job,
+    approved: approved,
+    message: message,
+  )).data;
 
   Future<ShellActionOutcome<JobRecord>> resolveQueuedApprovalAction(
     JobRecord job, {
@@ -234,12 +258,10 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
   Future<JobRecord?> resolveSelectedOperationApproval({
     required bool approved,
     String? message,
-  }) async =>
-      (await resolveSelectedOperationApprovalAction(
-        approved: approved,
-        message: message,
-      ))
-          .data;
+  }) async => (await resolveSelectedOperationApprovalAction(
+    approved: approved,
+    message: message,
+  )).data;
 
   Future<ShellActionOutcome<JobRecord>> resolveSelectedOperationApprovalAction({
     required bool approved,
@@ -470,8 +492,13 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
       intent: intent,
       run: run,
     );
+    if (outcome.succeeded) {
+      await refreshSharedSnapshot(force: true);
+    }
     _notificationCenter.recordActionOutcome(intent, outcome);
-    final operation = outcome.data is JobRecord ? outcome.data as JobRecord : null;
+    final operation = outcome.data is JobRecord
+        ? outcome.data as JobRecord
+        : null;
     if (operation != null && openOperationsPanel) {
       _panelKind = ShellRuntimePanelKind.operations;
       _panelVisible = true;
@@ -497,29 +524,56 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
 
   void _relayChildUpdate() {
     _operationSessionController.syncFromConsole(_operationConsoleViewModel);
+    final snapshot = _snapshotViewModel.snapshot;
+    final snapshotSummary = _snapshotViewModel.snapshot?.summary;
     _notificationCenter.recordBackendAlerts(
-      _dashboardViewModel.summary?.alerts ?? const <DashboardAlert>[],
+      snapshotSummary?.alerts ??
+          _dashboardViewModel.summary?.alerts ??
+          const <DashboardAlert>[],
       sourceTab: _activeTab,
     );
-    _notificationCenter.recordSessionUpdate(_operationSessionController.session);
+    _notificationCenter.recordProjectionDegraded(
+      snapshot?.degradedSections ?? const <ShellRuntimeDegradedSection>[],
+      sourceTab: _activeTab,
+    );
+    _notificationCenter.recordSessionUpdate(
+      _operationSessionController.session,
+    );
     _notifySafely(rebuildProjection: true);
   }
 
   MainShellProjection _buildProjection() {
+    final snapshot = _snapshotViewModel.snapshot;
     return buildMainShellProjection(
       activeTab: _activeTab,
       panelVisible: _panelVisible,
       panelKind: _panelKind,
-      summary: _dashboardViewModel.summary,
-      approvalJobs: _approvalQueueViewModel.jobs,
-      controlTasks: _controlTaskViewModel.tasks,
-      computePolicy: _computeGovernanceViewModel.policy,
-      computeActivity: _computeGovernanceViewModel.recentActivity,
+      summary: snapshot?.summary ?? _dashboardViewModel.summary,
+      approvalJobs: snapshot?.approvalJobs ?? _approvalQueueViewModel.jobs,
+      controlTasks: snapshot?.controlTasks ?? _controlTaskViewModel.tasks,
+      computePolicy:
+          snapshot?.computePolicy ?? _computeGovernanceViewModel.policy,
+      computeActivity:
+          snapshot?.computeActivity ??
+          _computeGovernanceViewModel.recentActivity,
       selectedOperation: _operationConsoleViewModel.selectedOperation,
       activeAction: _actionStateMachine.activeAction,
       recentActions: _actionStateMachine.recentActions,
       notifications: _notificationCenter.notifications,
       operationSession: _operationSessionController.session,
+      snapshotGeneratedAt: snapshot?.generatedAt,
+      degradedSections:
+          snapshot?.degradedSections ?? const <ShellRuntimeDegradedSection>[],
+    );
+  }
+
+  void _hydrateSharedSnapshot(ShellRuntimeSnapshot snapshot) {
+    _dashboardViewModel.hydrateSummary(snapshot.summary);
+    _approvalQueueViewModel.hydrateQueue(snapshot.approvalJobs);
+    _controlTaskViewModel.hydrateTasks(snapshot.controlTasks);
+    _computeGovernanceViewModel.hydrateSnapshot(
+      policy: snapshot.computePolicy,
+      activity: snapshot.computeActivity,
     );
   }
 
@@ -540,6 +594,9 @@ class MainShellRuntimeViewModel extends ChangeNotifier {
     }
     if (_ownsJobFeedRegistry) {
       _jobFeedRegistry.dispose();
+    }
+    if (_ownsSnapshotViewModel) {
+      _snapshotViewModel.dispose();
     }
     if (_ownsOperationConsoleViewModel) {
       _operationConsoleViewModel.dispose();

@@ -6,10 +6,7 @@ import '../../config/app_theme.dart';
 import '../../models/main_shell_projection.dart';
 
 class ShellRuntimeProjectionBanner extends StatelessWidget {
-  const ShellRuntimeProjectionBanner({
-    super.key,
-    required this.projection,
-  });
+  const ShellRuntimeProjectionBanner({super.key, required this.projection});
 
   final MainShellProjection projection;
 
@@ -66,6 +63,17 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
                   foreground: AppColors.warning,
                   background: const Color(0xFFFFF4E5),
                 ),
+              _StatusChip(
+                label: projection.isDegraded
+                    ? '共享快照降级 ${projection.degradedSections.length}'
+                    : '共享快照 ${_snapshotLabel(projection.snapshotGeneratedAt)}',
+                foreground: projection.isDegraded
+                    ? AppColors.warning
+                    : AppColors.success,
+                background: projection.isDegraded
+                    ? const Color(0xFFFFF4E5)
+                    : AppColors.successLight,
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -77,9 +85,7 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               '控制动作 · ${projection.activeActionLabel}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.primary,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
             ),
           ],
           if ((operationSession.latestMessage ?? '').trim().isNotEmpty) ...[
@@ -126,6 +132,16 @@ class ShellRuntimeProjectionBanner extends StatelessWidget {
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  String _snapshotLabel(DateTime? value) {
+    if (value == null) {
+      return '就绪';
+    }
+    final local = value.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }
 

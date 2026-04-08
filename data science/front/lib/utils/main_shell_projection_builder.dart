@@ -9,6 +9,7 @@ import '../models/main_shell_projection.dart';
 import '../models/shell_operation_session.dart';
 import '../models/shell_runtime_action_state.dart';
 import '../models/shell_runtime_notification.dart';
+import '../models/shell_runtime_snapshot.dart';
 import '../models/workbench_runtime_models.dart';
 
 MainShellProjection buildMainShellProjection({
@@ -25,6 +26,9 @@ MainShellProjection buildMainShellProjection({
   required List<ShellRuntimeActionState> recentActions,
   required List<ShellRuntimeNotification> notifications,
   required ShellOperationSession operationSession,
+  DateTime? snapshotGeneratedAt,
+  List<ShellRuntimeDegradedSection> degradedSections =
+      const <ShellRuntimeDegradedSection>[],
 }) {
   final sortedAlerts = [...?summary?.alerts]..sort(_compareAlertPriority);
   final focusAlert = sortedAlerts.isEmpty ? null : sortedAlerts.first;
@@ -40,7 +44,9 @@ MainShellProjection buildMainShellProjection({
     summary: summary,
     focusAlert: focusAlert,
     selectedOperation: selectedOperation,
-    nextControlTask: visibleControlTasks.isEmpty ? null : visibleControlTasks.first,
+    nextControlTask: visibleControlTasks.isEmpty
+        ? null
+        : visibleControlTasks.first,
     computePolicy: computePolicy,
     computeActivity: computeActivity,
     pendingApprovalJobs: approvalJobs,
@@ -50,11 +56,15 @@ MainShellProjection buildMainShellProjection({
     recentActions: recentActions,
     notifications: notifications,
     operationSession: operationSession,
+    snapshotGeneratedAt: snapshotGeneratedAt,
+    degradedSections: degradedSections,
   );
 }
 
 int _compareAlertPriority(DashboardAlert left, DashboardAlert right) {
-  return _alertPriority(right.severity).compareTo(_alertPriority(left.severity));
+  return _alertPriority(
+    right.severity,
+  ).compareTo(_alertPriority(left.severity));
 }
 
 int _alertPriority(String severity) {

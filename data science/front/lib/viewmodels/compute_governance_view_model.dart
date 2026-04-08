@@ -55,6 +55,20 @@ class ComputeGovernanceViewModel extends ChangeNotifier {
     }
   }
 
+  void hydrateSnapshot({
+    required ComputeRolloutPolicy policy,
+    required List<ComputeGovernanceActivityEntry> activity,
+  }) {
+    _policy = policy;
+    _recentActivity = List<ComputeGovernanceActivityEntry>.unmodifiable(
+      activity,
+    );
+    _isInitialized = true;
+    _isLoading = false;
+    _errorMessage = null;
+    _notifySafely();
+  }
+
   Future<JobRecord?> requestRolloutModeChange(
     String componentKey, {
     required Map<String, dynamic> targetPolicy,

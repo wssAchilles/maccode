@@ -8,27 +8,23 @@ import '../models/workbench_runtime_models.dart';
 import 'approval_queue_view_model.dart';
 import 'compute_governance_view_model.dart';
 import 'control_task_view_model.dart';
-import 'dashboard_view_model.dart';
 import 'job_feed_registry.dart';
 import 'job_view_model.dart';
 import 'operation_console_view_model.dart';
 
 class MainShellActionCoordinator {
   const MainShellActionCoordinator({
-    required DashboardViewModel dashboardViewModel,
     required ComputeGovernanceViewModel computeGovernanceViewModel,
     required ControlTaskViewModel controlTaskViewModel,
     required ApprovalQueueViewModel approvalQueueViewModel,
     required OperationConsoleViewModel operationConsoleViewModel,
     required JobFeedRegistry jobFeedRegistry,
-  }) : _dashboardViewModel = dashboardViewModel,
-       _computeGovernanceViewModel = computeGovernanceViewModel,
+  }) : _computeGovernanceViewModel = computeGovernanceViewModel,
        _controlTaskViewModel = controlTaskViewModel,
        _approvalQueueViewModel = approvalQueueViewModel,
        _operationConsoleViewModel = operationConsoleViewModel,
        _jobFeedRegistry = jobFeedRegistry;
 
-  final DashboardViewModel _dashboardViewModel;
   final ComputeGovernanceViewModel _computeGovernanceViewModel;
   final ControlTaskViewModel _controlTaskViewModel;
   final ApprovalQueueViewModel _approvalQueueViewModel;
@@ -50,11 +46,6 @@ class MainShellActionCoordinator {
         _controlTaskViewModel.errorMessage ?? '触发规划任务失败',
       );
     }
-
-    await Future.wait([
-      _controlTaskViewModel.loadControlTasks(),
-      _approvalQueueViewModel.loadQueue(),
-    ]);
     await _openOperation(operation);
     final awaitingApproval = operation.status == 'awaiting_approval';
     return ShellActionOutcome.success(
@@ -142,18 +133,18 @@ class MainShellActionCoordinator {
     String? changeReason,
     String requestKind = 'rollout_change',
   }) async {
-    final operation = await _computeGovernanceViewModel.requestRolloutModeChange(
-      component.key,
-      targetPolicy: targetPolicy,
-      changeReason: changeReason,
-      requestKind: requestKind,
-    );
+    final operation = await _computeGovernanceViewModel
+        .requestRolloutModeChange(
+          component.key,
+          targetPolicy: targetPolicy,
+          changeReason: changeReason,
+          requestKind: requestKind,
+        );
     if (operation == null) {
       return ShellActionOutcome.failure(
         _computeGovernanceViewModel.errorMessage ?? '提交计算治理变更失败',
       );
     }
-    await _approvalQueueViewModel.loadQueue();
     await _openOperation(operation);
     return ShellActionOutcome.success(
       operation.isAwaitingApproval
@@ -201,10 +192,6 @@ class MainShellActionCoordinator {
         _approvalQueueViewModel.errorMessage ?? '审批操作失败',
       );
     }
-    await Future.wait([
-      _controlTaskViewModel.loadControlTasks(),
-      _approvalQueueViewModel.loadQueue(),
-    ]);
     await _openOperation(updated);
     return ShellActionOutcome.success(
       approved ? '已批准任务: ${job.displayTitle}' : '已驳回任务: ${job.displayTitle}',
@@ -230,12 +217,10 @@ class MainShellActionCoordinator {
         _operationConsoleViewModel.errorMessage ?? '审批操作失败',
       );
     }
-    await Future.wait([
-      _approvalQueueViewModel.loadQueue(),
-      _controlTaskViewModel.loadControlTasks(),
-    ]);
     return ShellActionOutcome.success(
-      approved ? '已批准运行: ${current.displayTitle}' : '已驳回运行: ${current.displayTitle}',
+      approved
+          ? '已批准运行: ${current.displayTitle}'
+          : '已驳回运行: ${current.displayTitle}',
       data: updated,
       tone: approved ? ShellActionTone.success : ShellActionTone.warning,
     );
@@ -252,7 +237,6 @@ class MainShellActionCoordinator {
         _operationConsoleViewModel.errorMessage ?? '重试运行失败',
       );
     }
-    await _controlTaskViewModel.loadControlTasks();
     return ShellActionOutcome.success(
       '已重试运行: ${current.displayTitle}',
       data: updated,
@@ -270,10 +254,6 @@ class MainShellActionCoordinator {
         _operationConsoleViewModel.errorMessage ?? '取消运行失败',
       );
     }
-    await Future.wait([
-      _controlTaskViewModel.loadControlTasks(),
-      _approvalQueueViewModel.loadQueue(),
-    ]);
     return ShellActionOutcome.success(
       '已取消运行: ${current.displayTitle}',
       data: updated,
@@ -290,7 +270,6 @@ class MainShellActionCoordinator {
     if (updated == null) {
       return ShellActionOutcome.failure(feed.errorMessage ?? '重试任务失败');
     }
-    await _dashboardViewModel.loadSummary();
     await _openOperation(updated);
     return ShellActionOutcome.success(
       '已重试任务: ${job.displayTitle}',
@@ -307,11 +286,6 @@ class MainShellActionCoordinator {
     if (updated == null) {
       return ShellActionOutcome.failure(feed.errorMessage ?? '取消任务失败');
     }
-    await Future.wait([
-      _dashboardViewModel.loadSummary(),
-      if (job.controlTaskId != null) _controlTaskViewModel.loadControlTasks(),
-      _approvalQueueViewModel.loadQueue(),
-    ]);
     await _openOperation(updated);
     return ShellActionOutcome.success(
       '已取消任务: ${job.displayTitle}',
@@ -337,11 +311,6 @@ class MainShellActionCoordinator {
     if (updated == null) {
       return ShellActionOutcome.failure(feed.errorMessage ?? '审批任务失败');
     }
-    await Future.wait([
-      _dashboardViewModel.loadSummary(),
-      _approvalQueueViewModel.loadQueue(),
-      if (job.controlTaskId != null) _controlTaskViewModel.loadControlTasks(),
-    ]);
     await _openOperation(updated);
     return ShellActionOutcome.success(
       approved ? '已批准任务: ${job.displayTitle}' : '已驳回任务: ${job.displayTitle}',

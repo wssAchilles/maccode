@@ -82,10 +82,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
   OptimizationResponse? get _result => _viewModel.result;
   OptimizationResponse? get _previousResult => _viewModel.previousResult;
   String? get _errorMessage => _viewModel.errorMessage;
-  DashboardSummary? get _sharedSummary =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.summary ?? widget.dashboardViewModel?.summary)
-          : widget.dashboardViewModel?.summary;
+  DashboardSummary? get _sharedSummary => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.summary ?? widget.dashboardViewModel?.summary)
+      : widget.dashboardViewModel?.summary;
 
   @override
   void initState() {
@@ -166,7 +165,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
       _showSuccessSnackBar(
         '优化完成！节省 ${result.optimization?.summary.savingsFormatted ?? "0"}',
       );
-      widget.dashboardViewModel?.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
 
@@ -242,9 +241,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
         ),
         EmbeddedHeaderBadge(
           label: '后台队列',
-          value: latestJob == null
-              ? '空闲'
-              : buildJobPrimaryText(latestJob),
+          value: latestJob == null ? '空闲' : buildJobPrimaryText(latestJob),
           accent: latestJob == null
               ? AppColors.textSecondary
               : _jobStatusColor(latestJob.status),
@@ -735,7 +732,9 @@ class _ModelingScreenState extends State<ModelingScreen> {
               emptyMessage: '后台优化开始执行后，这里会显示预测、求解和结果封装阶段。',
               onOpenOperation: () => _openJobInShellRuntime(latestJob),
               onRetry: latestJob.retryable ? () => _retryJob(latestJob) : null,
-              onCancel: latestJob.isTerminal ? null : () => _cancelJob(latestJob),
+              onCancel: latestJob.isTerminal
+                  ? null
+                  : () => _cancelJob(latestJob),
               onApprove: latestJob.isAwaitingApproval
                   ? () => _resolveApproval(latestJob, approved: true)
                   : null,
@@ -1227,7 +1226,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
     if (retried != null) {
       await _openJobInShellRuntime(retried);
       _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已重新排队'));
-      widget.dashboardViewModel?.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final error = _jobViewModel.errorMessage;
@@ -1256,7 +1255,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
     if (cancelled != null) {
       await _openJobInShellRuntime(cancelled);
       _showSuccessSnackBar(_optimizationFeedbackMessage('后台优化任务已提交取消'));
-      widget.dashboardViewModel?.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final error = _jobViewModel.errorMessage;
@@ -1265,10 +1264,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
     }
   }
 
-  Future<void> _resolveApproval(
-    JobRecord job, {
-    required bool approved,
-  }) async {
+  Future<void> _resolveApproval(JobRecord job, {required bool approved}) async {
     final runtime = widget.sharedRuntimeManaged
         ? MainShellRuntimeScope.maybeOf(context)
         : null;
@@ -1284,18 +1280,19 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
 
-    final updated = await _jobViewModel.resolveApproval(job, approved: approved);
+    final updated = await _jobViewModel.resolveApproval(
+      job,
+      approved: approved,
+    );
     if (!mounted) {
       return;
     }
     if (updated != null) {
       await _openJobInShellRuntime(updated);
       _showSuccessSnackBar(
-        _optimizationFeedbackMessage(
-          approved ? '后台优化任务已批准执行' : '后台优化任务已驳回',
-        ),
+        _optimizationFeedbackMessage(approved ? '后台优化任务已批准执行' : '后台优化任务已驳回'),
       );
-      widget.dashboardViewModel?.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final error = _jobViewModel.errorMessage;
@@ -1313,6 +1310,20 @@ class _ModelingScreenState extends State<ModelingScreen> {
       return;
     }
     await runtime.openOperation(job.operationId ?? job.jobId, seed: job);
+  }
+
+  Future<void> _refreshSharedProjection() async {
+    if (widget.sharedRuntimeManaged) {
+      final runtime = MainShellRuntimeScope.maybeOf(context);
+      if (runtime != null) {
+        await runtime.refreshSharedSnapshot(force: true);
+        return;
+      }
+    }
+    final dashboardViewModel = widget.dashboardViewModel;
+    if (dashboardViewModel != null) {
+      await dashboardViewModel.loadSummary();
+    }
   }
 
   void _showSharedActionOutcome(ShellActionOutcome outcome) {

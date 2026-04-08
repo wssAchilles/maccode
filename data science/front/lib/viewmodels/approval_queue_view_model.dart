@@ -51,6 +51,14 @@ class ApprovalQueueViewModel extends ChangeNotifier {
     }
   }
 
+  void hydrateQueue(List<JobRecord> jobs) {
+    _jobs = List<JobRecord>.unmodifiable(jobs);
+    _isInitialized = true;
+    _isLoading = false;
+    _errorMessage = null;
+    _notifySafely();
+  }
+
   Future<JobRecord?> resolve(
     JobRecord job, {
     required bool approved,

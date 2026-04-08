@@ -1,25 +1,24 @@
-/// 驾驶舱 ViewModel
 library;
 
 import 'package:flutter/foundation.dart';
 
-import '../models/dashboard_summary.dart';
-import '../repositories/dashboard_repository.dart';
+import '../models/shell_runtime_snapshot.dart';
+import '../repositories/shell_runtime_snapshot_repository.dart';
 import '../services/api_service_exception.dart';
 
-class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel({DashboardRepository? repository})
-    : _repository = repository ?? const ApiDashboardRepository();
+class ShellRuntimeSnapshotViewModel extends ChangeNotifier {
+  ShellRuntimeSnapshotViewModel({ShellRuntimeSnapshotRepository? repository})
+    : _repository = repository ?? const ApiShellRuntimeSnapshotRepository();
 
-  final DashboardRepository _repository;
+  final ShellRuntimeSnapshotRepository _repository;
 
-  DashboardSummary? _summary;
+  ShellRuntimeSnapshot? _snapshot;
   bool _isLoading = false;
   String? _errorMessage;
   bool _isDisposed = false;
   bool _isInitialized = false;
 
-  DashboardSummary? get summary => _summary;
+  ShellRuntimeSnapshot? get snapshot => _snapshot;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -28,37 +27,28 @@ class DashboardViewModel extends ChangeNotifier {
       return;
     }
     _isInitialized = true;
-    await loadSummary();
+    await loadSnapshot();
   }
 
-  Future<void> loadSummary() async {
+  Future<ShellRuntimeSnapshot?> loadSnapshot({bool force = false}) async {
     _isLoading = true;
     _errorMessage = null;
     _notifySafely();
-
     try {
-      _summary = await _repository.getSummary();
-    } catch (e) {
-      if (!(_summary != null && _isTransientApiError(e))) {
-        _errorMessage = '加载驾驶舱摘要失败: ${_readableErrorMessage(e)}';
+      _snapshot = await _repository.getSnapshot(force: force);
+      return _snapshot;
+    } catch (error) {
+      if (_snapshot == null || !_isTransientApiError(error)) {
+        _errorMessage = '加载共享运行时快照失败: ${_readableError(error)}';
       }
+      return _snapshot;
     } finally {
       _isLoading = false;
       _notifySafely();
     }
   }
 
-  void hydrateSummary(DashboardSummary? summary) {
-    if (summary != null) {
-      _summary = summary;
-    }
-    _isInitialized = true;
-    _isLoading = false;
-    _errorMessage = null;
-    _notifySafely();
-  }
-
-  String _readableErrorMessage(Object error) {
+  String _readableError(Object error) {
     if (error is ApiServiceException) {
       return error.message;
     }

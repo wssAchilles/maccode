@@ -23,6 +23,7 @@ part 'api_service/api_service_dashboard_jobs.dart';
 part 'api_service/api_service_history_ml.dart';
 part 'api_service/api_service_operation_stream.dart';
 part 'api_service/api_service_optimization.dart';
+part 'api_service/api_service_runtime_snapshot.dart';
 
 class ApiService {
   @visibleForTesting
@@ -82,6 +83,10 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getDashboardAssets() =>
       _getDashboardAssets();
+
+  static Future<Map<String, dynamic>> getRuntimeSnapshot({
+    bool fresh = false,
+  }) => _getRuntimeSnapshot(fresh: fresh);
 
   static Future<Map<String, dynamic>> getComputeRollout() =>
       _getComputeRollout();

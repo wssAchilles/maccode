@@ -3,11 +3,7 @@ library;
 import 'shell_action_outcome.dart';
 import 'workbench_runtime_models.dart';
 
-enum ShellRuntimeNotificationKind {
-  action,
-  session,
-  alert,
-}
+enum ShellRuntimeNotificationKind { action, session, alert, runtime }
 
 class ShellRuntimeNotification {
   const ShellRuntimeNotification({
@@ -34,9 +30,7 @@ class ShellRuntimeNotification {
   final bool isRead;
   final Map<String, dynamic> metadata;
 
-  ShellRuntimeNotification copyWith({
-    bool? isRead,
-  }) {
+  ShellRuntimeNotification copyWith({bool? isRead}) {
     return ShellRuntimeNotification(
       id: id,
       kind: kind,

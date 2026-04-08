@@ -90,10 +90,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
   bool _didSeedKnowledgeDefaults = false;
   bool _suppressInputRefresh = false;
   bool _didActivateWorkspace = false;
-  DashboardSummary? get _sharedSummary =>
-      widget.sharedRuntimeManaged
-          ? (widget.shellProjection?.summary ?? widget.dashboardViewModel.summary)
-          : widget.dashboardViewModel.summary;
+  DashboardSummary? get _sharedSummary => widget.sharedRuntimeManaged
+      ? (widget.shellProjection?.summary ?? widget.dashboardViewModel.summary)
+      : widget.dashboardViewModel.summary;
 
   @override
   void initState() {
@@ -201,6 +200,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     }
 
     if (job != null) {
+      await _openJobInShellRuntime(job);
       _showFeedback(
         _chainFeedbackMessage(
           chain,
@@ -208,7 +208,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
           detail: job.jobId.substring(0, 8),
         ),
       );
-      widget.dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
 
@@ -233,6 +233,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     }
 
     if (job != null) {
+      await _openJobInShellRuntime(job);
       _showFeedback(
         _chainFeedbackMessage(
           chain,
@@ -240,7 +241,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
           detail: job.jobId.substring(0, 8),
         ),
       );
-      widget.dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
 
@@ -273,7 +274,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
 
   Future<void> _refreshLab() async {
     await Future.wait([
-      widget.dashboardViewModel.loadSummary(),
+      _refreshSharedProjection(),
       _trainingJobsViewModel.loadJobs(),
       _ragJobsViewModel.loadJobs(),
     ]);
@@ -1060,10 +1061,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
                           : _trainingJobsViewModel.isSubmitting
                           ? '提交中'
                           : _trainingJobsViewModel.activeJob != null
-                          ? buildJobPrimaryText(_trainingJobsViewModel.activeJob!)
-                          : (_trainingJobsViewModel.jobs.isEmpty
-                                ? '空闲'
-                                : '就绪'),
+                          ? buildJobPrimaryText(
+                              _trainingJobsViewModel.activeJob!,
+                            )
+                          : (_trainingJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
                       statusColor: trainingError != null
                           ? AppColors.error
                           : _trainingJobsViewModel.isSubmitting
@@ -1252,7 +1253,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
                   onCopyCollection: (collection) {
                     _copyText(
                       collection,
-                      _chainAssetActionMessage(knowledgeChain, prefix: '集合名已复制'),
+                      _chainAssetActionMessage(
+                        knowledgeChain,
+                        prefix: '集合名已复制',
+                      ),
                     );
                   },
                   onClearConversation: () {
@@ -1549,7 +1553,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
     }
 
     final buffer = StringBuffer();
-    buffer.writeln('[${buildJobPrimaryText(focusJob)}] ${focusJob.displayTitle}');
+    buffer.writeln(
+      '[${buildJobPrimaryText(focusJob)}] ${focusJob.displayTitle}',
+    );
     buffer.writeln('任务编号: ${focusJob.jobId}');
     if (focusJob.events.isNotEmpty) {
       for (final event in focusJob.events.take(10)) {
@@ -1606,7 +1612,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
           ? _chainForKey('model')
           : _chainForKey('knowledge');
       _showFeedback(_chainFeedbackMessage(chain, prefix: '任务已重新排队'));
-      widget.dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final message = _normalizeJobErrorMessage(viewModel.errorMessage);
@@ -1638,7 +1644,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
           ? _chainForKey('model')
           : _chainForKey('knowledge');
       _showFeedback(_chainFeedbackMessage(chain, prefix: '任务已提交取消'));
-      widget.dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final message = _normalizeJobErrorMessage(viewModel.errorMessage);
@@ -1677,12 +1683,9 @@ class _AiLabScreenState extends State<AiLabScreen> {
           ? _chainForKey('model')
           : _chainForKey('knowledge');
       _showFeedback(
-        _chainFeedbackMessage(
-          chain,
-          prefix: approved ? '任务已批准执行' : '任务已驳回',
-        ),
+        _chainFeedbackMessage(chain, prefix: approved ? '任务已批准执行' : '任务已驳回'),
       );
-      widget.dashboardViewModel.loadSummary();
+      await _refreshSharedProjection();
       return;
     }
     final message = _normalizeJobErrorMessage(viewModel.errorMessage);
@@ -1710,6 +1713,17 @@ class _AiLabScreenState extends State<AiLabScreen> {
       ShellActionTone.info => AppColors.primary,
     };
     _showFeedback(outcome.message, color: color);
+  }
+
+  Future<void> _refreshSharedProjection() async {
+    if (widget.sharedRuntimeManaged) {
+      final runtime = MainShellRuntimeScope.maybeOf(context);
+      if (runtime != null) {
+        await runtime.refreshSharedSnapshot(force: true);
+        return;
+      }
+    }
+    await widget.dashboardViewModel.loadSummary();
   }
 
   void _applyLaunchIntent(AiLabLaunchIntent? intent) {
