@@ -215,9 +215,20 @@ Future<Map<String, dynamic>> _askRagQuestion({
     }),
   );
 
-  return _decodeResponseMap(
+  final data = _decodeResponseMap(
     response,
     fallback: 'RAG query failed',
     requireSuccessFlag: true,
   );
+
+  final result = data['result'];
+  if (result is Map<String, dynamic>) {
+    return <String, dynamic>{
+      ...result,
+      if (data['collection'] != null) 'collection': data['collection'],
+      if (data['success'] != null) 'success': data['success'],
+    };
+  }
+
+  return data;
 }

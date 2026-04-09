@@ -80,7 +80,7 @@ echo "✅ Build Successful."
 
 # 3. Deploy to Cloud Run
 echo "📦 Deploying to Cloud Run..."
-echo "   Configuration: 4Gi Memory, 2 vCPU, Min Instances 0 (Cost Saving)"
+echo "   Configuration: 4Gi Memory, 2 vCPU, 1800s Timeout, Min Instances 0 (Cost Saving)"
 
 "$GCLOUD_BIN" run deploy "$SERVICE_NAME" \
     --image "gcr.io/$PROJECT_ID/$SERVICE_NAME" \
@@ -89,7 +89,7 @@ echo "   Configuration: 4Gi Memory, 2 vCPU, Min Instances 0 (Cost Saving)"
     --allow-unauthenticated \
     --memory 4Gi \
     --cpu 2 \
-    --timeout 300 \
+    --timeout 1800 \
     --concurrency 8 \
     --min-instances 0 \
     --max-instances 3 \

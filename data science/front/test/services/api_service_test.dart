@@ -116,6 +116,34 @@ void main() {
       },
     );
 
+    test('askRagQuestion unwraps nested result payload from backend', () async {
+      ApiService.setTokenProviderForTesting(() async => 'test-token');
+      ApiService.setHttpClientForTesting(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode(const {
+              'success': true,
+              'collection': 'ops-knowledge',
+              'result': {
+                'answer': 'resolved',
+                'context': [
+                  {'filename': 'doc.txt'},
+                ],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+
+      final result = await ApiService.askRagQuestion(question: 'hello');
+
+      expect(result['answer'], 'resolved');
+      expect(result['collection'], 'ops-knowledge');
+      expect(result['context'], isA<List<dynamic>>());
+    });
+
     test(
       'runOptimization maps license failures even when body is plain text',
       () async {

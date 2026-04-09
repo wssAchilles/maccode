@@ -86,6 +86,26 @@ void main() {
     viewModel.dispose();
   });
 
+  test('sendMessage renders nested backend result payload', () async {
+    final gateway = _FakeRagGateway()
+      ..response = const {
+        'result': {
+          'answer': 'nested',
+          'context': ['doc-nested'],
+        },
+      };
+    final viewModel = RagViewModel(gateway: gateway);
+
+    await viewModel.sendMessage('hello');
+
+    expect(viewModel.messages.length, 2);
+    expect(viewModel.messages[1].role, 'assistant');
+    expect(viewModel.messages[1].content, 'nested');
+    expect(viewModel.messages[1].sources, ['doc-nested']);
+
+    viewModel.dispose();
+  });
+
   test('sendMessage appends error message on failure', () async {
     final gateway = _FakeRagGateway()..error = Exception('network');
     final viewModel = RagViewModel(gateway: gateway);

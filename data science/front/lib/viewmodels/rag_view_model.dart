@@ -43,8 +43,9 @@ class RagViewModel extends ChangeNotifier {
             ? null
             : collectionName!.trim(),
       );
-      final answer = (result['answer'] ?? 'No answer found.').toString();
-      final rawSources = result['context'];
+      final payload = _normalizeResult(result);
+      final answer = (payload['answer'] ?? 'No answer found.').toString();
+      final rawSources = payload['context'];
       final sources = rawSources is List<dynamic>
           ? rawSources
           : const <dynamic>[];
@@ -68,6 +69,14 @@ class RagViewModel extends ChangeNotifier {
     if (!_isDisposed) {
       notifyListeners();
     }
+  }
+
+  Map<String, dynamic> _normalizeResult(Map<String, dynamic> result) {
+    final nested = result['result'];
+    if (nested is Map<String, dynamic>) {
+      return nested;
+    }
+    return result;
   }
 
   @override

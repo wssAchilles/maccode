@@ -6,7 +6,7 @@ import copy
 import sys
 import types
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -374,6 +374,54 @@ class OperationServiceTestCase(unittest.TestCase):
 
         events = TestOperationService.list_operation_events('user-1', operation['job_id'])
         self.assertIn('operation.dispatched', [event['type'] for event in events])
+
+    def test_get_operation_marks_timed_out_running_step_failed(self):
+        operation = TestOperationService.create_operation(
+            'user-1',
+            'ml_train',
+            {'storage_path': 'uploads/train.csv'},
+        )
+
+        started_at = datetime(2026, 4, 8, 7, 57, 27, tzinfo=timezone.utc)
+        running_step = {
+            'phase': 'dataset',
+            'tool_name': 'prepare_dataset',
+            'status': 'running',
+            'progress': 25,
+            'message': 'Preparing sequence data',
+            'started_at': started_at.isoformat(),
+            'ended_at': None,
+            'duration_ms': None,
+            'execution_target': 'light_worker',
+            'timeout_s': 300,
+            'retry_policy': {'max_attempts': 3, 'backoff': 'exponential'},
+        }
+        TestOperationService._operations.document(operation['job_id']).set(
+            {
+                'status': 'running',
+                'progress': 25,
+                'started_at': started_at,
+                'status_message': 'Preparing sequence data',
+                'current_step': running_step,
+                'steps': [running_step],
+            },
+            merge=True,
+        )
+
+        timed_out_at = started_at + timedelta(minutes=10)
+        with patch.object(TestOperationService, '_now_iso', return_value=timed_out_at.isoformat()):
+            updated = TestOperationService.get_operation('user-1', operation['job_id'])
+
+        self.assertIsNotNone(updated)
+        self.assertEqual(updated['status'], 'failed')
+        self.assertEqual(updated['error']['code'], 'TASK_TIMEOUT')
+        self.assertEqual(updated['current_step']['status'], 'failed')
+        self.assertTrue(updated['error']['message'].startswith("Step 'prepare_dataset' timed out"))
+
+        events = TestOperationService.list_operation_events('user-1', operation['job_id'])
+        event_types = [event['type'] for event in events]
+        self.assertIn('step.completed', event_types)
+        self.assertIn('operation.failed', event_types)
 
 
 if __name__ == '__main__':

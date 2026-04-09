@@ -46,6 +46,10 @@ def _orchestrator_managed_dispatch() -> bool:
     }
 
 
+def _should_run_dispatch_inline(operation: dict) -> bool:
+    return str(operation.get('execution_target') or '').strip().lower() == 'heavy_worker'
+
+
 def _proxy_stream_from_orchestrator(
     operation_id: str,
     *,
@@ -305,6 +309,16 @@ def internal_dispatch_operation(operation_id: str):
     operation = OperationService.get_operation_for_execution(operation_id)
     if not operation:
         return error_response('OPERATION_NOT_FOUND', '任务不存在', status_code=404)
+    if _should_run_dispatch_inline(operation):
+        OperationService.process_dispatch(operation_id)
+        return success_response(
+            {
+                'operation_id': operation_id,
+                'status': 'accepted',
+                'dispatch_mode': 'inline_heavy_worker',
+            },
+            status_code=202,
+        )
     app = current_app._get_current_object()
     dispatch_result = start_internal_operation_dispatch(
         app,

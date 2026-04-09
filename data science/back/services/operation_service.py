@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 from google.api_core import exceptions as google_exceptions
@@ -332,16 +332,69 @@ class OperationService:
             cls._wrap_backend_error(exc)
 
     @classmethod
+    def _load_operation_record(cls, operation_id: str) -> Optional[Dict[str, Any]]:
+        snapshot = cls._operations_collection().document(operation_id).get()
+        if not snapshot.exists:
+            return None
+        return snapshot.to_dict() or {}
+
+    @classmethod
+    def _reconcile_operation_state(
+        cls,
+        operation_id: str,
+        record: Optional[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        if not record:
+            return record
+
+        if str(record.get('status') or '').strip().lower() != 'running':
+            return record
+
+        current_step = record.get('current_step') if isinstance(record.get('current_step'), dict) else {}
+        if str(current_step.get('status') or '').strip().lower() != 'running':
+            return record
+
+        try:
+            timeout_s = int(current_step.get('timeout_s') or 0)
+        except (TypeError, ValueError):
+            timeout_s = 0
+        if timeout_s <= 0:
+            return record
+
+        started_at = cls._coerce_datetime(current_step.get('started_at')) or cls._coerce_datetime(
+            record.get('started_at'),
+        )
+        now_dt = cls._coerce_datetime(cls._now_iso())
+        if not started_at or not now_dt:
+            return record
+
+        if now_dt <= started_at + timedelta(seconds=timeout_s):
+            return record
+
+        tool_name = str(current_step.get('tool_name') or current_step.get('phase') or 'operation').strip()
+        message = f"Step '{tool_name}' timed out after {timeout_s}s"
+        cls.mark_failed(
+            operation_id,
+            code='TASK_TIMEOUT',
+            message=message,
+            details={
+                'phase': current_step.get('phase'),
+                'tool_name': current_step.get('tool_name'),
+                'timeout_s': timeout_s,
+                'step_started_at': current_step.get('started_at'),
+            },
+        )
+        return cls._load_operation_record(operation_id) or record
+
+    @classmethod
     def create_job(cls, uid: str, job_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return cls.create_operation(uid, job_type, payload)
 
     @classmethod
     def get_operation_for_execution(cls, operation_id: str) -> Optional[Dict[str, Any]]:
         try:
-            snapshot = cls._operations_collection().document(operation_id).get()
-            if not snapshot.exists:
-                return None
-            return snapshot.to_dict() or {}
+            record = cls._load_operation_record(operation_id)
+            return cls._reconcile_operation_state(operation_id, record)
         except Exception as exc:
             cls._wrap_backend_error(exc)
 
@@ -358,10 +411,10 @@ class OperationService:
         include_related: bool = True,
     ) -> Optional[Dict[str, Any]]:
         try:
-            snapshot = cls._operations_collection().document(operation_id).get()
-            if not snapshot.exists:
+            record = cls._load_operation_record(operation_id)
+            record = cls._reconcile_operation_state(operation_id, record)
+            if not record:
                 return None
-            record = snapshot.to_dict() or {}
             if not cls._has_operation_access(uid, record):
                 return None
             serialized = serialize_operation(record)
@@ -393,7 +446,9 @@ class OperationService:
             snapshots = cls._operations_collection().where('requested_by', '==', uid).stream()
         items: List[Dict[str, Any]] = []
         for snapshot in snapshots:
-            record = snapshot.to_dict() or {}
+            record = cls._reconcile_operation_state(snapshot.id, snapshot.to_dict() or {})
+            if not record:
+                continue
             if scope == 'control_plane':
                 if not cls._is_control_plane_operation(record):
                     continue
@@ -437,7 +492,9 @@ class OperationService:
                 )
             items: List[Dict[str, Any]] = []
             for snapshot in snapshots:
-                record = snapshot.to_dict() or {}
+                record = cls._reconcile_operation_state(snapshot.id, snapshot.to_dict() or {})
+                if not record:
+                    continue
                 if scope == 'control_plane':
                     if not cls._is_control_plane_operation(record):
                         continue
@@ -477,7 +534,9 @@ class OperationService:
             submitted_after_dt = cls._coerce_datetime(submitted_after)
             total = 0
             for snapshot in cls._operations_collection().where('requested_by', '==', uid).stream():
-                record = snapshot.to_dict() or {}
+                record = cls._reconcile_operation_state(snapshot.id, snapshot.to_dict() or {})
+                if not record:
+                    continue
                 if job_type and record.get('type') != job_type:
                     continue
                 if status and record.get('status') != status:
