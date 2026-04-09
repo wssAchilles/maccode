@@ -40,7 +40,7 @@ def test_rag_status(client, mock_auth, auth_headers):
     # Mock RAGService
     with patch('api.rag.RAGService') as MockService:
         instance = MockService.return_value
-        instance.is_available.return_value = True
+        instance.is_available.return_value = {'available': True}
         instance.get_stats.return_value = {'count': 10}
         
         response = client.get('/api/rag/status', headers=auth_headers)
@@ -52,8 +52,10 @@ def test_rag_status(client, mock_auth, auth_headers):
 def test_rag_ingest(client, mock_auth, auth_headers):
     with patch('api.rag.RAGService') as MockService:
         instance = MockService.return_value
-        instance.is_available.return_value = True
-        instance.load_documents.return_value = 5
+        instance.is_available.return_value = {'available': True}
+        instance.load_documents.return_value = ['doc1']
+        instance.create_embeddings.return_value = 5
+        instance.get_stats.return_value = {'count': 5}
         
         with patch('api.rag.StorageService') as MockStorage: # Correct path
             storage = MockStorage.return_value
@@ -119,7 +121,7 @@ def test_dl_train(client, mock_auth, auth_headers):
 # Test Drift Endpoint
 def test_drift_detect(client, mock_auth, auth_headers):
     with patch('api.analysis.DriftService') as MockDrift, \
-         patch('api.analysis.StorageService') as MockStorage:
+         patch('services.storage_service.StorageService') as MockStorage:
          
         MockStorage.return_value.download_file.return_value = b"col1\n1"
         MockDrift.return_value.detect_drift.return_value = {'col1': {'drift_detected': False}}
@@ -159,4 +161,3 @@ def test_optimization_sensitivity(client, mock_auth, auth_headers):
              }, headers=auth_headers)
              assert response.status_code == 200
              assert len(response.get_json()['results']) == 1
-

@@ -13,10 +13,15 @@ class _FakeRagGateway implements RagGateway {
   Object? error;
   Completer<Map<String, dynamic>>? completer;
   String? lastQuestion;
+  String? lastCollectionName;
 
   @override
-  Future<Map<String, dynamic>> askQuestion({required String question}) async {
+  Future<Map<String, dynamic>> askQuestion({
+    required String question,
+    String? collectionName,
+  }) async {
     lastQuestion = question;
+    lastCollectionName = collectionName;
 
     final pending = completer;
     if (pending != null) {
@@ -62,6 +67,21 @@ void main() {
     expect(viewModel.messages[1].content, '42');
     expect(viewModel.messages[1].sources, ['doc-a', 'doc-b']);
     expect(viewModel.isLoading, isFalse);
+
+    viewModel.dispose();
+  });
+
+  test('sendMessage passes collection name through to gateway', () async {
+    final gateway = _FakeRagGateway();
+    final viewModel = RagViewModel(gateway: gateway);
+
+    await viewModel.sendMessage(
+      'What is the answer?',
+      collectionName: 'ops-knowledge',
+    );
+
+    expect(gateway.lastQuestion, 'What is the answer?');
+    expect(gateway.lastCollectionName, 'ops-knowledge');
 
     viewModel.dispose();
   });

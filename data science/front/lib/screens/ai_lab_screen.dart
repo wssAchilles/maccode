@@ -253,7 +253,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
       return;
     }
     _ragQuestionController.clear();
-    await _ragViewModel.sendMessage(text);
+    await _ragViewModel.sendMessage(
+      text,
+      collectionName: _ragCollectionController.text.trim(),
+    );
     if (!mounted || !_ragScrollController.hasClients) {
       return;
     }

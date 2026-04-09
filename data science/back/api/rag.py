@@ -43,8 +43,13 @@ def get_status():
     try:
         user = request.user
         uid = user.get('uid')
-        
-        service = RAGService()
+        collection_name = (
+            request.args.get('collection_name')
+            or request.args.get('collection')
+            or f"user_{uid}"
+        )
+
+        service = RAGService(collection_name=collection_name)
         available = service.is_available()
 
         stats = {}
@@ -54,6 +59,7 @@ def get_status():
         return jsonify({
             'success': True,
             'available': available.get('available', False),
+            'collection': collection_name,
             'backend': stats.get('backend'),
             'dependencies': available,
             'stats': stats
@@ -96,7 +102,7 @@ def ingest_documents():
             
         logger.info(f"[{uid}] 开始 RAG 索引构建: {storage_path}")
         
-        service = RAGService()
+        service = RAGService(collection_name=collection_name)
         availability = service.is_available()
         if not availability.get('available'):
             raise ValidationError('RAG 服务当前不可用')
@@ -171,10 +177,14 @@ def query_rag():
         if not query_text:
             raise ValidationError('缺少参数: query')
             
-        service = RAGService()
+        service = RAGService(collection_name=collection_name)
         availability = service.is_available()
         if not availability.get('available'):
             raise ValidationError('RAG 服务不可用')
+        try:
+            n_results = max(1, int(n_results))
+        except (TypeError, ValueError):
+            raise ValidationError('n_results 必须为正整数')
             
         # 执行查询
         answer_result = service.answer_question(query_text, top_k=n_results)
@@ -192,9 +202,12 @@ def query_rag():
 
         return jsonify({
             'success': True,
+            'collection': collection_name,
             'result': answer_result
         }), 200
 
+    except ValidationError as e:
+        return jsonify({'success': False, 'error': 'VALIDATION_ERROR', 'message': str(e)}), 400
     except Exception as e:
         logger.error(f"RAG 查询失败: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': 'SERVER_ERROR', 'message': str(e)}), 500

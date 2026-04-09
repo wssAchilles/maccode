@@ -480,8 +480,14 @@ class _MainNavigationState extends State<MainNavigation> {
     if (summary == null) {
       return null;
     }
-    if (summary.alerts.isNotEmpty) {
-      return summary.alerts.first.title;
+    for (final alert in summary.alerts) {
+      final title = alert.title.trim();
+      if (title.isEmpty) {
+        continue;
+      }
+      if (!title.endsWith('状态异常')) {
+        return title;
+      }
     }
     if (summary.kpis.failedJobs > 0) {
       return '当前有 ${summary.kpis.failedJobs} 个失败任务需要关注';

@@ -26,7 +26,7 @@ class RagViewModel extends ChangeNotifier {
     _notifySafely();
   }
 
-  Future<void> sendMessage(String rawText) async {
+  Future<void> sendMessage(String rawText, {String? collectionName}) async {
     final text = rawText.trim();
     if (text.isEmpty || _isLoading) {
       return;
@@ -37,7 +37,12 @@ class RagViewModel extends ChangeNotifier {
     _notifySafely();
 
     try {
-      final result = await _gateway.askQuestion(question: text);
+      final result = await _gateway.askQuestion(
+        question: text,
+        collectionName: collectionName?.trim().isEmpty ?? true
+            ? null
+            : collectionName!.trim(),
+      );
       final answer = (result['answer'] ?? 'No answer found.').toString();
       final rawSources = result['context'];
       final sources = rawSources is List<dynamic>
@@ -51,7 +56,7 @@ class RagViewModel extends ChangeNotifier {
     } catch (e) {
       _messages = [
         ..._messages,
-        RagMessage(role: 'error', content: 'Error: $e'),
+        RagMessage(role: 'error', content: e.toString()),
       ];
     } finally {
       _isLoading = false;

@@ -161,6 +161,68 @@ class ComputeAccelerationService:
         return 'info'
 
     @classmethod
+    def _recent_status_window(cls, recent_durations: List[Any]) -> List[float]:
+        window_size = max(1, int(getattr(Config, 'COMPUTE_STATUS_WINDOW', 5) or 5))
+        normalized = [
+            float(value)
+            for value in list(recent_durations or [])
+            if value is not None
+        ]
+        if not normalized:
+            return []
+        return normalized[-window_size:]
+
+    @classmethod
+    def _runtime_component_status(
+        cls,
+        *,
+        component: str,
+        last_duration_ms: float,
+        avg_duration_ms: float,
+        p95_duration_ms: float,
+        recent_durations: List[Any],
+        active_backend: str,
+        native_enabled: bool,
+        native_available: bool,
+    ) -> str:
+        threshold = cls._warning_threshold(component)
+        error_budget = threshold * 1.6
+        status_window = cls._recent_status_window(recent_durations)
+        if native_enabled and not native_available:
+            return 'warning'
+
+        if not status_window:
+            return cls._component_status(
+                component=component,
+                duration_ms=last_duration_ms,
+                p95_duration_ms=p95_duration_ms,
+                active_backend=active_backend,
+                native_enabled=native_enabled,
+                native_available=native_available,
+            )
+
+        latest_duration = float(status_window[-1])
+        trailing_error_count = sum(
+            value >= error_budget for value in status_window[-3:]
+        )
+        trailing_warning_count = sum(value >= threshold for value in status_window)
+        window_p95 = cls._percentile(status_window, 95.0)
+        window_avg = sum(status_window) / len(status_window)
+
+        if latest_duration >= error_budget or trailing_error_count >= 2:
+            return 'error'
+        if (
+            latest_duration >= threshold
+            or trailing_warning_count >= 2
+            or window_p95 >= error_budget
+            or window_avg >= threshold
+        ):
+            return 'warning'
+        if active_backend:
+            return 'ok'
+        return 'info'
+
+    @classmethod
     def _recommended_action(
         cls,
         *,
@@ -377,8 +439,6 @@ class ComputeAccelerationService:
                 continue
             component_key = str(item.get('component') or '')
             component_status = str(item.get('status') or 'info')
-            if cls.STATUS_ORDER.get(component_status, 0) > cls.STATUS_ORDER.get(overall_status, 0):
-                overall_status = component_status
             updated_at = item.get('last_updated_at')
             if isinstance(updated_at, str):
                 try:
@@ -389,6 +449,19 @@ class ComputeAccelerationService:
                 last_updated_at is None or updated_at > last_updated_at
             ):
                 last_updated_at = updated_at
+            recent_durations = list(item.get('recent_durations_ms') or [])
+            runtime_status = cls._runtime_component_status(
+                component=component_key,
+                last_duration_ms=float(item.get('last_duration_ms') or 0.0),
+                avg_duration_ms=float(item.get('avg_duration_ms') or 0.0),
+                p95_duration_ms=float(item.get('p95_duration_ms') or 0.0),
+                recent_durations=recent_durations,
+                active_backend=str(item.get('active_backend') or 'python_pandas'),
+                native_enabled=bool(item.get('native_enabled')),
+                native_available=bool(item.get('native_available')),
+            )
+            if cls.STATUS_ORDER.get(runtime_status, 0) > cls.STATUS_ORDER.get(overall_status, 0):
+                overall_status = runtime_status
             contexts = list(item.get('contexts') or [])
             last_context = item.get('last_context') or ''
             benchmark_context = next(
@@ -431,7 +504,7 @@ class ComputeAccelerationService:
                 {
                     'key': component_key,
                     'label': item.get('label') or '--',
-                    'status': component_status,
+                    'status': runtime_status,
                     'active_backend': item.get('active_backend') or 'python_pandas',
                     'preferred_backend': item.get('preferred_backend') or native_status.preferred_backend,
                     'native_enabled': bool(item.get('native_enabled')),
@@ -443,7 +516,12 @@ class ComputeAccelerationService:
                     'last_rows': int(item.get('last_rows') or 0),
                     'last_context': item.get('last_context') or '',
                     'contexts': list(item.get('contexts') or []),
-                    'recommended_action': item.get('recommended_action') or '保持监控',
+                    'recommended_action': cls._recommended_action(
+                        status=runtime_status,
+                        active_backend=str(item.get('active_backend') or 'python_pandas'),
+                        native_enabled=bool(item.get('native_enabled')),
+                        native_available=bool(item.get('native_available')),
+                    ),
                 }
             )
 
@@ -580,14 +658,17 @@ class ComputeAccelerationService:
         hottest = normalized_components[0]
         hottest_label = str(hottest.get('label') or '--')
         recommended_action = str(hottest.get('recommended_action') or '').strip()
+        hottest_status = str(hottest.get('status') or 'info')
 
         if source_label == 'local':
             return 'Compute acceleration telemetry active (local snapshot)'
         if overall_status == 'error':
-            return f'{hottest_label} compute telemetry is over budget'
+            return f'{hottest_label} latency is still over budget'
         if overall_status == 'warning':
             if global_native_enabled and not global_native_available:
                 return native_status.reason
+            if hottest_status == 'warning':
+                return f'{hottest_label} shows recent latency spikes'
             if recommended_action:
                 return recommended_action
         if active_backend == 'native_cpp':

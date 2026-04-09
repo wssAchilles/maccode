@@ -82,9 +82,11 @@ class Config:
     COMPUTE_SCENARIO_VECTOR_MIN_SPEEDUP = float(
         os.getenv('COMPUTE_SCENARIO_VECTOR_MIN_SPEEDUP', '1.05'),
     )
+    COMPUTE_STATUS_WINDOW = int(os.getenv('COMPUTE_STATUS_WINDOW', '5'))
     COMPUTE_BENCHMARK_STALE_HOURS = int(
         os.getenv('COMPUTE_BENCHMARK_STALE_HOURS', '168'),
     )
+    RAG_BACKEND_MODE = os.getenv('RAG_BACKEND_MODE', 'storage_fallback').lower()
 
     # 优化业务配置
     BATTERY_CONFIG = {

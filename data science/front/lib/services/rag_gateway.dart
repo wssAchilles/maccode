@@ -4,7 +4,10 @@ library;
 import 'api_client.dart';
 
 abstract class RagGateway {
-  Future<Map<String, dynamic>> askQuestion({required String question});
+  Future<Map<String, dynamic>> askQuestion({
+    required String question,
+    String? collectionName,
+  });
 }
 
 class ApiRagGateway implements RagGateway {
@@ -14,7 +17,13 @@ class ApiRagGateway implements RagGateway {
   final ApiClient _apiClient;
 
   @override
-  Future<Map<String, dynamic>> askQuestion({required String question}) {
-    return _apiClient.askRagQuestion(question: question);
+  Future<Map<String, dynamic>> askQuestion({
+    required String question,
+    String? collectionName,
+  }) {
+    return _apiClient.askRagQuestion(
+      question: question,
+      collectionName: collectionName,
+    );
   }
 }

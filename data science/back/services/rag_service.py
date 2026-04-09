@@ -28,6 +28,7 @@ Settings = None
 # NumPy 用于向量计算
 import numpy as np
 
+from config import Config
 from services.storage_service import StorageService
 
 
@@ -72,6 +73,21 @@ class RAGService:
         
         # 不再在初始化时强制加载，改为按需加载或检查
         # self._initialize() 将在第一次使用功能时尝试运行
+
+    def _backend_mode(self) -> str:
+        raw_mode = str(getattr(Config, 'RAG_BACKEND_MODE', 'storage_fallback') or '')
+        mode = raw_mode.strip().lower()
+        if mode in {'storage_fallback', 'vector', 'auto'}:
+            return mode
+        return 'storage_fallback'
+
+    def _should_use_storage_fallback(self) -> bool:
+        mode = self._backend_mode()
+        if mode == 'storage_fallback':
+            return True
+        if mode == 'vector':
+            return False
+        return not self._full_backend_available() or self._ensure_fallback_index_loaded() is not None
     
     @staticmethod
     def _ensure_dependencies():
@@ -233,7 +249,7 @@ class RAGService:
         return payload
 
     def reset_collection(self) -> None:
-        if self._full_backend_available():
+        if self._full_backend_available() and not self._should_use_storage_fallback():
             self._initialize()
             if self.chroma_client is not None:
                 try:
@@ -472,7 +488,7 @@ class RAGService:
             return 0
 
         print(f"🔢 创建向量嵌入 ({len(documents)} 文档)...")
-        if self._full_backend_available():
+        if self._full_backend_available() and not self._should_use_storage_fallback():
             self._initialize()
 
             texts = [doc.content for doc in documents]
@@ -513,7 +529,7 @@ class RAGService:
         Returns:
             相关文档列表
         """
-        if self._full_backend_available():
+        if self._full_backend_available() and not self._should_use_storage_fallback():
             self._initialize()
 
             question_embedding = self.model.encode([question])[0]
@@ -640,7 +656,7 @@ class RAGService:
     
     def get_stats(self) -> Dict[str, Any]:
         """获取向量数据库统计"""
-        if self._full_backend_available():
+        if self._full_backend_available() and not self._should_use_storage_fallback():
             self._initialize()
             if self.collection is None:
                 return {'error': 'Collection not initialized'}
