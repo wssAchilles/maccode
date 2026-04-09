@@ -110,6 +110,7 @@ class DataPipelineScheduler:
         self._dispatch_created_operation(operation)
         
         logger.info("="*80 + "\n")
+        return operation
     
     def train_model_job(self):
         """
@@ -149,6 +150,7 @@ class DataPipelineScheduler:
         self._dispatch_created_operation(operation)
         
         logger.info("="*80 + "\n")
+        return operation
     
     def start(self):
         """

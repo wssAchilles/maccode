@@ -98,10 +98,11 @@ class SchedulerDispatchTestCase(unittest.TestCase):
         ) as dispatch_operation, patch(
             'scheduler.OperationService.execute_operation',
         ) as execute_operation:
-            scheduler.fetch_data_job()
+            result = scheduler.fetch_data_job()
 
         dispatch_operation.assert_called_once_with(self.app, 'fetch-op-1', 'fetch_data')
         execute_operation.assert_not_called()
+        self.assertEqual(result, operation)
 
     def test_train_model_job_dispatches_via_operation_dispatcher(self):
         scheduler = DataPipelineScheduler(app=self.app)
@@ -118,10 +119,11 @@ class SchedulerDispatchTestCase(unittest.TestCase):
         ) as dispatch_operation, patch(
             'scheduler.OperationService.execute_operation',
         ) as execute_operation:
-            scheduler.train_model_job()
+            result = scheduler.train_model_job()
 
         dispatch_operation.assert_called_once_with(self.app, 'train-op-1', 'train_model')
         execute_operation.assert_not_called()
+        self.assertEqual(result, operation)
 
     def test_scheduler_falls_back_to_inline_process_dispatch_without_app(self):
         scheduler = DataPipelineScheduler()
@@ -138,10 +140,11 @@ class SchedulerDispatchTestCase(unittest.TestCase):
         ) as process_dispatch, patch(
             'scheduler.OperationService.dispatch_operation',
         ) as dispatch_operation:
-            scheduler.fetch_data_job()
+            result = scheduler.fetch_data_job()
 
         process_dispatch.assert_called_once_with('fetch-op-2')
         dispatch_operation.assert_not_called()
+        self.assertEqual(result, operation)
 
 
 if __name__ == '__main__':

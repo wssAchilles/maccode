@@ -85,6 +85,12 @@ def create_app(config_name=None):
         # GAE 会自动添加此 Header，外部无法伪造
         return request.headers.get('X-Appengine-Cron') == 'true'
 
+    def _verify_internal_task_request():
+        """Allow internal operational replay without weakening cron-only routes."""
+        if app.config.get('DEBUG') or app.config.get('TESTING'):
+            return True
+        return request.headers.get('X-Internal-Job-Token') == app.config.get('INTERNAL_JOB_TOKEN')
+
     @app.route('/tasks/fetch-data', methods=['GET'])
     def trigger_fetch_data():
         """数据抓取任务触发器"""
@@ -93,8 +99,12 @@ def create_app(config_name=None):
             
         try:
             scheduler = get_scheduler(app)
-            scheduler.fetch_data_job()  # 手动调用 job 逻辑
-            return jsonify({'status': 'success', 'job': 'fetch_data'}), 200
+            operation = scheduler.fetch_data_job()  # 手动调用 job 逻辑
+            return jsonify({
+                'status': 'success',
+                'job': 'fetch_data',
+                'operation_id': operation.get('job_id') if isinstance(operation, dict) else None,
+            }), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
@@ -106,10 +116,39 @@ def create_app(config_name=None):
             
         try:
             scheduler = get_scheduler(app)
-            scheduler.train_model_job()
-            return jsonify({'status': 'success', 'job': 'train_model'}), 200
+            operation = scheduler.train_model_job()
+            return jsonify({
+                'status': 'success',
+                'job': 'train_model',
+                'operation_id': operation.get('job_id') if isinstance(operation, dict) else None,
+            }), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+    @app.route('/internal/tasks/<task_name>/trigger', methods=['POST'])
+    def trigger_internal_task(task_name):
+        """Internal replay endpoint for scheduler-backed tasks."""
+        if not _verify_internal_task_request():
+            return jsonify({'error': 'Unauthorized', 'message': 'Internal job token missing'}), 403
+
+        scheduler = get_scheduler(app)
+        task = str(task_name or '').strip().lower()
+
+        try:
+            if task == 'fetch_data':
+                operation = scheduler.fetch_data_job()
+            elif task == 'train_model':
+                operation = scheduler.train_model_job()
+            else:
+                return jsonify({'error': 'Unknown task', 'task': task}), 404
+
+            return jsonify({
+                'status': 'accepted',
+                'job': task,
+                'operation_id': operation.get('job_id') if isinstance(operation, dict) else None,
+            }), 202
+        except Exception as e:
+            return jsonify({'error': str(e), 'task': task}), 500
 
     @app.route('/tasks/status', methods=['GET'])
     def get_task_status():
