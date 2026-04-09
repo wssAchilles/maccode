@@ -22,8 +22,10 @@ class EmbeddedPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleBadges = badges.take(4).toList(growable: false);
+
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 920;
@@ -34,16 +36,18 @@ class EmbeddedPageHeader extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 description,
+                maxLines: compact ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
-              if (badges.isNotEmpty) ...[
+              if (visibleBadges.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: badges
+                  children: visibleBadges
                       .map((badge) => _EmbeddedHeaderBadgeChip(badge: badge))
                       .toList(growable: false),
                 ),

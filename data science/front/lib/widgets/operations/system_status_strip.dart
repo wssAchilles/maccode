@@ -13,11 +13,15 @@ class SystemStatusStrip extends StatelessWidget {
     required this.items,
     this.compact = false,
     this.trailing,
+    this.headline,
+    this.maxVisibleItems,
   });
 
   final List<SystemStatusItem> items;
   final bool compact;
   final Widget? trailing;
+  final String? headline;
+  final int? maxVisibleItems;
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +29,25 @@ class SystemStatusStrip extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final visibleItems = _prioritizeItems(items);
+    final limitedItems = maxVisibleItems == null
+        ? visibleItems
+        : visibleItems.take(maxVisibleItems!).toList(growable: false);
+
     final statusWrap = Wrap(
       spacing: 12,
       runSpacing: 8,
-      children: items.map(_buildItem).toList(growable: false),
+      children: limitedItems.map(_buildItem).toList(growable: false),
+    );
+
+    final content = Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if ((headline ?? '').isNotEmpty) _buildHeadlineChip(headline!),
+        statusWrap,
+      ],
     );
 
     return Container(
@@ -41,14 +60,71 @@ class SystemStatusStrip extends StatelessWidget {
         border: const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: trailing == null
-          ? statusWrap
+          ? content
           : Row(
               children: [
-                Expanded(child: statusWrap),
+                Expanded(child: content),
                 const SizedBox(width: 12),
                 trailing!,
               ],
             ),
+    );
+  }
+
+  List<SystemStatusItem> _prioritizeItems(List<SystemStatusItem> items) {
+    final sorted = [...items];
+    sorted.sort((a, b) {
+      final severityCompare = _severityWeight(
+        a.status,
+      ).compareTo(_severityWeight(b.status));
+      if (severityCompare != 0) {
+        return severityCompare;
+      }
+      return a.label.compareTo(b.label);
+    });
+    return sorted;
+  }
+
+  int _severityWeight(String status) {
+    switch (status) {
+      case 'error':
+        return 0;
+      case 'warning':
+        return 1;
+      case 'ok':
+      case 'healthy':
+        return 2;
+      default:
+        return 3;
+    }
+  }
+
+  Widget _buildHeadlineChip(String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.infoLight,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.visibility_rounded,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

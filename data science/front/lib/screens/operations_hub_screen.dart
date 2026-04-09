@@ -42,7 +42,7 @@ import '../widgets/operations/dataset_asset_card.dart';
 import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/duty_section_block.dart';
 import '../widgets/operations/duty_signal_strip.dart';
-import '../widgets/operations/embedded_page_header.dart';
+import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/incident_priority_strip.dart';
 import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/model_status_card.dart';
@@ -1477,362 +1477,525 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           ),
         );
 
+    final primaryBanner = safeSummary.alerts.isNotEmpty
+        ? DecisionBanner(
+            title: safeSummary.alerts.first.title,
+            message: safeSummary.alerts.first.message,
+            accent: safeSummary.alerts.first.isHighSeverity
+                ? AppColors.error
+                : AppColors.warning,
+            icon: safeSummary.alerts.first.isHighSeverity
+                ? Icons.error_outline_rounded
+                : Icons.warning_amber_rounded,
+          )
+        : DecisionBanner(
+            title: degradedSystems == 0 ? '运行稳定' : '仍有待处理风险',
+            message: safeSummary.dutySummary.focusWatch.isNotEmpty
+                ? safeSummary.dutySummary.focusWatch
+                : (focusChain == null
+                      ? '当前没有新的高优先级链路，建议查看最近关键链路和失败作业。'
+                      : buildChainCurrentWatch(focusChain)),
+            accent: degradedSystems == 0 ? AppColors.success : AppColors.warning,
+            icon: degradedSystems == 0
+                ? Icons.verified_rounded
+                : Icons.priority_high_rounded,
+          );
+    final overviewActions = safeSummary.dutySummary.overviewActions;
+    final primaryAction = overviewActions.isNotEmpty
+        ? DecisionHeaderAction(
+            label: overviewActions.first.label,
+            icon: _dutyActionIcon(
+              overviewActions.first.command,
+              overviewActions.first.chainKey,
+            ),
+            onTap: () => _handleDutyAction(overviewActions.first, safeSummary),
+            isPrimary: true,
+          )
+        : DecisionHeaderAction(
+            label: '查看当前风险',
+            icon: focusChain == null
+                ? Icons.fact_check_rounded
+                : _dutyActionIcon('open_workspace', focusChain.key),
+            onTap: () {
+              if (focusChain != null) {
+                _openChainWorkspace(focusChain, source: 'Overview Hero');
+                return;
+              }
+              widget.onNavigateToTab(4);
+            },
+            isPrimary: true,
+          );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.surfaceMode.isEmbedded) ...[
-          EmbeddedPageHeader(
-            title: 'Operations Hub',
-            description: '统一查看系统状态、最近任务、数据资产和风险提醒。概览页只展示当前最关键的运行信号。',
-            badges: [
-              EmbeddedHeaderBadge(
-                label: '24h 作业',
-                value: '${safeSummary.kpis.jobs24h}',
-                accent: AppColors.primary,
-                icon: Icons.schedule_rounded,
-              ),
-              EmbeddedHeaderBadge(
-                label: '失败任务',
-                value: '${safeSummary.kpis.failedJobs}',
-                accent: safeSummary.kpis.failedJobs > 0
-                    ? AppColors.warning
-                    : AppColors.success,
-                icon: safeSummary.kpis.failedJobs > 0
-                    ? Icons.warning_amber_rounded
-                    : Icons.verified_rounded,
-              ),
-              EmbeddedHeaderBadge(
-                label: '模型资产',
-                value: '${safeSummary.kpis.modelCount}',
-                accent: AppColors.cta,
-                icon: Icons.memory_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-        ],
-        DutyContextBoard(
-          title: '工业能源与 AI 驾驶舱',
-          description: '把作业密度、资产库存、当前值班链路和系统健康收在同一块控制板里，减少概览页顶部的分散摘要。',
-          icon: Icons.space_dashboard_rounded,
-          accent: AppColors.primary,
+        DecisionHeaderCard(
+          title: '今日运营概览',
+          summary: '先看状态、锁定风险，再进入唯一需要处理的工作台。',
           metrics: [
-            DutyMetric(
-              label: '数据资产',
-              value: '${safeSummary.kpis.datasetCount}',
-              color: AppColors.primary,
-            ),
-            DutyMetric(
-              label: '分析记录',
-              value: '${safeSummary.kpis.analysisCount}',
-              color: AppColors.cta,
-            ),
-            DutyMetric(
-              label: '模型资产',
-              value: '${safeSummary.kpis.modelCount}',
-              color: AppColors.success,
-            ),
-            DutyMetric(
-              label: '24h 作业',
+            DecisionHeaderMetric(
+              label: '核心作业',
               value: '${safeSummary.kpis.jobs24h}',
-              color: AppColors.primary,
+              helper: '过去 24 小时',
+              accent: AppColors.primary,
+              icon: Icons.schedule_rounded,
             ),
-            DutyMetric(
-              label: '失败作业',
-              value: '${safeSummary.kpis.failedJobs}',
-              color: safeSummary.kpis.failedJobs > 0
-                  ? AppColors.error
-                  : AppColors.success,
-            ),
-          ],
-          signalStrip: DutySignalStrip(
-            summary: safeSummary.dutySummary,
-            accent: AppColors.primary,
-          ),
-          currentWatch: safeSummary.dutySummary.focusWatch.isNotEmpty
-              ? safeSummary.dutySummary.focusWatch
-              : (focusChain == null
-                    ? '当前暂无高优先级资产链路，优先关注系统状态、失败作业和统一事件总线。'
-                    : buildChainCurrentWatch(focusChain)),
-          contextFacts: [
-            if (focusChain != null)
-              DutyContextFact(
-                label: '工作台',
-                value: focusChain.workspaceTargetLabel,
-                icon: Icons.account_tree_rounded,
-                foreground: AppColors.primary,
-                background: AppColors.infoLight,
-              ),
-            if (cardFactValue != null)
-              DutyContextFact(
-                label: '卡片',
-                value: cardFactValue,
-                icon: Icons.dashboard_customize_rounded,
-              ),
-            if (incidentFactValue != null)
-              DutyContextFact(
-                label: '值班',
-                value: incidentFactValue,
-                icon: Icons.priority_high_rounded,
-                foreground: AppColors.warning,
-                background: AppColors.warningLight,
-              ),
-            if (safeSummary.dutySummary.focusOwnerLabel != '--')
-              DutyContextFact(
-                label: '责任',
-                value: safeSummary.dutySummary.focusOwnerLabel,
-                icon: Icons.badge_rounded,
-              ),
-            if (safeSummary.dutySummary.focusEscalationStateLabel != '--')
-              DutyContextFact(
-                label: '升级',
-                value: safeSummary.dutySummary.focusEscalationStateLabel,
-                icon: Icons.escalator_warning_rounded,
-                foreground: safeSummary.dutySummary.escalatedCount > 0
-                    ? AppColors.warning
-                    : AppColors.textSecondary,
-                background: safeSummary.dutySummary.escalatedCount > 0
-                    ? AppColors.warningLight
-                    : AppColors.background,
-              ),
-            DutyContextFact(
-              label: '系统',
-              value: degradedSystems == 0 ? '健康' : '$degradedSystems 项关注',
-              icon: Icons.health_and_safety_rounded,
-              foreground: degradedSystems == 0
+            DecisionHeaderMetric(
+              label: '当前风险',
+              value: degradedSystems == 0
+                  ? '稳定'
+                  : '$degradedSystems 项需要关注',
+              helper: '系统与资产链路',
+              accent: degradedSystems == 0
                   ? AppColors.success
                   : AppColors.warning,
-              background: degradedSystems == 0
-                  ? AppColors.successLight
-                  : AppColors.warningLight,
+              icon: Icons.health_and_safety_rounded,
             ),
-            DutyContextFact(
-              label: '告警',
-              value: '${safeSummary.alerts.length}',
-              icon: Icons.notifications_active_rounded,
+            DecisionHeaderMetric(
+              label: '失败任务',
+              value: '${safeSummary.kpis.failedJobs}',
+              helper: '优先处理失败与超时',
+              accent: safeSummary.kpis.failedJobs > 0
+                  ? AppColors.error
+                  : AppColors.success,
+              icon: Icons.warning_amber_rounded,
+            ),
+            DecisionHeaderMetric(
+              label: '关键资产',
+              value:
+                  '${safeSummary.kpis.datasetCount + safeSummary.kpis.modelCount + safeSummary.kpis.knowledgeCount}',
+              helper: '数据、模型与知识',
+              accent: AppColors.cta,
+              icon: Icons.inventory_2_rounded,
             ),
           ],
-          footerTitle: '值班动作',
-          footer: WorkspaceInlineActionBar(
-            spacing: 12,
-            runSpacing: 12,
-            recommendedActionKey: _recommendedDutyActionKey(
-              safeSummary.dutySummary,
-              safeSummary.dutySummary.overviewActions,
-            ),
-            actions: safeSummary.dutySummary.overviewActions.isNotEmpty
-                ? safeSummary.dutySummary.overviewActions
-                      .map(
-                        (action) => WorkspaceActionLaneAction(
-                          label: action.label,
-                          icon: _dutyActionIcon(
-                            action.command,
-                            action.chainKey,
-                          ),
-                          semanticKey: '${action.command}:${action.chainKey}',
-                          onTap: () => _handleDutyAction(action, safeSummary),
-                          tone: _dutyActionTone(action.tone),
+          primaryAction: primaryAction,
+          banner: primaryBanner,
+        ),
+        const SizedBox(height: 20),
+        PrimaryWorkflowPanel(
+          eyebrow: '业务决策视角',
+          title: '当前风险与推荐动作',
+          summary: '首屏只保留当前风险、推荐动作和最近关键链路，其他运营面板全部下沉。',
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 1040;
+              final actions = overviewActions.isNotEmpty
+                  ? overviewActions.skip(1).take(3).map((action) {
+                      return OutlinedButton.icon(
+                        onPressed: () => _handleDutyAction(action, safeSummary),
+                        icon: Icon(
+                          _dutyActionIcon(action.command, action.chainKey),
                         ),
-                      )
-                      .toList(growable: false)
-                : [
-                    _fallbackDutyQuickAction(
-                      summary: safeSummary,
-                      chainKey: 'dataset',
-                      label: '上传并分析数据',
-                      icon: Icons.upload_file_rounded,
-                      chain: datasetChain,
-                      fallbackTab: 2,
-                      semanticKey: 'open_workspace:dataset',
-                      tone: WorkspaceActionLaneTone.primary,
+                        label: Text(action.label),
+                      );
+                    }).toList(growable: false)
+                  : [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          if (optimizationChain != null) {
+                            _openChainWorkspace(
+                              optimizationChain,
+                              source: 'Overview Workflow',
+                            );
+                            return;
+                          }
+                          widget.onNavigateToTab(1);
+                        },
+                        icon: const Icon(Icons.bolt_rounded),
+                        label: const Text('查看能源优化'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          if (datasetChain != null) {
+                            _openChainWorkspace(
+                              datasetChain,
+                              source: 'Overview Workflow',
+                            );
+                            return;
+                          }
+                          widget.onNavigateToTab(2);
+                        },
+                        icon: const Icon(Icons.analytics_rounded),
+                        label: const Text('查看数据分析'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          if (modelChain != null) {
+                            _openChainWorkspace(
+                              modelChain,
+                              source: 'Overview Workflow',
+                            );
+                            return;
+                          }
+                          widget.onNavigateToTab(3);
+                        },
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('查看 AI Lab'),
+                      ),
+                    ];
+              final failureChains = safeSummary.assetSummary.failureChains
+                  .take(3)
+                  .toList(growable: false);
+
+              Widget buildRiskColumn() {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _OverviewInsightCard(
+                      title: '当前风险',
+                      subtitle: primaryBanner.title,
+                      accent: safeSummary.alerts.isNotEmpty
+                          ? (safeSummary.alerts.first.isHighSeverity
+                                ? AppColors.error
+                                : AppColors.warning)
+                          : (degradedSystems == 0
+                                ? AppColors.success
+                                : AppColors.warning),
+                      body: safeSummary.dutySummary.focusWatch.isNotEmpty
+                          ? safeSummary.dutySummary.focusWatch
+                          : (focusChain?.workspaceBrief ??
+                                '优先处理失败作业、升级项和最新异常链路。'),
                     ),
-                    _fallbackDutyQuickAction(
-                      summary: safeSummary,
-                      chainKey: 'optimization',
-                      label: '运行能源优化',
-                      icon: Icons.bolt_rounded,
-                      chain: optimizationChain,
-                      fallbackTab: 1,
-                      semanticKey: 'open_workspace:optimization',
-                      tone: WorkspaceActionLaneTone.tonal,
-                    ),
-                    _fallbackDutyQuickAction(
-                      summary: safeSummary,
-                      chainKey: 'model',
-                      label: '开始模型训练',
-                      icon: Icons.model_training_rounded,
-                      chain: modelChain,
-                      fallbackTab: 3,
-                      semanticKey: 'open_workspace:model',
-                    ),
-                    _fallbackDutyQuickAction(
-                      summary: safeSummary,
-                      chainKey: 'knowledge',
-                      label: '构建知识库',
-                      icon: Icons.auto_awesome_rounded,
-                      chain: knowledgeChain,
-                      fallbackTab: 3,
-                      semanticKey: 'open_workspace:knowledge',
-                    ),
-                    WorkspaceActionLaneAction(
-                      label: '查看历史与审计',
-                      icon: Icons.fact_check_rounded,
-                      semanticKey: 'open_audit:',
-                      onTap: () => widget.onNavigateToTab(4),
+                    const SizedBox(height: 16),
+                    _OverviewInsightCard(
+                      title: '推荐动作',
+                      subtitle: '先完成一项关键动作，再进入工作台深挖。',
+                      accent: AppColors.primary,
+                      body: '',
+                      bodyChild: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: actions,
+                      ),
                     ),
                   ],
+                );
+              }
+
+              Widget buildChainColumn() {
+                return _OverviewInsightCard(
+                  title: '最近关键链路',
+                  subtitle: '只展示最值得打开的链路，不再把所有运行板块堆在首屏。',
+                  accent: AppColors.cta,
+                  body: '',
+                  bodyChild: failureChains.isEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              focusChain == null
+                                  ? '当前没有失败链路，建议转到历史与审计查看最近记录。'
+                                  : focusChain.workspaceBrief,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            if (focusChain != null) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () => _openChainWorkspace(
+                                  focusChain,
+                                  source: 'Recent Key Chain',
+                                ),
+                                icon: Icon(
+                                  _dutyActionIcon(
+                                    'open_workspace',
+                                    focusChain.key,
+                                  ),
+                                ),
+                                label: Text('进入${focusChain.workspaceTargetLabel}'),
+                              ),
+                            ],
+                          ],
+                        )
+                      : Column(
+                          children: failureChains
+                              .map(
+                                (chain) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _OverviewChainCard(
+                                    title: chain.label,
+                                    subtitle:
+                                        '${chain.contextLabel} · ${chain.latestPhase}',
+                                    description: chain.errorMessage.isNotEmpty
+                                        ? chain.errorMessage
+                                        : chain.statusMessage,
+                                    actionLabel: chain.actionLabel,
+                                    actionIcon: _dutyActionIcon(
+                                      'open_workspace',
+                                      chain.key,
+                                    ),
+                                    onTap: () =>
+                                        _openOverviewChainByKey(
+                                          safeSummary,
+                                          chain.key,
+                                          source: 'Recent Key Chain',
+                                        ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                );
+              }
+
+              if (stacked) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildRiskColumn(),
+                    const SizedBox(height: 16),
+                    buildChainColumn(),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: buildRiskColumn()),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 5, child: buildChainColumn()),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 20),
-        IncidentPriorityStrip(
-          summary: safeSummary.assetSummary,
-          dutySummary: safeSummary.dutySummary,
-          onOpenChain: (chain) {
-            _openChainWorkspace(chain, source: '优先值班链路');
-          },
-        ),
-        const SizedBox(height: 20),
-        IncidentRunbookBoard(
-          summary: safeSummary.assetSummary,
-          dutySummary: safeSummary.dutySummary,
-          trailing:
-              _isDutyFocusSection(
-                'runbook',
-                safeSummary.dutySummary,
-                _operationsSectionFocusOrder,
-              )
-              ? _dutyFocusChip()
-              : null,
-          onOpenChain: (chain) {
-            _openChainWorkspace(chain, source: '处置清单');
-          },
+        ProgressiveDetailSection(
+          title: '运营详情',
+          summary: '值班链路、资产台账、事件流和系统提醒保留在这里，需要时再展开。',
+          icon: Icons.dashboard_customize_rounded,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IncidentPriorityStrip(
+                summary: safeSummary.assetSummary,
+                dutySummary: safeSummary.dutySummary,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: '优先值班链路');
+                },
+              ),
+              const SizedBox(height: 20),
+              IncidentRunbookBoard(
+                summary: safeSummary.assetSummary,
+                dutySummary: safeSummary.dutySummary,
+                trailing:
+                    _isDutyFocusSection(
+                      'runbook',
+                      safeSummary.dutySummary,
+                      _operationsSectionFocusOrder,
+                    )
+                    ? _dutyFocusChip()
+                    : null,
+                onOpenChain: (chain) {
+                  _openChainWorkspace(chain, source: '处置清单');
+                },
+              ),
+              const SizedBox(height: 20),
+              _deferredSectionsReady
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final stacked = constraints.maxWidth < 1040;
+                        if (stacked) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0;
+                                  i < orderedSections.length;
+                                  i++) ...[
+                                orderedSections[i].value,
+                                if (i < orderedSections.length - 1)
+                                  const SizedBox(height: 20),
+                              ],
+                            ],
+                          );
+                        }
+
+                        final leftSections = <Widget>[];
+                        final rightSections = <Widget>[];
+                        for (var i = 0; i < orderedSections.length; i++) {
+                          final target = i.isEven ? leftSections : rightSections;
+                          target.add(orderedSections[i].value);
+                          if (i + 2 < orderedSections.length) {
+                            target.add(const SizedBox(height: 20));
+                          }
+                        }
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 7,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: leftSections,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              flex: 5,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: rightSections,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    )
+                  : const _DeferredSectionsPlaceholder(),
+            ],
+          ),
         ),
         if (safeSummary.controlPlane.enabled ||
-            safeSummary.controlPlane.message.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          ControlPlaneStatusBoard(status: safeSummary.controlPlane),
-        ],
-        if (safeSummary.computeAcceleration.enabled ||
+            safeSummary.controlPlane.message.isNotEmpty ||
+            safeSummary.computeAcceleration.enabled ||
             safeSummary.computeAcceleration.components.isNotEmpty ||
-            safeSummary.computeAcceleration.message.isNotEmpty) ...[
+            safeSummary.computeAcceleration.message.isNotEmpty ||
+            widget.computeGovernanceViewModel != null) ...[
           const SizedBox(height: 20),
-          ComputeAccelerationBoard(status: safeSummary.computeAcceleration),
-        ],
-        if (widget.computeGovernanceViewModel != null) ...[
-          const SizedBox(height: 20),
-          ComputeRolloutGovernanceBoard(
-            policy: _computePolicy.components.isEmpty
-                ? safeSummary.computeAcceleration.rollout
-                : _computePolicy,
-            isLoading: widget.computeGovernanceViewModel!.isLoading,
-            isUpdatingComponent:
-                widget.computeGovernanceViewModel!.isUpdatingComponent,
-            onRequestRolloutMode: _requestComputeRolloutModeChange,
-            onRunBenchmark: _runComputeBenchmark,
-          ),
-          const SizedBox(height: 20),
-          ComputeGovernanceActivityBoard(
-            entries: _computeActivity,
-            isLoading: widget.computeGovernanceViewModel!.isLoading,
-            onOpenOperation: _openComputeGovernanceActivity,
-          ),
-        ],
-        if (widget.controlTaskViewModel != null) ...[
-          const SizedBox(height: 20),
-          ControlTaskBoard(
-            tasks: _controlTasks,
-            isLoading: widget.controlTaskViewModel!.isLoading,
-            errorMessage: widget.controlTaskViewModel!.errorMessage,
-            onRetry: _refreshSharedProjection,
-            onRunTask: _runControlTask,
-            isTaskRunning: widget.controlTaskViewModel!.isRunningTask,
-            onToggleTask: _toggleControlTask,
-            isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
-            onToggleApproval: _toggleControlTaskApproval,
-            onEditDefinition: _editControlTaskDefinition,
-            onInspectTaskId: _inspectControlTask,
-            highlightedTaskId: _highlightedControlTaskId,
-            onOpenLatestOperation: (operation) =>
-                _openOperationConsole(operation.operationId),
-          ),
-        ],
-        if (widget.approvalQueueViewModel != null) ...[
-          const SizedBox(height: 20),
-          ApprovalQueueBoard(
-            jobs: _approvalJobs,
-            isLoading: widget.approvalQueueViewModel!.isLoading,
-            errorMessage: widget.approvalQueueViewModel!.errorMessage,
-            onRefresh: _refreshSharedProjection,
-            onApprove: (job) => _resolveApproval(job, approved: true),
-            onReject: (job) => _resolveApproval(job, approved: false),
-            isUpdating: widget.approvalQueueViewModel!.isUpdating,
-            onOpenDetails: (job) =>
-                _openOperationConsole(job.operationId ?? job.jobId, seed: job),
+          ProgressiveDetailSection(
+            title: '控制面与计算治理',
+            summary: '控制面状态、加速配置和基准治理下沉到这里，不再占首屏。',
+            icon: Icons.tune_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (safeSummary.controlPlane.enabled ||
+                    safeSummary.controlPlane.message.isNotEmpty)
+                  ControlPlaneStatusBoard(status: safeSummary.controlPlane),
+                if (safeSummary.computeAcceleration.enabled ||
+                    safeSummary.computeAcceleration.components.isNotEmpty ||
+                    safeSummary.computeAcceleration.message.isNotEmpty) ...[
+                  if (safeSummary.controlPlane.enabled ||
+                      safeSummary.controlPlane.message.isNotEmpty)
+                    const SizedBox(height: 20),
+                  ComputeAccelerationBoard(
+                    status: safeSummary.computeAcceleration,
+                  ),
+                ],
+                if (widget.computeGovernanceViewModel != null) ...[
+                  if (safeSummary.controlPlane.enabled ||
+                      safeSummary.controlPlane.message.isNotEmpty ||
+                      safeSummary.computeAcceleration.enabled ||
+                      safeSummary.computeAcceleration.components.isNotEmpty ||
+                      safeSummary.computeAcceleration.message.isNotEmpty)
+                    const SizedBox(height: 20),
+                  ComputeRolloutGovernanceBoard(
+                    policy: _computePolicy.components.isEmpty
+                        ? safeSummary.computeAcceleration.rollout
+                        : _computePolicy,
+                    isLoading: widget.computeGovernanceViewModel!.isLoading,
+                    isUpdatingComponent:
+                        widget.computeGovernanceViewModel!.isUpdatingComponent,
+                    onRequestRolloutMode: _requestComputeRolloutModeChange,
+                    onRunBenchmark: _runComputeBenchmark,
+                  ),
+                  const SizedBox(height: 20),
+                  ComputeGovernanceActivityBoard(
+                    entries: _computeActivity,
+                    isLoading: widget.computeGovernanceViewModel!.isLoading,
+                    onOpenOperation: _openComputeGovernanceActivity,
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
-        if (widget.operationConsoleViewModel != null) ...[
+        if (widget.controlTaskViewModel != null ||
+            widget.approvalQueueViewModel != null ||
+            widget.operationConsoleViewModel != null) ...[
           const SizedBox(height: 20),
-          OperationConsoleBoard(
-            viewModel: widget.operationConsoleViewModel!,
-            onApprove: () => _resolveSelectedOperationApproval(approved: true),
-            onReject: () => _resolveSelectedOperationApproval(approved: false),
-            onRetry: _retrySelectedOperation,
-            onCancel: _cancelSelectedOperation,
+          ProgressiveDetailSection(
+            title: '任务与审批',
+            summary: '控制任务、审批队列和运行控制台统一收口，避免和概览信息混排。',
+            icon: Icons.fact_check_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.controlTaskViewModel != null)
+                  ControlTaskBoard(
+                    tasks: _controlTasks,
+                    isLoading: widget.controlTaskViewModel!.isLoading,
+                    errorMessage: widget.controlTaskViewModel!.errorMessage,
+                    onRetry: _refreshSharedProjection,
+                    onRunTask: _runControlTask,
+                    isTaskRunning: widget.controlTaskViewModel!.isRunningTask,
+                    onToggleTask: _toggleControlTask,
+                    isTaskUpdating: widget.controlTaskViewModel!.isUpdatingTask,
+                    onToggleApproval: _toggleControlTaskApproval,
+                    onEditDefinition: _editControlTaskDefinition,
+                    onInspectTaskId: _inspectControlTask,
+                    highlightedTaskId: _highlightedControlTaskId,
+                    onOpenLatestOperation: (operation) =>
+                        _openOperationConsole(operation.operationId),
+                  ),
+                if (widget.approvalQueueViewModel != null) ...[
+                  if (widget.controlTaskViewModel != null)
+                    const SizedBox(height: 20),
+                  ApprovalQueueBoard(
+                    jobs: _approvalJobs,
+                    isLoading: widget.approvalQueueViewModel!.isLoading,
+                    errorMessage: widget.approvalQueueViewModel!.errorMessage,
+                    onRefresh: _refreshSharedProjection,
+                    onApprove: (job) => _resolveApproval(job, approved: true),
+                    onReject: (job) => _resolveApproval(job, approved: false),
+                    isUpdating: widget.approvalQueueViewModel!.isUpdating,
+                    onOpenDetails: (job) => _openOperationConsole(
+                      job.operationId ?? job.jobId,
+                      seed: job,
+                    ),
+                  ),
+                ],
+                if (widget.operationConsoleViewModel != null) ...[
+                  if (widget.controlTaskViewModel != null ||
+                      widget.approvalQueueViewModel != null)
+                    const SizedBox(height: 20),
+                  OperationConsoleBoard(
+                    viewModel: widget.operationConsoleViewModel!,
+                    onApprove: () =>
+                        _resolveSelectedOperationApproval(approved: true),
+                    onReject: () =>
+                        _resolveSelectedOperationApproval(approved: false),
+                    onRetry: _retrySelectedOperation,
+                    onCancel: _cancelSelectedOperation,
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
-        const SizedBox(height: 20),
-        _deferredSectionsReady
-            ? LayoutBuilder(
-                builder: (context, constraints) {
-                  final stacked = constraints.maxWidth < 1040;
-                  if (stacked) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var i = 0; i < orderedSections.length; i++) ...[
-                          orderedSections[i].value,
-                          if (i < orderedSections.length - 1)
-                            const SizedBox(height: 20),
-                        ],
-                      ],
-                    );
-                  }
-
-                  final leftSections = <Widget>[];
-                  final rightSections = <Widget>[];
-                  for (var i = 0; i < orderedSections.length; i++) {
-                    final target = i.isEven ? leftSections : rightSections;
-                    target.add(orderedSections[i].value);
-                    if (i + 2 < orderedSections.length) {
-                      target.add(const SizedBox(height: 20));
-                    }
-                  }
-
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 7,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: leftSections,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 5,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: rightSections,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              )
-            : const _DeferredSectionsPlaceholder(),
       ],
     );
+  }
+
+  void _openOverviewChainByKey(
+    DashboardSummary summary,
+    String key, {
+    required String source,
+  }) {
+    final chain = _chainFor(summary, key);
+    if (chain != null) {
+      _openChainWorkspace(chain, source: source);
+      return;
+    }
+
+    switch (key) {
+      case 'dataset':
+        widget.onNavigateToTab(2);
+        return;
+      case 'model':
+      case 'knowledge':
+        widget.onNavigateToTab(3);
+        return;
+      case 'optimization':
+        widget.onNavigateToTab(1);
+        return;
+      default:
+        widget.onNavigateToTab(4);
+    }
   }
 }
 
@@ -1998,6 +2161,118 @@ class _EmptySection extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Text(message, style: AppTextStyles.bodyMedium),
+    );
+  }
+}
+
+class _OverviewInsightCard extends StatelessWidget {
+  const _OverviewInsightCard({
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.body,
+    this.bodyChild,
+  });
+
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final String body;
+  final Widget? bodyChild;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.h4.copyWith(color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              body,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+          if (bodyChild != null) ...[const SizedBox(height: 12), bodyChild!],
+        ],
+      ),
+    );
+  }
+}
+
+class _OverviewChainCard extends StatelessWidget {
+  const _OverviewChainCard({
+    required this.title,
+    required this.subtitle,
+    required this.description,
+    required this.actionLabel,
+    required this.actionIcon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String description;
+  final String actionLabel;
+  final IconData actionIcon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.labelLarge),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onTap,
+            icon: Icon(actionIcon),
+            label: Text(actionLabel),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -153,7 +153,8 @@
       let timeoutReported = false;
       let bootProbe = null;
       const flutterRootSelector =
-        'flt-glass-pane, flt-scene-host, flt-semantics-host, flutter-view, flt-semantics-placeholder, canvas';
+        'flutter-view, flt-semantics-host, flt-semantics-placeholder, flt-glass-pane, flt-scene-host, canvas';
+      const paintedRootSelector = 'flt-glass-pane, flt-scene-host, canvas';
 
       const pushIssue = (label, value) => {
         const next = `${label}: ${String(value || '').trim()}`.trim();
@@ -174,6 +175,7 @@
           `elapsedMs: ${Date.now() - startedAt}`,
           `bodyChildren: ${document.body ? document.body.children.length : 0}`,
           `flutterNodes: ${document.querySelectorAll(flutterRootSelector).length}`,
+          `paintedNodes: ${document.querySelectorAll(paintedRootSelector).length}`,
           ...issues,
         ];
         diagnostics.textContent = lines.join('\n');
@@ -182,8 +184,34 @@
       const hasFlutterRoot = () =>
         !!document.querySelector(flutterRootSelector);
 
+      const hasPaintedFlutter = () => {
+        const painted = Array.from(document.querySelectorAll(paintedRootSelector)).some((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        if (painted) {
+          return true;
+        }
+
+        const flutterView = document.querySelector('flutter-view');
+        const semanticsHost = document.querySelector('flt-semantics-host');
+        if (!flutterView || !semanticsHost) {
+          return false;
+        }
+
+        const viewRect = flutterView.getBoundingClientRect();
+        if (viewRect.width <= 0 || viewRect.height <= 0) {
+          return false;
+        }
+
+        return Array.from(semanticsHost.querySelectorAll('flt-semantics')).some((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+      };
+
       const markReady = () => {
-        if (bootResolved || !hasFlutterRoot()) {
+        if (bootResolved || !hasPaintedFlutter()) {
           return;
         }
         bootResolved = true;
@@ -198,7 +226,7 @@
       };
 
       const showFallback = () => {
-        if (bootResolved || hasFlutterRoot()) {
+        if (bootResolved || hasPaintedFlutter()) {
           markReady();
           return;
         }
@@ -231,13 +259,16 @@
       });
 
       bootProbe = window.setInterval(() => {
-        if (hasFlutterRoot()) {
+        if (hasPaintedFlutter()) {
           if (bootProbe) {
             window.clearInterval(bootProbe);
             bootProbe = null;
           }
           markReady();
           return;
+        }
+        if (hasFlutterRoot()) {
+          pushIssue('render', 'flutter shell attached but first frame not painted');
         }
         renderDiagnostics(timeoutReached ? 'boot-timeout' : 'boot-waiting');
       }, 500);

@@ -120,10 +120,12 @@ class _MainNavigationState extends State<MainNavigation> {
   AiLabLaunchIntent? _pendingAiLabIntent;
   DataAnalysisLaunchIntent? _pendingDataAnalysisIntent;
   OptimizationLaunchIntent? _pendingOptimizationIntent;
+  bool _shellBootstrapping = false;
 
   bool get _hasAuthenticatedUser => _currentUser != null;
   bool get _usesDefaultShell => widget._customPages == null;
-  DashboardViewModel get _dashboardViewModel => _shellRuntime.dashboardViewModel;
+  DashboardViewModel get _dashboardViewModel =>
+      _shellRuntime.dashboardViewModel;
   ComputeGovernanceViewModel get _computeGovernanceViewModel =>
       _shellRuntime.computeGovernanceViewModel;
   ControlTaskViewModel get _controlTaskViewModel =>
@@ -156,7 +158,8 @@ class _MainNavigationState extends State<MainNavigation> {
       });
     });
     if (_usesDefaultShell) {
-      unawaited(_shellRuntime.activateTab(WorkbenchTab.fromIndex(_currentIndex)));
+      _shellBootstrapping = true;
+      unawaited(_bootstrapShell());
     }
   }
 
@@ -261,7 +264,15 @@ class _MainNavigationState extends State<MainNavigation> {
         builder: (context, _) {
           final desktopShell = ResponsiveHelper.isDesktop(context);
           final projection = _shellRuntime.projection;
-          final statusItems = projection.summary?.systemStatus ?? const <dynamic>[];
+          final statusItems = _prioritizedStatusItems(
+            projection.summary?.systemStatus ?? const <SystemStatusItem>[],
+          );
+          final statusHeadline = _statusHeadline(projection.summary);
+          final showBootPlaceholder =
+              _usesDefaultShell &&
+              _shellBootstrapping &&
+              projection.summary == null &&
+              !_shellRuntime.hasSelectedOperation;
 
           if (desktopShell) {
             return Scaffold(
@@ -269,8 +280,10 @@ class _MainNavigationState extends State<MainNavigation> {
               body: Column(
                 children: [
                   SystemStatusStrip(
-                    items: statusItems.cast(),
+                    items: statusItems,
                     compact: true,
+                    headline: statusHeadline,
+                    maxVisibleItems: 4,
                     trailing: _buildAccountActions(compact: true),
                   ),
                   Expanded(
@@ -328,19 +341,19 @@ class _MainNavigationState extends State<MainNavigation> {
                           child: SafeArea(
                             top: false,
                             bottom: false,
-                            child: LazyWorkspaceStack(
-                              currentIndex: _currentIndex,
-                              pageCount: _pageCount,
-                              pageBuilder: _buildPage,
-                            ),
+                            child: showBootPlaceholder
+                                ? _buildShellBootPlaceholder()
+                                : LazyWorkspaceStack(
+                                    currentIndex: _currentIndex,
+                                    pageCount: _pageCount,
+                                    pageBuilder: _buildPage,
+                                  ),
                           ),
                         ),
-                        if (_usesDefaultShell && _shellRuntime.panelVisible) ...[
+                        if (_usesDefaultShell &&
+                            _shellRuntime.panelVisible) ...[
                           const VerticalDivider(width: 1),
-                          SizedBox(
-                            width: 420,
-                            child: _buildRuntimePanel(),
-                          ),
+                          SizedBox(width: 420, child: _buildRuntimePanel()),
                         ],
                       ],
                     ),
@@ -354,11 +367,13 @@ class _MainNavigationState extends State<MainNavigation> {
             backgroundColor: AppColors.background,
             body: SafeArea(
               bottom: false,
-              child: LazyWorkspaceStack(
-                currentIndex: _currentIndex,
-                pageCount: _pageCount,
-                pageBuilder: _buildPage,
-              ),
+              child: showBootPlaceholder
+                  ? _buildShellBootPlaceholder()
+                  : LazyWorkspaceStack(
+                      currentIndex: _currentIndex,
+                      pageCount: _pageCount,
+                      pageBuilder: _buildPage,
+                    ),
             ),
             bottomNavigationBar: Container(
               decoration: BoxDecoration(
@@ -430,6 +445,102 @@ class _MainNavigationState extends State<MainNavigation> {
       onSignOut: _handleSignOut,
       compact: compact,
       enableAccountActions: _hasAuthenticatedUser,
+    );
+  }
+
+  List<SystemStatusItem> _prioritizedStatusItems(List<SystemStatusItem> items) {
+    const preferredOrder = ['api', 'storage', 'model', 'rag', 'orchestrator'];
+    final preferred = <SystemStatusItem>[];
+
+    for (final key in preferredOrder) {
+      final match = items.cast<SystemStatusItem?>().firstWhere(
+        (item) => item?.key == key,
+        orElse: () => null,
+      );
+      if (match != null) {
+        preferred.add(match);
+      }
+    }
+
+    final warnings = items
+        .where((item) => item.status == 'warning' || item.status == 'error')
+        .where((item) => !preferred.contains(item));
+    final healthy = items
+        .where((item) => item.status != 'warning' && item.status != 'error')
+        .where((item) => !preferred.contains(item));
+
+    return [
+      ...warnings,
+      ...preferred,
+      ...healthy,
+    ].take(4).toList(growable: false);
+  }
+
+  String? _statusHeadline(DashboardSummary? summary) {
+    if (summary == null) {
+      return null;
+    }
+    if (summary.alerts.isNotEmpty) {
+      return summary.alerts.first.title;
+    }
+    if (summary.kpis.failedJobs > 0) {
+      return '当前有 ${summary.kpis.failedJobs} 个失败任务需要关注';
+    }
+    if (summary.dutySummary.focusWatch.isNotEmpty) {
+      return summary.dutySummary.focusWatch;
+    }
+    return '系统运行稳定，可直接进入当前工作流';
+  }
+
+  Future<void> _bootstrapShell() async {
+    try {
+      await _shellRuntime.activateTab(WorkbenchTab.fromIndex(_currentIndex));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _shellBootstrapping = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildShellBootPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusXl),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppDecorations.shadowSm,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.6),
+                ),
+                const SizedBox(height: 18),
+                Text('正在准备驾驶舱', style: AppTextStyles.h3),
+                const SizedBox(height: 8),
+                Text(
+                  '系统状态、关键任务和当前工作流正在同步，完成后会直接进入主界面。',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -597,9 +708,8 @@ class _MainNavigationState extends State<MainNavigation> {
       onClose: _shellRuntime.closePanel,
       onApproveQueued: (job) => _resolveQueuedApproval(job, approved: true),
       onRejectQueued: (job) => _resolveQueuedApproval(job, approved: false),
-      onOpenOperation: (job) => unawaited(
-        _shellRuntime.openOperation(job.operationId ?? job.jobId),
-      ),
+      onOpenOperation: (job) =>
+          unawaited(_shellRuntime.openOperation(job.operationId ?? job.jobId)),
       onOpenOperationId: (operationId) =>
           unawaited(_shellRuntime.openOperation(operationId)),
       onApproveSelected: () =>
@@ -745,10 +855,7 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  void _showShellSnackBar(
-    String message, {
-    required Color backgroundColor,
-  }) {
+  void _showShellSnackBar(String message, {required Color backgroundColor}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: backgroundColor),
     );
