@@ -111,6 +111,7 @@ class TestControlTaskService(ControlTaskService):
     def reset(cls):
         cls._tasks = _FakeCollection()
         cls._jobs = _FakeCollection()
+        cls._defaults_seeded = False
 
     @classmethod
     def _collection(cls):
@@ -119,6 +120,10 @@ class TestControlTaskService(ControlTaskService):
     @staticmethod
     def _get_firestore_client():
         return _FakeFirestoreClient(tasks=TestControlTaskService._tasks, jobs=TestControlTaskService._jobs)
+
+    @classmethod
+    def ensure_default_control_tasks(cls) -> None:
+        return None
 
 
 class ControlTaskServiceTestCase(unittest.TestCase):

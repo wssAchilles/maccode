@@ -17,10 +17,76 @@ from services.control_task_service import (
 )
 from services.dashboard_service import DashboardService
 from services.job_service import JobBackendUnavailableError, JobService
+from services.orchestrator_runtime_projection_service import (
+    OrchestratorRuntimeProjectionService,
+)
 
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _merge_control_tasks(
+    local_items: Any,
+    projected_items: Any,
+) -> List[Dict[str, Any]]:
+    local_list = list(local_items) if isinstance(local_items, list) else []
+    projected_list = list(projected_items) if isinstance(projected_items, list) else []
+    if not projected_list:
+        return local_list
+
+    merged_by_id: Dict[str, Dict[str, Any]] = {}
+    ordered_ids: List[str] = []
+
+    for item in projected_list:
+        if not isinstance(item, dict):
+            continue
+        task_id = str(item.get('id') or '')
+        if not task_id:
+            continue
+        merged_by_id[task_id] = item
+        ordered_ids.append(task_id)
+
+    for item in local_list:
+        if not isinstance(item, dict):
+            continue
+        task_id = str(item.get('id') or '')
+        if not task_id:
+            continue
+        if task_id not in merged_by_id:
+            merged_by_id[task_id] = item
+            ordered_ids.append(task_id)
+
+    return [merged_by_id[task_id] for task_id in ordered_ids if task_id in merged_by_id]
+
+
+def _merge_degraded_sections(
+    base: List[Dict[str, str]],
+    incoming: Any,
+) -> List[Dict[str, str]]:
+    merged = list(base)
+    seen = {
+        (
+            str(item.get('section') or ''),
+            str(item.get('message') or ''),
+        )
+        for item in merged
+        if isinstance(item, dict)
+    }
+    if not isinstance(incoming, list):
+        return merged
+
+    for item in incoming:
+        if not isinstance(item, dict):
+            continue
+        section = str(item.get('section') or '')
+        message = str(item.get('message') or '')
+        key = (section, message)
+        if not section or not message or key in seen:
+            continue
+        merged.append({'section': section, 'message': message})
+        seen.add(key)
+    return merged
 
 
 class RuntimeSnapshotService:
@@ -76,6 +142,12 @@ class RuntimeSnapshotService:
             callback=lambda: ControlTaskService.list_control_tasks(limit=control_task_limit),
             fallback=[],
         )
+        control_plane_projection = cls._safe_section(
+            section='control_plane_projection',
+            degraded=degraded_sections,
+            callback=lambda: OrchestratorRuntimeProjectionService.get_snapshot(uid),
+            fallback={},
+        )
         compute_policy = cls._safe_section(
             section='compute_policy',
             degraded=degraded_sections,
@@ -91,8 +163,20 @@ class RuntimeSnapshotService:
             ),
             fallback=[],
         )
+        projected_control_tasks = (
+            control_plane_projection.get('control_tasks', {}).get('items')
+            if isinstance(control_plane_projection, dict)
+            else None
+        )
+        merged_control_tasks = _merge_control_tasks(control_tasks, projected_control_tasks)
+        degraded_sections = _merge_degraded_sections(
+            degraded_sections,
+            control_plane_projection.get('degraded_sections')
+            if isinstance(control_plane_projection, dict)
+            else None,
+        )
         return {
-            'projection_version': 'shell-runtime-v1',
+            'projection_version': 'shell-runtime-v2',
             'generated_at': _utc_now_iso(),
             'summary': summary,
             'approval_queue': {
@@ -100,12 +184,15 @@ class RuntimeSnapshotService:
                 'count': len(approval_jobs) if isinstance(approval_jobs, list) else 0,
             },
             'control_tasks': {
-                'items': control_tasks,
-                'count': len(control_tasks) if isinstance(control_tasks, list) else 0,
+                'items': merged_control_tasks,
+                'count': len(merged_control_tasks),
             },
             'compute_governance': {
                 'policy': compute_policy,
                 'activity': compute_activity,
             },
+            'control_plane': dict(control_plane_projection.get('control_plane') or {})
+            if isinstance(control_plane_projection, dict)
+            else {},
             'degraded_sections': degraded_sections,
         }

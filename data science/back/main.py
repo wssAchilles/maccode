@@ -63,6 +63,7 @@ def create_app(config_name=None):
     app.register_blueprint(internal_operations_bp)
     app.register_blueprint(runtime_bp)
     app.register_blueprint(internal_runtime_bp)
+    get_scheduler(app)
     
     # ---------------------------------------------------------
     # ❌ 移除/注释掉原来的 init_scheduler() 调用
@@ -91,7 +92,7 @@ def create_app(config_name=None):
             return jsonify({'error': 'Unauthorized', 'message': 'Cron header missing'}), 403
             
         try:
-            scheduler = get_scheduler()
+            scheduler = get_scheduler(app)
             scheduler.fetch_data_job()  # 手动调用 job 逻辑
             return jsonify({'status': 'success', 'job': 'fetch_data'}), 200
         except Exception as e:
@@ -104,7 +105,7 @@ def create_app(config_name=None):
             return jsonify({'error': 'Unauthorized', 'message': 'Cron header missing'}), 403
             
         try:
-            scheduler = get_scheduler()
+            scheduler = get_scheduler(app)
             scheduler.train_model_job()
             return jsonify({'status': 'success', 'job': 'train_model'}), 200
         except Exception as e:

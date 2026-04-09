@@ -18,6 +18,7 @@ from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from flask import current_app, has_app_context
 
 from services.control_task_service import ControlTaskService
 from services.operation_service import OperationService
@@ -34,8 +35,9 @@ logger = logging.getLogger(__name__)
 class DataPipelineScheduler:
     """数据管道调度器"""
     
-    def __init__(self):
+    def __init__(self, app=None):
         """初始化调度器"""
+        self.app = app
         self.scheduler = BackgroundScheduler(
             timezone='UTC',  # 使用 UTC 时区
             job_defaults={
@@ -46,6 +48,31 @@ class DataPipelineScheduler:
         )
         
         logger.info("✓ DataPipelineScheduler 初始化完成")
+
+    def bind_app(self, app):
+        """Bind a Flask app so background scheduler jobs can dispatch through the control plane."""
+        self.app = app
+
+    def _resolve_app(self):
+        if has_app_context():
+            return current_app._get_current_object()
+        return self.app
+
+    def _dispatch_created_operation(self, operation):
+        operation_id = operation['job_id']
+        operation_type = operation['type']
+        app = self._resolve_app()
+
+        if app is not None:
+            OperationService.dispatch_operation(app, operation_id, operation_type)
+            return
+
+        logger.warning(
+            'No Flask app bound for scheduled operation %s (%s); falling back to inline dispatch',
+            operation_id,
+            operation_type,
+        )
+        OperationService.process_dispatch(operation_id)
     
     def fetch_data_job(self):
         """
@@ -80,9 +107,7 @@ class DataPipelineScheduler:
             control_task_id=control_task['id'],
             trigger='schedule',
         )
-        operation_id = operation['job_id']
-
-        OperationService.execute_operation(operation_id)
+        self._dispatch_created_operation(operation)
         
         logger.info("="*80 + "\n")
     
@@ -121,9 +146,7 @@ class DataPipelineScheduler:
             control_task_id=control_task['id'],
             trigger='schedule',
         )
-        operation_id = operation['job_id']
-        
-        OperationService.execute_operation(operation_id)
+        self._dispatch_created_operation(operation)
         
         logger.info("="*80 + "\n")
     
@@ -209,7 +232,7 @@ class DataPipelineScheduler:
 _scheduler_instance = None
 
 
-def get_scheduler():
+def get_scheduler(app=None):
     """
     获取调度器单例
     
@@ -219,12 +242,14 @@ def get_scheduler():
     global _scheduler_instance
     
     if _scheduler_instance is None:
-        _scheduler_instance = DataPipelineScheduler()
+        _scheduler_instance = DataPipelineScheduler(app=app)
+    elif app is not None:
+        _scheduler_instance.bind_app(app)
     
     return _scheduler_instance
 
 
-def init_scheduler():
+def init_scheduler(app=None):
     """
     初始化并启动调度器
     
@@ -236,7 +261,7 @@ def init_scheduler():
     # WERKZEUG_RUN_MAIN 为 true 表示这是 Werkzeug 重载器生成的子进程（实际运行服务的进程）
     # 在 GAE 环境中，没有 Werkzeug重载器，所以直接检查是否是主程序
     if os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('WERKZEUG_RUN_MAIN') == 'true':
-        scheduler = get_scheduler()
+        scheduler = get_scheduler(app)
         if not scheduler.scheduler.running:
             scheduler.start()
         return scheduler

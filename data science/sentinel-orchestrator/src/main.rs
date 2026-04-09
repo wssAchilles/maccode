@@ -1,29 +1,10 @@
-mod auth;
-mod config;
-mod controller;
-mod handlers;
-mod models;
-mod proxy;
-mod telemetry;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use auth::require_internal_token;
-use axum::{
-    Router, middleware,
-    routing::{get, post},
-};
-use config::{AppConfig, AppState};
-use controller::DispatchController;
-use handlers::{
-    approve_operation, cancel_operation, dispatch_operation, get_control_task, get_operation,
-    get_operation_events, healthz, list_control_tasks, retry_operation, run_control_task, statusz,
-    stream_operation, update_control_task,
-};
-use reqwest::Client;
-use std::sync::Arc;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+use sentinel_orchestrator::{AppConfig, build_app, build_state};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,67 +18,8 @@ async fn main() -> Result<()> {
 
     let config = Arc::new(AppConfig::from_env());
     let bind_addr = config.bind_addr()?;
-    let state = AppState {
-        dispatch_controller: DispatchController::new(
-            config.max_light_parallel,
-            config.max_heavy_parallel,
-            std::time::Duration::from_secs(config.dispatch_timeout_secs),
-        ),
-        config,
-        http_client: Client::builder()
-            .use_rustls_tls()
-            .build()
-            .context("failed to build reqwest client")?,
-    };
-
-    let internal_routes = Router::new()
-        .route(
-            "/internal/operations/{operation_id}/dispatch",
-            post(dispatch_operation),
-        )
-        .route(
-            "/internal/operations/{operation_id}/cancel",
-            post(cancel_operation),
-        )
-        .route(
-            "/internal/operations/{operation_id}/retry",
-            post(retry_operation),
-        )
-        .route(
-            "/internal/operations/{operation_id}/approve",
-            post(approve_operation),
-        )
-        .route("/internal/operations/{operation_id}", get(get_operation))
-        .route(
-            "/internal/operations/{operation_id}/events",
-            get(get_operation_events),
-        )
-        .route(
-            "/internal/operations/{operation_id}/stream",
-            get(stream_operation),
-        )
-        .route("/internal/control-tasks", get(list_control_tasks))
-        .route(
-            "/internal/control-tasks/{control_task_id}",
-            get(get_control_task).patch(update_control_task),
-        )
-        .route(
-            "/internal/control-tasks/{control_task_id}/run",
-            post(run_control_task),
-        )
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            require_internal_token,
-        ));
-
-    let app = Router::new()
-        .route("/healthz", get(healthz))
-        .route("/readyz", get(statusz))
-        .route("/statusz", get(statusz))
-        .merge(internal_routes)
-        .with_state(state)
-        .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http());
+    let state = build_state(config)?;
+    let app = build_app(state);
 
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await

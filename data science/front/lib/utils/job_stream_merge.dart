@@ -11,36 +11,43 @@ JobRecord mergeJobStreamFrame(JobRecord current, JobStreamFrame frame) {
     return frame.snapshot ?? current;
   }
 
+  final payload = frame.payloadData;
+
   if (frame.isState) {
     return _copyJob(
       current,
-      status: frame.data['status']?.toString() ?? current.status,
-      progress: _asInt(frame.data['progress']) ?? current.progress,
-      currentStep: frame.data['current_step'] is Map<String, dynamic>
-          ? JobStep.fromJson(frame.data['current_step'] as Map<String, dynamic>)
-          : frame.data['current_step'] is Map
-          ? JobStep.fromJson(Map<String, dynamic>.from(frame.data['current_step'] as Map))
+      status: payload['status']?.toString() ?? current.status,
+      progress: _asInt(payload['progress']) ?? current.progress,
+      currentStep: payload['current_step'] is Map<String, dynamic>
+          ? JobStep.fromJson(payload['current_step'] as Map<String, dynamic>)
+          : payload['current_step'] is Map
+          ? JobStep.fromJson(
+              Map<String, dynamic>.from(payload['current_step'] as Map),
+            )
           : current.currentStep,
-      cancelRequested: _asBool(frame.data['cancel_requested']) ?? current.cancelRequested,
-      approvalState: frame.data['approval_state'] is Map<String, dynamic>
-          ? JobApprovalState.fromJson(frame.data['approval_state'] as Map<String, dynamic>)
-          : frame.data['approval_state'] is Map
+      cancelRequested:
+          _asBool(payload['cancel_requested']) ?? current.cancelRequested,
+      approvalState: payload['approval_state'] is Map<String, dynamic>
           ? JobApprovalState.fromJson(
-              Map<String, dynamic>.from(frame.data['approval_state'] as Map),
+              payload['approval_state'] as Map<String, dynamic>,
+            )
+          : payload['approval_state'] is Map
+          ? JobApprovalState.fromJson(
+              Map<String, dynamic>.from(payload['approval_state'] as Map),
             )
           : current.approvalState,
-      metrics: _mergeMetrics(current.metrics, frame.data['metrics']),
+      metrics: _mergeMetrics(current.metrics, payload['metrics']),
     );
   }
 
   if (frame.isClosed) {
     return _copyJob(
       current,
-      status: frame.data['status']?.toString() ?? current.status,
-      progress: frame.data['status']?.toString() == 'succeeded'
+      status: payload['status']?.toString() ?? current.status,
+      progress: payload['status']?.toString() == 'succeeded'
           ? 100
           : current.progress,
-      metrics: _mergeMetrics(current.metrics, frame.data['metrics']),
+      metrics: _mergeMetrics(current.metrics, payload['metrics']),
     );
   }
 
@@ -62,7 +69,9 @@ JobRecord mergeJobStreamFrame(JobRecord current, JobStreamFrame frame) {
     current,
     status: _nextStatus(current.status, event.status),
     progress: event.progress,
-    statusMessage: event.message.isEmpty ? current.statusMessage : event.message,
+    statusMessage: event.message.isEmpty
+        ? current.statusMessage
+        : event.message,
     currentStep: nextStep,
     steps: nextSteps,
     artifacts: nextArtifacts,
@@ -146,7 +155,10 @@ List<JobEvent> _appendEvent(List<JobEvent> events, JobEvent event) {
   return next;
 }
 
-List<JobArtifact> _appendArtifact(List<JobArtifact> artifacts, JobArtifact artifact) {
+List<JobArtifact> _appendArtifact(
+  List<JobArtifact> artifacts,
+  JobArtifact artifact,
+) {
   final next = List<JobArtifact>.from(artifacts);
   final exists = next.any(
     (item) =>

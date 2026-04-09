@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 
+import requests
 from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from middleware.rate_limit import rate_limit
@@ -42,6 +44,64 @@ def _orchestrator_managed_dispatch() -> bool:
         'true',
         'yes',
     }
+
+
+def _proxy_stream_from_orchestrator(
+    operation_id: str,
+    *,
+    poll_interval: float,
+    max_duration: float,
+) -> Iterator[bytes] | None:
+    orchestrator_base = str(current_app.config.get('ORCHESTRATOR_BASE_URL') or '').strip()
+    if not orchestrator_base:
+        return None
+
+    timeout_s = max(
+        float(current_app.config.get('ORCHESTRATOR_REQUEST_TIMEOUT_S') or 10.0),
+        1.0,
+    )
+    stream_url = f"{orchestrator_base.rstrip('/')}/internal/operations/{operation_id}/stream"
+
+    try:
+        upstream = requests.get(
+            stream_url,
+            headers={
+                'Accept': 'text/event-stream',
+                'X-Internal-Job-Token': current_app.config.get(
+                    'INTERNAL_JOB_TOKEN',
+                    'dev-internal-job-token',
+                ),
+            },
+            params={
+                'poll_interval': poll_interval,
+                'max_duration': max_duration,
+            },
+            stream=True,
+            timeout=(timeout_s, max(timeout_s, max_duration + 5.0)),
+        )
+        upstream.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning(
+            'Failed to proxy operation %s stream from orchestrator %s: %s',
+            operation_id,
+            stream_url,
+            exc,
+        )
+        try:
+            upstream.close()  # type: ignore[name-defined]
+        except Exception:
+            pass
+        return None
+
+    def generate() -> Iterator[bytes]:
+        try:
+            for chunk in upstream.iter_content(chunk_size=4096):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    return generate()
 
 
 @operations_bp.route('', methods=['GET'])
@@ -149,6 +209,22 @@ def stream_operation(operation_id: str):
 
     poll_interval = request.args.get('poll_interval', default=2.0, type=float) or 2.0
     max_duration = request.args.get('max_duration', default=55.0, type=float) or 55.0
+    orchestrator_stream = _proxy_stream_from_orchestrator(
+        operation_id,
+        poll_interval=max(0.5, min(poll_interval, 10.0)),
+        max_duration=max(5.0, min(max_duration, 300.0)),
+    )
+    if orchestrator_stream is not None:
+        return Response(
+            stream_with_context(orchestrator_stream),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no',
+            },
+        )
+
     generator = stream_operation_events(
         operation_id=operation_id,
         fetch_operation=lambda: OperationService.get_operation(uid, operation_id),

@@ -41,6 +41,7 @@ class _FirestoreClient:
 
 firestore_module.Query = _FirestoreQuery
 firestore_module.Client = _FirestoreClient
+firestore_module.transactional = lambda fn: fn
 firestore_v1_module.SERVER_TIMESTAMP = SERVER_TIMESTAMP
 
 google_module.api_core = api_core_module
@@ -87,7 +88,10 @@ job_workflows_module.run_optimization_workflow = lambda *args, **kwargs: {}
 job_workflows_module.run_rag_ingest_workflow = lambda *args, **kwargs: {}
 sys.modules.setdefault('services.job_workflows', job_workflows_module)
 
+from services import operation_service as operation_service_module
 from services.operation_service import OperationService
+
+operation_service_module.firestore.transactional = lambda fn: fn
 
 firestore = firestore_module
 
@@ -148,7 +152,7 @@ class _FakeDocumentReference:
         self._collection = collection
         self.id = doc_id
 
-    def get(self):
+    def get(self, transaction=None):
         data = self._collection._docs.get(self.id)
         return _FakeSnapshot(self.id, data, exists=data is not None)
 
@@ -199,6 +203,25 @@ class _FakeCollection:
         return _FakeQuery(self).stream()
 
 
+class _FakeFirestoreClientInstance:
+    def __init__(self, operations, control_tasks):
+        self._collections = {
+            'jobs': operations,
+            'control_tasks': control_tasks,
+        }
+
+    def collection(self, name: str):
+        return self._collections[name]
+
+    def transaction(self):
+        return _FakeTransaction()
+
+
+class _FakeTransaction:
+    def set(self, document, payload, merge: bool = False):
+        document.set(payload, merge=merge)
+
+
 class TestOperationService(OperationService):
     _operations = _FakeCollection()
     _control_tasks = _FakeCollection()
@@ -215,6 +238,10 @@ class TestOperationService(OperationService):
     @classmethod
     def _control_tasks_collection(cls):
         return cls._control_tasks
+
+    @classmethod
+    def _get_firestore_client(cls):
+        return _FakeFirestoreClientInstance(cls._operations, cls._control_tasks)
 
     @classmethod
     def _events_collection(cls, operation_id: str):

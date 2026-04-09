@@ -74,4 +74,44 @@ void main() {
     expect(merged.artifacts.single.name, 'Operation report');
     expect(merged.progress, 80);
   });
+
+  test('mergeJobStreamFrame supports normalized orchestrator state frames', () {
+    const current = JobRecord(
+      jobId: 'op-1',
+      operationId: 'op-1',
+      type: 'analysis',
+      status: 'running',
+      progress: 10,
+      requestedBy: 'tester',
+      attemptCount: 1,
+      maxAttempts: 3,
+    );
+
+    const frame = JobStreamFrame(
+      event: 'event',
+      data: {
+        'frame_type': 'event',
+        'correlation_id': 'cp-1',
+        'operation_id': 'op-1',
+        'event_type': 'operation.state',
+        'payload': {
+          'status': 'running',
+          'progress': 75,
+          'current_step': {
+            'phase': 'publish_report',
+            'tool_name': 'publish_report',
+            'status': 'running',
+            'progress': 75,
+            'message': 'Publishing report',
+          },
+        },
+      },
+    );
+
+    final merged = mergeJobStreamFrame(current, frame);
+
+    expect(merged.progress, 75);
+    expect(merged.currentStep?.phase, 'publish_report');
+    expect(merged.status, 'running');
+  });
 }
