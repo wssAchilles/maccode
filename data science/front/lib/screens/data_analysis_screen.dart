@@ -34,10 +34,8 @@ import '../viewmodels/job_view_model.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
+import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/workbench_page_frame.dart';
-import '../widgets/operations/workbench_command_strip.dart';
-import '../widgets/operations/workbench_runbook_panel.dart';
-import '../widgets/operations/workbench_section_signal.dart';
 import 'history_audit_screen.dart';
 
 class DataAnalysisScreen extends StatefulWidget {
@@ -321,233 +319,191 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            DataAnalysisWorkbenchHeader(
-                              currentUser: _currentUser,
-                              pickedFile: _pickedFile,
-                              analysisResult: _analysisResult,
-                              saveToStorage: _saveToStorage,
-                              latestStoragePath: _latestStoragePath,
-                            ),
-                            const SizedBox(height: 24),
-                            WorkbenchCommandStrip(
-                              title: '页级动作',
-                              description:
-                                  '把当前工作台最常用的分析命令固定在顶部，避免在单壳模式下依赖页面 AppBar 动作。',
-                              actions: [
-                                WorkbenchCommandAction(
-                                  label: '立即分析',
-                                  icon: Icons.play_arrow_rounded,
-                                  onTap:
-                                      (_currentUser != null &&
-                                          _pickedFile != null &&
-                                          !_isLoading)
-                                      ? () {
-                                          _startAnalysis();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.primary,
+                            DecisionHeaderCard(
+                              title: '数据分析工作流',
+                              summary: '上传数据后先看质量，再看分析结果，最后决定是否交给 AI。',
+                              metrics: [
+                                DecisionHeaderMetric(
+                                  label: '会话状态',
+                                  value: _currentUser == null ? '未登录' : '已连接',
+                                  helper: _currentUser == null
+                                      ? '登录后才能发起云端分析'
+                                      : '可访问私有数据与历史资产',
+                                  accent: _currentUser == null
+                                      ? AppColors.warning
+                                      : AppColors.success,
+                                  icon: _currentUser == null
+                                      ? Icons.lock_outline_rounded
+                                      : Icons.verified_user_rounded,
                                 ),
-                                WorkbenchCommandAction(
-                                  label: _isSubmittingAnalysisJob
-                                      ? '提交后台中...'
-                                      : '后台分析任务',
-                                  icon: Icons.schedule_send_rounded,
-                                  onTap:
-                                      (_currentUser != null &&
-                                          _pickedFile != null &&
-                                          !_isLoading &&
-                                          !_isSubmittingAnalysisJob)
-                                      ? () {
-                                          _submitAnalysisJob();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.tonal,
-                                  isLoading: _isSubmittingAnalysisJob,
+                                DecisionHeaderMetric(
+                                  label: '当前数据集',
+                                  value: _pickedFile?.name ?? '未选择',
+                                  helper: '支持单个 CSV 文件',
+                                  accent: _pickedFile == null
+                                      ? AppColors.textSecondary
+                                      : AppColors.primary,
+                                  icon: _pickedFile == null
+                                      ? Icons.upload_file_outlined
+                                      : Icons.dataset_rounded,
                                 ),
-                                WorkbenchCommandAction(
-                                  label: '历史与审计',
-                                  icon: Icons.history_rounded,
-                                  onTap: _openHistory,
-                                  tone: WorkbenchCommandTone.outline,
+                                DecisionHeaderMetric(
+                                  label: '质量评分',
+                                  value:
+                                      _analysisResult
+                                              ?.qualityAnalysis
+                                              ?.qualityScore ==
+                                          null
+                                      ? '待分析'
+                                      : '${_analysisResult!.qualityAnalysis!.qualityScore!.toStringAsFixed(0)} / 100',
+                                  helper: '分析后更新',
+                                  accent:
+                                      (_analysisResult
+                                                  ?.qualityAnalysis
+                                                  ?.qualityScore ??
+                                              0) >=
+                                          80
+                                      ? AppColors.success
+                                      : AppColors.warning,
+                                  icon: Icons.health_and_safety_rounded,
                                 ),
-                                WorkbenchCommandAction(
-                                  label: '复制 Storage Path',
-                                  icon: Icons.content_copy_rounded,
-                                  onTap:
-                                      (_latestStoragePath != null &&
-                                          _latestStoragePath!.isNotEmpty)
-                                      ? () {
-                                          _copyStoragePath();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.outline,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            WorkbenchRunbookPanel(
-                              chain: datasetChain,
-                              continuationContext: _activeLaunchContext,
-                              description:
-                                  '把数据链路的当前处置说明直接压进工作台，优先完成治理摘要、资产路径和审计交接。',
-                              actions: [
-                                WorkbenchCommandAction(
-                                  label: '复制治理摘要',
-                                  icon: Icons.rule_folder_rounded,
-                                  onTap: _analysisResult != null
-                                      ? () {
-                                          _copyGovernanceDigest();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.primary,
-                                ),
-                                WorkbenchCommandAction(
-                                  label: '复制 Schema Digest',
-                                  icon: Icons.schema_rounded,
-                                  onTap: _analysisResult != null
-                                      ? () {
-                                          _copySchemaDigest();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.tonal,
-                                ),
-                                WorkbenchCommandAction(
-                                  label: '复制 Storage Path',
-                                  icon: Icons.content_copy_rounded,
-                                  onTap:
-                                      (_latestStoragePath != null &&
-                                          _latestStoragePath!.isNotEmpty)
-                                      ? () {
-                                          _copyStoragePath();
-                                        }
-                                      : null,
-                                  tone: WorkbenchCommandTone.outline,
-                                ),
-                                WorkbenchCommandAction(
-                                  label: '历史与审计',
-                                  icon: Icons.history_rounded,
-                                  onTap: _openHistory,
-                                  tone: WorkbenchCommandTone.outline,
+                                DecisionHeaderMetric(
+                                  label: '高风险列',
+                                  value:
+                                      '${_analysisResult?.qualityAnalysis?.highRiskColumns?.length ?? 0}',
+                                  helper: '优先治理字段',
+                                  accent:
+                                      (_analysisResult
+                                                  ?.qualityAnalysis
+                                                  ?.highRiskColumns
+                                                  ?.length ??
+                                              0) >
+                                          0
+                                      ? AppColors.error
+                                      : AppColors.cta,
+                                  icon: Icons.warning_amber_rounded,
                                 ),
                               ],
-                            ),
-                            if (datasetChain != null)
-                              const SizedBox(height: 24),
-                            WorkbenchSectionSignal(
-                              chain: datasetChain,
-                              continuationContext: _activeLaunchContext,
-                              title: '执行态联动',
-                              description:
-                                  '先看当前分析链路的运行态、归档状态和责任焦点，再进入执行看板与控制面板。',
-                              icon: Icons.radar_rounded,
-                            ),
-                            if (datasetChain != null)
-                              const SizedBox(height: 24),
-                            DataAnalysisOperationsBoard(
-                              chain: datasetChain,
-                              continuationContext: _activeLaunchContext,
-                              currentUser: _currentUser,
-                              pickedFile: _pickedFile,
-                              analysisResult: _analysisResult,
-                              saveToStorage: _saveToStorage,
-                              latestStoragePath: _latestStoragePath,
-                              jobs: _analysisJobsViewModel.jobs,
-                              jobsLoading: _analysisJobsViewModel.isLoading,
-                              jobErrorMessage:
-                                  _analysisJobsViewModel.errorMessage,
+                              banner: _buildAnalysisBanner(),
                             ),
                             const SizedBox(height: 24),
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                final stacked = constraints.maxWidth < 1120;
-                                final controls = DataAnalysisTopSection(
-                                  currentUser: _currentUser,
-                                  pickedFile: _pickedFile,
-                                  saveToStorage: _saveToStorage,
-                                  formKey: _formKey,
-                                  emailController: _emailController,
-                                  passwordController: _passwordController,
-                                  authMode: _authMode,
-                                  onSignInWithEmail: _signInWithEmail,
-                                  onRegisterWithEmail: _registerWithEmail,
-                                  onToggleAuthMode: _viewModel.toggleAuthMode,
-                                  onGoogleSignIn: _signInWithGoogle,
-                                  onPickFile: _pickFile,
-                                  onClearFile: _viewModel.clearPickedFile,
-                                  onStorageChanged: _viewModel.setSaveToStorage,
-                                );
-                                final commandDeck = DataAnalysisCommandDeck(
-                                  isAuthenticated: _currentUser != null,
-                                  hasFile: _pickedFile != null,
-                                  isLoading: _isLoading,
-                                  isSubmittingBackgroundAnalysis:
-                                      _isSubmittingAnalysisJob,
-                                  saveToStorage: _saveToStorage,
-                                  analysisResult: _analysisResult,
-                                  onStartAnalysis: _startAnalysis,
-                                  onSubmitBackgroundAnalysis:
-                                      _submitAnalysisJob,
-                                  onOpenHistory: _openHistory,
-                                );
+                            PrimaryWorkflowPanel(
+                              eyebrow: '上传数据 -> 质量检查 -> 分析结果 -> 交给 AI',
+                              title: '当前分析流程',
+                              summary:
+                                  '认证、上传和分析操作只保留在一个主面板里，Storage Path、治理和任务队列全部下沉。',
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final stacked = constraints.maxWidth < 1120;
+                                  final controls = DataAnalysisTopSection(
+                                    currentUser: _currentUser,
+                                    pickedFile: _pickedFile,
+                                    saveToStorage: _saveToStorage,
+                                    formKey: _formKey,
+                                    emailController: _emailController,
+                                    passwordController: _passwordController,
+                                    authMode: _authMode,
+                                    onSignInWithEmail: _signInWithEmail,
+                                    onRegisterWithEmail: _registerWithEmail,
+                                    onToggleAuthMode: _viewModel.toggleAuthMode,
+                                    onGoogleSignIn: _signInWithGoogle,
+                                    onPickFile: _pickFile,
+                                    onClearFile: _viewModel.clearPickedFile,
+                                    onStorageChanged:
+                                        _viewModel.setSaveToStorage,
+                                  );
+                                  final commandDeck = DataAnalysisCommandDeck(
+                                    isAuthenticated: _currentUser != null,
+                                    hasFile: _pickedFile != null,
+                                    isLoading: _isLoading,
+                                    isSubmittingBackgroundAnalysis:
+                                        _isSubmittingAnalysisJob,
+                                    saveToStorage: _saveToStorage,
+                                    analysisResult: _analysisResult,
+                                    onStartAnalysis: _startAnalysis,
+                                    onSubmitBackgroundAnalysis:
+                                        _submitAnalysisJob,
+                                    onOpenHistory: _openHistory,
+                                  );
 
-                                if (stacked) {
-                                  return Column(
+                                  if (stacked) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        controls,
+                                        const SizedBox(height: 20),
+                                        commandDeck,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      controls,
-                                      const SizedBox(height: 20),
-                                      commandDeck,
+                                      Expanded(flex: 7, child: controls),
+                                      const SizedBox(width: 20),
+                                      Expanded(flex: 4, child: commandDeck),
                                     ],
                                   );
-                                }
-
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(flex: 7, child: controls),
-                                    const SizedBox(width: 20),
-                                    Expanded(flex: 4, child: commandDeck),
-                                  ],
-                                );
-                              },
+                                },
+                              ),
                             ),
                             const SizedBox(height: 24),
-                            WorkbenchSectionSignal(
-                              chain: datasetChain,
-                              continuationContext: _activeLaunchContext,
-                              title: '后台任务跟进',
-                              description:
-                                  '如果当前链路处于 active 或 incident，这一块优先用来跟进阶段、失败和结果回填。',
-                              icon: Icons.alt_route_rounded,
-                            ),
-                            if (datasetChain != null)
-                              const SizedBox(height: 24),
-                            _buildAnalysisJobPanel(),
-                            if (_errorMessage != null) ...[
-                              const SizedBox(height: 16),
-                              DataAnalysisErrorBanner(
-                                message: _errorMessage!,
-                                onDismiss: _viewModel.clearError,
+                            ProgressiveDetailSection(
+                              title: '任务与治理',
+                              summary: '后台任务、数据链路状态、Storage Path 和治理面板统一下沉到这里。',
+                              icon: Icons.account_tree_rounded,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  DataAnalysisOperationsBoard(
+                                    chain: datasetChain,
+                                    continuationContext: _activeLaunchContext,
+                                    currentUser: _currentUser,
+                                    pickedFile: _pickedFile,
+                                    analysisResult: _analysisResult,
+                                    saveToStorage: _saveToStorage,
+                                    latestStoragePath: _latestStoragePath,
+                                    jobs: _analysisJobsViewModel.jobs,
+                                    jobsLoading:
+                                        _analysisJobsViewModel.isLoading,
+                                    jobErrorMessage:
+                                        _analysisJobsViewModel.errorMessage,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildAnalysisJobPanel(),
+                                  if (_errorMessage != null) ...[
+                                    const SizedBox(height: 16),
+                                    DataAnalysisErrorBanner(
+                                      message: _errorMessage!,
+                                      onDismiss: _viewModel.clearError,
+                                    ),
+                                  ],
+                                  if (_analysisResult != null) ...[
+                                    const SizedBox(height: 24),
+                                    _buildAssetGovernanceBoard(),
+                                  ],
+                                ],
                               ),
-                            ],
+                            ),
                             if (_analysisResult != null) ...[
                               const SizedBox(height: 24),
-                              WorkbenchSectionSignal(
-                                chain: datasetChain,
-                                continuationContext: _activeLaunchContext,
-                                title: '资产交接与结果治理',
-                                description:
-                                    '结果生成后，优先完成资产护照、漂移治理和跨工作台交接，而不是只停留在报告浏览。',
-                                icon: Icons.inventory_2_rounded,
+                              ProgressiveDetailSection(
+                                title: '分析结果与 AI 交接',
+                                summary:
+                                    '结果报告、Schema 摘要、治理摘要和 AI hand-off 放在这里统一处理。',
+                                icon: Icons.analytics_rounded,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildWorkflowActions(),
+                                    const SizedBox(height: 24),
+                                    _buildResultsSection(),
+                                  ],
+                                ),
                               ),
-                              if (datasetChain != null)
-                                const SizedBox(height: 24),
-                              _buildWorkflowActions(),
-                              const SizedBox(height: 24),
-                              _buildAssetGovernanceBoard(),
-                              const SizedBox(height: 24),
-                              _buildResultsSection(),
                             ],
                             const SizedBox(height: 32),
                           ],
@@ -563,6 +519,40 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
           body: content,
         );
       },
+    );
+  }
+
+  Widget _buildAnalysisBanner() {
+    if (_errorMessage != null) {
+      return DecisionBanner(
+        title: '分析需要复核',
+        message: _errorMessage!,
+        accent: AppColors.error,
+        icon: Icons.error_outline_rounded,
+      );
+    }
+
+    final result = _analysisResult;
+    final qualityScore = result?.qualityAnalysis?.qualityScore;
+    final riskCount = result?.qualityAnalysis?.highRiskColumns?.length ?? 0;
+    if (result != null) {
+      return DecisionBanner(
+        title: riskCount > 0 ? '已发现治理重点' : '分析结果已生成',
+        message: qualityScore == null
+            ? '当前结果已生成，可以继续查看统计、相关性和 AI 交接。'
+            : '质量评分 ${qualityScore.toStringAsFixed(0)} / 100，${riskCount == 0 ? "当前没有高风险列" : "共有 $riskCount 个高风险字段需要优先处理"}。',
+        accent: riskCount > 0 ? AppColors.warning : AppColors.success,
+        icon: riskCount > 0
+            ? Icons.warning_amber_rounded
+            : Icons.task_alt_rounded,
+      );
+    }
+
+    return const DecisionBanner(
+      title: '先完成一次分析',
+      message: '登录并上传 CSV 后，首屏会直接给出质量结果和下一步 AI 交接入口。',
+      accent: AppColors.primary,
+      icon: Icons.insights_rounded,
     );
   }
 

@@ -16,17 +16,15 @@ import '../viewmodels/audit_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/history_view_model.dart';
 import '../viewmodels/job_view_model.dart';
-import '../widgets/history/history_audit_overview.dart';
 import '../widgets/history/history_asset_ledger.dart';
 import '../widgets/history/history_disposition_board.dart';
 import '../widgets/history/audit_event_stream.dart';
 import '../widgets/history/history_record_card.dart';
 import '../widgets/history/history_state_sections.dart';
 import '../widgets/operations/duty_section_block.dart';
-import '../widgets/operations/embedded_page_header.dart';
+import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/incident_runbook_board.dart';
 import '../widgets/operations/workbench_page_frame.dart';
-import '../widgets/operations/workbench_command_strip.dart';
 import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -349,76 +347,232 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.surfaceMode.isEmbedded) ...[
-                    _EmbeddedAuditHeader(onRefresh: _refreshAll),
-                    const SizedBox(height: 20),
-                  ],
-                  HistoryAuditOverview(
-                    kpis: summary?.kpis,
-                    jobs: _jobsViewModel.jobs,
-                    dutySummary: summary?.dutySummary,
-                    assetSummary: summary?.assetSummary,
-                    dutyActions: summary?.dutySummary.auditActions ?? const [],
-                    activityCount: activity.length,
-                    recordCount: _historyViewModel.records.length,
-                    selectedType: _selectedType,
-                    selectedStatus: _selectedStatus,
-                    onTypeChanged: (type) {
-                      _applyFilters(type: type, status: _selectedStatus);
-                    },
-                    onStatusChanged: (status) {
-                      _applyFilters(type: _selectedType, status: status);
-                    },
-                    onClearFilters: () {
-                      _applyFilters(type: null, status: null);
-                    },
-                    onDutyAction: _handleDutyAction,
-                  ),
-                  const SizedBox(height: 20),
-                  WorkbenchCommandStrip(
-                    title: '页级动作',
-                    description: '把刷新和高频审计筛选固定在顶部，减少在单壳模式下依赖局部 AppBar 或长列表回滚。',
-                    actions: [
-                      WorkbenchCommandAction(
-                        label: '刷新审计流',
-                        icon: Icons.refresh_rounded,
-                        onTap: () {
-                          _refreshAll();
-                        },
-                        tone: WorkbenchCommandTone.primary,
+                  DecisionHeaderCard(
+                    title: '历史与审计',
+                    summary: '先筛选异常，再在时间线和资产台账之间切换，最后再进入具体工作台。',
+                    metrics: [
+                      DecisionHeaderMetric(
+                        label: '审计活动',
+                        value: '${activity.length}',
+                        helper: '当前筛选结果',
+                        accent: AppColors.primary,
+                        icon: Icons.timeline_rounded,
                       ),
-                      WorkbenchCommandAction(
-                        label: '仅看失败',
+                      DecisionHeaderMetric(
+                        label: '历史记录',
+                        value: '${_historyViewModel.records.length}',
+                        helper: '可回放资产',
+                        accent: AppColors.cta,
+                        icon: Icons.inventory_2_rounded,
+                      ),
+                      DecisionHeaderMetric(
+                        label: '当前筛选',
+                        value:
+                            '${_selectedType ?? "全部类型"} / ${_selectedStatus ?? "全部状态"}',
+                        helper: '筛选范围',
+                        accent: AppColors.warning,
+                        icon: Icons.filter_alt_rounded,
+                      ),
+                      DecisionHeaderMetric(
+                        label: '失败链路',
+                        value:
+                            '${summary?.assetSummary.failureChains.length ?? 0}',
+                        helper: '优先关注异常',
+                        accent: AppColors.error,
                         icon: Icons.error_outline_rounded,
-                        onTap: () {
-                          _applyFilters(type: null, status: 'failed');
-                        },
-                        tone: WorkbenchCommandTone.tonal,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '仅看运行中',
-                        icon: Icons.autorenew_rounded,
-                        onTap: () {
-                          _applyFilters(type: null, status: 'running');
-                        },
-                        tone: WorkbenchCommandTone.tonal,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '清空筛选',
-                        icon: Icons.filter_alt_off_rounded,
-                        onTap: () {
-                          _applyFilters(type: null, status: null);
-                        },
-                        tone: WorkbenchCommandTone.outline,
                       ),
                     ],
+                    primaryAction: DecisionHeaderAction(
+                      label: '刷新审计流',
+                      icon: Icons.refresh_rounded,
+                      onTap: _refreshAll,
+                      isPrimary: true,
+                    ),
+                    banner: DecisionBanner(
+                      title: _selectedStatus == null
+                          ? '默认查看全量记录'
+                          : '当前已锁定 ${_selectedStatus == "failed"
+                                ? "失败"
+                                : _selectedStatus == "running"
+                                ? "运行中"
+                                : _selectedStatus!} 记录',
+                      message:
+                          (summary?.dutySummary.focusWatch ?? '').isNotEmpty
+                          ? summary!.dutySummary.focusWatch
+                          : '首屏只保留筛选条、最近异常时间线和资产台账预览，处置面板与长列表全部下沉。',
+                      accent: _selectedStatus == 'failed'
+                          ? AppColors.error
+                          : AppColors.primary,
+                      icon: _selectedStatus == 'failed'
+                          ? Icons.error_outline_rounded
+                          : Icons.fact_check_rounded,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  for (var i = 0; i < orderedSections.length; i++) ...[
-                    orderedSections[i].value,
-                    if (i < orderedSections.length - 1)
-                      const SizedBox(height: 20),
-                  ],
+                  PrimaryWorkflowPanel(
+                    eyebrow: '筛选条 + 双视图',
+                    title: '当前筛选与双视图',
+                    summary: '用一组筛选条锁定问题，再分别看最近异常时间线和资产台账预览。',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: () =>
+                                  _applyFilters(type: null, status: 'failed'),
+                              icon: const Icon(Icons.error_outline_rounded),
+                              label: const Text('仅看失败'),
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: () =>
+                                  _applyFilters(type: null, status: 'running'),
+                              icon: const Icon(Icons.autorenew_rounded),
+                              label: const Text('仅看运行中'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () =>
+                                  _applyFilters(type: null, status: null),
+                              icon: const Icon(Icons.filter_alt_off_rounded),
+                              label: const Text('清空筛选'),
+                            ),
+                            for (final type in const [
+                              ('analysis', '分析'),
+                              ('ml_train', '训练'),
+                              ('rag_ingest', 'RAG'),
+                              ('optimization', '优化'),
+                            ])
+                              ChoiceChip(
+                                label: Text(type.$2),
+                                selected: _selectedType == type.$1,
+                                onSelected: (_) => _applyFilters(
+                                  type: _selectedType == type.$1
+                                      ? null
+                                      : type.$1,
+                                  status: _selectedStatus,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stacked = constraints.maxWidth < 1040;
+                            final recentActivity = activity
+                                .take(4)
+                                .toList(growable: false);
+                            final recentRecords = _historyViewModel.records
+                                .take(4)
+                                .toList(growable: false);
+
+                            Widget buildTimeline() {
+                              return _HistorySnapshotCard(
+                                title: '最近异常时间线',
+                                subtitle: '优先查看最近 4 条活动，避免先掉进长列表。',
+                                icon: Icons.timeline_rounded,
+                                child: recentActivity.isEmpty
+                                    ? const Text('当前筛选下没有新的审计活动。')
+                                    : Column(
+                                        children: recentActivity
+                                            .map(
+                                              (item) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 12,
+                                                ),
+                                                child: _HistoryLineItem(
+                                                  title: item.title,
+                                                  subtitle:
+                                                      '${item.action} · ${item.source}',
+                                                  detail: item.status,
+                                                  accent:
+                                                      item.severity == 'error'
+                                                      ? AppColors.error
+                                                      : item.severity ==
+                                                            'warning'
+                                                      ? AppColors.warning
+                                                      : AppColors.primary,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                      ),
+                              );
+                            }
+
+                            Widget buildLedger() {
+                              return _HistorySnapshotCard(
+                                title: '资产台账预览',
+                                subtitle: '只保留最近 4 条可回放资产，避免首屏重复出现多组跳转按钮。',
+                                icon: Icons.inventory_2_rounded,
+                                child: recentRecords.isEmpty
+                                    ? const Text('当前还没有可回放的历史资产。')
+                                    : Column(
+                                        children: recentRecords
+                                            .map(
+                                              (record) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 12,
+                                                ),
+                                                child: _HistoryLineItem(
+                                                  title: record.filename,
+                                                  subtitle:
+                                                      record.createdAt == null
+                                                      ? '等待时间戳'
+                                                      : '${record.createdAt}',
+                                                  detail:
+                                                      record.storageUrl ??
+                                                      '未生成存储路径',
+                                                  accent: AppColors.cta,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                      ),
+                              );
+                            }
+
+                            if (stacked) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  buildTimeline(),
+                                  const SizedBox(height: 16),
+                                  buildLedger(),
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 6, child: buildTimeline()),
+                                const SizedBox(width: 16),
+                                Expanded(flex: 5, child: buildLedger()),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ProgressiveDetailSection(
+                    title: '运营详情',
+                    summary: '处置流、资产台账、事件流和完整记录列表统一收在这里。',
+                    icon: Icons.dashboard_customize_rounded,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < orderedSections.length; i++) ...[
+                          orderedSections[i].value,
+                          if (i < orderedSections.length - 1)
+                            const SizedBox(height: 20),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -522,92 +676,6 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
       case 'optimization':
         _applyFilters(type: 'optimization', status: 'failed');
         break;
-    }
-  }
-
-  void _handleDutyAction(DutyAction action) {
-    switch (action.command) {
-      case 'open_workspace':
-        final chain = _sharedSummary?.assetSummary.chainSummaries
-            .cast<AssetChainSummary?>()
-            .firstWhere(
-              (item) => item?.key == action.chainKey,
-              orElse: () => null,
-            );
-        if (chain != null) {
-          final context = buildLaunchContextFromDutyAction(
-            action,
-            prefix: '值班动作',
-          );
-          final sourceLabel = context.sourceLabel;
-          switch (chain.key) {
-            case 'dataset':
-              widget.onOpenDataAnalysis?.call(
-                DataAnalysisLaunchIntent.workspace(
-                  sourceLabel: sourceLabel,
-                  context: context,
-                ),
-              );
-              return;
-            case 'model':
-              widget.onOpenAiLab?.call(
-                AiLabLaunchIntent.deepLearning(
-                  '',
-                  sourceLabel: sourceLabel,
-                  context: context,
-                ),
-              );
-              return;
-            case 'knowledge':
-              widget.onOpenAiLab?.call(
-                AiLabLaunchIntent.rag(
-                  '',
-                  sourceLabel: sourceLabel,
-                  context: context,
-                ),
-              );
-              return;
-            case 'optimization':
-              widget.onOpenOptimization?.call(
-                OptimizationLaunchIntent(
-                  sourceLabel: sourceLabel,
-                  context: context,
-                ),
-              );
-              return;
-          }
-          return;
-        }
-        _openChainWorkspace(action.chainKey);
-        return;
-      case 'filter_failed':
-        _applyFilterForChain(action.chainKey, 'failed');
-        return;
-      case 'filter_running':
-        _applyFilterForChain(action.chainKey, 'running');
-        return;
-      case 'clear_filters':
-        _applyFilters(type: null, status: null);
-        return;
-    }
-  }
-
-  void _applyFilterForChain(String key, String status) {
-    switch (key) {
-      case 'dataset':
-        _applyFilters(type: 'analysis', status: status);
-        return;
-      case 'model':
-        _applyFilters(type: 'ml_train', status: status);
-        return;
-      case 'knowledge':
-        _applyFilters(type: 'rag_ingest', status: status);
-        return;
-      case 'optimization':
-        _applyFilters(type: 'optimization', status: status);
-        return;
-      default:
-        _applyFilters(type: null, status: status);
     }
   }
 
@@ -882,20 +950,96 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
   }
 }
 
-class _EmbeddedAuditHeader extends StatelessWidget {
-  const _EmbeddedAuditHeader({required this.onRefresh});
+class _HistorySnapshotCard extends StatelessWidget {
+  const _HistorySnapshotCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.child,
+  });
 
-  final Future<void> Function() onRefresh;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return EmbeddedPageHeader(
-      title: '历史与审计',
-      description: '统一查看任务轨迹、系统活动和分析记录，便于排障和审计追踪。',
-      trailing: FilledButton.tonalIcon(
-        onPressed: onRefresh,
-        icon: const Icon(Icons.refresh_rounded),
-        label: const Text('刷新'),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: AppTextStyles.h4)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryLineItem extends StatelessWidget {
+  const _HistoryLineItem({
+    required this.title,
+    required this.subtitle,
+    required this.detail,
+    required this.accent,
+  });
+
+  final String title;
+  final String subtitle;
+  final String detail;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.labelLarge),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium.copyWith(color: accent),
+          ),
+        ],
       ),
     );
   }

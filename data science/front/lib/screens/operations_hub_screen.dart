@@ -41,7 +41,6 @@ import '../widgets/operations/control_plane_status_board.dart';
 import '../widgets/operations/dataset_asset_card.dart';
 import '../widgets/operations/duty_context_board.dart';
 import '../widgets/operations/duty_section_block.dart';
-import '../widgets/operations/duty_signal_strip.dart';
 import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/incident_priority_strip.dart';
 import '../widgets/operations/incident_runbook_board.dart';
@@ -878,63 +877,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     ]);
   }
 
-  DutyAction _fallbackDutyAction({
-    required String chainKey,
-    required String label,
-    required String tone,
-    required AssetChainSummary? chain,
-  }) {
-    return DutyAction(
-      command: 'open_workspace',
-      label: label,
-      tone: tone,
-      chainKey: chainKey,
-      chainLabel: chain?.label ?? label,
-      workspaceTarget: 'workspace',
-      workspaceTargetLabel: '工作台',
-      cardTarget: 'summary',
-      cardTargetLabel: '当前卡片',
-      incidentTarget: 'focus',
-      incidentTargetLabel: '当前焦点',
-      workspaceBrief: '',
-    );
-  }
-
-  WorkspaceActionLaneAction _fallbackDutyQuickAction({
-    required DashboardSummary summary,
-    required String chainKey,
-    required String label,
-    required IconData icon,
-    required int fallbackTab,
-    required AssetChainSummary? chain,
-    String? semanticKey,
-    WorkspaceActionLaneTone tone = WorkspaceActionLaneTone.outline,
-  }) {
-    final action = _fallbackDutyAction(
-      chainKey: chainKey,
-      label: label,
-      tone: switch (tone) {
-        WorkspaceActionLaneTone.primary => 'primary',
-        WorkspaceActionLaneTone.tonal => 'tonal',
-        WorkspaceActionLaneTone.outline => 'outline',
-      },
-      chain: chain,
-    );
-    return WorkspaceActionLaneAction(
-      label: label,
-      icon: icon,
-      semanticKey: semanticKey,
-      onTap: () {
-        if (chain != null) {
-          _handleDutyAction(action, summary);
-        } else {
-          widget.onNavigateToTab(fallbackTab);
-        }
-      },
-      tone: tone,
-    );
-  }
-
   void _handleDutyAction(DutyAction action, DashboardSummary summary) {
     switch (action.command) {
       case 'open_audit':
@@ -1213,7 +1155,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         .firstWhere((item) => item?.key == 'rag', orElse: () => null);
     final datasetChain = _chainFor(safeSummary, 'dataset');
     final modelChain = _chainFor(safeSummary, 'model');
-    final knowledgeChain = _chainFor(safeSummary, 'knowledge');
     final optimizationChain = _chainFor(safeSummary, 'optimization');
     final focusChain = selectDutyFocusChain(
       safeSummary.assetSummary,
@@ -1222,12 +1163,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final degradedSystems = safeSummary.systemStatus
         .where((item) => item.status != 'healthy')
         .length;
-    final cardFactValue = buildDutyContextCardValue(
-      focusChain?.cardTargetLabel,
-    );
-    final incidentFactValue = buildDutyContextIncidentValue(
-      focusChain?.incidentTargetLabel,
-    );
     final orderedSections =
         <MapEntry<String, Widget>>[
           MapEntry(
@@ -1481,10 +1416,10 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
         ? DecisionBanner(
             title: safeSummary.alerts.first.title,
             message: safeSummary.alerts.first.message,
-            accent: safeSummary.alerts.first.isHighSeverity
+            accent: safeSummary.alerts.first.severity == 'error'
                 ? AppColors.error
                 : AppColors.warning,
-            icon: safeSummary.alerts.first.isHighSeverity
+            icon: safeSummary.alerts.first.severity == 'error'
                 ? Icons.error_outline_rounded
                 : Icons.warning_amber_rounded,
           )
@@ -1495,7 +1430,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                 : (focusChain == null
                       ? '当前没有新的高优先级链路，建议查看最近关键链路和失败作业。'
                       : buildChainCurrentWatch(focusChain)),
-            accent: degradedSystems == 0 ? AppColors.success : AppColors.warning,
+            accent: degradedSystems == 0
+                ? AppColors.success
+                : AppColors.warning,
             icon: degradedSystems == 0
                 ? Icons.verified_rounded
                 : Icons.priority_high_rounded,
@@ -1542,9 +1479,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             ),
             DecisionHeaderMetric(
               label: '当前风险',
-              value: degradedSystems == 0
-                  ? '稳定'
-                  : '$degradedSystems 项需要关注',
+              value: degradedSystems == 0 ? '稳定' : '$degradedSystems 项需要关注',
               helper: '系统与资产链路',
               accent: degradedSystems == 0
                   ? AppColors.success
@@ -1563,8 +1498,8 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             DecisionHeaderMetric(
               label: '关键资产',
               value:
-                  '${safeSummary.kpis.datasetCount + safeSummary.kpis.modelCount + safeSummary.kpis.knowledgeCount}',
-              helper: '数据、模型与知识',
+                  '${safeSummary.kpis.datasetCount + safeSummary.kpis.analysisCount + safeSummary.kpis.modelCount}',
+              helper: '数据、分析与模型',
               accent: AppColors.cta,
               icon: Icons.inventory_2_rounded,
             ),
@@ -1581,15 +1516,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
             builder: (context, constraints) {
               final stacked = constraints.maxWidth < 1040;
               final actions = overviewActions.isNotEmpty
-                  ? overviewActions.skip(1).take(3).map((action) {
-                      return OutlinedButton.icon(
-                        onPressed: () => _handleDutyAction(action, safeSummary),
-                        icon: Icon(
-                          _dutyActionIcon(action.command, action.chainKey),
-                        ),
-                        label: Text(action.label),
-                      );
-                    }).toList(growable: false)
+                  ? overviewActions
+                        .skip(1)
+                        .take(3)
+                        .map((action) {
+                          return OutlinedButton.icon(
+                            onPressed: () =>
+                                _handleDutyAction(action, safeSummary),
+                            icon: Icon(
+                              _dutyActionIcon(action.command, action.chainKey),
+                            ),
+                            label: Text(action.label),
+                          );
+                        })
+                        .toList(growable: false)
                   : [
                       OutlinedButton.icon(
                         onPressed: () {
@@ -1646,7 +1586,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                       title: '当前风险',
                       subtitle: primaryBanner.title,
                       accent: safeSummary.alerts.isNotEmpty
-                          ? (safeSummary.alerts.first.isHighSeverity
+                          ? (safeSummary.alerts.first.severity == 'error'
                                 ? AppColors.error
                                 : AppColors.warning)
                           : (degradedSystems == 0
@@ -1704,7 +1644,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                                     focusChain.key,
                                   ),
                                 ),
-                                label: Text('进入${focusChain.workspaceTargetLabel}'),
+                                label: Text(
+                                  '进入${focusChain.workspaceTargetLabel}',
+                                ),
                               ),
                             ],
                           ],
@@ -1726,12 +1668,11 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                                       'open_workspace',
                                       chain.key,
                                     ),
-                                    onTap: () =>
-                                        _openOverviewChainByKey(
-                                          safeSummary,
-                                          chain.key,
-                                          source: 'Recent Key Chain',
-                                        ),
+                                    onTap: () => _openOverviewChainByKey(
+                                      safeSummary,
+                                      chain.key,
+                                      source: 'Recent Key Chain',
+                                    ),
                                   ),
                                 ),
                               )
@@ -1802,9 +1743,11 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              for (var i = 0;
-                                  i < orderedSections.length;
-                                  i++) ...[
+                              for (
+                                var i = 0;
+                                i < orderedSections.length;
+                                i++
+                              ) ...[
                                 orderedSections[i].value,
                                 if (i < orderedSections.length - 1)
                                   const SizedBox(height: 20),
@@ -1816,7 +1759,9 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                         final leftSections = <Widget>[];
                         final rightSections = <Widget>[];
                         for (var i = 0; i < orderedSections.length; i++) {
-                          final target = i.isEven ? leftSections : rightSections;
+                          final target = i.isEven
+                              ? leftSections
+                              : rightSections;
                           target.add(orderedSections[i].value);
                           if (i + 2 < orderedSections.length) {
                             target.add(const SizedBox(height: 20));
@@ -2087,42 +2032,6 @@ Widget _dutyFocusChip() {
     foreground: AppColors.primary,
     background: AppColors.infoLight,
   );
-}
-
-String? _recommendedDutyActionKey(
-  DutySummary? summary,
-  List<DutyAction> actions,
-) {
-  final focusKey = summary?.focusChainKey;
-  if (focusKey != null && focusKey.isNotEmpty) {
-    for (final action in actions) {
-      if (action.command == 'open_workspace' && action.chainKey == focusKey) {
-        return '${action.command}:${action.chainKey}';
-      }
-    }
-  }
-  for (final action in actions) {
-    if (action.command == 'open_workspace') {
-      return '${action.command}:${action.chainKey}';
-    }
-  }
-  for (final action in actions) {
-    if (action.command == 'open_audit') {
-      return '${action.command}:${action.chainKey}';
-    }
-  }
-  return null;
-}
-
-WorkspaceActionLaneTone _dutyActionTone(String tone) {
-  switch (tone) {
-    case 'primary':
-      return WorkspaceActionLaneTone.primary;
-    case 'tonal':
-      return WorkspaceActionLaneTone.tonal;
-    default:
-      return WorkspaceActionLaneTone.outline;
-  }
 }
 
 IconData _dutyActionIcon(String command, String chainKey) {

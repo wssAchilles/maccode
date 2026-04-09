@@ -24,15 +24,11 @@ import '../widgets/deep_learning/deep_learning_terminal_panel.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/ai_lab_operations_board.dart';
 import '../widgets/operations/ai_lab_asset_control_board.dart';
-import '../widgets/operations/embedded_page_header.dart';
+import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
 import '../widgets/operations/lab_split_panel.dart';
 import '../widgets/operations/workbench_page_frame.dart';
-import '../widgets/operations/workbench_command_strip.dart';
-import '../widgets/operations/workbench_runbook_panel.dart';
-import '../widgets/operations/workbench_section_signal.dart';
-import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/rag/rag_input_area.dart';
 import '../widgets/rag/rag_message_list.dart';
 import '../widgets/responsive_wrapper.dart';
@@ -270,14 +266,6 @@ class _AiLabScreenState extends State<AiLabScreen> {
         );
       }
     });
-  }
-
-  Future<void> _refreshLab() async {
-    await Future.wait([
-      _refreshSharedProjection(),
-      _trainingJobsViewModel.loadJobs(),
-      _ragJobsViewModel.loadJobs(),
-    ]);
   }
 
   AssetChainSummary? _chainForKey(String key) {
@@ -870,430 +858,157 @@ class _AiLabScreenState extends State<AiLabScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (widget.surfaceMode.isEmbedded) ...[
-                  _buildEmbeddedHeader(tabSwitcher),
-                  const SizedBox(height: 20),
-                ],
-                AiLabOperationsBoard(
-                  summary: summary,
-                  trainingJobs: _trainingJobsViewModel.jobs,
-                  ragJobs: _ragJobsViewModel.jobs,
-                  currentTab: _currentTab.name,
-                  launchIntent: widget.launchIntent,
-                  trainingStoragePath:
-                      _resolvedTrainingStoragePath(assetSummary) ??
-                      _trainingStorageController.text.trim(),
-                  ragStoragePath: _ragStorageController.text.trim(),
-                ),
-                const SizedBox(height: 20),
-                WorkbenchCommandStrip(
-                  title: '页级动作',
-                  description: '把训练提交、知识库构建和实验刷新固定在顶部，避免在单壳模式下依赖各面板内部按钮来完成主流程。',
-                  actions: [
-                    WorkbenchCommandAction(
-                      label: _trainingJobsViewModel.isSubmitting
-                          ? '训练提交中...'
-                          : '提交训练任务',
-                      icon: Icons.model_training_rounded,
-                      onTap:
-                          (_trainingStorageController.text.trim().isNotEmpty &&
-                              _trainingTargetController.text
-                                  .trim()
-                                  .isNotEmpty &&
-                              !_trainingJobsViewModel.isSubmitting)
-                          ? () {
-                              _submitTrainingJob();
-                            }
-                          : null,
-                      tone: _currentTab == _AiLabTab.deepLearning
-                          ? WorkbenchCommandTone.primary
-                          : WorkbenchCommandTone.tonal,
-                      isLoading: _trainingJobsViewModel.isSubmitting,
+                DecisionHeaderCard(
+                  title: 'AI Lab',
+                  summary: _currentTab == _AiLabTab.deepLearning
+                      ? '先准备训练数据和配置，再跟进训练状态；资产治理与版本回填全部下沉。'
+                      : '先确认知识路径和集合，再构建知识库并直接验证问答结果。',
+                  metrics: [
+                    DecisionHeaderMetric(
+                      label: '当前车道',
+                      value: _currentTab == _AiLabTab.deepLearning
+                          ? '深度学习'
+                          : 'RAG',
+                      helper: '当前唯一主流程',
+                      accent: _currentTab == _AiLabTab.deepLearning
+                          ? AppColors.cta
+                          : AppColors.success,
+                      icon: _currentTab == _AiLabTab.deepLearning
+                          ? Icons.model_training_rounded
+                          : Icons.auto_awesome_rounded,
                     ),
-                    WorkbenchCommandAction(
-                      label: _ragJobsViewModel.isSubmitting
-                          ? '知识库提交中...'
-                          : '构建知识库',
-                      icon: Icons.auto_awesome_rounded,
-                      onTap:
-                          (_ragStorageController.text.trim().isNotEmpty &&
-                              !_ragJobsViewModel.isSubmitting)
-                          ? () {
-                              _submitRagIngestJob();
-                            }
-                          : null,
-                      tone: _currentTab == _AiLabTab.rag
-                          ? WorkbenchCommandTone.primary
-                          : WorkbenchCommandTone.tonal,
-                      isLoading: _ragJobsViewModel.isSubmitting,
-                    ),
-                    WorkbenchCommandAction(
-                      label: '切到深度学习',
-                      icon: Icons.tune_rounded,
-                      onTap: () {
-                        setState(() {
-                          _currentTab = _AiLabTab.deepLearning;
-                        });
-                      },
-                      tone: WorkbenchCommandTone.outline,
-                    ),
-                    WorkbenchCommandAction(
-                      label: '刷新 AI 实验台',
-                      icon: Icons.refresh_rounded,
-                      onTap: () {
-                        _refreshLab();
-                      },
-                      tone: WorkbenchCommandTone.outline,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                WorkbenchRunbookPanel(
-                  chain: activeChain,
-                  continuationContext: _contextForTab(_currentTab),
-                  description: _currentTab == _AiLabTab.deepLearning
-                      ? '把训练链路的版本、责任和处置步骤直接压到当前工作台，优先完成模型资产回填与版本治理。'
-                      : '把知识库链路的处置步骤直接压到当前工作台，优先完成快照回填、集合校验和问答治理。',
-                  actions: _currentTab == _AiLabTab.deepLearning
-                      ? [
-                          WorkbenchCommandAction(
-                            label: '应用最新模型资产',
-                            icon: Icons.download_done_rounded,
-                            onTap: latestModelAsset == null
-                                ? null
-                                : () {
-                                    _applyModelAsset(
-                                      latestModelAsset,
-                                      chain: modelChain,
-                                    );
-                                  },
-                            tone: WorkbenchCommandTone.primary,
-                          ),
-                          WorkbenchCommandAction(
-                            label: '复制模型护照',
-                            icon: Icons.badge_rounded,
-                            onTap: latestModelAsset == null
-                                ? null
-                                : () {
-                                    _copyModelPassport(
-                                      latestModelAsset,
-                                      chain: modelChain,
-                                    );
-                                  },
-                            tone: WorkbenchCommandTone.tonal,
-                          ),
-                          WorkbenchCommandAction(
-                            label: '刷新 AI 实验台',
-                            icon: Icons.refresh_rounded,
-                            onTap: _refreshLab,
-                            tone: WorkbenchCommandTone.outline,
-                          ),
-                        ]
-                      : [
-                          WorkbenchCommandAction(
-                            label: '应用最新知识快照',
-                            icon: Icons.library_add_check_rounded,
-                            onTap: latestKnowledgeAsset == null
-                                ? null
-                                : () {
-                                    _applyKnowledgeAsset(
-                                      latestKnowledgeAsset,
-                                      chain: knowledgeChain,
-                                    );
-                                  },
-                            tone: WorkbenchCommandTone.primary,
-                          ),
-                          WorkbenchCommandAction(
-                            label: '复制知识护照',
-                            icon: Icons.badge_rounded,
-                            onTap: latestKnowledgeAsset == null
-                                ? null
-                                : () {
-                                    _copyKnowledgePassport(
-                                      latestKnowledgeAsset,
-                                      chain: knowledgeChain,
-                                    );
-                                  },
-                            tone: WorkbenchCommandTone.tonal,
-                          ),
-                          WorkbenchCommandAction(
-                            label: '清空问答会话',
-                            icon: Icons.cleaning_services_rounded,
-                            onTap: () {
-                              _clearRagConversation(chain: knowledgeChain);
-                            },
-                            tone: WorkbenchCommandTone.outline,
-                          ),
-                        ],
-                ),
-                if (activeChain != null) const SizedBox(height: 20),
-                WorkspaceActionDeck(
-                  lanes: [
-                    WorkspaceActionLane(
-                      title: '模型训练车道',
-                      description:
-                          '把训练提交、最新模型回填、护照复制和队列刷新收在一条主工作流里，避免训练动作继续散在顶部按钮和资产卡内部。',
-                      accent: AppColors.cta,
-                      icon: Icons.model_training_rounded,
-                      workspaceLabel:
-                          _contextForTab(
-                            _AiLabTab.deepLearning,
-                          )?.workspaceTargetLabel ??
-                          modelChain?.workspaceTargetLabel,
-                      cardLabel:
-                          _contextForTab(
-                            _AiLabTab.deepLearning,
-                          )?.cardTargetLabel ??
-                          modelChain?.cardTargetLabel,
-                      incidentLabel:
-                          _contextForTab(
-                            _AiLabTab.deepLearning,
-                          )?.incidentTargetLabel ??
-                          modelChain?.incidentTargetLabel,
-                      summary:
-                          trainingError ??
-                          _contextForTab(
-                            _AiLabTab.deepLearning,
-                          )?.workspaceBrief ??
-                          modelChain?.workspaceBrief,
-                      statusLabel: trainingError != null
-                          ? '提交失败'
-                          : _trainingJobsViewModel.isSubmitting
-                          ? '提交中'
-                          : _trainingJobsViewModel.activeJob != null
+                    DecisionHeaderMetric(
+                      label: '训练状态',
+                      value: _trainingJobsViewModel.activeJob != null
                           ? buildJobPrimaryText(
                               _trainingJobsViewModel.activeJob!,
                             )
                           : (_trainingJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
-                      statusColor: trainingError != null
+                      helper: '最近训练任务',
+                      accent: trainingError != null
                           ? AppColors.error
-                          : _trainingJobsViewModel.isSubmitting
-                          ? AppColors.warning
                           : (_trainingJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
-                                : AppColors.success),
-                      recommendedActionKey: trainingError != null
-                          ? 'submit_training'
-                          : _recommendedAiLaneAction(
-                              _contextForTab(_AiLabTab.deepLearning),
-                              hasLatestAsset: latestModelAsset != null,
-                              runtimeActionKey: 'submit_training',
-                              registryActionKey: 'apply_latest_model_asset',
-                              timelineActionKey: 'copy_model_passport',
-                            ),
-                      actions: [
-                        WorkspaceActionLaneAction(
-                          label: '提交训练任务',
-                          icon: Icons.play_arrow_rounded,
-                          onTap:
-                              (_trainingStorageController.text
-                                      .trim()
-                                      .isNotEmpty &&
-                                  _trainingTargetController.text
-                                      .trim()
-                                      .isNotEmpty &&
-                                  !_trainingJobsViewModel.isSubmitting)
-                              ? _submitTrainingJob
-                              : null,
-                          semanticKey: 'submit_training',
-                          tone: WorkspaceActionLaneTone.primary,
-                          isLoading: _trainingJobsViewModel.isSubmitting,
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '回填最新模型资产',
-                          icon: Icons.download_done_rounded,
-                          onTap: latestModelAsset == null
-                              ? null
-                              : () => _applyModelAsset(
-                                  latestModelAsset,
-                                  chain: modelChain,
-                                ),
-                          semanticKey: 'apply_latest_model_asset',
-                          tone: WorkspaceActionLaneTone.tonal,
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '复制模型护照',
-                          icon: Icons.badge_rounded,
-                          onTap: latestModelAsset == null
-                              ? null
-                              : () => _copyModelPassport(
-                                  latestModelAsset,
-                                  chain: modelChain,
-                                ),
-                          semanticKey: 'copy_model_passport',
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '刷新训练队列',
-                          icon: Icons.refresh_rounded,
-                          onTap: _trainingJobsViewModel.loadJobs,
-                          semanticKey: 'refresh_training_jobs',
-                        ),
-                      ],
+                                : AppColors.primary),
+                      icon: Icons.model_training_rounded,
                     ),
-                    WorkspaceActionLane(
-                      title: '知识构建车道',
-                      description:
-                          '把知识库构建、快照回填、护照复制和会话治理收在同一条知识工作流里，减少在资产区和问答区之间来回切换。',
-                      accent: AppColors.success,
-                      icon: Icons.auto_awesome_rounded,
-                      workspaceLabel:
-                          _contextForTab(_AiLabTab.rag)?.workspaceTargetLabel ??
-                          knowledgeChain?.workspaceTargetLabel,
-                      cardLabel:
-                          _contextForTab(_AiLabTab.rag)?.cardTargetLabel ??
-                          knowledgeChain?.cardTargetLabel,
-                      incidentLabel:
-                          _contextForTab(_AiLabTab.rag)?.incidentTargetLabel ??
-                          knowledgeChain?.incidentTargetLabel,
-                      summary:
-                          ragError ??
-                          _contextForTab(_AiLabTab.rag)?.workspaceBrief ??
-                          knowledgeChain?.workspaceBrief,
-                      statusLabel: ragError != null
-                          ? '提交失败'
-                          : _ragJobsViewModel.isSubmitting
-                          ? '提交中'
-                          : _ragJobsViewModel.activeJob != null
+                    DecisionHeaderMetric(
+                      label: '知识状态',
+                      value: _ragJobsViewModel.activeJob != null
                           ? buildJobPrimaryText(_ragJobsViewModel.activeJob!)
                           : (_ragJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
-                      statusColor: ragError != null
+                      helper: '最近知识任务',
+                      accent: ragError != null
                           ? AppColors.error
-                          : _ragJobsViewModel.isSubmitting
-                          ? AppColors.warning
                           : (_ragJobsViewModel.activeJob?.isRunning == true
                                 ? AppColors.warning
                                 : AppColors.success),
-                      recommendedActionKey: ragError != null
-                          ? 'build_knowledge'
-                          : _recommendedAiLaneAction(
-                              _contextForTab(_AiLabTab.rag),
-                              hasLatestAsset: latestKnowledgeAsset != null,
-                              runtimeActionKey: 'build_knowledge',
-                              registryActionKey: 'apply_latest_knowledge_asset',
-                              timelineActionKey: 'copy_knowledge_passport',
-                            ),
-                      actions: [
-                        WorkspaceActionLaneAction(
-                          label: '构建知识库',
-                          icon: Icons.hub_rounded,
-                          onTap:
-                              (_ragStorageController.text.trim().isNotEmpty &&
-                                  !_ragJobsViewModel.isSubmitting)
-                              ? _submitRagIngestJob
-                              : null,
-                          semanticKey: 'build_knowledge',
-                          tone: WorkspaceActionLaneTone.primary,
-                          isLoading: _ragJobsViewModel.isSubmitting,
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '回填最新知识快照',
-                          icon: Icons.library_add_check_rounded,
-                          onTap: latestKnowledgeAsset == null
-                              ? null
-                              : () => _applyKnowledgeAsset(
-                                  latestKnowledgeAsset,
-                                  chain: knowledgeChain,
-                                ),
-                          semanticKey: 'apply_latest_knowledge_asset',
-                          tone: WorkspaceActionLaneTone.tonal,
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '复制知识护照',
-                          icon: Icons.badge_rounded,
-                          onTap: latestKnowledgeAsset == null
-                              ? null
-                              : () => _copyKnowledgePassport(
-                                  latestKnowledgeAsset,
-                                  chain: knowledgeChain,
-                                ),
-                          semanticKey: 'copy_knowledge_passport',
-                        ),
-                        WorkspaceActionLaneAction(
-                          label: '清空问答会话',
-                          icon: Icons.cleaning_services_rounded,
-                          onTap: () =>
-                              _clearRagConversation(chain: knowledgeChain),
-                          semanticKey: 'clear_rag_conversation',
-                        ),
-                      ],
+                      icon: Icons.auto_stories_rounded,
+                    ),
+                    DecisionHeaderMetric(
+                      label: '最近资产',
+                      value: _currentTab == _AiLabTab.deepLearning
+                          ? (latestModelAsset == null ? '暂无模型' : '模型已就绪')
+                          : (latestKnowledgeAsset == null ? '暂无快照' : '快照已就绪'),
+                      helper: _currentTab == _AiLabTab.deepLearning
+                          ? '模型产物回填'
+                          : '知识快照回填',
+                      accent: AppColors.primary,
+                      icon: Icons.inventory_2_rounded,
                     ),
                   ],
+                  banner: _buildAiLabBanner(
+                    trainingError: trainingError,
+                    ragError: ragError,
+                    latestModelAsset: latestModelAsset,
+                    latestKnowledgeAsset: latestKnowledgeAsset,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                WorkbenchSectionSignal(
-                  chain: activeChain,
-                  continuationContext: _contextForTab(_currentTab),
-                  title: '资产治理区',
-                  description: _currentTab == _AiLabTab.deepLearning
-                      ? '先看模型注册表、训练产物和版本血缘，再决定是回填模型还是重新提交训练。'
-                      : '先看知识快照、集合状态和版本血缘，再决定是回填快照还是重新构建知识库。',
-                  icon: _currentTab == _AiLabTab.deepLearning
-                      ? Icons.account_tree_rounded
-                      : Icons.auto_stories_rounded,
-                ),
-                if (activeChain != null) const SizedBox(height: 20),
-                AiLabAssetControlBoard(
-                  activeChain: activeChain,
-                  continuationContext: _contextForTab(_currentTab),
-                  assetSummary: summary?.assetSummary,
-                  trainingJobs: _trainingJobsViewModel.jobs,
-                  ragJobs: _ragJobsViewModel.jobs,
-                  onApplyTrainingArtifact: (job) {
-                    _applyTrainingArtifact(job, chain: modelChain);
-                  },
-                  onCopyModelPath: (path) {
-                    _copyText(
-                      path,
-                      _chainAssetActionMessage(modelChain, prefix: '模型路径已复制'),
-                    );
-                  },
-                  onApplyKnowledgeSnapshot: (job) {
-                    _applyKnowledgeSnapshot(job, chain: knowledgeChain);
-                  },
-                  onCopyCollection: (collection) {
-                    _copyText(
-                      collection,
-                      _chainAssetActionMessage(
-                        knowledgeChain,
-                        prefix: '集合名已复制',
-                      ),
-                    );
-                  },
-                  onClearConversation: () {
-                    _clearRagConversation(chain: knowledgeChain);
-                  },
-                  onApplyModelAsset: (asset) {
-                    _applyModelAsset(asset, chain: modelChain);
-                  },
-                  onCopyModelPassport: (asset) {
-                    _copyModelPassport(asset, chain: modelChain);
-                  },
-                  onApplyKnowledgeAsset: (asset) {
-                    _applyKnowledgeAsset(asset, chain: knowledgeChain);
-                  },
-                  onCopyKnowledgePassport: (asset) {
-                    _copyKnowledgePassport(asset, chain: knowledgeChain);
-                  },
-                ),
-                const SizedBox(height: 20),
-                WorkbenchSectionSignal(
-                  chain: activeChain,
-                  continuationContext: _contextForTab(_currentTab),
+                PrimaryWorkflowPanel(
+                  eyebrow: _currentTab == _AiLabTab.deepLearning
+                      ? '训练数据 -> 训练配置 -> 训练状态'
+                      : '知识路径 -> 构建入口 -> 问答面板',
                   title: _currentTab == _AiLabTab.deepLearning
-                      ? '训练执行面'
-                      : '知识执行面',
-                  description: _currentTab == _AiLabTab.deepLearning
-                      ? '这一块负责训练配置、任务轨迹和最新模型表现，链路活跃时优先盯这里。'
-                      : '这一块负责知识构建、问答验证和引用来源，链路活跃或失败时优先盯这里。',
-                  icon: _currentTab == _AiLabTab.deepLearning
-                      ? Icons.model_training_rounded
-                      : Icons.chat_bubble_outline_rounded,
+                      ? '深度学习主流程'
+                      : '知识助手主流程',
+                  summary: _currentTab == _AiLabTab.deepLearning
+                      ? '首屏只保留训练输入、训练配置和训练状态。'
+                      : '首屏只保留知识路径、构建入口和问答验证。',
+                  trailing: widget.surfaceMode.isEmbedded ? tabSwitcher : null,
+                  child: _currentTab == _AiLabTab.deepLearning
+                      ? _buildDeepLearningTab(summary)
+                      : _buildRagTab(summary),
                 ),
-                if (activeChain != null) const SizedBox(height: 20),
-                if (_currentTab == _AiLabTab.deepLearning)
-                  _buildDeepLearningTab(summary)
-                else
-                  _buildRagTab(summary),
+                const SizedBox(height: 20),
+                ProgressiveDetailSection(
+                  title: '任务与资产治理',
+                  summary: '实验态摘要、资产回填、护照复制和版本治理统一下沉到这里。',
+                  icon: Icons.account_tree_rounded,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AiLabOperationsBoard(
+                        summary: summary,
+                        trainingJobs: _trainingJobsViewModel.jobs,
+                        ragJobs: _ragJobsViewModel.jobs,
+                        currentTab: _currentTab.name,
+                        launchIntent: widget.launchIntent,
+                        trainingStoragePath:
+                            _resolvedTrainingStoragePath(assetSummary) ??
+                            _trainingStorageController.text.trim(),
+                        ragStoragePath: _ragStorageController.text.trim(),
+                      ),
+                      const SizedBox(height: 20),
+                      AiLabAssetControlBoard(
+                        activeChain: activeChain,
+                        continuationContext: _contextForTab(_currentTab),
+                        assetSummary: summary?.assetSummary,
+                        trainingJobs: _trainingJobsViewModel.jobs,
+                        ragJobs: _ragJobsViewModel.jobs,
+                        onApplyTrainingArtifact: (job) {
+                          _applyTrainingArtifact(job, chain: modelChain);
+                        },
+                        onCopyModelPath: (path) {
+                          _copyText(
+                            path,
+                            _chainAssetActionMessage(
+                              modelChain,
+                              prefix: '模型路径已复制',
+                            ),
+                          );
+                        },
+                        onApplyKnowledgeSnapshot: (job) {
+                          _applyKnowledgeSnapshot(job, chain: knowledgeChain);
+                        },
+                        onCopyCollection: (collection) {
+                          _copyText(
+                            collection,
+                            _chainAssetActionMessage(
+                              knowledgeChain,
+                              prefix: '集合名已复制',
+                            ),
+                          );
+                        },
+                        onClearConversation: () {
+                          _clearRagConversation(chain: knowledgeChain);
+                        },
+                        onApplyModelAsset: (asset) {
+                          _applyModelAsset(asset, chain: modelChain);
+                        },
+                        onCopyModelPassport: (asset) {
+                          _copyModelPassport(asset, chain: modelChain);
+                        },
+                        onApplyKnowledgeAsset: (asset) {
+                          _applyKnowledgeAsset(asset, chain: knowledgeChain);
+                        },
+                        onCopyKnowledgePassport: (asset) {
+                          _copyKnowledgePassport(asset, chain: knowledgeChain);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1344,11 +1059,58 @@ class _AiLabScreenState extends State<AiLabScreen> {
     );
   }
 
-  Widget _buildEmbeddedHeader(Widget tabSwitcher) {
-    return EmbeddedPageHeader(
-      title: 'AI Lab',
-      description: '将深度学习训练、知识库构建和问答调试统一放到一个实验工作台中。',
-      trailing: tabSwitcher,
+  Widget _buildAiLabBanner({
+    required String? trainingError,
+    required String? ragError,
+    required AssetModel? latestModelAsset,
+    required KnowledgeAsset? latestKnowledgeAsset,
+  }) {
+    if (_currentTab == _AiLabTab.deepLearning) {
+      if (trainingError != null) {
+        return DecisionBanner(
+          title: '训练提交需要复核',
+          message: trainingError,
+          accent: AppColors.error,
+          icon: Icons.error_outline_rounded,
+        );
+      }
+      if (latestModelAsset != null) {
+        return const DecisionBanner(
+          title: '已有最近模型资产',
+          message: '可以直接回填最近模型资产，或调整配置后重新发起训练。',
+          accent: AppColors.primary,
+          icon: Icons.cloud_done_rounded,
+        );
+      }
+      return const DecisionBanner(
+        title: '先准备训练输入',
+        message: '填写存储路径和目标列后，首屏会继续跟进训练状态。',
+        accent: AppColors.cta,
+        icon: Icons.model_training_rounded,
+      );
+    }
+
+    if (ragError != null) {
+      return DecisionBanner(
+        title: '知识构建需要复核',
+        message: ragError,
+        accent: AppColors.error,
+        icon: Icons.error_outline_rounded,
+      );
+    }
+    if (latestKnowledgeAsset != null) {
+      return const DecisionBanner(
+        title: '已有最近知识快照',
+        message: '可以直接回填最近知识快照，或更换集合后重新构建。',
+        accent: AppColors.success,
+        icon: Icons.library_add_check_rounded,
+      );
+    }
+    return const DecisionBanner(
+      title: '先构建知识库',
+      message: '填写知识路径后先完成一次构建，再在首屏直接验证问答结果。',
+      accent: AppColors.success,
+      icon: Icons.auto_awesome_rounded,
     );
   }
 
@@ -1816,25 +1578,6 @@ String _arrivalVerbForAiLabLaunch(
     return '已打开';
   }
   return '已送入';
-}
-
-String _recommendedAiLaneAction(
-  WorkbenchLaunchContext? context, {
-  required bool hasLatestAsset,
-  required String runtimeActionKey,
-  required String registryActionKey,
-  required String timelineActionKey,
-}) {
-  switch (context?.cardTarget) {
-    case 'registry_snapshot':
-      return hasLatestAsset ? registryActionKey : runtimeActionKey;
-    case 'version_timeline':
-      return hasLatestAsset ? timelineActionKey : runtimeActionKey;
-    case 'runtime_product':
-      return runtimeActionKey;
-    default:
-      return hasLatestAsset ? registryActionKey : runtimeActionKey;
-  }
 }
 
 int? _asInt(Object? value) {

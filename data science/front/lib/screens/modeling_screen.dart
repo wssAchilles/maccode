@@ -24,13 +24,10 @@ import '../viewmodels/job_view_model.dart';
 import '../viewmodels/modeling_view_model.dart';
 import '../widgets/common/glass_card.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
-import '../widgets/operations/embedded_page_header.dart';
+import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
 import '../widgets/operations/workbench_page_frame.dart';
-import '../widgets/operations/workbench_command_strip.dart';
-import '../widgets/operations/workbench_runbook_panel.dart';
-import '../widgets/operations/workbench_section_signal.dart';
 import '../widgets/operations/workspace_action_lane.dart';
 import '../widgets/operations/workspace_digest_card.dart';
 import '../widgets/modeling/modeling_control_panel.dart';
@@ -211,44 +208,6 @@ class _ModelingScreenState extends State<ModelingScreen> {
       default:
         return AppColors.textSecondary;
     }
-  }
-
-  Widget _buildPageHeader() {
-    final latestJob = _jobViewModel.jobs.isEmpty
-        ? null
-        : _jobViewModel.jobs.first;
-    return EmbeddedPageHeader(
-      title: 'Optimization Workbench',
-      description: '将参数配置、后台优化任务、结果导出和策略解释统一放到同一工作台，适合做工业级微网调度与 What-If 推演。',
-      badges: [
-        EmbeddedHeaderBadge(
-          label: '场景',
-          value: _scenarioLabel(_controls.selectedScenario),
-          accent: AppColors.primary,
-          icon: Icons.tune_rounded,
-        ),
-        EmbeddedHeaderBadge(
-          label: '目标日期',
-          value: DateFormat('MM-dd').format(_controls.targetDate),
-          accent: AppColors.cta,
-          icon: Icons.event_rounded,
-        ),
-        EmbeddedHeaderBadge(
-          label: '配置摘要',
-          value: _controls.summaryText,
-          accent: AppColors.success,
-          icon: Icons.battery_charging_full_rounded,
-        ),
-        EmbeddedHeaderBadge(
-          label: '后台队列',
-          value: latestJob == null ? '空闲' : buildJobPrimaryText(latestJob),
-          accent: latestJob == null
-              ? AppColors.textSecondary
-              : _jobStatusColor(latestJob.status),
-          icon: Icons.cloud_queue_rounded,
-        ),
-      ],
-    );
   }
 
   void _showSuccessSnackBar(String message) {
@@ -446,10 +405,6 @@ class _ModelingScreenState extends State<ModelingScreen> {
               (item) => item?.key == 'optimization',
               orElse: () => null,
             );
-        final latestOptimizationAsset =
-            assetSummary != null && assetSummary.optimizations.isNotEmpty
-            ? assetSummary.optimizations.first
-            : null;
         final latestCompletedJob = _jobViewModel.jobs
             .cast<JobRecord?>()
             .firstWhere(
@@ -468,185 +423,155 @@ class _ModelingScreenState extends State<ModelingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildPageHeader(),
-                  const SizedBox(height: 16),
-                  WorkbenchCommandStrip(
-                    title: '页级动作',
-                    description: '把即时试算、后台优化和结果协作动作固定在工作台顶部，避免依赖旧式页面壳按钮。',
-                    actions: [
-                      WorkbenchCommandAction(
-                        label: '立即试算',
-                        icon: Icons.play_arrow_rounded,
-                        onTap: _isLoading
-                            ? null
-                            : () {
-                                _runOptimization();
-                              },
-                        tone: WorkbenchCommandTone.primary,
+                  DecisionHeaderCard(
+                    title: '今日调度结果',
+                    summary: '先设定场景和目标日，再试算一次可执行策略；后台队列和注册表统一下沉到详情区。',
+                    metrics: [
+                      DecisionHeaderMetric(
+                        label: '场景',
+                        value: _scenarioLabel(_controls.selectedScenario),
+                        helper: '当前试算上下文',
+                        accent: AppColors.primary,
+                        icon: Icons.tune_rounded,
                       ),
-                      WorkbenchCommandAction(
-                        label: _jobViewModel.isSubmitting
-                            ? '提交后台中...'
-                            : '后台优化任务',
+                      DecisionHeaderMetric(
+                        label: '目标日期',
+                        value: DateFormat('MM-dd').format(_controls.targetDate),
+                        helper: '计划执行日',
+                        accent: AppColors.cta,
+                        icon: Icons.event_rounded,
+                      ),
+                      DecisionHeaderMetric(
+                        label: '后台状态',
+                        value: latestCompletedJob == null
+                            ? (_jobViewModel.jobs.isEmpty
+                                  ? '空闲'
+                                  : buildJobPrimaryText(
+                                      _jobViewModel.jobs.first,
+                                    ))
+                            : buildJobPrimaryText(latestCompletedJob),
+                        helper: '最近一次求解任务',
+                        accent: latestCompletedJob == null
+                            ? AppColors.textSecondary
+                            : _jobStatusColor(latestCompletedJob.status),
                         icon: Icons.cloud_queue_rounded,
-                        onTap: _jobViewModel.isSubmitting
-                            ? null
-                            : () {
-                                _submitOptimizationJob();
-                              },
-                        tone: WorkbenchCommandTone.tonal,
-                        isLoading: _jobViewModel.isSubmitting,
                       ),
-                      WorkbenchCommandAction(
-                        label: '刷新任务状态',
-                        icon: Icons.sync_rounded,
-                        onTap: () {
-                          _jobViewModel.loadJobs();
-                        },
-                        tone: WorkbenchCommandTone.outline,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '复制节省摘要',
-                        icon: Icons.content_copy_rounded,
-                        onTap: (_result != null && _result!.isSuccess)
-                            ? () {
-                                _copySummaryDigest();
-                              }
-                            : null,
-                        tone: WorkbenchCommandTone.outline,
+                      DecisionHeaderMetric(
+                        label: '预计节省',
+                        value:
+                            _result?.optimization?.summary.savingsFormatted ??
+                            '等待试算',
+                        helper: _result?.isSuccess == true
+                            ? '本次方案收益'
+                            : '运行后展示结果',
+                        accent: _result?.isSuccess == true
+                            ? AppColors.success
+                            : AppColors.warning,
+                        icon: Icons.savings_rounded,
                       ),
                     ],
+                    banner: _buildOptimizationBanner(latestCompletedJob),
                   ),
                   const SizedBox(height: 16),
-                  WorkbenchRunbookPanel(
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
-                    description:
-                        '把优化链路的处置步骤、责任和 SLA 直接压进工作台，优先处理最新结果回填、快照复盘和运维摘要。',
-                    actions: [
-                      WorkbenchCommandAction(
-                        label: '载入最近后台结果',
-                        icon: Icons.download_done_rounded,
-                        onTap: latestCompletedJob == null
-                            ? null
-                            : () {
-                                _hydrateLatestJobResult(latestCompletedJob);
-                              },
-                        tone: WorkbenchCommandTone.primary,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '应用最新资产快照',
-                        icon: Icons.inventory_2_rounded,
-                        onTap: latestOptimizationAsset == null
-                            ? null
-                            : () {
-                                _applyOptimizationAsset(
-                                  latestOptimizationAsset,
-                                );
-                              },
-                        tone: WorkbenchCommandTone.tonal,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '复制运维摘要',
-                        icon: Icons.monitor_heart_rounded,
-                        onTap: (_result != null && _result!.isSuccess)
-                            ? () {
-                                _copyOperationsDigest();
-                              }
-                            : null,
-                        tone: WorkbenchCommandTone.outline,
-                      ),
-                      WorkbenchCommandAction(
-                        label: '刷新任务状态',
-                        icon: Icons.sync_rounded,
-                        onTap: _jobViewModel.loadJobs,
-                        tone: WorkbenchCommandTone.outline,
-                      ),
-                    ],
-                  ),
-                  if (optimizationChain != null) const SizedBox(height: 16),
-                  WorkbenchSectionSignal(
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
-                    title: '后台求解任务',
-                    description: '先看当前求解链路的阶段、进度和 SLA，再决定是继续观察、重试还是直接回填最近结果。',
-                    icon: Icons.timeline_rounded,
-                  ),
-                  if (optimizationChain != null) const SizedBox(height: 16),
-                  ModelingControlPanel(
-                    state: _controls,
-                    isLoading: _isLoading,
-                    onToggleAdvancedParams: () {
-                      _updateControls(
-                        _controls.copyWith(
-                          showAdvancedParams: !_controls.showAdvancedParams,
+                  PrimaryWorkflowPanel(
+                    eyebrow: '输入参数 -> 立即试算 -> 节省结果',
+                    title: '本次优化工作流',
+                    summary: '首屏只保留参数配置、一次试算动作和核心节省结果，不再混排队列、注册表和复制动作。',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildOptimizationHighlights(latestCompletedJob),
+                        const SizedBox(height: 16),
+                        ModelingControlPanel(
+                          state: _controls,
+                          isLoading: _isLoading,
+                          onToggleAdvancedParams: () {
+                            _updateControls(
+                              _controls.copyWith(
+                                showAdvancedParams:
+                                    !_controls.showAdvancedParams,
+                              ),
+                            );
+                          },
+                          onScenarioChanged: (scenario) {
+                            _updateControls(_controls.applyScenario(scenario));
+                          },
+                          onInitialSocChanged: (value) {
+                            _updateControls(
+                              _controls.copyWith(initialSoc: value),
+                            );
+                          },
+                          onBatteryCapacityChanged: (value) {
+                            _updateControls(
+                              _controls.copyWith(batteryCapacity: value),
+                            );
+                          },
+                          onMaxPowerChanged: (value) {
+                            _updateControls(
+                              _controls.copyWith(maxPower: value),
+                            );
+                          },
+                          onTemperatureAdjustChanged: (value) {
+                            _updateControls(
+                              _controls.copyWith(temperatureAdjust: value),
+                            );
+                          },
+                          onSelectDate: _selectDate,
+                          onRunOptimization: _runOptimization,
                         ),
-                      );
-                    },
-                    onScenarioChanged: (scenario) {
-                      _updateControls(_controls.applyScenario(scenario));
-                    },
-                    onInitialSocChanged: (value) {
-                      _updateControls(_controls.copyWith(initialSoc: value));
-                    },
-                    onBatteryCapacityChanged: (value) {
-                      _updateControls(
-                        _controls.copyWith(batteryCapacity: value),
-                      );
-                    },
-                    onMaxPowerChanged: (value) {
-                      _updateControls(_controls.copyWith(maxPower: value));
-                    },
-                    onTemperatureAdjustChanged: (value) {
-                      _updateControls(
-                        _controls.copyWith(temperatureAdjust: value),
-                      );
-                    },
-                    onSelectDate: _selectDate,
-                    onRunOptimization: _runOptimization,
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  _buildJobPanel(),
-                  const SizedBox(height: 16),
-                  WorkbenchSectionSignal(
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
-                    title: '资产注册表与结果运维',
-                    description: '任务完成后，优先在这一层完成快照回填、运维摘要复查和结果协作导出。',
+                  ProgressiveDetailSection(
+                    title: '任务与产物',
+                    summary: '后台队列、结果回填、资产注册表和运维协作动作统一放到这里。',
                     icon: Icons.inventory_2_rounded,
-                  ),
-                  if (optimizationChain != null) const SizedBox(height: 16),
-                  OptimizationOperationsBoard(
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
-                    result: _result,
-                    latestCompletedJob: latestCompletedJob,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildJobPanel(),
+                        const SizedBox(height: 16),
+                        OptimizationOperationsBoard(
+                          chain: optimizationChain,
+                          continuationContext: _activeLaunchContext,
+                          result: _result,
+                          latestCompletedJob: latestCompletedJob,
+                        ),
+                        const SizedBox(height: 16),
+                        OptimizationAssetRegistryBoard(
+                          chain: optimizationChain,
+                          continuationContext: _activeLaunchContext,
+                          assetSummary: assetSummary,
+                          latestCompletedJob: latestCompletedJob,
+                          onApplyAsset: _applyOptimizationAsset,
+                          onCopyAssetPassport: (asset) {
+                            _copyOptimizationAssetPassport(asset);
+                          },
+                          onLoadLatestJobResult: latestCompletedJob == null
+                              ? null
+                              : () =>
+                                    _hydrateLatestJobResult(latestCompletedJob),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildOperationsCard(optimizationChain),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  OptimizationAssetRegistryBoard(
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
-                    assetSummary: assetSummary,
-                    latestCompletedJob: latestCompletedJob,
-                    onApplyAsset: _applyOptimizationAsset,
-                    onCopyAssetPassport: (asset) {
-                      _copyOptimizationAssetPassport(asset);
-                    },
-                    onLoadLatestJobResult: latestCompletedJob == null
-                        ? null
-                        : () => _hydrateLatestJobResult(latestCompletedJob),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildOperationsCard(optimizationChain),
-                  const SizedBox(height: 16),
-                  ModelingResultsSection(
-                    isLoading: _isLoading,
-                    errorMessage: _errorMessage,
-                    result: _result,
-                    previousResult: _previousResult,
-                    onDismissError: _viewModel.clearError,
-                    chain: optimizationChain,
-                    continuationContext: _activeLaunchContext,
+                  ProgressiveDetailSection(
+                    title: '详细结果',
+                    summary: '约束命中、解释性、历史对比和完整结果保留在这一层。',
+                    icon: Icons.analytics_rounded,
+                    child: ModelingResultsSection(
+                      isLoading: _isLoading,
+                      errorMessage: _errorMessage,
+                      result: _result,
+                      previousResult: _previousResult,
+                      onDismissError: _viewModel.clearError,
+                      chain: optimizationChain,
+                      continuationContext: _activeLaunchContext,
+                    ),
                   ),
                   const SizedBox(height: 32),
                 ],
@@ -658,6 +583,107 @@ class _ModelingScreenState extends State<ModelingScreen> {
         return WorkbenchPageFrame(
           surfaceMode: widget.surfaceMode,
           body: content,
+        );
+      },
+    );
+  }
+
+  Widget _buildOptimizationBanner(JobRecord? latestCompletedJob) {
+    if (_errorMessage != null) {
+      return DecisionBanner(
+        title: '试算需要复核',
+        message: _errorMessage!,
+        accent: AppColors.error,
+        icon: Icons.error_outline_rounded,
+      );
+    }
+
+    final summary = _result?.optimization?.summary;
+    if (_result?.isSuccess == true && summary != null) {
+      return DecisionBanner(
+        title: '本次方案可执行',
+        message:
+            '预计节省 ${summary.savingsFormatted}，成本下降 ${summary.savingsPercentFormatted}。',
+        accent: AppColors.success,
+        icon: Icons.task_alt_rounded,
+      );
+    }
+
+    if (latestCompletedJob != null) {
+      return DecisionBanner(
+        title: '已有最近后台结果',
+        message: '你可以直接载入最近后台结果，或调整参数后重新试算。',
+        accent: AppColors.primary,
+        icon: Icons.cloud_done_rounded,
+      );
+    }
+
+    return const DecisionBanner(
+      title: '先完成一次试算',
+      message: '调整日期和工况后运行试算，首屏就会给出节省结果和建议策略。',
+      accent: AppColors.primary,
+      icon: Icons.play_circle_outline_rounded,
+    );
+  }
+
+  Widget _buildOptimizationHighlights(JobRecord? latestCompletedJob) {
+    final summary = _result?.optimization?.summary;
+    final strategy = _result?.optimization?.strategy;
+    final cards = <Widget>[
+      _OptimizationHighlightCard(
+        label: '节省金额',
+        value: summary?.savingsFormatted ?? '等待结果',
+        helper: '运行后自动更新',
+        accent: _result?.isSuccess == true
+            ? AppColors.success
+            : AppColors.warning,
+      ),
+      _OptimizationHighlightCard(
+        label: '建议策略',
+        value: strategy == null
+            ? '等待策略结论'
+            : '充电 ${strategy.chargingCount} 次 / 放电 ${strategy.dischargingCount} 次',
+        helper: strategy == null
+            ? '运行后给出操作建议'
+            : '充电 ${strategy.chargingHoursFormatted}',
+        accent: AppColors.cta,
+      ),
+      _OptimizationHighlightCard(
+        label: '目标日期',
+        value: DateFormat('yyyy-MM-dd').format(_controls.targetDate),
+        helper: _scenarioLabel(_controls.selectedScenario),
+        accent: AppColors.primary,
+      ),
+      _OptimizationHighlightCard(
+        label: '是否可执行',
+        value: _result?.isSuccess == true ? '可执行' : '待确认',
+        helper: latestCompletedJob == null
+            ? '还没有后台产物'
+            : buildJobPrimaryText(latestCompletedJob),
+        accent: _result?.isSuccess == true
+            ? AppColors.success
+            : AppColors.textSecondary,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1080
+            ? 4
+            : constraints.maxWidth >= 720
+            ? 2
+            : 1;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cards.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: columns == 1 ? 3.6 : 2.2,
+          ),
+          itemBuilder: (context, index) => cards[index],
         );
       },
     );
@@ -1558,5 +1584,57 @@ String _recommendedOperationsAction(
           : 'copy_snapshot_digest';
     default:
       return hasLatestCompletedJob ? 'load_latest_job_result' : 'refresh_jobs';
+  }
+}
+
+class _OptimizationHighlightCard extends StatelessWidget {
+  const _OptimizationHighlightCard({
+    required this.label,
+    required this.value,
+    required this.helper,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final String helper;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusLg),
+        border: Border.all(color: accent.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.h4.copyWith(color: accent),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            helper,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
   }
 }
