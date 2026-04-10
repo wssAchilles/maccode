@@ -67,6 +67,8 @@ class ModelingScreen extends StatefulWidget {
 }
 
 class _ModelingScreenState extends State<ModelingScreen> {
+  final _pageScrollController = ScrollController();
+  final _optimizationResultKey = GlobalKey();
   late final ModelingViewModel _viewModel;
   late final JobViewModel _jobViewModel;
   late final bool _ownsViewModel;
@@ -111,6 +113,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
 
   @override
   void dispose() {
+    _pageScrollController.dispose();
     if (_ownsJobViewModel) {
       _jobViewModel.dispose();
     }
@@ -163,6 +166,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
         '优化完成！节省 ${result.optimization?.summary.savingsFormatted ?? "0"}',
       );
       await _refreshSharedProjection();
+      _focusOptimizationResults();
       return;
     }
 
@@ -413,11 +417,61 @@ class _ModelingScreenState extends State<ModelingScreen> {
                   job?.result.containsKey('optimization') == true,
               orElse: () => null,
             );
+        final resultReady = _result?.isSuccess == true;
+        final optimizationControls = ModelingControlPanel(
+          state: _controls,
+          isLoading: _isLoading,
+          onToggleAdvancedParams: () {
+            _updateControls(
+              _controls.copyWith(
+                showAdvancedParams: !_controls.showAdvancedParams,
+              ),
+            );
+          },
+          onScenarioChanged: (scenario) {
+            _updateControls(_controls.applyScenario(scenario));
+          },
+          onInitialSocChanged: (value) {
+            _updateControls(_controls.copyWith(initialSoc: value));
+          },
+          onBatteryCapacityChanged: (value) {
+            _updateControls(_controls.copyWith(batteryCapacity: value));
+          },
+          onMaxPowerChanged: (value) {
+            _updateControls(_controls.copyWith(maxPower: value));
+          },
+          onTemperatureAdjustChanged: (value) {
+            _updateControls(_controls.copyWith(temperatureAdjust: value));
+          },
+          onSelectDate: _selectDate,
+          onRunOptimization: _runOptimization,
+        );
+        final optimizationResultPanel = KeyedSubtree(
+          key: _optimizationResultKey,
+          child: ModelingResultsSection(
+            isLoading: _isLoading,
+            errorMessage: _errorMessage,
+            result: _result,
+            previousResult: _previousResult,
+            onDismissError: _viewModel.clearError,
+            chain: optimizationChain,
+            continuationContext: _activeLaunchContext,
+          ),
+        );
+        final primaryAction = DecisionHeaderAction(
+          label: resultReady ? '查看节省结果' : '立即试算',
+          icon: resultReady ? Icons.insights_rounded : Icons.play_arrow_rounded,
+          onTap: resultReady
+              ? _focusOptimizationResults
+              : () => _runOptimization(),
+          isPrimary: true,
+        );
         final content = RefreshIndicator(
           onRefresh: _refreshResults,
           child: ResponsiveWrapper(
             maxWidth: ResponsiveHelper.getMaxContentWidth(context),
             child: SingleChildScrollView(
+              controller: _pageScrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               padding: ResponsiveHelper.getPagePadding(context),
               child: Column(
@@ -470,66 +524,42 @@ class _ModelingScreenState extends State<ModelingScreen> {
                         icon: Icons.savings_rounded,
                       ),
                     ],
+                    primaryAction: primaryAction,
                     banner: _buildOptimizationBanner(latestCompletedJob),
                   ),
                   const SizedBox(height: 16),
                   PrimaryWorkflowPanel(
                     eyebrow: '输入参数 -> 立即试算 -> 节省结果',
-                    title: '本次优化工作流',
-                    summary: '首屏只保留参数配置、一次试算动作和核心节省结果，不再混排队列、注册表和复制动作。',
+                    title: resultReady ? '本次节省结果' : '本次优化工作流',
+                    summary: resultReady
+                        ? '试算结果已经置顶，参数配置和后台任务已下沉到结果下方。'
+                        : '首屏只保留参数配置、一次试算动作和核心节省结果，不再混排队列、注册表和复制动作。',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildOptimizationHighlights(latestCompletedJob),
                         const SizedBox(height: 16),
-                        ModelingControlPanel(
-                          state: _controls,
-                          isLoading: _isLoading,
-                          onToggleAdvancedParams: () {
-                            _updateControls(
-                              _controls.copyWith(
-                                showAdvancedParams:
-                                    !_controls.showAdvancedParams,
-                              ),
-                            );
-                          },
-                          onScenarioChanged: (scenario) {
-                            _updateControls(_controls.applyScenario(scenario));
-                          },
-                          onInitialSocChanged: (value) {
-                            _updateControls(
-                              _controls.copyWith(initialSoc: value),
-                            );
-                          },
-                          onBatteryCapacityChanged: (value) {
-                            _updateControls(
-                              _controls.copyWith(batteryCapacity: value),
-                            );
-                          },
-                          onMaxPowerChanged: (value) {
-                            _updateControls(
-                              _controls.copyWith(maxPower: value),
-                            );
-                          },
-                          onTemperatureAdjustChanged: (value) {
-                            _updateControls(
-                              _controls.copyWith(temperatureAdjust: value),
-                            );
-                          },
-                          onSelectDate: _selectDate,
-                          onRunOptimization: _runOptimization,
-                        ),
+                        if (resultReady)
+                          optimizationResultPanel
+                        else
+                          optimizationControls,
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
                   ProgressiveDetailSection(
-                    title: '任务与产物',
-                    summary: '后台队列、结果回填、资产注册表和运维协作动作统一放到这里。',
+                    title: resultReady ? '参数、任务与产物' : '任务与产物',
+                    summary: resultReady
+                        ? '参数区、后台队列、结果回填和运维协作动作统一下沉到这里。'
+                        : '后台队列、结果回填、资产注册表和运维协作动作统一放到这里。',
                     icon: Icons.inventory_2_rounded,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (resultReady) ...[
+                          optimizationControls,
+                          const SizedBox(height: 16),
+                        ],
                         _buildJobPanel(),
                         const SizedBox(height: 16),
                         OptimizationOperationsBoard(
@@ -558,21 +588,15 @@ class _ModelingScreenState extends State<ModelingScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  ProgressiveDetailSection(
-                    title: '详细结果',
-                    summary: '约束命中、解释性、历史对比和完整结果保留在这一层。',
-                    icon: Icons.analytics_rounded,
-                    child: ModelingResultsSection(
-                      isLoading: _isLoading,
-                      errorMessage: _errorMessage,
-                      result: _result,
-                      previousResult: _previousResult,
-                      onDismissError: _viewModel.clearError,
-                      chain: optimizationChain,
-                      continuationContext: _activeLaunchContext,
+                  if (!resultReady) ...[
+                    const SizedBox(height: 16),
+                    ProgressiveDetailSection(
+                      title: '详细结果',
+                      summary: '约束命中、解释性、历史对比和完整结果保留在这一层。',
+                      icon: Icons.analytics_rounded,
+                      child: optimizationResultPanel,
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 32),
                 ],
               ),
@@ -1223,6 +1247,7 @@ class _ModelingScreenState extends State<ModelingScreen> {
     final success = _viewModel.loadResultFromJobPayload(payload);
     if (success) {
       _showSuccessSnackBar(_optimizationFeedbackMessage('已载入最近后台优化结果'));
+      _focusOptimizationResults();
       return;
     }
 
@@ -1259,6 +1284,21 @@ class _ModelingScreenState extends State<ModelingScreen> {
     if (error != null) {
       _showErrorSnackBar(error);
     }
+  }
+
+  Future<void> _focusOptimizationResults() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final context = _optimizationResultKey.currentContext;
+      if (context == null) {
+        return;
+      }
+      await Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
+    });
   }
 
   Future<void> _cancelJob(JobRecord job) async {

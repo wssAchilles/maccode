@@ -75,6 +75,8 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _pageScrollController = ScrollController();
+  final _analysisResultKey = GlobalKey();
   late final DataAnalysisViewModel _viewModel;
   late final DashboardViewModel _dashboardViewModel;
   late final JobViewModel _analysisJobsViewModel;
@@ -145,6 +147,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     }
     _historyViewModel.dispose();
     _driftViewModel.dispose();
+    _pageScrollController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -252,6 +255,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     if (success) {
       await _refreshSharedProjection();
       _showSuccessFeedback(_datasetFeedbackMessage('分析完成'));
+      _focusAnalysisResult();
       return;
     }
 
@@ -302,9 +306,69 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
         final datasetChain = _sharedSummary?.assetSummary.chainSummaries
             .cast<AssetChainSummary?>()
             .firstWhere((item) => item?.key == 'dataset', orElse: () => null);
+        final resultReady = _analysisResult != null;
+        final controls = DataAnalysisTopSection(
+          currentUser: _currentUser,
+          pickedFile: _pickedFile,
+          saveToStorage: _saveToStorage,
+          formKey: _formKey,
+          emailController: _emailController,
+          passwordController: _passwordController,
+          authMode: _authMode,
+          onSignInWithEmail: _signInWithEmail,
+          onRegisterWithEmail: _registerWithEmail,
+          onToggleAuthMode: _viewModel.toggleAuthMode,
+          onGoogleSignIn: _signInWithGoogle,
+          onPickFile: _pickFile,
+          onClearFile: _viewModel.clearPickedFile,
+          onStorageChanged: _viewModel.setSaveToStorage,
+        );
+        final commandDeck = DataAnalysisCommandDeck(
+          isAuthenticated: _currentUser != null,
+          hasFile: _pickedFile != null,
+          isLoading: _isLoading,
+          isSubmittingBackgroundAnalysis: _isSubmittingAnalysisJob,
+          saveToStorage: _saveToStorage,
+          analysisResult: _analysisResult,
+          onStartAnalysis: _startAnalysis,
+          onSubmitBackgroundAnalysis: _submitAnalysisJob,
+          onOpenHistory: _openHistory,
+        );
+        final analysisResultPanel = KeyedSubtree(
+          key: _analysisResultKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWorkflowActions(),
+              const SizedBox(height: 24),
+              _buildResultsSection(),
+            ],
+          ),
+        );
+        final primaryAction = DecisionHeaderAction(
+          label: resultReady
+              ? '查看分析结果'
+              : (_currentUser == null
+                    ? '连接账号'
+                    : (_pickedFile == null ? '上传数据' : '开始分析')),
+          icon: resultReady
+              ? Icons.insights_rounded
+              : (_currentUser == null
+                    ? Icons.lock_open_rounded
+                    : (_pickedFile == null
+                          ? Icons.upload_file_rounded
+                          : Icons.play_arrow_rounded)),
+          onTap: resultReady
+              ? _focusAnalysisResult
+              : (_currentUser != null && _pickedFile != null
+                    ? _startAnalysis
+                    : null),
+          isPrimary: true,
+        );
         final content = _isLoading
             ? DataAnalysisLoadingView(isAuthenticated: _currentUser != null)
             : CustomScrollView(
+                controller: _pageScrollController,
                 slivers: [
                   if (widget.surfaceMode.isStandalone)
                     DataAnalysisSliverAppBar(
@@ -384,80 +448,92 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                                   icon: Icons.warning_amber_rounded,
                                 ),
                               ],
+                              primaryAction: primaryAction,
                               banner: _buildAnalysisBanner(),
                             ),
                             const SizedBox(height: 24),
                             PrimaryWorkflowPanel(
                               eyebrow: '上传数据 -> 质量检查 -> 分析结果 -> 交给 AI',
-                              title: '当前分析流程',
-                              summary:
-                                  '认证、上传和分析操作只保留在一个主面板里，Storage Path、治理和任务队列全部下沉。',
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final stacked = constraints.maxWidth < 1120;
-                                  final controls = DataAnalysisTopSection(
-                                    currentUser: _currentUser,
-                                    pickedFile: _pickedFile,
-                                    saveToStorage: _saveToStorage,
-                                    formKey: _formKey,
-                                    emailController: _emailController,
-                                    passwordController: _passwordController,
-                                    authMode: _authMode,
-                                    onSignInWithEmail: _signInWithEmail,
-                                    onRegisterWithEmail: _registerWithEmail,
-                                    onToggleAuthMode: _viewModel.toggleAuthMode,
-                                    onGoogleSignIn: _signInWithGoogle,
-                                    onPickFile: _pickFile,
-                                    onClearFile: _viewModel.clearPickedFile,
-                                    onStorageChanged:
-                                        _viewModel.setSaveToStorage,
-                                  );
-                                  final commandDeck = DataAnalysisCommandDeck(
-                                    isAuthenticated: _currentUser != null,
-                                    hasFile: _pickedFile != null,
-                                    isLoading: _isLoading,
-                                    isSubmittingBackgroundAnalysis:
-                                        _isSubmittingAnalysisJob,
-                                    saveToStorage: _saveToStorage,
-                                    analysisResult: _analysisResult,
-                                    onStartAnalysis: _startAnalysis,
-                                    onSubmitBackgroundAnalysis:
-                                        _submitAnalysisJob,
-                                    onOpenHistory: _openHistory,
-                                  );
+                              title: resultReady ? '分析结果' : '当前分析流程',
+                              summary: resultReady
+                                  ? '结果与 AI 交接已经置顶展示，上传、认证和治理区已下沉到详情区。'
+                                  : '认证、上传和分析操作只保留在一个主面板里，Storage Path、治理和任务队列全部下沉。',
+                              child: resultReady
+                                  ? analysisResultPanel
+                                  : LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final stacked =
+                                            constraints.maxWidth < 1120;
+                                        if (stacked) {
+                                          return Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              controls,
+                                              const SizedBox(height: 20),
+                                              commandDeck,
+                                            ],
+                                          );
+                                        }
 
-                                  if (stacked) {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        controls,
-                                        const SizedBox(height: 20),
-                                        commandDeck,
-                                      ],
-                                    );
-                                  }
-
-                                  return Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(flex: 7, child: controls),
-                                      const SizedBox(width: 20),
-                                      Expanded(flex: 4, child: commandDeck),
-                                    ],
-                                  );
-                                },
-                              ),
+                                        return Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(flex: 7, child: controls),
+                                            const SizedBox(width: 20),
+                                            Expanded(
+                                              flex: 4,
+                                              child: commandDeck,
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
                             ),
                             const SizedBox(height: 24),
                             ProgressiveDetailSection(
-                              title: '任务与治理',
-                              summary: '后台任务、数据链路状态、Storage Path 和治理面板统一下沉到这里。',
+                              title: resultReady ? '上传、任务与治理' : '任务与治理',
+                              summary: resultReady
+                                  ? '上传区、后台任务、Storage Path 和治理面板已经下沉到这里，避免继续占据首屏。'
+                                  : '后台任务、数据链路状态、Storage Path 和治理面板统一下沉到这里。',
                               icon: Icons.account_tree_rounded,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  if (resultReady) ...[
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final stacked =
+                                            constraints.maxWidth < 1120;
+                                        if (stacked) {
+                                          return Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              controls,
+                                              const SizedBox(height: 20),
+                                              commandDeck,
+                                            ],
+                                          );
+                                        }
+
+                                        return Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(flex: 7, child: controls),
+                                            const SizedBox(width: 20),
+                                            Expanded(
+                                              flex: 4,
+                                              child: commandDeck,
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 24),
+                                  ],
                                   DataAnalysisOperationsBoard(
                                     chain: datasetChain,
                                     continuationContext: _activeLaunchContext,
@@ -488,23 +564,6 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
                                 ],
                               ),
                             ),
-                            if (_analysisResult != null) ...[
-                              const SizedBox(height: 24),
-                              ProgressiveDetailSection(
-                                title: '分析结果与 AI 交接',
-                                summary:
-                                    '结果报告、Schema 摘要、治理摘要和 AI hand-off 放在这里统一处理。',
-                                icon: Icons.analytics_rounded,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildWorkflowActions(),
-                                    const SizedBox(height: 24),
-                                    _buildResultsSection(),
-                                  ],
-                                ),
-                              ),
-                            ],
                             const SizedBox(height: 32),
                           ],
                         ),
@@ -828,6 +887,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
             verb: '已载入',
           ),
         );
+        _focusAnalysisResult();
       });
     } else if ((intent.sourceLabel ?? '').isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1033,9 +1093,25 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     );
     if (success) {
       _showSuccessFeedback(_datasetFeedbackMessage('已载入最近后台分析结果'));
+      _focusAnalysisResult();
       return;
     }
     _showViewModelError(duration: _analysisErrorDuration);
+  }
+
+  Future<void> _focusAnalysisResult() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final context = _analysisResultKey.currentContext;
+      if (context == null) {
+        return;
+      }
+      await Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
+    });
   }
 
   Future<void> _retryAnalysisJob(JobRecord job) async {

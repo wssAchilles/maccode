@@ -34,21 +34,39 @@ class SystemStatusStrip extends StatelessWidget {
         ? visibleItems
         : visibleItems.take(maxVisibleItems!).toList(growable: false);
 
-    final statusWrap = Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      children: limitedItems.map(_buildItem).toList(growable: false),
-    );
-
-    final content = Wrap(
-      spacing: 12,
-      runSpacing: 10,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        if ((headline ?? '').isNotEmpty) _buildHeadlineChip(headline!),
-        statusWrap,
-      ],
-    );
+    final content = compact
+        ? SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if ((headline ?? '').isNotEmpty) ...[
+                  _buildHeadlineChip(headline!, compact: true),
+                  const SizedBox(width: 10),
+                ],
+                ...limitedItems.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: _buildItem(item, compact: true),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if ((headline ?? '').isNotEmpty) _buildHeadlineChip(headline!),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: limitedItems
+                    .map((item) => _buildItem(item))
+                    .toList(growable: false),
+              ),
+            ],
+          );
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -99,7 +117,7 @@ class SystemStatusStrip extends StatelessWidget {
     }
   }
 
-  Widget _buildHeadlineChip(String value) {
+  Widget _buildHeadlineChip(String value, {bool compact = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -116,11 +134,16 @@ class SystemStatusStrip extends StatelessWidget {
             color: AppColors.primary,
           ),
           const SizedBox(width: 8),
-          Text(
-            value,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: compact ? 220 : 320),
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -128,7 +151,7 @@ class SystemStatusStrip extends StatelessWidget {
     );
   }
 
-  Widget _buildItem(SystemStatusItem item) {
+  Widget _buildItem(SystemStatusItem item, {bool compact = false}) {
     final tone = _StatusTone.fromStatus(item.status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -150,9 +173,16 @@ class SystemStatusStrip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            localizeSystemStatusMessage(item.message),
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: compact ? 200 : 300),
+            child: Text(
+              localizeSystemStatusMessage(item.message),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
           ),
         ],
       ),

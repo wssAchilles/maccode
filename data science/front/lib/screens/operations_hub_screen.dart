@@ -1153,9 +1153,6 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
     final ragStatus = safeSummary.systemStatus
         .cast<SystemStatusItem?>()
         .firstWhere((item) => item?.key == 'rag', orElse: () => null);
-    final datasetChain = _chainFor(safeSummary, 'dataset');
-    final modelChain = _chainFor(safeSummary, 'model');
-    final optimizationChain = _chainFor(safeSummary, 'optimization');
     final focusChain = selectDutyFocusChain(
       safeSummary.assetSummary,
       safeSummary.dutySummary,
@@ -1515,65 +1512,17 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final stacked = constraints.maxWidth < 1040;
-              final actions = overviewActions.isNotEmpty
-                  ? overviewActions
-                        .skip(1)
-                        .take(3)
-                        .map((action) {
-                          return OutlinedButton.icon(
-                            onPressed: () =>
-                                _handleDutyAction(action, safeSummary),
-                            icon: Icon(
-                              _dutyActionIcon(action.command, action.chainKey),
-                            ),
-                            label: Text(action.label),
-                          );
-                        })
-                        .toList(growable: false)
-                  : [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          if (optimizationChain != null) {
-                            _openChainWorkspace(
-                              optimizationChain,
-                              source: 'Overview Workflow',
-                            );
-                            return;
-                          }
-                          widget.onNavigateToTab(1);
-                        },
-                        icon: const Icon(Icons.bolt_rounded),
-                        label: const Text('查看能源优化'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          if (datasetChain != null) {
-                            _openChainWorkspace(
-                              datasetChain,
-                              source: 'Overview Workflow',
-                            );
-                            return;
-                          }
-                          widget.onNavigateToTab(2);
-                        },
-                        icon: const Icon(Icons.analytics_rounded),
-                        label: const Text('查看数据分析'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          if (modelChain != null) {
-                            _openChainWorkspace(
-                              modelChain,
-                              source: 'Overview Workflow',
-                            );
-                            return;
-                          }
-                          widget.onNavigateToTab(3);
-                        },
-                        icon: const Icon(Icons.auto_awesome_rounded),
-                        label: const Text('查看 AI Lab'),
-                      ),
-                    ];
+              final nextStepLabel = overviewActions.isNotEmpty
+                  ? overviewActions.first.label
+                  : focusChain == null
+                  ? '查看历史与审计'
+                  : '进入${focusChain.workspaceTargetLabel}';
+              final nextStepImpact =
+                  focusChain?.workspaceBrief ??
+                  (degradedSystems == 0 ? '当前没有阻塞链路' : '优先处理失败任务和风险资产');
+              final nextStepOwner =
+                  focusChain?.label ??
+                  (overviewActions.isNotEmpty ? '当前主流程' : '历史与审计');
               final failureChains = safeSummary.assetSummary.failureChains
                   .take(3)
                   .toList(growable: false);
@@ -1600,13 +1549,20 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
                     const SizedBox(height: 16),
                     _OverviewInsightCard(
                       title: '推荐动作',
-                      subtitle: '先完成一项关键动作，再进入工作台深挖。',
+                      subtitle: '首屏只保留一个主动作，其余入口下沉到详情区。',
                       accent: AppColors.primary,
-                      body: '',
-                      bodyChild: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: actions,
+                      body:
+                          '下一步：$nextStepLabel\n影响：$nextStepImpact\n责任对象：$nextStepOwner',
+                      bodyChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '请先完成头部主动作，再进入对应工作台继续处理。',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

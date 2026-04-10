@@ -70,7 +70,12 @@ class _AiLabScreenState extends State<AiLabScreen> {
   final _ragStorageController = TextEditingController();
   final _ragCollectionController = TextEditingController();
   final _ragQuestionController = TextEditingController();
+  final _pageScrollController = ScrollController();
   final _ragScrollController = ScrollController();
+  final _trainingResultKey = GlobalKey();
+  final _trainingStatusKey = GlobalKey();
+  final _ragValidationKey = GlobalKey();
+  final _ragTrackingKey = GlobalKey();
 
   late final JobViewModel _trainingJobsViewModel;
   late final JobViewModel _ragJobsViewModel;
@@ -87,6 +92,8 @@ class _AiLabScreenState extends State<AiLabScreen> {
   bool _didSeedKnowledgeDefaults = false;
   bool _suppressInputRefresh = false;
   bool _didActivateWorkspace = false;
+  String? _lastTrainingResultFocusToken;
+  String? _lastRagValidationFocusToken;
   DashboardSummary? get _sharedSummary => widget.sharedRuntimeManaged
       ? (widget.shellProjection?.summary ?? widget.dashboardViewModel.summary)
       : widget.dashboardViewModel.summary;
@@ -135,6 +142,7 @@ class _AiLabScreenState extends State<AiLabScreen> {
     _ragStorageController.dispose();
     _ragCollectionController.dispose();
     _ragQuestionController.dispose();
+    _pageScrollController.dispose();
     _ragScrollController.dispose();
     if (_ownsTrainingJobsViewModel) {
       _trainingJobsViewModel.dispose();
@@ -847,6 +855,21 @@ class _AiLabScreenState extends State<AiLabScreen> {
             assetSummary != null && assetSummary.knowledgeBases.isNotEmpty
             ? assetSummary.knowledgeBases.first
             : null;
+        final trainingFocusJob = _primaryJob(
+          _trainingJobsViewModel.jobs,
+          _trainingJobsViewModel.activeJob,
+          preferVisualizedSuccess: true,
+        );
+        final ragFocusJob = _primaryJob(
+          _ragJobsViewModel.jobs,
+          _ragJobsViewModel.activeJob,
+        );
+        final trainingResultReady =
+            trainingFocusJob?.hasTrainingVisualization == true;
+        final ragValidationReady = _hasRagValidationReady(
+          ragFocusJob,
+          latestKnowledgeAsset,
+        );
         _syncResolvedTrainingControllers(assetSummary);
         _queueTrainingPathRepair(assetSummary);
         final trainingError = _normalizeJobErrorMessage(
@@ -856,8 +879,22 @@ class _AiLabScreenState extends State<AiLabScreen> {
           _ragJobsViewModel.errorMessage,
         );
         final tabSwitcher = _buildTabSwitcher();
+        _scheduleAiLabFocus(
+          trainingFocusJob:
+              _currentTab == _AiLabTab.deepLearning && trainingResultReady
+              ? trainingFocusJob
+              : null,
+          ragFocusJob: _currentTab == _AiLabTab.rag && ragValidationReady
+              ? ragFocusJob
+              : null,
+          latestKnowledgeAsset:
+              _currentTab == _AiLabTab.rag && ragValidationReady
+              ? latestKnowledgeAsset
+              : null,
+        );
         final content = ResponsiveWrapper(
           child: SingleChildScrollView(
+            controller: _pageScrollController,
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -883,29 +920,31 @@ class _AiLabScreenState extends State<AiLabScreen> {
                     ),
                     DecisionHeaderMetric(
                       label: '训练状态',
-                      value: _trainingJobsViewModel.activeJob != null
-                          ? buildJobPrimaryText(
-                              _trainingJobsViewModel.activeJob!,
-                            )
+                      value: trainingFocusJob != null
+                          ? buildJobPrimaryText(trainingFocusJob)
                           : (_trainingJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
                       helper: '最近训练任务',
                       accent: trainingError != null
                           ? AppColors.error
-                          : (_trainingJobsViewModel.activeJob?.isRunning == true
+                          : (trainingFocusJob?.isRunning == true
                                 ? AppColors.warning
+                                : trainingResultReady
+                                ? AppColors.success
                                 : AppColors.primary),
                       icon: Icons.model_training_rounded,
                     ),
                     DecisionHeaderMetric(
                       label: '知识状态',
-                      value: _ragJobsViewModel.activeJob != null
-                          ? buildJobPrimaryText(_ragJobsViewModel.activeJob!)
+                      value: ragFocusJob != null
+                          ? buildJobPrimaryText(ragFocusJob)
                           : (_ragJobsViewModel.jobs.isEmpty ? '空闲' : '就绪'),
                       helper: '最近知识任务',
                       accent: ragError != null
                           ? AppColors.error
-                          : (_ragJobsViewModel.activeJob?.isRunning == true
+                          : (ragFocusJob?.isRunning == true
                                 ? AppColors.warning
+                                : ragValidationReady
+                                ? AppColors.success
                                 : AppColors.success),
                       icon: Icons.auto_stories_rounded,
                     ),
@@ -921,6 +960,11 @@ class _AiLabScreenState extends State<AiLabScreen> {
                       icon: Icons.inventory_2_rounded,
                     ),
                   ],
+                  primaryAction: _buildPrimaryAction(
+                    trainingFocusJob: trainingFocusJob,
+                    ragFocusJob: ragFocusJob,
+                    latestKnowledgeAsset: latestKnowledgeAsset,
+                  ),
                   banner: _buildAiLabBanner(
                     trainingError: trainingError,
                     ragError: ragError,
@@ -937,12 +981,20 @@ class _AiLabScreenState extends State<AiLabScreen> {
                       ? '深度学习主流程'
                       : '知识助手主流程',
                   summary: _currentTab == _AiLabTab.deepLearning
-                      ? '首屏只保留训练输入、训练配置和训练状态。'
-                      : '首屏只保留知识路径、构建入口和问答验证。',
+                      ? (trainingResultReady
+                            ? '训练结果已置顶展示，输入表单和日志已下沉到结果下方。'
+                            : (trainingFocusJob?.isRunning == true
+                                  ? '训练已进入运行态，首屏优先跟进阶段轨迹和关键进度。'
+                                  : '首屏只保留训练输入、训练配置和训练状态。'))
+                      : (ragValidationReady
+                            ? '知识问答验证已置顶，构建入口和日志已下沉到结果下方。'
+                            : (ragFocusJob?.isRunning == true
+                                  ? '知识构建已进入运行态，首屏优先跟进构建轨迹。'
+                                  : '首屏只保留知识路径、构建入口和问答验证。')),
                   trailing: widget.surfaceMode.isEmbedded ? tabSwitcher : null,
                   child: _currentTab == _AiLabTab.deepLearning
-                      ? _buildDeepLearningTab(summary)
-                      : _buildRagTab(summary),
+                      ? _buildDeepLearningTab()
+                      : _buildRagTab(latestKnowledgeAsset),
                 ),
                 const SizedBox(height: 20),
                 ProgressiveDetailSection(
@@ -1118,55 +1170,53 @@ class _AiLabScreenState extends State<AiLabScreen> {
     );
   }
 
-  Widget _buildDeepLearningTab(DashboardSummary? summary) {
+  Widget _buildDeepLearningTab() {
     final focusJob = _primaryJob(
       _trainingJobsViewModel.jobs,
       _trainingJobsViewModel.activeJob,
+      preferVisualizedSuccess: true,
     );
     final logs = _buildTrainingLogOutput(focusJob);
-    return LabSplitPanel(
-      left: Column(
+    final trainingInputPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TrainingDatasetCard(
+          storageController: _trainingStorageController,
+          targetController: _trainingTargetController,
+        ),
+        const SizedBox(height: 16),
+        DeepLearningConfigPanel(
+          config: _config,
+          isTraining: _trainingJobsViewModel.isSubmitting,
+          onModelTypeChanged: (value) {
+            setState(() {
+              _config = _config.copyWith(modelType: value);
+            });
+          },
+          onEpochsChanged: (value) {
+            setState(() {
+              _config = _config.copyWith(epochs: value);
+            });
+          },
+          onWindowSizeChanged: (value) {
+            setState(() {
+              _config = _config.copyWith(windowSize: value);
+            });
+          },
+          onBatchSizeChanged: (value) {
+            setState(() {
+              _config = _config.copyWith(batchSize: value);
+            });
+          },
+          onStartTraining: _submitTrainingJob,
+        ),
+      ],
+    );
+    final trainingStatusPanel = KeyedSubtree(
+      key: _trainingStatusKey,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _TrainingDatasetCard(
-            storageController: _trainingStorageController,
-            targetController: _trainingTargetController,
-          ),
-          const SizedBox(height: 16),
-          DeepLearningConfigPanel(
-            config: _config,
-            isTraining: _trainingJobsViewModel.isSubmitting,
-            onModelTypeChanged: (value) {
-              setState(() {
-                _config = _config.copyWith(modelType: value);
-              });
-            },
-            onEpochsChanged: (value) {
-              setState(() {
-                _config = _config.copyWith(epochs: value);
-              });
-            },
-            onWindowSizeChanged: (value) {
-              setState(() {
-                _config = _config.copyWith(windowSize: value);
-              });
-            },
-            onBatchSizeChanged: (value) {
-              setState(() {
-                _config = _config.copyWith(batchSize: value);
-              });
-            },
-            onStartTraining: _submitTrainingJob,
-          ),
-        ],
-      ),
-      right: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (focusJob != null && focusJob.hasTrainingVisualization) ...[
-            DeepLearningTrainingResultPanel(job: focusJob),
-            const SizedBox(height: 16),
-          ],
           DeepLearningTerminalPanel(
             isTraining: focusJob?.isRunning == true,
             logs: logs,
@@ -1212,41 +1262,65 @@ class _AiLabScreenState extends State<AiLabScreen> {
         ],
       ),
     );
+    final resultReady = focusJob != null && focusJob.hasTrainingVisualization;
+    final statusFirst = resultReady || focusJob?.isRunning == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (resultReady) ...[
+          KeyedSubtree(
+            key: _trainingResultKey,
+            child: DeepLearningTrainingResultPanel(job: focusJob),
+          ),
+          const SizedBox(height: 16),
+        ],
+        LabSplitPanel(
+          left: statusFirst ? trainingStatusPanel : trainingInputPanel,
+          right: statusFirst ? trainingInputPanel : trainingStatusPanel,
+        ),
+      ],
+    );
   }
 
-  Widget _buildRagTab(DashboardSummary? summary) {
+  Widget _buildRagTab(KnowledgeAsset? latestKnowledgeAsset) {
     final focusJob = _primaryJob(
       _ragJobsViewModel.jobs,
       _ragJobsViewModel.activeJob,
     );
-    return LabSplitPanel(
-      left: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _RagIngestCard(
-            storageController: _ragStorageController,
-            collectionController: _ragCollectionController,
-            resetCollection: _resetCollection,
-            isSubmitting: _ragJobsViewModel.isSubmitting,
-            onResetChanged: (value) {
-              setState(() {
-                _resetCollection = value;
-              });
-            },
-            onSubmit: _submitRagIngestJob,
-          ),
-          const SizedBox(height: 16),
-          Text('最近知识库任务', style: AppTextStyles.h4),
-          const SizedBox(height: 12),
-          JobActivityList(
-            jobs: _ragJobsViewModel.jobs,
-            emptyMessage: '暂无知识库构建任务。',
-            compact: true,
-            onOpenJob: _openJobInShellRuntime,
-          ),
-        ],
-      ),
-      right: Column(
+    final ingestPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RagIngestCard(
+          storageController: _ragStorageController,
+          collectionController: _ragCollectionController,
+          resetCollection: _resetCollection,
+          isSubmitting: _ragJobsViewModel.isSubmitting,
+          onResetChanged: (value) {
+            setState(() {
+              _resetCollection = value;
+            });
+          },
+          onSubmit: _submitRagIngestJob,
+        ),
+        const SizedBox(height: 16),
+        Text('最近知识库任务', style: AppTextStyles.h4),
+        const SizedBox(height: 12),
+        JobActivityList(
+          jobs: _ragJobsViewModel.jobs,
+          emptyMessage: '暂无知识库构建任务。',
+          compact: true,
+          onOpenJob: _openJobInShellRuntime,
+        ),
+      ],
+    );
+    final validationReady = _hasRagValidationReady(
+      focusJob,
+      latestKnowledgeAsset,
+    );
+    final trackingPanel = KeyedSubtree(
+      key: _ragTrackingKey,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (focusJob != null) ...[
@@ -1278,41 +1352,71 @@ class _AiLabScreenState extends State<AiLabScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          SizedBox(
-            height: 520,
-            child: GlassCard(
-              padding: EdgeInsets.zero,
-              child: Column(
+          if (!validationReady)
+            _buildRagValidationPanel(
+              statusLabel:
+                  focusJob?.statusMessage ??
+                  latestKnowledgeAsset?.collection ??
+                  '默认知识库',
+            ),
+        ],
+      ),
+    );
+    final statusFirst = validationReady || focusJob?.isRunning == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (validationReady) ...[
+          KeyedSubtree(
+            key: _ragValidationKey,
+            child: _buildRagValidationPanel(
+              statusLabel:
+                  focusJob?.statusMessage ??
+                  latestKnowledgeAsset?.collection ??
+                  '默认知识库',
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        LabSplitPanel(
+          left: statusFirst ? trackingPanel : ingestPanel,
+          right: statusFirst ? ingestPanel : trackingPanel,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRagValidationPanel({required String statusLabel}) {
+    return SizedBox(
+      height: 520,
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Row(
-                      children: [
-                        Text('知识问答面板', style: AppTextStyles.h4),
-                        const Spacer(),
-                        Text(
-                          _ragJobsViewModel.activeJob?.statusMessage ?? '默认知识库',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: RagMessageList(
-                      messages: _ragViewModel.messages,
-                      scrollController: _ragScrollController,
-                    ),
-                  ),
-                  RagInputArea(
-                    controller: _ragQuestionController,
-                    isLoading: _ragViewModel.isLoading,
-                    onSend: _sendRagQuestion,
-                  ),
+                  Text('知识问答面板', style: AppTextStyles.h4),
+                  const Spacer(),
+                  Text(statusLabel, style: AppTextStyles.bodySmall),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: RagMessageList(
+                messages: _ragViewModel.messages,
+                scrollController: _ragScrollController,
+              ),
+            ),
+            RagInputArea(
+              controller: _ragQuestionController,
+              isLoading: _ragViewModel.isLoading,
+              onSend: _sendRagQuestion,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1349,12 +1453,167 @@ class _AiLabScreenState extends State<AiLabScreen> {
     return buffer.toString().trim();
   }
 
-  JobRecord? _primaryJob(List<JobRecord> jobs, JobRecord? activeJob) {
+  DecisionHeaderAction _buildPrimaryAction({
+    required JobRecord? trainingFocusJob,
+    required JobRecord? ragFocusJob,
+    required KnowledgeAsset? latestKnowledgeAsset,
+  }) {
+    if (_currentTab == _AiLabTab.deepLearning) {
+      if (trainingFocusJob?.hasTrainingVisualization == true) {
+        return DecisionHeaderAction(
+          label: '查看训练结果',
+          icon: Icons.insights_rounded,
+          onTap: _scrollToTrainingResult,
+          isPrimary: true,
+        );
+      }
+      if (trainingFocusJob?.isRunning == true) {
+        return DecisionHeaderAction(
+          label: '查看运行详情',
+          icon: Icons.monitor_rounded,
+          onTap: widget.sharedRuntimeManaged
+              ? () => _openJobInShellRuntime(trainingFocusJob!)
+              : _scrollToTrainingStatus,
+          isPrimary: true,
+        );
+      }
+      return DecisionHeaderAction(
+        label: '启动云端训练',
+        icon: Icons.play_arrow_rounded,
+        onTap: _canSubmitTraining() ? _submitTrainingJob : null,
+        isPrimary: true,
+      );
+    }
+
+    if (_hasRagValidationReady(ragFocusJob, latestKnowledgeAsset)) {
+      return DecisionHeaderAction(
+        label: '验证知识问答',
+        icon: Icons.question_answer_rounded,
+        onTap: _scrollToRagValidation,
+        isPrimary: true,
+      );
+    }
+    if (ragFocusJob?.isRunning == true) {
+      return DecisionHeaderAction(
+        label: '查看构建进度',
+        icon: Icons.auto_awesome_motion_rounded,
+        onTap: widget.sharedRuntimeManaged
+            ? () => _openJobInShellRuntime(ragFocusJob!)
+            : _scrollToRagTracking,
+        isPrimary: true,
+      );
+    }
+    return DecisionHeaderAction(
+      label: '提交知识构建',
+      icon: Icons.library_add_rounded,
+      onTap: _canSubmitRag() ? _submitRagIngestJob : null,
+      isPrimary: true,
+    );
+  }
+
+  bool _canSubmitTraining() {
+    final assetSummary = _sharedSummary?.assetSummary;
+    final storagePath =
+        _resolvedTrainingStoragePath(assetSummary) ??
+        _trainingStorageController.text.trim();
+    final targetColumn =
+        _resolvedTrainingTargetColumn(assetSummary) ??
+        _trainingTargetController.text.trim();
+    return storagePath.isNotEmpty && targetColumn.isNotEmpty;
+  }
+
+  bool _canSubmitRag() {
+    return _ragStorageController.text.trim().isNotEmpty &&
+        _ragCollectionController.text.trim().isNotEmpty;
+  }
+
+  bool _hasRagValidationReady(
+    JobRecord? focusJob,
+    KnowledgeAsset? latestKnowledgeAsset,
+  ) {
+    return focusJob?.status == 'succeeded' ||
+        latestKnowledgeAsset != null ||
+        _ragViewModel.messages.isNotEmpty;
+  }
+
+  void _scheduleAiLabFocus({
+    required JobRecord? trainingFocusJob,
+    required JobRecord? ragFocusJob,
+    required KnowledgeAsset? latestKnowledgeAsset,
+  }) {
+    final trainingToken = trainingFocusJob == null
+        ? null
+        : '${trainingFocusJob.jobId}:${trainingFocusJob.status}:${trainingFocusJob.hasTrainingVisualization}';
+    if (trainingToken != null &&
+        trainingToken != _lastTrainingResultFocusToken) {
+      _lastTrainingResultFocusToken = trainingToken;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToTrainingResult();
+      });
+    }
+
+    final ragToken = ragFocusJob != null
+        ? '${ragFocusJob.jobId}:${ragFocusJob.status}'
+        : latestKnowledgeAsset == null
+        ? null
+        : '${latestKnowledgeAsset.jobId}:${latestKnowledgeAsset.version}';
+    if (ragToken != null && ragToken != _lastRagValidationFocusToken) {
+      _lastRagValidationFocusToken = ragToken;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToRagValidation();
+      });
+    }
+  }
+
+  Future<void> _scrollToTrainingResult() async {
+    await _ensureVisible(_trainingResultKey);
+  }
+
+  Future<void> _scrollToTrainingStatus() async {
+    await _ensureVisible(_trainingStatusKey);
+  }
+
+  Future<void> _scrollToRagValidation() async {
+    await _ensureVisible(_ragValidationKey);
+  }
+
+  Future<void> _scrollToRagTracking() async {
+    await _ensureVisible(_ragTrackingKey);
+  }
+
+  Future<void> _ensureVisible(GlobalKey key) async {
+    final context = key.currentContext;
+    if (context == null) {
+      return;
+    }
+    await Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: 0.08,
+    );
+  }
+
+  JobRecord? _primaryJob(
+    List<JobRecord> jobs,
+    JobRecord? activeJob, {
+    bool preferVisualizedSuccess = false,
+  }) {
     if (activeJob != null) {
       return activeJob;
     }
     if (jobs.isEmpty) {
       return null;
+    }
+    if (preferVisualizedSuccess) {
+      final successfulVisualized = jobs.cast<JobRecord?>().firstWhere(
+        (job) =>
+            job?.status == 'succeeded' && job?.hasTrainingVisualization == true,
+        orElse: () => null,
+      );
+      if (successfulVisualized != null) {
+        return successfulVisualized;
+      }
     }
     return jobs.first;
   }
