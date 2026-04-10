@@ -30,7 +30,8 @@ class ExternalDataService:
             self.storage_service = StorageService()
         except EnvironmentError as e:
             raise EnvironmentError(
-                "StorageService 初始化失败: 未检测到本地 GCP 凭证，请设置 GOOGLE_APPLICATION_CREDENTIALS 或 GCP_SERVICE_ACCOUNT_JSON 后重试。\n"
+                "StorageService 初始化失败: 未检测到可用的 GCP 凭证，请设置 GOOGLE_APPLICATION_CREDENTIALS、"
+                "GCP_SERVICE_ACCOUNT_JSON，或在托管环境中启用 ADC 后重试。\n"
                 f"原始错误: {e}"
             )
         

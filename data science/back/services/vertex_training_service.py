@@ -125,7 +125,13 @@ class VertexTrainingService:
         ended_at = cls._timestamp_to_iso(getattr(job, 'end_time', None))
         error = None
         if getattr(job, 'error', None):
-            error = MessageToDict(job.error._pb)  # type: ignore[attr-defined]
+            wrapped_error = getattr(job.error, '_pb', job.error)
+            try:
+                error = MessageToDict(wrapped_error)
+            except Exception:
+                error = {'message': str(job.error)} if str(job.error).strip() else None
+            if error == {}:
+                error = None
         return {
             **cls.build_external_job_metadata(
                 job_name=job.name,

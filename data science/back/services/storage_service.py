@@ -3,15 +3,18 @@ Google Cloud Storage 服务
 用于上传、下载和管理文件
 """
 
-from google.cloud import storage
-from google.oauth2 import service_account
 import os
-import pandas as pd
 import tempfile
 from datetime import datetime, timedelta
-from urllib.parse import unquote
-from config import Config
 from typing import Dict, Optional
+
+import google.auth
+import pandas as pd
+from google.cloud import storage
+from google.oauth2 import service_account
+
+from config import Config
+from urllib.parse import unquote
 
 
 class StorageService:
@@ -26,14 +29,12 @@ class StorageService:
         """
         self.project_id = os.getenv('GCP_PROJECT_ID') or Config.GCP_PROJECT_ID
         self.credentials = self._load_credentials()
-        if self.credentials:
-            self.client = storage.Client(project=self.project_id, credentials=self.credentials)
-        else:
-            if not self._is_running_in_gae():
-                raise EnvironmentError(
-                    "未检测到本地 GCP 凭证。请设置 GOOGLE_APPLICATION_CREDENTIALS 或 GCP_SERVICE_ACCOUNT_JSON 环境变量。"
-                )
-            self.client = storage.Client(project=self.project_id)
+        if not self.credentials:
+            raise EnvironmentError(
+                "未检测到可用的 GCP 凭证。请设置 GOOGLE_APPLICATION_CREDENTIALS、"
+                "GCP_SERVICE_ACCOUNT_JSON，或在 GAE/Cloud Run/Vertex 等托管环境中使用 ADC。"
+            )
+        self.client = storage.Client(project=self.project_id, credentials=self.credentials)
 
         self.bucket_name = bucket_name or os.getenv('STORAGE_BUCKET_NAME') or Config.STORAGE_BUCKET_NAME
         self.bucket = self.client.bucket(self.bucket_name)
@@ -55,23 +56,33 @@ class StorageService:
 
         credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         if not credentials_path:
-            return None
+            credentials_path = None
 
-        if not os.path.exists(credentials_path):
+        if credentials_path and not os.path.exists(credentials_path):
             print(f"⚠️  指定的 GOOGLE_APPLICATION_CREDENTIALS 路径不存在: {credentials_path}")
-            return None
+            credentials_path = None
+
+        if credentials_path:
+            try:
+                creds = service_account.Credentials.from_service_account_file(credentials_path)
+                print("✅ 已通过 GOOGLE_APPLICATION_CREDENTIALS 加载凭证")
+                return creds
+            except Exception as e:
+                print(f"❌ 加载本地凭证失败: {e}")
 
         try:
-            creds = service_account.Credentials.from_service_account_file(credentials_path)
-            print("✅ 已通过 GOOGLE_APPLICATION_CREDENTIALS 加载凭证")
-            return creds
+            creds, detected_project = google.auth.default(
+                scopes=['https://www.googleapis.com/auth/cloud-platform']
+            )
+            if creds:
+                if not self.project_id and detected_project:
+                    self.project_id = detected_project
+                print("✅ 已通过 Application Default Credentials 加载凭证")
+                return creds
         except Exception as e:
-            print(f"❌ 加载本地凭证失败: {e}")
-            return None
+            print(f"⚠️  无法通过 ADC 加载凭证: {e}")
 
-    @staticmethod
-    def _is_running_in_gae() -> bool:
-        return bool(os.getenv('GAE_ENV') or os.getenv('K_SERVICE'))
+        return None
     
     def upload_file(self, file_data, destination_path, content_type=None):
         """

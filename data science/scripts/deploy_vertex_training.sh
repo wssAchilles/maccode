@@ -123,7 +123,7 @@ fi
 "$GCLOUD_BIN" builds submit back \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --config cloudbuild.vertex_training.yaml \
+  --config back/cloudbuild.vertex_training.yaml \
   --substitutions "_IMAGE_URI=${IMAGE_URI}" \
   --quiet
 
