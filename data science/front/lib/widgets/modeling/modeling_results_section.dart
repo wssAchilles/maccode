@@ -54,10 +54,7 @@ class ModelingResultsSection extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         if (errorMessage != null)
-          ModelingErrorCard(
-            message: errorMessage!,
-            onDismiss: onDismissError,
-          ),
+          ModelingErrorCard(message: errorMessage!, onDismiss: onDismissError),
         if (isLoading) ...[
           if (errorMessage != null) const SizedBox(height: 16),
           const ModelingLoadingCard(),
@@ -86,42 +83,93 @@ class ModelingResultsSection extends StatelessWidget {
           OptimizationStrategyDetailsCard(optimization: optimization),
           if (modelExplainability != null) ...[
             const SizedBox(height: 16),
-            ExpansionTile(
-              initiallyExpanded: false,
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              collapsedShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              backgroundColor: Colors.white,
-              collapsedBackgroundColor: Colors.white,
-              leading: Icon(Icons.psychology, color: Colors.purple[600]),
-              title: const Text(
-                'AI 预测解释',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              subtitle: Text(
-                '了解哪些因素影响了负载预测',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: FeatureImportanceChart(
-                    featureImportance: modelExplainability.featureImportance,
-                    featureDescriptions:
-                        modelExplainability.featureDescriptions,
-                    interpretation: modelExplainability.interpretation,
-                  ),
-                ),
-              ],
+            _ExplainabilityExpansionCard(
+              modelExplainability: modelExplainability,
             ),
           ],
         ],
         if (result == null && !isLoading && errorMessage == null)
           const ModelingEmptyStateCard(),
+      ],
+    );
+  }
+}
+
+class _ExplainabilityExpansionCard extends StatefulWidget {
+  const _ExplainabilityExpansionCard({required this.modelExplainability});
+
+  final ModelExplainability modelExplainability;
+
+  @override
+  State<_ExplainabilityExpansionCard> createState() =>
+      _ExplainabilityExpansionCardState();
+}
+
+class _ExplainabilityExpansionCardState
+    extends State<_ExplainabilityExpansionCard> {
+  static const _storageKey = 'model-explainability-expansion';
+  bool _isExpanded = true;
+  bool _didRestoreState = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didRestoreState) {
+      return;
+    }
+    final restored =
+        PageStorage.maybeOf(
+              context,
+            )?.readState(context, identifier: _storageKey)
+            as bool?;
+    if (restored != null) {
+      _isExpanded = restored;
+    }
+    _didRestoreState = true;
+  }
+
+  void _handleExpansionChanged(bool value) {
+    setState(() {
+      _isExpanded = value;
+    });
+    PageStorage.maybeOf(
+      context,
+    )?.writeState(context, value, identifier: _storageKey);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      key: const PageStorageKey<String>(_storageKey),
+      initiallyExpanded: _isExpanded,
+      maintainState: true,
+      onExpansionChanged: _handleExpansionChanged,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      collapsedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      backgroundColor: Colors.white,
+      collapsedBackgroundColor: Colors.white,
+      leading: Icon(Icons.psychology, color: Colors.purple[600]),
+      title: const Text(
+        'AI 预测解释',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      subtitle: Text(
+        '了解哪些因素影响了负载预测',
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: FeatureImportanceChart(
+            key: const PageStorageKey<String>('feature-importance-chart'),
+            featureImportance: widget.modelExplainability.featureImportance,
+            featureDescriptions: widget.modelExplainability.featureDescriptions,
+            interpretation: widget.modelExplainability.interpretation,
+          ),
+        ),
       ],
     );
   }

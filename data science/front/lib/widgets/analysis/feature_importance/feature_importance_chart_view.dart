@@ -30,6 +30,8 @@ class FeatureImportanceChart extends StatefulWidget {
 
 class _FeatureImportanceChartState extends State<FeatureImportanceChart> {
   bool _isExpanded = false;
+  bool _didRestoreState = false;
+  static const _storageKey = 'feature-importance-expanded';
 
   static const Map<String, String> defaultDescriptions = {
     'Temperature': '温度',
@@ -71,6 +73,32 @@ class _FeatureImportanceChartState extends State<FeatureImportanceChart> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didRestoreState) {
+      return;
+    }
+    final restored =
+        PageStorage.maybeOf(
+              context,
+            )?.readState(context, identifier: _storageKey)
+            as bool?;
+    if (restored != null) {
+      _isExpanded = restored;
+    }
+    _didRestoreState = true;
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+    PageStorage.maybeOf(
+      context,
+    )?.writeState(context, _isExpanded, identifier: _storageKey);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final sortedEntries = widget.featureImportance.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -97,7 +125,7 @@ class _FeatureImportanceChartState extends State<FeatureImportanceChart> {
       resolveFeatureName: _resolveFeatureName,
       colorForRank: _getColorByRank,
       onToggleExpanded: totalFeatures > defaultVisibleCount
-          ? () => setState(() => _isExpanded = !_isExpanded)
+          ? _toggleExpanded
           : null,
     );
   }
