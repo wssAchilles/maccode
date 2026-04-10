@@ -133,4 +133,42 @@ void main() {
     );
     expect(record.budgetGuard['cpu_only'], isTrue);
   });
+
+  test('JobRecord exposes training visualization payload', () {
+    final record = JobRecord.fromJson({
+      'job_id': 'vertex-visual-1',
+      'type': 'ml_train',
+      'status': 'succeeded',
+      'progress': 100,
+      'requested_by': 'tester',
+      'attempt_count': 1,
+      'max_attempts': 3,
+      'result': {
+        'metrics': {
+          'epochs_trained': 3,
+          'train_loss': 0.12,
+          'val_loss': 0.19,
+          'train_mae': 0.08,
+          'val_mae': 0.11,
+          'training_samples': 96,
+          'validation_samples': 24,
+        },
+        'history': {
+          'loss': [0.42, 0.23, 0.12],
+          'val_loss': [0.45, 0.29, 0.19],
+          'mae': [0.31, 0.14, 0.08],
+          'val_mae': [0.36, 0.18, 0.11],
+        },
+      },
+    });
+
+    expect(record.hasTrainingVisualization, isTrue);
+    expect(record.epochsTrained, 3);
+    expect(record.trainLoss, closeTo(0.12, 1e-9));
+    expect(record.validationLoss, closeTo(0.19, 1e-9));
+    expect(record.trainingMaeSeries, [0.31, 0.14, 0.08]);
+    expect(record.validationMaeSeries, [0.36, 0.18, 0.11]);
+    expect(record.trainingSampleCount, 96);
+    expect(record.validationSampleCount, 24);
+  });
 }

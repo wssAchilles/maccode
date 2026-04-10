@@ -91,6 +91,48 @@ class JobRecord {
 
   String? get externalJobState => externalJob['state']?.toString();
   String? get externalJobConsoleUrl => externalJob['console_url']?.toString();
+  Map<String, dynamic> get trainingMetrics {
+    final payload = result['metrics'];
+    if (payload is Map) {
+      return Map<String, dynamic>.from(payload);
+    }
+    if (currentStep != null && currentStep!.metrics.isNotEmpty) {
+      return currentStep!.metrics;
+    }
+    if (latestEvent != null && latestEvent!.metrics.isNotEmpty) {
+      return latestEvent!.metrics;
+    }
+    return const <String, dynamic>{};
+  }
+
+  Map<String, dynamic> get trainingHistory {
+    final payload = result['history'];
+    return payload is Map ? Map<String, dynamic>.from(payload) : const {};
+  }
+
+  List<double> get trainingLossSeries =>
+      _toNumericSeries(trainingHistory['loss']);
+  List<double> get validationLossSeries =>
+      _toNumericSeries(trainingHistory['val_loss']);
+  List<double> get trainingMaeSeries =>
+      _toNumericSeries(trainingHistory['mae']);
+  List<double> get validationMaeSeries =>
+      _toNumericSeries(trainingHistory['val_mae']);
+
+  double? get trainLoss => _asDouble(trainingMetrics['train_loss']);
+  double? get validationLoss => _asDouble(trainingMetrics['val_loss']);
+  double? get trainMae => _asDouble(trainingMetrics['train_mae']);
+  double? get validationMae => _asDouble(trainingMetrics['val_mae']);
+  int? get epochsTrained => _asInt(trainingMetrics['epochs_trained']);
+  int? get trainingSampleCount => _asInt(trainingMetrics['training_samples']);
+  int? get validationSampleCount =>
+      _asInt(trainingMetrics['validation_samples']);
+  bool get hasTrainingVisualization =>
+      trainingMetrics.isNotEmpty ||
+      trainingLossSeries.isNotEmpty ||
+      validationLossSeries.isNotEmpty ||
+      trainingMaeSeries.isNotEmpty ||
+      validationMaeSeries.isNotEmpty;
 
   JobEvent? get latestEvent => events.isEmpty ? null : events.last;
 
@@ -471,6 +513,26 @@ int? _asInt(Object? value) {
     return int.tryParse(value);
   }
   return null;
+}
+
+double? _asDouble(Object? value) {
+  if (value is double) {
+    return value;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is String) {
+    return double.tryParse(value);
+  }
+  return null;
+}
+
+List<double> _toNumericSeries(Object? value) {
+  if (value is! List) {
+    return const <double>[];
+  }
+  return value.map(_asDouble).whereType<double>().toList(growable: false);
 }
 
 bool? _asBool(Object? value) {

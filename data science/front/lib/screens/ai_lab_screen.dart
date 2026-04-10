@@ -21,6 +21,7 @@ import '../viewmodels/rag_view_model.dart';
 import '../widgets/common/glass_card.dart';
 import '../widgets/deep_learning/deep_learning_config_panel.dart';
 import '../widgets/deep_learning/deep_learning_terminal_panel.dart';
+import '../widgets/deep_learning/training_result_visual_panel.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/ai_lab_operations_board.dart';
 import '../widgets/operations/ai_lab_asset_control_board.dart';
@@ -1162,6 +1163,10 @@ class _AiLabScreenState extends State<AiLabScreen> {
       right: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (focusJob != null && focusJob.hasTrainingVisualization) ...[
+            DeepLearningTrainingResultPanel(job: focusJob),
+            const SizedBox(height: 16),
+          ],
           DeepLearningTerminalPanel(
             isTraining: focusJob?.isRunning == true,
             logs: logs,
