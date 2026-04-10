@@ -12,6 +12,7 @@ import '../../models/job_record.dart';
 import '../../models/optimization_launch_intent.dart';
 import '../../models/dashboard_summary.dart';
 import '../../utils/asset_chain_context.dart';
+import '../../utils/external_link.dart';
 import '../common/glass_card.dart';
 import '../operations/duty_section_block.dart';
 import '../operations/incident_card_header.dart';
@@ -1237,6 +1238,11 @@ class _ModelLedgerTile extends StatelessWidget {
         ]) ??
         '--';
     final storagePath = _firstString([job.input['storage_path']]) ?? '--';
+    final backendLabel = job.isVertexTraining
+        ? 'Vertex AI'
+        : 'Cloud Run Legacy';
+    final vertexState = _vertexStateLabel(job.externalJobState);
+    final vertexConsoleUrl = job.externalJobConsoleUrl;
 
     return _LedgerTile(
       accent: AppColors.cta,
@@ -1247,6 +1253,9 @@ class _ModelLedgerTile extends StatelessWidget {
         _LedgerMetaRow(label: '模型路径', value: modelPath),
         _LedgerMetaRow(label: '来源数据', value: storagePath),
         _LedgerMetaRow(label: '目标列', value: targetColumn),
+        _LedgerMetaRow(label: '训练后端', value: backendLabel),
+        if (vertexState != null)
+          _LedgerMetaRow(label: '平台状态', value: vertexState),
         _LedgerMetaRow(
           label: '来源链路',
           value: 'Dataset -> Sequence -> Train -> Artifact',
@@ -1267,6 +1276,18 @@ class _ModelLedgerTile extends StatelessWidget {
               ),
             ),
             tone: WorkspaceActionLaneTone.tonal,
+          ),
+        if ((vertexConsoleUrl ?? '').isNotEmpty)
+          WorkspaceActionLaneAction(
+            label: '打开 Vertex 作业',
+            icon: Icons.open_in_new_rounded,
+            semanticKey: 'open_vertex_job',
+            onTap: () {
+              if (vertexConsoleUrl != null) {
+                openExternalLink(vertexConsoleUrl);
+              }
+            },
+            tone: WorkspaceActionLaneTone.outline,
           ),
       ],
     );
@@ -1551,6 +1572,29 @@ String _formatTime(DateTime? value) {
     return '--';
   }
   return DateFormat('MM-dd HH:mm').format(value.toLocal());
+}
+
+String? _vertexStateLabel(String? value) {
+  switch (value) {
+    case 'JOB_STATE_QUEUED':
+      return '排队中';
+    case 'JOB_STATE_PENDING':
+      return '资源准备中';
+    case 'JOB_STATE_RUNNING':
+      return '训练中';
+    case 'JOB_STATE_SUCCEEDED':
+      return '已完成';
+    case 'JOB_STATE_FAILED':
+      return '失败';
+    case 'JOB_STATE_CANCELLED':
+      return '已取消';
+    case 'JOB_STATE_CANCELLING':
+      return '取消中';
+    case null:
+      return null;
+    default:
+      return value;
+  }
 }
 
 String? _firstString(List<Object?> values) {

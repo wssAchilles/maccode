@@ -31,6 +31,7 @@ class JobRecord {
     this.artifacts = const <JobArtifact>[],
     this.approvalState,
     this.approvalPolicy,
+    this.metadata = const <String, dynamic>{},
     this.metrics = const <String, dynamic>{},
     this.sessionProjection,
   });
@@ -60,6 +61,7 @@ class JobRecord {
   final List<JobArtifact> artifacts;
   final JobApprovalState? approvalState;
   final Map<String, dynamic>? approvalPolicy;
+  final Map<String, dynamic> metadata;
   final Map<String, dynamic> metrics;
   final List<JobEvent> events;
   final JobSessionProjection? sessionProjection;
@@ -75,6 +77,20 @@ class JobRecord {
 
   bool get requiresApproval => approvalState?.required == true;
   bool get isAwaitingApproval => approvalState?.state == 'pending';
+  String? get trainingBackend => metadata['training_backend']?.toString();
+  bool get isVertexTraining => trainingBackend == 'vertex_custom_training';
+  Map<String, dynamic> get externalJob {
+    final payload = metadata['external_job'];
+    return payload is Map ? Map<String, dynamic>.from(payload) : const {};
+  }
+
+  Map<String, dynamic> get budgetGuard {
+    final payload = metadata['budget_guard'];
+    return payload is Map ? Map<String, dynamic>.from(payload) : const {};
+  }
+
+  String? get externalJobState => externalJob['state']?.toString();
+  String? get externalJobConsoleUrl => externalJob['console_url']?.toString();
 
   JobEvent? get latestEvent => events.isEmpty ? null : events.last;
 
@@ -181,13 +197,18 @@ class JobRecord {
       approvalPolicy: json['approval_policy'] is Map
           ? Map<String, dynamic>.from(json['approval_policy'] as Map)
           : null,
+      metadata: json['metadata'] is Map
+          ? Map<String, dynamic>.from(json['metadata'] as Map)
+          : const <String, dynamic>{},
       metrics: json['metrics'] is Map
           ? Map<String, dynamic>.from(json['metrics'] as Map)
           : const <String, dynamic>{},
       sessionProjection: sessionProjection is Map<String, dynamic>
           ? JobSessionProjection.fromJson(sessionProjection)
           : sessionProjection is Map
-          ? JobSessionProjection.fromJson(Map<String, dynamic>.from(sessionProjection))
+          ? JobSessionProjection.fromJson(
+              Map<String, dynamic>.from(sessionProjection),
+            )
           : null,
       events: rawEvents is List
           ? rawEvents

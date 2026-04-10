@@ -7,18 +7,17 @@ import logging
 import os
 import re
 import tempfile
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
-import joblib
 import numpy as np
 import pandas as pd
 
 from config import Config
 from services.analysis_pipeline_service import AnalysisPipelineService
 from services.deep_learning_service import DeepLearningService
+from services.deep_learning_runtime_service import execute_deep_learning_training
 from services.history_service import HistoryService
 from services.ml_service import EnergyPredictor
 from services.optimization_service import EnergyOptimizer
@@ -379,179 +378,33 @@ def run_deep_learning_workflow(
     payload: Dict[str, Any],
     job_id: str | None = None,
 ) -> Dict[str, Any]:
-    requested_storage_path = payload.get('storage_path')
-    model_type = (payload.get('model_type') or 'lstm').lower()
-    requested_target_col = payload.get('target_column')
-    window_size = int(payload.get('window_size', payload.get('lookback', 24)))
-    horizon = int(payload.get('horizon', 1))
-    epochs = int(payload.get('epochs', 10))
-    batch_size = int(payload.get('batch_size', 32))
-
-    availability = DeepLearningService.is_available()
-    use_tensorflow = bool(availability.get('tensorflow'))
-
-    _job_progress(job_id, 35, 'Loading training dataset', phase='dataset')
-    storage = StorageService()
-    storage_path = _resolve_training_storage_path(uid, requested_storage_path, storage)
-    file_bytes = storage.download_file(storage_path)
-    df = pd.read_csv(io.BytesIO(file_bytes))
-    target_col = _resolve_training_target_column(requested_target_col, df)
-    if target_col not in df.columns:
-        raise ValidationError(f"目标列 '{target_col}' 不存在")
-
-    numeric_features = [
-        col for col in df.select_dtypes(include=[np.number]).columns.tolist() if col != target_col
-    ]
-    if not numeric_features:
-        numeric_features = [target_col]
-
-    _job_progress(job_id, 50, 'Building supervised sequences', phase='sequencing')
-    X, y = DeepLearningService.prepare_sequences(
-        df=df,
-        target_col=target_col,
-        feature_cols=numeric_features,
-        lookback=window_size,
-        horizon=horizon,
+    payload_result = execute_deep_learning_training(
+        uid,
+        payload,
+        run_id=job_id,
+        progress_callback=(
+            None
+            if job_id is None
+            else lambda progress, message, phase, metrics=None: _job_progress(
+                job_id,
+                progress,
+                message,
+                phase=phase,
+            )
+        ),
     )
-    if len(X) < 5:
-        raise ValidationError('可用训练样本过少，无法进行深度学习训练')
-
-    split_index = max(1, int(len(X) * 0.8))
-    X_train, X_val = X[:split_index], X[split_index:]
-    y_train, y_val = y[:split_index], y[split_index:]
-    if len(X_val) == 0:
-        X_val, y_val = None, None
-
-    runtime_backend = 'tensorflow'
-    artifact_suffix = '.keras'
-    _job_progress(job_id, 60, 'Initializing model architecture', phase='model_init')
-    if use_tensorflow:
-        if model_type == 'gru':
-            model = DeepLearningService.create_gru_model(
-                input_shape=(X.shape[1], X.shape[2]),
-                output_size=y.shape[1],
-            )
-        else:
-            model = DeepLearningService.create_lstm_model(
-                input_shape=(X.shape[1], X.shape[2]),
-                output_size=y.shape[1],
-            )
-            model_type = 'lstm'
-
-        _job_progress(job_id, 68, 'Training neural network weights', phase='training')
-        result = DeepLearningService.train_model(
-            model,
-            X_train,
-            y_train,
-            X_val=X_val,
-            y_val=y_val,
-            epochs=epochs,
-            batch_size=batch_size,
-            verbose=0,
-        )
-    else:
-        from sklearn.metrics import mean_absolute_error, mean_squared_error
-        from sklearn.neural_network import MLPRegressor
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
-
-        runtime_backend = 'sklearn_mlp_fallback'
-        artifact_suffix = '.joblib'
-        _job_progress(
-            job_id,
-            64,
-            'TensorFlow unavailable, using lightweight sklearn fallback',
-            phase='fallback_backend',
-        )
-        train_samples = X_train.reshape((X_train.shape[0], -1))
-        val_samples = None if X_val is None else X_val.reshape((X_val.shape[0], -1))
-        train_targets = y_train.ravel() if y_train.ndim == 2 and y_train.shape[1] == 1 else y_train
-        val_targets = None
-        if y_val is not None:
-            val_targets = y_val.ravel() if y_val.ndim == 2 and y_val.shape[1] == 1 else y_val
-        fallback_model = Pipeline(
-            steps=[
-                ('scaler', StandardScaler()),
-                (
-                    'mlp',
-                    MLPRegressor(
-                        hidden_layer_sizes=(128, 64),
-                        max_iter=max(epochs * 20, 200),
-                        learning_rate_init=0.001,
-                        random_state=42,
-                        early_stopping=val_samples is not None and y_val is not None,
-                        validation_fraction=0.1,
-                        n_iter_no_change=10,
-                    ),
-                ),
-            ]
-        )
-        _job_progress(job_id, 70, 'Training fallback neural regressor', phase='training')
-        fallback_model.fit(train_samples, train_targets)
-        train_predictions = np.asarray(fallback_model.predict(train_samples))
-        if train_predictions.ndim == 1:
-            train_predictions = train_predictions.reshape((-1, 1))
-        train_loss = float(mean_squared_error(y_train, train_predictions))
-        train_mae = float(mean_absolute_error(y_train, train_predictions))
-        result = {
-            'success': True,
-            'epochs_trained': int(getattr(fallback_model.named_steps['mlp'], 'n_iter_', 0)),
-            'train_loss': train_loss,
-            'train_mae': train_mae,
-            'history': {},
-        }
-        if val_samples is not None and val_targets is not None and len(val_samples) > 0:
-            val_predictions = np.asarray(fallback_model.predict(val_samples))
-            if val_predictions.ndim == 1:
-                val_predictions = val_predictions.reshape((-1, 1))
-            result['val_loss'] = float(mean_squared_error(y_val, val_predictions))
-            result['val_mae'] = float(mean_absolute_error(y_val, val_predictions))
-        model = fallback_model
-
-    timestamp = int(time.time())
-    _job_progress(job_id, 86, 'Persisting trained model artifact', phase='artifact_upload')
-    with tempfile.NamedTemporaryFile(suffix=artifact_suffix, delete=False) as tmp:
-        if use_tensorflow:
-            model.save(tmp.name)
-        else:
-            joblib.dump(model, tmp.name)
-        tmp_path = tmp.name
-
-    remote_path = f'models/{uid}/dl_{model_type}_{timestamp}{artifact_suffix}'
-    with open(tmp_path, 'rb') as handle:
-        storage.upload_file(handle, remote_path, content_type='application/octet-stream')
-    os.remove(tmp_path)
-
-    payload_result = {
-        'model_path': remote_path,
-        'storage_path': storage_path,
-        'metrics': {
-            'train_loss': result.get('train_loss'),
-            'train_mae': result.get('train_mae'),
-            'val_loss': result.get('val_loss'),
-            'val_mae': result.get('val_mae'),
-            'epochs_trained': result.get('epochs_trained'),
-            'training_samples': len(X_train),
-        },
-        'history': result.get('history', {}),
-        'model_type': model_type,
-        'target_column': target_col,
-        'runtime_backend': runtime_backend,
-        'artifact_format': artifact_suffix.lstrip('.'),
-    }
-    _job_progress(job_id, 94, 'Packaging training metrics and artifact metadata', phase='packaging')
 
     HistoryService.add_history(
         uid=uid,
         action='deep_learning_completed',
         status='success',
         source='ml_train',
-        title=f'完成深度学习训练: {model_type.upper()}',
+        title='完成深度学习训练',
         details={
-            'model_path': remote_path,
-            'target_column': target_col,
-            'epochs_trained': result.get('epochs_trained'),
-            'runtime_backend': runtime_backend,
+            'model_path': payload_result.get('model_path'),
+            'target_column': payload_result.get('target_column'),
+            'epochs_trained': payload_result.get('metrics', {}).get('epochs_trained'),
+            'runtime_backend': payload_result.get('runtime_backend'),
         },
     )
     return payload_result

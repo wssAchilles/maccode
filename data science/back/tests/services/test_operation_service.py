@@ -10,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+from flask import Flask
+
 BACK_ROOT = Path(__file__).resolve().parents[2]
 if str(BACK_ROOT) not in sys.path:
     sys.path.insert(0, str(BACK_ROOT))
@@ -422,6 +424,63 @@ class OperationServiceTestCase(unittest.TestCase):
         event_types = [event['type'] for event in events]
         self.assertIn('step.completed', event_types)
         self.assertIn('operation.failed', event_types)
+
+    def test_execute_operation_submits_vertex_job_without_running_legacy_training(self):
+        operation = TestOperationService.create_operation(
+            'user-1',
+            'ml_train',
+            {'storage_path': 'uploads/train.csv'},
+        )
+        TestOperationService.claim_dispatch(operation['job_id'])
+
+        app = Flask(__name__)
+        app.config.update(
+            INTERNAL_BASE_URL='https://data-science-44398.an.r.appspot.com',
+            INTERNAL_JOB_TOKEN='test-token',
+            GCP_PROJECT_ID='data-science-44398',
+            TASKS_LOCATION='us-central1',
+            TASKS_QUEUE_NAME='operations-default',
+        )
+
+        decision = types.SimpleNamespace(
+            backend='vertex_custom_training',
+            reason='vertex selected by rollout and cost policy',
+            budget_guard={
+                'max_runtime_s': 7200,
+                'max_parallel_jobs': 2,
+                'cpu_only': True,
+            },
+        )
+        external_job = {
+            'provider': 'vertex_ai',
+            'name': 'projects/data-science-44398/locations/us-central1/customJobs/123',
+            'display_name': 'sentinel-ml-train-op',
+            'region': 'us-central1',
+            'state': 'JOB_STATE_PENDING',
+            'console_url': 'https://console.cloud.google.com/vertex-ai/jobs/123',
+            'machine_type': 'n1-standard-4',
+            'accelerator_type': '',
+            'accelerator_count': 0,
+        }
+
+        with (
+            patch('services.operation_service.MlTrainBackendSelector.decide', return_value=decision),
+            patch('services.operation_service.VertexTrainingService.submit_custom_job', return_value=external_job),
+            patch('services.operation_service.VertexTrainingReconciler.schedule_reconcile', return_value=True) as schedule_reconcile,
+            patch('services.operation_service.run_deep_learning_workflow') as legacy_training,
+            app.app_context(),
+        ):
+            TestOperationService.execute_operation(operation['job_id'])
+
+        updated = TestOperationService.get_operation('user-1', operation['job_id'])
+        self.assertIsNotNone(updated)
+        self.assertEqual(updated['status'], 'running')
+        self.assertEqual(updated['progress'], 15)
+        self.assertEqual(updated['metadata']['training_backend'], 'vertex_custom_training')
+        self.assertEqual(updated['metadata']['external_job']['name'], external_job['name'])
+        self.assertEqual(updated['metadata']['budget_guard']['cpu_only'], True)
+        legacy_training.assert_not_called()
+        schedule_reconcile.assert_called_once()
 
 
 if __name__ == '__main__':

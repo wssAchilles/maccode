@@ -50,13 +50,8 @@ void main() {
         'state': 'pending',
         'reason': 'manual approval required',
       },
-      'approval_policy': {
-        'required': true,
-        'mode': 'manual',
-      },
-      'metrics': {
-        'runtime_ms': 3210,
-      },
+      'approval_policy': {'required': true, 'mode': 'manual'},
+      'metrics': {'runtime_ms': 3210},
       'events': [
         {
           'type': 'step.started',
@@ -104,5 +99,38 @@ void main() {
 
     expect(fetchRecord.displayTitle, '小时数据抓取');
     expect(trainRecord.displayTitle, '每日模型重训');
+  });
+
+  test('JobRecord parses vertex training metadata fields', () {
+    final record = JobRecord.fromJson({
+      'job_id': 'vertex-1',
+      'type': 'ml_train',
+      'status': 'running',
+      'progress': 15,
+      'requested_by': 'tester',
+      'attempt_count': 1,
+      'max_attempts': 3,
+      'metadata': {
+        'training_backend': 'vertex_custom_training',
+        'external_job': {
+          'state': 'JOB_STATE_PENDING',
+          'console_url': 'https://console.cloud.google.com/vertex-ai/jobs/1',
+        },
+        'budget_guard': {
+          'max_runtime_s': 7200,
+          'max_parallel_jobs': 2,
+          'cpu_only': true,
+        },
+      },
+    });
+
+    expect(record.trainingBackend, 'vertex_custom_training');
+    expect(record.isVertexTraining, isTrue);
+    expect(record.externalJobState, 'JOB_STATE_PENDING');
+    expect(
+      record.externalJobConsoleUrl,
+      'https://console.cloud.google.com/vertex-ai/jobs/1',
+    );
+    expect(record.budgetGuard['cpu_only'], isTrue);
   });
 }

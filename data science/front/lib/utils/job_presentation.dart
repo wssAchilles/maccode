@@ -110,6 +110,12 @@ String buildJobEventMessage(JobRecord job, JobEvent event) {
       return '初始化模型结构';
     case 'training':
       return '执行模型训练';
+    case 'vertex_queue':
+      return '提交 Vertex 训练';
+    case 'vertex_training':
+      return '等待 Vertex 训练回调';
+    case 'vertex_finalize':
+      return '写回 Vertex 结果';
     case 'artifact_upload':
       return '上传任务产物';
     case 'fetch_documents':
@@ -136,6 +142,40 @@ String? _translateKnownJobMessage(JobRecord job, String message) {
 
   if (normalized.contains('loading training dataset')) {
     return '加载训练数据';
+  }
+  if (normalized.contains('submitting vertex custom training job')) {
+    return '提交 Vertex 训练任务';
+  }
+  if (normalized.contains('vertex training job queued')) {
+    return 'Vertex 训练任务已排队';
+  }
+  if (normalized.contains('waiting for vertex resources')) {
+    return '等待 Vertex 分配训练资源';
+  }
+  if (normalized.contains('vertex training container running')) {
+    return 'Vertex 训练容器已启动';
+  }
+  if (normalized.contains('reconciling vertex job state')) {
+    return '对账 Vertex 训练状态';
+  }
+  if (normalized.contains(
+    'writing vertex training result back to control plane',
+  )) {
+    return '回传 Vertex 训练结果';
+  }
+  if (normalized.contains('vertex training completed')) {
+    return 'Vertex 训练已完成';
+  }
+  if (normalized.contains('vertex training failed')) {
+    return 'Vertex 训练失败';
+  }
+  if (normalized.contains('vertex training cancelled')) {
+    return 'Vertex 训练已取消';
+  }
+  if (normalized.contains(
+    'vertex submit failed, falling back to legacy backend',
+  )) {
+    return 'Vertex 提交失败，已回退到旧训练后端';
   }
   if (normalized.contains('preparing sequence data')) {
     return '准备序列数据';

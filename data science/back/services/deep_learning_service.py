@@ -10,7 +10,7 @@
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Any, Tuple, Union
+from typing import Callable, Dict, List, Optional, Any, Tuple, Union
 import warnings
 
 # TensorFlow/Keras 延迟加载变量
@@ -213,7 +213,10 @@ class DeepLearningService:
         epochs: int = 50,
         batch_size: int = 32,
         early_stopping: bool = True,
-        verbose: int = 1
+        verbose: int = 1,
+        progress_callback: Optional[
+            Callable[[int, int, Dict[str, float]], None]
+        ] = None,
     ) -> Dict[str, Any]:
         """
         训练深度学习模型
@@ -243,6 +246,17 @@ class DeepLearningService:
                     restore_best_weights=True
                 )
             )
+        if progress_callback is not None:
+            class _EpochProgressCallback(keras.callbacks.Callback):
+                def on_epoch_end(self, epoch, logs=None):
+                    metrics = {
+                        str(key): float(value)
+                        for key, value in dict(logs or {}).items()
+                        if isinstance(value, (int, float))
+                    }
+                    progress_callback(epoch + 1, max(int(epochs), 1), metrics)
+
+            callbacks.append(_EpochProgressCallback())
         
         # 准备验证数据
         validation_data = None

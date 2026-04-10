@@ -25,6 +25,7 @@ from api.control_tasks import control_tasks_bp, internal_control_tasks_bp
 from api.jobs import internal_jobs_bp, jobs_bp
 from api.operations import internal_operations_bp, operations_bp
 from api.runtime import internal_runtime_bp, runtime_bp
+from api.training_runtime import internal_training_runtime_bp
 
 
 def create_app(config_name=None):
@@ -63,6 +64,7 @@ def create_app(config_name=None):
     app.register_blueprint(internal_operations_bp)
     app.register_blueprint(runtime_bp)
     app.register_blueprint(internal_runtime_bp)
+    app.register_blueprint(internal_training_runtime_bp)
     get_scheduler(app)
     
     # ---------------------------------------------------------

@@ -24,6 +24,7 @@ class _FakeJobRepository implements JobRepository {
     String? type,
     String? status,
     int limit = 20,
+    String scope = 'private',
   }) async {
     return List<JobRecord>.from(_jobs);
   }
@@ -124,7 +125,9 @@ class _FakeJobRepository implements JobRepository {
   @override
   Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) async* {
     for (final frame in streamFrames) {
-      final current = _jobs.firstWhere((job) => job.jobId == (operationId ?? jobId));
+      final current = _jobs.firstWhere(
+        (job) => job.jobId == (operationId ?? jobId),
+      );
       if (frame.isState) {
         _replace(
           _buildJob(
@@ -135,7 +138,9 @@ class _FakeJobRepository implements JobRepository {
                 ? frame.data['progress'] as int
                 : current.progress,
             currentStep: frame.data['current_step'] is Map<String, dynamic>
-                ? JobStep.fromJson(frame.data['current_step'] as Map<String, dynamic>)
+                ? JobStep.fromJson(
+                    frame.data['current_step'] as Map<String, dynamic>,
+                  )
                 : current.currentStep,
           ),
         );
@@ -215,10 +220,7 @@ void main() {
         ),
       ],
     );
-    final viewModel = JobViewModel(
-      repository: repository,
-      delay: (_) async {},
-    );
+    final viewModel = JobViewModel(repository: repository, delay: (_) async {});
 
     await viewModel.loadJobs();
     final cancelled = await viewModel.cancelJob(viewModel.jobs.first);
@@ -230,106 +232,110 @@ void main() {
     viewModel.dispose();
   });
 
-  test('resolveApproval promotes queued job and clears pending approval', () async {
-    final repository = _FakeJobRepository(
-      jobs: const [
-        JobRecord(
-          jobId: 'job-approval',
-          operationId: 'job-approval',
-          type: 'ml_train',
-          status: 'awaiting_approval',
-          progress: 0,
-          requestedBy: 'tester',
-          attemptCount: 0,
-          maxAttempts: 3,
-          approvalState: JobApprovalState(
-            required: true,
-            state: 'pending',
-            reason: 'needs approval',
+  test(
+    'resolveApproval promotes queued job and clears pending approval',
+    () async {
+      final repository = _FakeJobRepository(
+        jobs: const [
+          JobRecord(
+            jobId: 'job-approval',
+            operationId: 'job-approval',
+            type: 'ml_train',
+            status: 'awaiting_approval',
+            progress: 0,
+            requestedBy: 'tester',
+            attemptCount: 0,
+            maxAttempts: 3,
+            approvalState: JobApprovalState(
+              required: true,
+              state: 'pending',
+              reason: 'needs approval',
+            ),
           ),
-        ),
-      ],
-    );
-    final viewModel = JobViewModel(
-      repository: repository,
-      delay: (_) async {},
-    );
+        ],
+      );
+      final viewModel = JobViewModel(
+        repository: repository,
+        delay: (_) async {},
+      );
 
-    await viewModel.loadJobs();
-    final updated = await viewModel.resolveApproval(
-      viewModel.jobs.first,
-      approved: true,
-    );
+      await viewModel.loadJobs();
+      final updated = await viewModel.resolveApproval(
+        viewModel.jobs.first,
+        approved: true,
+      );
 
-    expect(updated, isNotNull);
-    expect(updated!.status, 'queued');
-    expect(updated.approvalState?.state, 'approved');
-    expect(viewModel.activeJob?.status, 'queued');
-    expect(viewModel.errorMessage, isNull);
-    viewModel.dispose();
-  });
+      expect(updated, isNotNull);
+      expect(updated!.status, 'queued');
+      expect(updated.approvalState?.state, 'approved');
+      expect(viewModel.activeJob?.status, 'queued');
+      expect(viewModel.errorMessage, isNull);
+      viewModel.dispose();
+    },
+  );
 
-  test('startPolling consumes stream updates when repository supports streaming', () async {
-    final repository = _FakeJobRepository(
-      streaming: true,
-      jobs: const [
-        JobRecord(
-          jobId: 'job-stream',
-          operationId: 'job-stream',
-          type: 'analysis',
-          status: 'queued',
-          progress: 0,
-          requestedBy: 'tester',
-          attemptCount: 1,
-          maxAttempts: 3,
-        ),
-      ],
-      streamFrames: const [
-        JobStreamFrame(
-          event: 'operation.state',
-          data: {
-            'status': 'running',
-            'progress': 65,
-            'current_step': {
-              'phase': 'generate_report',
-              'tool_name': 'generate_report',
+  test(
+    'startPolling consumes stream updates when repository supports streaming',
+    () async {
+      final repository = _FakeJobRepository(
+        streaming: true,
+        jobs: const [
+          JobRecord(
+            jobId: 'job-stream',
+            operationId: 'job-stream',
+            type: 'analysis',
+            status: 'queued',
+            progress: 0,
+            requestedBy: 'tester',
+            attemptCount: 1,
+            maxAttempts: 3,
+          ),
+        ],
+        streamFrames: const [
+          JobStreamFrame(
+            event: 'operation.state',
+            data: {
               'status': 'running',
               'progress': 65,
-              'message': 'Generating report',
+              'current_step': {
+                'phase': 'generate_report',
+                'tool_name': 'generate_report',
+                'status': 'running',
+                'progress': 65,
+                'message': 'Generating report',
+              },
             },
-          },
-        ),
-        JobStreamFrame(
-          event: 'operation.completed',
-          data: {
-            'type': 'operation.completed',
-            'phase': 'completed',
-            'status': 'succeeded',
-            'message': 'Operation completed',
-            'progress': 100,
-          },
-        ),
-        JobStreamFrame(
-          event: 'operation.closed',
-          data: {
-            'status': 'succeeded',
-          },
-        ),
-      ],
-    );
+          ),
+          JobStreamFrame(
+            event: 'operation.completed',
+            data: {
+              'type': 'operation.completed',
+              'phase': 'completed',
+              'status': 'succeeded',
+              'message': 'Operation completed',
+              'progress': 100,
+            },
+          ),
+          JobStreamFrame(
+            event: 'operation.closed',
+            data: {'status': 'succeeded'},
+          ),
+        ],
+      );
 
-    final viewModel = JobViewModel(
-      repository: repository,
-      delay: (_) async {},
-    );
+      final viewModel = JobViewModel(
+        repository: repository,
+        delay: (_) async {},
+      );
 
-    await viewModel.loadJobs();
-    await viewModel.startPolling(interval: Duration.zero);
+      await viewModel.loadJobs();
+      await viewModel.startPolling(interval: Duration.zero);
 
-    expect(viewModel.activeJob, isNotNull);
-    expect(viewModel.activeJob!.status, 'succeeded');
-    expect(viewModel.activeJob!.progress, 100);
-    expect(viewModel.activeJob!.currentStep?.phase, 'generate_report');
-    viewModel.dispose();
-  });
+      expect(viewModel.activeJob, isNotNull);
+      expect(viewModel.activeJob!.status, 'succeeded');
+      expect(viewModel.activeJob!.progress, 100);
+      expect(viewModel.activeJob!.currentStep?.phase, 'generate_report');
+      viewModel.dispose();
+    },
+  );
 }

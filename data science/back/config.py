@@ -87,6 +87,64 @@ class Config:
         os.getenv('COMPUTE_BENCHMARK_STALE_HOURS', '168'),
     )
     RAG_BACKEND_MODE = os.getenv('RAG_BACKEND_MODE', 'storage_fallback').lower()
+    ML_TRAIN_BACKEND_DEFAULT = os.getenv(
+        'ML_TRAIN_BACKEND_DEFAULT',
+        'cloud_run_legacy',
+    ).strip().lower()
+    ML_TRAIN_VERTEX_ENABLED = os.getenv(
+        'ML_TRAIN_VERTEX_ENABLED',
+        'false',
+    ).lower() == 'true'
+    ML_TRAIN_VERTEX_ROLLOUT_MODE = os.getenv(
+        'ML_TRAIN_VERTEX_ROLLOUT_MODE',
+        'disabled',
+    ).strip().lower()
+    ML_TRAIN_VERTEX_WHITELIST_UIDS = tuple(
+        item.strip()
+        for item in os.getenv('ML_TRAIN_VERTEX_WHITELIST_UIDS', '').split(',')
+        if item.strip()
+    )
+    ML_TRAIN_VERTEX_MIN_FILE_SIZE_BYTES = int(
+        os.getenv('ML_TRAIN_VERTEX_MIN_FILE_SIZE_BYTES', '0'),
+    )
+    ML_TRAIN_VERTEX_MAX_PARALLEL_JOBS = int(
+        os.getenv('ML_TRAIN_VERTEX_MAX_PARALLEL_JOBS', '2'),
+    )
+    ML_TRAIN_VERTEX_MAX_RUNTIME_S = int(
+        os.getenv('ML_TRAIN_VERTEX_MAX_RUNTIME_S', '7200'),
+    )
+    ML_TRAIN_VERTEX_CPU_ONLY = os.getenv(
+        'ML_TRAIN_VERTEX_CPU_ONLY',
+        'true',
+    ).lower() == 'true'
+    ML_TRAIN_VERTEX_RECONCILE_DELAY_S = int(
+        os.getenv('ML_TRAIN_VERTEX_RECONCILE_DELAY_S', '30'),
+    )
+    VERTEX_REGION = os.getenv('VERTEX_REGION', 'us-central1').strip()
+    VERTEX_TRAINING_IMAGE_URI = os.getenv('VERTEX_TRAINING_IMAGE_URI', '').strip()
+    VERTEX_TRAINING_STAGING_BUCKET = os.getenv(
+        'VERTEX_TRAINING_STAGING_BUCKET',
+        '',
+    ).strip()
+    VERTEX_TRAINING_SERVICE_ACCOUNT = os.getenv(
+        'VERTEX_TRAINING_SERVICE_ACCOUNT',
+        '',
+    ).strip()
+    VERTEX_TRAINING_MACHINE_TYPE = os.getenv(
+        'VERTEX_TRAINING_MACHINE_TYPE',
+        'n1-standard-4',
+    ).strip()
+    VERTEX_TRAINING_ACCELERATOR_TYPE = os.getenv(
+        'VERTEX_TRAINING_ACCELERATOR_TYPE',
+        '',
+    ).strip()
+    VERTEX_TRAINING_ACCELERATOR_COUNT = int(
+        os.getenv('VERTEX_TRAINING_ACCELERATOR_COUNT', '0'),
+    )
+    TRAINING_CALLBACK_BASE_URL = os.getenv(
+        'TRAINING_CALLBACK_BASE_URL',
+        INTERNAL_BASE_URL,
+    ).strip()
 
     # 优化业务配置
     BATTERY_CONFIG = {

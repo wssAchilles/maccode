@@ -244,6 +244,29 @@ class StorageService:
         """
         blob = self.bucket.blob(self._normalize_blob_path(file_path))
         return blob.exists()
+
+    def get_file_metadata(self, file_path: str) -> Dict[str, Optional[object]]:
+        """读取对象元数据，供预算护栏和路由层使用。"""
+        normalized_path = self._normalize_blob_path(file_path)
+        blob = self.bucket.blob(normalized_path)
+        if not blob.exists():
+            return {
+                'exists': False,
+                'size': None,
+                'updated': None,
+                'content_type': None,
+                'bucket': self.bucket_name,
+                'path': normalized_path,
+            }
+        blob.reload()
+        return {
+            'exists': True,
+            'size': blob.size,
+            'updated': blob.updated,
+            'content_type': blob.content_type,
+            'bucket': self.bucket_name,
+            'path': blob.name,
+        }
     
     def append_and_trim_csv(
         self, 

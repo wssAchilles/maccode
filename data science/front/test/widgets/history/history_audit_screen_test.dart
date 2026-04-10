@@ -38,6 +38,7 @@ class _FakeJobRepository implements JobRepository {
     String? type,
     String? status,
     int limit = 20,
+    String scope = 'private',
   }) async {
     return jobs;
   }
@@ -47,6 +48,21 @@ class _FakeJobRepository implements JobRepository {
 
   @override
   Future<JobRecord> retryJob(String jobId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> cancelJob(String jobId, {String? operationId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> approveJob(
+    String jobId, {
+    required bool approved,
+    String? message,
+    String? operationId,
+  }) {
     throw UnimplementedError();
   }
 

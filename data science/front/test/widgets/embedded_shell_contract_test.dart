@@ -73,12 +73,18 @@ class _FakeAuthGateway implements AuthGateway {
   Stream<User?> get authStateChanges => const Stream<User?>.empty();
 
   @override
-  Future<UserCredential> registerWithEmail({required String email, required String password}) async {
+  Future<UserCredential> registerWithEmail({
+    required String email,
+    required String password,
+  }) async {
     return _FakeUserCredential(_FakeUser(email: email));
   }
 
   @override
-  Future<UserCredential> signInWithEmail({required String email, required String password}) async {
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
     return _FakeUserCredential(_FakeUser(email: email));
   }
 
@@ -93,12 +99,20 @@ class _FakeAuthGateway implements AuthGateway {
 
 class _FakeDataAnalysisGateway implements DataAnalysisGateway {
   @override
-  Future<AnalysisResult> analyzeCsv({required String storagePath, String? filename, bool saveToStorage = true}) async {
+  Future<AnalysisResult> analyzeCsv({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) async {
     throw const ApiServiceException('not used in embedded shell test');
   }
 
   @override
-  Future<Map<String, dynamic>> createAnalysisJob({required String storagePath, String? filename, bool saveToStorage = true}) async {
+  Future<Map<String, dynamic>> createAnalysisJob({
+    required String storagePath,
+    String? filename,
+    bool saveToStorage = true,
+  }) async {
     return {
       'job_id': 'analysis-job-1',
       'type': 'analysis',
@@ -115,7 +129,11 @@ class _FakeDataAnalysisGateway implements DataAnalysisGateway {
   }
 
   @override
-  Future<Map<String, dynamic>> detectDataDrift({required String referencePath, required String currentPath, required List<String> features}) async {
+  Future<Map<String, dynamic>> detectDataDrift({
+    required String referencePath,
+    required String currentPath,
+    required List<String> features,
+  }) async {
     return {
       'drift_results': {
         'overall_status': 'stable',
@@ -128,7 +146,10 @@ class _FakeDataAnalysisGateway implements DataAnalysisGateway {
   }
 
   @override
-  Future<Map<String, dynamic>> getUploadUrl({required String fileName, required String contentType}) async {
+  Future<Map<String, dynamic>> getUploadUrl({
+    required String fileName,
+    required String contentType,
+  }) async {
     return {
       'uploadUrl': 'https://upload.example.com/signed',
       'storagePath': 'uploads/$fileName',
@@ -136,10 +157,12 @@ class _FakeDataAnalysisGateway implements DataAnalysisGateway {
   }
 
   @override
-  Future<void> uploadFileToGcs({required String uploadUrl, required List<int> fileData, required String contentType}) async {}
+  Future<void> uploadFileToGcs({
+    required String uploadUrl,
+    required List<int> fileData,
+    required String contentType,
+  }) async {}
 }
-
-
 
 class _FakeOptimizationGateway implements OptimizationGateway {
   @override
@@ -182,6 +205,7 @@ class _FakeOptimizationGateway implements OptimizationGateway {
     });
   }
 }
+
 class _FakeDashboardRepository implements DashboardRepository {
   const _FakeDashboardRepository(this.summary);
 
@@ -200,7 +224,12 @@ class _FakeJobRepository implements JobRepository {
   bool get supportsStreaming => false;
 
   @override
-  Future<List<JobRecord>> listJobs({String? type, String? status, int limit = 20}) async => jobs;
+  Future<List<JobRecord>> listJobs({
+    String? type,
+    String? status,
+    int limit = 20,
+    String scope = 'private',
+  }) async => jobs;
 
   @override
   Future<JobRecord> getJob(String jobId) async => jobs.first;
@@ -225,20 +254,42 @@ class _FakeJobRepository implements JobRepository {
       const Stream<JobStreamFrame>.empty();
 
   @override
-  Future<JobRecord> createOptimizationJob({required double initialSoc, DateTime? targetDate, double? batteryCapacity, double? batteryPower, double? batteryEfficiency, double? temperatureAdjust}) => throw UnimplementedError();
+  Future<JobRecord> createOptimizationJob({
+    required double initialSoc,
+    DateTime? targetDate,
+    double? batteryCapacity,
+    double? batteryPower,
+    double? batteryEfficiency,
+    double? temperatureAdjust,
+  }) => throw UnimplementedError();
 
   @override
-  Future<JobRecord> createMlTrainJob({required String storagePath, required String modelType, required int epochs, required int batchSize, required int windowSize, required String targetColumn}) => throw UnimplementedError();
+  Future<JobRecord> createMlTrainJob({
+    required String storagePath,
+    required String modelType,
+    required int epochs,
+    required int batchSize,
+    required int windowSize,
+    required String targetColumn,
+  }) => throw UnimplementedError();
 
   @override
-  Future<JobRecord> createRagIngestJob({required String storagePath, String? collectionName, bool reset = false}) => throw UnimplementedError();
+  Future<JobRecord> createRagIngestJob({
+    required String storagePath,
+    String? collectionName,
+    bool reset = false,
+  }) => throw UnimplementedError();
 }
 
 class _FakeAuditRepository implements AuditRepository {
   const _FakeAuditRepository();
 
   @override
-  Future<List<AuditActivity>> getActivity({String? type, String? status, int limit = 50}) async => const [];
+  Future<List<AuditActivity>> getActivity({
+    String? type,
+    String? status,
+    int limit = 50,
+  }) async => const [];
 }
 
 class _FakeHistoryGateway implements HistoryGateway {
@@ -248,10 +299,15 @@ class _FakeHistoryGateway implements HistoryGateway {
   Future<void> deleteHistoryRecord(String recordId) async {}
 
   @override
-  Future<List<Map<String, dynamic>>> getAuditActivity({String? type, String? status, int limit = 50}) async => const [];
+  Future<List<Map<String, dynamic>>> getAuditActivity({
+    String? type,
+    String? status,
+    int limit = 50,
+  }) async => const [];
 
   @override
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) async => const [];
+  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) async =>
+      const [];
 }
 
 DashboardSummary _buildSummary() {
@@ -354,135 +410,165 @@ DashboardSummary _buildSummary() {
 }
 
 Widget _embeddedHarness(Widget child) {
-  return MaterialApp(
-    home: Scaffold(
-      body: child,
-    ),
-  );
+  return MaterialApp(home: Scaffold(body: child));
 }
 
 void main() {
-  testWidgets('DataAnalysisScreen embedded mode does not render standalone app bars', (tester) async {
-    final viewModel = DataAnalysisViewModel(
-      authGateway: _FakeAuthGateway(currentUserValue: _FakeUser(email: 'user@example.com')),
-      dataGateway: _FakeDataAnalysisGateway(),
-    );
-    addTearDown(viewModel.dispose);
-    viewModel.setPickedFileForTesting(
-      PlatformFile(name: 'sample.csv', size: 2, bytes: Uint8List.fromList([1, 2])),
-    );
-
-    await tester.pumpWidget(
-      _embeddedHarness(
-        DataAnalysisScreen(
-          viewModel: viewModel,
-          dashboardViewModel: DashboardViewModel(repository: _FakeDashboardRepository(_buildSummary())),
-          surfaceMode: WorkbenchSurfaceMode.embedded,
+  testWidgets(
+    'DataAnalysisScreen embedded mode does not render standalone app bars',
+    (tester) async {
+      final viewModel = DataAnalysisViewModel(
+        authGateway: _FakeAuthGateway(
+          currentUserValue: _FakeUser(email: 'user@example.com'),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(DataAnalysisSliverAppBar), findsNothing);
-    expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-    expect(find.text('页级动作'), findsOneWidget);
-  });
-
-  testWidgets('HistoryAuditScreen embedded mode keeps content header without standalone app bar', (tester) async {
-    final jobsViewModel = JobViewModel(repository: const _FakeJobRepository([]), delay: (_) async {});
-    final auditViewModel = AuditViewModel(repository: const _FakeAuditRepository());
-    final historyViewModel = HistoryViewModel(gateway: const _FakeHistoryGateway());
-
-    await tester.pumpWidget(
-      _embeddedHarness(
-        HistoryAuditScreen(
-          dashboardViewModel: DashboardViewModel(repository: _FakeDashboardRepository(_buildSummary())),
-          jobsViewModel: jobsViewModel,
-          auditViewModel: auditViewModel,
-          historyViewModel: historyViewModel,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
+        dataGateway: _FakeDataAnalysisGateway(),
+      );
+      addTearDown(viewModel.dispose);
+      viewModel.setPickedFileForTesting(
+        PlatformFile(
+          name: 'sample.csv',
+          size: 2,
+          bytes: Uint8List.fromList([1, 2]),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
 
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-    expect(find.text('历史与审计'), findsOneWidget);
-    expect(find.text('页级动作'), findsOneWidget);
-
-    addTearDown(jobsViewModel.dispose);
-    addTearDown(auditViewModel.dispose);
-    addTearDown(historyViewModel.dispose);
-  });
-
-
-  testWidgets('OperationsHubScreen embedded mode keeps content header without standalone app bar', (tester) async {
-    final viewModel = DashboardViewModel(repository: _FakeDashboardRepository(_buildSummary()));
-
-    await tester.pumpWidget(
-      _embeddedHarness(
-        OperationsHubScreen(
-          viewModel: viewModel,
-          onNavigateToTab: (_) {},
-          surfaceMode: WorkbenchSurfaceMode.embedded,
+      await tester.pumpWidget(
+        _embeddedHarness(
+          DataAnalysisScreen(
+            viewModel: viewModel,
+            dashboardViewModel: DashboardViewModel(
+              repository: _FakeDashboardRepository(_buildSummary()),
+            ),
+            surfaceMode: WorkbenchSurfaceMode.embedded,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-    expect(find.text('Operations Hub'), findsOneWidget);
-  });
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(DataAnalysisSliverAppBar), findsNothing);
+      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
+      expect(find.text('页级动作'), findsOneWidget);
+    },
+  );
 
-  testWidgets('ModelingScreen embedded mode keeps content header without standalone app bar', (tester) async {
-    final viewModel = ModelingViewModel(gateway: _FakeOptimizationGateway());
-    addTearDown(viewModel.dispose);
+  testWidgets(
+    'HistoryAuditScreen embedded mode keeps content header without standalone app bar',
+    (tester) async {
+      final jobsViewModel = JobViewModel(
+        repository: const _FakeJobRepository([]),
+        delay: (_) async {},
+      );
+      final auditViewModel = AuditViewModel(
+        repository: const _FakeAuditRepository(),
+      );
+      final historyViewModel = HistoryViewModel(
+        gateway: const _FakeHistoryGateway(),
+      );
 
-    await tester.pumpWidget(
-      _embeddedHarness(
-        ModelingScreen(
-          viewModel: viewModel,
-          dashboardViewModel: DashboardViewModel(repository: _FakeDashboardRepository(_buildSummary())),
-          surfaceMode: WorkbenchSurfaceMode.embedded,
-          nowBuilder: () => DateTime(2026, 3, 19),
+      await tester.pumpWidget(
+        _embeddedHarness(
+          HistoryAuditScreen(
+            dashboardViewModel: DashboardViewModel(
+              repository: _FakeDashboardRepository(_buildSummary()),
+            ),
+            jobsViewModel: jobsViewModel,
+            auditViewModel: auditViewModel,
+            historyViewModel: historyViewModel,
+            surfaceMode: WorkbenchSurfaceMode.embedded,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-    expect(find.text('Optimization Workbench'), findsOneWidget);
-  });
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
+      expect(find.text('历史与审计'), findsOneWidget);
+      expect(find.text('页级动作'), findsOneWidget);
 
-  testWidgets('AiLabScreen embedded mode keeps content header without standalone app bar', (tester) async {
-    final dashboardViewModel = DashboardViewModel(
-      repository: _FakeDashboardRepository(_buildSummary()),
-    );
-    addTearDown(dashboardViewModel.dispose);
+      addTearDown(jobsViewModel.dispose);
+      addTearDown(auditViewModel.dispose);
+      addTearDown(historyViewModel.dispose);
+    },
+  );
 
-    await tester.pumpWidget(
-      _embeddedHarness(
-        AiLabScreen(
-          dashboardViewModel: dashboardViewModel,
-          surfaceMode: WorkbenchSurfaceMode.embedded,
+  testWidgets(
+    'OperationsHubScreen embedded mode keeps content header without standalone app bar',
+    (tester) async {
+      final viewModel = DashboardViewModel(
+        repository: _FakeDashboardRepository(_buildSummary()),
+      );
+
+      await tester.pumpWidget(
+        _embeddedHarness(
+          OperationsHubScreen(
+            viewModel: viewModel,
+            onNavigateToTab: (_) {},
+            surfaceMode: WorkbenchSurfaceMode.embedded,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-    expect(find.text('AI Lab'), findsOneWidget);
-    expect(find.text('页级动作'), findsOneWidget);
-  });
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
+      expect(find.text('Operations Hub'), findsOneWidget);
+    },
+  );
 
+  testWidgets(
+    'ModelingScreen embedded mode keeps content header without standalone app bar',
+    (tester) async {
+      final viewModel = ModelingViewModel(gateway: _FakeOptimizationGateway());
+      addTearDown(viewModel.dispose);
+
+      await tester.pumpWidget(
+        _embeddedHarness(
+          ModelingScreen(
+            viewModel: viewModel,
+            dashboardViewModel: DashboardViewModel(
+              repository: _FakeDashboardRepository(_buildSummary()),
+            ),
+            surfaceMode: WorkbenchSurfaceMode.embedded,
+            nowBuilder: () => DateTime(2026, 3, 19),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
+      expect(find.text('Optimization Workbench'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'AiLabScreen embedded mode keeps content header without standalone app bar',
+    (tester) async {
+      final dashboardViewModel = DashboardViewModel(
+        repository: _FakeDashboardRepository(_buildSummary()),
+      );
+      addTearDown(dashboardViewModel.dispose);
+
+      await tester.pumpWidget(
+        _embeddedHarness(
+          AiLabScreen(
+            dashboardViewModel: dashboardViewModel,
+            surfaceMode: WorkbenchSurfaceMode.embedded,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
+      expect(find.text('AI Lab'), findsOneWidget);
+      expect(find.text('页级动作'), findsOneWidget);
+    },
+  );
 }

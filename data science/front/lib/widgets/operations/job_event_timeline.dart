@@ -332,6 +332,12 @@ String _phaseLabel(String value) {
       return '模型初始化';
     case 'training':
       return '训练';
+    case 'vertex_queue':
+      return 'Vertex 排队';
+    case 'vertex_training':
+      return 'Vertex 训练';
+    case 'vertex_finalize':
+      return 'Vertex 回传';
     case 'artifact_upload':
       return '产物上传';
     case 'fetch_documents':
@@ -510,6 +516,12 @@ class _EventRow extends StatelessWidget {
         return '模型初始化';
       case 'training':
         return '训练';
+      case 'vertex_queue':
+        return 'Vertex 排队';
+      case 'vertex_training':
+        return 'Vertex 训练';
+      case 'vertex_finalize':
+        return 'Vertex 回传';
       case 'artifact_upload':
         return '产物上传';
       case 'fetch_documents':

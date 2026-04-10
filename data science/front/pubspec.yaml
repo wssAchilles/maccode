@@ -55,6 +55,7 @@ dependencies:
   
   # 国际化和日期格式化
   intl: ^0.20.2
+  url_launcher: ^6.3.1
   
   # 自定义字体
   google_fonts: ^6.2.1

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
+import '../../utils/external_link.dart';
 import '../../utils/job_presentation.dart';
 import '../common/glass_card.dart';
 
@@ -72,10 +73,7 @@ class JobProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            buildJobPrimaryText(job),
-            style: AppTextStyles.h4,
-          ),
+          Text(buildJobPrimaryText(job), style: AppTextStyles.h4),
           if (currentStep != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -102,6 +100,29 @@ class JobProgressCard extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
+              ],
+            ),
+          ],
+          if (job.type == 'ml_train' &&
+              (job.trainingBackend != null ||
+                  job.externalJobState != null)) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (job.trainingBackend != null)
+                  _InfoChip(
+                    label: job.isVertexTraining ? 'Vertex AI' : 'Legacy',
+                    accent: job.isVertexTraining
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                if ((job.externalJobState ?? '').isNotEmpty)
+                  _InfoChip(
+                    label: _externalStateLabel(job.externalJobState!),
+                    accent: AppColors.cta,
+                  ),
               ],
             ),
           ],
@@ -160,6 +181,22 @@ class JobProgressCard extends StatelessWidget {
               ),
             ),
           ],
+          if ((job.externalJobConsoleUrl ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  final url = job.externalJobConsoleUrl;
+                  if (url != null) {
+                    openExternalLink(url);
+                  }
+                },
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: const Text('打开 Vertex 作业'),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -170,6 +207,52 @@ class JobProgressCard extends StatelessWidget {
       return '时间未知';
     }
     return DateFormat('MM-dd HH:mm').format(value.toLocal());
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, required this.accent});
+
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.labelMedium.copyWith(
+          color: accent,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+String _externalStateLabel(String state) {
+  switch (state) {
+    case 'JOB_STATE_QUEUED':
+      return '排队中';
+    case 'JOB_STATE_PENDING':
+      return '资源准备中';
+    case 'JOB_STATE_RUNNING':
+      return '训练中';
+    case 'JOB_STATE_SUCCEEDED':
+      return '已完成';
+    case 'JOB_STATE_FAILED':
+      return '失败';
+    case 'JOB_STATE_CANCELLED':
+      return '已取消';
+    case 'JOB_STATE_CANCELLING':
+      return '取消中';
+    default:
+      return state;
   }
 }
 
@@ -258,6 +341,12 @@ class _JobPhaseChip extends StatelessWidget {
         return '模型初始化';
       case 'training':
         return '训练';
+      case 'vertex_queue':
+        return 'Vertex 排队';
+      case 'vertex_training':
+        return 'Vertex 训练';
+      case 'vertex_finalize':
+        return 'Vertex 回传';
       case 'artifact_upload':
         return '产物上传';
       case 'fetch_documents':

@@ -79,23 +79,46 @@ void main() {
     expect(buildJobEventMessage(job, event), '写入向量索引');
   });
 
-  test('buildJobEventMessage translates known optimization backend messages', () {
+  test(
+    'buildJobEventMessage translates known optimization backend messages',
+    () {
+      const job = JobRecord(
+        jobId: 'opt-1',
+        type: 'optimization',
+        status: 'running',
+        progress: 76,
+        requestedBy: 'tester',
+        attemptCount: 1,
+        maxAttempts: 3,
+      );
+      const event = JobEvent(
+        phase: 'aggregation',
+        status: 'running',
+        message: 'Aggregating schedule and cost summary',
+        progress: 76,
+      );
+
+      expect(buildJobEventMessage(job, event), '汇总调度与成本摘要');
+    },
+  );
+
+  test('buildJobEventMessage translates vertex queue phases', () {
     const job = JobRecord(
-      jobId: 'opt-1',
-      type: 'optimization',
+      jobId: 'train-3',
+      type: 'ml_train',
       status: 'running',
-      progress: 76,
+      progress: 15,
       requestedBy: 'tester',
       attemptCount: 1,
       maxAttempts: 3,
     );
     const event = JobEvent(
-      phase: 'aggregation',
+      phase: 'vertex_queue',
       status: 'running',
-      message: 'Aggregating schedule and cost summary',
-      progress: 76,
+      message: 'Vertex training job queued',
+      progress: 15,
     );
 
-    expect(buildJobEventMessage(job, event), '汇总调度与成本摘要');
+    expect(buildJobEventMessage(job, event), 'Vertex 训练任务已排队');
   });
 }

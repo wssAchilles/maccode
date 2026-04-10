@@ -11,6 +11,7 @@ from google.cloud import firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 from config import Config
+from services.ml_train_backend_selector import MlTrainBackendSelector
 from services.history_service import HistoryService
 from services.job_workflows import (
     run_analysis_workflow,
@@ -56,6 +57,8 @@ from services.operation_projection import (
 )
 from services.operation_tools import get_tool_contract, resolve_tool_name
 from services.scheduled_operation_runner import run_fetch_data, run_train_model
+from services.vertex_training_reconciler import VertexTrainingReconciler
+from services.vertex_training_service import VertexTrainingService
 
 logger = logging.getLogger(__name__)
 
@@ -621,6 +624,43 @@ class OperationService:
         return list(operation.get('artifacts') or [])[-limit:]
 
     @classmethod
+    def update_operation_metadata(
+        cls,
+        operation_id: str,
+        metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        normalized = dict(metadata or {})
+        cls._operations_collection().document(operation_id).set(
+            {'metadata': normalized},
+            merge=True,
+        )
+        return normalized
+
+    @classmethod
+    def append_operation_event(
+        cls,
+        operation_id: str,
+        *,
+        event_type: str,
+        phase: str,
+        status: str,
+        message: str,
+        progress: int,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        current = cls.get_operation_for_execution(operation_id) or {}
+        event = build_event(
+            event_type=event_type,
+            phase=phase,
+            status=status,
+            message=message,
+            progress=progress,
+            extra=extra,
+        )
+        cls._append_event_projection(operation_id, current, event)
+        cls._persist_event(operation_id, event)
+
+    @classmethod
     def retry_operation(cls, uid: str, operation_id: str) -> Optional[Dict[str, Any]]:
         try:
             document = cls._operations_collection().document(operation_id)
@@ -661,6 +701,11 @@ class OperationService:
                 },
                 merge=True,
             )
+            metadata = dict(record.get('metadata') or {})
+            if record.get('type') == 'ml_train':
+                metadata.pop('external_job', None)
+                metadata['last_retry_at'] = cls._now_iso()
+                document.set({'metadata': metadata}, merge=True)
             event = build_event(
                 event_type='operation.retried',
                 phase='queued',
@@ -716,6 +761,25 @@ class OperationService:
                     }
                 )
             document.set(updates, merge=True)
+            metadata = record.get('metadata') if isinstance(record.get('metadata'), dict) else {}
+            external_job = metadata.get('external_job') if isinstance(metadata, dict) else {}
+            job_name = str(external_job.get('name') or '').strip() if isinstance(external_job, dict) else ''
+            if (
+                str(metadata.get('training_backend') or '') == 'vertex_custom_training'
+                and job_name
+                and record.get('status') not in cls.TERMINAL_STATUSES
+            ):
+                try:
+                    from flask import current_app
+
+                    VertexTrainingService.cancel_custom_job(job_name)
+                    VertexTrainingReconciler.schedule_reconcile(
+                        current_app._get_current_object(),
+                        operation_id,
+                        delay_s=10,
+                    )
+                except Exception as exc:
+                    logger.warning('Failed to cancel Vertex job %s: %s', job_name, exc)
             event_type = 'operation.cancelled' if updates.get('status') == 'cancelled' else 'operation.cancel_requested'
             event = build_event(
                 event_type=event_type,
@@ -1336,6 +1400,90 @@ class OperationService:
                 cls.update_progress(operation_id, 25, 'Preparing dataset analysis workflow', phase='dataset')
                 result = run_analysis_workflow(uid, payload, job_id=operation_id)
             elif operation_type == 'ml_train':
+                decision = MlTrainBackendSelector.decide(str(uid or ''), payload)
+                metadata = dict(operation.get('metadata') or {})
+                metadata['budget_guard'] = dict(decision.budget_guard or {})
+                metadata['training_backend_reason'] = decision.reason
+                if decision.backend == 'rejected':
+                    metadata['training_backend'] = 'vertex_custom_training'
+                    cls.update_operation_metadata(operation_id, metadata)
+                    cls.mark_failed(
+                        operation_id,
+                        code='VERTEX_BUDGET_GUARD',
+                        message=decision.reason,
+                        details=decision.budget_guard,
+                    )
+                    return
+
+                if decision.backend == 'vertex_custom_training':
+                    metadata['training_backend'] = 'vertex_custom_training'
+                    cls.update_operation_metadata(operation_id, metadata)
+                    cls.update_progress(
+                        operation_id,
+                        12,
+                        'Submitting Vertex custom training job',
+                        phase='vertex_queue',
+                    )
+                    try:
+                        external_job = VertexTrainingService.submit_custom_job(
+                            operation_id=operation_id,
+                            uid=str(uid or ''),
+                            payload=payload,
+                        )
+                        metadata['external_job'] = external_job
+                        cls.update_operation_metadata(operation_id, metadata)
+                        cls.update_progress(
+                            operation_id,
+                            15,
+                            'Vertex training job queued',
+                            phase='vertex_queue',
+                        )
+                        cls.append_operation_event(
+                            operation_id,
+                            event_type='external_job.submitted',
+                            phase='vertex_queue',
+                            status='running',
+                            message='Vertex custom job submitted',
+                            progress=15,
+                            extra={'external_job': external_job},
+                        )
+                        from flask import current_app
+
+                        VertexTrainingReconciler.schedule_reconcile(
+                            current_app._get_current_object(),
+                            operation_id,
+                        )
+                        HistoryService.add_history(
+                            uid=uid,
+                            action='job_dispatched',
+                            status='running',
+                            source='ml_train',
+                            resource_type='job',
+                            resource_id=operation_id,
+                            title='提交 Vertex 训练任务',
+                            details={'external_job': external_job},
+                        )
+                        return
+                    except Exception as exc:
+                        logger.exception(
+                            'Vertex job submission failed for %s, falling back to legacy backend',
+                            operation_id,
+                        )
+                        metadata['training_backend'] = 'cloud_run_legacy'
+                        metadata['vertex_submit_error'] = str(exc)
+                        cls.update_operation_metadata(operation_id, metadata)
+                        cls.append_operation_event(
+                            operation_id,
+                            event_type='external_job.submit_failed',
+                            phase='vertex_queue',
+                            status='running',
+                            message='Vertex submit failed, falling back to legacy backend',
+                            progress=18,
+                            extra={'error': str(exc)},
+                        )
+
+                metadata['training_backend'] = 'cloud_run_legacy'
+                cls.update_operation_metadata(operation_id, metadata)
                 cls.update_progress(operation_id, 25, 'Preparing sequence data', phase='dataset')
                 result = run_deep_learning_workflow(uid, payload, job_id=operation_id)
             elif operation_type == 'rag_ingest':

@@ -19,6 +19,7 @@ class _FakeApprovalJobRepository implements JobRepository {
     String? type,
     String? status,
     int limit = 20,
+    String scope = 'private',
   }) async {
     return List<JobRecord>.from(_jobs);
   }
