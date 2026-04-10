@@ -158,15 +158,17 @@ test('core trading chain remains usable', async ({ page }) => {
 
   await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByText(/Cerberus/)).toBeVisible()
-  await page.goto('/?workspace=book')
+  await page.goto('/?workspace=book&panel=orderbook')
   await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
 
-  await page.goto('/?workspace=execution')
+  await page.goto('/?workspace=execution&panel=timeline')
+  await expect(page.getByTestId('app-shell')).toBeVisible()
+  await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
+
+  await page.goto('/?workspace=execution&panel=order')
   await expect(page.getByTestId('app-shell')).toBeVisible()
   await expect(page.getByTestId('execution-console')).toBeVisible()
-  await page.getByTestId('execution-timeline-drawer-trigger').click()
-  await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
 
   await page.getByLabel('Quantity').fill('0.01')
   await page.getByLabel('Price').fill('50000')

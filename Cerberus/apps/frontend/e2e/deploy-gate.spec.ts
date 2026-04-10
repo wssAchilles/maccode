@@ -72,17 +72,20 @@ test.describe('deploy gate', () => {
     await ensureAuthenticated(page)
     await expect(page.getByTestId('app-shell')).toBeVisible()
     await assertWorkbenchChrome(page, testInfo.project.name)
+    await page.goto('/?workspace=overview&panel=flow', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('core-flow-panel')).toBeVisible()
 
-    await page.goto('/?workspace=book', { waitUntil: 'domcontentloaded' })
+    await page.goto('/?workspace=book&panel=orderbook', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('app-shell')).toBeVisible()
     await expect(page.getByTestId('matching-orderbook-panel')).toBeVisible()
 
-    await page.goto('/?workspace=execution', { waitUntil: 'domcontentloaded' })
+    await page.goto('/?workspace=execution&panel=timeline', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('app-shell')).toBeVisible()
+    await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
+
+    await page.goto('/?workspace=execution&panel=order', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('app-shell')).toBeVisible()
     await expect(page.getByTestId('execution-console')).toBeVisible()
-    await page.getByTestId('execution-timeline-drawer-trigger').click()
-    await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
 
     await page.getByTestId('run-precheck-button').click()
     await expect(page.getByTestId('binance-precheck-status')).toBeVisible()
@@ -118,7 +121,7 @@ test.describe('deploy gate', () => {
       (response) => response.url().includes('/api/v1/alpaca/orders/') && response.url().includes('/cancel'),
     )
 
-    await page.goto('/?workspace=overview', { waitUntil: 'domcontentloaded' })
+    await page.goto('/?workspace=overview&panel=flow', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('core-flow-panel')).toBeVisible()
     await assertCoreFlowHealthy(page)
     observer.assertNoFailures()

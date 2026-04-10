@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 
 import type { Locale } from '../../i18n/messages'
 import { DEFAULT_UI_STATE } from '../../types/contracts'
-import { WORKSPACE_IDS } from './shared'
+import { WORKSPACE_IDS, defaultWorkspacePanel, isWorkspacePanelId } from './shared'
 import type {
   CoreFlowMap,
   CoreFlowStep,
@@ -10,6 +10,7 @@ import type {
   CoreFlowStepState,
   DomainName,
   RootStore,
+  ShellNavigationState,
   UIStateSlice,
   WorkspaceId,
 } from './shared'
@@ -104,14 +105,23 @@ function isWorkspaceId(value: string | null): value is WorkspaceId {
   return value !== null && (WORKSPACE_IDS as readonly string[]).includes(value)
 }
 
-function resolveWorkspace(): WorkspaceId {
+function resolveShellNavigation(): ShellNavigationState {
   if (typeof window === 'undefined') {
-    return 'overview'
+    return {
+      workspace: 'overview',
+      panel: defaultWorkspacePanel('overview'),
+    }
   }
 
   const params = new URLSearchParams(window.location.search)
-  const workspace = params.get('workspace')
-  return isWorkspaceId(workspace) ? workspace : 'overview'
+  const rawWorkspace = params.get('workspace')
+  const workspace = isWorkspaceId(rawWorkspace) ? rawWorkspace : 'overview'
+  const rawPanel = params.get('panel')
+
+  return {
+    workspace,
+    panel: isWorkspacePanelId(workspace, rawPanel) ? rawPanel : defaultWorkspacePanel(workspace),
+  }
 }
 
 export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> = (set, get) => ({
@@ -130,9 +140,7 @@ export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> =
       'execution-trading': { ...DEFAULT_UI_STATE },
     },
     core_flow: { ...DEFAULT_CORE_FLOW },
-    shell_navigation: {
-      workspace: resolveWorkspace(),
-    },
+    shell_navigation: resolveShellNavigation(),
   },
   uiActions: {
     setLocale: (locale) => {
@@ -152,6 +160,18 @@ export const createUIStateSlice: StateCreator<RootStore, [], [], UIStateSlice> =
           ...state.uiState,
           shell_navigation: {
             workspace,
+            panel: defaultWorkspacePanel(workspace),
+          },
+        },
+      }))
+    },
+    setWorkspacePanel: (workspace, panel) => {
+      set((state) => ({
+        uiState: {
+          ...state.uiState,
+          shell_navigation: {
+            workspace,
+            panel: isWorkspacePanelId(workspace, panel) ? panel : defaultWorkspacePanel(workspace),
           },
         },
       }))

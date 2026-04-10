@@ -18,9 +18,10 @@ import {
 type Props = {
   series: MarketChartSeriesModel
   markers?: MarketChartMarkersModel
+  height?: number
 }
 
-export function CandlesChart({ series, markers }: Props) {
+export function CandlesChart({ series, markers, height = 360 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
@@ -78,7 +79,7 @@ export function CandlesChart({ series, markers }: Props) {
         horzLine: { color: chartCrosshair },
       },
       width: containerRef.current.clientWidth,
-      height: 360,
+      height,
     })
 
     const series = chart.addSeries(CandlestickSeries, {
@@ -125,7 +126,11 @@ export function CandlesChart({ series, markers }: Props) {
       }
       chart.remove()
     }
-  }, [])
+  }, [height])
+
+  useEffect(() => {
+    chartRef.current?.applyOptions({ height })
+  }, [height])
 
   useEffect(() => {
     if (!seriesRef.current) {
@@ -176,5 +181,5 @@ export function CandlesChart({ series, markers }: Props) {
     markersRef.current.setMarkers(markers?.items ?? [])
   }, [markers])
 
-  return <div ref={containerRef} className="chart-frame" aria-label="candles-chart" />
+  return <div ref={containerRef} className="chart-frame" style={{ minHeight: height }} aria-label="candles-chart" />
 }

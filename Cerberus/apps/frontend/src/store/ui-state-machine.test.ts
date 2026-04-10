@@ -37,6 +37,7 @@ describe('ui state machine', () => {
         },
         shell_navigation: {
           workspace: 'overview',
+          panel: 'home',
         },
       },
     }))
@@ -114,5 +115,16 @@ describe('ui state machine', () => {
     uiActions.setWorkspace('inference')
 
     expect(useCerberusStore.getState().uiState.shell_navigation.workspace).toBe('inference')
+    expect(useCerberusStore.getState().uiState.shell_navigation.panel).toBe('home')
+  })
+
+  it('updates shell workspace panel through ui actions', () => {
+    const { uiActions } = useCerberusStore.getState()
+    uiActions.setWorkspacePanel('execution', 'order')
+
+    expect(useCerberusStore.getState().uiState.shell_navigation).toEqual({
+      workspace: 'execution',
+      panel: 'order',
+    })
   })
 })

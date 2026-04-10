@@ -11,9 +11,10 @@ type Props = {
   selectedSymbol: string
   latestBid?: string
   latestAsk?: string
+  density?: 'full' | 'focused'
 }
 
-export function ExecutionConsole({ active = true, selectedSymbol, latestBid, latestAsk }: Props) {
+export function ExecutionConsole({ active = true, selectedSymbol, latestBid, latestAsk, density = 'full' }: Props) {
   const { t } = useI18n()
   const {
     broker,
@@ -167,7 +168,7 @@ export function ExecutionConsole({ active = true, selectedSymbol, latestBid, lat
               <p className="subtle-label">{t('workspace.execution.diagnostics')}</p>
               <p className="panel-caption">{t('workspace.execution.ticketDescription')}</p>
             </div>
-            <WorkspaceOperatorDeck sections={deskSections} layout="stack" />
+            {density === 'full' ? <WorkspaceOperatorDeck sections={deskSections} layout="stack" /> : null}
             <div className="xp">
               {progressItems.map((item, index) => (
                 <div key={item.id} className="xp-item">

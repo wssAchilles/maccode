@@ -1,5 +1,12 @@
 import type { TranslationKey } from '../i18n/messages'
-import type { CoreFlowMap, CoreFlowStepId, CoreFlowStepState, DomainStatusMap, WorkspaceId } from '../store/slices/shared'
+import type {
+  CoreFlowMap,
+  CoreFlowStepId,
+  CoreFlowStepState,
+  DomainStatusMap,
+  WorkspaceId,
+  WorkspacePanelId,
+} from '../store/slices/shared'
 import type { MarketMessage, OrderTimelineEvent, StrategySignal } from '../types/contracts'
 
 type Translate = (key: TranslationKey) => string
@@ -78,6 +85,14 @@ export type WorkspaceSummaryModel = {
   indexLabel: string
   accent: 'teal' | 'cyan' | 'amber'
   groupId: 'command' | 'market' | 'decision' | 'execution' | 'runtime'
+}
+
+export type WorkspacePanelSummaryModel = {
+  id: WorkspacePanelId
+  workspace: WorkspaceId
+  titleKey: TranslationKey
+  descriptionKey: TranslationKey
+  actionKey: TranslationKey
 }
 
 export type WorkspaceRailGroupModel = {
@@ -238,6 +253,268 @@ export const WORKSPACE_MODELS: WorkspaceSummaryModel[] = [
     groupId: 'runtime',
   },
 ]
+
+export const WORKSPACE_PANELS_BY_WORKSPACE: Record<WorkspaceId, WorkspacePanelSummaryModel[]> = {
+  overview: [
+    {
+      id: 'home',
+      workspace: 'overview',
+      titleKey: 'workspace.overview.title',
+      descriptionKey: 'workspace.overview.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'flow',
+      workspace: 'overview',
+      titleKey: 'flow.title',
+      descriptionKey: 'workspace.panel.overview.flowDescription',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'signals',
+      workspace: 'overview',
+      titleKey: 'strategy.recent',
+      descriptionKey: 'workspace.overview.signalsDescription',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'services',
+      workspace: 'overview',
+      titleKey: 'workspace.overview.healthDigest',
+      descriptionKey: 'workspace.health.operatorServiceDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'persistence',
+      workspace: 'overview',
+      titleKey: 'workspace.health.persistenceTitle',
+      descriptionKey: 'workspace.health.persistenceDescription',
+      actionKey: 'workspace.panel.check',
+    },
+  ],
+  market: [
+    {
+      id: 'home',
+      workspace: 'market',
+      titleKey: 'workspace.market.title',
+      descriptionKey: 'workspace.market.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'chart',
+      workspace: 'market',
+      titleKey: 'workspace.panel.market.chartTitle',
+      descriptionKey: 'workspace.market.chartDescription',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'quote',
+      workspace: 'market',
+      titleKey: 'workspace.market.operatorQuoteTitle',
+      descriptionKey: 'workspace.market.operatorQuoteDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'execution-pulse',
+      workspace: 'market',
+      titleKey: 'workspace.market.executionRailTitle',
+      descriptionKey: 'workspace.market.executionRailDescription',
+      actionKey: 'workspace.panel.view',
+    },
+  ],
+  book: [
+    {
+      id: 'home',
+      workspace: 'book',
+      titleKey: 'workspace.book.title',
+      descriptionKey: 'workspace.book.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'orderbook',
+      workspace: 'book',
+      titleKey: 'orderbook.title',
+      descriptionKey: 'workspace.book.description',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'depth',
+      workspace: 'book',
+      titleKey: 'workspace.market.operatorDepthTitle',
+      descriptionKey: 'workspace.market.operatorDepthDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'timeline',
+      workspace: 'book',
+      titleKey: 'execution.timeline',
+      descriptionKey: 'workspace.execution.timelineDescription',
+      actionKey: 'workspace.panel.view',
+    },
+  ],
+  strategy: [
+    {
+      id: 'home',
+      workspace: 'strategy',
+      titleKey: 'workspace.strategy.title',
+      descriptionKey: 'workspace.strategy.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'decision',
+      workspace: 'strategy',
+      titleKey: 'workspace.strategy.matrixTitle',
+      descriptionKey: 'workspace.strategy.description',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'registry',
+      workspace: 'strategy',
+      titleKey: 'workspace.strategy.registryTitle',
+      descriptionKey: 'workspace.strategy.registryDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'operations',
+      workspace: 'strategy',
+      titleKey: 'workspace.strategy.operationsTitle',
+      descriptionKey: 'workspace.strategy.operationsDescription',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'audit',
+      workspace: 'strategy',
+      titleKey: 'workspace.strategy.auditTimelineTitle',
+      descriptionKey: 'workspace.strategy.auditTimelineHint',
+      actionKey: 'workspace.panel.view',
+    },
+  ],
+  execution: [
+    {
+      id: 'home',
+      workspace: 'execution',
+      titleKey: 'workspace.execution.title',
+      descriptionKey: 'workspace.execution.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'order',
+      workspace: 'execution',
+      titleKey: 'workspace.execution.ticketTitle',
+      descriptionKey: 'workspace.execution.ticketDescription',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'ops',
+      workspace: 'execution',
+      titleKey: 'workspace.execution.operationsTitle',
+      descriptionKey: 'workspace.execution.operationsDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'timeline',
+      workspace: 'execution',
+      titleKey: 'execution.timeline',
+      descriptionKey: 'workspace.execution.timelineDescription',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'lifecycle',
+      workspace: 'execution',
+      titleKey: 'workspace.execution.lifecycleTitle',
+      descriptionKey: 'workspace.execution.lifecycleDescription',
+      actionKey: 'workspace.panel.view',
+    },
+  ],
+  inference: [
+    {
+      id: 'home',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.title',
+      descriptionKey: 'workspace.inference.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'runtime',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.runtimeStatus',
+      descriptionKey: 'workspace.inference.description',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'comparison',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.comparisonSummary',
+      descriptionKey: 'workspace.inference.symbolComparison',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'model',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.model',
+      descriptionKey: 'workspace.inference.registryTitle',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'audit',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.auditTimeline',
+      descriptionKey: 'workspace.inference.recentAudit',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'controls',
+      workspace: 'inference',
+      titleKey: 'workspace.inference.operationsTitle',
+      descriptionKey: 'workspace.inference.operatorNote',
+      actionKey: 'workspace.panel.open',
+    },
+  ],
+  health: [
+    {
+      id: 'home',
+      workspace: 'health',
+      titleKey: 'workspace.health.title',
+      descriptionKey: 'workspace.health.description',
+      actionKey: 'workspace.panel.open',
+    },
+    {
+      id: 'services',
+      workspace: 'health',
+      titleKey: 'workspace.health.operatorServiceTitle',
+      descriptionKey: 'workspace.health.operatorServiceDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'inference',
+      workspace: 'health',
+      titleKey: 'workspace.inference.title',
+      descriptionKey: 'workspace.inference.description',
+      actionKey: 'workspace.panel.view',
+    },
+    {
+      id: 'persistence',
+      workspace: 'health',
+      titleKey: 'workspace.health.persistenceTitle',
+      descriptionKey: 'workspace.health.persistenceDescription',
+      actionKey: 'workspace.panel.check',
+    },
+    {
+      id: 'requests',
+      workspace: 'health',
+      titleKey: 'workspace.health.requestIds',
+      descriptionKey: 'workspace.health.requestIdsDescription',
+      actionKey: 'workspace.panel.view',
+    },
+  ],
+}
+
+export const WORKSPACE_PANEL_MODEL_BY_ID = Object.fromEntries(
+  Object.entries(WORKSPACE_PANELS_BY_WORKSPACE).map(([workspace, panels]) => [
+    workspace,
+    Object.fromEntries(panels.map((panel) => [panel.id, panel])),
+  ]),
+) as Record<WorkspaceId, Record<WorkspacePanelId, WorkspacePanelSummaryModel>>
 
 export const WORKSPACE_GROUPS: WorkspaceRailGroupModel[] = [
   {

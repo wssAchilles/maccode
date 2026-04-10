@@ -249,15 +249,21 @@ describe('inference observability module', () => {
   it('integrates into overview workspace without replacing existing sections', () => {
     const onSelectWorkspace = vi.fn()
 
-    renderWithI18n(<OverviewWorkspace onSelectWorkspace={onSelectWorkspace} />)
+    const servicesRender = renderWithI18n(
+      <OverviewWorkspace onSelectWorkspace={onSelectWorkspace} panel="services" />,
+    )
 
     expect(screen.getAllByText(/推理可观测|Inference observability/i).length).toBeGreaterThan(0)
+    servicesRender.unmount()
+
+    renderWithI18n(<OverviewWorkspace onSelectWorkspace={onSelectWorkspace} panel="signals" />)
+
     expect(screen.getAllByText(/最近信号|Recent Signals/i).length).toBeGreaterThan(0)
   })
 
   it('integrates into health workspace with a read-only diagnostics section', async () => {
     const user = userEvent.setup()
-    renderWithI18n(<HealthWorkspace />)
+    renderWithI18n(<HealthWorkspace panel="inference" />)
 
     expect(screen.getAllByText(/推理可观测|Inference observability/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/离线 Macro F1|Offline Macro F1/i).length).toBeGreaterThan(0)

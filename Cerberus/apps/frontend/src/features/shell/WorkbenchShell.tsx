@@ -5,11 +5,17 @@ import type { FirebaseAuthState } from '../../auth/useFirebaseAuth'
 import { useI18n } from '../../i18n/I18nProvider'
 import { cn } from '../../lib/cn'
 import { useCerberusStore } from '../../store'
-import type { WorkspaceId } from '../../store/slices/shared'
+import {
+  defaultWorkspacePanel,
+  isWorkspacePanelId,
+  type WorkspaceId,
+  type WorkspacePanelId,
+} from '../../store/slices/shared'
 import {
   WORKSPACE_GROUPS,
   WORKSPACE_INDEX_BY_ID,
   WORKSPACE_MODEL_BY_ID,
+  WORKSPACE_PANEL_MODEL_BY_ID,
   WORKSPACE_MODELS,
   buildHealthCards,
   getWorkspaceAccent,
@@ -64,13 +70,20 @@ function formatEndpointChip(url: string): string {
   }
 }
 
-function nextWorkspaceFromUrl(): WorkspaceId {
+type ShellNavigation = {
+  workspace: WorkspaceId
+  panel: WorkspacePanelId
+}
+
+function nextNavigationFromUrl(): ShellNavigation {
   const params = new URLSearchParams(window.location.search)
-  const workspace = params.get('workspace')
-  if (workspace && workspace in WORKSPACE_MODEL_BY_ID) {
-    return workspace as WorkspaceId
+  const rawWorkspace = params.get('workspace')
+  const workspace = rawWorkspace && rawWorkspace in WORKSPACE_MODEL_BY_ID ? (rawWorkspace as WorkspaceId) : 'overview'
+  const rawPanel = params.get('panel')
+  return {
+    workspace,
+    panel: isWorkspacePanelId(workspace, rawPanel) ? rawPanel : defaultWorkspacePanel(workspace),
   }
-  return 'overview'
 }
 
 export function WorkbenchShell({ auth }: Props) {
@@ -78,15 +91,18 @@ export function WorkbenchShell({ auth }: Props) {
   const env = useCerberusStore((state) => state.env)
   const locale = useCerberusStore((state) => state.uiState.locale)
   const liveAnnouncement = useCerberusStore((state) => state.uiState.live_announcement)
-  const workspace = useCerberusStore((state) => state.uiState.shell_navigation.workspace)
+  const navigation = useCerberusStore((state) => state.uiState.shell_navigation)
+  const workspace = navigation.workspace
+  const panel = navigation.panel
   const domainStatus = useCerberusStore((state) => state.uiState.domain_status)
   const setLocale = useCerberusStore((state) => state.uiActions.setLocale)
-  const setWorkspace = useCerberusStore((state) => state.uiActions.setWorkspace)
+  const setWorkspacePanel = useCerberusStore((state) => state.uiActions.setWorkspacePanel)
 
   useStrategySummaryResource(true)
 
   const [visited, setVisited] = useState<Array<WorkspaceId>>([workspace])
   const currentWorkspace = WORKSPACE_MODEL_BY_ID[workspace]
+  const currentPanel = WORKSPACE_PANEL_MODEL_BY_ID[workspace][panel]
   const workspaceIndex = WORKSPACE_INDEX_BY_ID[workspace]
   const authUserLabel = useMemo(() => {
     if (!auth.user) {
@@ -100,29 +116,31 @@ export function WorkbenchShell({ auth }: Props) {
   const loadingCount = healthCards.filter((card) => card.state === 'loading').length
   const previousWorkspaceIndex = useRef(workspaceIndex)
   const [workspaceDirection, setWorkspaceDirection] = useState<'forward' | 'backward'>('forward')
-  const shellPhase = useRafPresenceTransition(`${workspace}:${workspaceDirection}`, 620)
+  const shellPhase = useRafPresenceTransition(`${workspace}:${panel}:${workspaceDirection}`, 620)
   const shellAccent = getWorkspaceAccent(workspace)
 
   useEffect(() => {
     setVisited((current) => (current.includes(workspace) ? current : [...current, workspace]))
     const params = new URLSearchParams(window.location.search)
-    if (params.get('workspace') === workspace) {
+    if (params.get('workspace') === workspace && params.get('panel') === panel) {
       return
     }
     params.set('workspace', workspace)
+    params.set('panel', panel)
     const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`
     window.history.replaceState({}, '', nextUrl)
-  }, [workspace])
+  }, [panel, workspace])
 
   useEffect(() => {
     const handlePopState = () => {
-      setWorkspace(nextWorkspaceFromUrl())
+      const next = nextNavigationFromUrl()
+      setWorkspacePanel(next.workspace, next.panel)
     }
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [setWorkspace])
+  }, [setWorkspacePanel])
 
   useEffect(() => {
     const previousIndex = previousWorkspaceIndex.current
@@ -138,7 +156,16 @@ export function WorkbenchShell({ auth }: Props) {
       document.activeElement.blur()
     }
     startTransition(() => {
-      setWorkspace(next)
+      setWorkspacePanel(next, defaultWorkspacePanel(next))
+    })
+  }
+
+  const handlePanelChange = (next: WorkspacePanelId) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    startTransition(() => {
+      setWorkspacePanel(workspace, next)
     })
   }
 
@@ -156,7 +183,9 @@ export function WorkbenchShell({ auth }: Props) {
               <h1>{t('app.title')}</h1>
             </div>
             <div className="wb-command-stage">
-              <p className="wb-stage-title">{t(currentWorkspace.titleKey)}</p>
+              <p className="wb-stage-title">
+                {t(currentWorkspace.titleKey)} / {t(currentPanel.titleKey)}
+              </p>
               <p className="wb-stage-summary">{t(currentWorkspace.descriptionKey)}</p>
             </div>
             <div className="wb-command-state" aria-label={t('shell.status')}>
@@ -315,6 +344,8 @@ export function WorkbenchShell({ auth }: Props) {
                     <WorkspaceComponent
                       active={workspace === visitedWorkspace}
                       onSelectWorkspace={handleWorkspaceChange}
+                      panel={workspace === visitedWorkspace ? panel : defaultWorkspacePanel(visitedWorkspace)}
+                      onSelectPanel={workspace === visitedWorkspace ? handlePanelChange : undefined}
                     />
                   </div>
                 )

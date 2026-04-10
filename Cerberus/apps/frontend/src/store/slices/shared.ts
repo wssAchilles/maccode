@@ -34,8 +34,39 @@ export const WORKSPACE_IDS = [
 
 export type WorkspaceId = (typeof WORKSPACE_IDS)[number]
 
+export const WORKSPACE_PANEL_IDS = {
+  overview: ['home', 'flow', 'signals', 'services', 'persistence'],
+  market: ['home', 'chart', 'quote', 'execution-pulse'],
+  book: ['home', 'orderbook', 'depth', 'timeline'],
+  strategy: ['home', 'decision', 'registry', 'operations', 'audit'],
+  execution: ['home', 'order', 'ops', 'timeline', 'lifecycle'],
+  inference: ['home', 'runtime', 'comparison', 'model', 'audit', 'controls'],
+  health: ['home', 'services', 'inference', 'persistence', 'requests'],
+} as const satisfies Record<WorkspaceId, readonly string[]>
+
+export type WorkspacePanelId = (typeof WORKSPACE_PANEL_IDS)[WorkspaceId][number]
+
+export const DEFAULT_WORKSPACE_PANEL_BY_ID = {
+  overview: 'home',
+  market: 'home',
+  book: 'home',
+  strategy: 'home',
+  execution: 'home',
+  inference: 'home',
+  health: 'home',
+} as const satisfies Record<WorkspaceId, WorkspacePanelId>
+
+export function defaultWorkspacePanel(workspace: WorkspaceId): WorkspacePanelId {
+  return DEFAULT_WORKSPACE_PANEL_BY_ID[workspace]
+}
+
+export function isWorkspacePanelId(workspace: WorkspaceId, panel: string | null | undefined): panel is WorkspacePanelId {
+  return Boolean(panel && (WORKSPACE_PANEL_IDS[workspace] as readonly string[]).includes(panel))
+}
+
 export type ShellNavigationState = {
   workspace: WorkspaceId
+  panel: WorkspacePanelId
 }
 
 export type CoreFlowStepId = 'bootstrap' | 'market' | 'precheck' | 'submit' | 'feedback' | 'cancel'
@@ -155,6 +186,7 @@ export type UIStateSlice = {
   uiActions: {
     setLocale: (locale: Locale) => void
     setWorkspace: (workspace: WorkspaceId) => void
+    setWorkspacePanel: (workspace: WorkspaceId, panel?: WorkspacePanelId) => void
     setDomainStatus: (
       domain: DomainName,
       patch: Partial<UIState> & { state?: UIState['state'] },
