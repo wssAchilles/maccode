@@ -1,7 +1,21 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -lc
+      - docker pull "$_IMAGE_URI" || true
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -lc
+      - docker pull "$_BASE_IMAGE_URI" || true
+  - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --build-arg
+      - BASE_IMAGE=$_BASE_IMAGE_URI
+      - --cache-from
+      - $_IMAGE_URI
       - -f
       - Dockerfile.vertex_training
       - -t

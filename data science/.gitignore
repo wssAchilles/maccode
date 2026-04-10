@@ -64,6 +64,7 @@ pyvenv.cfg
 !app.yaml
 !.firebaserc
 !requirements.txt
+!requirements.vertex_training.txt
 !README.txt
 !README.md
 !*.md
@@ -436,4 +437,3 @@ docker-compose.override.yml
 *.fdb_latexmk
 *.synctex.gz
 indent.log
-

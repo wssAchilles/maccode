@@ -1,0 +1,11 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.vertex_training.base
+      - -t
+      - $_BASE_IMAGE_URI
+      - .
+images:
+  - $_BASE_IMAGE_URI
