@@ -9,6 +9,7 @@ import { RevealGroup } from './RevealGroup'
 type Props = {
   title: string
   description?: string
+  descriptionMode?: 'visible' | 'srOnly' | 'hidden'
   eyebrow?: string
   aside?: ReactNode
   children: ReactNode
@@ -23,6 +24,7 @@ type Props = {
 export function SectionFrame({
   title,
   description,
+  descriptionMode = 'visible',
   eyebrow,
   aside,
   children,
@@ -45,7 +47,8 @@ export function SectionFrame({
             <div className="sf-copy">
               {eyebrow ? <p className="sf-eyebrow">{eyebrow}</p> : null}
               <h2 className="sf-title">{title}</h2>
-              {description ? <p className="sf-description">{description}</p> : null}
+              {description && descriptionMode === 'visible' ? <p className="sf-description">{description}</p> : null}
+              {description && descriptionMode === 'srOnly' ? <p className="sr-only">{description}</p> : null}
             </div>
             {aside ? <div className="sf-aside">{aside}</div> : null}
           </div>

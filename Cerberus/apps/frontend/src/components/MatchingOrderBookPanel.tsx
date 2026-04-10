@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react'
+
 import type { MatchingOrderBookLevelRowModel, MatchingOrderBookPanelModel } from '../view-models/orderbook'
 import { EmptyState, GlassPanel, PanelSection, SectionFrame, TerminalBand } from '../ui'
 
 type Props = {
   model: MatchingOrderBookPanelModel
+  aside?: ReactNode
+  className?: string
+  descriptionMode?: 'visible' | 'srOnly' | 'hidden'
 }
 
 function LevelGroup({
@@ -53,11 +58,14 @@ function LevelGroup({
   )
 }
 
-export function MatchingOrderBookPanel({ model }: Props) {
+export function MatchingOrderBookPanel({ model, aside, className, descriptionMode = 'visible' }: Props) {
   return (
     <SectionFrame
       title={model.title}
       description={model.description}
+      descriptionMode={descriptionMode}
+      aside={aside}
+      className={className}
     >
       <TerminalBand model={model.band} className="ob-band" compact hideHint hideEyebrow />
       <div className="obs-grid">

@@ -7,7 +7,7 @@ import {
 } from '../../app/lazyPanels'
 import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { DiagnosticDrawer, GlassPanel, MetricTile, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DiagnosticDrawer, GlassPanel, SectionFrame, TerminalBand, WorkspaceOperatorDeck } from '../../ui'
 import { ExecutionOperationsPanel } from './components/ExecutionOperationsPanel'
 import { ExecutionLifecyclePanel } from '../strategy-orchestration/components/ExecutionLifecyclePanel'
 import { useExecutionWorkspaceModel } from './useExecutionWorkspaceModel'
@@ -24,41 +24,30 @@ export function ExecutionWorkspace({ active = true, onSelectWorkspace }: Props) 
   return (
     <div className="ws-grid ws-grid-execution" data-workspace="execution">
       <SectionFrame
-        title={t('workspace.execution.title')}
-        description={t('workspace.execution.description')}
-        eyebrow={t('workspace.execution.eyebrow')}
-        className="ws-span-full"
-        tone="hero"
+        title={t('workspace.execution.ticketTitle')}
+        description={t('workspace.execution.ticketDescription')}
+        descriptionMode="srOnly"
+        className="ws-span-full ws-primary-panel"
         accent="amber"
-        stage="hero"
+        stage="feature"
+        compactHeader
+        bodyClassName="tail-shell"
       >
-        <TerminalBand model={model.heroBand} className="hero-band" />
-        <div className="ws-hero-grid">
-          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side hero-side-shell">
-            <div className="hero-side-head">
-              <p className="subtle-label">{t('workspace.hero.readings')}</p>
-            </div>
-            <div className="metric-grid ws-hero-metrics">
-              {model.metricTiles.map((tile, index) => (
-                <MetricTile
-                  key={tile.id}
-                  label={tile.label}
-                  value={tile.value}
-                  hint={tile.hint}
-                  tone={tile.tone}
-                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={<PanelSkeleton height="540px" />}>
+          <LazyExecutionConsole
+            active={active}
+            selectedSymbol={model.selectedSymbol}
+            latestBid={model.displayQuote?.bid_price}
+            latestAsk={model.displayQuote?.ask_price}
+          />
+        </Suspense>
       </SectionFrame>
 
       <div className="ws-main stack wsm">
         <SectionFrame
           title={t('workspace.execution.operatorDeckTitle')}
           description={t('workspace.execution.operatorDeckDescription')}
+          descriptionMode="srOnly"
           accent="teal"
           stage="operator"
           compactHeader
@@ -68,12 +57,20 @@ export function ExecutionWorkspace({ active = true, onSelectWorkspace }: Props) 
         </SectionFrame>
 
         <SectionFrame
-          title={t('workspace.execution.lifecycleTitle')}
-          description={t('workspace.execution.lifecycleDescription')}
-          accent="cyan"
-          stage="feature"
+          title={t('workspace.execution.operationsTitle')}
+          description={t('workspace.execution.operationsDescription')}
+          descriptionMode="srOnly"
+          accent="amber"
+          stage="tail"
+          compactHeader
         >
-          <ExecutionLifecyclePanel model={model.lifecyclePanel} />
+          <DiagnosticDrawer
+            title={t('workspace.execution.operationsTitle')}
+            summary={t('workspace.execution.operationsDescription')}
+            contentClassName="tail-drawer"
+          >
+            <ExecutionOperationsPanel model={model.operationsPanel} />
+          </DiagnosticDrawer>
         </SectionFrame>
       </div>
 
@@ -84,6 +81,7 @@ export function ExecutionWorkspace({ active = true, onSelectWorkspace }: Props) 
         <SectionFrame
           title={t('workspace.execution.linkageTitle')}
           description={t('workspace.execution.linkageDetail')}
+          descriptionMode="srOnly"
           bodyClassName="inspector-shell"
           accent="cyan"
           stage="inspector"
@@ -113,45 +111,41 @@ export function ExecutionWorkspace({ active = true, onSelectWorkspace }: Props) 
         <SectionFrame
           title={t('execution.timeline')}
           description={t('workspace.execution.timelineDescription')}
+          descriptionMode="srOnly"
           className="xts"
           accent="cyan"
           stage="tail"
           compactHeader
           bodyClassName="tail-shell"
         >
-          <Suspense fallback={<PanelSkeleton height="320px" />}>
-            <LazyExecutionTimelinePanel active={active} />
-          </Suspense>
+          <DiagnosticDrawer
+            title={t('execution.timeline')}
+            summary={t('workspace.execution.timelineDescription')}
+            testId="execution-timeline-drawer"
+          >
+            <Suspense fallback={<PanelSkeleton height="320px" />}>
+              <LazyExecutionTimelinePanel active={active} />
+            </Suspense>
+          </DiagnosticDrawer>
         </SectionFrame>
       </div>
 
       <SectionFrame
-        title={t('workspace.execution.operationsTitle')}
-        description={t('workspace.execution.operationsDescription')}
+        title={t('workspace.execution.lifecycleTitle')}
+        description={t('workspace.execution.lifecycleDescription')}
+        descriptionMode="srOnly"
         className="ws-span-full"
-        accent="amber"
-        stage="operator"
-      >
-        <ExecutionOperationsPanel model={model.operationsPanel} />
-      </SectionFrame>
-
-      <SectionFrame
-        title={t('workspace.execution.ticketTitle')}
-        description={t('workspace.execution.ticketDescription')}
-        className="ws-span-full"
-        accent="amber"
+        accent="cyan"
         stage="tail"
         compactHeader
-        bodyClassName="tail-shell"
       >
-        <Suspense fallback={<PanelSkeleton height="540px" />}>
-          <LazyExecutionConsole
-            active={active}
-            selectedSymbol={model.selectedSymbol}
-            latestBid={model.displayQuote?.bid_price}
-            latestAsk={model.displayQuote?.ask_price}
-          />
-        </Suspense>
+        <DiagnosticDrawer
+          title={t('workspace.execution.lifecycleTitle')}
+          summary={t('workspace.execution.lifecycleDescription')}
+          contentClassName="tail-drawer"
+        >
+          <ExecutionLifecyclePanel model={model.lifecyclePanel} />
+        </DiagnosticDrawer>
       </SectionFrame>
     </div>
   )

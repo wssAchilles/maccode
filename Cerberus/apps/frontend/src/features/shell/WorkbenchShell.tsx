@@ -144,27 +144,66 @@ export function WorkbenchShell({ auth }: Props) {
 
   return (
     <main className="app-shell" data-testid="app-shell" data-workspace={workspace} data-phase={shellPhase}>
-      <GlassPanel className="wb-header" tone="hero">
+      <GlassPanel className="wb-header wb-command-bar" tone="hero">
         <MotionBackdrop accent={shellAccent} intensity="hero" className="wb-backdrop" />
-        <div className="wb-header-top">
-          <div className="wb-brand">
-            <div className="wb-brand-row">
-              <p className="wb-eyebrow">{t('app.kicker')}</p>
-              <p className="wb-workspace-pill">{currentWorkspace.indexLabel}</p>
+        <div className="wb-command-layout">
+          <div className="wb-command-copy">
+            <div className="wb-command-brand">
+              <div className="wb-brand-row">
+                <p className="wb-eyebrow">{t('app.kicker')}</p>
+                <p className="wb-workspace-pill">{currentWorkspace.indexLabel}</p>
+              </div>
+              <h1>{t('app.title')}</h1>
             </div>
-            <h1>{t('app.title')}</h1>
-            <div className="wb-stage-copy">
+            <div className="wb-command-stage">
               <p className="wb-stage-title">{t(currentWorkspace.titleKey)}</p>
               <p className="wb-stage-summary">{t(currentWorkspace.descriptionKey)}</p>
             </div>
+            <div className="wb-command-state" aria-label={t('shell.status')}>
+              <StatusPill
+                state={attentionCount > 0 ? 'degraded' : loadingCount > 0 ? 'loading' : 'ready'}
+                label={
+                  attentionCount > 0
+                    ? `${attentionCount} ${t('shell.attention')}`
+                    : loadingCount > 0
+                      ? `${loadingCount} ${t('shell.loading')}`
+                      : `${readyCount} ${t('shell.ready')}`
+                }
+                compact
+              />
+              <p className="wb-command-summary">
+                {readyCount} {t('shell.ready')} · {attentionCount} {t('shell.attention')}
+                {loadingCount > 0 ? ` · ${loadingCount} ${t('shell.loading')}` : ''}
+              </p>
+            </div>
           </div>
 
-          <div className="wb-control-stack">
-            <GlassPanel className="wb-control-card" tone="subtle">
-              <div className="wb-control-head">
-                <p className="subtle-label">{t('shell.system')}</p>
-              </div>
-              <div className="env-chip-group">
+          <div className="wb-command-actions">
+            {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
+            <div className="locale-switch">
+              <button
+                type="button"
+                className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'}
+                onClick={() => setLocale('zh-CN')}
+              >
+                {t('lang.zh')}
+              </button>
+              <button
+                type="button"
+                className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'}
+                onClick={() => setLocale('en-US')}
+              >
+                {t('lang.en')}
+              </button>
+            </div>
+            {auth.required ? (
+              <button type="button" className="soft-button" onClick={() => void auth.signOutCurrentUser()}>
+                {t('auth.signOut')}
+              </button>
+            ) : null}
+            <details className="wb-endpoint-details">
+              <summary className="wb-endpoint-summary">{t('shell.system')}</summary>
+              <div className="env-chip-group wb-endpoint-list">
                 <span className="env-chip">
                   {t('env.gateway')}: {formatEndpointChip(env.gateway_base)}
                 </span>
@@ -174,42 +213,12 @@ export function WorkbenchShell({ auth }: Props) {
                   </span>
                 ) : null}
               </div>
-            </GlassPanel>
-
-            <GlassPanel className="wb-control-card wb-control-card-compact" tone="subtle">
-              <div className="wb-control-head">
-                <p className="subtle-label">{t('shell.session')}</p>
-              </div>
-              <div className="wb-session-row">
-                {authUserLabel ? <span className="account-pill">{authUserLabel}</span> : null}
-                <div className="locale-switch">
-                  <button
-                    type="button"
-                    className={locale === 'zh-CN' ? 'chip-button chip-button-active' : 'chip-button'}
-                    onClick={() => setLocale('zh-CN')}
-                  >
-                    {t('lang.zh')}
-                  </button>
-                  <button
-                    type="button"
-                    className={locale === 'en-US' ? 'chip-button chip-button-active' : 'chip-button'}
-                    onClick={() => setLocale('en-US')}
-                  >
-                    {t('lang.en')}
-                  </button>
-                </div>
-                {auth.required ? (
-                  <button type="button" className="soft-button" onClick={() => void auth.signOutCurrentUser()}>
-                    {t('auth.signOut')}
-                  </button>
-                ) : null}
-              </div>
-            </GlassPanel>
+            </details>
           </div>
         </div>
 
         <div className="wb-strip-shell">
-          <div className="wb-strip-head">
+          <div className="wb-strip-head sr-only">
             <div>
               <p className="subtle-label">{t('shell.status')}</p>
               <p className="wb-strip-summary">
@@ -219,7 +228,7 @@ export function WorkbenchShell({ auth }: Props) {
             </div>
             <p className="wb-stage-active">{t(currentWorkspace.titleKey)}</p>
           </div>
-          <div className="wb-status-strip">
+          <div className="wb-status-strip wb-status-strip-compact">
             {healthCards.map((card, index) => (
               <RevealGroup key={card.id} revealIndex={index} className="ss-shell">
                 <MotionSurface className="ss-surface" mode="panel">
@@ -247,7 +256,7 @@ export function WorkbenchShell({ auth }: Props) {
               <div>
                 <p className="subtle-label">{t('shell.navRail')}</p>
                 <p className="wb-strip-summary">
-                  {t(currentWorkspace.titleKey)} · {t(currentWorkspace.descriptionKey)}
+                  {currentWorkspace.indexLabel} · {t(currentWorkspace.titleKey)}
                 </p>
               </div>
             </div>

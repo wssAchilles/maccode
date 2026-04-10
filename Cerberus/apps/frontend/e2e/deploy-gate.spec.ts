@@ -80,8 +80,9 @@ test.describe('deploy gate', () => {
 
     await page.goto('/?workspace=execution', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('app-shell')).toBeVisible()
-    await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
     await expect(page.getByTestId('execution-console')).toBeVisible()
+    await page.getByTestId('execution-timeline-drawer-trigger').click()
+    await expect(page.getByTestId('execution-timeline-panel')).toBeVisible()
 
     await page.getByTestId('run-precheck-button').click()
     await expect(page.getByTestId('binance-precheck-status')).toBeVisible()

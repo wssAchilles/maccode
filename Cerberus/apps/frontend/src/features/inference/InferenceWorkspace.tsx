@@ -1,6 +1,6 @@
 import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { DataList, DiagnosticDrawer, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck } from '../../ui'
 import { InferenceAuditTimeline } from '../inference-observability/components/InferenceAuditTimeline'
 import { InferenceOperationsPanel } from '../inference-observability/components/InferenceOperationsPanel'
 import { InferenceStatusCard } from '../inference-observability/components/InferenceStatusCard'
@@ -18,34 +18,12 @@ export function InferenceWorkspace({ active = true, onSelectWorkspace }: Props) 
 
   return (
     <div className="ws-grid ws-grid-inference" data-workspace="inference">
-      <SectionFrame
-        title={t('workspace.inference.title')}
-        description={t('workspace.inference.description')}
-        eyebrow={t('workspace.inference.title')}
-        className="ws-span-full"
-        tone="hero"
-        accent="teal"
-        stage="hero"
-      >
-        <TerminalBand model={model.diagnostics.band} className="hero-band" />
-        <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-      </SectionFrame>
-
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.inference.operatorDeckTitle')}
-          description={t('workspace.inference.operatorDeckDescription')}
-          accent="teal"
-          stage="operator"
-          compactHeader
-          bodyClassName="operator-shell"
-        >
-          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.inference.runtimeStatus')}
           description={t('workspace.inference.description')}
+          descriptionMode="srOnly"
+          className="ws-primary-panel"
           accent="cyan"
           stage="feature"
         >
@@ -55,10 +33,23 @@ export function InferenceWorkspace({ active = true, onSelectWorkspace }: Props) 
         <SectionFrame
           title={t('workspace.inference.comparisonSummary')}
           description={t('workspace.inference.symbolComparison')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="feature"
         >
           <InferenceSymbolComparisonPanel model={model.diagnostics} />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.inference.operatorDeckTitle')}
+          description={t('workspace.inference.operatorDeckDescription')}
+          descriptionMode="srOnly"
+          accent="teal"
+          stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
         </SectionFrame>
       </div>
 
@@ -66,6 +57,7 @@ export function InferenceWorkspace({ active = true, onSelectWorkspace }: Props) 
         <SectionFrame
           title={t('workspace.inference.model')}
           description={t('workspace.inference.description')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="inspector"
           compactHeader
@@ -95,32 +87,46 @@ export function InferenceWorkspace({ active = true, onSelectWorkspace }: Props) 
         <SectionFrame
           title={t('workspace.inference.auditTimeline')}
           description={t('workspace.inference.recentAudit')}
+          descriptionMode="srOnly"
           accent="amber"
           stage="inspector"
           compactHeader
           bodyClassName="inspector-shell"
         >
-          <InferenceAuditTimeline model={model.diagnostics} />
+          <DiagnosticDrawer
+            title={t('workspace.inference.auditTimeline')}
+            summary={t('workspace.inference.recentAudit')}
+            contentClassName="tail-drawer"
+          >
+            <InferenceAuditTimeline model={model.diagnostics} />
+          </DiagnosticDrawer>
         </SectionFrame>
 
         <SectionFrame
           title={t('workspace.inference.operationsTitle')}
           description={t('workspace.inference.operatorNote')}
+          descriptionMode="srOnly"
           accent="teal"
           stage="inspector"
           compactHeader
           bodyClassName="inspector-shell"
         >
-          <InferenceOperationsPanel
-            model={model.operations.model}
-            reason={model.operations.reason}
-            selectedModelId={model.operations.selectedModelId}
-            onReasonChange={model.operations.setReason}
-            onSelectedModelIdChange={model.operations.setSelectedModelId}
-            onPromote={() => void model.operations.onPromote()}
-            onRollback={() => void model.operations.onRollback()}
-            onActivate={() => void model.operations.onActivate()}
-          />
+          <DiagnosticDrawer
+            title={t('workspace.inference.operationsTitle')}
+            summary={t('workspace.inference.operatorNote')}
+            contentClassName="tail-drawer"
+          >
+            <InferenceOperationsPanel
+              model={model.operations.model}
+              reason={model.operations.reason}
+              selectedModelId={model.operations.selectedModelId}
+              onReasonChange={model.operations.setReason}
+              onSelectedModelIdChange={model.operations.setSelectedModelId}
+              onPromote={() => void model.operations.onPromote()}
+              onRollback={() => void model.operations.onRollback()}
+              onActivate={() => void model.operations.onActivate()}
+            />
+          </DiagnosticDrawer>
         </SectionFrame>
 
         {model.summaryError ? (

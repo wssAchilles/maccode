@@ -6,11 +6,9 @@ import type { WorkspaceId } from '../../store/slices/shared'
 import {
   DiagnosticDrawer,
   GlassPanel,
-  MetricTile,
   SectionFrame,
   TerminalBand,
   WorkspaceOperatorDeck,
-  WorkspaceSpotlight,
 } from '../../ui'
 import { useRafPresenceTransition } from '../../ui/motion/useRafPresenceTransition'
 import { SymbolExecutionRail } from './components/SymbolExecutionRail'
@@ -25,71 +23,31 @@ export function MarketWorkspace({ active = true, onSelectWorkspace }: Props) {
   const { t } = useI18n()
   const model = useMarketWorkspaceModel({ active })
   const chartPhase = useRafPresenceTransition(model.activeSymbol, 320)
+  const symbolSwitcher = (
+    <div className="symbol-switcher">
+      {model.symbolChips.map((chip) => (
+        <button
+          key={chip.id}
+          type="button"
+          className={chip.active ? 'chip-button chip-button-active' : 'chip-button'}
+          onClick={() => model.selectSymbol(chip.id)}
+          aria-pressed={chip.active}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <div className="ws-grid ws-grid-market" data-workspace="market">
-      <SectionFrame
-        title={t('workspace.market.title')}
-        description={t('workspace.market.description')}
-        eyebrow={t('workspace.market.eyebrow')}
-        aside={
-          <div className="symbol-switcher">
-            {model.symbolChips.map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                className={chip.active ? 'chip-button chip-button-active' : 'chip-button'}
-                onClick={() => model.selectSymbol(chip.id)}
-                aria-pressed={chip.active}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-        }
-        className="ws-span-full"
-        tone="hero"
-        accent="cyan"
-        stage="hero"
-      >
-        <TerminalBand model={model.heroBand} className="hero-band" />
-        <div className="ws-hero-grid">
-          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side hero-side-shell">
-            <div className="hero-side-head">
-              <p className="subtle-label">{t('workspace.hero.readings')}</p>
-            </div>
-            <div className="metric-grid ws-hero-metrics">
-              {model.metricTiles.map((tile, index) => (
-                <MetricTile
-                  key={tile.id}
-                  label={tile.label}
-                  value={tile.value}
-                  tone={tile.tone}
-                  hint={tile.hint}
-                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </SectionFrame>
-
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.market.operatorDeckTitle')}
-          description={t('workspace.market.operatorDeckDescription')}
-          accent="teal"
-          stage="operator"
-          compactHeader
-          bodyClassName="operator-shell"
-        >
-          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
-        </SectionFrame>
-
         <SectionFrame
           title={`${model.activeSymbol} ${t('market.candles')}`}
           description={t('workspace.market.chartDescription')}
+          descriptionMode="srOnly"
+          aside={symbolSwitcher}
+          className="ws-primary-panel"
           accent="cyan"
           stage="feature"
         >
@@ -152,7 +110,26 @@ export function MarketWorkspace({ active = true, onSelectWorkspace }: Props) {
           </div>
         </SectionFrame>
 
-        <SectionFrame title={t('workspace.nav')} description={t('workspace.market.linkageTitle')} accent="amber" stage="tail">
+        <SectionFrame
+          title={t('workspace.market.operatorDeckTitle')}
+          description={t('workspace.market.operatorDeckDescription')}
+          descriptionMode="srOnly"
+          accent="teal"
+          stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
+        </SectionFrame>
+
+        <SectionFrame
+          title={t('workspace.nav')}
+          description={t('workspace.market.linkageTitle')}
+          descriptionMode="srOnly"
+          accent="amber"
+          stage="tail"
+          compactHeader
+        >
           <div className="ws-actions">
             <button type="button" className="soft-button sbp" onClick={() => onSelectWorkspace?.('book')}>
               {t('workspace.cta.book')}
@@ -180,6 +157,7 @@ export function MarketWorkspace({ active = true, onSelectWorkspace }: Props) {
         <SectionFrame
           title={t('workspace.market.executionRailTitle')}
           description={t('workspace.market.executionRailDescription')}
+          descriptionMode="srOnly"
           accent="amber"
           stage="inspector"
           compactHeader

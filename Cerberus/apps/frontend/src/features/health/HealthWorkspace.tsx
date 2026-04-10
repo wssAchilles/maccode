@@ -4,7 +4,7 @@ import { LazyHealthInferenceOperationsDrawerContent, PanelSkeleton } from '../..
 import { ServiceHealthPanel } from '../../components/ServiceHealthPanel'
 import { useI18n } from '../../i18n/I18nProvider'
 import type { WorkspaceId } from '../../store/slices/shared'
-import { DataList, DiagnosticDrawer, MetricTile, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck, WorkspaceSpotlight } from '../../ui'
+import { DataList, DiagnosticDrawer, PanelSection, SectionFrame, TerminalBand, WorkspaceOperatorDeck } from '../../ui'
 import { useHealthWorkspaceModel } from './useHealthWorkspaceModel'
 
 type Props = {
@@ -18,52 +18,12 @@ export function HealthWorkspace({ active: _active = true, onSelectWorkspace }: P
 
   return (
     <div className="ws-grid ws-grid-health" data-workspace="health">
-      <SectionFrame
-        title={t('workspace.health.title')}
-        description={t('workspace.health.description')}
-        eyebrow={t('workspace.health.eyebrow')}
-        className="ws-span-full"
-        tone="hero"
-        accent="teal"
-        stage="hero"
-      >
-        <TerminalBand model={model.contextBand} className="hero-band" />
-        <div className="ws-hero-grid">
-          <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-          <div className="ws-hero-side hero-side-shell">
-            <div className="hero-side-head">
-              <p className="subtle-label">{t('workspace.hero.readings')}</p>
-            </div>
-            <div className="metric-grid ws-hero-metrics">
-              {model.serviceHealthPanel.band.items.slice(0, 4).map((item, index) => (
-                <MetricTile
-                  key={item.id}
-                  label={item.label}
-                  value={item.value}
-                  tone={item.tone === 'positive' || item.tone === 'negative' || item.tone === 'accent' ? item.tone : 'default'}
-                  className={index === 0 ? 'hero-metric hero-metric-primary' : 'hero-metric'}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </SectionFrame>
-
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.health.operatorDeckTitle')}
-          description={t('workspace.health.operatorDeckDescription')}
-          accent="cyan"
-          stage="operator"
-          compactHeader
-          bodyClassName="operator-shell"
-        >
-          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.health.operatorServiceTitle')}
           description={t('workspace.health.operatorServiceDescription')}
+          descriptionMode="srOnly"
+          className="ws-primary-panel"
           accent="teal"
           stage="feature"
           compactHeader
@@ -73,47 +33,83 @@ export function HealthWorkspace({ active: _active = true, onSelectWorkspace }: P
         </SectionFrame>
 
         <SectionFrame
+          title={t('workspace.health.operatorDeckTitle')}
+          description={t('workspace.health.operatorDeckDescription')}
+          descriptionMode="srOnly"
+          accent="cyan"
+          stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
+        </SectionFrame>
+
+        <SectionFrame
           title={t('workspace.health.persistenceTitle')}
           description={t('workspace.health.persistenceDescription')}
+          descriptionMode="srOnly"
           accent="amber"
-          stage="feature"
+          stage="tail"
           compactHeader
-          bodyClassName="tail-shell"
         >
-          <TerminalBand model={model.persistenceBand} className="tail-band" compact hideHint hideEyebrow />
-          <div className="health-grid hp-tail-grid">
-            <PanelSection
-              className="hp-tail-section"
-              eyebrow={t('workspace.health.operatorPersistenceTitle')}
-              title={t('workspace.health.workerSnapshotTitle')}
-              hint={t('workspace.health.operatorPersistenceDescription')}
-              compact
-            >
-              <DataList items={model.workerItems} />
-            </PanelSection>
-            <PanelSection
-              className="hp-tail-section"
-              eyebrow={t('workspace.health.persistenceTitle')}
-              title={t('workspace.health.storeSnapshotTitle')}
-              hint={t('workspace.health.persistenceDescription')}
-              compact
-            >
-              <DataList items={model.storeItems} />
-            </PanelSection>
-          </div>
+          <DiagnosticDrawer
+            title={t('workspace.health.persistenceTitle')}
+            summary={t('workspace.health.persistenceDescription')}
+            contentClassName="tail-drawer"
+          >
+            <TerminalBand model={model.persistenceBand} className="tail-band" compact hideHint hideEyebrow />
+            <div className="health-grid hp-tail-grid">
+              <PanelSection
+                className="hp-tail-section"
+                eyebrow={t('workspace.health.operatorPersistenceTitle')}
+                title={t('workspace.health.workerSnapshotTitle')}
+                hint={t('workspace.health.operatorPersistenceDescription')}
+                compact
+              >
+                <DataList items={model.workerItems} />
+              </PanelSection>
+              <PanelSection
+                className="hp-tail-section"
+                eyebrow={t('workspace.health.persistenceTitle')}
+                title={t('workspace.health.storeSnapshotTitle')}
+                hint={t('workspace.health.persistenceDescription')}
+                compact
+              >
+                <DataList items={model.storeItems} />
+              </PanelSection>
+            </div>
+          </DiagnosticDrawer>
         </SectionFrame>
       </div>
 
       <div className="ws-side stack wss">
         <SectionFrame
-          title={t('workspace.inference.operationsTitle')}
+          title={t('workspace.inference.title')}
           description={t('workspace.inference.operatorNote')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="inspector"
           compactHeader
           bodyClassName="inspector-shell"
         >
-          <p className="empty-inline">{model.inferenceDiagnostics.summary}</p>
+          <PanelSection
+            className="ifp"
+            eyebrow={t('workspace.inference.runtimeStatus')}
+            title={model.inferenceDiagnostics.stateLabel}
+            hint={model.inferenceDiagnostics.summary}
+            compact
+          >
+            <DataList
+              dense
+              items={[
+                ...model.inferenceDiagnostics.runtimeItems.filter((item) => item.id === 'stateBackend' || item.id === 'stateRestored'),
+                ...model.inferenceDiagnostics.rolloutItems.filter((item) => item.id === 'promotion'),
+                ...model.inferenceDiagnostics.comparisonItems.filter((item) => item.id === 'comparedTicks'),
+                ...model.inferenceDiagnostics.modelItems.filter((item) => item.id === 'macroF1'),
+                ...model.inferenceDiagnostics.auditItems.filter((item) => item.id === 'event'),
+              ]}
+            />
+          </PanelSection>
           <div className="ws-actions">
             <button type="button" className="soft-button sbp" onClick={() => onSelectWorkspace?.('inference')}>
               {t('workspace.cta.inference')}
@@ -137,6 +133,7 @@ export function HealthWorkspace({ active: _active = true, onSelectWorkspace }: P
         <SectionFrame
           title={t('workspace.health.requestIds')}
           description={t('workspace.health.requestIdsDescription')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="inspector"
           compactHeader

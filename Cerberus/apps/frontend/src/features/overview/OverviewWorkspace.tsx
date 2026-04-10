@@ -106,6 +106,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame
           title={t('workspace.overview.operatorDeckTitle')}
           description={t('workspace.overview.operatorDeckDescription')}
+          descriptionMode="srOnly"
           accent="teal"
           stage="operator"
           compactHeader
@@ -117,10 +118,13 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame
           title={t('workspace.nav')}
           description={t('shell.navRail')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="feature"
+          compactHeader
+          bodyClassName="shortcut-shell"
         >
-          <div className="workspace-portal-grid">
+          <div className="workspace-portal-grid workspace-portal-grid-compact">
             {workspaceShortcuts.map((item, index) => (
               <RevealGroup key={item.id} revealIndex={index} className="workspace-portal-shell">
                 <MotionSurface className="workspace-portal-surface" mode="panel">
@@ -146,6 +150,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           <SectionFrame
             title={t('strategy.recent')}
             description={t('workspace.overview.signalsDescription')}
+            descriptionMode="srOnly"
             accent="cyan"
             stage="tail"
             compactHeader
@@ -183,6 +188,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
           <SectionFrame
             title={t('strategy.persistence')}
             description={t('workspace.health.persistenceDescription')}
+            descriptionMode="srOnly"
             accent="amber"
             stage="tail"
             compactHeader
@@ -212,6 +218,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame
           title={t('workspace.overview.healthDigest')}
           description={t('workspace.health.description')}
+          descriptionMode="srOnly"
           accent="amber"
           stage="inspector"
           compactHeader
@@ -244,6 +251,7 @@ export function OverviewWorkspace({ active: _active = true, onSelectWorkspace }:
         <SectionFrame
           title={t('workspace.inference.title')}
           description={t('workspace.inference.description')}
+          descriptionMode="srOnly"
           accent="teal"
           stage="inspector"
           compactHeader

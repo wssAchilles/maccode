@@ -3,9 +3,7 @@ import type { WorkspaceId } from '../../store/slices/shared'
 import {
   DiagnosticDrawer,
   SectionFrame,
-  TerminalBand,
   WorkspaceOperatorDeck,
-  WorkspaceSpotlight,
 } from '../../ui'
 import { StrategyDecisionMatrix } from '../strategy-orchestration/components/StrategyDecisionMatrix'
 import { StrategyOrchestrationAuditTimeline } from '../strategy-orchestration/components/StrategyOrchestrationAuditTimeline'
@@ -24,34 +22,12 @@ export function StrategyWorkspace({ active = true, onSelectWorkspace }: Props) {
 
   return (
     <div className="ws-grid ws-grid-strategy" data-workspace="strategy">
-      <SectionFrame
-        title={t('workspace.strategy.title')}
-        description={t('workspace.strategy.description')}
-        eyebrow={t('workspace.strategy.title')}
-        className="ws-span-full"
-        tone="hero"
-        accent="teal"
-        stage="hero"
-      >
-        <TerminalBand model={model.contextBand} className="hero-band" />
-        <WorkspaceSpotlight model={model.spotlight} className="ws-hero-spotlight" />
-      </SectionFrame>
-
       <div className="ws-main stack wsm">
-        <SectionFrame
-          title={t('workspace.strategy.operatorDeckTitle')}
-          description={t('workspace.strategy.operatorDeckDescription')}
-          accent="teal"
-          stage="operator"
-          compactHeader
-          bodyClassName="operator-shell"
-        >
-          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
-        </SectionFrame>
-
         <SectionFrame
           title={t('workspace.strategy.matrixTitle')}
           description={t('workspace.strategy.description')}
+          descriptionMode="srOnly"
+          className="ws-primary-panel"
           accent="cyan"
           stage="feature"
         >
@@ -67,24 +43,44 @@ export function StrategyWorkspace({ active = true, onSelectWorkspace }: Props) {
         </SectionFrame>
 
         <SectionFrame
+          title={t('workspace.strategy.operatorDeckTitle')}
+          description={t('workspace.strategy.operatorDeckDescription')}
+          descriptionMode="srOnly"
+          accent="teal"
+          stage="operator"
+          compactHeader
+          bodyClassName="operator-shell"
+        >
+          <WorkspaceOperatorDeck sections={model.operatorSections} layout="rail" />
+        </SectionFrame>
+
+        <SectionFrame
           title={t('workspace.strategy.operationsTitle')}
           description={t('workspace.strategy.operationsDescription')}
+          descriptionMode="srOnly"
           accent="teal"
           stage="tail"
+          compactHeader
         >
-          <StrategyOrchestrationOperationsPanel
-            model={model.operations.model}
-            drafts={model.operations.drafts}
-            reason={model.operations.reason}
-            conflictPolicy={model.operations.conflictPolicy}
-            downgradePolicy={model.operations.downgradePolicy}
-            onReasonChange={model.operations.setReason}
-            onConflictPolicyChange={model.operations.setConflictPolicy}
-            onDowngradePolicyChange={model.operations.setDowngradePolicy}
-            onDraftFieldChange={model.operations.setDraftField}
-            onSaveEntry={(strategyId) => void model.operations.onSaveEntry(strategyId)}
-            onSavePolicies={() => void model.operations.onSavePolicies()}
-          />
+          <DiagnosticDrawer
+            title={t('workspace.strategy.operationsTitle')}
+            summary={t('workspace.strategy.operationsDescription')}
+            contentClassName="tail-drawer"
+          >
+            <StrategyOrchestrationOperationsPanel
+              model={model.operations.model}
+              drafts={model.operations.drafts}
+              reason={model.operations.reason}
+              conflictPolicy={model.operations.conflictPolicy}
+              downgradePolicy={model.operations.downgradePolicy}
+              onReasonChange={model.operations.setReason}
+              onConflictPolicyChange={model.operations.setConflictPolicy}
+              onDowngradePolicyChange={model.operations.setDowngradePolicy}
+              onDraftFieldChange={model.operations.setDraftField}
+              onSaveEntry={(strategyId) => void model.operations.onSaveEntry(strategyId)}
+              onSavePolicies={() => void model.operations.onSavePolicies()}
+            />
+          </DiagnosticDrawer>
         </SectionFrame>
       </div>
 
@@ -92,6 +88,7 @@ export function StrategyWorkspace({ active = true, onSelectWorkspace }: Props) {
         <SectionFrame
           title={t('workspace.strategy.registryTitle')}
           description={t('workspace.strategy.registryDescription')}
+          descriptionMode="srOnly"
           accent="cyan"
           stage="inspector"
           compactHeader
@@ -103,12 +100,19 @@ export function StrategyWorkspace({ active = true, onSelectWorkspace }: Props) {
         <SectionFrame
           title={t('workspace.strategy.auditTimelineTitle')}
           description={t('workspace.strategy.auditTimelineHint')}
+          descriptionMode="srOnly"
           accent="amber"
           stage="inspector"
           compactHeader
           bodyClassName="inspector-shell"
         >
-          <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
+          <DiagnosticDrawer
+            title={t('workspace.strategy.auditTimelineTitle')}
+            summary={t('workspace.strategy.auditTimelineHint')}
+            contentClassName="tail-drawer"
+          >
+            <StrategyOrchestrationAuditTimeline model={model.strategyAuditTimeline} />
+          </DiagnosticDrawer>
         </SectionFrame>
 
         {model.summaryError ? (
