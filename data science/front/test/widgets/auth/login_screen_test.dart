@@ -82,6 +82,10 @@ Future<void> _pumpLoginScreen(
   WidgetTester tester, {
   required LoginViewModel viewModel,
 }) async {
+  tester.view.physicalSize = const Size(1440, 1200);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(MaterialApp(home: LoginScreen(viewModel: viewModel)));
   await tester.pumpAndSettle();
 }
