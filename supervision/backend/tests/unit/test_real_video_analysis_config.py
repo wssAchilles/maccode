@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from scripts.analyze_real_videos import (
+    CalibrationPresetCatalog,
     build_calibration,
     build_sensitivity_report,
     default_profile_for_clip,
     load_calibration_presets,
+    select_clips,
 )
 
 
@@ -85,3 +88,33 @@ def test_sensitivity_report_scales_speed_band_linearly() -> None:
 
     assert sensitivity["speed_band_kmh"] == [9.0, 22.0]
     assert sensitivity["space_mean_speed_band_kmh"] == [13.5, 16.5]
+
+
+def test_select_clips_uses_explicit_clip_names(tmp_path: Path) -> None:
+    for name in ["b.mp4", "a.mp4"]:
+        (tmp_path / name).write_text("")
+    presets = CalibrationPresetCatalog(scene_profiles={}, video_calibrations={})
+
+    selected = select_clips(
+        tmp_path,
+        limit=1,
+        sample_per_profile=0,
+        presets=presets,
+        clip_names=["b.mp4", "a.mp4"],
+    )
+
+    assert [path.name for path in selected] == ["b.mp4", "a.mp4"]
+
+
+def test_select_clips_rejects_missing_explicit_clip(tmp_path: Path) -> None:
+    (tmp_path / "a.mp4").write_text("")
+    presets = CalibrationPresetCatalog(scene_profiles={}, video_calibrations={})
+
+    with pytest.raises(ValueError, match="missing.mp4"):
+        select_clips(
+            tmp_path,
+            limit=1,
+            sample_per_profile=0,
+            presets=presets,
+            clip_names=["missing.mp4"],
+        )

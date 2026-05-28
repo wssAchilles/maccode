@@ -1,6 +1,6 @@
-import { BarChart3, Bot, History, MapPinned, Radar } from "lucide-react";
+import { BarChart3, Bot, Crosshair, History, MapPinned, Radar } from "lucide-react";
 
-export type PageKey = "realtime" | "history" | "zones" | "ai";
+export type PageKey = "realtime" | "history" | "zones" | "calibration" | "ai";
 
 interface SidebarProps {
   activePage: PageKey;
@@ -11,6 +11,7 @@ const navItems: Array<{ key: PageKey; label: string; icon: typeof Radar }> = [
   { key: "realtime", label: "实时监控", icon: Radar },
   { key: "history", label: "历史分析", icon: History },
   { key: "zones", label: "区域配置", icon: MapPinned },
+  { key: "calibration", label: "人工标定", icon: Crosshair },
   { key: "ai", label: "AI 报告", icon: Bot }
 ];
 

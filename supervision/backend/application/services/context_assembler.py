@@ -75,6 +75,19 @@ class DynamicContextAssembler:
                     "speed_kmh": track.get("speed_kmh"),
                     "speed_uncertainty_kmh": track.get("speed_uncertainty_kmh"),
                     "speed_confidence": track.get("speed_confidence"),
+                    "speed_confidence_interval_kmh": track.get(
+                        "speed_confidence_interval_kmh"
+                    ),
+                    "ground_position_m": {
+                        "x": track.get("ground_x_m"),
+                        "y": track.get("ground_y_m"),
+                    },
+                    "velocity_mps": {
+                        "x": track.get("velocity_x_mps"),
+                        "y": track.get("velocity_y_mps"),
+                    },
+                    "heading_deg": track.get("heading_deg"),
+                    "acceleration_mps2": track.get("acceleration_mps2"),
                     **profile.to_dict(),
                 }
             )
@@ -99,6 +112,20 @@ class DynamicContextAssembler:
             "avg_speed_kmh": sum(speeds) / len(speeds) if speeds else None,
             "calibration_quality": frame_report.get("calibration_quality"),
             "traffic_flow": frame_report.get("traffic_flow"),
+            "regional_people_count": frame_report.get("regional_people_count")
+            or {
+                "people_count": 0,
+                "estimation_method": "unknown",
+            },
+            "infrastructure_semantics": frame_report.get("infrastructure_semantics")
+            or {
+                "traffic_light_count": 0,
+                "traffic_light_state": "unknown",
+            },
+            "safety_metrics": frame_report.get("safety_metrics")
+            or {
+                "risk_level": "nominal",
+            },
             "zones": [zone.get("name", "unknown") for zone in zone_stats],
         }
 
@@ -134,6 +161,30 @@ class DynamicContextAssembler:
                         "threshold_kmh": self.speed_limit_kmh,
                     }
                 )
+        safety_metrics = frame_report.get("safety_metrics") or {}
+        risk_level = safety_metrics.get("risk_level")
+        if risk_level in {"critical", "elevated"}:
+            signals.append(
+                {
+                    "type": "short_headway_or_collision_risk",
+                    "severity": "high" if risk_level == "critical" else "medium",
+                    "risk_level": risk_level,
+                    "min_time_headway_sec": safety_metrics.get("min_time_headway_sec"),
+                    "min_time_to_collision_sec": safety_metrics.get(
+                        "min_time_to_collision_sec"
+                    ),
+                }
+            )
+        infrastructure = frame_report.get("infrastructure_semantics") or {}
+        if infrastructure.get("traffic_light_count", 0) > 0:
+            signals.append(
+                {
+                    "type": "traffic_infrastructure_detected",
+                    "severity": "low",
+                    "traffic_light_count": infrastructure.get("traffic_light_count"),
+                    "traffic_light_state": infrastructure.get("traffic_light_state"),
+                }
+            )
         if not signals:
             signals.append({"type": "normal_flow", "severity": "low"})
         return signals

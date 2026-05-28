@@ -17,8 +17,14 @@ def test_context_assembler_builds_physical_summary_and_motion_routes() -> None:
     assert context.physical_state["active_tracks"] == 1
     assert context.physical_state["calibration_quality"] == "excellent"
     assert context.physical_state["traffic_flow"]["congestion_level"]
+    assert context.physical_state["regional_people_count"]["people_count"] == 0
+    assert context.physical_state["infrastructure_semantics"]["traffic_light_state"]
+    assert context.physical_state["safety_metrics"]["risk_level"] == "nominal"
     assert context.motion_routes[0]["category"] == "high_inertia_dynamic"
     assert context.motion_routes[0]["speed_confidence"] is not None
+    assert context.motion_routes[0]["ground_position_m"]["x"] is not None
+    assert context.motion_routes[0]["velocity_mps"]["x"] is not None
+    assert context.motion_routes[0]["speed_confidence_interval_kmh"] is not None
     assert "use_physical_json_only" in context.decision_constraints
 
 
@@ -45,3 +51,20 @@ def test_context_assembler_exports_prompt_payload() -> None:
     assert payload["context_version"] == "1.0"
     assert payload["scene"]["scene_tags"] == ["demo"]
     assert payload["physical_state"]["zones"] == ["main_gate"]
+
+
+def test_context_assembler_flags_safety_metrics_risk() -> None:
+    report = generate_demo_report()
+    report["safety_metrics"] = {
+        "risk_level": "critical",
+        "min_time_headway_sec": 0.9,
+        "min_time_to_collision_sec": 1.7,
+    }
+
+    context = DynamicContextAssembler().assemble(report)
+
+    assert any(
+        signal["type"] == "short_headway_or_collision_risk"
+        and signal["severity"] == "high"
+        for signal in context.risk_signals
+    )

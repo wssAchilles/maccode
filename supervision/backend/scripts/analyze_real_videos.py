@@ -373,8 +373,15 @@ def select_clips(
     limit: int,
     sample_per_profile: int,
     presets: CalibrationPresetCatalog,
+    clip_names: list[str] | None = None,
 ) -> list[Path]:
     clips = sorted(input_dir.glob("*.mp4"))
+    if clip_names:
+        by_name = {path.name: path for path in clips}
+        missing = [name for name in clip_names if name not in by_name]
+        if missing:
+            raise ValueError(f"requested clips were not found: {', '.join(missing)}")
+        return [by_name[name] for name in clip_names]
     if sample_per_profile <= 0:
         return clips[:limit]
 
@@ -400,6 +407,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--calibration-presets", default="data/tests/calibration_presets.json")
     parser.add_argument("--limit", type=int, default=2)
     parser.add_argument(
+        "--clips",
+        nargs="*",
+        default=None,
+        help="Exact MP4 filenames to analyze in order, overriding --limit.",
+    )
+    parser.add_argument(
         "--sample-per-profile",
         type=int,
         default=0,
@@ -422,7 +435,13 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     presets = load_calibration_presets(Path(args.calibration_presets))
     output_dir.mkdir(parents=True, exist_ok=True)
-    clips = select_clips(input_dir, args.limit, args.sample_per_profile, presets)
+    clips = select_clips(
+        input_dir,
+        args.limit,
+        args.sample_per_profile,
+        presets,
+        clip_names=args.clips,
+    )
     results: list[dict[str, Any]] = []
     for path in clips:
         try:

@@ -127,6 +127,22 @@ Aggregate result:
 
 当前红绿灯 `red/green` 状态仍是 `unknown`，这是有意保守：YOLO 只能稳定给出 traffic light 类别，颜色状态需要信号灯 ROI 分类器或人工规则。答辩时可以把它讲成下一步扩展，而不是把检测类别伪装成状态识别。
 
+## LLM Context Contract
+
+动态上下文组装器会把上述物理量打包成 LLM 可读的轻量 JSON，而不是把原始视频或检测框直接发到云端。当前 payload 包含：
+
+- `physical_state.regional_people_count`
+- `physical_state.infrastructure_semantics`
+- `physical_state.safety_metrics`
+- `motion_routes[].ground_position_m`
+- `motion_routes[].velocity_mps`
+- `motion_routes[].heading_deg`
+- `motion_routes[].acceleration_mps2`
+- `motion_routes[].speed_confidence_interval_kmh`
+- `risk_signals[]` 中的超速、短时距/碰撞风险、交通基础设施存在性
+
+这样云端大模型只负责常识推理和决策表达，边缘端负责所有可验证的视觉、几何、运动学与误差传播计算，符合端云协同的工程边界。
+
 答辩时应主动说明：当前演示级标定用于证明数学链路和系统架构，若要达到执法或工程验收级测速，需要在前端加入人工标定点选择流程，并用已知车道宽度、停止线距离或实测控制点重估单应性。
 
 ## Next Calibration Upgrade
@@ -152,6 +168,7 @@ MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibrati
 该命令会输出：
 
 - `data/outputs/calibration_assets/calibration_frames/*.jpg`：逐视频标定参考帧。
+- `data/outputs/calibration_assets/calibration_previews/*_preview.jpg`：带编号控制点、世界坐标和标定四边形的预览图。
 - `data/outputs/calibration_assets/video_calibration_templates.json`：逐视频 `video_calibrations` 模板。
 
 人工调参步骤：
@@ -161,6 +178,18 @@ MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibrati
 3. 用车道宽度、停止线距离、斑马线宽度等真实尺度填写 `world_x/world_y`。
 4. 把该视频条目复制进 `data/tests/calibration_presets.json` 的 `video_calibrations`。
 5. 重新运行真实视频分析脚本；报告中的 `calibration.source` 会从 `scene_profile_preset` 变为 `video_manual_preset`。
+6. 运行标定校验脚本，确认点位足够、不共线、重投影误差和尺度不确定性可接受。
+
+```bash
+.venv/bin/python backend/scripts/validate_calibration_presets.py \
+  --input data/tests/calibration_presets.json \
+  --output-dir data/outputs/calibration_validation
+```
+
+该命令会输出：
+
+- `data/outputs/calibration_validation/calibration_validation.json`
+- `data/outputs/calibration_validation/calibration_validation.md`
 
 答辩时可以明确说明：场景级 preset 证明系统数学链路，逐视频人工标定则是迈向工程验收级测速的关键步骤。
 
@@ -185,3 +214,143 @@ MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibrati
 实现上，交通流均速只使用当前帧仍处于 active 状态的 track 速度记录。若当前帧没有可测速目标，benchmark 中的 mean speed band 会显示为 `N/A`，避免用历史轨迹污染当前宏观交通流判断。
 
 质量门禁不是为了让所有样本都“好看”，而是为了体现工程诚实性：`warn` 样本适合主展示，`fail` 样本适合用于误差分析和调参说明。当前结果中 `028_red_light_static_0008s_30s.mp4` 只有 `demo_calibration` 警告，适合作为答辩主展示候选；宽路口和 4K 密集车流更适合作为“为什么需要人工标定和长窗口”的反例。
+
+主展示候选可以用显式 clip 命令稳定复现：
+
+```bash
+MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/run_real_video_pipeline.py \
+  --output-dir data/outputs/main_demo_pipeline \
+  --clips 028_red_light_static_0008s_30s.mp4 \
+  --max-frames 24 \
+  --frame-stride 10 \
+  --confidence 0.35 \
+  --device cpu
+```
+
+该一键流水线会生成：
+
+- `pipeline_manifest.json`
+- `calibration_assets/video_calibration_templates.json`
+- `calibration_assets/calibration_frames/*.jpg`
+- `calibration_assets/calibration_previews/*_preview.jpg`
+- `calibration_validation/calibration_validation.md`
+- `analysis/summary.json`
+- `analysis/benchmark_report.md`
+
+流水线完成后，可以生成紧凑答辩包：
+
+```bash
+.venv/bin/python backend/scripts/build_defense_packet.py \
+  --pipeline-dir data/outputs/main_demo_pipeline \
+  --output-dir data/outputs/defense_packet
+```
+
+答辩包输出：
+
+- `data/outputs/defense_packet/README.md`
+- `data/outputs/defense_packet/defense_packet_summary.json`
+
+其中 README 会列出主展示视频、质量状态、平均速度置信度、速度不确定性、关键产物路径，以及人工标定的下一步动作。
+
+也可以手动拆分执行：
+
+```bash
+MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibration_assets.py \
+  --input-dir data/tests/real_video_clips \
+  --output-dir data/outputs/main_demo_calibration_assets_single \
+  --clips 028_red_light_static_0008s_30s.mp4 \
+  --frame-index 1
+
+MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/analyze_real_videos.py \
+  --output-dir data/outputs/main_demo_analysis \
+  --clips 028_red_light_static_0008s_30s.mp4 \
+  --max-frames 24 \
+  --frame-stride 10 \
+  --confidence 0.35 \
+  --device cpu
+
+.venv/bin/python backend/scripts/summarize_real_video_benchmark.py \
+  --input data/outputs/main_demo_analysis/summary.json \
+  --output-dir data/outputs/main_demo_analysis
+```
+
+当前长窗口主展示候选结果：平均速度置信度约 0.70，处理 FPS 约 10，但由于仍使用 `scene_profile_preset`，平均速度不确定性约 17 km/h，质量门禁仍会判定为 `fail`。这说明长窗口能改善跟踪稳定性，但不能替代人工标定；若要把它提升为最终主展示，应优先给该视频录入逐视频地面控制点。
+
+主展示候选的标定预览图位于：`data/outputs/main_demo_calibration_assets_single/calibration_previews/028_red_light_static_0008s_30s_preview.jpg`。这张图可用于人工核对 P1-P4 是否贴合真实道路平面，并把修正后的像素点写回 `video_calibrations`。
+
+## Parameter Tuning Matrix
+
+为了避免“凭感觉调参”，当前仓库提供真实视频参数扫描脚本：
+
+```bash
+MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/tune_real_video_parameters.py \
+  --output-dir data/outputs/main_demo_tuning \
+  --clip 028_red_light_static_0008s_30s.mp4 \
+  --confidences 0.30,0.40 \
+  --frame-strides 8,12 \
+  --max-frames-values 18 \
+  --device cpu
+```
+
+该脚本会对每组参数完整运行：
+
+```text
+YOLO -> supervision ByteTrack -> LineZone -> Homography -> Kalman -> Error Propagation -> Traffic Flow -> Safety Metrics
+```
+
+并输出：
+
+- `data/outputs/main_demo_tuning/tuning_summary.json`
+- `data/outputs/main_demo_tuning/tuning_report.md`
+
+当前主展示视频的调参结论：
+
+| Confidence | Frame stride | Max frames | Quality | Score | Speed tracks | Avg confidence | Avg uncertainty | Physics | FPS |
+| ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.30 | 12 | 18 | warn | 0.828 | 2 | 0.820 | 3.56 km/h | 1.00 | 22.02 |
+| 0.40 | 12 | 18 | warn | 0.823 | 2 | 0.836 | 4.75 km/h | 1.00 | 23.58 |
+| 0.40 | 8 | 18 | fail | 0.581 | 2 | 0.815 | 25.48 km/h | 1.00 | 21.71 |
+| 0.30 | 8 | 18 | fail | 0.564 | 2 | 0.815 | 25.48 km/h | 1.00 | 9.98 |
+
+推荐的未人工标定演示参数为：
+
+```text
+confidence=0.30, frame_stride=12, max_frames=18
+```
+
+它在当前 demo 标定条件下只剩 `demo_calibration` 警告，不再触发 `high_speed_uncertainty`。这说明短窗口速度误差不仅来自检测模型，也受到采样步长、轨迹时间跨度和透视尺度共同影响。答辩时可以把这张表作为“数学建模调参证据”：系统不是只输出速度，还能解释为什么某些参数组合导致速度不确定性升高。
+
+注意：调参只能降低跟踪抖动和短位移带来的不确定性，不能替代逐视频人工标定。最终工业级绝对测速仍必须满足 `calibration.source = video_manual_preset`。
+
+前端“人工标定”页可直接选择标定帧 JPG，点击 P1-P4 自动生成像素坐标，并导出两种 JSON：
+
+- 片段 JSON：只包含某个视频的 `video_calibrations` entry。
+- 完整 preset JSON：带 `schema_version` 和 `video_calibrations` 包装，可作为 `calibration_presets.json` 的候选版本。
+
+导出后不要手工复制粘贴到主配置里，优先使用合并脚本生成候选 preset：
+
+```bash
+.venv/bin/python backend/scripts/merge_calibration_preset.py \
+  --base data/tests/calibration_presets.json \
+  --input path/to/calibration_presets.generated.json \
+  --output data/tests/calibration_presets.merged.json \
+  --required-clips 028_red_light_static_0008s_30s.mp4
+```
+
+该脚本只合并 `video_calibrations`，保留 `scene_profiles`，并立即输出：
+
+- `merged_calibration_validation.json`
+- `merged_calibration_validation.md`
+
+如果输入来自自动模板而不是人工点击，校验器会标记 `template_points_not_manual`，不会误判为 `industrial_readiness=ready`。这是工业级验收的关键防线：单应性矩阵数学上可逆，不代表控制点来自真实地面测量。
+
+候选 preset 通过后，再显式替换 `data/tests/calibration_presets.json`，然后运行：
+
+```bash
+.venv/bin/python backend/scripts/validate_calibration_presets.py \
+  --input data/tests/calibration_presets.json \
+  --output-dir data/outputs/calibration_validation \
+  --required-clips 028_red_light_static_0008s_30s.mp4
+```
+
+导出后必须再运行 `validate_calibration_presets.py`，不要跳过质量校验。

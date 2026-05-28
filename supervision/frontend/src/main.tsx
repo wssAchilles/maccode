@@ -8,6 +8,7 @@ import { useStatsHistory } from "./hooks/useStatsHistory";
 import { useRealtimeStats } from "./hooks/useRealtimeStats";
 import { useVideoTask } from "./hooks/useVideoTask";
 import { AIReport } from "./pages/AIReport";
+import { CalibrationWorkbench } from "./pages/CalibrationWorkbench";
 import { HistoricalAnalysis } from "./pages/HistoricalAnalysis";
 import { RealtimeMonitor } from "./pages/RealtimeMonitor";
 import { ZoneConfig } from "./pages/ZoneConfig";
@@ -74,6 +75,7 @@ function App() {
         <HistoricalAnalysis cumulative={statsHistory.cumulative} history={statsHistory.history} />
       )}
       {activePage === "zones" && <ZoneConfig onSave={(nextZones) => void saveZones(nextZones)} zones={zones} />}
+      {activePage === "calibration" && <CalibrationWorkbench />}
       {activePage === "ai" && <AIReport report={report} />}
     </AppLayout>
   );

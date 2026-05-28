@@ -1,44 +1,105 @@
 from __future__ import annotations
 
+from typing import Any
+
 from scripts.summarize_real_video_benchmark import (
     build_benchmark_summary,
+    build_physical_quantity_coverage,
     grade_row,
     render_markdown,
 )
 
 
-def test_build_benchmark_summary_extracts_physical_semantics() -> None:
+def test_physical_quantity_coverage_audits_micro_macro_and_environment() -> None:
+    report: dict[str, Any] = {
+        "active_tracks": [
+            {
+                "speed_kmh": 42.0,
+                "speed_uncertainty_kmh": 2.5,
+                "speed_confidence_interval_kmh": [39.5, 44.5],
+                "ground_x_m": 12.0,
+                "ground_y_m": 3.0,
+                "velocity_x_mps": 10.0,
+                "velocity_y_mps": 0.5,
+                "heading_deg": 2.8,
+                "acceleration_mps2": 0.2,
+            },
+        ],
+        "traffic_flow": {
+            "flow_q_veh_per_hour": 720.0,
+            "density_k_veh_per_km": 18.0,
+            "space_mean_speed_kmh": 40.0,
+            "congestion_level": "stable_flow",
+        },
+        "regional_people_count": {"people_count": 3},
+        "infrastructure_semantics": {
+            "traffic_light_count": 1,
+            "static_context": [{"class_name": "traffic light"}],
+        },
+        "safety_metrics": {
+            "risk_level": "nominal",
+            "min_time_to_collision_sec": None,
+            "min_time_headway_sec": 2.4,
+        },
+    }
+
+    coverage = build_physical_quantity_coverage(report, report["active_tracks"])
+
+    assert coverage["micro_kinematics"]["has_instantaneous_speed"] is True
+    assert coverage["micro_kinematics"]["has_ground_coordinates"] is True
+    assert coverage["micro_kinematics"]["has_speed_confidence_interval"] is True
+    assert coverage["macro_statistics"]["has_traffic_flow"] is True
+    assert coverage["environment_semantics"]["has_infrastructure_state"] is True
+    assert coverage["environment_semantics"]["has_safety_metrics"] is True
+
+
+def test_benchmark_summary_renders_physical_quantity_matrix() -> None:
     payload = {
         "summary": {"mps_available": False, "mps_built": True},
         "results": [
             {
                 "status": "ok",
                 "clip": "clip.mp4",
-                "scene_profile": {"name": "wide"},
+                "scene_profile": {"name": "road"},
                 "calibration": {
-                    "source": "scene_profile_preset",
+                    "source": "video_manual_preset",
                     "quality": "excellent",
-                    "position_rmse_floor_m": 1.5,
-                    "scale_uncertainty_pct": 8.0,
+                    "position_rmse_floor_m": 0.4,
+                    "scale_uncertainty_pct": 2.5,
                 },
-                "sensitivity": {"space_mean_speed_band_kmh": [10.0, 12.0]},
-                "effective_processing_fps": 14.5,
+                "sensitivity": {"space_mean_speed_band_kmh": [38.0, 42.0]},
+                "effective_processing_fps": 12.0,
                 "final_report": {
                     "active_tracks": [
                         {
-                            "speed_kmh": 11.0,
-                            "speed_confidence": 0.8,
-                            "speed_uncertainty_kmh": 1.2,
+                            "speed_kmh": 40.0,
+                            "speed_confidence": 0.92,
+                            "speed_uncertainty_kmh": 3.0,
+                            "speed_confidence_interval_kmh": [37.0, 43.0],
+                            "ground_x_m": 20.0,
+                            "ground_y_m": 5.0,
+                            "velocity_x_mps": 11.0,
+                            "velocity_y_mps": 0.0,
+                            "heading_deg": 0.0,
+                            "acceleration_mps2": 0.0,
                         },
-                        {"speed_kmh": None},
                     ],
-                    "regional_people_count": {"people_count": 3},
-                    "infrastructure_semantics": {"traffic_light_count": 2},
+                    "regional_people_count": {"people_count": 0},
+                    "infrastructure_semantics": {
+                        "traffic_light_count": 1,
+                        "static_context": [],
+                    },
                     "traffic_flow": {
-                        "space_mean_speed_kmh": 11.0,
+                        "flow_q_veh_per_hour": 900.0,
+                        "density_k_veh_per_km": 22.5,
+                        "space_mean_speed_kmh": 40.0,
                         "congestion_level": "stable_flow",
                     },
-                    "safety_metrics": {"risk_level": "nominal"},
+                    "safety_metrics": {
+                        "risk_level": "nominal",
+                        "min_time_to_collision_sec": None,
+                        "min_time_headway_sec": 2.4,
+                    },
                 },
             },
         ],
@@ -47,13 +108,11 @@ def test_build_benchmark_summary_extracts_physical_semantics() -> None:
     summary = build_benchmark_summary(payload)
     markdown = render_markdown(summary)
 
-    assert summary["total_successful_clips"] == 1
-    assert summary["rows"][0]["people_count"] == 3
-    assert summary["rows"][0]["traffic_light_count"] == 2
-    assert summary["rows"][0]["avg_speed_confidence"] == 0.8
-    assert summary["rows"][0]["quality_status"] == "warn"
-    assert summary["quality_counts"] == {"pass": 0, "warn": 1, "fail": 0}
-    assert "clip.mp4" in markdown
+    assert summary["quality_counts"] == {"pass": 1, "warn": 0, "fail": 0}
+    assert summary["avg_physical_quantity_score"] == 1.0
+    assert summary["rows"][0]["physical_quantity_score"] == 1.0
+    assert "## Physical Quantity Coverage" in markdown
+    assert "| clip.mp4 | yes | yes | yes | yes | yes | yes | yes |" in markdown
 
 
 def test_quality_gate_fails_low_confidence_high_uncertainty_rows() -> None:

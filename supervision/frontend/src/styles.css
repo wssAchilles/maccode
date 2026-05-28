@@ -453,6 +453,102 @@ button {
   border-radius: 8px;
 }
 
+.calibration-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+  gap: 16px;
+}
+
+.calibration-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 14px;
+}
+
+.calibration-controls label,
+.point-editor label {
+  display: grid;
+  gap: 6px;
+  color: #687589;
+}
+
+.calibration-controls input,
+.point-editor input {
+  min-height: 40px;
+  padding: 0 12px;
+  color: #172033;
+  background: #ffffff;
+  border: 1px solid #d8e2ef;
+  border-radius: 8px;
+}
+
+.calibration-image-panel {
+  min-height: 520px;
+}
+
+.calibration-image-wrap {
+  position: relative;
+  overflow: hidden;
+  min-height: 360px;
+  background: #172033;
+  border-radius: 8px;
+}
+
+.calibration-image-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+.calibration-empty-state {
+  display: grid;
+  min-height: 360px;
+  place-items: center;
+  padding: 24px;
+  color: #d7e7fb;
+  text-align: center;
+}
+
+.calibration-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #102034;
+  font-weight: 800;
+  background: #7bdff2;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.calibration-marker.active {
+  background: #f2c94c;
+}
+
+.point-editor-list {
+  display: grid;
+  gap: 10px;
+}
+
+.point-editor {
+  display: grid;
+  grid-template-columns: 44px 1fr repeat(2, minmax(70px, 0.7fr)) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 72px;
+  padding: 10px;
+  background: #f5f8fc;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.point-editor.active {
+  border-color: #2f7de1;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -471,7 +567,10 @@ button {
   .screen-grid,
   .metric-grid,
   .zone-form,
-  .context-form {
+  .context-form,
+  .calibration-workbench,
+  .calibration-controls,
+  .point-editor {
     grid-template-columns: 1fr;
   }
 
