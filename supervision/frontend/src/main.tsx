@@ -40,8 +40,8 @@ function App() {
     };
   }, []);
 
-  async function startTask() {
-    await videoTask.start();
+  async function startTask(file?: File) {
+    await videoTask.start(file);
     await Promise.all([refresh(), statsHistory.refresh()]);
   }
 
@@ -64,7 +64,7 @@ function App() {
       {activePage === "realtime" && (
         <RealtimeMonitor
           isTaskLoading={videoTask.isLoading}
-          onStartTask={() => void startTask()}
+          onStartTask={(file) => void startTask(file)}
           onStopTask={() => void stopTask()}
           report={report}
           task={videoTask.task}

@@ -15,6 +15,11 @@ class FrameReport:
     zone_stats: list[ZoneStats]
     total_in: int
     total_out: int
+    calibration_quality: str | None = None
+    traffic_flow: dict[str, object] | None = None
+    regional_people_count: dict[str, object] | None = None
+    infrastructure_semantics: dict[str, object] | None = None
+    safety_metrics: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -25,6 +30,11 @@ class FrameReport:
             "zone_stats": [asdict(stat) for stat in self.zone_stats],
             "total_in": self.total_in,
             "total_out": self.total_out,
+            "calibration_quality": self.calibration_quality,
+            "traffic_flow": self.traffic_flow,
+            "regional_people_count": self.regional_people_count,
+            "infrastructure_semantics": self.infrastructure_semantics,
+            "safety_metrics": self.safety_metrics,
         }
 
 
@@ -36,6 +46,7 @@ class CumulativeStats:
     avg_fps: float
     avg_speed_kmh: float | None
     processing_time_sec: float
+    avg_speed_confidence: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -45,4 +56,5 @@ class CumulativeStats:
             "avg_fps": self.avg_fps,
             "avg_speed_kmh": self.avg_speed_kmh,
             "processing_time_sec": self.processing_time_sec,
+            "avg_speed_confidence": self.avg_speed_confidence,
         }

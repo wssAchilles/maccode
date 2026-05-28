@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import random
 
 import numpy as np
 from numpy.typing import NDArray
@@ -29,6 +30,69 @@ class CalibrationService:
             reprojection_rmse=rmse,
             inlier_count=len(points),
             condition_number=condition_number,
+            inlier_mask=[True] * len(points),
+            calibration_quality=self._classify_quality(rmse, condition_number, len(points)),
+        )
+
+    def compute_homography_ransac(
+        self,
+        points: list[CalibrationPoint],
+        reprojection_threshold: float = 0.5,
+        max_iterations: int = 300,
+        random_seed: int | None = None,
+    ) -> HomographyResult:
+        self.validate_points(points)
+        if reprojection_threshold <= 0:
+            raise ValueError("reprojection_threshold must be positive")
+        if max_iterations <= 0:
+            raise ValueError("max_iterations must be positive")
+
+        pixel_points = np.array([point.pixel for point in points], dtype=float)
+        world_points = np.array([point.world for point in points], dtype=float)
+        sampler = random.Random(random_seed)
+        best_mask: NDArray[np.bool_] | None = None
+        best_rmse = float("inf")
+        best_inlier_count = 0
+
+        for _ in range(max_iterations):
+            sample_indices = sampler.sample(range(len(points)), 4)
+            sample_pixels = pixel_points[sample_indices]
+            sample_world = world_points[sample_indices]
+            if self._is_collinear(sample_pixels) or self._is_collinear(sample_world):
+                continue
+            try:
+                candidate_matrix, _ = self._solve_dlt(sample_pixels, sample_world)
+            except np.linalg.LinAlgError:
+                continue
+
+            projected = self._project_points(candidate_matrix, pixel_points)
+            errors = np.linalg.norm(projected - world_points, axis=1)
+            mask = errors <= reprojection_threshold
+            inlier_count = int(mask.sum())
+            if inlier_count < 4:
+                continue
+            inlier_rmse = float(math.sqrt(np.mean(errors[mask] ** 2)))
+            if inlier_count > best_inlier_count or (
+                inlier_count == best_inlier_count and inlier_rmse < best_rmse
+            ):
+                best_mask = mask
+                best_rmse = inlier_rmse
+                best_inlier_count = inlier_count
+
+        if best_mask is None:
+            return self.compute_homography(points)
+
+        inlier_pixels = pixel_points[best_mask]
+        inlier_world = world_points[best_mask]
+        matrix, condition_number = self._solve_dlt(inlier_pixels, inlier_world)
+        rmse = self.compute_reprojection_error(matrix, inlier_pixels, inlier_world)
+        return HomographyResult(
+            homography_matrix=matrix,
+            reprojection_rmse=rmse,
+            inlier_count=best_inlier_count,
+            condition_number=condition_number,
+            inlier_mask=[bool(value) for value in best_mask.tolist()],
+            calibration_quality=self._classify_quality(rmse, condition_number, best_inlier_count),
         )
 
     def compute_reprojection_error(
@@ -73,3 +137,13 @@ class CalibrationService:
         projected = homogeneous @ homography_matrix.T
         projected = projected / projected[:, 2:3]
         return projected[:, :2]
+
+    @staticmethod
+    def _classify_quality(rmse: float, condition_number: float, inlier_count: int) -> str:
+        if inlier_count < 4 or not math.isfinite(condition_number):
+            return "unstable"
+        if rmse <= 0.5:
+            return "excellent"
+        if rmse <= 2.0:
+            return "usable"
+        return "unstable"

@@ -8,6 +8,16 @@ export function startVideoProcessing(source = "demo://traffic") {
   });
 }
 
+export function uploadVideoForProcessing(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return requestJson<ProcessingTask>("/api/video/upload", {
+    method: "POST",
+    body: formData
+  });
+}
+
 export function stopVideoProcessing(taskId: string) {
   return requestJson<ProcessingTask>(`/api/video/stop/${taskId}`, {
     method: "POST"

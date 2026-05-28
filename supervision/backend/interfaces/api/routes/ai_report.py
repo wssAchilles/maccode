@@ -12,9 +12,15 @@ router = APIRouter(tags=["ai-report"])
 
 class AIReportRequest(BaseModel):
     stats: dict[str, Any] = Field(description="FrameReport JSON from the CV pipeline")
+    location_label: str | None = Field(default=None, description="Human scene label")
+    scene_tags: list[str] = Field(default_factory=list, description="Atomic context tags")
 
 
 @router.post("/ai/report", response_model=ResponseWrapper[dict[str, Any]])
 def generate_ai_report(request: AIReportRequest) -> ResponseWrapper[dict[str, Any]]:
-    result = GenerateReportUseCase().execute(request.stats)
+    result = GenerateReportUseCase().execute(
+        request.stats,
+        location_label=request.location_label,
+        scene_tags=request.scene_tags,
+    )
     return ResponseWrapper.success_response(result.to_dict())

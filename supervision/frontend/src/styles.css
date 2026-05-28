@@ -136,13 +136,27 @@ button {
   left: 48%;
   display: grid;
   place-items: center;
-  width: 86px;
-  height: 42px;
+  width: 132px;
+  min-height: 82px;
+  padding: 8px;
   color: #102034;
   background: #7bdff2;
   border: 2px solid #ffffff;
   border-radius: 8px;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.2);
+}
+
+.tracked-object strong {
+  font-size: 16px;
+}
+
+.tracked-object span {
+  font-weight: 800;
+}
+
+.tracked-object small {
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .metric-grid {
@@ -163,10 +177,35 @@ button {
   flex-wrap: wrap;
 }
 
+.file-control {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #687589;
+}
+
+.file-control input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: #172033;
+  background: #f5f8fc;
+  border: 1px solid #d8e2ef;
+  border-radius: 8px;
+}
+
+.file-hint {
+  min-height: 22px;
+  margin: 0 0 12px;
+  color: #31445d;
+  line-height: 1.4;
+}
+
 .task-status {
   margin: 14px 0 0;
   color: #687589;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .metric-tile {
@@ -181,7 +220,8 @@ button {
 }
 
 .metric-tile strong {
-  font-size: 28px;
+  font-size: clamp(18px, 2vw, 28px);
+  overflow-wrap: anywhere;
 }
 
 .metric-tile.green strong {
@@ -207,6 +247,44 @@ button {
 .panel-heading h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.physics-panel,
+.semantic-panel {
+  min-height: 220px;
+}
+
+.physics-grid,
+.semantic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.physics-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.physics-grid div,
+.semantic-list div {
+  display: grid;
+  gap: 5px;
+  min-height: 58px;
+  padding: 10px 12px;
+  background: #f5f8fc;
+  border-radius: 8px;
+}
+
+.physics-grid span,
+.semantic-list span {
+  color: #687589;
+  font-size: 13px;
+}
+
+.physics-grid strong,
+.semantic-list strong {
+  color: #172033;
+  font-size: 17px;
+  overflow-wrap: anywhere;
 }
 
 .wide {
@@ -340,18 +418,38 @@ button {
   margin-bottom: 18px;
 }
 
-.zone-form label {
+.zone-form label,
+.context-form label {
   display: grid;
   gap: 6px;
   color: #687589;
 }
 
-.zone-form input {
+.zone-form input,
+.context-form input {
   min-height: 40px;
   padding: 0 12px;
   color: #172033;
   background: #ffffff;
   border: 1px solid #d8e2ef;
+  border-radius: 8px;
+}
+
+.context-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 260px));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.context-summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px;
+  color: #31445d;
+  background: #eef5ff;
   border-radius: 8px;
 }
 
@@ -372,7 +470,8 @@ button {
 
   .screen-grid,
   .metric-grid,
-  .zone-form {
+  .zone-form,
+  .context-form {
     grid-template-columns: 1fr;
   }
 

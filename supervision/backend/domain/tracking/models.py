@@ -13,6 +13,16 @@ class Track:
     first_seen_frame: int
     last_seen_frame: int
     speed_kmh: float | None = None
+    speed_uncertainty_kmh: float | None = None
+    speed_confidence: float | None = None
+    speed_confidence_interval_kmh: list[float] | None = None
+    position_rmse_m: float | None = None
+    ground_x_m: float | None = None
+    ground_y_m: float | None = None
+    velocity_x_mps: float | None = None
+    velocity_y_mps: float | None = None
+    heading_deg: float | None = None
+    acceleration_mps2: float | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -32,5 +42,31 @@ class Track:
             last_seen_frame=frame_index,
         )
 
-    def with_speed(self, speed_kmh: float | None) -> Track:
-        return replace(self, speed_kmh=speed_kmh)
+    def with_speed(
+        self,
+        speed_kmh: float | None,
+        speed_uncertainty_kmh: float | None = None,
+        speed_confidence: float | None = None,
+        speed_confidence_interval_kmh: list[float] | None = None,
+        position_rmse_m: float | None = None,
+        ground_x_m: float | None = None,
+        ground_y_m: float | None = None,
+        velocity_x_mps: float | None = None,
+        velocity_y_mps: float | None = None,
+        heading_deg: float | None = None,
+        acceleration_mps2: float | None = None,
+    ) -> Track:
+        return replace(
+            self,
+            speed_kmh=speed_kmh,
+            speed_uncertainty_kmh=speed_uncertainty_kmh,
+            speed_confidence=speed_confidence,
+            speed_confidence_interval_kmh=speed_confidence_interval_kmh,
+            position_rmse_m=position_rmse_m,
+            ground_x_m=ground_x_m,
+            ground_y_m=ground_y_m,
+            velocity_x_mps=velocity_x_mps,
+            velocity_y_mps=velocity_y_mps,
+            heading_deg=heading_deg,
+            acceleration_mps2=acceleration_mps2,
+        )

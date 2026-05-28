@@ -94,6 +94,8 @@ def test_report_generator_builds_frame_and_cumulative_stats() -> None:
     cumulative = generator.generate_cumulative_stats()
 
     assert report.active_tracks[0].speed_kmh == 42.5
+    assert report.active_tracks[0].speed_confidence is None
+    assert report.calibration_quality is None
     assert report.total_in == 0
     assert cumulative.total_frames == 1
     assert cumulative.total_unique_tracks == 1

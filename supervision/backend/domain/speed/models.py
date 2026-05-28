@@ -10,6 +10,13 @@ class SpeedRecord:
     timestamp_sec: float
     world_x: float
     world_y: float
+    speed_uncertainty_kmh: float | None = None
+    speed_confidence: float | None = None
+    position_rmse_m: float | None = None
+    velocity_x_mps: float | None = None
+    velocity_y_mps: float | None = None
+    heading_deg: float | None = None
+    acceleration_mps2: float | None = None
 
 
 @dataclass

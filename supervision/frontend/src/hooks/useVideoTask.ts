@@ -1,16 +1,16 @@
 import { useState } from "react";
 
-import { startVideoProcessing, stopVideoProcessing } from "../api/video";
+import { startVideoProcessing, stopVideoProcessing, uploadVideoForProcessing } from "../api/video";
 import type { ProcessingTask } from "../types/videoTask";
 
 export function useVideoTask() {
   const [task, setTask] = useState<ProcessingTask | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function start() {
+  async function start(file?: File) {
     setIsLoading(true);
     try {
-      const nextTask = await startVideoProcessing();
+      const nextTask = file ? await uploadVideoForProcessing(file) : await startVideoProcessing();
       setTask(nextTask);
       return nextTask;
     } finally {

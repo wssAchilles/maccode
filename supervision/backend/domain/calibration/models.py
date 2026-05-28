@@ -37,3 +37,5 @@ class HomographyResult:
     reprojection_rmse: float
     inlier_count: int
     condition_number: float
+    inlier_mask: list[bool]
+    calibration_quality: str
