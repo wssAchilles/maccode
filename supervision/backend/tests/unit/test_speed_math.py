@@ -78,4 +78,6 @@ def test_smoothing_and_filters_are_deterministic() -> None:
     assert exponential_smoothing([10, 20, 30], alpha=0.5) == pytest.approx(22.5)
     assert min_displacement_filter(0.05, threshold=0.1) == 0.0
     assert max_speed_filter(250.0, max_speed=200.0) is None
-    assert math.isclose(max_speed_filter(88.0, max_speed=200.0), 88.0)
+    valid_speed = max_speed_filter(88.0, max_speed=200.0)
+    assert valid_speed is not None
+    assert math.isclose(valid_speed, 88.0)

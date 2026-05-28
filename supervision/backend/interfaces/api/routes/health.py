@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-
 from shared.schemas.common import ResponseWrapper
 
 router = APIRouter(tags=["health"])

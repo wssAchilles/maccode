@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-
 from interfaces.api.app import create_app
 
 
@@ -45,3 +44,58 @@ def test_zones_endpoint_returns_default_demo_zone() -> None:
 
     assert response.status_code == 200
     assert response.json()["data"][0]["name"] == "main_gate"
+
+
+def test_video_process_lifecycle_creates_and_stops_task() -> None:
+    client = TestClient(create_app())
+
+    start_response = client.post("/api/video/process", json={"source": "demo://traffic"})
+
+    assert start_response.status_code == 200
+    task = start_response.json()["data"]
+    assert task["status"] == "running"
+
+    status_response = client.get(f"/api/video/status/{task['task_id']}")
+    assert status_response.status_code == 200
+    assert status_response.json()["data"]["frame_count"] >= 1
+
+    stop_response = client.post(f"/api/video/stop/{task['task_id']}")
+    assert stop_response.status_code == 200
+    assert stop_response.json()["data"]["status"] == "stopped"
+
+
+def test_history_and_cumulative_stats_are_available_after_processing() -> None:
+    client = TestClient(create_app())
+    client.post("/api/video/process", json={"source": "demo://traffic"})
+
+    history_response = client.get("/api/stats/history")
+    cumulative_response = client.get("/api/stats/cumulative")
+
+    assert history_response.status_code == 200
+    assert len(history_response.json()["data"]) >= 1
+    assert cumulative_response.status_code == 200
+    assert cumulative_response.json()["data"]["total_frames"] >= 1
+    assert cumulative_response.json()["data"]["avg_speed_kmh"] > 0
+
+
+def test_zones_can_be_updated_for_demo_configuration() -> None:
+    client = TestClient(create_app())
+    zones = [{"name": "north_gate", "line_start": [0, 20], "line_end": [100, 20]}]
+
+    update_response = client.put("/api/zones", json=zones)
+    read_response = client.get("/api/zones")
+
+    assert update_response.status_code == 200
+    assert update_response.json()["data"][0]["name"] == "north_gate"
+    assert read_response.json()["data"][0]["name"] == "north_gate"
+
+
+def test_websocket_stream_sends_frame_report_message() -> None:
+    client = TestClient(create_app())
+
+    with client.websocket_connect("/ws/stream") as websocket:
+        message = websocket.receive_json()
+
+    assert message["type"] == "frame_report"
+    assert message["data"]["frame_index"] == 3
+    assert message["data"]["total_in"] >= 1

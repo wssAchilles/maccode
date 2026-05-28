@@ -20,7 +20,7 @@ format:
 	$(RUFF) format .
 
 typecheck:
-	$(MYPY) backend/shared backend/domain backend/scripts
+	$(MYPY) backend
 
 demo:
 	$(PYTHON) backend/scripts/generate_demo_report.py

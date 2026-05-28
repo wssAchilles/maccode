@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from application.usecases.generate_report import GenerateReportUseCase
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-
-from application.usecases.generate_report import GenerateReportUseCase
 from shared.schemas.common import ResponseWrapper
 
 router = APIRouter(tags=["ai-report"])
