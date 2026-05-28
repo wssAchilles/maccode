@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+from domain.tracking.models import Track
+from domain.zones.models import ZoneStats
+
+
+@dataclass(frozen=True)
+class FrameReport:
+    frame_index: int
+    timestamp_sec: float
+    fps: float
+    active_tracks: list[Track]
+    zone_stats: list[ZoneStats]
+    total_in: int
+    total_out: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "frame_index": self.frame_index,
+            "timestamp_sec": self.timestamp_sec,
+            "fps": self.fps,
+            "active_tracks": [asdict(track) for track in self.active_tracks],
+            "zone_stats": [asdict(stat) for stat in self.zone_stats],
+            "total_in": self.total_in,
+            "total_out": self.total_out,
+        }
+
+
+@dataclass(frozen=True)
+class CumulativeStats:
+    total_frames: int
+    total_unique_tracks: int
+    zone_stats: list[ZoneStats]
+    avg_fps: float
+    avg_speed_kmh: float | None
+    processing_time_sec: float
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "total_frames": self.total_frames,
+            "total_unique_tracks": self.total_unique_tracks,
+            "zone_stats": [asdict(stat) for stat in self.zone_stats],
+            "avg_fps": self.avg_fps,
+            "avg_speed_kmh": self.avg_speed_kmh,
+            "processing_time_sec": self.processing_time_sec,
+        }
