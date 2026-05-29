@@ -23,6 +23,11 @@ class Track:
     velocity_y_mps: float | None = None
     heading_deg: float | None = None
     acceleration_mps2: float | None = None
+    physics_valid: bool = False
+    quality_label: str = "not_applicable"
+    rejection_reason: str | None = None
+    track_age_frames: int = 0
+    window_residual_m: float | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -55,6 +60,11 @@ class Track:
         velocity_y_mps: float | None = None,
         heading_deg: float | None = None,
         acceleration_mps2: float | None = None,
+        physics_valid: bool = True,
+        quality_label: str = "stable",
+        rejection_reason: str | None = None,
+        track_age_frames: int = 0,
+        window_residual_m: float | None = None,
     ) -> Track:
         return replace(
             self,
@@ -69,4 +79,9 @@ class Track:
             velocity_y_mps=velocity_y_mps,
             heading_deg=heading_deg,
             acceleration_mps2=acceleration_mps2,
+            physics_valid=physics_valid,
+            quality_label=quality_label,
+            rejection_reason=rejection_reason,
+            track_age_frames=track_age_frames,
+            window_residual_m=window_residual_m,
         )

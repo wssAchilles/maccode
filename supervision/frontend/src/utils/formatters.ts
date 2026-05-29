@@ -2,6 +2,26 @@ export function formatSpeed(speed: number | null) {
   return speed === null ? "N/A" : `${speed.toFixed(1)} km/h`;
 }
 
+export function formatValidatedSpeed(
+  speed: number | null | undefined,
+  physicsValid: boolean | undefined,
+  qualityLabel?: string | null
+) {
+  if (physicsValid && speed !== null && speed !== undefined) {
+    return `${speed.toFixed(1)} km/h`;
+  }
+  if (qualityLabel === "warming_up") {
+    return "待收敛";
+  }
+  if (qualityLabel === "rejected") {
+    return "物理异常";
+  }
+  if (qualityLabel === "low_confidence") {
+    return "低置信";
+  }
+  return "N/A";
+}
+
 export function formatCount(value: number | null | undefined) {
   if (value === null || value === undefined) {
     return "N/A";

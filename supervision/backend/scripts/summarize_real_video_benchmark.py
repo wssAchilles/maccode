@@ -171,7 +171,9 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
         report = result["final_report"]
         tracks = report.get("active_tracks", [])
         speed_tracks = [
-            track for track in tracks if track.get("speed_kmh") is not None
+            track
+            for track in tracks
+            if track.get("speed_kmh") is not None and track.get("physics_valid", True)
         ]
         confidences = [
             track["speed_confidence"]

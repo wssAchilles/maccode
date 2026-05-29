@@ -69,7 +69,11 @@ def generate_demo_report() -> dict[str, Any]:
             for track in tracks
         }
         speed_records = speed_estimator.get_all_records()
-        valid_speeds = [record.speed_kmh for record in speed_records.values()]
+        valid_speeds = [
+            record.speed_kmh
+            for record in speed_records.values()
+            if record.speed_kmh is not None and record.physics_valid
+        ]
         traffic_flow_result = traffic_flow.analyze(
             TrafficFlowInput(
                 vehicle_count=len([track for track in tracks if track.class_id in {2, 5, 7}]),

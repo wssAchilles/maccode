@@ -78,6 +78,11 @@ class DynamicContextAssembler:
                     "speed_confidence_interval_kmh": track.get(
                         "speed_confidence_interval_kmh"
                     ),
+                    "physics_valid": track.get("physics_valid", False),
+                    "quality_label": track.get("quality_label"),
+                    "rejection_reason": track.get("rejection_reason"),
+                    "track_age_frames": track.get("track_age_frames"),
+                    "window_residual_m": track.get("window_residual_m"),
                     "ground_position_m": {
                         "x": track.get("ground_x_m"),
                         "y": track.get("ground_y_m"),
@@ -100,7 +105,7 @@ class DynamicContextAssembler:
         speeds = [
             float(track["speed_kmh"])
             for track in active_tracks
-            if track.get("speed_kmh") is not None
+            if track.get("speed_kmh") is not None and track.get("physics_valid", False)
         ]
         return {
             "frame_index": frame_report.get("frame_index"),
@@ -142,6 +147,8 @@ class DynamicContextAssembler:
         for track in frame_report.get("active_tracks", []):
             speed = track.get("speed_kmh")
             if speed is None:
+                continue
+            if not track.get("physics_valid", False):
                 continue
             if float(speed) > self.speed_limit_kmh and sensitive_area:
                 signals.append(

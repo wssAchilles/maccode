@@ -7,6 +7,10 @@ interface HistoricalAnalysisProps {
 }
 
 export function HistoricalAnalysis({ cumulative, history }: HistoricalAnalysisProps) {
+  const firstValidSpeed = (report: FrameReport) =>
+    report.active_tracks.find((track) => track.physics_valid && track.speed_kmh !== null)
+      ?.speed_kmh ?? null;
+
   return (
     <section className="panel page-panel">
       <div className="panel-heading">
@@ -42,7 +46,7 @@ export function HistoricalAnalysis({ cumulative, history }: HistoricalAnalysisPr
                 <td>{report.active_tracks.length}</td>
                 <td>{report.total_in}</td>
                 <td>{report.total_out}</td>
-                <td>{formatSpeed(report.active_tracks[0]?.speed_kmh ?? null)}</td>
+                <td>{formatSpeed(firstValidSpeed(report))}</td>
               </tr>
             ))
           )}

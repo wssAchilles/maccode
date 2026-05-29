@@ -596,7 +596,7 @@ def build_sensitivity_report(
     active_speeds = [
         track["speed_kmh"]
         for track in report.get("active_tracks", [])
-        if track.get("speed_kmh") is not None
+        if track.get("speed_kmh") is not None and track.get("physics_valid", True)
     ]
     traffic_flow = report.get("traffic_flow", {})
     space_mean_speed = traffic_flow.get("space_mean_speed_kmh")
@@ -627,13 +627,13 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         track["speed_kmh"]
         for result in successful
         for track in result["final_report"].get("active_tracks", [])
-        if track.get("speed_kmh") is not None
+        if track.get("speed_kmh") is not None and track.get("physics_valid", True)
     ]
     confidences = [
         track["speed_confidence"]
         for result in successful
         for track in result["final_report"].get("active_tracks", [])
-        if track.get("speed_confidence") is not None
+        if track.get("speed_confidence") is not None and track.get("physics_valid", True)
     ]
     return {
         "total_clips": len(results),

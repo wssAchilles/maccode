@@ -258,7 +258,8 @@ class SupervisionVideoProcessor:
                 track.tracker_id,
                 track.bottom_center,
                 timestamp_sec,
-                process_noise=profile.process_noise,
+                motion_profile=profile,
+                detection_confidence=track.confidence,
             )
 
     def _build_traffic_flow(
@@ -272,6 +273,8 @@ class SupervisionVideoProcessor:
             record.speed_kmh
             for tracker_id, record in speed_records.items()
             if tracker_id in active_track_ids
+            and record.physics_valid
+            and record.speed_kmh is not None
         ]
         vehicle_count = sum(
             1 for track in tracks if track.class_id in self.motion_router.VEHICLE_CLASS_IDS
@@ -363,41 +366,51 @@ class SupervisionVideoProcessor:
         speed_records: dict[int, SpeedRecord],
         infrastructure_semantics: dict[str, object],
     ) -> dict[str, object]:
-        vehicle_ids = [
-            track.tracker_id
+        vehicle_records = [
+            speed_records[track.tracker_id]
             for track in tracks
             if track.class_id in self.motion_router.VEHICLE_CLASS_IDS
             and track.tracker_id in speed_records
+            and speed_records[track.tracker_id].physics_valid
+            and speed_records[track.tracker_id].speed_kmh is not None
         ]
         min_headway_sec: float | None = None
         min_ttc_sec: float | None = None
-        for index, ego_id in enumerate(vehicle_ids):
-            ego = speed_records[ego_id]
-            for other_id in vehicle_ids[index + 1 :]:
-                other = speed_records[other_id]
+        for index, ego in enumerate(vehicle_records):
+            ego_speed_kmh = ego.speed_kmh
+            if ego_speed_kmh is None:
+                continue
+            for other in vehicle_records[index + 1 :]:
+                other_speed_kmh = other.speed_kmh
+                if other_speed_kmh is None:
+                    continue
                 distance_m = (
                     (ego.world_x - other.world_x) ** 2
                     + (ego.world_y - other.world_y) ** 2
                 ) ** 0.5
-                ego_speed_mps = max(ego.speed_kmh / 3.6, 1e-6)
+                ego_speed_mps = max(ego_speed_kmh / 3.6, 1e-6)
                 headway_sec = distance_m / ego_speed_mps
                 min_headway_sec = (
                     headway_sec
                     if min_headway_sec is None
                     else min(min_headway_sec, headway_sec)
                 )
-                relative_speed_mps = abs(ego.speed_kmh - other.speed_kmh) / 3.6
+                relative_speed_mps = abs(ego_speed_kmh - other_speed_kmh) / 3.6
                 if relative_speed_mps > 1e-6:
                     ttc_sec = distance_m / relative_speed_mps
                     min_ttc_sec = ttc_sec if min_ttc_sec is None else min(min_ttc_sec, ttc_sec)
         speed_limit_kmh = self._profile_speed_limit_kmh()
-        speeding_track_ids = [
-            track.tracker_id
-            for track in tracks
-            if track.class_id in self.motion_router.VEHICLE_CLASS_IDS
-            and (speed_records.get(track.tracker_id) is not None)
-            and speed_records[track.tracker_id].speed_kmh >= speed_limit_kmh
-        ]
+        speeding_track_ids: list[int] = []
+        for track in tracks:
+            record = speed_records.get(track.tracker_id)
+            if (
+                track.class_id in self.motion_router.VEHICLE_CLASS_IDS
+                and record is not None
+                and record.physics_valid
+                and record.speed_kmh is not None
+                and record.speed_kmh >= speed_limit_kmh
+            ):
+                speeding_track_ids.append(track.tracker_id)
         red_light_candidates = infrastructure_semantics.get(
             "red_light_violation_candidate_track_ids",
             [],
@@ -412,7 +425,10 @@ class SupervisionVideoProcessor:
             for track_id in red_light_candidates
         ]
         return {
-            "vehicle_pair_count": max(0, len(vehicle_ids) * (len(vehicle_ids) - 1) // 2),
+            "vehicle_pair_count": max(
+                0,
+                len(vehicle_records) * (len(vehicle_records) - 1) // 2,
+            ),
             "min_time_headway_sec": min_headway_sec,
             "min_time_to_collision_sec": min_ttc_sec,
             "speed_limit_kmh": speed_limit_kmh,

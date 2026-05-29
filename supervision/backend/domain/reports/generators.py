@@ -69,13 +69,13 @@ class ReportGenerator:
             track.speed_kmh
             for frame in self._frames
             for track in frame.active_tracks
-            if track.speed_kmh is not None
+            if track.speed_kmh is not None and track.physics_valid
         ]
         confidences = [
             track.speed_confidence
             for frame in self._frames
             for track in frame.active_tracks
-            if track.speed_confidence is not None
+            if track.speed_confidence is not None and track.physics_valid
         ]
         last_frame = self._frames[-1]
         return CumulativeStats(
@@ -112,12 +112,23 @@ class ReportGenerator:
                 velocity_y_mps=record.velocity_y_mps,
                 heading_deg=record.heading_deg,
                 acceleration_mps2=record.acceleration_mps2,
+                physics_valid=record.physics_valid,
+                quality_label=record.quality_label,
+                rejection_reason=record.rejection_reason,
+                track_age_frames=record.track_age_frames,
+                window_residual_m=record.window_residual_m,
             )
-        return track.with_speed(speeds.get(track.tracker_id, track.speed_kmh))
+        if track.tracker_id in speeds:
+            return track.with_speed(speeds[track.tracker_id])
+        return track
 
     @staticmethod
     def _confidence_interval(record: SpeedRecord) -> list[float] | None:
-        if record.speed_uncertainty_kmh is None:
+        if (
+            record.speed_kmh is None
+            or record.speed_uncertainty_kmh is None
+            or not record.physics_valid
+        ):
             return None
         lower = max(0.0, record.speed_kmh - record.speed_uncertainty_kmh)
         upper = record.speed_kmh + record.speed_uncertainty_kmh

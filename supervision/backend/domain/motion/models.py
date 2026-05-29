@@ -13,6 +13,13 @@ class MotionProfile:
     matching_threshold: float
     context_role: str
     fallback_models: list[str]
+    nominal_speed_kmh: float
+    max_speed_kmh: float
+    max_acceleration_mps2: float
+    min_track_age_frames: int
+    regression_window_sec: float
+    confidence_floor: float
+    hard_max_speed_kmh: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)

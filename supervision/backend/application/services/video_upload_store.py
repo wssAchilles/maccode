@@ -33,9 +33,11 @@ class LocalVideoUploadStore:
             raise ValueError("unsupported video file type")
 
         payload = await file.read()
-        stored_filename = f"{uuid4().hex}{suffix}"
-        self.root.mkdir(parents=True, exist_ok=True)
-        stored_path = (self.root / stored_filename).resolve()
+        upload_id = uuid4().hex
+        stored_filename = original_filename
+        upload_dir = self.root / upload_id
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        stored_path = (upload_dir / stored_filename).resolve()
         stored_path.write_bytes(payload)
 
         return UploadedVideo(

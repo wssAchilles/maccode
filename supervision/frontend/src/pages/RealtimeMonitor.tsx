@@ -7,7 +7,7 @@ import { MetricTile } from "../components/cards/MetricTile";
 import { ZoneStatsList } from "../components/cards/ZoneStatsList";
 import { VideoPanel } from "../components/video/VideoPanel";
 import { useAIReport } from "../hooks/useAIReport";
-import type { FrameReport } from "../types/frameReport";
+import type { FrameReport, Track } from "../types/frameReport";
 import type { ProcessingTask, VideoSample } from "../types/videoTask";
 import {
   formatAcceleration,
@@ -23,6 +23,7 @@ import {
 } from "../utils/formatters";
 
 interface RealtimeMonitorProps {
+  history: FrameReport[];
   report: FrameReport | null;
   isTaskLoading: boolean;
   onStartSample: (source: string) => void;
@@ -32,7 +33,69 @@ interface RealtimeMonitorProps {
   taskError: string | null;
 }
 
+const STATIC_CONTEXT_CLASS_IDS = new Set([9, 10, 11]);
+
+function finiteNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function average(values: number[]) {
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function measuredTracks(report: FrameReport | null) {
+  return (report?.active_tracks ?? []).filter(
+    (track) => track.physics_valid && finiteNumber(track.speed_kmh)
+  );
+}
+
+function dynamicTracks(report: FrameReport | null) {
+  return (report?.active_tracks ?? []).filter((track) => !STATIC_CONTEXT_CLASS_IDS.has(track.class_id));
+}
+
+function chooseLeadTrack(report: FrameReport | null): Track | undefined {
+  const tracksWithSpeed = measuredTracks(report);
+  if (tracksWithSpeed.length > 0) {
+    return [...tracksWithSpeed].sort(
+      (left, right) => (right.speed_confidence ?? 0) - (left.speed_confidence ?? 0)
+    )[0];
+  }
+  return dynamicTracks(report)[0];
+}
+
+function averageTrackField(report: FrameReport | null, field: "speed_confidence" | "speed_uncertainty_kmh") {
+  return average(
+    measuredTracks(report)
+      .map((track) => track[field])
+      .filter(finiteNumber)
+  );
+}
+
+function dashboardSpeed(report: FrameReport | null) {
+  const spaceMeanSpeed = report?.traffic_flow?.space_mean_speed_kmh;
+  if (finiteNumber(spaceMeanSpeed)) {
+    return spaceMeanSpeed;
+  }
+  return average(measuredTracks(report).map((track) => track.speed_kmh).filter(finiteNumber));
+}
+
+function dashboardSpeedInterval(report: FrameReport | null, leadTrack: Track | undefined) {
+  if (leadTrack?.speed_confidence_interval_kmh) {
+    return leadTrack.speed_confidence_interval_kmh;
+  }
+  const band = report?.calibration_diagnostics?.speed_band_kmh;
+  if (band && finiteNumber(band[0]) && finiteNumber(band[1])) {
+    return [band[0], band[1]] as [number, number];
+  }
+  const speeds = measuredTracks(report).map((track) => track.speed_kmh).filter(finiteNumber);
+  if (speeds.length === 0) {
+    return null;
+  }
+  return [Math.min(...speeds), Math.max(...speeds)] as [number, number];
+}
+
 export function RealtimeMonitor({
+  history,
   report,
   isTaskLoading,
   onStartSample,
@@ -48,8 +111,16 @@ export function RealtimeMonitor({
   const [samples, setSamples] = useState<VideoSample[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const aiReport = useAIReport();
-  const leadTrack = report?.active_tracks[0];
-  const avgSpeed = leadTrack?.speed_kmh ?? null;
+  const leadTrack = chooseLeadTrack(report);
+  const avgSpeed = dashboardSpeed(report);
+  const avgConfidence = averageTrackField(report, "speed_confidence");
+  const avgUncertainty = averageTrackField(report, "speed_uncertainty_kmh");
+  const speedInterval = dashboardSpeedInterval(report, leadTrack);
+  const speedMetricValue = finiteNumber(avgSpeed)
+    ? formatSpeed(avgSpeed)
+    : report
+      ? "待收敛"
+      : "N/A";
   const calibrationDiagnostics = report?.calibration_diagnostics ?? null;
   const autoCalibration = calibrationDiagnostics?.auto_calibration ?? null;
   const homographyGrid = report?.homography_grid ?? null;
@@ -231,10 +302,10 @@ export function RealtimeMonitor({
         <MetricTile label="进入" tone="green" value={formatCount(report?.total_in)} />
         <MetricTile label="离开" tone="blue" value={formatCount(report?.total_out)} />
         <MetricTile label="FPS" value={report ? report.fps.toFixed(1) : "N/A"} />
-        <MetricTile label="速度" value={formatSpeed(avgSpeed)} />
-        <MetricTile label="置信度" value={formatPercent(leadTrack?.speed_confidence)} />
-        <MetricTile label="速度误差" value={formatUncertainty(leadTrack?.speed_uncertainty_kmh)} />
-        <MetricTile label="速度区间" value={formatSpeedInterval(leadTrack?.speed_confidence_interval_kmh)} />
+        <MetricTile label="速度" value={speedMetricValue} />
+        <MetricTile label="置信度" value={formatPercent(avgConfidence)} />
+        <MetricTile label="速度误差" value={formatUncertainty(avgUncertainty)} />
+        <MetricTile label="速度区间" value={formatSpeedInterval(speedInterval)} />
         <MetricTile label="区域人数" value={formatCount(regionalPeople?.people_count)} />
         <MetricTile label="标定质量" value={report?.calibration_quality ?? "N/A"} />
         <MetricTile label="安全风险" value={safetyMetrics?.risk_level ?? "N/A"} />
@@ -453,8 +524,8 @@ export function RealtimeMonitor({
           </div>
         </div>
       </section>
-      <ZoneStatsList zones={report?.zone_stats ?? []} />
-      <FlowChart report={report} />
+      <ZoneStatsList report={report} />
+      <FlowChart history={history} report={report} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ def _speed_tracks(report: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         track
         for track in report.get("active_tracks", [])
-        if track.get("speed_kmh") is not None
+        if track.get("speed_kmh") is not None and track.get("physics_valid", True)
     ]
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { HomographyGrid, SafetyMetrics, Track } from "../../types/frameReport";
-import { formatDegrees, formatSpeed, formatSpeedInterval } from "../../utils/formatters";
+import { formatDegrees, formatSpeedInterval, formatValidatedSpeed } from "../../utils/formatters";
 
 interface VideoPanelProps {
   tracks: Track[];
@@ -53,6 +53,22 @@ function trailPoints(track: Track, box: [number, number, number, number]) {
   const vx = track.velocity_x_mps ?? 0;
   const vy = track.velocity_y_mps ?? 0;
   return `${centerX - vx * 16},${centerY - vy * 16} ${centerX - vx * 8},${centerY - vy * 8} ${centerX},${centerY}`;
+}
+
+function qualityText(track: Track) {
+  if (track.physics_valid) {
+    return null;
+  }
+  if (track.quality_label === "warming_up") {
+    return "warming up";
+  }
+  if (track.quality_label === "rejected") {
+    return "physics rejected";
+  }
+  if (track.quality_label === "low_confidence") {
+    return "low confidence";
+  }
+  return track.quality_label;
 }
 
 function useHomographyCanvas(grid: HomographyGrid | null | undefined) {
@@ -154,9 +170,16 @@ export function VideoPanel({
                   <foreignObject height="54" width="190" x={labelX} y={labelY - 50}>
                     <div className="track-label">
                       <strong>{`#${track.tracker_id} ${track.class_name}`}</strong>
-                      <span>{formatSpeed(track.speed_kmh)}</span>
+                      <span>
+                        {formatValidatedSpeed(
+                          track.speed_kmh,
+                          track.physics_valid,
+                          track.quality_label
+                        )}
+                      </span>
                       {tone === "danger" && <small>speeding</small>}
                       {tone === "violation" && <small>red-light violation</small>}
+                      {qualityText(track) && <small>{qualityText(track)}</small>}
                       <small>{formatSpeedInterval(track.speed_confidence_interval_kmh)}</small>
                       <small>{formatDegrees(track.heading_deg)}</small>
                     </div>

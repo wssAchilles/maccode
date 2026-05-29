@@ -67,7 +67,7 @@ class DemoRuntime:
             float(track["speed_kmh"])
             for report in history
             for track in report.get("active_tracks", [])
-            if track.get("speed_kmh") is not None
+            if track.get("speed_kmh") is not None and track.get("physics_valid", True)
         ]
         fps_values = [float(report["fps"]) for report in history]
         return {
@@ -84,7 +84,7 @@ class DemoRuntime:
         report, analysis_meta, frame_reports = self._report_for_source(source)
         if frame_reports:
             self._history = frame_reports
-            self._playback_index = 0
+            self._playback_index = self._first_report_with_measurements(frame_reports)
         else:
             self._history.append(report)
             self._playback_index = max(0, len(self._history) - 1)
@@ -129,6 +129,11 @@ class DemoRuntime:
 
     def _with_current_zones(self, report: dict[str, Any]) -> dict[str, Any]:
         zone_stats = report.get("zone_stats", [])
+        if self._should_preserve_report_zones(report):
+            updated = dict(report)
+            updated["total_in"] = sum(int(zone.get("in_count", 0)) for zone in zone_stats)
+            updated["total_out"] = sum(int(zone.get("out_count", 0)) for zone in zone_stats)
+            return updated
         first_stat = zone_stats[0] if zone_stats else {"in_count": 0, "out_count": 0}
         updated = dict(report)
         updated["zone_stats"] = [
@@ -144,6 +149,37 @@ class DemoRuntime:
         updated["total_in"] = sum(zone["in_count"] for zone in updated["zone_stats"])
         updated["total_out"] = sum(zone["out_count"] for zone in updated["zone_stats"])
         return updated
+
+    @staticmethod
+    def _should_preserve_report_zones(report: dict[str, Any]) -> bool:
+        zone_stats = report.get("zone_stats")
+        if not isinstance(zone_stats, list) or not zone_stats:
+            return False
+        diagnostics = report.get("calibration_diagnostics")
+        if not isinstance(diagnostics, dict):
+            return False
+        return diagnostics.get("calibration_source") in {
+            "camera_manual_preset",
+            "video_manual_preset",
+            "scene_profile_preset",
+        }
+
+    @staticmethod
+    def _first_report_with_measurements(frame_reports: list[dict[str, Any]]) -> int:
+        for index, report in enumerate(frame_reports):
+            tracks = report.get("active_tracks", [])
+            if any(
+                track.get("speed_kmh") is not None and track.get("physics_valid", True)
+                for track in tracks
+            ):
+                return index
+            regional_people = report.get("regional_people_count") or {}
+            if regional_people.get("people_count", 0):
+                return index
+            traffic_flow = report.get("traffic_flow") or {}
+            if traffic_flow.get("space_mean_speed_kmh") is not None:
+                return index
+        return 0
 
     def _report_for_source(
         self,

@@ -366,6 +366,22 @@ button {
   border-radius: 8px;
 }
 
+.file-control input::file-selector-button {
+  min-height: 30px;
+  margin-right: 10px;
+  padding: 0 12px;
+  color: #dbeafe;
+  cursor: pointer;
+  background: rgba(37, 99, 235, 0.28);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 7px;
+}
+
+.file-control input::file-selector-button:hover {
+  color: #ffffff;
+  background: rgba(37, 99, 235, 0.48);
+}
+
 .file-hint {
   min-height: 22px;
   margin: 0 0 12px;
@@ -520,6 +536,33 @@ button {
   gap: 10px;
 }
 
+.zone-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.zone-metric-grid div {
+  display: grid;
+  gap: 6px;
+  min-height: 74px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 8px;
+}
+
+.zone-metric-grid span,
+.zone-note {
+  color: #8ea7ca;
+}
+
+.zone-metric-grid strong {
+  color: #f8fbff;
+  font-size: 22px;
+}
+
 .zone-row,
 .zone-config-row {
   display: grid;
@@ -528,31 +571,169 @@ button {
   align-items: center;
   min-height: 42px;
   padding: 0 12px;
-  background: #f5f8fc;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 8px;
+}
+
+.zone-row-header {
+  min-height: 34px;
+  color: #8ea7ca;
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.08);
+}
+
+.zone-note {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.panel-subtitle {
+  color: #8ea7ca;
+  font-size: 13px;
+}
+
+.flow-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 14px;
+}
+
+.flow-plot-card,
+.heatmap-card {
+  min-height: 250px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 8px;
+}
+
+.flow-chart-legend {
+  display: flex;
+  gap: 14px;
+  color: #8ea7ca;
+  font-size: 13px;
+}
+
+.legend-flow::before,
+.legend-speed::before {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  content: "";
+  border-radius: 50%;
+}
+
+.legend-flow::before {
+  background: #2f7de1;
+}
+
+.legend-speed::before {
+  background: #fbbf24;
+}
+
+.flow-svg {
+  width: 100%;
+  min-height: 220px;
+}
+
+.axis-line {
+  stroke: rgba(148, 163, 184, 0.28);
+  stroke-width: 1;
+}
+
+.flow-bar {
+  fill: #2f7de1;
+}
+
+.speed-line {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.speed-point {
+  fill: #fef3c7;
+  stroke: #f59e0b;
+  stroke-width: 2;
+}
+
+.flow-axis-label {
+  fill: #8ea7ca;
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+.heatmap-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+}
+
+.heatmap-card h3 {
+  margin: 0 0 6px;
+}
+
+.heatmap-card p {
+  margin: 0;
+  color: #8ea7ca;
+  line-height: 1.5;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(16px, 1fr));
+  gap: 5px;
+  align-self: end;
+  min-height: 130px;
+  padding: 10px;
+  background:
+    linear-gradient(rgba(96, 165, 250, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px),
+    rgba(2, 6, 23, 0.42);
+  background-size: 20% 20%, 20% 20%, auto;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 8px;
+}
+
+.heatmap-cell {
+  min-height: 22px;
+  border: 1px solid rgba(191, 219, 254, 0.1);
+  border-radius: 5px;
+}
+
+.flow-metric-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.flow-metric-row div {
+  display: grid;
+  gap: 6px;
+  min-height: 70px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 8px;
+}
+
+.flow-metric-row span {
+  color: #8ea7ca;
+}
+
+.flow-metric-row strong {
+  color: #f8fbff;
+  font-size: 20px;
 }
 
 .zone-config-row {
   grid-template-columns: 180px 1fr;
-}
-
-.bars {
-  display: flex;
-  align-items: end;
-  gap: 18px;
-  min-height: 160px;
-}
-
-.bar-column {
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-}
-
-.bar {
-  width: 44px;
-  background: #2f7de1;
-  border-radius: 8px 8px 0 0;
 }
 
 .page-panel {
@@ -739,7 +920,7 @@ button {
 .point-editor label {
   display: grid;
   gap: 6px;
-  color: #687589;
+  color: #9fb5d5;
 }
 
 .calibration-controls input,
@@ -747,10 +928,33 @@ button {
 .point-editor input {
   min-height: 40px;
   padding: 0 12px;
-  color: #172033;
-  background: #ffffff;
-  border: 1px solid #d8e2ef;
+  color: #f8fbff;
+  background: rgba(2, 6, 23, 0.56);
+  border: 1px solid rgba(96, 165, 250, 0.24);
   border-radius: 8px;
+}
+
+.calibration-controls input:focus,
+.calibration-controls select:focus,
+.point-editor input:focus {
+  border-color: rgba(96, 165, 250, 0.7);
+  outline: 2px solid rgba(59, 130, 246, 0.22);
+}
+
+.calibration-controls input::file-selector-button {
+  min-height: 30px;
+  margin-right: 10px;
+  padding: 0 12px;
+  color: #dbeafe;
+  cursor: pointer;
+  background: rgba(37, 99, 235, 0.28);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 7px;
+}
+
+.calibration-controls input::file-selector-button:hover {
+  color: #ffffff;
+  background: rgba(37, 99, 235, 0.48);
 }
 
 .calibration-image-panel {
@@ -811,13 +1015,20 @@ button {
   align-items: center;
   min-height: 72px;
   padding: 10px;
-  background: #f5f8fc;
-  border: 1px solid transparent;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(96, 165, 250, 0.16);
   border-radius: 8px;
 }
 
 .point-editor.active {
-  border-color: #2f7de1;
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28);
+}
+
+.point-editor > span {
+  color: #9fb5d5;
 }
 
 .calibration-diagnostics {
@@ -831,19 +1042,19 @@ button {
   display: grid;
   gap: 6px;
   padding: 12px;
-  background: #f5f8fc;
-  border: 1px solid #d8e2ef;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(96, 165, 250, 0.16);
   border-radius: 8px;
 }
 
 .calibration-diagnostics span {
-  color: #687589;
+  color: #9fb5d5;
   font-size: 0.85rem;
 }
 
 .calibration-diagnostics strong {
   overflow-wrap: anywhere;
-  color: #172033;
+  color: #f8fbff;
 }
 
 @media (max-width: 860px) {
@@ -863,6 +1074,9 @@ button {
 
   .screen-grid,
   .metric-grid,
+  .zone-metric-grid,
+  .flow-dashboard,
+  .flow-metric-row,
   .zone-form,
   .context-form,
   .calibration-workbench,

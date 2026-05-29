@@ -15,7 +15,7 @@ from infrastructure.cv.video_processor import SupervisionVideoProcessor, VideoFr
 
 class FakeDetector:
     def detect(self, _frame: object, frame_index: int, timestamp_sec: float) -> Detections:
-        x1 = 10.0 + frame_index * 10.0
+        x1 = 10.0 + frame_index * 3.0
         return Detections(
             items=[Detection([x1, 0.0, x1 + 20.0, 10.0], 0.9, 2, "car")],
             frame_index=frame_index,
@@ -89,10 +89,13 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
         ]
     )
     frames = [
-        VideoFrame(np.zeros((8, 8, 3), dtype=np.uint8), frame_index=1, timestamp_sec=0.0),
-        VideoFrame(np.zeros((8, 8, 3), dtype=np.uint8), frame_index=2, timestamp_sec=1.0),
-        VideoFrame(np.zeros((8, 8, 3), dtype=np.uint8), frame_index=3, timestamp_sec=2.0),
-    ]
+            VideoFrame(
+                np.zeros((8, 8, 3), dtype=np.uint8),
+                frame_index=frame_index,
+                timestamp_sec=(frame_index - 1) / 24.0,
+            )
+            for frame_index in range(1, 25)
+        ]
 
     report = SupervisionVideoProcessor(
         detector=FakeDetector(),
@@ -320,6 +323,11 @@ def test_red_light_roi_state_and_stop_line_violation_are_reported() -> None:
     assert report["infrastructure_semantics"]["red_light_violation_candidate_track_ids"] == [1]
     assert report["safety_metrics"]["red_light_violation_track_ids"] == [1]
     assert report["safety_metrics"]["risk_level"] == "critical"
+    traffic_light_track = next(
+        track for track in report["active_tracks"] if track["class_id"] == 9
+    )
+    assert traffic_light_track["physics_valid"] is False
+    assert traffic_light_track["quality_label"] == "not_applicable"
 
 
 def test_green_light_roi_state_does_not_emit_red_light_violation() -> None:

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class SpeedRecord:
     tracker_id: int
-    speed_kmh: float
+    speed_kmh: float | None
     timestamp_sec: float
     world_x: float
     world_y: float
@@ -17,6 +17,11 @@ class SpeedRecord:
     velocity_y_mps: float | None = None
     heading_deg: float | None = None
     acceleration_mps2: float | None = None
+    physics_valid: bool = True
+    quality_label: str = "stable"
+    rejection_reason: str | None = None
+    track_age_frames: int = 0
+    window_residual_m: float | None = None
 
 
 @dataclass
@@ -25,6 +30,7 @@ class TrackHistory:
     positions: list[tuple[float, float]] = field(default_factory=list)
     timestamps: list[float] = field(default_factory=list)
     speeds_kmh: list[float] = field(default_factory=list)
+    rejected_observations: int = 0
 
     def add_position(self, position: tuple[float, float], timestamp_sec: float) -> None:
         self.positions.append(position)

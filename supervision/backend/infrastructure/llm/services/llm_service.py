@@ -66,15 +66,33 @@ class LLMService:
 
     @staticmethod
     def _build_prompt(stats: dict[str, Any], dynamic_context: dict[str, Any]) -> str:
+        sanitized_stats = LLMService._sanitize_frame_report_for_prompt(stats)
         return (
             "你是端云协同空间智能系统中的云端交通认知 Agent。"
             "请基于 dynamic_context 与原始 FrameReport JSON 输出中文路况解析，"
-            "严格区分观测事实、风险推理和干预建议。\n\n"
+            "严格区分观测事实、风险推理和干预建议；"
+            "只能引用 physics_valid=true 的速度数值。\n\n"
             "dynamic_context:\n"
             f"{json.dumps(dynamic_context, ensure_ascii=False, indent=2)}\n\n"
             "frame_report:\n"
-            f"{json.dumps(stats, ensure_ascii=False, indent=2)}"
+            f"{json.dumps(sanitized_stats, ensure_ascii=False, indent=2)}"
         )
+
+    @staticmethod
+    def _sanitize_frame_report_for_prompt(stats: dict[str, Any]) -> dict[str, Any]:
+        sanitized = dict(stats)
+        tracks = []
+        for track in stats.get("active_tracks", []):
+            if not isinstance(track, dict):
+                continue
+            next_track = dict(track)
+            if not next_track.get("physics_valid", False):
+                next_track["speed_kmh"] = None
+                next_track["speed_uncertainty_kmh"] = None
+                next_track["speed_confidence_interval_kmh"] = None
+            tracks.append(next_track)
+        sanitized["active_tracks"] = tracks
+        return sanitized
 
     @staticmethod
     def _build_rule_based_report(dynamic_context: dict[str, Any]) -> str:

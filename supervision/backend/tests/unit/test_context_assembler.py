@@ -52,6 +52,25 @@ def test_context_assembler_flags_school_zone_speeding_risk() -> None:
     assert context.risk_signals[0]["tracker_id"] == 1
 
 
+def test_context_assembler_ignores_unphysical_speed_values() -> None:
+    report = generate_demo_report()
+    report["active_tracks"][0]["speed_kmh"] = 180.0
+    report["active_tracks"][0]["physics_valid"] = False
+    report["active_tracks"][0]["quality_label"] = "rejected"
+
+    context = DynamicContextAssembler(speed_limit_kmh=30.0).assemble(
+        report,
+        location_label="学校门口",
+        scene_tags=["school_zone"],
+    )
+
+    assert context.physical_state["avg_speed_kmh"] is None
+    assert not any(
+        signal["type"] == "speeding_near_sensitive_area"
+        for signal in context.risk_signals
+    )
+
+
 def test_context_assembler_exports_prompt_payload() -> None:
     context = DynamicContextAssembler().assemble(generate_demo_report(), scene_tags=["demo"])
 

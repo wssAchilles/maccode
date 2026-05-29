@@ -182,6 +182,9 @@ def test_video_upload_saves_local_file_and_starts_processing_task() -> None:
     assert payload["status"] == "running"
     assert payload["source"].startswith("file://")
     assert payload["uploaded_filename"] == "campus-road.mp4"
+    assert payload["stored_filename"] == "campus-road.mp4"
+    assert Path(payload["path"]).name == "campus-road.mp4"
+    assert len(Path(payload["path"]).parent.name) == 32
     assert payload["size_bytes"] == len(b"fake-video-bytes")
     assert payload["analysis_status"] == "fallback_demo"
     assert payload["analysis_source"] == "synthetic"

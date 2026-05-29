@@ -40,6 +40,17 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (videoTask.task?.status !== "running") {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      void refresh();
+      void statsHistory.refresh();
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [refresh, statsHistory.refresh, videoTask.task?.status]);
+
   async function startTask(file: File) {
     const nextTask = await videoTask.start(file);
     if (!nextTask) {
@@ -77,6 +88,7 @@ function App() {
     <AppLayout activePage={activePage} onPageChange={setActivePage} status={status}>
       {activePage === "realtime" && (
         <RealtimeMonitor
+          history={statsHistory.history}
           isTaskLoading={videoTask.isLoading}
           onStartSample={(source) => void startSample(source)}
           onStartTask={(file) => void startTask(file)}

@@ -17,6 +17,17 @@ export interface Track {
   velocity_y_mps: number | null;
   heading_deg: number | null;
   acceleration_mps2: number | null;
+  physics_valid: boolean;
+  quality_label:
+    | "stable"
+    | "warming_up"
+    | "low_confidence"
+    | "rejected"
+    | "not_applicable"
+    | string;
+  rejection_reason: string | null;
+  track_age_frames: number;
+  window_residual_m: number | null;
 }
 
 export interface ZoneStats {
