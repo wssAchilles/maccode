@@ -111,6 +111,8 @@ class DynamicContextAssembler:
             "total_out": int(frame_report.get("total_out", 0)),
             "avg_speed_kmh": sum(speeds) / len(speeds) if speeds else None,
             "calibration_quality": frame_report.get("calibration_quality"),
+            "calibration_diagnostics": frame_report.get("calibration_diagnostics"),
+            "homography_grid": frame_report.get("homography_grid"),
             "traffic_flow": frame_report.get("traffic_flow"),
             "regional_people_count": frame_report.get("regional_people_count")
             or {
@@ -162,6 +164,30 @@ class DynamicContextAssembler:
                     }
                 )
         safety_metrics = frame_report.get("safety_metrics") or {}
+        red_light_violation_ids = safety_metrics.get("red_light_violation_track_ids") or []
+        if red_light_violation_ids:
+            signals.append(
+                {
+                    "type": "red_light_violation",
+                    "severity": "critical",
+                    "tracker_ids": red_light_violation_ids,
+                    "traffic_light_state": (
+                        (frame_report.get("infrastructure_semantics") or {}).get(
+                            "traffic_light_state"
+                        )
+                    ),
+                }
+            )
+        speeding_ids = safety_metrics.get("speeding_track_ids") or []
+        if speeding_ids:
+            signals.append(
+                {
+                    "type": "backend_speeding_rule",
+                    "severity": "high" if sensitive_area else "medium",
+                    "tracker_ids": speeding_ids,
+                    "speed_limit_kmh": safety_metrics.get("speed_limit_kmh"),
+                }
+            )
         risk_level = safety_metrics.get("risk_level")
         if risk_level in {"critical", "elevated"}:
             signals.append(
@@ -173,6 +199,25 @@ class DynamicContextAssembler:
                     "min_time_to_collision_sec": safety_metrics.get(
                         "min_time_to_collision_sec"
                     ),
+                }
+            )
+        regional_people = frame_report.get("regional_people_count") or {}
+        crowding_level = regional_people.get("crowding_level")
+        if regional_people.get("density_integral_triggered") and crowding_level in {
+            "critical",
+            "crowded",
+        }:
+            signals.append(
+                {
+                    "type": "critical_crowd_density"
+                    if crowding_level == "critical"
+                    else "crowd_density_warning",
+                    "severity": "critical" if crowding_level == "critical" else "high",
+                    "people_count": regional_people.get("people_count"),
+                    "integrated_people_count": regional_people.get("integrated_people_count"),
+                    "density_people_per_sqm": regional_people.get("density_people_per_sqm"),
+                    "estimation_method": regional_people.get("estimation_method"),
+                    "crowding_level": crowding_level,
                 }
             )
         infrastructure = frame_report.get("infrastructure_semantics") or {}

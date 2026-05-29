@@ -1,0 +1,37 @@
+schema_version: 1
+notes: >
+  Per-clip tuning is scoped only to data/tests/golden_clips.yaml. The best trial
+  frame stride is retained as benchmark evidence, while runtime rendering keeps
+  frame_stride=1 so processed MP4 playback remains full-length and smooth.
+runtime_defaults:
+  frame_stride: 1
+  max_frames: null
+clips:
+  026_complex_signal_day_wide_0115s_30s.mp4:
+    confidence_threshold: 0.45
+    runtime_frame_stride: 1
+    tuning_best_frame_stride: 10
+    tuning_score: 0.5562288835864443
+    primary_role: signalized_intersection_vehicle_speed
+    tuning_notes: "High target count; speed uncertainty remains the main calibration follow-up."
+  042_pedestrian_crowd_high_view_0270s_30s.mp4:
+    confidence_threshold: 0.45
+    runtime_frame_stride: 1
+    tuning_best_frame_stride: 10
+    tuning_score: 0.6252681610194174
+    primary_role: pedestrian_count_density
+    tuning_notes: "Use primarily for people count and density, not vehicle-speed claims."
+  054_dense_city_traffic_4k_elevated_0030s_30s.mp4:
+    confidence_threshold: 0.45
+    runtime_frame_stride: 1
+    tuning_best_frame_stride: 10
+    tuning_score: 0.5691801989277768
+    primary_role: dense_city_flow_baseline
+    tuning_notes: "Baseline city-flow clip; needs road-plane calibration refinement for stronger speed confidence."
+  058_dense_city_traffic_4k_elevated_0150s_30s.mp4:
+    confidence_threshold: 0.45
+    runtime_frame_stride: 1
+    tuning_best_frame_stride: 10
+    tuning_score: 0.4777140007832038
+    primary_role: dense_city_flow_peak
+    tuning_notes: "Peak-density city-flow clip; best for macro flow, weakest for absolute speed until calibration is refined."

@@ -65,6 +65,44 @@ def test_loads_video_manual_calibration_preset(tmp_path: Path) -> None:
     assert len(video_preset.points) == 4
 
 
+def test_loads_yaml_video_manual_calibration_preset(tmp_path: Path) -> None:
+    preset_path = tmp_path / "calibration_presets.yaml"
+    preset_path.write_text(
+        """
+scene_profiles: {}
+video_calibrations:
+  clip.mp4:
+    position_rmse_floor_m: 0.6
+    calibration_scale_uncertainty_pct: 3.5
+    notes: surveyed YAML control points
+    points:
+      - pixel_x: 0.0
+        pixel_y: 100.0
+        world_x: 0.0
+        world_y: 0.0
+      - pixel_x: 100.0
+        pixel_y: 100.0
+        world_x: 10.0
+        world_y: 0.0
+      - pixel_x: 100.0
+        pixel_y: 0.0
+        world_x: 10.0
+        world_y: 20.0
+      - pixel_x: 0.0
+        pixel_y: 0.0
+        world_x: 0.0
+        world_y: 20.0
+""",
+    )
+
+    catalog = load_calibration_presets(preset_path)
+
+    video_preset = catalog.video_calibrations["clip.mp4"]
+    assert video_preset.position_rmse_floor_m == 0.6
+    assert video_preset.calibration_scale_uncertainty_pct == 3.5
+    assert video_preset.notes == "surveyed YAML control points"
+
+
 def test_manual_calibration_overrides_scene_profile_homography() -> None:
     profile = default_profile_for_clip(Path("023_complex_signal_day_wide_0010s_30s.mp4"))
     catalog = load_calibration_presets(

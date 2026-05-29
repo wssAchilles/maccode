@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { getRealtimeStats } from "../api/stats";
 import type { FrameReport } from "../types/frameReport";
-import { demoFrameReport } from "../utils/constants";
+
+export type RealtimeStatus = "idle" | "live" | "error";
 
 export function useRealtimeStats() {
-  const [report, setReport] = useState<FrameReport>(demoFrameReport);
-  const [status, setStatus] = useState<"demo" | "live" | "error">("demo");
+  const [report, setReport] = useState<FrameReport | null>(null);
+  const [status, setStatus] = useState<RealtimeStatus>("idle");
 
   const refresh = useCallback(async () => {
     try {
@@ -14,28 +15,8 @@ export function useRealtimeStats() {
       setReport(data);
       setStatus("live");
     } catch {
-      setStatus("demo");
+      setStatus("error");
     }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    getRealtimeStats()
-      .then((data) => {
-        if (isMounted) {
-          setReport(data);
-          setStatus("live");
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setStatus("demo");
-        }
-      });
-
-    return () => {
-      isMounted = false;
-      };
   }, []);
 
   return { report, status, refresh };

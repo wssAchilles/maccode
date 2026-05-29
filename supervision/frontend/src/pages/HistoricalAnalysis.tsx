@@ -2,7 +2,7 @@ import type { CumulativeStats, FrameReport } from "../types/frameReport";
 import { formatSpeed } from "../utils/formatters";
 
 interface HistoricalAnalysisProps {
-  cumulative: CumulativeStats;
+  cumulative: CumulativeStats | null;
   history: FrameReport[];
 }
 
@@ -13,11 +13,11 @@ export function HistoricalAnalysis({ cumulative, history }: HistoricalAnalysisPr
         <h2>历史数据分析</h2>
       </div>
       <div className="history-summary">
-        <strong>{cumulative.total_frames}</strong>
+        <strong>{cumulative?.total_frames ?? "N/A"}</strong>
         <span>处理帧</span>
-        <strong>{cumulative.total_unique_tracks}</strong>
+        <strong>{cumulative?.total_unique_tracks ?? "N/A"}</strong>
         <span>唯一轨迹</span>
-        <strong>{formatSpeed(cumulative.avg_speed_kmh)}</strong>
+        <strong>{formatSpeed(cumulative?.avg_speed_kmh ?? null)}</strong>
         <span>平均速度</span>
       </div>
       <table className="data-table">
@@ -31,15 +31,21 @@ export function HistoricalAnalysis({ cumulative, history }: HistoricalAnalysisPr
           </tr>
         </thead>
         <tbody>
-          {history.map((report, index) => (
-            <tr key={`${report.frame_index}-${report.timestamp_sec}-${index}`}>
-              <td>{report.frame_index}</td>
-              <td>{report.active_tracks.length}</td>
-              <td>{report.total_in}</td>
-              <td>{report.total_out}</td>
-              <td>{formatSpeed(report.active_tracks[0]?.speed_kmh ?? null)}</td>
+          {history.length === 0 ? (
+            <tr>
+              <td colSpan={5}>等待真实分析数据</td>
             </tr>
-          ))}
+          ) : (
+            history.map((report, index) => (
+              <tr key={`${report.frame_index}-${report.timestamp_sec}-${index}`}>
+                <td>{report.frame_index}</td>
+                <td>{report.active_tracks.length}</td>
+                <td>{report.total_in}</td>
+                <td>{report.total_out}</td>
+                <td>{formatSpeed(report.active_tracks[0]?.speed_kmh ?? null)}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </section>

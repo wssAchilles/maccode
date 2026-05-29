@@ -2,7 +2,10 @@ export function formatSpeed(speed: number | null) {
   return speed === null ? "N/A" : `${speed.toFixed(1)} km/h`;
 }
 
-export function formatCount(value: number) {
+export function formatCount(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
   return new Intl.NumberFormat("zh-CN").format(value);
 }
 

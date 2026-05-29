@@ -1,18 +1,9 @@
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
 
-interface CalibrationPoint {
-  pixel_x: number;
-  pixel_y: number;
-  world_x: number;
-  world_y: number;
-}
-
-interface CalibrationEntry {
-  notes: string;
-  position_rmse_floor_m: number;
-  calibration_scale_uncertainty_pct: number;
-  points: CalibrationPoint[];
-}
+import { getCalibrationPreset, saveCalibrationPreset } from "../api/calibration";
+import { listVideoSamples } from "../api/video";
+import type { CalibrationEntry, CalibrationPoint, CalibrationSaveResult } from "../types/calibration";
+import type { VideoSample } from "../types/videoTask";
 
 const defaultWorldPoints = [
   { world_x: 0, world_y: 0 },
@@ -27,9 +18,13 @@ export function CalibrationWorkbench() {
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 1280, height: 720 });
   const [clipName, setClipName] = useState("028_red_light_static_0008s_30s.mp4");
+  const [samples, setSamples] = useState<VideoSample[]>([]);
   const [positionRmseFloorM, setPositionRmseFloorM] = useState(0.75);
   const [scaleUncertaintyPct, setScaleUncertaintyPct] = useState(4);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [saveResult, setSaveResult] = useState<CalibrationSaveResult | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [points, setPoints] = useState<CalibrationPoint[]>(
     defaultWorldPoints.map((point) => ({
       pixel_x: 0,
@@ -46,6 +41,48 @@ export function CalibrationWorkbench() {
     },
     [imageObjectUrl]
   );
+
+  useEffect(() => {
+    let isMounted = true;
+    listVideoSamples()
+      .then((nextSamples) => {
+        if (!isMounted) {
+          return;
+        }
+        setSamples(nextSamples);
+        if (nextSamples.length > 0) {
+          setClipName(nextSamples[0].name);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setSamples([]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!clipName) {
+      return undefined;
+    }
+    getCalibrationPreset(clipName)
+      .then((entry) => {
+        if (!isMounted || !entry) {
+          return;
+        }
+        setPositionRmseFloorM(entry.position_rmse_floor_m);
+        setScaleUncertaintyPct(entry.calibration_scale_uncertainty_pct);
+        setPoints(entry.points);
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, [clipName]);
 
   const calibrationEntry: CalibrationEntry = useMemo(
     () => ({
@@ -112,6 +149,26 @@ export function CalibrationWorkbench() {
     setImageUrl(file.name);
   }
 
+  async function saveToYaml() {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveResult(null);
+    try {
+      const result = await saveCalibrationPreset({
+        clip_name: clipName,
+        ...calibrationEntry,
+        frame_width: imageSize.width,
+        frame_height: imageSize.height,
+        grid_spacing_m: 5.0
+      });
+      setSaveResult(result);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "保存标定失败");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function downloadJson(filename: string, payload: object) {
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json"
@@ -131,6 +188,20 @@ export function CalibrationWorkbench() {
           <h2>人工标定工作台</h2>
         </div>
         <div className="calibration-controls">
+          <label>
+            <span>真实样片</span>
+            <select
+              disabled={samples.length === 0}
+              onChange={(event) => setClipName(event.target.value)}
+              value={clipName}
+            >
+              {samples.map((sample) => (
+                <option key={sample.name} value={sample.name}>
+                  {sample.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             <span>视频文件名</span>
             <input onChange={(event) => setClipName(event.target.value)} value={clipName} />
@@ -250,8 +321,16 @@ export function CalibrationWorkbench() {
 
       <section className="panel wide">
         <div className="panel-heading">
-          <h2>导出 JSON</h2>
+          <h2>保存标定</h2>
           <div className="button-row">
+            <button
+              className="primary-button"
+              disabled={isSaving}
+              onClick={() => void saveToYaml()}
+              type="button"
+            >
+              {isSaving ? "保存中" : "保存到 YAML"}
+            </button>
             <button
               className="secondary-button"
               onClick={() => downloadJson(`${clipName}.calibration-entry.json`, exportPayload)}
@@ -268,6 +347,35 @@ export function CalibrationWorkbench() {
             </button>
           </div>
         </div>
+        {saveError && <p className="task-error">保存失败：{saveError}</p>}
+        {saveResult && (
+          <div className="calibration-diagnostics">
+            <div>
+              <span>标定来源</span>
+              <strong>{saveResult.source}</strong>
+            </div>
+            <div>
+              <span>质量分级</span>
+              <strong>{saveResult.diagnostics.calibration_quality}</strong>
+            </div>
+            <div>
+              <span>重投影 RMSE</span>
+              <strong>{`${saveResult.diagnostics.reprojection_rmse_px.toFixed(3)} px`}</strong>
+            </div>
+            <div>
+              <span>RANSAC 内点</span>
+              <strong>{saveResult.diagnostics.inlier_count}</strong>
+            </div>
+            <div>
+              <span>条件数</span>
+              <strong>{saveResult.diagnostics.condition_number.toExponential(2)}</strong>
+            </div>
+            <div>
+              <span>YAML 路径</span>
+              <strong>{saveResult.preset_path}</strong>
+            </div>
+          </div>
+        )}
         <pre className="report-output">{JSON.stringify(fullPresetPayload, null, 2)}</pre>
       </section>
     </div>

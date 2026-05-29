@@ -13,12 +13,11 @@ import { HistoricalAnalysis } from "./pages/HistoricalAnalysis";
 import { RealtimeMonitor } from "./pages/RealtimeMonitor";
 import { ZoneConfig } from "./pages/ZoneConfig";
 import type { ZoneConfig as ZoneConfigType } from "./types/zoneConfig";
-import { demoZones } from "./utils/constants";
 import "./styles.css";
 
 function App() {
   const [activePage, setActivePage] = useState<PageKey>("realtime");
-  const [zones, setZones] = useState<ZoneConfigType[]>(demoZones);
+  const [zones, setZones] = useState<ZoneConfigType[]>([]);
   const { report, refresh, status } = useRealtimeStats();
   const videoTask = useVideoTask();
   const statsHistory = useStatsHistory();
@@ -33,7 +32,7 @@ function App() {
       })
       .catch(() => {
         if (isMounted) {
-          setZones(demoZones);
+          setZones([]);
         }
       });
     return () => {
@@ -41,13 +40,27 @@ function App() {
     };
   }, []);
 
-  async function startTask(file?: File) {
-    await videoTask.start(file);
+  async function startTask(file: File) {
+    const nextTask = await videoTask.start(file);
+    if (!nextTask) {
+      return;
+    }
+    await Promise.all([refresh(), statsHistory.refresh()]);
+  }
+
+  async function startSample(source: string) {
+    const nextTask = await videoTask.startSource(source);
+    if (!nextTask) {
+      return;
+    }
     await Promise.all([refresh(), statsHistory.refresh()]);
   }
 
   async function stopTask() {
-    await videoTask.stop();
+    const stoppedTask = await videoTask.stop();
+    if (!stoppedTask) {
+      return;
+    }
     await statsHistory.refresh();
   }
 
@@ -65,10 +78,12 @@ function App() {
       {activePage === "realtime" && (
         <RealtimeMonitor
           isTaskLoading={videoTask.isLoading}
+          onStartSample={(source) => void startSample(source)}
           onStartTask={(file) => void startTask(file)}
           onStopTask={() => void stopTask()}
           report={report}
           task={videoTask.task}
+          taskError={videoTask.error}
         />
       )}
       {activePage === "history" && (

@@ -1,0 +1,23 @@
+schema_version: 1
+selection_policy: "curated_for_defense_tuning_only"
+notes: >
+  Golden clips are the only real-video samples used for final demo tuning.
+  They were selected from the requested ranges by visual clarity, target count,
+  scene diversity, and calibration explainability.
+clips:
+  - name: 026_complex_signal_day_wide_0115s_30s.mp4
+    profile: wide_signalized_intersection
+    role: signalized_intersection_vehicle_speed
+    selection_reason: "Best 023-027 candidate: highest sampled vehicle count with pedestrians and traffic lights."
+  - name: 042_pedestrian_crowd_high_view_0270s_30s.mp4
+    profile: pedestrian_high_view
+    role: pedestrian_count_density
+    selection_reason: "Best 033-042 candidate: highest sampled person count and clear overhead ground plane."
+  - name: 054_dense_city_traffic_4k_elevated_0030s_30s.mp4
+    profile: dense_city_traffic_4k
+    role: dense_city_flow_baseline
+    selection_reason: "First 053-065 dense-city pick: stable high-elevation view with sustained multi-lane traffic."
+  - name: 058_dense_city_traffic_4k_elevated_0150s_30s.mp4
+    profile: dense_city_traffic_4k
+    role: dense_city_flow_peak
+    selection_reason: "Second 053-065 dense-city pick: highest sampled vehicle count and stronger traffic-flow demo value."

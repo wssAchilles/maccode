@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { getCumulativeStats, getHistoryStats } from "../api/stats";
 import type { CumulativeStats, FrameReport } from "../types/frameReport";
-import { demoCumulativeStats, demoFrameReport } from "../utils/constants";
 
 export function useStatsHistory() {
-  const [history, setHistory] = useState<FrameReport[]>([demoFrameReport]);
-  const [cumulative, setCumulative] = useState<CumulativeStats>(demoCumulativeStats);
+  const [history, setHistory] = useState<FrameReport[]>([]);
+  const [cumulative, setCumulative] = useState<CumulativeStats | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -17,14 +16,10 @@ export function useStatsHistory() {
       setHistory(nextHistory);
       setCumulative(nextCumulative);
     } catch {
-      setHistory([demoFrameReport]);
-      setCumulative(demoCumulativeStats);
+      setHistory([]);
+      setCumulative(null);
     }
   }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   return { history, cumulative, refresh };
 }

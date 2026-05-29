@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 
 import { Header } from "./Header";
 import { Sidebar, type PageKey } from "./Sidebar";
+import type { RealtimeStatus } from "../../hooks/useRealtimeStats";
 
 interface AppLayoutProps {
   activePage: PageKey;
   children: ReactNode;
   onPageChange: (page: PageKey) => void;
-  status: "demo" | "live" | "error";
+  status: RealtimeStatus;
 }
 
 export function AppLayout({ activePage, children, onPageChange, status }: AppLayoutProps) {

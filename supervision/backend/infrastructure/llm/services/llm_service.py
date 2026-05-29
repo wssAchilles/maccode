@@ -90,7 +90,29 @@ class LLMService:
             if isinstance(traffic_flow, dict)
             else "未提供"
         )
+        regional_people = summary.get("regional_people_count") or {}
+        density_text = "未提供"
+        if isinstance(regional_people, dict):
+            density = regional_people.get("density_people_per_sqm")
+            people_count = regional_people.get("people_count")
+            method = regional_people.get("estimation_method", "unknown")
+            if density is not None:
+                density_text = (
+                    f"{float(density):.2f} 人/m²，人数约 {people_count}，模型 {method}"
+                )
+        infrastructure = summary.get("infrastructure_semantics") or {}
+        signal_text = "未检测到信号灯"
+        if isinstance(infrastructure, dict) and infrastructure.get("traffic_light_count", 0):
+            signal_text = (
+                f"{infrastructure.get('traffic_light_state', 'unknown')}，"
+                f"红灯候选目标 {infrastructure.get('red_light_violation_candidate_track_ids', [])}"
+            )
         risk_text = "、".join(risk["type"] for risk in risks)
+        recommendation = (
+            "建议立即复核红灯/超速/拥挤证据并触发人工处置。"
+            if any(risk.get("severity") in {"critical", "high"} for risk in risks)
+            else "当前未显示高危事件，可继续观察交通流变化。"
+        )
         tag_text = ", ".join(scene["scene_tags"]) or "未标注"
         return (
             "## 路况解析\n\n"
@@ -99,7 +121,9 @@ class LLMService:
             f"累计离开 {summary['total_out']}。\n"
             f"- {speed_text}。\n"
             f"- 标定质量：{calibration_text}；交通流状态：{congestion_level}。\n"
+            f"- 人群密度：{density_text}。\n"
+            f"- 信号灯语义：{signal_text}。\n"
             f"- 监控区域：{', '.join(summary['zones']) or '未配置'}。\n"
             f"- 风险信号：{risk_text}。\n"
-            "- 当前 demo 数据未显示拥堵或异常速度，适合作为课设展示的基础闭环。"
+            f"- 处置建议：{recommendation}"
         )

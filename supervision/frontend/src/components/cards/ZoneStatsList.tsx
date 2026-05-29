@@ -11,13 +11,17 @@ export function ZoneStatsList({ zones }: ZoneStatsListProps) {
         <h2>区域统计</h2>
       </div>
       <div className="zone-list">
-        {zones.map((zone) => (
-          <div className="zone-row" key={zone.name}>
-            <span>{zone.name}</span>
-            <strong>{zone.in_count}</strong>
-            <strong>{zone.out_count}</strong>
-          </div>
-        ))}
+        {zones.length === 0 ? (
+          <div className="empty-state">等待真实分析数据</div>
+        ) : (
+          zones.map((zone) => (
+            <div className="zone-row" key={zone.name}>
+              <span>{zone.name}</span>
+              <strong>{zone.in_count}</strong>
+              <strong>{zone.out_count}</strong>
+            </div>
+          ))
+        )}
       </div>
     </section>
   );

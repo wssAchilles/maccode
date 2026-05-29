@@ -25,7 +25,8 @@ from domain.zones.service import ZoneService
 def generate_demo_report() -> dict[str, Any]:
     tracker = TrackingService(iou_threshold=0.2)
     zone_service = ZoneService([ZoneConfig("main_gate", [0, 10], [80, 10])])
-    calibration = CalibrationService().compute_homography_ransac(
+    calibration_service = CalibrationService()
+    calibration = calibration_service.compute_homography_ransac(
         [
             CalibrationPoint(0, 0, 0, 0),
             CalibrationPoint(100, 0, 10, 0),
@@ -86,6 +87,30 @@ def generate_demo_report() -> dict[str, Any]:
             speeds=speeds,
             speed_records=speed_records,
             calibration_quality=calibration.calibration_quality,
+            calibration_diagnostics={
+                "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
+                "calibration_quality": calibration.calibration_quality,
+                "reprojection_rmse_px": calibration.reprojection_rmse,
+                "inlier_count": calibration.inlier_count,
+                "condition_number": calibration.condition_number,
+                "position_rmse_m": speed_estimator.position_rmse_m,
+                "timestamp_uncertainty_sec": speed_estimator.timestamp_uncertainty_sec,
+                "error_sources": [
+                    "homography calibration residual",
+                    "detector bounding-box jitter",
+                    "frame timestamp quantization",
+                    "perspective extrapolation outside calibrated road plane",
+                ],
+                "model_reference": "Model 1 + Model 3 + Model 6 + Model 10",
+            },
+            homography_grid=calibration_service.build_homography_grid(
+                calibration,
+                frame_width=100,
+                frame_height=100,
+                world_width_m=10.0,
+                world_length_m=10.0,
+                spacing_m=2.0,
+            ).to_dict(),
             traffic_flow=traffic_flow_result.to_dict(),
         )
 

@@ -1,0 +1,211 @@
+schema_version: 1
+notes: >
+  Fixed-camera profiles replace per-video calibration for the final demo. A profile
+  supplies one manual ground-plane calibration and reusable zones for every clip
+  matching its covered_clip_patterns.
+camera_profiles:
+  jackson_hole_signal_camera:
+    display_name: Jackson Hole signalized intersection
+    role: signalized_intersection_vehicle_speed
+    covered_clip_patterns:
+      - "02[3-7]_complex_signal_day_wide_*_30s.mp4"
+    world_width_m: 28.0
+    world_length_m: 75.0
+    grid_spacing_m: 5.0
+    position_rmse_floor_m: 1.3
+    calibration_scale_uncertainty_pct: 6.0
+    scale_prior_used: "visible lane geometry and stop-line road-plane prior"
+    tuning:
+      confidence_threshold: 0.45
+      runtime_frame_stride: 1
+      speed_limit_kmh: 50.0
+    quality_gates:
+      min_manual_points: 4
+      min_auto_confidence_for_auto_use: 0.75
+    fallback_policy: "use manual camera profile when auto calibration confidence is below gate"
+    traffic_line_zones:
+      - name: analysis_line
+        line_start_ratio: [0.18, 0.72]
+        line_end_ratio: [0.88, 0.72]
+    polygon_zones:
+      - name: intersection_core
+        points_ratio: [[0.28, 0.58], [0.86, 0.58], [0.78, 0.88], [0.18, 0.88]]
+    traffic_light_rois:
+      - name: right_signal
+        xyxy_ratio: [0.90, 0.22, 0.96, 0.48]
+    risk_areas:
+      - name: crosswalk_stop_line
+        kind: stop_line
+        points_ratio: [[0.18, 0.68], [0.88, 0.68], [0.88, 0.78], [0.18, 0.78]]
+    manual_control_points:
+      - pixel_x: 360.0
+        pixel_y: 708.0
+        world_x: 0.0
+        world_y: 0.0
+      - pixel_x: 1188.0
+        pixel_y: 708.0
+        world_x: 28.0
+        world_y: 0.0
+      - pixel_x: 1032.0
+        pixel_y: 302.0
+        world_x: 28.0
+        world_y: 75.0
+      - pixel_x: 500.0
+        pixel_y: 426.0
+        world_x: 0.0
+        world_y: 75.0
+      - pixel_x: 774.0
+        pixel_y: 560.0
+        world_x: 14.0
+        world_y: 25.0
+      - pixel_x: 850.0
+        pixel_y: 398.0
+        world_x: 14.0
+        world_y: 55.0
+    auto_calibration_candidates:
+      candidate_lines:
+        - name: left_road_edge
+          kind: road_edge
+          start: [360.0, 708.0]
+          end: [500.0, 426.0]
+        - name: right_road_edge
+          kind: road_edge
+          start: [1188.0, 708.0]
+          end: [1032.0, 302.0]
+      scale_prior_used: "lane width approximately 3.5m"
+  pedestrian_high_view_camera:
+    display_name: High-view pedestrian corridor
+    role: pedestrian_count_density
+    covered_clip_patterns:
+      - "03[3-9]_pedestrian_crowd_high_view_*_30s.mp4"
+      - "040_pedestrian_crowd_high_view_*_30s.mp4"
+      - "042_pedestrian_crowd_high_view_*_30s.mp4"
+    world_width_m: 22.0
+    world_length_m: 45.0
+    grid_spacing_m: 5.0
+    position_rmse_floor_m: 1.0
+    calibration_scale_uncertainty_pct: 5.0
+    scale_prior_used: "pedestrian pavement corridor width prior"
+    tuning:
+      confidence_threshold: 0.45
+      runtime_frame_stride: 1
+    quality_gates:
+      min_manual_points: 4
+      min_auto_confidence_for_auto_use: 0.75
+    fallback_policy: "use manual camera profile for density claims unless auto confidence is high"
+    traffic_line_zones:
+      - name: pedestrian_flow_line
+        line_start_ratio: [0.10, 0.68]
+        line_end_ratio: [0.90, 0.68]
+    polygon_zones:
+      - name: pedestrian_density_area
+        points_ratio: [[0.06, 0.12], [0.92, 0.12], [0.76, 0.96], [0.02, 0.96]]
+    traffic_light_rois: []
+    risk_areas:
+      - name: crowding_corridor
+        kind: pedestrian_density
+        points_ratio: [[0.06, 0.12], [0.92, 0.12], [0.76, 0.96], [0.02, 0.96]]
+    manual_control_points:
+      - pixel_x: 120.0
+        pixel_y: 1050.0
+        world_x: 0.0
+        world_y: 0.0
+      - pixel_x: 1410.0
+        pixel_y: 1050.0
+        world_x: 22.0
+        world_y: 0.0
+      - pixel_x: 1700.0
+        pixel_y: 120.0
+        world_x: 22.0
+        world_y: 45.0
+      - pixel_x: 820.0
+        pixel_y: 120.0
+        world_x: 0.0
+        world_y: 45.0
+      - pixel_x: 760.0
+        pixel_y: 720.0
+        world_x: 11.0
+        world_y: 15.0
+      - pixel_x: 1230.0
+        pixel_y: 360.0
+        world_x: 11.0
+        world_y: 32.0
+    auto_calibration_candidates:
+      candidate_lines:
+        - name: left_pavement_edge
+          kind: pavement_edge
+          start: [120.0, 1050.0]
+          end: [820.0, 120.0]
+        - name: right_pavement_edge
+          kind: pavement_edge
+          start: [1410.0, 1050.0]
+          end: [1700.0, 120.0]
+      scale_prior_used: "pedestrian corridor width approximately 22m"
+  dense_city_4k_camera:
+    display_name: Dense 4K city elevated corridor
+    role: dense_city_macro_flow
+    covered_clip_patterns:
+      - "05[3-9]_dense_city_traffic_4k_elevated_*_30s.mp4"
+      - "06[0-5]_dense_city_traffic_4k_elevated_*_30s.mp4"
+    world_width_m: 38.0
+    world_length_m: 110.0
+    grid_spacing_m: 5.0
+    position_rmse_floor_m: 2.0
+    calibration_scale_uncertainty_pct: 10.0
+    scale_prior_used: "multi-lane urban road width prior"
+    tuning:
+      confidence_threshold: 0.45
+      runtime_frame_stride: 1
+      speed_limit_kmh: 60.0
+    quality_gates:
+      min_manual_points: 4
+      min_auto_confidence_for_auto_use: 0.75
+    fallback_policy: "use manual camera profile; auto candidates are diagnostic only until confidence improves"
+    traffic_line_zones:
+      - name: dense_city_flow_line
+        line_start_ratio: [0.18, 0.70]
+        line_end_ratio: [0.86, 0.70]
+    polygon_zones:
+      - name: dense_city_roadway
+        points_ratio: [[0.24, 0.32], [0.78, 0.32], [0.86, 0.96], [0.18, 0.96]]
+    traffic_light_rois: []
+    risk_areas:
+      - name: dense_city_following_zone
+        kind: headway
+        points_ratio: [[0.24, 0.32], [0.78, 0.32], [0.86, 0.96], [0.18, 0.96]]
+    manual_control_points:
+      - pixel_x: 920.0
+        pixel_y: 2140.0
+        world_x: 0.0
+        world_y: 0.0
+      - pixel_x: 3020.0
+        pixel_y: 2140.0
+        world_x: 38.0
+        world_y: 0.0
+      - pixel_x: 2140.0
+        pixel_y: 720.0
+        world_x: 38.0
+        world_y: 110.0
+      - pixel_x: 1160.0
+        pixel_y: 720.0
+        world_x: 0.0
+        world_y: 110.0
+      - pixel_x: 1660.0
+        pixel_y: 1550.0
+        world_x: 19.0
+        world_y: 35.0
+      - pixel_x: 1660.0
+        pixel_y: 1040.0
+        world_x: 19.0
+        world_y: 75.0
+    auto_calibration_candidates:
+      candidate_lines:
+        - name: left_lane_bundle
+          kind: lane_bundle
+          start: [920.0, 2140.0]
+          end: [1160.0, 720.0]
+        - name: right_lane_bundle
+          kind: lane_bundle
+          start: [3020.0, 2140.0]
+          end: [2140.0, 720.0]
+      scale_prior_used: "lane width approximately 3.5m across multi-lane roadway"

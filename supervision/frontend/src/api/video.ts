@@ -1,7 +1,7 @@
 import { requestJson } from "./client";
-import type { ProcessingTask } from "../types/videoTask";
+import type { ProcessingTask, VideoSample } from "../types/videoTask";
 
-export function startVideoProcessing(source = "demo://traffic") {
+export function startVideoProcessing(source: string) {
   return requestJson<ProcessingTask>("/api/video/process", {
     method: "POST",
     body: JSON.stringify({ source })
@@ -16,6 +16,10 @@ export function uploadVideoForProcessing(file: File) {
     method: "POST",
     body: formData
   });
+}
+
+export function listVideoSamples() {
+  return requestJson<VideoSample[]>("/api/video/samples");
 }
 
 export function stopVideoProcessing(taskId: string) {

@@ -6,7 +6,12 @@ import random
 import numpy as np
 from numpy.typing import NDArray
 
-from domain.calibration.models import CalibrationPoint, HomographyResult
+from domain.calibration.models import (
+    CalibrationPoint,
+    HomographyGrid,
+    HomographyGridLine,
+    HomographyResult,
+)
 
 
 class CalibrationService:
@@ -105,10 +110,81 @@ class CalibrationService:
         errors = np.linalg.norm(projected - world_points, axis=1)
         return float(math.sqrt(np.mean(errors**2)))
 
+    def build_homography_grid(
+        self,
+        homography: HomographyResult,
+        frame_width: int,
+        frame_height: int,
+        world_width_m: float,
+        world_length_m: float,
+        spacing_m: float = 5.0,
+    ) -> HomographyGrid:
+        if frame_width <= 0 or frame_height <= 0:
+            raise ValueError("frame dimensions must be positive")
+        if world_width_m <= 0 or world_length_m <= 0:
+            raise ValueError("world dimensions must be positive")
+        if spacing_m <= 0:
+            raise ValueError("grid spacing must be positive")
+
+        inverse_h = np.linalg.inv(homography.homography_matrix).astype(np.float64)
+        vertical_xs = self._grid_values(world_width_m, spacing_m)
+        horizontal_ys = self._grid_values(world_length_m, spacing_m)
+        lines = [
+            HomographyGridLine(
+                kind="longitudinal",
+                world_start=(x, 0.0),
+                world_end=(x, world_length_m),
+                pixel_start=self._world_to_pixel(inverse_h, x, 0.0),
+                pixel_end=self._world_to_pixel(inverse_h, x, world_length_m),
+            )
+            for x in vertical_xs
+        ]
+        lines.extend(
+            HomographyGridLine(
+                kind="lateral",
+                world_start=(0.0, y),
+                world_end=(world_width_m, y),
+                pixel_start=self._world_to_pixel(inverse_h, 0.0, y),
+                pixel_end=self._world_to_pixel(inverse_h, world_width_m, y),
+            )
+            for y in horizontal_ys
+        )
+        return HomographyGrid(
+            frame_width=frame_width,
+            frame_height=frame_height,
+            spacing_m=spacing_m,
+            world_width_m=world_width_m,
+            world_length_m=world_length_m,
+            generated_from="inverse_homography_projection",
+            lines=lines,
+        )
+
     @staticmethod
     def _is_collinear(points: NDArray[np.float64]) -> bool:
         centered = points - np.mean(points, axis=0)
         return bool(np.linalg.matrix_rank(centered, tol=1e-9) < 2)
+
+    @staticmethod
+    def _grid_values(max_value: float, spacing: float) -> list[float]:
+        values = [0.0]
+        current = spacing
+        while current < max_value:
+            values.append(float(current))
+            current += spacing
+        if not math.isclose(values[-1], max_value):
+            values.append(float(max_value))
+        return values
+
+    @staticmethod
+    def _world_to_pixel(
+        inverse_homography_matrix: NDArray[np.float64],
+        world_x: float,
+        world_y: float,
+    ) -> tuple[float, float]:
+        point = np.array([world_x, world_y, 1.0], dtype=float)
+        projected = inverse_homography_matrix @ point
+        projected = projected / projected[2]
+        return (float(projected[0]), float(projected[1]))
 
     @staticmethod
     def _solve_dlt(

@@ -16,6 +16,8 @@ class FrameReport:
     total_in: int
     total_out: int
     calibration_quality: str | None = None
+    calibration_diagnostics: dict[str, object] | None = None
+    homography_grid: dict[str, object] | None = None
     traffic_flow: dict[str, object] | None = None
     regional_people_count: dict[str, object] | None = None
     infrastructure_semantics: dict[str, object] | None = None
@@ -31,6 +33,8 @@ class FrameReport:
             "total_in": self.total_in,
             "total_out": self.total_out,
             "calibration_quality": self.calibration_quality,
+            "calibration_diagnostics": self.calibration_diagnostics,
+            "homography_grid": self.homography_grid,
             "traffic_flow": self.traffic_flow,
             "regional_people_count": self.regional_people_count,
             "infrastructure_semantics": self.infrastructure_semantics,

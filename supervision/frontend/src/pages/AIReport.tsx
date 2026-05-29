@@ -5,19 +5,22 @@ import { useAIReport } from "../hooks/useAIReport";
 import type { FrameReport } from "../types/frameReport";
 
 interface AIReportProps {
-  report: FrameReport;
+  report: FrameReport | null;
 }
 
 export function AIReport({ report }: AIReportProps) {
   const aiReport = useAIReport();
-  const [locationLabel, setLocationLabel] = useState("学校门口");
-  const [sceneTags, setSceneTags] = useState("school_zone,rain");
+  const [locationLabel, setLocationLabel] = useState("");
+  const [sceneTags, setSceneTags] = useState("");
 
   function runReport() {
+    if (!report) {
+      return;
+    }
     void aiReport.run(report, {
-      location_label: locationLabel,
+      location_label: locationLabel || undefined,
       scene_tags: sceneTags
-        .split(",")
+        .split(/[,，\s]+/)
         .map((tag) => tag.trim())
         .filter(Boolean)
     });
@@ -29,7 +32,7 @@ export function AIReport({ report }: AIReportProps) {
         <h2>AI 路况报告</h2>
         <button
           className="primary-button"
-          disabled={aiReport.isLoading}
+          disabled={!report || aiReport.isLoading}
           onClick={runReport}
           type="button"
         >
@@ -57,8 +60,18 @@ export function AIReport({ report }: AIReportProps) {
           <span>{aiReport.report.dynamic_context.scene.scene_tags.join(", ")}</span>
         </div>
       )}
-      <article className="report-output">
-        {aiReport.report?.report_markdown ?? "## 路况解析\n\n等待统计 JSON 输入。"}
+      {aiReport.error && <p className="task-error">AI 报告生成失败：{aiReport.error}</p>}
+      <article className={aiReport.displayedMarkdown ? "report-output" : "report-output empty"}>
+        {aiReport.displayedMarkdown ? (
+          <>
+            {aiReport.displayedMarkdown}
+            {aiReport.isTyping && <span className="typing-cursor" />}
+          </>
+        ) : aiReport.isLoading ? (
+          "正在读取当前 FrameReport 与动态上下文..."
+        ) : (
+          "等待真实分析完成。报告将使用后端返回的 FrameReport JSON。"
+        )}
       </article>
     </section>
   );

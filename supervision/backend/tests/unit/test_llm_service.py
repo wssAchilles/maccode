@@ -47,6 +47,38 @@ def test_llm_service_rule_based_fallback_without_provider() -> None:
     assert result.dynamic_context["physical_state"]["active_tracks"] == 1
 
 
+def test_llm_service_rule_based_report_mentions_density_and_red_light_risks() -> None:
+    report = generate_demo_report()
+    report["regional_people_count"] = {
+        "region_name": "hospital_gate",
+        "people_count": 220,
+        "integrated_people_count": 219.6,
+        "density_people_per_sqm": 2.8,
+        "estimation_method": "density_field_integral",
+        "density_integral_triggered": True,
+        "crowding_level": "critical",
+    }
+    report["infrastructure_semantics"] = {
+        "traffic_light_count": 1,
+        "stop_sign_count": 0,
+        "traffic_light_state": "red",
+        "violation_on_crosswalk": True,
+        "red_light_violation_candidate_track_ids": [12],
+        "dynamic_vehicle_count": 4,
+    }
+    report["safety_metrics"] = {
+        "risk_level": "critical",
+        "speeding_track_ids": [12],
+        "red_light_violation_track_ids": [12],
+    }
+
+    result = LLMService().generate_traffic_report(report, location_label="医院门口")
+
+    assert "人群密度" in result.report_markdown
+    assert "2.80 人/m²" in result.report_markdown
+    assert "red_light_violation" in result.report_markdown
+
+
 def test_generate_report_use_case_accepts_injected_llm_service() -> None:
     provider = RecordingProvider()
     use_case = GenerateReportUseCase(LLMService(provider=provider))
