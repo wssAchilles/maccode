@@ -9,7 +9,18 @@ from domain.crowd_density.models import CrowdDensityInput, CrowdDensityResult
 
 class CrowdDensityService:
     def analyze(self, request: CrowdDensityInput) -> CrowdDensityResult:
-        area_sqm = max(request.region_width_m * request.region_length_m, 1e-6)
+        area_sqm = max(
+            request.visible_area_sqm
+            if request.visible_area_sqm is not None
+            else request.region_width_m * request.region_length_m,
+            1e-6,
+        )
+        area_source = (
+            "configured_roi_polygon"
+            if request.visible_area_sqm is not None
+            and request.visible_area_source == "full_region_rect"
+            else request.visible_area_source
+        )
         if request.direct_detection_count < request.trigger_threshold:
             density = request.direct_detection_count / area_sqm
             return CrowdDensityResult(
@@ -28,6 +39,7 @@ class CrowdDensityService:
                     "cells_x": 0,
                     "cells_y": 0,
                     "visible_area_sqm": area_sqm,
+                    "visible_area_source": area_source,
                 },
             )
 
@@ -61,6 +73,7 @@ class CrowdDensityService:
                 "cells_x": int(density_grid.shape[1]) if density_grid.ndim == 2 else 0,
                 "cells_y": int(density_grid.shape[0]) if density_grid.ndim == 2 else 0,
                 "visible_area_sqm": area_sqm,
+                "visible_area_source": area_source,
                 "raw_integral_people": raw_integral,
                 "occlusion_correction_factor": correction,
             },

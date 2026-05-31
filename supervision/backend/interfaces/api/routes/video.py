@@ -7,6 +7,7 @@ import yaml
 from application.usecases.process_video import ProcessVideoUseCase
 from application.usecases.upload_video import UploadVideoUseCase
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from shared.schemas.common import ResponseWrapper
 
@@ -99,6 +100,19 @@ def list_video_samples() -> ResponseWrapper[list[dict[str, Any]]]:
             },
         )
     return ResponseWrapper.success_response(samples)
+
+
+@router.get("/video/samples/{sample_name}/raw")
+def get_video_sample_raw(sample_name: str) -> FileResponse:
+    samples_dir = PROJECT_ROOT / "data/tests/real_video_clips"
+    sample_path = (samples_dir / sample_name).resolve()
+    try:
+        sample_path.relative_to(samples_dir.resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid sample path") from exc
+    if sample_path.suffix.lower() != ".mp4" or not sample_path.exists():
+        raise HTTPException(status_code=404, detail="sample not found")
+    return FileResponse(sample_path, media_type="video/mp4", filename=sample_path.name)
 
 
 @router.get("/video/status/{task_id}", response_model=ResponseWrapper[dict[str, Any]])

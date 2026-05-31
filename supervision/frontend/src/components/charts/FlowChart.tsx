@@ -1,6 +1,7 @@
 import type { FrameReport, Track } from "../../types/frameReport";
 
 interface FlowChartProps {
+  className?: string;
   history?: FrameReport[];
   report: FrameReport | null;
 }
@@ -136,11 +137,12 @@ function formatMetric(value: number | null | undefined, suffix = "") {
   return finiteNumber(value) ? `${value.toFixed(1)}${suffix}` : "待收敛";
 }
 
-export function FlowChart({ history, report }: FlowChartProps) {
+export function FlowChart({ className = "", history, report }: FlowChartProps) {
+  const rootClassName = ["panel", "wide", className].filter(Boolean).join(" ");
   const reports = latestReports(report, history);
   if (reports.length === 0) {
     return (
-      <section className="panel wide">
+      <section className={rootClassName}>
         <div className="panel-heading">
           <h2>流量趋势</h2>
         </div>
@@ -168,7 +170,7 @@ export function FlowChart({ history, report }: FlowChartProps) {
   const currentVehicles = vehicleCount(currentReport);
 
   return (
-    <section className="panel wide">
+    <section className={rootClassName}>
       <div className="panel-heading">
         <h2>流量趋势</h2>
         <span className="panel-subtitle">q/k/v + 空间热力分布</span>

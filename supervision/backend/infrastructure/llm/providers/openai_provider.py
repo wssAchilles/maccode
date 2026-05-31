@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from typing import cast
+
 import httpx
 from openai import OpenAI
 from openai import OpenAI as OpenAIClient
+from openai.types.responses import EasyInputMessageParam, ResponseInputParam
 
-from infrastructure.llm.providers.base_provider import LLMProvider
+from infrastructure.llm.providers.base_provider import LLMMessage, LLMProvider
 
 
 class OpenAIProvider(LLMProvider):
@@ -13,10 +16,22 @@ class OpenAIProvider(LLMProvider):
         self.model = model
         self._client: OpenAIClient | None = None
 
-    def generate(self, prompt: str, temperature: float = 0.3, max_tokens: int = 800) -> str:
+    def generate(
+        self,
+        messages: list[LLMMessage],
+        temperature: float = 0.3,
+        max_tokens: int = 800,
+    ) -> str:
+        input_messages = [
+            EasyInputMessageParam(
+                role=message["role"],  # type: ignore[typeddict-item]
+                content=message["content"],
+            )
+            for message in messages
+        ]
         response = self._get_client().responses.create(
             model=self.model,
-            input=prompt,
+            input=cast(ResponseInputParam, input_messages),
             temperature=temperature,
             max_output_tokens=max_tokens,
         )

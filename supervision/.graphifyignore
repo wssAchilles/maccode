@@ -1,0 +1,29 @@
+# Graphify ignore — exclude temp, config, and non-project files
+.graphify_*
+graphify-out/
+.playwright-mcp/
+.claude/
+.codex/
+.git/
+.venv/
+__pycache__/
+node_modules/
+*.pyc
+*.pyo
+.env
+.env.*
+
+# Test data, videos, images — not part of architecture
+data/outputs/
+data/uploads/
+data/tests/*.mp4
+data/tests/*.avi
+data/tests/*.mov
+data/tests/*.jpg
+data/tests/*.png
+data/tests/*.DS_Store
+backend/data/
+*.DS_Store
+*.mp4
+*.avi
+*.mov

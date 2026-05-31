@@ -17,3 +17,4 @@ data/outputs/
 *.mov
 *.pt
 .DS_Store
+graphify-out

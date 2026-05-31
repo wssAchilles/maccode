@@ -18,7 +18,7 @@ import "./styles.css";
 function App() {
   const [activePage, setActivePage] = useState<PageKey>("realtime");
   const [zones, setZones] = useState<ZoneConfigType[]>([]);
-  const { report, refresh, status } = useRealtimeStats();
+  const { report, refresh, status, clear: clearRealtimeStats } = useRealtimeStats();
   const videoTask = useVideoTask();
   const statsHistory = useStatsHistory();
 
@@ -41,7 +41,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (videoTask.task?.status !== "running") {
+    if (videoTask.task?.status !== "running" || videoTask.task.processed_video_url) {
       return undefined;
     }
     const timer = window.setInterval(() => {
@@ -49,22 +49,15 @@ function App() {
       void statsHistory.refresh();
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [refresh, statsHistory.refresh, videoTask.task?.status]);
+  }, [refresh, statsHistory.refresh, videoTask.task?.processed_video_url, videoTask.task?.status]);
 
   async function startTask(file: File) {
     const nextTask = await videoTask.start(file);
     if (!nextTask) {
-      return;
+      return null;
     }
     await Promise.all([refresh(), statsHistory.refresh()]);
-  }
-
-  async function startSample(source: string) {
-    const nextTask = await videoTask.startSource(source);
-    if (!nextTask) {
-      return;
-    }
-    await Promise.all([refresh(), statsHistory.refresh()]);
+    return nextTask;
   }
 
   async function stopTask() {
@@ -73,6 +66,12 @@ function App() {
       return;
     }
     await statsHistory.refresh();
+  }
+
+  function resetVideoAnalysis() {
+    videoTask.clear();
+    clearRealtimeStats();
+    statsHistory.clear();
   }
 
   async function saveZones(nextZones: ZoneConfigType[]) {
@@ -90,8 +89,8 @@ function App() {
         <RealtimeMonitor
           history={statsHistory.history}
           isTaskLoading={videoTask.isLoading}
-          onStartSample={(source) => void startSample(source)}
-          onStartTask={(file) => void startTask(file)}
+          onResetAnalysis={resetVideoAnalysis}
+          onStartTask={startTask}
           onStopTask={() => void stopTask()}
           report={report}
           task={videoTask.task}

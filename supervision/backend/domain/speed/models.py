@@ -31,6 +31,9 @@ class TrackHistory:
     timestamps: list[float] = field(default_factory=list)
     speeds_kmh: list[float] = field(default_factory=list)
     rejected_observations: int = 0
+    displayed_speed_kmh: float | None = None
+    displayed_timestamp_sec: float | None = None
+    auxiliary_velocity_weight: float = 0.0
 
     def add_position(self, position: tuple[float, float], timestamp_sec: float) -> None:
         self.positions.append(position)

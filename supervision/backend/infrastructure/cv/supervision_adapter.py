@@ -18,6 +18,7 @@ class SupervisionAdapterResult:
 class SupervisionRuntimeAdapter:
     def __init__(self) -> None:
         self._tracker: Any | None = None
+        self._line_zones: dict[tuple[str, float, float, float, float], Any] = {}
 
     def track_and_count(
         self,
@@ -41,10 +42,7 @@ class SupervisionRuntimeAdapter:
         )
         tracker = self._get_tracker(sv)
         tracked = tracker.update_with_detections(sv_detections)
-        line_zone = sv.LineZone(
-            start=sv.Point(x=line_start[0], y=line_start[1]),
-            end=sv.Point(x=line_end[0], y=line_end[1]),
-        )
+        line_zone = self._get_line_zone(sv, line_start, line_end, zone_name)
         line_zone.trigger(tracked)
 
         return SupervisionAdapterResult(
@@ -56,6 +54,27 @@ class SupervisionRuntimeAdapter:
         if self._tracker is None:
             self._tracker = sv.ByteTrack()
         return self._tracker
+
+    def _get_line_zone(
+        self,
+        sv: Any,
+        line_start: tuple[float, float],
+        line_end: tuple[float, float],
+        zone_name: str,
+    ) -> Any:
+        key = (
+            zone_name,
+            float(line_start[0]),
+            float(line_start[1]),
+            float(line_end[0]),
+            float(line_end[1]),
+        )
+        if key not in self._line_zones:
+            self._line_zones[key] = sv.LineZone(
+                start=sv.Point(x=line_start[0], y=line_start[1]),
+                end=sv.Point(x=line_end[0], y=line_end[1]),
+            )
+        return self._line_zones[key]
 
     @staticmethod
     def _to_domain_tracks(tracked: Any, source: Detections) -> list[Track]:

@@ -44,8 +44,15 @@ def test_camera_profile_has_auto_calibration_candidates() -> None:
     profile = profiles["jackson_hole_signal_camera"]
 
     assert profile.manual_control_points
+    assert profile.calibration_trusted is True
+    assert profile.road_plane_polygon_world
+    assert profile.validation_segments
     assert profile.auto_candidate_lines
     assert profile.quality_gates["min_auto_confidence_for_auto_use"] == 0.75
+    assert profile.camera_intrinsics_prior["fov_deg"] > 0
+    assert profile.camera_mount_prior["height_m"] > 0
+    assert profile.vehicle_3d_priors["car"]["length_m"] == 4.5
+    assert profile.vehicle_3d_observations
 
 
 def test_auto_calibration_candidates_fallback_to_manual_profile() -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import numpy as np
 import pytest
 from domain.motion.router import MotionRouter
@@ -89,6 +91,96 @@ def test_car_uniform_speed_is_stable_and_physics_valid() -> None:
     assert record.physics_valid is True
     assert record.speed_confidence is not None
     assert record.speed_confidence >= profile.confidence_floor
+
+
+def test_uniform_vehicle_speed_display_resists_detection_jitter() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.2)
+    profile = MotionRouter().route_class(2)
+    target_speed_mps = 36.0 / 3.6
+    displayed_speeds: list[float] = []
+
+    for frame_index in range(90):
+        timestamp = frame_index / 30.0
+        jitter = 0.45 if frame_index % 2 == 0 else -0.45
+        speed = estimator.update(
+            43,
+            (target_speed_mps * timestamp + jitter, 0.12 * jitter),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.92,
+        )
+        if speed is not None:
+            displayed_speeds.append(speed)
+
+    assert displayed_speeds
+    assert displayed_speeds[-1] == pytest.approx(36.0, abs=3.0)
+    assert max(
+        abs(current - previous)
+        for previous, current in zip(displayed_speeds, displayed_speeds[1:], strict=False)
+    ) <= 1.5
+
+
+def test_uniform_pedestrian_speed_display_resists_random_footpoint_jitter() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.1)
+    profile = MotionRouter().route_class(0)
+    rng = random.Random(7)
+    target_speed_mps = 5.0 / 3.6
+    displayed_speeds: list[float] = []
+
+    for frame_index in range(120):
+        timestamp = frame_index / 30.0
+        footpoint_jitter_x = rng.uniform(-0.4, 0.4)
+        footpoint_jitter_y = rng.uniform(-0.08, 0.08)
+        speed = estimator.update(
+            44,
+            (
+                target_speed_mps * timestamp + footpoint_jitter_x,
+                footpoint_jitter_y,
+            ),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.9,
+        )
+        if speed is not None:
+            displayed_speeds.append(speed)
+
+    assert displayed_speeds
+    assert displayed_speeds[-1] == pytest.approx(5.0, abs=0.8)
+    assert max(
+        abs(current - previous)
+        for previous, current in zip(displayed_speeds, displayed_speeds[1:], strict=False)
+    ) <= 0.6
+
+
+def test_auxiliary_bev_velocity_stabilizes_jittered_ground_observations() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.12)
+    profile = MotionRouter().route_class(0)
+    rng = random.Random(11)
+    target_speed_mps = 5.5 / 3.6
+    displayed_speeds: list[float] = []
+
+    for frame_index in range(120):
+        timestamp = frame_index / 30.0
+        jitter_x = rng.uniform(-0.7, 0.7)
+        jitter_y = rng.uniform(-0.12, 0.12)
+        speed = estimator.update(
+            45,
+            (target_speed_mps * timestamp + jitter_x, jitter_y),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.85,
+            auxiliary_velocity_mps=(target_speed_mps, 0.0),
+            auxiliary_confidence=0.85,
+        )
+        if speed is not None:
+            displayed_speeds.append(speed)
+
+    assert displayed_speeds
+    assert displayed_speeds[-1] == pytest.approx(5.5, abs=0.55)
+    assert max(
+        abs(current - previous)
+        for previous, current in zip(displayed_speeds, displayed_speeds[1:], strict=False)
+    ) <= 0.45
 
 
 def test_vehicle_id_switch_jump_does_not_pollute_speed_record() -> None:

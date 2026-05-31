@@ -25,7 +25,10 @@ class FakeByteTrack:
 
 
 class FakeLineZone:
+    created_count = 0
+
     def __init__(self, start: object, end: object) -> None:
+        type(self).created_count += 1
         self.start = start
         self.end = end
         self.in_count = 1
@@ -36,6 +39,7 @@ class FakeLineZone:
 
 
 def install_fake_supervision(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeLineZone.created_count = 0
     fake = ModuleType("supervision")
     fake_any = cast(Any, fake)
     fake_any.Detections = FakeSvDetections
@@ -64,6 +68,23 @@ def test_supervision_adapter_converts_domain_detections_to_tracks_and_zone_count
     assert result.tracks[0].tracker_id == 1
     assert result.tracks[0].class_name == "car"
     assert result.zone_stats.in_count == 1
+
+
+def test_supervision_adapter_reuses_line_zone_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_supervision(monkeypatch)
+    adapter = SupervisionRuntimeAdapter()
+    detections = Detections(
+        items=[Detection([0, 0, 10, 10], 0.9, 2, "car")],
+        frame_index=1,
+        timestamp_sec=0.0,
+    )
+
+    adapter.track_and_count(detections, line_start=(0.0, 5.0), line_end=(20.0, 5.0))
+    adapter.track_and_count(detections, line_start=(0.0, 5.0), line_end=(20.0, 5.0))
+
+    assert FakeLineZone.created_count == 1
 
 
 def test_supervision_adapter_uses_tracked_class_id_for_class_name(

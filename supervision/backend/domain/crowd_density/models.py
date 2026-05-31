@@ -13,6 +13,8 @@ class CrowdDensityInput:
     trigger_threshold: int = 30
     cell_size_m: float = 1.0
     kernel_bandwidth_m: float = 1.5
+    visible_area_sqm: float | None = None
+    visible_area_source: str = "full_region_rect"
 
 
 @dataclass(frozen=True)
@@ -26,7 +28,7 @@ class CrowdDensityResult:
     estimation_method: str
     density_integral_triggered: bool
     crowding_level: str
-    density_field: dict[str, float | int]
+    density_field: dict[str, float | int | str]
     unit: str = "person"
     model_reference: str = "Model 9 density field integral + Model 10 fallback policy"
 

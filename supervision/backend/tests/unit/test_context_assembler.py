@@ -71,6 +71,38 @@ def test_context_assembler_ignores_unphysical_speed_values() -> None:
     )
 
 
+def test_context_assembler_suppresses_speed_when_calibration_untrusted() -> None:
+    report = generate_demo_report()
+    report["calibration_diagnostics"]["calibration_trusted"] = False
+    report["homography_grid"] = None
+    report["active_tracks"][0]["speed_kmh"] = 92.0
+    report["active_tracks"][0]["physics_valid"] = True
+    report["safety_metrics"] = {
+        "risk_level": "critical",
+        "speeding_track_ids": [1],
+        "min_time_headway_sec": 0.6,
+        "min_time_to_collision_sec": 1.2,
+    }
+
+    context = DynamicContextAssembler(speed_limit_kmh=30.0).assemble(
+        report,
+        location_label="学校门口",
+        scene_tags=["school_zone"],
+    )
+
+    assert context.physical_state["calibration_trusted"] is False
+    assert context.physical_state["avg_speed_kmh"] is None
+    assert context.motion_routes[0]["speed_kmh"] is None
+    assert context.motion_routes[0]["ground_position_m"]["x"] is None
+    assert context.motion_routes[0]["physics_valid"] is False
+    assert context.motion_routes[0]["raw_physics_valid"] is True
+    assert not any(signal["type"] == "backend_speeding_rule" for signal in context.risk_signals)
+    assert not any(
+        signal["type"] == "short_headway_or_collision_risk"
+        for signal in context.risk_signals
+    )
+
+
 def test_context_assembler_exports_prompt_payload() -> None:
     context = DynamicContextAssembler().assemble(generate_demo_report(), scene_tags=["demo"])
 

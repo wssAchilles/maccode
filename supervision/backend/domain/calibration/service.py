@@ -29,14 +29,24 @@ class CalibrationService:
         pixel_points = np.array([point.pixel for point in points], dtype=float)
         world_points = np.array([point.world for point in points], dtype=float)
         matrix, condition_number = self._solve_dlt(pixel_points, world_points)
-        rmse = self.compute_reprojection_error(matrix, pixel_points, world_points)
+        pixel_to_world_rmse_m, world_to_pixel_rmse_px = self.compute_bidirectional_errors(
+            matrix,
+            pixel_points,
+            world_points,
+        )
         return HomographyResult(
             homography_matrix=matrix,
-            reprojection_rmse=rmse,
+            reprojection_rmse=pixel_to_world_rmse_m,
+            pixel_to_world_rmse_m=pixel_to_world_rmse_m,
+            world_to_pixel_rmse_px=world_to_pixel_rmse_px,
             inlier_count=len(points),
             condition_number=condition_number,
             inlier_mask=[True] * len(points),
-            calibration_quality=self._classify_quality(rmse, condition_number, len(points)),
+            calibration_quality=self._classify_quality(
+                pixel_to_world_rmse_m,
+                condition_number,
+                len(points),
+            ),
         )
 
     def compute_homography_ransac(
@@ -90,15 +100,42 @@ class CalibrationService:
         inlier_pixels = pixel_points[best_mask]
         inlier_world = world_points[best_mask]
         matrix, condition_number = self._solve_dlt(inlier_pixels, inlier_world)
-        rmse = self.compute_reprojection_error(matrix, inlier_pixels, inlier_world)
+        pixel_to_world_rmse_m, world_to_pixel_rmse_px = self.compute_bidirectional_errors(
+            matrix,
+            inlier_pixels,
+            inlier_world,
+        )
         return HomographyResult(
             homography_matrix=matrix,
-            reprojection_rmse=rmse,
+            reprojection_rmse=pixel_to_world_rmse_m,
+            pixel_to_world_rmse_m=pixel_to_world_rmse_m,
+            world_to_pixel_rmse_px=world_to_pixel_rmse_px,
             inlier_count=best_inlier_count,
             condition_number=condition_number,
             inlier_mask=[bool(value) for value in best_mask.tolist()],
-            calibration_quality=self._classify_quality(rmse, condition_number, best_inlier_count),
+            calibration_quality=self._classify_quality(
+                pixel_to_world_rmse_m,
+                condition_number,
+                best_inlier_count,
+            ),
         )
+
+    def compute_bidirectional_errors(
+        self,
+        homography_matrix: NDArray[np.float64],
+        pixel_points: NDArray[np.float64],
+        world_points: NDArray[np.float64],
+    ) -> tuple[float, float]:
+        pixel_to_world_rmse_m = self.compute_reprojection_error(
+            homography_matrix,
+            pixel_points,
+            world_points,
+        )
+        inverse_homography = np.linalg.inv(homography_matrix).astype(np.float64)
+        projected_pixels = self._project_points(inverse_homography, world_points)
+        pixel_errors = np.linalg.norm(projected_pixels - pixel_points, axis=1)
+        world_to_pixel_rmse_px = float(math.sqrt(np.mean(pixel_errors**2)))
+        return pixel_to_world_rmse_m, world_to_pixel_rmse_px
 
     def compute_reprojection_error(
         self,
@@ -118,6 +155,10 @@ class CalibrationService:
         world_width_m: float,
         world_length_m: float,
         spacing_m: float = 5.0,
+        calibration_source: str = "manual_or_synthetic",
+        calibration_trusted: bool = True,
+        road_plane_polygon_world: list[tuple[float, float]] | None = None,
+        validation_max_error_px: float | None = None,
     ) -> HomographyGrid:
         if frame_width <= 0 or frame_height <= 0:
             raise ValueError("frame dimensions must be positive")
@@ -127,28 +168,51 @@ class CalibrationService:
             raise ValueError("grid spacing must be positive")
 
         inverse_h = np.linalg.inv(homography.homography_matrix).astype(np.float64)
+        clipping_polygon = road_plane_polygon_world or [
+            (0.0, 0.0),
+            (world_width_m, 0.0),
+            (world_width_m, world_length_m),
+            (0.0, world_length_m),
+        ]
         vertical_xs = self._grid_values(world_width_m, spacing_m)
         horizontal_ys = self._grid_values(world_length_m, spacing_m)
-        lines = [
-            HomographyGridLine(
-                kind="longitudinal",
-                world_start=(x, 0.0),
-                world_end=(x, world_length_m),
-                pixel_start=self._world_to_pixel(inverse_h, x, 0.0),
-                pixel_end=self._world_to_pixel(inverse_h, x, world_length_m),
+        lines: list[HomographyGridLine] = []
+        for x in vertical_xs:
+            clipped = self._clip_segment_to_convex_polygon(
+                (x, 0.0),
+                (x, world_length_m),
+                clipping_polygon,
             )
-            for x in vertical_xs
-        ]
-        lines.extend(
-            HomographyGridLine(
-                kind="lateral",
-                world_start=(0.0, y),
-                world_end=(world_width_m, y),
-                pixel_start=self._world_to_pixel(inverse_h, 0.0, y),
-                pixel_end=self._world_to_pixel(inverse_h, world_width_m, y),
+            if clipped is None:
+                continue
+            world_start, world_end = clipped
+            lines.append(
+                HomographyGridLine(
+                    kind="longitudinal",
+                    world_start=world_start,
+                    world_end=world_end,
+                    pixel_start=self._world_to_pixel(inverse_h, *world_start),
+                    pixel_end=self._world_to_pixel(inverse_h, *world_end),
+                ),
             )
-            for y in horizontal_ys
-        )
+        for y in horizontal_ys:
+            clipped = self._clip_segment_to_convex_polygon(
+                (0.0, y),
+                (world_width_m, y),
+                clipping_polygon,
+            )
+            if clipped is None:
+                continue
+            world_start, world_end = clipped
+            lines.append(
+                HomographyGridLine(
+                    kind="lateral",
+                    world_start=world_start,
+                    world_end=world_end,
+                    pixel_start=self._world_to_pixel(inverse_h, *world_start),
+                    pixel_end=self._world_to_pixel(inverse_h, *world_end),
+                ),
+            )
         return HomographyGrid(
             frame_width=frame_width,
             frame_height=frame_height,
@@ -156,8 +220,57 @@ class CalibrationService:
             world_width_m=world_width_m,
             world_length_m=world_length_m,
             generated_from="inverse_homography_projection",
+            calibration_source=calibration_source,
+            calibration_trusted=calibration_trusted,
+            pixel_rmse_px=homography.world_to_pixel_rmse_px,
+            world_rmse_m=homography.pixel_to_world_rmse_m,
+            validation_max_error_px=validation_max_error_px,
+            road_plane_polygon_world=clipping_polygon,
             lines=lines,
         )
+
+    @staticmethod
+    def _clip_segment_to_convex_polygon(
+        start: tuple[float, float],
+        end: tuple[float, float],
+        polygon: list[tuple[float, float]],
+    ) -> tuple[tuple[float, float], tuple[float, float]] | None:
+        if len(polygon) < 3:
+            return (start, end)
+        area = 0.0
+        for index, point in enumerate(polygon):
+            next_point = polygon[(index + 1) % len(polygon)]
+            area += point[0] * next_point[1] - next_point[0] * point[1]
+        orientation = 1.0 if area >= 0 else -1.0
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        enter = 0.0
+        leave = 1.0
+        eps = 1e-9
+
+        for index, edge_start in enumerate(polygon):
+            edge_end = polygon[(index + 1) % len(polygon)]
+            edge_x = edge_end[0] - edge_start[0]
+            edge_y = edge_end[1] - edge_start[1]
+            start_x = start[0] - edge_start[0]
+            start_y = start[1] - edge_start[1]
+            numerator = orientation * (edge_x * start_y - edge_y * start_x)
+            denominator = orientation * (edge_x * dy - edge_y * dx)
+            if abs(denominator) < eps:
+                if numerator < -eps:
+                    return None
+                continue
+            crossing = -numerator / denominator
+            if denominator > 0:
+                enter = max(enter, crossing)
+            else:
+                leave = min(leave, crossing)
+            if enter - leave > eps:
+                return None
+
+        clipped_start = (start[0] + dx * enter, start[1] + dy * enter)
+        clipped_end = (start[0] + dx * leave, start[1] + dy * leave)
+        return (clipped_start, clipped_end)
 
     @staticmethod
     def _is_collinear(points: NDArray[np.float64]) -> bool:
@@ -191,17 +304,42 @@ class CalibrationService:
         pixel_points: NDArray[np.float64],
         world_points: NDArray[np.float64],
     ) -> tuple[NDArray[np.float64], float]:
+        pixel_normalized, pixel_transform = CalibrationService._normalize_points(pixel_points)
+        world_normalized, world_transform = CalibrationService._normalize_points(world_points)
         rows: list[list[float]] = []
-        for (u, v), (x, y) in zip(pixel_points, world_points, strict=True):
+        for (u, v), (x, y) in zip(pixel_normalized, world_normalized, strict=True):
             rows.append([u, v, 1.0, 0.0, 0.0, 0.0, -u * x, -v * x, -x])
             rows.append([0.0, 0.0, 0.0, u, v, 1.0, -u * y, -v * y, -y])
         a = np.array(rows, dtype=float)
         _, singular_values, vh = np.linalg.svd(a)
         h = vh[-1].reshape(3, 3)
+        h = np.linalg.inv(world_transform) @ h @ pixel_transform
         if abs(h[2, 2]) > 1e-12:
             h = h / h[2, 2]
         condition_number = float(singular_values[0] / singular_values[-1])
         return h.astype(np.float64), condition_number
+
+    @staticmethod
+    def _normalize_points(
+        points: NDArray[np.float64],
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        centroid = np.mean(points, axis=0)
+        distances = np.linalg.norm(points - centroid, axis=1)
+        mean_distance = float(np.mean(distances))
+        scale = math.sqrt(2.0) / mean_distance if mean_distance > 1e-12 else 1.0
+        transform = np.array(
+            [
+                [scale, 0.0, -scale * centroid[0]],
+                [0.0, scale, -scale * centroid[1]],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=float,
+        )
+        ones = np.ones((points.shape[0], 1), dtype=float)
+        homogeneous = np.hstack([points, ones])
+        normalized = homogeneous @ transform.T
+        normalized = normalized / normalized[:, 2:3]
+        return normalized[:, :2], transform
 
     @staticmethod
     def _project_points(

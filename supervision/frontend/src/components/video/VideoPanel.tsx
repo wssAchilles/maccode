@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type SyntheticEvent } from "react";
 
 import type { HomographyGrid, SafetyMetrics, Track } from "../../types/frameReport";
 import { formatDegrees, formatSpeedInterval, formatValidatedSpeed } from "../../utils/formatters";
@@ -10,11 +10,18 @@ interface VideoPanelProps {
   safetyMetrics?: SafetyMetrics | null;
   videoUrl?: string | null;
   calibrationQuality?: string | null;
+  onPlaybackSnapshot?: (snapshot: VideoPlaybackSnapshot) => void;
 }
 
 interface ViewBox {
   width: number;
   height: number;
+}
+
+export interface VideoPlaybackSnapshot {
+  currentTimeSec: number;
+  durationSec: number;
+  isPlaying: boolean;
 }
 
 const DEFAULT_VIEW_BOX = { width: 1280, height: 720 };
@@ -84,7 +91,7 @@ function useHomographyCanvas(grid: HomographyGrid | null | undefined) {
       return;
     }
     context.clearRect(0, 0, canvas.width, canvas.height);
-    if (!grid) {
+    if (!grid?.calibration_trusted) {
       return;
     }
     context.save();
@@ -110,32 +117,52 @@ export function VideoPanel({
   renderedByBackend = false,
   safetyMetrics,
   videoUrl,
-  calibrationQuality
+  calibrationQuality,
+  onPlaybackSnapshot
 }: VideoPanelProps) {
   const viewBox = homographyGrid
     ? { width: homographyGrid.frame_width, height: homographyGrid.frame_height }
     : DEFAULT_VIEW_BOX;
   const syntheticScale = !homographyGrid && usesSyntheticScale(tracks);
   const canvasRef = useHomographyCanvas(homographyGrid);
-  const showHomographyGrid = Boolean(videoUrl && homographyGrid);
+  const showHomographyGrid = Boolean(videoUrl && homographyGrid?.calibration_trusted);
   const showClientTrackOverlay = Boolean(videoUrl) && !renderedByBackend;
-  const showBackendBadge = Boolean(videoUrl) && renderedByBackend;
+  const emitPlaybackSnapshot = (event: SyntheticEvent<HTMLVideoElement>, isPlaying?: boolean) => {
+    const video = event.currentTarget;
+    onPlaybackSnapshot?.({
+      currentTimeSec: video.currentTime,
+      durationSec: Number.isFinite(video.duration) ? video.duration : 0,
+      isPlaying: isPlaying ?? !video.paused
+    });
+  };
 
   return (
     <section className="video-surface">
       {videoUrl ? (
         <video
-          autoPlay={renderedByBackend}
+          autoPlay
           className="analysis-video"
           controls
           loop={renderedByBackend}
           muted
+          onLoadedMetadata={(event) => emitPlaybackSnapshot(event, !event.currentTarget.paused)}
+          onPause={(event) => emitPlaybackSnapshot(event, false)}
+          onPlay={(event) => emitPlaybackSnapshot(event, true)}
+          onTimeUpdate={(event) => emitPlaybackSnapshot(event)}
           playsInline
           src={videoUrl}
         />
       ) : (
-        <div className="video-placeholder">
-          <span>请选择 MP4 并开始真实分析</span>
+        <div className="video-placeholder" aria-label="video signal standby">
+          <div className="video-scanner">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="video-placeholder-copy">
+            <strong>视频信号待接入</strong>
+            <span>CV Pipeline Standby</span>
+          </div>
         </div>
       )}
       {showHomographyGrid && (
@@ -189,13 +216,6 @@ export function VideoPanel({
             })}
           </svg>
         </>
-      )}
-      {showBackendBadge && (
-        <div className="overlay-badge">
-          <strong>Homography Grid</strong>
-          <span>{`Calibration ${calibrationQuality ?? "N/A"}`}</span>
-          <small>backend_rendered_processed_mp4</small>
-        </div>
       )}
     </section>
   );

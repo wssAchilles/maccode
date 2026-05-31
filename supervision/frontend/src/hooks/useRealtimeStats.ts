@@ -19,5 +19,10 @@ export function useRealtimeStats() {
     }
   }, []);
 
-  return { report, status, refresh };
+  const clear = useCallback(() => {
+    setReport(null);
+    setStatus("idle");
+  }, []);
+
+  return { report, status, refresh, clear };
 }

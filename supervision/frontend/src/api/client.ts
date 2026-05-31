@@ -11,6 +11,10 @@ export interface ApiEnvelope<T> {
 const configuredBaseUrl = String(import.meta.env.VITE_API_BASE_URL ?? "").trim();
 const API_BASE_URL = configuredBaseUrl || (import.meta.env.PROD ? "http://127.0.0.1:8000" : "");
 
+export function buildApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`;
+}
+
 export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
   const headers = isFormData
@@ -26,7 +30,10 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
       ...init,
       headers,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
     const target = API_BASE_URL ? `${API_BASE_URL}${path}` : path;
     throw new Error(`无法连接后端 API：${target}。请确认 FastAPI 后端已在 8000 端口运行。`);
   }

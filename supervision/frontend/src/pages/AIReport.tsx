@@ -1,6 +1,7 @@
 import { Bot } from "lucide-react";
 import { useState } from "react";
 
+import { LLMReportViewer } from "../components/ai/LLMReportViewer";
 import { useAIReport } from "../hooks/useAIReport";
 import type { FrameReport } from "../types/frameReport";
 
@@ -61,18 +62,14 @@ export function AIReport({ report }: AIReportProps) {
         </div>
       )}
       {aiReport.error && <p className="task-error">AI 报告生成失败：{aiReport.error}</p>}
-      <article className={aiReport.displayedMarkdown ? "report-output" : "report-output empty"}>
-        {aiReport.displayedMarkdown ? (
-          <>
-            {aiReport.displayedMarkdown}
-            {aiReport.isTyping && <span className="typing-cursor" />}
-          </>
-        ) : aiReport.isLoading ? (
-          "正在读取当前 FrameReport 与动态上下文..."
-        ) : (
-          "等待真实分析完成。报告将使用后端返回的 FrameReport JSON。"
-        )}
-      </article>
+      <LLMReportViewer
+        className="report-output"
+        emptyText="等待真实分析完成。报告将使用后端返回的 FrameReport JSON。"
+        isLoading={aiReport.isLoading}
+        isTyping={aiReport.isTyping}
+        loadingText="正在读取当前 FrameReport 与动态上下文..."
+        markdown={aiReport.displayedMarkdown}
+      />
     </section>
   );
 }

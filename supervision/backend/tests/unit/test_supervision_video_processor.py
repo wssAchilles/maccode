@@ -67,6 +67,28 @@ class MultiObjectAdapter:
         )()
 
 
+class ZeroCountAdapter:
+    def track_and_count(
+        self,
+        detections: Detections,
+        line_start: tuple[float, float],
+        line_end: tuple[float, float],
+        zone_name: str = "main_gate",
+    ) -> object:
+        tracks = [
+            detection.to_track(1, detections.frame_index)
+            for detection in detections.items
+        ]
+        return type(
+            "AdapterResult",
+            (),
+            {
+                "tracks": tracks,
+                "zone_stats": ZoneStats(zone_name, in_count=0, out_count=0),
+            },
+        )()
+
+
 class SequenceDetector:
     def __init__(self, frames: dict[int, list[Detection]]) -> None:
         self.frames = frames
@@ -103,6 +125,10 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
         calibration=calibration,
         zone=ZoneConfig("main_gate", [0, 5], [100, 5]),
         fps=24.0,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
     ).process_frames(frames)
 
     assert report["active_tracks"][0]["speed_kmh"] is not None
@@ -115,6 +141,7 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
     assert report["active_tracks"][0]["heading_deg"] is not None
     assert report["calibration_quality"] == "excellent"
     assert report["homography_grid"]["generated_from"] == "inverse_homography_projection"
+    assert report["homography_grid"]["calibration_trusted"] is True
     assert report["homography_grid"]["lines"]
     assert report["traffic_flow"]["density_k_veh_per_km"] > 0
     assert report["regional_people_count"]["people_count"] == 0
@@ -194,10 +221,115 @@ def test_supervision_video_processor_renders_processed_mp4(tmp_path: Path) -> No
         frame_width=100,
         frame_height=100,
         rendered_video_path=output_path,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
     ).process_frames(frames)
 
     assert output_path.exists()
     assert output_path.stat().st_size > 0
+
+
+def test_scene_profile_preset_does_not_generate_homography_grid() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=FakeDetector(),
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 5], [100, 5]),
+        fps=24.0,
+        calibration_context={
+            "calibration_source": "scene_profile_preset",
+            "calibration_trusted": False,
+        },
+    ).process_frames(
+        [VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), frame_index=1, timestamp_sec=0.0)]
+    )
+
+    assert report["homography_grid"] is None
+    assert report["calibration_diagnostics"]["calibration_trusted"] is False
+    assert (
+        "untrusted_calibration_grid_suppressed"
+        in report["calibration_diagnostics"]["error_sources"]
+    )
+
+
+def test_real_video_processor_counts_line_crossing_from_persistent_track_geometry() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+    frames = [
+        VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), frame_index=1, timestamp_sec=0.0),
+        VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), frame_index=2, timestamp_sec=0.1),
+    ]
+    detector = SequenceDetector(
+        {
+            1: [Detection([10, 0, 30, 8], 0.9, 2, "car")],
+            2: [Detection([10, 12, 30, 24], 0.9, 2, "car")],
+        }
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=detector,
+        adapter=ZeroCountAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("stop_line", [0, 10], [60, 10]),
+        fps=10.0,
+        frame_width=100,
+        frame_height=100,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
+    ).process_frames(frames)
+
+    assert report["zone_stats"] == [{"name": "stop_line", "in_count": 1, "out_count": 0}]
+    assert report["total_in"] == 1
+    assert report["total_out"] == 0
+
+
+def test_validation_error_suppresses_manual_homography_grid() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=FakeDetector(),
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 5], [100, 5]),
+        fps=24.0,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+            "validation_max_error_px": 31.0,
+        },
+    ).process_frames(
+        [VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), frame_index=1, timestamp_sec=0.0)]
+    )
+
+    assert report["homography_grid"] is None
+    assert report["calibration_diagnostics"]["calibration_trusted"] is False
+    assert report["calibration_diagnostics"]["validation_max_error_px"] == 31.0
 
 
 def test_traffic_flow_ignores_stale_speed_records_for_inactive_tracks() -> None:
@@ -279,6 +411,54 @@ def test_regional_people_count_uses_density_field_integral_for_crowds() -> None:
     assert float(cast(float, people["density_people_per_sqm"])) > 0
     assert float(cast(float, density_field["cell_size_m"])) > 0
     assert "density_integral_fallback" not in str(people)
+
+
+def test_regional_people_count_uses_profile_density_polygon_area() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+    processor = SupervisionVideoProcessor(
+        detector=FakeDetector(),
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("main_gate", [0, 50], [100, 50]),
+        fps=24.0,
+        segment_width_m=10.0,
+        segment_length_m=20.0,
+        calibration_context={
+            "profile_polygon_zones": [
+                {
+                    "name": "pedestrian_density_area",
+                    "points_ratio": [[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]],
+                }
+            ]
+        },
+    )
+    people_tracks = [
+        Track(
+            tracker_id=index,
+            class_id=0,
+            class_name="person",
+            confidence=0.8,
+            xyxy=[10.0 + index * 3, 10.0, 12.0 + index * 3, 18.0],
+            first_seen_frame=1,
+            last_seen_frame=1,
+        )
+        for index in range(4)
+    ]
+
+    people = processor._build_regional_people_count(people_tracks)  # noqa: SLF001
+    density_field = cast(dict[str, Any], people["density_field"])
+
+    assert people["region_name"] == "pedestrian_density_area"
+    assert people["density_people_per_sqm"] == 0.04
+    assert density_field["visible_area_sqm"] == 100.0
+    assert density_field["visible_area_source"] == "configured_roi_polygon"
 
 
 def test_red_light_roi_state_and_stop_line_violation_are_reported() -> None:

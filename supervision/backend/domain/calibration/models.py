@@ -35,6 +35,8 @@ class CalibrationConfig:
 class HomographyResult:
     homography_matrix: NDArray[np.float64]
     reprojection_rmse: float
+    pixel_to_world_rmse_m: float
+    world_to_pixel_rmse_px: float
     inlier_count: int
     condition_number: float
     inlier_mask: list[bool]
@@ -67,6 +69,12 @@ class HomographyGrid:
     world_width_m: float
     world_length_m: float
     generated_from: str
+    calibration_source: str
+    calibration_trusted: bool
+    pixel_rmse_px: float
+    world_rmse_m: float
+    validation_max_error_px: float | None
+    road_plane_polygon_world: list[tuple[float, float]] | None
     lines: list[HomographyGridLine]
 
     def to_dict(self) -> dict[str, object]:
@@ -77,5 +85,15 @@ class HomographyGrid:
             "world_width_m": self.world_width_m,
             "world_length_m": self.world_length_m,
             "generated_from": self.generated_from,
+            "calibration_source": self.calibration_source,
+            "calibration_trusted": self.calibration_trusted,
+            "pixel_rmse_px": self.pixel_rmse_px,
+            "world_rmse_m": self.world_rmse_m,
+            "validation_max_error_px": self.validation_max_error_px,
+            "road_plane_polygon_world": [
+                list(point) for point in self.road_plane_polygon_world
+            ]
+            if self.road_plane_polygon_world is not None
+            else None,
             "lines": [line.to_dict() for line in self.lines],
         }

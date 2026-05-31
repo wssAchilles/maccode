@@ -68,6 +68,12 @@ export interface HomographyGrid {
   world_width_m: number;
   world_length_m: number;
   generated_from: string;
+  calibration_source: string;
+  calibration_trusted: boolean;
+  pixel_rmse_px: number;
+  world_rmse_m: number;
+  validation_max_error_px: number | null;
+  road_plane_polygon_world: Array<[number, number]> | null;
   lines: HomographyGridLine[];
 }
 
@@ -109,6 +115,11 @@ export interface CalibrationDiagnostics {
     candidate_lines: Array<Record<string, unknown>>;
   } | null;
   calibration_quality: string;
+  calibration_trusted?: boolean;
+  declared_calibration_trusted?: boolean;
+  pixel_to_world_rmse_m?: number;
+  world_to_pixel_rmse_px?: number;
+  validation_max_error_px?: number | null;
   reprojection_rmse_px: number;
   inlier_count: number;
   condition_number: number;

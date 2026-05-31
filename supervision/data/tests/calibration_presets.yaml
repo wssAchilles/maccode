@@ -68,9 +68,48 @@ video_calibration_template:
       world_y: 75.0
 video_calibrations:
   023_complex_signal_day_wide_0010s_30s.mp4:
-    notes: Manually refined road-plane calibration for the Jackson Hole Town Square demo. Points follow the visible drivable pavement trapezoid instead of the earlier illustrative template.
+    notes: Manually refined road-plane calibration for the Jackson Hole Town Square
+      demo. Points follow the visible drivable pavement trapezoid instead of the earlier
+      illustrative template.
     position_rmse_floor_m: 1.3
     calibration_scale_uncertainty_pct: 6.0
+    calibration_trusted: false
+    road_plane_polygon_world:
+    - - 0.0
+      - 0.0
+    - - 28.0
+      - 0.0
+    - - 28.0
+      - 75.0
+    - - 0.0
+      - 75.0
+    validation_segments:
+    - name: near_stop_width
+      pixel_start:
+      - 360.0
+      - 708.0
+      pixel_end:
+      - 1188.0
+      - 708.0
+      world_start:
+      - 0.0
+      - 0.0
+      world_end:
+      - 28.0
+      - 0.0
+    - name: left_road_edge
+      pixel_start:
+      - 360.0
+      - 708.0
+      pixel_end:
+      - 500.0
+      - 426.0
+      world_start:
+      - 0.0
+      - 0.0
+      world_end:
+      - 0.0
+      - 75.0
     points:
     - pixel_x: 360.0
       pixel_y: 708.0
@@ -97,34 +136,126 @@ video_calibrations:
       world_x: 14.0
       world_y: 55.0
   026_complex_signal_day_wide_0115s_30s.mp4:
-    notes: Golden signalized-intersection calibration. Same fixed Jackson Hole camera as 023, refined to the drivable road plane for the denser 026 traffic segment.
-    position_rmse_floor_m: 1.3
-    calibration_scale_uncertainty_pct: 6.0
+    notes: Codex-assisted standard-prior calibration picks for 026_complex_signal_day_wide_0115s_30s.mp4.
+    position_rmse_floor_m: 1.8
+    calibration_scale_uncertainty_pct: 12.0
+    calibration_trusted: true
+    annotation_method: codex_assisted_manual_ground_control_picker
+    annotation_confidence: 0.78
+    evidence_sources:
+    - codex_assisted_pixel_clicks_on_exported_keyframe
+    - traffic_standard_meter_scale_anchor
+    - visible_lane_edge_or_pavement_boundary_landmarks
+    - homography_samples_from_manual_ground_plane_roi
+    auto_geometry: null
+    scale_constraints: []
+    scale_prior:
+      kind: traffic_standard_or_survey
+      description: 'Scale anchored by an urban multi-lane road-width prior: about
+        five lane-equivalent widths at 3.5 m per lane. Pixel anchors were selected
+        from visible asphalt road edges and lane/curb directions on the keyframe.'
+    profile_notes: Jackson Hole fixed signal camera. The calibrated plane is restricted
+      to the main visible asphalt approach and excludes traffic-light gantries, vehicles,
+      trees, building facades, and sidewalk vertical faces.
+    road_plane_polygon_pixel:
+    - - 520.0
+      - 592.0
+    - - 1206.0
+      - 586.0
+    - - 1146.0
+      - 328.0
+    - - 674.0
+      - 386.0
+    road_plane_polygon_world:
+    - - 0.0
+      - 0.0
+    - - 18.0
+      - 0.0
+    - - 18.0
+      - 70.0
+    - - 0.0
+      - 70.0
+    validation_segments:
+    - name: near_lateral_lane_bundle
+      pixel_start:
+      - 532.0
+      - 586.0
+      pixel_end:
+      - 1192.0
+      - 580.0
+      world_start:
+      - 0.28
+      - 1.43
+      world_end:
+      - 17.76
+      - 1.06
+    - name: far_lateral_approach_marking
+      pixel_start:
+      - 720.0
+      - 420.0
+      pixel_end:
+      - 1122.0
+      - 392.0
+      world_start:
+      - 3.35
+      - 51.44
+      world_end:
+      - 16.98
+      - 47.12
+    - name: right_road_edge_depth
+      pixel_start:
+      - 1198.0
+      - 586.0
+      pixel_end:
+      - 1162.0
+      - 420.0
+      world_start:
+      - 17.85
+      - 0.01
+      world_end:
+      - 17.87
+      - 37.34
     points:
-    - pixel_x: 360.0
-      pixel_y: 708.0
+    - pixel_x: 520.0
+      pixel_y: 592.0
       world_x: 0.0
       world_y: 0.0
-    - pixel_x: 1188.0
-      pixel_y: 708.0
-      world_x: 28.0
+    - pixel_x: 1206.0
+      pixel_y: 586.0
+      world_x: 18.0
       world_y: 0.0
-    - pixel_x: 1032.0
-      pixel_y: 302.0
-      world_x: 28.0
-      world_y: 75.0
-    - pixel_x: 500.0
-      pixel_y: 426.0
+    - pixel_x: 1146.0
+      pixel_y: 328.0
+      world_x: 18.0
+      world_y: 70.0
+    - pixel_x: 674.0
+      pixel_y: 386.0
       world_x: 0.0
-      world_y: 75.0
-    - pixel_x: 774.0
-      pixel_y: 560.0
-      world_x: 14.0
-      world_y: 25.0
-    - pixel_x: 850.0
-      pixel_y: 398.0
-      world_x: 14.0
-      world_y: 55.0
+      world_y: 70.0
+    - pixel_x: 670.66
+      pixel_y: 555.06
+      world_x: 4.5
+      world_y: 8.4
+    - pixel_x: 989.29
+      pixel_y: 545.93
+      world_x: 13.5
+      world_y: 8.4
+    - pixel_x: 1043.37
+      pixel_y: 432.77
+      world_x: 14.76
+      world_y: 36.4
+    - pixel_x: 692.32
+      pixel_y: 460.95
+      world_x: 3.24
+      world_y: 36.4
+    - pixel_x: 792.09
+      pixel_y: 398.57
+      world_x: 5.94
+      world_y: 57.4
+    - pixel_x: 959.77
+      pixel_y: 380.34
+      world_x: 12.06
+      world_y: 57.4
   028_red_light_static_0008s_30s.mp4:
     notes: 'Initial independent stop-line calibration for the golden red-light demo.
       Refine in the calibration workbench before making final enforcement claims.
@@ -191,89 +322,365 @@ video_calibrations:
       world_x: 11.0
       world_y: 45.0
   042_pedestrian_crowd_high_view_0270s_30s.mp4:
-    notes: Golden pedestrian-density calibration. Points follow the visible pedestrian pavement corridor and are intended for crowd counting and density demonstration.
-    position_rmse_floor_m: 1.0
-    calibration_scale_uncertainty_pct: 5.0
+    notes: Codex-assisted standard-prior calibration picks for 042_pedestrian_crowd_high_view_0270s_30s.mp4.
+    position_rmse_floor_m: 1.2
+    calibration_scale_uncertainty_pct: 10.0
+    calibration_trusted: true
+    annotation_method: codex_assisted_manual_ground_control_picker
+    annotation_confidence: 0.78
+    evidence_sources:
+    - codex_assisted_pixel_clicks_on_exported_keyframe
+    - traffic_standard_meter_scale_anchor
+    - visible_lane_edge_or_pavement_boundary_landmarks
+    - homography_samples_from_manual_ground_plane_roi
+    auto_geometry: null
+    scale_constraints: []
+    scale_prior:
+      kind: traffic_standard_or_survey
+      description: 'Scale anchored by pedestrian-street corridor priors: a broad retail
+        walking lane bounded by visible pavement bands, with meter scale checked against
+        repeated pavement modules and adult walking-space dimensions.'
+    profile_notes: High-view pedestrian corridor. The calibrated plane is the central
+      walking surface bounded by the two long dark pavement bands; benches, bins,
+      people, shopfronts, and facade edges are excluded.
+    road_plane_polygon_pixel:
+    - - 0.0
+      - 1048.0
+    - - 1060.0
+      - 1070.0
+    - - 1540.0
+      - 0.0
+    - - 560.0
+      - 0.0
+    road_plane_polygon_world:
+    - - 0.0
+      - 0.0
+    - - 12.0
+      - 0.0
+    - - 12.0
+      - 45.0
+    - - 0.0
+      - 45.0
+    validation_segments:
+    - name: left_pavement_band_depth
+      pixel_start:
+      - 110.0
+      - 900.0
+      pixel_end:
+      - 520.0
+      - 140.0
+      world_start:
+      - 0.36
+      - 5.91
+      world_end:
+      - 0.43
+      - 38.52
+    - name: right_pavement_band_depth
+      pixel_start:
+      - 1038.0
+      - 910.0
+      pixel_end:
+      - 1510.0
+      - 100.0
+      world_start:
+      - 10.95
+      - 6.17
+      world_end:
+      - 12.18
+      - 40.44
+    - name: mid_corridor_width
+      pixel_start:
+      - 300.0
+      - 640.0
+      pixel_end:
+      - 1160.0
+      - 650.0
+      world_start:
+      - 0.97
+      - 16.63
+      world_end:
+      - 10.99
+      - 16.67
     points:
-    - pixel_x: 120.0
-      pixel_y: 1050.0
+    - pixel_x: 0.0
+      pixel_y: 1048.0
       world_x: 0.0
       world_y: 0.0
-    - pixel_x: 1410.0
-      pixel_y: 1050.0
-      world_x: 22.0
+    - pixel_x: 1060.0
+      pixel_y: 1070.0
+      world_x: 12.0
       world_y: 0.0
-    - pixel_x: 1700.0
-      pixel_y: 120.0
-      world_x: 22.0
+    - pixel_x: 1540.0
+      pixel_y: -0.0
+      world_x: 12.0
       world_y: 45.0
-    - pixel_x: 820.0
-      pixel_y: 120.0
+    - pixel_x: 560.0
+      pixel_y: 0.0
       world_x: 0.0
       world_y: 45.0
-    - pixel_x: 760.0
-      pixel_y: 720.0
-      world_x: 11.0
-      world_y: 15.0
-    - pixel_x: 1230.0
-      pixel_y: 360.0
-      world_x: 11.0
-      world_y: 32.0
+    - pixel_x: 330.97
+      pixel_y: 916.86
+      world_x: 3.0
+      world_y: 5.4
+    - pixel_x: 855.8
+      pixel_y: 926.33
+      world_x: 9.0
+      world_y: 5.4
+    - pixel_x: 1134.27
+      pixel_y: 488.0
+      world_x: 9.84
+      world_y: 23.4
+    - pixel_x: 483.51
+      pixel_y: 481.85
+      world_x: 2.16
+      world_y: 23.4
+    - pixel_x: 789.88
+      pixel_y: 176.56
+      world_x: 3.96
+      world_y: 36.9
+    - pixel_x: 1127.65
+      pixel_y: 177.72
+      world_x: 8.04
+      world_y: 36.9
   054_dense_city_traffic_4k_elevated_0030s_30s.mp4:
-    notes: Golden dense-city baseline calibration. Points cover the central multi-lane road plane in the 4K elevated view; use for flow and space-mean-speed demos.
-    position_rmse_floor_m: 2.0
-    calibration_scale_uncertainty_pct: 10.0
+    notes: Codex-assisted standard-prior calibration picks for 054_dense_city_traffic_4k_elevated_0030s_30s.mp4.
+    position_rmse_floor_m: 2.2
+    calibration_scale_uncertainty_pct: 11.0
+    calibration_trusted: true
+    annotation_method: codex_assisted_manual_ground_control_picker
+    annotation_confidence: 0.78
+    evidence_sources:
+    - codex_assisted_pixel_clicks_on_exported_keyframe
+    - traffic_standard_meter_scale_anchor
+    - visible_lane_edge_or_pavement_boundary_landmarks
+    - homography_samples_from_manual_ground_plane_roi
+    auto_geometry: null
+    scale_constraints: []
+    scale_prior:
+      kind: traffic_standard_or_survey
+      description: 'Scale anchored by a multi-lane arterial road prior: roughly ten
+        to eleven lane-equivalent widths using 3.3-3.6 m traffic lanes, visible lane
+        markings, median bollards, curb edges, and vehicle-width checks.'
+    profile_notes: Dense-city 4K elevated fixed camera. The calibrated plane is the
+      asphalt carriageway between the left road edge and right curb; building facades,
+      sidewalks, trees, bollard posts above ground, and vehicles are excluded.
+    road_plane_polygon_pixel:
+    - - 1328.0
+      - 1878.0
+    - - 3400.0
+      - 1838.0
+    - - 2245.0
+      - 1030.0
+    - - 1092.0
+      - 1054.0
+    road_plane_polygon_world:
+    - - 0.0
+      - 0.0
+    - - 38.0
+      - 0.0
+    - - 38.0
+      - 118.0
+    - - 0.0
+      - 118.0
+    validation_segments:
+    - name: center_median_bollard_depth
+      pixel_start:
+      - 2150.0
+      - 1808.0
+      pixel_end:
+      - 1695.0
+      - 1120.0
+      world_start:
+      - 15.85
+      - 4.42
+      world_end:
+      - 17.82
+      - 99.37
+    - name: right_curb_depth
+      pixel_start:
+      - 3300.0
+      - 1788.0
+      pixel_end:
+      - 2320.0
+      - 1100.0
+      world_start:
+      - 37.48
+      - 4.23
+      world_end:
+      - 37.25
+      - 100.94
+    - name: mid_arterial_width
+      pixel_start:
+      - 1320.0
+      - 1458.0
+      pixel_end:
+      - 2840.0
+      - 1428.0
+      world_start:
+      - 2.65
+      - 43.01
+      world_end:
+      - 38.6
+      - 42.94
     points:
-    - pixel_x: 920.0
-      pixel_y: 2140.0
+    - pixel_x: 1328.0
+      pixel_y: 1878.0
       world_x: 0.0
       world_y: 0.0
-    - pixel_x: 3020.0
-      pixel_y: 2140.0
+    - pixel_x: 3400.0
+      pixel_y: 1838.0
       world_x: 38.0
       world_y: 0.0
-    - pixel_x: 2140.0
-      pixel_y: 720.0
+    - pixel_x: 2245.0
+      pixel_y: 1030.0
       world_x: 38.0
-      world_y: 110.0
-    - pixel_x: 1160.0
-      pixel_y: 720.0
+      world_y: 118.0
+    - pixel_x: 1092.0
+      pixel_y: 1054.0
       world_x: 0.0
-      world_y: 110.0
-    - pixel_x: 1660.0
-      pixel_y: 1550.0
-      world_x: 19.0
-      world_y: 35.0
-    - pixel_x: 1660.0
-      pixel_y: 1040.0
-      world_x: 19.0
-      world_y: 75.0
+      world_y: 118.0
+    - pixel_x: 1753.19
+      pixel_y: 1706.85
+      world_x: 9.5
+      world_y: 14.16
+    - pixel_x: 2698.75
+      pixel_y: 1688.31
+      world_x: 28.5
+      world_y: 14.16
+    - pixel_x: 2372.81
+      pixel_y: 1309.64
+      world_x: 31.16
+      world_y: 61.36
+    - pixel_x: 1435.3
+      pixel_y: 1328.67
+      world_x: 6.84
+      world_y: 61.36
+    - pixel_x: 1530.61
+      pixel_y: 1135.34
+      world_x: 12.54
+      world_y: 96.76
+    - pixel_x: 1956.64
+      pixel_y: 1126.54
+      world_x: 25.46
+      world_y: 96.76
   058_dense_city_traffic_4k_elevated_0150s_30s.mp4:
-    notes: Golden dense-city peak calibration. Same elevated corridor as 054 with heavier traffic; points cover the central roadway for traffic-flow tuning.
-    position_rmse_floor_m: 2.0
-    calibration_scale_uncertainty_pct: 10.0
+    notes: Codex-assisted standard-prior calibration picks for 058_dense_city_traffic_4k_elevated_0150s_30s.mp4.
+    position_rmse_floor_m: 2.2
+    calibration_scale_uncertainty_pct: 11.0
+    calibration_trusted: true
+    annotation_method: codex_assisted_manual_ground_control_picker
+    annotation_confidence: 0.78
+    evidence_sources:
+    - codex_assisted_pixel_clicks_on_exported_keyframe
+    - traffic_standard_meter_scale_anchor
+    - visible_lane_edge_or_pavement_boundary_landmarks
+    - homography_samples_from_manual_ground_plane_roi
+    auto_geometry: null
+    scale_constraints: []
+    scale_prior:
+      kind: traffic_standard_or_survey
+      description: 'Scale anchored by the same elevated arterial camera geometry as
+        054: multi-lane road width from 3.3-3.6 m lane standards, lane markings, median
+        bollards, curb edges, and vehicle-width consistency checks.'
+    profile_notes: Dense-city 4K elevated fixed camera, same physical camera family
+      as 054. This profile is valid for the same unchanged camera viewpoint and road
+      plane; it should be rechecked if zoom/crop changes.
+    road_plane_polygon_pixel:
+    - - 1328.0
+      - 1878.0
+    - - 3400.0
+      - 1838.0
+    - - 2245.0
+      - 1030.0
+    - - 1092.0
+      - 1054.0
+    road_plane_polygon_world:
+    - - 0.0
+      - 0.0
+    - - 38.0
+      - 0.0
+    - - 38.0
+      - 118.0
+    - - 0.0
+      - 118.0
+    validation_segments:
+    - name: center_median_bollard_depth
+      pixel_start:
+      - 2150.0
+      - 1808.0
+      pixel_end:
+      - 1695.0
+      - 1120.0
+      world_start:
+      - 15.85
+      - 4.42
+      world_end:
+      - 17.82
+      - 99.37
+    - name: right_curb_depth
+      pixel_start:
+      - 3300.0
+      - 1788.0
+      pixel_end:
+      - 2320.0
+      - 1100.0
+      world_start:
+      - 37.48
+      - 4.23
+      world_end:
+      - 37.25
+      - 100.94
+    - name: mid_arterial_width
+      pixel_start:
+      - 1320.0
+      - 1458.0
+      pixel_end:
+      - 2840.0
+      - 1428.0
+      world_start:
+      - 2.65
+      - 43.01
+      world_end:
+      - 38.6
+      - 42.94
     points:
-    - pixel_x: 920.0
-      pixel_y: 2140.0
+    - pixel_x: 1328.0
+      pixel_y: 1878.0
       world_x: 0.0
       world_y: 0.0
-    - pixel_x: 3020.0
-      pixel_y: 2140.0
+    - pixel_x: 3400.0
+      pixel_y: 1838.0
       world_x: 38.0
       world_y: 0.0
-    - pixel_x: 2140.0
-      pixel_y: 720.0
+    - pixel_x: 2245.0
+      pixel_y: 1030.0
       world_x: 38.0
-      world_y: 110.0
-    - pixel_x: 1160.0
-      pixel_y: 720.0
+      world_y: 118.0
+    - pixel_x: 1092.0
+      pixel_y: 1054.0
       world_x: 0.0
-      world_y: 110.0
-    - pixel_x: 1660.0
-      pixel_y: 1550.0
-      world_x: 19.0
-      world_y: 35.0
-    - pixel_x: 1660.0
-      pixel_y: 1040.0
-      world_x: 19.0
-      world_y: 75.0
+      world_y: 118.0
+    - pixel_x: 1753.19
+      pixel_y: 1706.85
+      world_x: 9.5
+      world_y: 14.16
+    - pixel_x: 2698.75
+      pixel_y: 1688.31
+      world_x: 28.5
+      world_y: 14.16
+    - pixel_x: 2372.81
+      pixel_y: 1309.64
+      world_x: 31.16
+      world_y: 61.36
+    - pixel_x: 1435.3
+      pixel_y: 1328.67
+      world_x: 6.84
+      world_y: 61.36
+    - pixel_x: 1530.61
+      pixel_y: 1135.34
+      world_x: 12.54
+      world_y: 96.76
+    - pixel_x: 1956.64
+      pixel_y: 1126.54
+      world_x: 25.46
+      world_y: 96.76

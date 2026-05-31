@@ -42,7 +42,7 @@ def generate_demo_report() -> dict[str, Any]:
         transformer,
         smoothing_window=3,
         min_displacement_m=0.01,
-        position_rmse_m=max(calibration.reprojection_rmse, 0.05),
+        position_rmse_m=max(calibration.pixel_to_world_rmse_m, 0.05),
         timestamp_uncertainty_sec=1.0 / 24.0,
     )
     motion_router = MotionRouter()
@@ -93,8 +93,12 @@ def generate_demo_report() -> dict[str, Any]:
             calibration_quality=calibration.calibration_quality,
             calibration_diagnostics={
                 "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
+                "calibration_source": "synthetic_demo",
+                "calibration_trusted": True,
                 "calibration_quality": calibration.calibration_quality,
-                "reprojection_rmse_px": calibration.reprojection_rmse,
+                "pixel_to_world_rmse_m": calibration.pixel_to_world_rmse_m,
+                "world_to_pixel_rmse_px": calibration.world_to_pixel_rmse_px,
+                "reprojection_rmse_px": calibration.world_to_pixel_rmse_px,
                 "inlier_count": calibration.inlier_count,
                 "condition_number": calibration.condition_number,
                 "position_rmse_m": speed_estimator.position_rmse_m,
@@ -114,6 +118,8 @@ def generate_demo_report() -> dict[str, Any]:
                 world_width_m=10.0,
                 world_length_m=10.0,
                 spacing_m=2.0,
+                calibration_source="synthetic_demo",
+                calibration_trusted=True,
             ).to_dict(),
             traffic_flow=traffic_flow_result.to_dict(),
         )

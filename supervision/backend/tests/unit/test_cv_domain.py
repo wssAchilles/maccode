@@ -78,6 +78,28 @@ def test_zone_service_counts_directional_line_crossing() -> None:
     assert stats[0].out_count == 0
 
 
+def test_zone_service_ignores_side_flip_outside_finite_counting_segment() -> None:
+    tracker = TrackingService(iou_threshold=0.3)
+    zone_service = ZoneService([ZoneConfig("main_gate", [0, 10], [40, 10])])
+
+    frame_1 = Detections(
+        items=[Detection([70, 0, 90, 8], 0.9, 2, "car")],
+        frame_index=1,
+        timestamp_sec=0.0,
+    )
+    frame_2 = Detections(
+        items=[Detection([70, 12, 90, 24], 0.9, 2, "car")],
+        frame_index=2,
+        timestamp_sec=0.1,
+    )
+
+    zone_service.trigger(tracker.update(frame_1))
+    stats = zone_service.trigger(tracker.update(frame_2))
+
+    assert stats[0].in_count == 0
+    assert stats[0].out_count == 0
+
+
 def test_report_generator_builds_frame_and_cumulative_stats() -> None:
     generator = ReportGenerator()
     tracks = [Detection([10, 10, 30, 30], 0.9, 2, "car").to_track(tracker_id=1)]

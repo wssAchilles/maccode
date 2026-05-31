@@ -49,8 +49,18 @@ def build_model_card(analysis_path: Path, readiness_path: Path | None = None) ->
         "geometry_model": {
             "formula": "s [u, v, 1]^T = H [X, Y, 1]^T",
             "calibration_source": analysis["calibration"]["source"],
+            "calibration_trusted": analysis["calibration"].get("trusted"),
             "calibration_quality": analysis["calibration"]["quality"],
-            "reprojection_rmse_px": analysis["calibration"]["rmse"],
+            "pixel_to_world_rmse_m": analysis["calibration"].get(
+                "pixel_to_world_rmse_m",
+                analysis["calibration"]["rmse"],
+            ),
+            "world_to_pixel_rmse_px": analysis["calibration"].get(
+                "world_to_pixel_rmse_px",
+            ),
+            "validation_max_error_px": analysis["calibration"].get(
+                "validation_max_error_px",
+            ),
             "inlier_count": analysis["calibration"]["inlier_count"],
             "position_rmse_floor_m": analysis["calibration"]["position_rmse_floor_m"],
             "scale_uncertainty_pct": analysis["calibration"]["scale_uncertainty_pct"],
@@ -111,9 +121,12 @@ def render_markdown(card: dict[str, Any]) -> str:
             "",
             f"- Formula: `{geometry['formula']}`",
             f"- Calibration source: `{geometry['calibration_source']}`",
+            f"- Calibration trusted: `{geometry['calibration_trusted']}`",
             f"- Calibration quality: `{geometry['calibration_quality']}`",
             f"- Inliers: `{geometry['inlier_count']}`",
-            f"- Reprojection RMSE: `{_fmt(geometry['reprojection_rmse_px'])}`",
+            f"- Pixel->world RMSE: `{_fmt(geometry['pixel_to_world_rmse_m'], ' m')}`",
+            f"- World->pixel RMSE: `{_fmt(geometry['world_to_pixel_rmse_px'], ' px')}`",
+            f"- Validation max error: `{_fmt(geometry['validation_max_error_px'], ' px')}`",
             f"- Position RMSE floor: `{_fmt(geometry['position_rmse_floor_m'], ' m')}`",
             f"- Scale uncertainty: `{_fmt(geometry['scale_uncertainty_pct'], '%')}`",
             "",
@@ -178,8 +191,9 @@ def render_markdown(card: dict[str, Any]) -> str:
             "",
             (
                 "This card proves the implemented mathematical chain on real video. "
-                "Absolute speed remains demonstration-grade until calibration source "
-                "changes from `scene_profile_preset` to `video_manual_preset`."
+                "Absolute speed and Homography Grid claims remain suppressed until "
+                "`calibration_trusted=true` with independent validation error under "
+                "the configured pixel gate."
             ),
         ],
     )

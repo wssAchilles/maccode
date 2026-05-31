@@ -5,10 +5,12 @@ import json
 import os
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -22,6 +24,19 @@ from domain.auto_calibration.models import CandidateLine
 from domain.auto_calibration.service import AutoCalibrationService
 from domain.calibration.models import CalibrationPoint, HomographyResult
 from domain.calibration.service import CalibrationService
+from domain.calibration.validation import (
+    manual_calibration_provenance_issues,
+    validation_independent_segment_count,
+)
+from domain.calibration.vehicle_3d import (
+    BBox2D,
+    CameraIntrinsicsPrior,
+    CameraMountPrior,
+    HomographyConsistencyInput,
+    Vehicle3DCalibrationService,
+    Vehicle3DObservation,
+    Vehicle3DPrior,
+)
 from domain.detection.service import DetectionService
 from domain.zones.models import ZoneConfig
 from infrastructure.cv.auto_calibration_extractor import FrameGeometryExtractor
@@ -30,6 +45,8 @@ from infrastructure.cv.video_processor import OpenCVVideoFrameSource, Supervisio
 from shared.configs.settings import Settings
 
 SEMANTIC_TRAFFIC_CLASS_IDS = {0, 1, 2, 3, 5, 7, 9, 10, 11}
+VALIDATION_ERROR_TRUST_MAX_PX = 15.0
+MIN_INDEPENDENT_VALIDATION_SEGMENTS = 2
 
 
 @dataclass(frozen=True)
@@ -51,7 +68,20 @@ class VideoCalibrationPreset:
     points: list[CalibrationPoint]
     position_rmse_floor_m: float
     calibration_scale_uncertainty_pct: float
+    calibration_trusted: bool
+    road_plane_polygon_world: list[tuple[float, float]] | None
+    validation_segments: list[dict[str, Any]]
     notes: str
+    scale_prior: dict[str, Any] | None = None
+    profile_notes: str | None = None
+    road_plane_polygon_pixel: list[tuple[float, float]] | None = None
+    annotation_method: str | None = None
+    evidence_sources: list[str] | None = None
+    camera_intrinsics_prior: dict[str, Any] = field(default_factory=dict)
+    camera_mount_prior: dict[str, Any] = field(default_factory=dict)
+    vehicle_3d_priors: dict[str, Any] = field(default_factory=dict)
+    vehicle_3d_observations: list[dict[str, Any]] = field(default_factory=list)
+    calibration_3d_diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -65,6 +95,9 @@ class CameraProfilePreset:
     grid_spacing_m: float
     position_rmse_floor_m: float
     calibration_scale_uncertainty_pct: float
+    calibration_trusted: bool
+    road_plane_polygon_world: list[tuple[float, float]] | None
+    validation_segments: list[dict[str, Any]]
     manual_control_points: list[CalibrationPoint]
     tuning: dict[str, Any]
     traffic_line_zones: list[dict[str, Any]]
@@ -75,6 +108,13 @@ class CameraProfilePreset:
     fallback_policy: str
     auto_candidate_lines: list[CandidateLine]
     scale_prior_used: str | None
+    annotation_method: str | None = None
+    evidence_sources: list[str] | None = None
+    camera_intrinsics_prior: dict[str, Any] = field(default_factory=dict)
+    camera_mount_prior: dict[str, Any] = field(default_factory=dict)
+    vehicle_3d_priors: dict[str, Any] = field(default_factory=dict)
+    vehicle_3d_observations: list[dict[str, Any]] = field(default_factory=list)
+    calibration_3d_diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -159,6 +199,202 @@ def _parse_candidate_line(value: dict[str, Any]) -> CandidateLine:
     )
 
 
+def _parse_world_polygon(value: Any) -> list[tuple[float, float]] | None:
+    if not isinstance(value, list):
+        return None
+    polygon: list[tuple[float, float]] = []
+    for point in value:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            return None
+        polygon.append((float(point[0]), float(point[1])))
+    return polygon if len(polygon) >= 3 else None
+
+
+def _parse_validation_segments(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(segment) for segment in value if isinstance(segment, dict)]
+
+
+def _optional_float(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float, str)):
+        return float(value)
+    return None
+
+
+def _parse_camera_intrinsics_prior(value: dict[str, Any]) -> CameraIntrinsicsPrior:
+    raw_bounds = value.get("fx_bounds_scale", [0.5, 2.0])
+    bounds = (
+        raw_bounds
+        if isinstance(raw_bounds, list) and len(raw_bounds) >= 2
+        else [0.5, 2.0]
+    )
+    raw_dist = value.get("dist_coeffs", [0.0, 0.0, 0.0, 0.0, 0.0])
+    dist_values = raw_dist if isinstance(raw_dist, list) else []
+    padded_dist = [*dist_values, 0.0, 0.0, 0.0, 0.0, 0.0][:5]
+    return CameraIntrinsicsPrior(
+        fx=_optional_float(value.get("fx")),
+        fy=_optional_float(value.get("fy")),
+        cx=_optional_float(value.get("cx")),
+        cy=_optional_float(value.get("cy")),
+        fov_deg=_optional_float(value.get("fov_deg")),
+        dist_coeffs=(
+            float(padded_dist[0]),
+            float(padded_dist[1]),
+            float(padded_dist[2]),
+            float(padded_dist[3]),
+            float(padded_dist[4]),
+        ),
+        fx_bounds_scale=(float(bounds[0]), float(bounds[1])),
+        source=str(value.get("source", "profile_prior")),
+        confidence=float(value.get("confidence", 0.7)),
+    )
+
+
+def _parse_camera_mount_prior(value: dict[str, Any]) -> CameraMountPrior:
+    return CameraMountPrior(
+        height_m=float(value["height_m"]),
+        pitch_deg=_optional_float(value.get("pitch_deg")),
+        roll_deg=_optional_float(value.get("roll_deg")),
+        yaw_deg=_optional_float(value.get("yaw_deg")),
+        height_sigma_m=float(value.get("height_sigma_m", 1.0)),
+        source=str(value.get("source", "profile_prior")),
+    )
+
+
+def _parse_vehicle_3d_prior(value: dict[str, Any]) -> Vehicle3DPrior:
+    return Vehicle3DPrior(
+        length_m=float(value["length_m"]),
+        width_m=float(value["width_m"]),
+        height_m=float(value["height_m"]),
+        length_sigma_m=float(value.get("length_sigma_m", 0.3)),
+        width_sigma_m=float(value.get("width_sigma_m", 0.2)),
+        height_sigma_m=float(value.get("height_sigma_m", 0.2)),
+    )
+
+
+def _parse_vehicle_3d_observation(value: dict[str, Any]) -> Vehicle3DObservation:
+    bbox = value["bbox_xyxy"]
+    raw_keypoints = value.get("optional_keypoints")
+    optional_keypoints = list(raw_keypoints) if isinstance(raw_keypoints, list) else []
+    return Vehicle3DObservation(
+        class_name=str(value["class_name"]),
+        bbox=BBox2D(
+            left=float(bbox[0]),
+            top=float(bbox[1]),
+            right=float(bbox[2]),
+            bottom=float(bbox[3]),
+        ),
+        frame_index=int(value["frame_index"]),
+        lane_direction_deg=float(value["lane_direction_deg"]),
+        estimated_heading_deg=_optional_float(value.get("estimated_heading_deg")),
+        optional_keypoints=optional_keypoints,
+    )
+
+
+def build_vehicle_3d_diagnostics(
+    *,
+    frame_width: int,
+    frame_height: int,
+    camera_intrinsics_prior: dict[str, Any],
+    camera_mount_prior: dict[str, Any],
+    vehicle_3d_priors: dict[str, Any],
+    vehicle_3d_observations: list[dict[str, Any]],
+    manual_pixel_to_world_h: np.ndarray | None = None,
+    world_width_m: float | None = None,
+    world_length_m: float | None = None,
+    speed_delta_kmh: float | None = None,
+) -> dict[str, object]:
+    if (
+        not camera_intrinsics_prior
+        or not camera_mount_prior
+        or not vehicle_3d_priors
+        or not vehicle_3d_observations
+    ):
+        return {}
+    priors = {
+        str(name): _parse_vehicle_3d_prior(value)
+        for name, value in vehicle_3d_priors.items()
+        if isinstance(value, dict)
+    }
+    observations = [
+        _parse_vehicle_3d_observation(value)
+        for value in vehicle_3d_observations
+        if isinstance(value, dict)
+    ]
+    if not priors or not observations:
+        return {}
+    service = Vehicle3DCalibrationService()
+    first_pass = service.estimate_from_bbox_priors(
+        frame_width=frame_width,
+        frame_height=frame_height,
+        intrinsics_prior=_parse_camera_intrinsics_prior(camera_intrinsics_prior),
+        mount_prior=_parse_camera_mount_prior(camera_mount_prior),
+        vehicle_priors=priors,
+        observations=observations,
+    )
+    consistency = _vehicle_3d_homography_consistency_input(
+        manual_pixel_to_world_h=manual_pixel_to_world_h,
+        candidate_h_world_to_pixel=first_pass.h_world_to_pixel,
+        world_width_m=world_width_m,
+        world_length_m=world_length_m,
+        speed_delta_kmh=speed_delta_kmh,
+    )
+    if consistency is None:
+        return first_pass.to_dict()
+    return service.estimate_from_bbox_priors(
+        frame_width=frame_width,
+        frame_height=frame_height,
+        intrinsics_prior=_parse_camera_intrinsics_prior(camera_intrinsics_prior),
+        mount_prior=_parse_camera_mount_prior(camera_mount_prior),
+        vehicle_priors=priors,
+        observations=observations,
+        homography_consistency=consistency,
+    ).to_dict()
+
+
+def _vehicle_3d_homography_consistency_input(
+    *,
+    manual_pixel_to_world_h: np.ndarray | None,
+    candidate_h_world_to_pixel: object,
+    world_width_m: float | None,
+    world_length_m: float | None,
+    speed_delta_kmh: float | None,
+) -> HomographyConsistencyInput | None:
+    if (
+        manual_pixel_to_world_h is None
+        or candidate_h_world_to_pixel is None
+        or world_width_m is None
+        or world_length_m is None
+        or world_width_m <= 0
+        or world_length_m <= 0
+    ):
+        return None
+    candidate = np.array(candidate_h_world_to_pixel, dtype=np.float64)
+    manual_world_to_pixel_h = np.linalg.inv(manual_pixel_to_world_h).astype(np.float64)
+    world_corners = np.array(
+        [
+            [0.0, 0.0, 1.0],
+            [world_width_m, 0.0, 1.0],
+            [world_width_m, world_length_m, 1.0],
+            [0.0, world_length_m, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    manual_pixels = (manual_world_to_pixel_h @ world_corners.T).T
+    candidate_pixels = (candidate @ world_corners.T).T
+    manual_pixels = manual_pixels[:, :2] / manual_pixels[:, 2:3]
+    candidate_pixels = candidate_pixels[:, :2] / candidate_pixels[:, 2:3]
+    deltas = np.linalg.norm(manual_pixels - candidate_pixels, axis=1)
+    return HomographyConsistencyInput(
+        world_to_pixel_rmse_delta_px=float(np.sqrt(np.mean(deltas**2))),
+        grid_corner_mean_shift_px=float(np.mean(deltas)),
+        speed_delta_kmh=speed_delta_kmh,
+    )
+
+
 def _load_calibration_payload(path: Path) -> dict[str, Any]:
     if path.suffix.lower() in {".yaml", ".yml"}:
         payload = yaml.safe_load(path.read_text())
@@ -185,6 +421,13 @@ def load_camera_profiles(path: Path) -> dict[str, CameraProfilePreset]:
             calibration_scale_uncertainty_pct=float(
                 value["calibration_scale_uncertainty_pct"],
             ),
+            calibration_trusted=bool(value.get("calibration_trusted", False)),
+            road_plane_polygon_world=_parse_world_polygon(
+                value.get("road_plane_polygon_world"),
+            ),
+            validation_segments=_parse_validation_segments(
+                value.get("validation_segments"),
+            ),
             manual_control_points=[
                 _parse_calibration_point(point)
                 for point in value["manual_control_points"]
@@ -202,6 +445,17 @@ def load_camera_profiles(path: Path) -> dict[str, CameraProfilePreset]:
             ],
             scale_prior_used=auto_candidates.get("scale_prior_used")
             or value.get("scale_prior_used"),
+            annotation_method=value.get("annotation_method"),
+            evidence_sources=[
+                str(source) for source in value.get("evidence_sources", [])
+            ]
+            if isinstance(value.get("evidence_sources"), list)
+            else [],
+            camera_intrinsics_prior=dict(value.get("camera_intrinsics_prior", {})),
+            camera_mount_prior=dict(value.get("camera_mount_prior", {})),
+            vehicle_3d_priors=dict(value.get("vehicle_3d_priors", {})),
+            vehicle_3d_observations=list(value.get("vehicle_3d_observations", [])),
+            calibration_3d_diagnostics=dict(value.get("calibration_3d_diagnostics", {})),
         )
     return profiles
 
@@ -223,7 +477,34 @@ def load_calibration_presets(path: Path) -> CalibrationPresetCatalog:
             calibration_scale_uncertainty_pct=value[
                 "calibration_scale_uncertainty_pct"
             ],
+            calibration_trusted=bool(value.get("calibration_trusted", False)),
+            scale_prior=dict(value["scale_prior"])
+            if isinstance(value.get("scale_prior"), dict)
+            else None,
+            profile_notes=str(value.get("profile_notes", ""))
+            if value.get("profile_notes") is not None
+            else None,
+            road_plane_polygon_pixel=_parse_world_polygon(
+                value.get("road_plane_polygon_pixel"),
+            ),
+            road_plane_polygon_world=_parse_world_polygon(
+                value.get("road_plane_polygon_world"),
+            ),
+            validation_segments=_parse_validation_segments(
+                value.get("validation_segments"),
+            ),
             notes=value.get("notes", ""),
+            annotation_method=value.get("annotation_method"),
+            evidence_sources=[
+                str(source) for source in value.get("evidence_sources", [])
+            ]
+            if isinstance(value.get("evidence_sources"), list)
+            else [],
+            camera_intrinsics_prior=dict(value.get("camera_intrinsics_prior", {})),
+            camera_mount_prior=dict(value.get("camera_mount_prior", {})),
+            vehicle_3d_priors=dict(value.get("vehicle_3d_priors", {})),
+            vehicle_3d_observations=list(value.get("vehicle_3d_observations", [])),
+            calibration_3d_diagnostics=dict(value.get("calibration_3d_diagnostics", {})),
         )
     return CalibrationPresetCatalog(
         scene_profiles=profiles,
@@ -305,6 +586,90 @@ def build_camera_profile_calibration(profile: CameraProfilePreset) -> Homography
     )
 
 
+def validation_segment_max_error_px(
+    calibration: HomographyResult,
+    validation_segments: list[dict[str, Any]],
+) -> float | None:
+    errors: list[float] = []
+    inverse_h = np.linalg.inv(calibration.homography_matrix).astype(np.float64)
+    for segment in validation_segments:
+        for pixel_key, world_key in (
+            ("pixel_start", "world_start"),
+            ("pixel_end", "world_end"),
+        ):
+            pixel_value = segment.get(pixel_key)
+            world_value = segment.get(world_key)
+            if (
+                not isinstance(pixel_value, (list, tuple))
+                or len(pixel_value) != 2
+                or not isinstance(world_value, (list, tuple))
+                or len(world_value) != 2
+            ):
+                continue
+            projected = inverse_h @ np.array(
+                [float(world_value[0]), float(world_value[1]), 1.0],
+                dtype=float,
+            )
+            projected = projected / projected[2]
+            expected = np.array([float(pixel_value[0]), float(pixel_value[1])], dtype=float)
+            errors.append(float(np.linalg.norm(projected[:2] - expected)))
+    return max(errors) if errors else None
+
+
+def is_trusted_manual_calibration(
+    calibration: HomographyResult,
+    calibration_source: str,
+    declared_trusted: bool,
+    validation_max_error_px: float | None,
+    independent_validation_segment_count: int,
+    annotation_method: str | None = None,
+    evidence_sources: list[str] | None = None,
+    scale_prior: dict[str, Any] | str | None = None,
+) -> bool:
+    if calibration_source not in {"video_manual_preset", "camera_manual_preset"}:
+        return False
+    if not declared_trusted or calibration.calibration_quality == "unstable":
+        return False
+    if manual_calibration_provenance_issues(
+        annotation_method=annotation_method,
+        evidence_sources=evidence_sources,
+        scale_prior=scale_prior,
+    ):
+        return False
+    if validation_max_error_px is None:
+        return False
+    if independent_validation_segment_count < MIN_INDEPENDENT_VALIDATION_SEGMENTS:
+        return False
+    return validation_max_error_px <= VALIDATION_ERROR_TRUST_MAX_PX
+
+
+def calibration_notes(
+    calibration_source: str,
+    video_preset: VideoCalibrationPreset | None,
+    camera_profile: CameraProfilePreset | None,
+    profile: SceneProfile,
+) -> str:
+    if calibration_source == "video_manual_preset" and video_preset is not None:
+        return video_preset.notes
+    if calibration_source == "camera_manual_preset" and camera_profile is not None:
+        return camera_profile.fallback_policy
+    return profile.notes
+
+
+def profile_reuse_note(
+    calibration_source: str,
+    camera_profile: CameraProfilePreset | None,
+) -> str | None:
+    if calibration_source == "video_manual_preset" and camera_profile is not None:
+        return (
+            "exact video calibration overrides matching fixed-camera profile; "
+            "camera profile supplies zones and tuning only"
+        )
+    if calibration_source == "camera_manual_preset" and camera_profile is not None:
+        return "fixed camera calibration reused by filename pattern"
+    return None
+
+
 def build_zone(width: int, height: int, profile: SceneProfile) -> ZoneConfig:
     y = height * profile.line_y_ratio
     return ZoneConfig(
@@ -366,15 +731,10 @@ def analyze_clip(
     profile = profile_for_clip(path, presets.scene_profiles)
     camera_profile = match_camera_profile(path, presets.camera_profiles)
     video_preset = presets.video_calibrations.get(path.name)
+    use_video_manual = video_preset is not None
     auto_diagnostics = None
     frame_geometry_evidence = None
     if camera_profile is not None:
-        calibration = build_camera_profile_calibration(camera_profile)
-        zone = build_camera_profile_zone(
-            metadata["width"],
-            metadata["height"],
-            camera_profile,
-        )
         frame_geometry_evidence = FrameGeometryExtractor().extract_from_video(path)
         candidate_lines = [
             *camera_profile.auto_candidate_lines,
@@ -388,6 +748,25 @@ def analyze_clip(
             world_width_m=camera_profile.world_width_m,
             world_length_m=camera_profile.world_length_m,
         )
+    if use_video_manual:
+        calibration = build_calibration(
+            metadata["width"],
+            metadata["height"],
+            profile,
+            video_preset,
+        )
+        zone = (
+            build_camera_profile_zone(metadata["width"], metadata["height"], camera_profile)
+            if camera_profile is not None
+            else build_zone(metadata["width"], metadata["height"], profile)
+        )
+    elif camera_profile is not None:
+        calibration = build_camera_profile_calibration(camera_profile)
+        zone = build_camera_profile_zone(
+            metadata["width"],
+            metadata["height"],
+            camera_profile,
+        )
     else:
         calibration = build_calibration(
             metadata["width"],
@@ -396,22 +775,149 @@ def analyze_clip(
             video_preset,
         )
         zone = build_zone(metadata["width"], metadata["height"], profile)
-    rmse_floor_m = (
-        camera_profile.position_rmse_floor_m
+    calibration_source = (
+        "video_manual_preset"
+        if use_video_manual
+        else "camera_manual_preset"
         if camera_profile is not None
-        else
+        else "scene_profile_preset"
+    )
+    declared_calibration_trusted = (
+        video_preset.calibration_trusted
+        if video_preset is not None
+        else camera_profile.calibration_trusted
+        if camera_profile is not None
+        else False
+    )
+    road_plane_polygon_world = (
+        video_preset.road_plane_polygon_world
+        if video_preset is not None
+        else camera_profile.road_plane_polygon_world
+        if camera_profile is not None
+        else None
+    )
+    validation_segments = (
+        video_preset.validation_segments
+        if video_preset is not None
+        else camera_profile.validation_segments
+        if camera_profile is not None
+        else []
+    )
+    calibration_annotation_method = (
+        video_preset.annotation_method
+        if video_preset is not None
+        else camera_profile.annotation_method
+        if camera_profile is not None
+        else None
+    )
+    calibration_evidence_sources = (
+        video_preset.evidence_sources
+        if video_preset is not None
+        else camera_profile.evidence_sources
+        if camera_profile is not None
+        else []
+    )
+    calibration_scale_prior = (
+        video_preset.scale_prior
+        if video_preset is not None
+        else camera_profile.scale_prior_used
+        if camera_profile is not None
+        else None
+    )
+    provenance_issues = manual_calibration_provenance_issues(
+        annotation_method=calibration_annotation_method,
+        evidence_sources=calibration_evidence_sources,
+        scale_prior=calibration_scale_prior,
+    )
+    validation_max_error_px = validation_segment_max_error_px(
+        calibration,
+        validation_segments,
+    )
+    calibration_points = (
+        video_preset.points
+        if video_preset is not None
+        else camera_profile.manual_control_points
+        if camera_profile is not None
+        else []
+    )
+    independent_validation_segment_count = validation_independent_segment_count(
+        calibration_points,
+        validation_segments,
+    )
+    calibration_trusted = is_trusted_manual_calibration(
+        calibration,
+        calibration_source,
+        declared_calibration_trusted,
+        validation_max_error_px,
+        independent_validation_segment_count,
+        calibration_annotation_method,
+        calibration_evidence_sources,
+        calibration_scale_prior,
+    )
+    rmse_floor_m = (
         video_preset.position_rmse_floor_m
         if video_preset is not None
+        else camera_profile.position_rmse_floor_m
+        if camera_profile is not None
         else profile.position_rmse_floor_m
     )
     scale_uncertainty_pct = (
-        camera_profile.calibration_scale_uncertainty_pct
-        if camera_profile is not None
-        else
         video_preset.calibration_scale_uncertainty_pct
         if video_preset is not None
+        else camera_profile.calibration_scale_uncertainty_pct
+        if camera_profile is not None
         else profile.calibration_scale_uncertainty_pct
     )
+    camera_intrinsics_prior = (
+        video_preset.camera_intrinsics_prior
+        if video_preset is not None and video_preset.camera_intrinsics_prior
+        else camera_profile.camera_intrinsics_prior
+        if camera_profile is not None
+        else {}
+    )
+    camera_mount_prior = (
+        video_preset.camera_mount_prior
+        if video_preset is not None and video_preset.camera_mount_prior
+        else camera_profile.camera_mount_prior
+        if camera_profile is not None
+        else {}
+    )
+    vehicle_3d_priors = (
+        video_preset.vehicle_3d_priors
+        if video_preset is not None and video_preset.vehicle_3d_priors
+        else camera_profile.vehicle_3d_priors
+        if camera_profile is not None
+        else {}
+    )
+    vehicle_3d_observations = (
+        video_preset.vehicle_3d_observations
+        if video_preset is not None and video_preset.vehicle_3d_observations
+        else camera_profile.vehicle_3d_observations
+        if camera_profile is not None
+        else []
+    )
+    saved_calibration_3d_diagnostics = (
+        video_preset.calibration_3d_diagnostics
+        if video_preset is not None and video_preset.calibration_3d_diagnostics
+        else camera_profile.calibration_3d_diagnostics
+        if camera_profile is not None
+        else {}
+    )
+    calibration_3d_diagnostics = build_vehicle_3d_diagnostics(
+        frame_width=metadata["width"],
+        frame_height=metadata["height"],
+        camera_intrinsics_prior=camera_intrinsics_prior,
+        camera_mount_prior=camera_mount_prior,
+        vehicle_3d_priors=vehicle_3d_priors,
+        vehicle_3d_observations=vehicle_3d_observations,
+        manual_pixel_to_world_h=calibration.homography_matrix,
+        world_width_m=camera_profile.world_width_m
+        if camera_profile and not use_video_manual
+        else profile.world_width_m,
+        world_length_m=camera_profile.world_length_m
+        if camera_profile and not use_video_manual
+        else profile.world_length_m,
+    ) or saved_calibration_3d_diagnostics
     confidence = float(
         camera_profile.tuning.get("confidence_threshold", confidence)
         if camera_profile is not None
@@ -439,21 +945,27 @@ def analyze_clip(
         frame_width=metadata["width"],
         frame_height=metadata["height"],
         segment_width_m=camera_profile.world_width_m
-        if camera_profile
+        if camera_profile and not use_video_manual
         else profile.world_width_m,
         segment_length_m=camera_profile.world_length_m
-        if camera_profile
+        if camera_profile and not use_video_manual
         else profile.world_length_m,
         grid_spacing_m=camera_profile.grid_spacing_m if camera_profile else 5.0,
         position_rmse_floor_m=rmse_floor_m,
         rendered_video_path=rendered_video_path,
         rendered_video_fps=max(metadata["fps"] / frame_stride, 1.0),
         calibration_context={
-            "calibration_source": "camera_manual_preset"
-            if camera_profile is not None
-            else "video_manual_preset"
-            if video_preset
-            else "scene_profile_preset",
+            "calibration_source": calibration_source,
+            "calibration_trusted": calibration_trusted,
+            "declared_calibration_trusted": declared_calibration_trusted,
+            "road_plane_polygon_world": road_plane_polygon_world,
+            "validation_segments": validation_segments,
+            "validation_max_error_px": validation_max_error_px,
+            "independent_validation_segment_count": independent_validation_segment_count,
+            "annotation_method": calibration_annotation_method,
+            "evidence_sources": calibration_evidence_sources,
+            "provenance_trusted": not provenance_issues,
+            "provenance_issues": provenance_issues,
             "camera_profile_id": camera_profile.profile_id if camera_profile else None,
             "camera_profile_display_name": camera_profile.display_name
             if camera_profile
@@ -467,16 +979,20 @@ def analyze_clip(
             else [],
             "profile_risk_areas": camera_profile.risk_areas if camera_profile is not None else [],
             "profile_tuning": camera_profile.tuning if camera_profile is not None else {},
+            "camera_intrinsics_prior": camera_intrinsics_prior,
+            "camera_mount_prior": camera_mount_prior,
+            "vehicle_3d_priors": vehicle_3d_priors,
+            "vehicle_3d_observations": vehicle_3d_observations,
+            "calibration_3d_diagnostics": calibration_3d_diagnostics,
             "auto_calibration": auto_diagnostics.to_dict()
             if auto_diagnostics is not None
             else None,
             "frame_geometry_evidence": frame_geometry_evidence.to_dict()
             if frame_geometry_evidence is not None
             else None,
-            "profile_reuse_note": (
-                "fixed camera calibration reused by filename pattern"
-                if camera_profile is not None
-                else None
+            "profile_reuse_note": profile_reuse_note(
+                calibration_source,
+                camera_profile,
             ),
         },
     )
@@ -507,29 +1023,37 @@ def analyze_clip(
         "elapsed_sec": elapsed,
         "effective_processing_fps": processed_frames / elapsed if elapsed > 0 else 0.0,
         "calibration": {
-            "source": "camera_manual_preset"
-            if camera_profile is not None
-            else "video_manual_preset"
-            if video_preset
-            else "scene_profile_preset",
+            "source": calibration_source,
+            "trusted": calibration_trusted,
+            "declared_trusted": declared_calibration_trusted,
             "camera_profile_id": camera_profile.profile_id if camera_profile else None,
             "camera_profile_role": camera_profile.role if camera_profile else None,
             "quality": calibration.calibration_quality,
-            "rmse": calibration.reprojection_rmse,
+            "rmse": calibration.pixel_to_world_rmse_m,
+            "pixel_to_world_rmse_m": calibration.pixel_to_world_rmse_m,
+            "world_to_pixel_rmse_px": calibration.world_to_pixel_rmse_px,
+            "validation_max_error_px": validation_max_error_px,
+            "independent_validation_segment_count": independent_validation_segment_count,
+            "annotation_method": calibration_annotation_method,
+            "evidence_sources": calibration_evidence_sources,
+            "provenance_trusted": not provenance_issues,
+            "provenance_issues": provenance_issues,
             "inlier_count": calibration.inlier_count,
             "position_rmse_floor_m": rmse_floor_m,
             "scale_uncertainty_pct": scale_uncertainty_pct,
-            "notes": camera_profile.fallback_policy
-            if camera_profile is not None
-            else video_preset.notes
-            if video_preset is not None
-            else profile.notes,
+            "notes": calibration_notes(
+                calibration_source,
+                video_preset,
+                camera_profile,
+                profile,
+            ),
             "auto_calibration": auto_diagnostics.to_dict()
             if auto_diagnostics is not None
             else None,
             "frame_geometry_evidence": frame_geometry_evidence.to_dict()
             if frame_geometry_evidence is not None
             else None,
+            "calibration_3d_diagnostics": calibration_3d_diagnostics,
         },
         "processed_video": {
             "path": str(rendered_video_path) if rendered_video_path is not None else None,
@@ -540,11 +1064,9 @@ def analyze_clip(
         | {
             "calibration_diagnostics": {
                 "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
-                "calibration_source": "camera_manual_preset"
-                if camera_profile is not None
-                else "video_manual_preset"
-                if video_preset
-                else "scene_profile_preset",
+                "calibration_source": calibration_source,
+                "calibration_trusted": calibration_trusted,
+                "declared_calibration_trusted": declared_calibration_trusted,
                 "camera_profile_id": camera_profile.profile_id if camera_profile else None,
                 "camera_profile_role": camera_profile.role if camera_profile else None,
                 "profile_polygon_zones": camera_profile.polygon_zones
@@ -556,10 +1078,9 @@ def analyze_clip(
                 "profile_risk_areas": camera_profile.risk_areas
                 if camera_profile is not None
                 else [],
-                "profile_reuse_note": (
-                    "fixed camera calibration reused by filename pattern"
-                    if camera_profile is not None
-                    else None
+                "profile_reuse_note": profile_reuse_note(
+                    calibration_source,
+                    camera_profile,
                 ),
                 "auto_calibration": auto_diagnostics.to_dict()
                 if auto_diagnostics is not None
@@ -568,7 +1089,16 @@ def analyze_clip(
                 if frame_geometry_evidence is not None
                 else None,
                 "calibration_quality": calibration.calibration_quality,
-                "reprojection_rmse_px": calibration.reprojection_rmse,
+                "pixel_to_world_rmse_m": calibration.pixel_to_world_rmse_m,
+                "world_to_pixel_rmse_px": calibration.world_to_pixel_rmse_px,
+                "reprojection_rmse_px": calibration.world_to_pixel_rmse_px,
+                "validation_max_error_px": validation_max_error_px,
+                "independent_validation_segment_count": independent_validation_segment_count,
+                "camera_intrinsics_prior": camera_intrinsics_prior,
+                "camera_mount_prior": camera_mount_prior,
+                "vehicle_3d_priors": vehicle_3d_priors,
+                "vehicle_3d_observations": vehicle_3d_observations,
+                "calibration_3d_diagnostics": calibration_3d_diagnostics,
                 "inlier_count": calibration.inlier_count,
                 "condition_number": calibration.condition_number,
                 "position_rmse_m": rmse_floor_m,
@@ -580,6 +1110,14 @@ def analyze_clip(
                     "detector bounding-box jitter",
                     "frame timestamp quantization",
                     "perspective extrapolation outside calibrated road plane",
+                    *(
+                        []
+                        if independent_validation_segment_count
+                        >= MIN_INDEPENDENT_VALIDATION_SEGMENTS
+                        else ["validation_segments_reuse_control_points"]
+                    ),
+                    *(["non_manual_or_visual_prior_calibration"] if provenance_issues else []),
+                    *([] if calibration_trusted else ["untrusted_calibration_grid_suppressed"]),
                 ],
                 "model_reference": "Model 1 + Model 3 + Model 6 + Model 10",
             },

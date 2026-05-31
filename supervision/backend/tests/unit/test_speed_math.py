@@ -47,7 +47,38 @@ def test_homography_maps_pixel_square_to_world_square() -> None:
     transformer = ViewTransformer(result.homography_matrix)
 
     assert result.reprojection_rmse < 1e-6
+    assert result.pixel_to_world_rmse_m < 1e-6
+    assert result.world_to_pixel_rmse_px < 1e-6
     assert transformer.transform_point(50, 50) == pytest.approx((5.0, 5.0))
+
+
+def test_homography_grid_carries_trust_and_is_clipped_to_world_polygon() -> None:
+    service = CalibrationService()
+    result = service.compute_homography(square_points())
+
+    grid = service.build_homography_grid(
+        result,
+        frame_width=100,
+        frame_height=100,
+        world_width_m=10,
+        world_length_m=10,
+        spacing_m=5,
+        calibration_source="video_manual_preset",
+        calibration_trusted=True,
+        road_plane_polygon_world=[(2.0, 2.0), (8.0, 2.0), (8.0, 8.0), (2.0, 8.0)],
+        validation_max_error_px=3.0,
+    )
+
+    assert grid.calibration_trusted is True
+    assert grid.calibration_source == "video_manual_preset"
+    assert grid.pixel_rmse_px == pytest.approx(0.0)
+    assert grid.validation_max_error_px == pytest.approx(3.0)
+    assert grid.lines
+    for line in grid.lines:
+        assert 2.0 <= line.world_start[0] <= 8.0
+        assert 2.0 <= line.world_start[1] <= 8.0
+        assert 2.0 <= line.world_end[0] <= 8.0
+        assert 2.0 <= line.world_end[1] <= 8.0
 
 
 def test_speed_estimator_returns_stable_uniform_speed() -> None:

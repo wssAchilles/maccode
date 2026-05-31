@@ -1,4 +1,4 @@
-import { requestJson } from "./client";
+import { buildApiUrl, requestJson } from "./client";
 import type { ProcessingTask, VideoSample } from "../types/videoTask";
 
 export function startVideoProcessing(source: string) {
@@ -8,18 +8,23 @@ export function startVideoProcessing(source: string) {
   });
 }
 
-export function uploadVideoForProcessing(file: File) {
+export function uploadVideoForProcessing(file: File, signal?: AbortSignal) {
   const formData = new FormData();
   formData.append("file", file);
 
   return requestJson<ProcessingTask>("/api/video/upload", {
     method: "POST",
-    body: formData
+    body: formData,
+    signal
   });
 }
 
 export function listVideoSamples() {
   return requestJson<VideoSample[]>("/api/video/samples");
+}
+
+export function sampleVideoUrl(name: string) {
+  return buildApiUrl(`/api/video/samples/${encodeURIComponent(name)}/raw`);
 }
 
 export function stopVideoProcessing(taskId: string) {

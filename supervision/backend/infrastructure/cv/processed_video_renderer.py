@@ -69,6 +69,8 @@ class ProcessedVideoRenderer:
     def _draw_homography_grid(self, frame: np.ndarray) -> None:
         if not self.homography_grid:
             return
+        if self.homography_grid.get("calibration_trusted") is not True:
+            return
         grid_layer = frame.copy()
         grid_lines = self.homography_grid.get("lines", [])
         if not isinstance(grid_lines, list):

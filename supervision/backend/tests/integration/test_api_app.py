@@ -77,7 +77,7 @@ def test_ai_report_endpoint_analyzes_frame_report_json(monkeypatch: pytest.Monke
     assert response.status_code == 200
     payload = response.json()["data"]
     assert payload["provider"] == "rule-based-local"
-    assert "累计进入 1" in payload["report_markdown"]
+    assert "累计进入 **1**" in payload["report_markdown"]
     assert payload["dynamic_context"]["scene"]["location_label"] == "学校门口"
     assert payload["dynamic_context"]["scene"]["scene_tags"] == ["school_zone", "rain"]
     assert "traffic_flow" in payload["dynamic_context"]["physical_state"]
@@ -132,6 +132,26 @@ def test_video_samples_endpoint_lists_curated_real_clips() -> None:
     assert samples[0]["tuning"]["runtime_frame_stride"] == 1
 
 
+def test_video_sample_raw_endpoint_serves_curated_mp4() -> None:
+    client = TestClient(create_app())
+
+    response = client.get(
+        "/api/video/samples/026_complex_signal_day_wide_0115s_30s.mp4/raw",
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("video/mp4")
+    assert len(response.content) > 0
+
+
+def test_video_sample_raw_endpoint_rejects_path_traversal() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/api/video/samples/..%2Fcalibration_presets.yaml/raw")
+
+    assert response.status_code in {400, 404}
+
+
 def test_calibration_preset_endpoint_persists_manual_yaml_entry(tmp_path: Path) -> None:
     app = create_app()
     app.state.calibration_preset_store = CalibrationPresetStore(
@@ -146,6 +166,30 @@ def test_calibration_preset_endpoint_persists_manual_yaml_entry(tmp_path: Path) 
             "notes": "manual control points",
             "position_rmse_floor_m": 0.5,
             "calibration_scale_uncertainty_pct": 4.0,
+            "calibration_trusted": True,
+            "scale_prior": {
+                "kind": "survey",
+                "description": "measured 20m road width from site plan",
+            },
+            "profile_notes": "fixed camera, all points on flat road plane",
+            "road_plane_polygon_pixel": [[100, 600], [500, 600], [450, 300], [150, 300]],
+            "road_plane_polygon_world": [[0, 0], [20, 0], [20, 60], [0, 60]],
+            "validation_segments": [
+                {
+                    "name": "independent_midline",
+                    "pixel_start": [214.28571429, 428.57142857],
+                    "pixel_end": [385.71428571, 428.57142857],
+                    "world_start": [5, 30],
+                    "world_end": [15, 30],
+                },
+                {
+                    "name": "independent_near_lane_edge",
+                    "pixel_start": [210.0, 480.0],
+                    "pixel_end": [390.0, 480.0],
+                    "world_start": [5, 20],
+                    "world_end": [15, 20],
+                },
+            ],
             "frame_width": 1280,
             "frame_height": 720,
             "points": [
@@ -160,12 +204,25 @@ def test_calibration_preset_endpoint_persists_manual_yaml_entry(tmp_path: Path) 
     assert response.status_code == 200
     payload = response.json()["data"]
     assert payload["source"] == "video_manual_preset"
+    assert payload["diagnostics"]["calibration_trusted"] is True
+    assert payload["entry"]["scale_prior"]["kind"] == "survey"
+    assert payload["entry"]["profile_notes"] == "fixed camera, all points on flat road plane"
+    assert payload["entry"]["road_plane_polygon_pixel"] == [
+        [100.0, 600.0],
+        [500.0, 600.0],
+        [450.0, 300.0],
+        [150.0, 300.0],
+    ]
     assert payload["diagnostics"]["homography_grid"]["lines"]
     get_response = client.get("/api/calibration/preset", params={"clip_name": "demo.mp4"})
     assert get_response.status_code == 200
     assert get_response.json()["data"]["notes"] == "manual control points"
+    assert get_response.json()["data"]["scale_prior"]["description"] == (
+        "measured 20m road width from site plan"
+    )
     saved = yaml.safe_load((tmp_path / "calibration_presets.yaml").read_text())
     assert "demo.mp4" in saved["video_calibrations"]
+    assert saved["video_calibrations"]["demo.mp4"]["road_plane_polygon_pixel"]
 
 
 def test_video_upload_saves_local_file_and_starts_processing_task() -> None:

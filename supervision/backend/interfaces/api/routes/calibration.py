@@ -21,6 +21,17 @@ class CalibrationEntryPayload(BaseModel):
     notes: str = "Manual calibration from frontend workbench."
     position_rmse_floor_m: float = 1.0
     calibration_scale_uncertainty_pct: float = 5.0
+    calibration_trusted: bool = False
+    scale_prior: dict[str, Any] | None = None
+    profile_notes: str = ""
+    road_plane_polygon_pixel: list[list[float]] | None = None
+    road_plane_polygon_world: list[list[float]] | None = None
+    validation_segments: list[dict[str, Any]] = Field(default_factory=list)
+    camera_intrinsics_prior: dict[str, Any] = Field(default_factory=dict)
+    camera_mount_prior: dict[str, Any] = Field(default_factory=dict)
+    vehicle_3d_priors: dict[str, Any] = Field(default_factory=dict)
+    vehicle_3d_observations: list[dict[str, Any]] = Field(default_factory=list)
+    calibration_3d_diagnostics: dict[str, Any] = Field(default_factory=dict)
     points: list[CalibrationPointPayload]
     frame_width: int | None = None
     frame_height: int | None = None

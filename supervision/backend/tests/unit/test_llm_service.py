@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 from application.usecases.generate_report import GenerateReportUseCase
-from infrastructure.llm.providers.base_provider import LLMProvider
+from infrastructure.llm.providers.base_provider import LLMMessage, LLMProvider
 from infrastructure.llm.services.llm_service import LLMService
 from scripts.generate_demo_report import generate_demo_report
 
 
 class RecordingProvider(LLMProvider):
     def __init__(self) -> None:
-        self.last_prompt: str | None = None
+        self.last_messages: list[LLMMessage] | None = None
 
-    def generate(self, prompt: str, temperature: float = 0.3, max_tokens: int = 800) -> str:
-        self.last_prompt = prompt
+    def generate(
+        self,
+        messages: list[LLMMessage],
+        temperature: float = 0.3,
+        max_tokens: int = 800,
+    ) -> str:
+        self.last_messages = messages
         return "路况平稳：检测到 1 辆车通过 main_gate，速度约 5.1 km/h。"
 
     def get_model_name(self) -> str:
@@ -30,8 +35,11 @@ def test_llm_service_builds_report_from_frame_report_json() -> None:
 
     assert result.provider == "recording-provider"
     assert "main_gate" in result.report_markdown
-    assert "dynamic_context" in (provider.last_prompt or "")
-    assert "school_zone" in (provider.last_prompt or "")
+    assert provider.last_messages is not None
+    assert provider.last_messages[0]["role"] == "system"
+    assert provider.last_messages[1]["role"] == "user"
+    assert "dynamic_context" in provider.last_messages[1]["content"]
+    assert "school_zone" in provider.last_messages[1]["content"]
     assert result.input_summary["total_in"] == 1
     assert result.dynamic_context["scene"]["location_label"] == "学校门口"
 
@@ -42,7 +50,9 @@ def test_llm_service_rule_based_fallback_without_provider() -> None:
     result = service.generate_traffic_report(generate_demo_report())
 
     assert result.provider == "rule-based-local"
-    assert "累计进入 1" in result.report_markdown
+    assert "累计进入 **1**" in result.report_markdown
+    assert "这不是像素位移" in result.report_markdown
+    assert "真实世界的尺子" in result.report_markdown
     assert result.input_summary["active_tracks"] == 1
     assert result.dynamic_context["physical_state"]["active_tracks"] == 1
 
@@ -75,8 +85,12 @@ def test_llm_service_rule_based_report_mentions_density_and_red_light_risks() ->
     result = LLMService().generate_traffic_report(report, location_label="医院门口")
 
     assert "人群密度" in result.report_markdown
-    assert "2.80 人/m²" in result.report_markdown
+    assert "每平方米约 **2.80 人**" in result.report_markdown
+    assert "通行空间正在变窄" in result.report_markdown
     assert "red_light_violation" in result.report_markdown
+    assert "## 感知摘要" in result.report_markdown
+    assert "## 风险评估与预警" in result.report_markdown
+    assert "## 决策建议" in result.report_markdown
 
 
 def test_generate_report_use_case_accepts_injected_llm_service() -> None:
@@ -86,4 +100,4 @@ def test_generate_report_use_case_accepts_injected_llm_service() -> None:
     result = use_case.execute(generate_demo_report(), location_label="学校门口")
 
     assert result.provider == "recording-provider"
-    assert provider.last_prompt is not None
+    assert provider.last_messages is not None

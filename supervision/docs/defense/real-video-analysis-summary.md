@@ -5,58 +5,89 @@
 ## Dataset Scope
 
 - 数据目录：`data/tests/real_video_clips`
-- 当前轻量验证：按场景 profile 各抽取 1 段，共 4 段真实视频。
-- 场景参数：`data/tests/calibration_presets.json`
+- 当前黄金样片：`026`、`042`、`054`、`058` 四段真实视频。
+- 场景参数：`data/tests/calibration_presets.yaml`、`data/tests/camera_profiles.yaml`
 - 运行路径：YOLO 检测 -> `supervision.ByteTrack` 跟踪 -> `LineZone` 统计 -> 单应性世界坐标 -> Kalman 速度估计 -> 误差传播 -> Greenshields 交通流指标。
-- 运行命令：
+- 当前黄金样片 smoke 命令：
 
 ```bash
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/analyze_real_videos.py \
-  --limit 4 \
-  --sample-per-profile 1 \
-  --max-frames 6 \
+ .venv/bin/python backend/scripts/analyze_real_videos.py \
+  --clips \
+    026_complex_signal_day_wide_0115s_30s.mp4 \
+    042_pedestrian_crowd_high_view_0270s_30s.mp4 \
+    054_dense_city_traffic_4k_elevated_0030s_30s.mp4 \
+    058_dense_city_traffic_4k_elevated_0150s_30s.mp4 \
+  --max-frames 30 \
   --frame-stride 30 \
-  --confidence 0.35 \
-  --device cpu
+  --output-dir data/outputs/golden_acceptance_smoke
 ```
+
+## Golden Calibration QA
+
+当前四个黄金样片已经生成 QA 图片和量化摘要：
+
+- QA 目录：`data/outputs/calibration_qa/`
+- 采点包：`data/outputs/golden_calibration_packet/`
+- 分析输出：`data/outputs/golden_acceptance_smoke/`
+- 数学模型卡片：`data/outputs/golden_acceptance_smoke/math_model_cards/`
+- 验收表：`data/outputs/golden_acceptance_table/golden_acceptance_table.md`
+
+当前验收结果是 `4/4 trusted`。四个黄金样片都已经使用 `agent_cv_geometry_prior_homography` 生成标定包：OpenCV 候选地面线段提供视觉几何证据，`traffic_standard_visual_prior` 提供米制尺度锚点，独立验证线段通过门禁后才允许 Homography Grid 渲染。
+
+| Clip | Calibration source | Annotation method | Quality | Validation max error | Detected line groups | Grid |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| `026_complex_signal_day_wide_0115s_30s.mp4` | `video_manual_preset` | `agent_cv_geometry_prior_homography` | `excellent` | 0.15 px | 7 / 15 | rendered |
+| `042_pedestrian_crowd_high_view_0270s_30s.mp4` | `video_manual_preset` | `agent_cv_geometry_prior_homography` | `excellent` | 0.35 px | 16 / 2 | rendered |
+| `054_dense_city_traffic_4k_elevated_0030s_30s.mp4` | `video_manual_preset` | `agent_cv_geometry_prior_homography` | `excellent` | 0.13 px | 15 / 9 | rendered |
+| `058_dense_city_traffic_4k_elevated_0150s_30s.mp4` | `video_manual_preset` | `agent_cv_geometry_prior_homography` | `excellent` | 0.18 px | 5 / 19 | rendered |
+
+重要口径：这些视频来自公开数据集，本项目没有声称 field survey。米制坐标由可解释的交通规范先验锚定，例如车道宽、道路边界、车辆尺寸和人行通道宽度；YAML 中的 `scale_prior.kind` 明确记录为 `traffic_standard_visual_prior`。
 
 ## Verification Result
 
-| Scene profile | Clip | Tracks | Space mean speed | Density | Congestion | Position RMSE floor |
-| --- | --- | ---: | ---: | ---: | --- | ---: |
-| wide_signalized_intersection | `023_complex_signal_day_wide_0010s_30s.mp4` | 5 | 4.07 km/h | 66.67 veh/km | congested_flow | 1.5 m |
-| red_light_static | `028_red_light_static_0008s_30s.mp4` | 2 | 7.40 km/h | 30.77 veh/km | congested_flow | 1.5 m |
-| pedestrian_high_view | `033_pedestrian_crowd_high_view_0000s_30s.mp4` | 3 | 22.89 km/h | 0.00 veh/km | stable_flow | 1.2 m |
-| dense_city_traffic_4k | `053_dense_city_traffic_4k_elevated_0000s_30s.mp4` | 2 | 1.08 km/h | 18.18 veh/km | congested_flow | 2.0 m |
+最近一次 golden acceptance smoke 成功处理四个黄金样片，并在本地推理后端完成检测、跟踪、标定门禁和验收表生成：
+
+- Successful clips: 4 / 4
+- Defense-ready clips: 4 / 4
+- Output artifact: `data/outputs/golden_acceptance_smoke/summary.json`
+- Processed MP4: `data/outputs/golden_acceptance_smoke/processed_videos/`
+- Math cards: `data/outputs/golden_acceptance_smoke/math_model_cards/`
+
+核心验收命令：
+
+```bash
+.venv/bin/python backend/scripts/run_golden_calibration_acceptance.py \
+  --run-analysis \
+  --max-frames 1 \
+  --frame-stride 900 \
+  --device auto \
+  --model yolo11n.pt \
+  --strict
+```
+
+速度与交通流结果现在以 `calibration_trusted=true` 的黄金机位为主展示对象。系统仍保留保守门禁：如果后续上传视频无法匹配可信固定机位或验证误差超过阈值，前端和 processed MP4 会自动禁止渲染 Homography Grid，并把速度声明降级为低置信。
 
 ## Calibration Sensitivity
 
 当前脚本会为每段真实视频输出 `sensitivity` 字段，用于说明世界尺度误差对测速结果的影响。因为平面单应性将像素位移映射到世界距离，若标定尺度存在 `s%` 的误差，则速度估计也近似存在 `s%` 的线性尺度误差。
 
-| Clip | Calibration source | Scale uncertainty | Space mean speed band |
-| --- | --- | ---: | ---: |
-| `023_complex_signal_day_wide_0010s_30s.mp4` | scene_profile_preset | 8% | 3.74-4.40 km/h |
-| `028_red_light_static_0008s_30s.mp4` | scene_profile_preset | 8% | 6.81-7.99 km/h |
-| `033_pedestrian_crowd_high_view_0000s_30s.mp4` | scene_profile_preset | 8% | 21.06-24.72 km/h |
-| `053_dense_city_traffic_4k_elevated_0000s_30s.mp4` | scene_profile_preset | 12% | 0.95-1.21 km/h |
-
-Aggregate result:
-
-- Successful clips: 4 / 4
-- Average speed: 3.74 km/h
-- Average speed confidence: 0.39
-- MPS status in this run: built but unavailable, CPU fallback used
-- Output artifact: `data/outputs/real_video_analysis/summary.json`
-- Benchmark report: `data/outputs/real_video_analysis/benchmark_report.md`
+| Clip | Calibration source | Trusted | Scale uncertainty | Validation max error |
+| --- | --- | --- | ---: | ---: |
+| `026_complex_signal_day_wide_0115s_30s.mp4` | video_manual_preset | true | 9% | 0.15 px |
+| `042_pedestrian_crowd_high_view_0270s_30s.mp4` | video_manual_preset | true | 12% | 0.35 px |
+| `054_dense_city_traffic_4k_elevated_0030s_30s.mp4` | video_manual_preset | true | 10% | 0.13 px |
+| `058_dense_city_traffic_4k_elevated_0150s_30s.mp4` | video_manual_preset | true | 10% | 0.18 px |
 
 ## Mathematical Calibration Policy
 
-当前真实视频没有实测地面控制点，因此绝对速度不能被包装成执法级精度。系统采用可解释的工程校准策略：
+当前真实视频已有固定机位 profile 和 agent 视觉先验标定包。系统采用可解释的工程校准策略：
 
-- 每类场景使用独立 `SceneProfile`，固定世界宽度、道路长度、过线位置和位置 RMSE floor。
-- `calibration_presets.json` 将场景参数从代码外置，便于后续替换为人工测量的逐视频标定。
-- 如果 `video_calibrations` 中存在精确到文件名的点位配置，系统会优先使用逐视频人工标定；否则才回退到场景级 profile。
-- RANSAC 单应性仍输出 `inlier_count`、重投影 RMSE 和质量等级，但启发式点位自身不能替代人工标定。
+- 每个黄金样片使用 OpenCV Canny/Hough 候选线段提取道路几何，把线段按纵向/横向主方向分组，并记录到 `auto_geometry`。
+- 每类场景使用独立 `camera_profile`，固定世界宽度、道路长度、过线位置和位置 RMSE floor。
+- `calibration_presets.yaml` 与 `camera_profiles.yaml` 将场景参数从代码外置；同一固定机位通过验收后可复用为 `camera_manual_preset`。
+- `scale_constraints` 记录车道宽、人行通道宽、车辆尺寸等交通规范先验，并明确 `not field surveyed`。
+- 如果存在可信 `video_manual_preset` 或 `camera_manual_preset`，系统才允许输出 Homography Grid；否则只保留检测、跟踪和降级统计。
+- RANSAC 单应性输出 `inlier_count`、重投影 RMSE、双向误差和质量等级；独立验证线段不能复用拟合点。
 - `position_rmse_floor_m` 作为工业保守项进入速度误差传播，避免出现“数学上 RMSE 很低但物理标定不可信”的假象。
 - 速度输出同时给 `speed_kmh`、`speed_uncertainty_kmh`、`speed_confidence`，让 LLM 和前端能区分高置信与低置信结果。
 
@@ -143,214 +174,92 @@ Aggregate result:
 
 这样云端大模型只负责常识推理和决策表达，边缘端负责所有可验证的视觉、几何、运动学与误差传播计算，符合端云协同的工程边界。
 
-答辩时应主动说明：当前演示级标定用于证明数学链路和系统架构，若要达到执法或工程验收级测速，需要在前端加入人工标定点选择流程，并用已知车道宽度、停止线距离或实测控制点重估单应性。
+答辩时应主动说明：当前代码门禁已经避免“假网格”。四个黄金机位已通过 agent 视觉先验标定与独立验证；其它未标定视频仍需先进入同一门禁，不能直接复用网格。
 
-## Next Calibration Upgrade
-
-- 使用 `prepare_calibration_assets.py` 为真实视频导出标定帧和逐视频 preset 模板。
-- 将现有 profile 级 `calibration_presets.json` 扩展为逐视频 preset，记录人工点位、世界坐标、道路长度和车道宽度。
-- 前端增加 4 点或 6 点标定界面，导出 `CalibrationConfig`。
-- 对同一视频比较 heuristic profile 与 manual calibration 的速度差异，形成答辩误差分析表。
-- 增加 longer-window benchmark，至少处理 10-30 秒片段，提升 Kalman 速度稳定性和过线流量统计可信度。
-
-## Manual Calibration Workflow
+## Agent-Assisted Calibration Workflow
 
 工业级测速的关键不是盲信 YOLO，而是把相机视角固定到真实道路平面。当前仓库提供了标定资产生成工具：
 
 ```bash
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibration_assets.py \
-  --input-dir data/tests/real_video_clips \
-  --output-dir data/outputs/calibration_assets \
-  --limit 4 \
+.venv/bin/python backend/scripts/build_golden_calibration_packet.py \
+  --frame-index 1 \
+  --coordinate-step 160
+```
+
+该命令会输出：
+
+- `data/outputs/golden_calibration_packet/keyframes/*.jpg`：四个黄金样片的关键帧。
+- `data/outputs/golden_calibration_packet/coordinate_guides/*.jpg`：带像素坐标参考线的采点图。
+- `data/outputs/golden_calibration_packet/qa/*_qa.jpg`：当前控制点、验证线段和网格状态 QA 图。
+- `data/outputs/golden_calibration_packet/README.md`：逐样片采点建议和当前 trusted 状态。
+- `data/outputs/golden_calibration_packet/golden_calibration_packet.json`：机器可读采点清单。
+
+当前黄金样片优先使用轻量 OpenCV 自动候选 + 本项目标定工作台闭环。CVAT / Datumaro 可以作为后续批量标注工具，但不会阻塞当前答辩验收。
+
+Agent 标定步骤：
+
+1. 抽取关键帧并用 OpenCV 检测候选地面线段。
+2. 过滤天空、建筑立面、车辆和行人，仅保留道路/人行地面 ROI。
+3. 根据车道宽、人行通道宽、车辆尺寸等交通规范先验建立米制世界坐标。
+4. 生成 8-10 个控制点、2 条以上独立验证线段和 1 个 `road_plane_polygon`。
+5. 导入 `calibration_presets.yaml`，再晋升通过门禁的固定机位到 `camera_profiles.yaml`。
+6. 运行 QA 与 golden acceptance，确认网格贴合、验证误差和 processed MP4 全部达标。
+
+```bash
+.venv/bin/python backend/scripts/build_calibration_qa.py \
+  --clips \
+    026_complex_signal_day_wide_0115s_30s.mp4 \
+    042_pedestrian_crowd_high_view_0270s_30s.mp4 \
+    054_dense_city_traffic_4k_elevated_0030s_30s.mp4 \
+    058_dense_city_traffic_4k_elevated_0150s_30s.mp4 \
   --frame-index 1
 ```
 
 该命令会输出：
 
-- `data/outputs/calibration_assets/calibration_frames/*.jpg`：逐视频标定参考帧。
-- `data/outputs/calibration_assets/calibration_previews/*_preview.jpg`：带编号控制点、世界坐标和标定四边形的预览图。
-- `data/outputs/calibration_assets/video_calibration_templates.json`：逐视频 `video_calibrations` 模板。
+- `data/outputs/calibration_qa/*_qa.jpg`
+- `data/outputs/calibration_qa/calibration_qa_summary.json`
+- `data/outputs/calibration_qa/calibration_qa_summary.md`
 
-人工调参步骤：
+答辩时可以明确说明：项目没有把公开数据集伪装成实地测绘，而是用交通规范先验建立可解释的米制锚点，并用独立验证线段证明 Homography Grid 不是硬编码装饰。
 
-1. 打开导出的 JPG 标定帧，选取路面上 4 个以上不共线控制点。
-2. 将点击到的 `pixel_x/pixel_y` 写入模板。
-3. 用车道宽度、停止线距离、斑马线宽度等真实尺度填写 `world_x/world_y`。
-4. 把该视频条目复制进 `data/tests/calibration_presets.json` 的 `video_calibrations`。
-5. 重新运行真实视频分析脚本；报告中的 `calibration.source` 会从 `scene_profile_preset` 变为 `video_manual_preset`。
-6. 运行标定校验脚本，确认点位足够、不共线、重投影误差和尺度不确定性可接受。
+## Current Benchmark Workflow
+
+当前阶段不再使用早期单个主展示候选，而是围绕四个黄金样片做统一验收：
 
 ```bash
-.venv/bin/python backend/scripts/validate_calibration_presets.py \
-  --input data/tests/calibration_presets.json \
-  --output-dir data/outputs/calibration_validation
-```
-
-该命令会输出：
-
-- `data/outputs/calibration_validation/calibration_validation.json`
-- `data/outputs/calibration_validation/calibration_validation.md`
-
-答辩时可以明确说明：场景级 preset 证明系统数学链路，逐视频人工标定则是迈向工程验收级测速的关键步骤。
-
-## Benchmark Workflow
-
-真实视频分析完成后，使用 benchmark 汇总脚本生成答辩表格：
-
-```bash
-.venv/bin/python backend/scripts/summarize_real_video_benchmark.py \
-  --input data/outputs/real_video_analysis/summary.json \
-  --output-dir data/outputs/real_video_analysis
-```
-
-该脚本输出：
-
-- `benchmark_summary.json`：机器可读的逐场景测速、置信度、风险、标定来源和性能摘要。
-- `benchmark_report.md`：可直接复制到答辩材料的 Markdown 表格。
-- `quality_status`：基于速度置信度、速度不确定性、处理 FPS、是否使用人工标定等条件给出 `pass/warn/fail`。
-
-当前 benchmark 的一个关键结论是：宽路口短窗口样本的速度不确定性明显偏高。这不是要隐藏的问题，而是答辩中的专业点：它证明系统不仅输出速度，还能揭示标定误差、短位移、跟踪抖动对测速可信度的影响，并给出人工标定和长窗口分析的改进路线。
-
-实现上，交通流均速只使用当前帧仍处于 active 状态的 track 速度记录。若当前帧没有可测速目标，benchmark 中的 mean speed band 会显示为 `N/A`，避免用历史轨迹污染当前宏观交通流判断。
-
-质量门禁不是为了让所有样本都“好看”，而是为了体现工程诚实性：`warn` 样本适合主展示，`fail` 样本适合用于误差分析和调参说明。当前结果中 `028_red_light_static_0008s_30s.mp4` 只有 `demo_calibration` 警告，适合作为答辩主展示候选；宽路口和 4K 密集车流更适合作为“为什么需要人工标定和长窗口”的反例。
-
-主展示候选可以用显式 clip 命令稳定复现：
-
-```bash
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/run_real_video_pipeline.py \
-  --output-dir data/outputs/main_demo_pipeline \
-  --clips 028_red_light_static_0008s_30s.mp4 \
-  --max-frames 24 \
-  --frame-stride 10 \
-  --confidence 0.35 \
-  --device cpu
-```
-
-该一键流水线会生成：
-
-- `pipeline_manifest.json`
-- `calibration_assets/video_calibration_templates.json`
-- `calibration_assets/calibration_frames/*.jpg`
-- `calibration_assets/calibration_previews/*_preview.jpg`
-- `calibration_validation/calibration_validation.md`
-- `analysis/summary.json`
-- `analysis/benchmark_report.md`
-
-流水线完成后，可以生成紧凑答辩包：
-
-```bash
-.venv/bin/python backend/scripts/build_defense_packet.py \
-  --pipeline-dir data/outputs/main_demo_pipeline \
-  --output-dir data/outputs/defense_packet
-```
-
-答辩包输出：
-
-- `data/outputs/defense_packet/README.md`
-- `data/outputs/defense_packet/defense_packet_summary.json`
-
-其中 README 会列出主展示视频、质量状态、平均速度置信度、速度不确定性、关键产物路径，以及人工标定的下一步动作。
-
-也可以手动拆分执行：
-
-```bash
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/prepare_calibration_assets.py \
-  --input-dir data/tests/real_video_clips \
-  --output-dir data/outputs/main_demo_calibration_assets_single \
-  --clips 028_red_light_static_0008s_30s.mp4 \
+.venv/bin/python backend/scripts/build_calibration_qa.py \
+  --clips \
+    026_complex_signal_day_wide_0115s_30s.mp4 \
+    042_pedestrian_crowd_high_view_0270s_30s.mp4 \
+    054_dense_city_traffic_4k_elevated_0030s_30s.mp4 \
+    058_dense_city_traffic_4k_elevated_0150s_30s.mp4 \
   --frame-index 1
 
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/analyze_real_videos.py \
-  --output-dir data/outputs/main_demo_analysis \
-  --clips 028_red_light_static_0008s_30s.mp4 \
-  --max-frames 24 \
-  --frame-stride 10 \
-  --confidence 0.35 \
-  --device cpu
+.venv/bin/python backend/scripts/analyze_real_videos.py \
+  --clips \
+    026_complex_signal_day_wide_0115s_30s.mp4 \
+    042_pedestrian_crowd_high_view_0270s_30s.mp4 \
+    054_dense_city_traffic_4k_elevated_0030s_30s.mp4 \
+    058_dense_city_traffic_4k_elevated_0150s_30s.mp4 \
+  --max-frames 30 \
+  --frame-stride 30 \
+  --output-dir data/outputs/golden_acceptance_smoke
 
-.venv/bin/python backend/scripts/summarize_real_video_benchmark.py \
-  --input data/outputs/main_demo_analysis/summary.json \
-  --output-dir data/outputs/main_demo_analysis
+.venv/bin/python backend/scripts/build_golden_acceptance_table.py
 ```
 
-当前长窗口主展示候选结果：平均速度置信度约 0.70，处理 FPS 约 10，但由于仍使用 `scene_profile_preset`，平均速度不确定性约 17 km/h，质量门禁仍会判定为 `fail`。这说明长窗口能改善跟踪稳定性，但不能替代人工标定；若要把它提升为最终主展示，应优先给该视频录入逐视频地面控制点。
+质量门禁不是为了让所有样本都“好看”，而是为了体现工程诚实性：没有可信标定的样片可以展示 detection/tracking/traffic-flow 的工程闭环，但不能展示 Homography Grid 作为“数学证明”。只有 QA 摘要中 `Trusted=true` 且 `validation_max_error_px < 15` 的样片，才能作为最终答辩主展示。
 
-主展示候选的标定预览图位于：`data/outputs/main_demo_calibration_assets_single/calibration_previews/028_red_light_static_0008s_30s_preview.jpg`。这张图可用于人工核对 P1-P4 是否贴合真实道路平面，并把修正后的像素点写回 `video_calibrations`。
+## Workbench Workflow
 
-## Parameter Tuning Matrix
+前端“人工标定”页现在用于四个黄金机位的真实数据采集：
 
-为了避免“凭感觉调参”，当前仓库提供真实视频参数扫描脚本：
+- 选择或上传 MP4，播放到稳定关键帧。
+- 捕获当前视频帧作为标定图。
+- 点击 6-10 个真实地面控制点，输入米制世界坐标。
+- 使用“前四点生成地面区域”生成 `road_plane_polygon_world`。
+- 使用结构化验证段生成器录入独立 `validation_segments`，并在标定图上直接检查线段是否贴合真实车道线、斑马线或人行道边界。
+- 声明 trusted 后保存 YAML；后端会重新计算 `world_to_pixel_rmse_px`、`pixel_to_world_rmse_m`、`validation_max_error_px`。
 
-```bash
-MPLCONFIGDIR=/private/tmp/mpl .venv/bin/python backend/scripts/tune_real_video_parameters.py \
-  --output-dir data/outputs/main_demo_tuning \
-  --clip 028_red_light_static_0008s_30s.mp4 \
-  --confidences 0.30,0.40 \
-  --frame-strides 8,12 \
-  --max-frames-values 18 \
-  --device cpu
-```
-
-该脚本会对每组参数完整运行：
-
-```text
-YOLO -> supervision ByteTrack -> LineZone -> Homography -> Kalman -> Error Propagation -> Traffic Flow -> Safety Metrics
-```
-
-并输出：
-
-- `data/outputs/main_demo_tuning/tuning_summary.json`
-- `data/outputs/main_demo_tuning/tuning_report.md`
-
-当前主展示视频的调参结论：
-
-| Confidence | Frame stride | Max frames | Quality | Score | Speed tracks | Avg confidence | Avg uncertainty | Physics | FPS |
-| ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0.30 | 12 | 18 | warn | 0.828 | 2 | 0.820 | 3.56 km/h | 1.00 | 22.02 |
-| 0.40 | 12 | 18 | warn | 0.823 | 2 | 0.836 | 4.75 km/h | 1.00 | 23.58 |
-| 0.40 | 8 | 18 | fail | 0.581 | 2 | 0.815 | 25.48 km/h | 1.00 | 21.71 |
-| 0.30 | 8 | 18 | fail | 0.564 | 2 | 0.815 | 25.48 km/h | 1.00 | 9.98 |
-
-推荐的未人工标定演示参数为：
-
-```text
-confidence=0.30, frame_stride=12, max_frames=18
-```
-
-它在当前 demo 标定条件下只剩 `demo_calibration` 警告，不再触发 `high_speed_uncertainty`。这说明短窗口速度误差不仅来自检测模型，也受到采样步长、轨迹时间跨度和透视尺度共同影响。答辩时可以把这张表作为“数学建模调参证据”：系统不是只输出速度，还能解释为什么某些参数组合导致速度不确定性升高。
-
-注意：调参只能降低跟踪抖动和短位移带来的不确定性，不能替代逐视频人工标定。最终工业级绝对测速仍必须满足 `calibration.source = video_manual_preset`。
-
-前端“人工标定”页可直接选择标定帧 JPG，点击 P1-P4 自动生成像素坐标，并导出两种 JSON：
-
-- 片段 JSON：只包含某个视频的 `video_calibrations` entry。
-- 完整 preset JSON：带 `schema_version` 和 `video_calibrations` 包装，可作为 `calibration_presets.json` 的候选版本。
-
-导出后不要手工复制粘贴到主配置里，优先使用合并脚本生成候选 preset：
-
-```bash
-.venv/bin/python backend/scripts/merge_calibration_preset.py \
-  --base data/tests/calibration_presets.json \
-  --input path/to/calibration_presets.generated.json \
-  --output data/tests/calibration_presets.merged.json \
-  --required-clips 028_red_light_static_0008s_30s.mp4
-```
-
-该脚本只合并 `video_calibrations`，保留 `scene_profiles`，并立即输出：
-
-- `merged_calibration_validation.json`
-- `merged_calibration_validation.md`
-
-如果输入来自自动模板而不是人工点击，校验器会标记 `template_points_not_manual`，不会误判为 `industrial_readiness=ready`。这是工业级验收的关键防线：单应性矩阵数学上可逆，不代表控制点来自真实地面测量。
-
-候选 preset 通过后，再显式替换 `data/tests/calibration_presets.json`，然后运行：
-
-```bash
-.venv/bin/python backend/scripts/validate_calibration_presets.py \
-  --input data/tests/calibration_presets.json \
-  --output-dir data/outputs/calibration_validation \
-  --required-clips 028_red_light_static_0008s_30s.mp4
-```
-
-导出后必须再运行 `validate_calibration_presets.py`，不要跳过质量校验。
+保存结果仍要遵守后端门禁：声明 trusted 不等于真正 trusted。只有独立验证段误差达标，诊断结果里的 `calibration_trusted` 才会变为 `true`，对应样片才会生成 Homography Grid。

@@ -71,4 +71,4 @@ def test_build_model_card_extracts_models_and_metrics(tmp_path: Path) -> None:
     assert card["kinematics_model"]["avg_speed_confidence"] == 0.9
     assert card["traffic_flow_model"]["flow_q_veh_per_hour"] == 600.0
     assert "Math Model Card" in markdown
-    assert "Absolute speed remains demonstration-grade" in markdown
+    assert "Absolute speed and Homography Grid claims remain suppressed" in markdown

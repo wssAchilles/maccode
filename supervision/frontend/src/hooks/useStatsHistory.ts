@@ -21,5 +21,10 @@ export function useStatsHistory() {
     }
   }, []);
 
-  return { history, cumulative, refresh };
+  const clear = useCallback(() => {
+    setHistory([]);
+    setCumulative(null);
+  }, []);
+
+  return { history, cumulative, refresh, clear };
 }
