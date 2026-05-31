@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from domain.motion.router import MotionRouter
 from domain.speed.estimator import SpeedEstimator
+from domain.speed.kalman import KalmanConfig, KalmanFilter2D
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import ViewTransformer
 
@@ -212,6 +213,56 @@ def test_vehicle_id_switch_jump_does_not_pollute_speed_record() -> None:
     assert record.physics_valid is False
     assert record.speed_kmh is None
     assert record.rejection_reason == "speed_gate"
+
+
+def test_kalman_predict_measurement_returns_mahalanobis_distance() -> None:
+    kalman = KalmanFilter2D(
+        KalmanConfig(
+            process_noise=0.01,
+            measurement_noise=0.05,
+            initial_position_variance=0.05,
+            initial_velocity_variance=0.05,
+        ),
+    )
+    kalman.update((0.0, 0.0), 0.0)
+    kalman.update((1.0, 0.0), 1.0)
+
+    normal = kalman.predict_measurement((2.0, 0.0), 2.0)
+    jump = kalman.predict_measurement((12.0, 0.0), 2.0)
+
+    assert normal.mahalanobis_d2 < 9.21
+    assert jump.mahalanobis_d2 > 9.21
+    assert jump.innovation_covariance.shape == (2, 2)
+
+
+def test_vehicle_id_switch_under_speed_gate_is_rejected_by_mahalanobis_gate() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.3)
+    profile = MotionRouter().route_class(2)
+
+    for frame_index in range(45):
+        timestamp = frame_index / 30.0
+        estimator.update(
+            100,
+            (8.0 * timestamp, 0.0),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.9,
+        )
+
+    rejected_speed = estimator.update(
+        100,
+        (28.0, 0.0),
+        timestamp_sec=2.0,
+        motion_profile=profile,
+        detection_confidence=0.9,
+    )
+    record = estimator.get_record(100)
+
+    assert rejected_speed is None
+    assert record is not None
+    assert record.physics_valid is False
+    assert record.speed_kmh is None
+    assert record.rejection_reason == "mahalanobis_gate"
 
 
 def test_uncertainty_caps_unphysical_error_band() -> None:

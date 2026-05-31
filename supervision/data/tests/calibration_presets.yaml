@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 notes: 'Scene-level calibration presets for real traffic video analysis. Add per-video
   surveyed ground-control points under video_calibrations to upgrade from scene_profile_preset
   to video_manual_preset.

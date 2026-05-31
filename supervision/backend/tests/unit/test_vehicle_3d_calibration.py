@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import builtins
+from pathlib import Path
+from types import ModuleType
+from typing import Any
+
 import cv2
 import numpy as np
 import pytest
@@ -13,6 +18,14 @@ from domain.calibration.vehicle_3d import (
     Vehicle3DPrior,
     VehicleResidualWeights,
 )
+
+
+def test_scipy_dependency_is_declared_for_bbox_envelope_lm() -> None:
+    requirements = Path("requirements.txt").read_text(encoding="utf-8")
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+
+    assert "scipy>=" in requirements
+    assert "scipy>=" in pyproject
 
 
 def test_single_bbox_only_observation_is_marked_underdetermined() -> None:
@@ -38,6 +51,142 @@ def test_single_bbox_only_observation_is_marked_underdetermined() -> None:
     assert result.calibration_quality == "unstable"
     assert result.calibration_trusted is False
     assert "bbox_only_observations_below_minimum" in result.quality_issues
+
+
+def test_projected_cuboid_bbox_residual_is_not_self_referential() -> None:
+    service = Vehicle3DCalibrationService()
+    observation = Vehicle3DObservation(
+        class_name="car",
+        bbox=BBox2D(left=500.0, top=350.0, right=640.0, bottom=470.0),
+        frame_index=1,
+        lane_direction_deg=5.0,
+    )
+    prior = Vehicle3DPrior(length_m=4.5, width_m=1.8, height_m=1.5)
+    camera_matrix = service.camera_matrix_from_prior(
+        CameraIntrinsicsPrior(fx=900.0, fy=900.0, cx=640.0, cy=360.0),
+        frame_width=1280,
+        frame_height=720,
+    )
+
+    projected_bbox = service.project_cuboid_envelope(
+        frame_width=1280,
+        frame_height=720,
+        camera_matrix=camera_matrix,
+        mount_prior=CameraMountPrior(height_m=7.0, pitch_deg=12.0, yaw_deg=0.0),
+        vehicle_prior=prior,
+        observation=observation,
+    )
+    residual = service.bbox_envelope_residual(
+        observation=observation,
+        projected_bbox=projected_bbox,
+        vehicle_prior=prior,
+        candidate_length_m=prior.length_m,
+        candidate_width_m=prior.width_m,
+        camera_height_m=7.0,
+        camera_mount_prior=CameraMountPrior(height_m=7.0, height_sigma_m=1.0),
+        weights=VehicleResidualWeights(),
+    )
+
+    assert any(abs(value) > 1.0 for value in residual[:4])
+
+
+def test_bbox_only_lm_runs_and_reports_real_residual_improvement() -> None:
+    observations = [
+        Vehicle3DObservation(
+            class_name="car",
+            bbox=BBox2D(left=500.0, top=350.0, right=640.0, bottom=470.0),
+            frame_index=1,
+            lane_direction_deg=5.0,
+        ),
+        Vehicle3DObservation(
+            class_name="car",
+            bbox=BBox2D(left=650.0, top=330.0, right=760.0, bottom=435.0),
+            frame_index=1,
+            lane_direction_deg=5.0,
+        ),
+        Vehicle3DObservation(
+            class_name="car",
+            bbox=BBox2D(left=790.0, top=315.0, right=885.0, bottom=405.0),
+            frame_index=1,
+            lane_direction_deg=5.0,
+        ),
+    ]
+
+    result = Vehicle3DCalibrationService().estimate_from_bbox_priors(
+        frame_width=1280,
+        frame_height=720,
+        intrinsics_prior=CameraIntrinsicsPrior(
+            fx=780.0,
+            fy=780.0,
+            cx=640.0,
+            cy=360.0,
+            confidence=0.8,
+        ),
+        mount_prior=CameraMountPrior(height_m=7.0, pitch_deg=12.0, yaw_deg=0.0),
+        vehicle_priors={
+            "car": Vehicle3DPrior(length_m=4.5, width_m=1.8, height_m=1.5),
+        },
+        observations=observations,
+    )
+
+    assert result.lm_used is True
+    assert result.lm_initial_rmse is not None
+    assert result.lm_final_rmse is not None
+    assert result.lm_final_rmse <= result.lm_initial_rmse
+    assert result.residual_rmse > 0.0
+    assert "bbox_only_weakly_observable" in result.quality_issues
+
+
+def test_bbox_only_lm_reports_missing_scipy_without_fake_optimization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_import = builtins.__import__
+
+    def blocked_scipy_import(
+        name: str,
+        globals: dict[str, Any] | None = None,  # noqa: A002
+        locals: dict[str, Any] | None = None,  # noqa: A002
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> ModuleType:
+        if name.startswith("scipy"):
+            raise ImportError("scipy disabled for test")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", blocked_scipy_import)
+    result = Vehicle3DCalibrationService().estimate_from_bbox_priors(
+        frame_width=1280,
+        frame_height=720,
+        intrinsics_prior=CameraIntrinsicsPrior(fx=780.0, fy=780.0, cx=640.0, cy=360.0),
+        mount_prior=CameraMountPrior(height_m=7.0, pitch_deg=12.0, yaw_deg=0.0),
+        vehicle_priors={
+            "car": Vehicle3DPrior(length_m=4.5, width_m=1.8, height_m=1.5),
+        },
+        observations=[
+            Vehicle3DObservation(
+                class_name="car",
+                bbox=BBox2D(left=500.0, top=350.0, right=640.0, bottom=470.0),
+                frame_index=1,
+                lane_direction_deg=5.0,
+            ),
+            Vehicle3DObservation(
+                class_name="car",
+                bbox=BBox2D(left=650.0, top=330.0, right=760.0, bottom=435.0),
+                frame_index=1,
+                lane_direction_deg=5.0,
+            ),
+            Vehicle3DObservation(
+                class_name="car",
+                bbox=BBox2D(left=790.0, top=315.0, right=885.0, bottom=405.0),
+                frame_index=1,
+                lane_direction_deg=5.0,
+            ),
+        ],
+    )
+
+    assert result.lm_used is False
+    assert result.lm_success is False
+    assert "scipy_missing_lm_disabled" in result.quality_issues
 
 
 def test_bbox_envelope_residual_contains_bbox_heading_size_and_height_terms() -> None:

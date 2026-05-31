@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 notes: 'Fixed-camera profiles replace per-video calibration for the final demo. A
   profile supplies one manual ground-plane calibration and reusable zones for every
   clip matching its covered_clip_patterns.

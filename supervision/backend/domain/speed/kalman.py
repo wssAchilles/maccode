@@ -23,6 +23,16 @@ class KalmanState:
     speed_confidence: float
 
 
+@dataclass(frozen=True)
+class KalmanMeasurementPrediction:
+    predicted_position: tuple[float, float]
+    innovation: NDArray[np.float64]
+    innovation_covariance: NDArray[np.float64]
+    mahalanobis_d2: float
+    covariance_solver: str
+    confidence_penalty: float = 0.0
+
+
 class KalmanFilter2D:
     def __init__(self, config: KalmanConfig) -> None:
         self.config = config
@@ -54,21 +64,13 @@ class KalmanFilter2D:
         if delta_t <= 0:
             return self._to_state()
 
-        transition = np.array(
-            [
-                [1.0, 0.0, delta_t, 0.0],
-                [0.0, 1.0, 0.0, delta_t],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-            dtype=float,
-        )
+        transition = self._transition_matrix(delta_t)
         process_noise = self._process_noise_matrix(delta_t)
         predicted_state = transition @ self._state
         predicted_covariance = transition @ self._covariance @ transition.T + process_noise
 
-        observation = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]], dtype=float)
-        measurement_noise = np.eye(2, dtype=float) * self.config.measurement_noise
+        observation = self._observation_matrix()
+        measurement_noise = self._measurement_noise_matrix()
         innovation = measurement - observation @ predicted_state
         innovation_covariance = (
             observation @ predicted_covariance @ observation.T + measurement_noise
@@ -89,6 +91,121 @@ class KalmanFilter2D:
         self._last_timestamp = timestamp_sec
         self._last_measurement = position
         return self._to_state()
+
+    def predict_measurement(
+        self,
+        position: tuple[float, float],
+        timestamp_sec: float,
+    ) -> KalmanMeasurementPrediction:
+        measurement = np.array([[position[0]], [position[1]]], dtype=float)
+        observation = self._observation_matrix()
+        if self._state is None or self._covariance is None or self._last_timestamp is None:
+            innovation_covariance = (
+                np.eye(2, dtype=float)
+                * (self.config.initial_position_variance + self.config.measurement_noise)
+            )
+            return KalmanMeasurementPrediction(
+                predicted_position=position,
+                innovation=np.zeros((2, 1), dtype=np.float64),
+                innovation_covariance=innovation_covariance,
+                mahalanobis_d2=0.0,
+                covariance_solver="uninitialized",
+            )
+        delta_t = timestamp_sec - self._last_timestamp
+        if delta_t <= 0:
+            predicted_position = observation @ self._state
+            innovation_covariance = (
+                observation @ self._covariance @ observation.T
+                + self._measurement_noise_matrix()
+            )
+            innovation = measurement - predicted_position
+            mahalanobis_d2, solver, penalty = self._mahalanobis_d2(
+                innovation,
+                innovation_covariance,
+            )
+            return KalmanMeasurementPrediction(
+                predicted_position=(
+                    float(predicted_position[0, 0]),
+                    float(predicted_position[1, 0]),
+                ),
+                innovation=innovation.astype(np.float64),
+                innovation_covariance=innovation_covariance.astype(np.float64),
+                mahalanobis_d2=mahalanobis_d2,
+                covariance_solver=solver,
+                confidence_penalty=penalty,
+            )
+        transition = self._transition_matrix(delta_t)
+        predicted_state = transition @ self._state
+        predicted_covariance = (
+            transition @ self._covariance @ transition.T + self._process_noise_matrix(delta_t)
+        )
+        predicted_position = observation @ predicted_state
+        innovation = measurement - predicted_position
+        innovation_covariance = (
+            observation @ predicted_covariance @ observation.T
+            + self._measurement_noise_matrix()
+        )
+        mahalanobis_d2, solver, penalty = self._mahalanobis_d2(
+            innovation,
+            innovation_covariance,
+        )
+        return KalmanMeasurementPrediction(
+            predicted_position=(
+                float(predicted_position[0, 0]),
+                float(predicted_position[1, 0]),
+            ),
+            innovation=innovation.astype(np.float64),
+            innovation_covariance=innovation_covariance.astype(np.float64),
+            mahalanobis_d2=mahalanobis_d2,
+            covariance_solver=solver,
+            confidence_penalty=penalty,
+        )
+
+    @staticmethod
+    def _transition_matrix(delta_t: float) -> NDArray[np.float64]:
+        return np.array(
+            [
+                [1.0, 0.0, delta_t, 0.0],
+                [0.0, 1.0, 0.0, delta_t],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+    @staticmethod
+    def _observation_matrix() -> NDArray[np.float64]:
+        return np.array(
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
+            dtype=np.float64,
+        )
+
+    def _measurement_noise_matrix(self) -> NDArray[np.float64]:
+        return np.eye(2, dtype=np.float64) * self.config.measurement_noise
+
+    @staticmethod
+    def _mahalanobis_d2(
+        innovation: NDArray[np.float64],
+        innovation_covariance: NDArray[np.float64],
+    ) -> tuple[float, str, float]:
+        penalty = 0.0
+        solver = "solve"
+        try:
+            if np.linalg.cond(innovation_covariance) > 1e10:
+                raise np.linalg.LinAlgError("ill-conditioned innovation covariance")
+            solved = np.linalg.solve(innovation_covariance, innovation)
+        except np.linalg.LinAlgError:
+            penalty = 0.15
+            solver = "jittered_solve"
+            jittered = innovation_covariance + np.eye(2, dtype=np.float64) * 1e-6
+            try:
+                solved = np.linalg.solve(jittered, innovation)
+            except np.linalg.LinAlgError:
+                penalty = 0.3
+                solver = "pinv"
+                solved = np.linalg.pinv(jittered) @ innovation
+        value = float((innovation.T @ solved)[0, 0])
+        return max(0.0, value), solver, penalty
 
     def _process_noise_matrix(self, delta_t: float) -> NDArray[np.float64]:
         dt2 = delta_t**2

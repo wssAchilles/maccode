@@ -73,6 +73,7 @@ def test_calibration_preset_store_saves_video_manual_preset(tmp_path: Path) -> N
         == "inverse_homography_projection"
     )
     reloaded = yaml.safe_load(preset_path.read_text(encoding="utf-8"))
+    assert reloaded["schema_version"] == 2
     assert reloaded["scene_profiles"]["demo"]["world_width_m"] == 10.0
     assert reloaded["video_calibrations"]["demo.mp4"]["notes"] == "surveyed stop-line calibration"
     assert reloaded["video_calibrations"]["demo.mp4"]["calibration_trusted"] is True

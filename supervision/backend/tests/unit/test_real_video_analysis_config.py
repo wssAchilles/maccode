@@ -111,6 +111,15 @@ video_calibrations:
     assert video_preset.notes == "surveyed YAML control points"
 
 
+def test_calibration_yaml_schema_version_tracks_v2_contract() -> None:
+    assert "schema_version: 2" in Path("data/tests/calibration_presets.yaml").read_text(
+        encoding="utf-8",
+    )
+    assert "schema_version: 2" in Path("data/tests/camera_profiles.yaml").read_text(
+        encoding="utf-8",
+    )
+
+
 def test_loads_trusted_manual_calibration_metadata(tmp_path: Path) -> None:
     preset_path = tmp_path / "calibration_presets.yaml"
     preset_path.write_text(

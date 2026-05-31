@@ -13,6 +13,8 @@ from domain.speed.smoothing import median_smoothing
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import ViewTransformer
 
+MAHALANOBIS_ID_SWITCH_THRESHOLD_D2 = 9.21
+
 
 @dataclass(frozen=True)
 class _RegressionState:
@@ -103,11 +105,25 @@ class SpeedEstimator:
             )
             return None
 
-        history.add_position(world_position, timestamp_sec)
-        kalman_state = self._kalman_filters.setdefault(
+        kalman_filter = self._kalman_filters.setdefault(
             tracker_id,
             KalmanFilter2D(kalman_config_for_motion_profile(motion_profile.process_noise)),
-        ).update(world_position, timestamp_sec)
+        )
+        predicted_measurement = kalman_filter.predict_measurement(world_position, timestamp_sec)
+        if predicted_measurement.mahalanobis_d2 > MAHALANOBIS_ID_SWITCH_THRESHOLD_D2:
+            history.rejected_observations += 1
+            self._latest_records[tracker_id] = self._quality_record(
+                tracker_id=tracker_id,
+                timestamp_sec=timestamp_sec,
+                world_position=world_position,
+                motion_profile=motion_profile,
+                quality_label="rejected",
+                rejection_reason="mahalanobis_gate",
+            )
+            return None
+
+        history.add_position(world_position, timestamp_sec)
+        kalman_state = kalman_filter.update(world_position, timestamp_sec)
         track_age = len(history.positions)
         if track_age < motion_profile.min_track_age_frames:
             self._latest_records[tracker_id] = self._quality_record(

@@ -167,7 +167,7 @@ def prepare_assets(
             raise ValueError(f"could not write calibration preview: {preview_path}")
         templates[video_path.name] = template
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "notes": (
             "Copy entries into data/tests/calibration_presets.json video_calibrations "
             "after replacing template pixel coordinates with manually surveyed points."

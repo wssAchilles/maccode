@@ -100,6 +100,19 @@ class HomographyConsistencyResult:
 
 
 @dataclass(frozen=True)
+class BboxEnvelopeLMResult:
+    camera_matrix: NDArray[np.float64]
+    mount_prior: CameraMountPrior
+    depth_scale: float
+    initial_rmse: float | None
+    final_rmse: float | None
+    iterations: int | None
+    success: bool
+    boundary_hit: bool
+    quality_issues: list[str]
+
+
+@dataclass(frozen=True)
 class Vehicle3DCalibrationResult:
     calibration_source: str
     calibration_quality: str
@@ -113,6 +126,14 @@ class Vehicle3DCalibrationResult:
     homography_consistency: dict[str, object] | None
     pnp_used: bool
     pnp_point_count: int
+    lm_used: bool
+    lm_success: bool
+    lm_initial_rmse: float | None
+    lm_final_rmse: float | None
+    lm_iterations: int | None
+    optimized_camera_matrix: list[list[float]] | None
+    optimized_mount_prior: dict[str, float] | None
+    optimized_depth_scale: float | None
     rvec: list[float] | None
     tvec: list[float] | None
     h_world_to_pixel: list[list[float]] | None
@@ -134,6 +155,14 @@ class Vehicle3DCalibrationResult:
             "homography_consistency": self.homography_consistency,
             "pnp_used": self.pnp_used,
             "pnp_point_count": self.pnp_point_count,
+            "lm_used": self.lm_used,
+            "lm_success": self.lm_success,
+            "lm_initial_rmse": self.lm_initial_rmse,
+            "lm_final_rmse": self.lm_final_rmse,
+            "lm_iterations": self.lm_iterations,
+            "optimized_camera_matrix": self.optimized_camera_matrix,
+            "optimized_mount_prior": self.optimized_mount_prior,
+            "optimized_depth_scale": self.optimized_depth_scale,
             "rvec": self.rvec,
             "tvec": self.tvec,
             "h_world_to_pixel": self.h_world_to_pixel,
@@ -164,12 +193,21 @@ class Vehicle3DCalibrationService:
             frame_width=frame_width,
             frame_height=frame_height,
         )
+        optimized_camera_matrix: NDArray[np.float64] | None = None
+        optimized_mount_prior: CameraMountPrior | None = None
+        optimized_depth_scale: float | None = None
+        lm_result: BboxEnvelopeLMResult | None = None
         fx = float(camera_matrix[0, 0])
         fy = float(camera_matrix[1, 1])
         bounds = self.check_intrinsics_bounds(
             intrinsics_prior,
             fx=fx,
             fy=fy,
+            cx=float(camera_matrix[0, 2]),
+            cy=float(camera_matrix[1, 2]),
+            frame_width=frame_width,
+            frame_height=frame_height,
+            dist_coeffs=intrinsics_prior.dist_coeffs,
             confidence=intrinsics_prior.confidence,
         )
         quality_issues = list(bounds.quality_issues)
@@ -178,6 +216,38 @@ class Vehicle3DCalibrationService:
             quality_issues.append("bbox_only_observations_below_minimum")
         if bbox_only and observations:
             quality_issues.append("bbox_only_weakly_observable")
+            lm_result = self._optimize_bbox_envelope(
+                frame_width=frame_width,
+                frame_height=frame_height,
+                intrinsics_prior=intrinsics_prior,
+                mount_prior=mount_prior,
+                vehicle_priors=vehicle_priors,
+                observations=observations,
+                weights=active_weights,
+                initial_camera_matrix=camera_matrix,
+            )
+            quality_issues.extend(lm_result.quality_issues)
+            if lm_result.success:
+                optimized_camera_matrix = lm_result.camera_matrix
+                optimized_mount_prior = lm_result.mount_prior
+                optimized_depth_scale = lm_result.depth_scale
+                camera_matrix = lm_result.camera_matrix
+                fx = float(camera_matrix[0, 0])
+                fy = float(camera_matrix[1, 1])
+                bounds = self.check_intrinsics_bounds(
+                    intrinsics_prior,
+                    fx=fx,
+                    fy=fy,
+                    cx=float(camera_matrix[0, 2]),
+                    cy=float(camera_matrix[1, 2]),
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    dist_coeffs=intrinsics_prior.dist_coeffs,
+                    confidence=bounds.confidence,
+                )
+                quality_issues.extend(bounds.quality_issues)
+            if lm_result.boundary_hit:
+                quality_issues.append("lm_solution_boundary_hit")
         if not observations:
             quality_issues.append("no_vehicle_3d_observations")
         pnp_result = self._solve_explicit_pnp(
@@ -206,11 +276,19 @@ class Vehicle3DCalibrationService:
             residual_vector.extend(
                 self.bbox_envelope_residual(
                     observation=observation,
-                    projected_bbox=observation.bbox,
+                    projected_bbox=self.project_cuboid_envelope(
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        camera_matrix=camera_matrix,
+                        mount_prior=optimized_mount_prior or mount_prior,
+                        vehicle_prior=prior,
+                        observation=observation,
+                        depth_scale=optimized_depth_scale or 1.0,
+                    ),
                     vehicle_prior=prior,
                     candidate_length_m=prior.length_m,
                     candidate_width_m=prior.width_m,
-                    camera_height_m=mount_prior.height_m,
+                    camera_height_m=(optimized_mount_prior or mount_prior).height_m,
                     camera_mount_prior=mount_prior,
                     weights=active_weights,
                 )
@@ -262,6 +340,26 @@ class Vehicle3DCalibrationService:
             homography_consistency=consistency_dict,
             pnp_used=pnp_used,
             pnp_point_count=pnp_point_count,
+            lm_used=(
+                lm_result is not None
+                and "scipy_missing_lm_disabled" not in lm_result.quality_issues
+            ),
+            lm_success=lm_result.success if lm_result is not None else False,
+            lm_initial_rmse=lm_result.initial_rmse if lm_result is not None else None,
+            lm_final_rmse=lm_result.final_rmse if lm_result is not None else None,
+            lm_iterations=lm_result.iterations if lm_result is not None else None,
+            optimized_camera_matrix=optimized_camera_matrix.astype(float).tolist()
+            if optimized_camera_matrix is not None
+            else None,
+            optimized_mount_prior={
+                "height_m": float(optimized_mount_prior.height_m),
+                "pitch_deg": float(optimized_mount_prior.pitch_deg or 0.0),
+                "roll_deg": float(optimized_mount_prior.roll_deg or 0.0),
+                "yaw_deg": float(optimized_mount_prior.yaw_deg or 0.0),
+            }
+            if optimized_mount_prior is not None
+            else None,
+            optimized_depth_scale=optimized_depth_scale,
             rvec=pnp_result[0].reshape(-1).astype(float).tolist() if pnp_result else None,
             tvec=pnp_result[1].reshape(-1).astype(float).tolist() if pnp_result else None,
             h_world_to_pixel=h_world_to_pixel.astype(float).tolist()
@@ -308,6 +406,255 @@ class Vehicle3DCalibrationService:
             / height_sigma,
         ]
 
+    def project_cuboid_envelope(
+        self,
+        *,
+        frame_width: int,
+        frame_height: int,
+        camera_matrix: NDArray[np.float64],
+        mount_prior: CameraMountPrior,
+        vehicle_prior: Vehicle3DPrior,
+        observation: Vehicle3DObservation,
+        depth_scale: float = 1.0,
+    ) -> BBox2D:
+        """Project a weakly anchored 3D vehicle cuboid and return its pixel envelope."""
+        anchor_pixel = (
+            (observation.bbox.left + observation.bbox.right) / 2.0,
+            observation.bbox.bottom,
+        )
+        anchor_world = self._backproject_pixel_to_ground(
+            anchor_pixel,
+            camera_matrix=camera_matrix,
+            mount_prior=mount_prior,
+        )
+        if anchor_world is None:
+            return self._invalid_projection_bbox(frame_width, frame_height)
+
+        heading_deg = (
+            observation.estimated_heading_deg
+            if observation.estimated_heading_deg is not None
+            else observation.lane_direction_deg
+        )
+        heading = math.radians(heading_deg)
+        forward = np.array([math.sin(heading), math.cos(heading)], dtype=np.float64)
+        lateral = np.array([math.cos(heading), -math.sin(heading)], dtype=np.float64)
+        footprint_center = np.array(
+            [
+                anchor_world[0] * depth_scale,
+                anchor_world[1] * depth_scale,
+            ],
+            dtype=np.float64,
+        )
+        half_length = vehicle_prior.length_m / 2.0
+        half_width = vehicle_prior.width_m / 2.0
+        ground_corners: list[tuple[float, float]] = []
+        for length_sign in (-1.0, 1.0):
+            for width_sign in (-1.0, 1.0):
+                point = (
+                    footprint_center
+                    + forward * half_length * length_sign
+                    + lateral * half_width * width_sign
+                )
+                ground_corners.append((float(point[0]), float(point[1])))
+        world_points = np.array(
+            [
+                [x, y, z]
+                for x, y in ground_corners
+                for z in (0.0, vehicle_prior.height_m)
+            ],
+            dtype=np.float64,
+        )
+        image_points = self._project_world_points(
+            world_points,
+            camera_matrix=camera_matrix,
+            mount_prior=mount_prior,
+        )
+        if image_points.size == 0:
+            return self._invalid_projection_bbox(frame_width, frame_height)
+        return BBox2D(
+            left=float(np.min(image_points[:, 0])),
+            top=float(np.min(image_points[:, 1])),
+            right=float(np.max(image_points[:, 0])),
+            bottom=float(np.max(image_points[:, 1])),
+        )
+
+    def _optimize_bbox_envelope(
+        self,
+        *,
+        frame_width: int,
+        frame_height: int,
+        intrinsics_prior: CameraIntrinsicsPrior,
+        mount_prior: CameraMountPrior,
+        vehicle_priors: dict[str, Vehicle3DPrior],
+        observations: list[Vehicle3DObservation],
+        weights: VehicleResidualWeights,
+        initial_camera_matrix: NDArray[np.float64],
+    ) -> BboxEnvelopeLMResult:
+        try:
+            from scipy.optimize import least_squares
+        except ImportError:
+            return BboxEnvelopeLMResult(
+                camera_matrix=initial_camera_matrix,
+                mount_prior=mount_prior,
+                depth_scale=1.0,
+                initial_rmse=None,
+                final_rmse=None,
+                iterations=None,
+                success=False,
+                boundary_hit=False,
+                quality_issues=["scipy_missing_lm_disabled"],
+            )
+
+        usable = [
+            observation
+            for observation in observations
+            if observation.class_name in vehicle_priors
+        ]
+        if len(usable) < self.MIN_BBOX_ONLY_OBSERVATIONS:
+            return BboxEnvelopeLMResult(
+                camera_matrix=initial_camera_matrix,
+                mount_prior=mount_prior,
+                depth_scale=1.0,
+                initial_rmse=None,
+                final_rmse=None,
+                iterations=None,
+                success=False,
+                boundary_hit=False,
+                quality_issues=["bbox_only_observations_below_minimum"],
+            )
+
+        prior_fx = intrinsics_prior.fx or float(initial_camera_matrix[0, 0])
+        prior_fy = intrinsics_prior.fy or float(initial_camera_matrix[1, 1])
+        prior_cx = intrinsics_prior.cx if intrinsics_prior.cx is not None else frame_width / 2.0
+        prior_cy = intrinsics_prior.cy if intrinsics_prior.cy is not None else frame_height / 2.0
+        height_sigma = max(mount_prior.height_sigma_m, 0.25)
+        initial = np.array(
+            [
+                float(initial_camera_matrix[0, 0]),
+                float(initial_camera_matrix[1, 1]),
+                float(initial_camera_matrix[0, 2]),
+                float(initial_camera_matrix[1, 2]),
+                float(mount_prior.height_m),
+                float(mount_prior.pitch_deg or 8.0),
+                float(mount_prior.yaw_deg or 0.0),
+                1.0,
+            ],
+            dtype=np.float64,
+        )
+        cx_delta = frame_width * 0.05
+        cy_delta = frame_height * 0.05
+        lower = np.array(
+            [
+                prior_fx * intrinsics_prior.fx_bounds_scale[0],
+                prior_fy * intrinsics_prior.fx_bounds_scale[0],
+                prior_cx - cx_delta,
+                prior_cy - cy_delta,
+                max(0.5, mount_prior.height_m - 3.0 * height_sigma),
+                -45.0,
+                -45.0,
+                0.5,
+            ],
+            dtype=np.float64,
+        )
+        upper = np.array(
+            [
+                prior_fx * intrinsics_prior.fx_bounds_scale[1],
+                prior_fy * intrinsics_prior.fx_bounds_scale[1],
+                prior_cx + cx_delta,
+                prior_cy + cy_delta,
+                mount_prior.height_m + 3.0 * height_sigma,
+                45.0,
+                45.0,
+                2.0,
+            ],
+            dtype=np.float64,
+        )
+        initial = np.minimum(np.maximum(initial, lower + 1e-6), upper - 1e-6)
+
+        def unpack(
+            params: NDArray[np.float64],
+        ) -> tuple[NDArray[np.float64], CameraMountPrior, float]:
+            camera_matrix = np.array(
+                [
+                    [float(params[0]), 0.0, float(params[2])],
+                    [0.0, float(params[1]), float(params[3])],
+                    [0.0, 0.0, 1.0],
+                ],
+                dtype=np.float64,
+            )
+            optimized_mount = CameraMountPrior(
+                height_m=float(params[4]),
+                pitch_deg=float(params[5]),
+                roll_deg=mount_prior.roll_deg,
+                yaw_deg=float(params[6]),
+                height_sigma_m=mount_prior.height_sigma_m,
+                source=mount_prior.source,
+            )
+            return camera_matrix, optimized_mount, float(params[7])
+
+        def residuals(params: NDArray[np.float64]) -> NDArray[np.float64]:
+            candidate_camera_matrix, candidate_mount, candidate_depth_scale = unpack(params)
+            values: list[float] = []
+            for observation in usable:
+                prior = vehicle_priors[observation.class_name]
+                projected = self.project_cuboid_envelope(
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    camera_matrix=candidate_camera_matrix,
+                    mount_prior=candidate_mount,
+                    vehicle_prior=prior,
+                    observation=observation,
+                    depth_scale=candidate_depth_scale,
+                )
+                values.extend(
+                    self.bbox_envelope_residual(
+                        observation=observation,
+                        projected_bbox=projected,
+                        vehicle_prior=prior,
+                        candidate_length_m=prior.length_m,
+                        candidate_width_m=prior.width_m,
+                        camera_height_m=candidate_mount.height_m,
+                        camera_mount_prior=mount_prior,
+                        weights=weights,
+                    )
+                )
+            return np.array(values, dtype=np.float64)
+
+        initial_residuals = residuals(initial)
+        result = least_squares(
+            residuals,
+            initial,
+            bounds=(lower, upper),
+            max_nfev=80,
+            loss="soft_l1",
+            f_scale=10.0,
+        )
+        camera_matrix, optimized_mount, depth_scale = unpack(result.x.astype(np.float64))
+        final_residuals = residuals(result.x.astype(np.float64))
+        boundary_hit = bool(
+            np.any(result.x <= lower + np.maximum(np.abs(lower), 1.0) * 0.02)
+            or np.any(result.x >= upper - np.maximum(np.abs(upper), 1.0) * 0.02)
+        )
+        issues: list[str] = []
+        if boundary_hit:
+            issues.append("lm_solution_boundary_hit")
+        if not result.success:
+            issues.append("lm_optimizer_failed")
+        final_rmse = self._rmse([float(value) for value in final_residuals])
+        if final_rmse > 12.0:
+            issues.append("vehicle_3d_residual_too_high")
+        return BboxEnvelopeLMResult(
+            camera_matrix=camera_matrix,
+            mount_prior=optimized_mount,
+            depth_scale=depth_scale,
+            initial_rmse=self._rmse([float(value) for value in initial_residuals]),
+            final_rmse=final_rmse,
+            iterations=int(result.nfev),
+            success=bool(result.success),
+            boundary_hit=boundary_hit,
+            quality_issues=issues,
+        )
+
     def camera_matrix_from_prior(
         self,
         prior: CameraIntrinsicsPrior,
@@ -342,6 +689,12 @@ class Vehicle3DCalibrationService:
         fx: float,
         fy: float,
         confidence: float,
+        cx: float | None = None,
+        cy: float | None = None,
+        frame_width: int | None = None,
+        frame_height: int | None = None,
+        dist_coeffs: tuple[float, float, float, float, float] | None = None,
+        distortion_authorized: bool = False,
     ) -> IntrinsicsBoundsCheck:
         issues: list[str] = []
         boundary_hit = False
@@ -356,6 +709,8 @@ class Vehicle3DCalibrationService:
                 issues.append("focal_length_far_from_prior")
                 boundary_hit = True
                 checked_confidence *= 0.5
+            if fx <= lower * 1.02 or fx >= upper * 0.98:
+                boundary_hit = True
         if prior.fy is not None:
             lower = prior.fy * prior.fx_bounds_scale[0]
             upper = prior.fy * prior.fx_bounds_scale[1]
@@ -366,10 +721,120 @@ class Vehicle3DCalibrationService:
                 issues.append("focal_length_far_from_prior")
                 boundary_hit = True
                 checked_confidence *= 0.5
+            if fy <= lower * 1.02 or fy >= upper * 0.98:
+                boundary_hit = True
+        if (
+            frame_width is not None
+            and frame_height is not None
+            and cx is not None
+            and cy is not None
+        ):
+            expected_cx = prior.cx if prior.cx is not None else frame_width / 2.0
+            expected_cy = prior.cy if prior.cy is not None else frame_height / 2.0
+            cx_delta = frame_width * 0.05
+            cy_delta = frame_height * 0.05
+            if cx < expected_cx - cx_delta or cx > expected_cx + cx_delta:
+                issues.append("principal_point_out_of_bounds")
+                boundary_hit = True
+                checked_confidence = 0.0
+            if cy < expected_cy - cy_delta or cy > expected_cy + cy_delta:
+                issues.append("principal_point_out_of_bounds")
+                boundary_hit = True
+                checked_confidence = 0.0
+        if dist_coeffs is not None and not distortion_authorized:
+            if any(abs(value) > 1e-12 for value in dist_coeffs):
+                issues.append("distortion_not_authorized")
+                checked_confidence = 0.0
         return IntrinsicsBoundsCheck(
             confidence=float(max(0.0, min(1.0, checked_confidence))),
             intrinsic_boundary_hit=boundary_hit,
             quality_issues=sorted(set(issues)),
+        )
+
+    def _backproject_pixel_to_ground(
+        self,
+        pixel: tuple[float, float],
+        *,
+        camera_matrix: NDArray[np.float64],
+        mount_prior: CameraMountPrior,
+    ) -> tuple[float, float] | None:
+        fx = float(camera_matrix[0, 0])
+        fy = float(camera_matrix[1, 1])
+        cx = float(camera_matrix[0, 2])
+        cy = float(camera_matrix[1, 2])
+        if abs(fx) < 1e-9 or abs(fy) < 1e-9:
+            return None
+        normalized_x = (pixel[0] - cx) / fx
+        normalized_y = (pixel[1] - cy) / fy
+        pitch = math.radians(mount_prior.pitch_deg or 0.0)
+        sin_pitch = math.sin(pitch)
+        cos_pitch = math.cos(pitch)
+        denominator = normalized_y * cos_pitch + sin_pitch
+        if abs(denominator) < 1e-9:
+            return None
+        y_world = mount_prior.height_m * (cos_pitch - normalized_y * sin_pitch) / denominator
+        z_camera_depth = sin_pitch * mount_prior.height_m + cos_pitch * y_world
+        x_world = normalized_x * z_camera_depth
+        yaw = math.radians(mount_prior.yaw_deg or 0.0)
+        cos_yaw = math.cos(yaw)
+        sin_yaw = math.sin(yaw)
+        inv_x = cos_yaw * x_world + sin_yaw * y_world
+        inv_y = -sin_yaw * x_world + cos_yaw * y_world
+        if not math.isfinite(inv_x) or not math.isfinite(inv_y):
+            return None
+        return (float(inv_x), float(inv_y))
+
+    def _project_world_points(
+        self,
+        world_points: NDArray[np.float64],
+        *,
+        camera_matrix: NDArray[np.float64],
+        mount_prior: CameraMountPrior,
+    ) -> NDArray[np.float64]:
+        camera_points = self._world_to_camera_points(world_points, mount_prior=mount_prior)
+        depths = camera_points[:, 2]
+        valid = depths > 1e-6
+        if not np.any(valid):
+            return np.empty((0, 2), dtype=np.float64)
+        camera_points = camera_points[valid]
+        projected = np.column_stack(
+            [
+                camera_matrix[0, 0] * (camera_points[:, 0] / camera_points[:, 2])
+                + camera_matrix[0, 2],
+                camera_matrix[1, 1] * (camera_points[:, 1] / camera_points[:, 2])
+                + camera_matrix[1, 2],
+            ],
+        )
+        finite_mask = np.isfinite(projected).all(axis=1)
+        return projected[finite_mask].astype(np.float64)
+
+    @staticmethod
+    def _world_to_camera_points(
+        world_points: NDArray[np.float64],
+        *,
+        mount_prior: CameraMountPrior,
+    ) -> NDArray[np.float64]:
+        yaw = math.radians(mount_prior.yaw_deg or 0.0)
+        pitch = math.radians(mount_prior.pitch_deg or 0.0)
+        cos_yaw = math.cos(yaw)
+        sin_yaw = math.sin(yaw)
+        x_yawed = cos_yaw * world_points[:, 0] - sin_yaw * world_points[:, 1]
+        y_yawed = sin_yaw * world_points[:, 0] + cos_yaw * world_points[:, 1]
+        y_down = mount_prior.height_m - world_points[:, 2]
+        z_forward = y_yawed
+        cos_pitch = math.cos(pitch)
+        sin_pitch = math.sin(pitch)
+        camera_y = cos_pitch * y_down - sin_pitch * z_forward
+        camera_z = sin_pitch * y_down + cos_pitch * z_forward
+        return np.column_stack([x_yawed, camera_y, camera_z]).astype(np.float64)
+
+    @staticmethod
+    def _invalid_projection_bbox(frame_width: int, frame_height: int) -> BBox2D:
+        return BBox2D(
+            left=-float(frame_width),
+            top=-float(frame_height),
+            right=float(frame_width) * 2.0,
+            bottom=float(frame_height) * 2.0,
         )
 
     def evaluate_homography_consistency(
