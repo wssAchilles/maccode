@@ -7,6 +7,7 @@ interface FlowChartProps {
 }
 
 interface FlowBin {
+  axisLabel: string;
   density: number | null;
   flow: number;
   label: string;
@@ -34,9 +35,33 @@ function average(values: number[]) {
   return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
+function formatAxisTimeLabel(value: number, durationSec: number) {
+  return durationSec < 10 ? `${value.toFixed(1)}s` : `${value.toFixed(0)}s`;
+}
+
+function shouldShowAxisLabel(index: number, total: number) {
+  if (total <= 5) {
+    return true;
+  }
+  return index === 0 || index === total - 1 || index === Math.floor((total - 1) / 2);
+}
+
 function latestReports(report: FrameReport | null, history?: FrameReport[]) {
   const reports = history && history.length > 0 ? history : report ? [report] : [];
-  return reports.slice(-72);
+  if (!report) {
+    return reports.slice(-72);
+  }
+  const currentTimeSec = report.timestamp_sec;
+  if (!finiteNumber(currentTimeSec)) {
+    return reports.slice(-72);
+  }
+  const reportsUntilCurrentTime = reports.filter(
+    (item) => finiteNumber(item.timestamp_sec) && item.timestamp_sec <= currentTimeSec
+  );
+  if (reportsUntilCurrentTime.length === 0) {
+    return [report];
+  }
+  return reportsUntilCurrentTime.slice(-72);
 }
 
 function dynamicTracks(report: FrameReport) {
@@ -64,6 +89,9 @@ function buildBins(reports: FrameReport[]) {
   const targetBins = Math.min(8, Math.max(1, reports.length));
   const binSize = Math.ceil(reports.length / targetBins);
   const bins: FlowBin[] = [];
+  const firstSec = reports[0]?.timestamp_sec ?? 0;
+  const lastSec = reports[reports.length - 1]?.timestamp_sec ?? firstSec;
+  const durationSec = Math.max(0, lastSec - firstSec);
   for (let start = 0; start < reports.length; start += binSize) {
     const chunk = reports.slice(start, start + binSize);
     const flowValues = chunk.map((item) => item.traffic_flow?.flow_q_veh_per_hour ?? 0);
@@ -75,10 +103,15 @@ function buildBins(reports: FrameReport[]) {
       .filter(finiteNumber);
     const startSec = chunk[0]?.timestamp_sec ?? 0;
     const endSec = chunk[chunk.length - 1]?.timestamp_sec ?? startSec;
+    const midpointSec = (startSec + endSec) / 2;
     bins.push({
+      axisLabel: formatAxisTimeLabel(midpointSec, durationSec),
       density: average(densityValues),
       flow: average(flowValues) ?? 0,
-      label: `${startSec.toFixed(0)}-${endSec.toFixed(0)}s`,
+      label:
+        durationSec < 10
+          ? `${startSec.toFixed(1)}-${endSec.toFixed(1)}s`
+          : `${startSec.toFixed(0)}-${endSec.toFixed(0)}s`,
       people: Math.max(...chunk.map(peopleCount), 0),
       speed: average(speedValues),
       vehicles: Math.max(...chunk.map(vehicleCount), 0)
@@ -187,8 +220,10 @@ export function FlowChart({ className = "", history, report }: FlowChartProps) {
             {bins.map((bin, index) => {
               const x = 52 + index * (500 / Math.max(bins.length, 1));
               const height = Math.max(10, (bin.flow / maxFlow) * 120);
+              const showAxisLabel = shouldShowAxisLabel(index, bins.length);
               return (
-                <g key={bin.label}>
+                <g key={`${bin.label}:${index}`}>
+                  <title>{bin.label}</title>
                   <rect
                     className="flow-bar"
                     height={height}
@@ -197,9 +232,11 @@ export function FlowChart({ className = "", history, report }: FlowChartProps) {
                     x={x}
                     y={180 - height}
                   />
-                  <text className="flow-axis-label" x={x + 14} y="204">
-                    {bin.label}
-                  </text>
+                  {showAxisLabel && (
+                    <text className="flow-axis-label" x={x + 14} y="204">
+                      {bin.axisLabel}
+                    </text>
+                  )}
                 </g>
               );
             })}

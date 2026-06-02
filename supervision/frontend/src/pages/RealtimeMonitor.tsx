@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { animate, stagger } from "animejs";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -17,6 +18,7 @@ import { MetricTile } from "../components/cards/MetricTile";
 import { ZoneStatsList } from "../components/cards/ZoneStatsList";
 import { VideoPanel, type VideoPlaybackSnapshot } from "../components/video/VideoPanel";
 import { useAIReport } from "../hooks/useAIReport";
+import { useAnimeScope } from "../hooks/useAnimeScope";
 import type { FrameReport, Track } from "../types/frameReport";
 import type { ProcessingTask } from "../types/videoTask";
 import {
@@ -147,19 +149,16 @@ function reportForPlayback(
   if (!shouldSyncToVideo || history.length === 0) {
     return fallbackReport;
   }
-  const maxIndex = history.length - 1;
-  let frameIndex = 0;
-  if (playbackSnapshot.durationSec > 0) {
-    const progress = Math.max(
-      0,
-      Math.min(1, playbackSnapshot.currentTimeSec / playbackSnapshot.durationSec)
-    );
-    frameIndex = Math.round(progress * maxIndex);
-  } else {
-    const fps = history[0]?.fps ?? fallbackReport?.fps ?? 0;
-    frameIndex = fps > 0 ? Math.round(playbackSnapshot.currentTimeSec * fps) : 0;
+  let closestReport = history[0];
+  let closestDelta = Math.abs((history[0]?.timestamp_sec ?? 0) - playbackSnapshot.currentTimeSec);
+  for (const candidate of history) {
+    const delta = Math.abs((candidate.timestamp_sec ?? 0) - playbackSnapshot.currentTimeSec);
+    if (delta < closestDelta) {
+      closestReport = candidate;
+      closestDelta = delta;
+    }
   }
-  return history[Math.max(0, Math.min(maxIndex, frameIndex))] ?? fallbackReport;
+  return closestReport ?? fallbackReport;
 }
 
 export function RealtimeMonitor({
@@ -172,9 +171,12 @@ export function RealtimeMonitor({
   task,
   taskError
 }: RealtimeMonitorProps) {
+  const decisionColumnRef = useRef<HTMLElement | null>(null);
+  const geekLayerRef = useRef<HTMLDivElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisUiState>("idle");
   const [isGeekModeOpen, setIsGeekModeOpen] = useState(false);
+  const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
   const [sceneLabel, setSceneLabel] = useState("");
   const [sceneTagText, setSceneTagText] = useState("");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -195,9 +197,13 @@ export function RealtimeMonitor({
     showAnalysisOverlay && Boolean(displayedVideoUrl)
   );
   const leadTrack = chooseLeadTrack(activeReport);
+  const selectedTrack =
+    activeReport?.active_tracks.find((track) => track.tracker_id === selectedTrackId) ?? leadTrack;
+  const selectedTrackIdentity = selectedTrack
+    ? `#${selectedTrack.tracker_id} / ${selectedTrack.class_name}`
+    : "未锁定目标";
   const avgSpeed = dashboardSpeed(activeReport);
   const avgConfidence = averageTrackField(activeReport, "speed_confidence");
-  const avgUncertainty = averageTrackField(activeReport, "speed_uncertainty_kmh");
   const speedInterval = dashboardSpeedInterval(activeReport, leadTrack);
   const speedMetricValue = finiteNumber(avgSpeed)
     ? formatSpeed(avgSpeed)
@@ -258,6 +264,7 @@ export function RealtimeMonitor({
       : analysisState === "stopped"
         ? `已停止 · ${sourceLabel}`
         : sourceLabel;
+  const alertEventSignature = alertEvents.join("|");
 
   useEffect(() => {
     if (!selectedFile) {
@@ -274,6 +281,71 @@ export function RealtimeMonitor({
       setAnalysisState("complete");
     }
   }, [analysisState, isTaskLoading, selectedFile, task?.processed_video_url]);
+
+  useEffect(() => {
+    const tracks = activeReport?.active_tracks ?? [];
+    if (tracks.length === 0) {
+      setSelectedTrackId(null);
+      return;
+    }
+    if (selectedTrackId !== null && tracks.some((track) => track.tracker_id === selectedTrackId)) {
+      return;
+    }
+    setSelectedTrackId((chooseLeadTrack(activeReport) ?? tracks[0]).tracker_id);
+  }, [activeReport, selectedTrackId]);
+
+  useAnimeScope(
+    decisionColumnRef,
+    () => {
+      const alertItems = decisionColumnRef.current?.querySelectorAll<HTMLElement>(".alert-feed p");
+      if (!alertItems || alertItems.length === 0) {
+        return;
+      }
+      animate(Array.from(alertItems), {
+        opacity: [0, 1],
+        y: [5, 0],
+        delay: stagger(24),
+        duration: 260,
+        ease: "out(3)"
+      });
+    },
+    [alertEventSignature, hasLiveAlert]
+  );
+
+  useAnimeScope(
+    geekLayerRef,
+    () => {
+      const layer = geekLayerRef.current;
+      const drawer = layer?.querySelector<HTMLElement>(".geek-drawer");
+      const sections = layer?.querySelectorAll<HTMLElement>(".geek-section, .geek-drawer > .panel");
+
+      if (layer) {
+        animate(layer, {
+          opacity: [0, 1],
+          duration: 180,
+          ease: "out(2)"
+        });
+      }
+      if (drawer) {
+        animate(drawer, {
+          opacity: [0, 1],
+          x: [36, 0],
+          duration: 320,
+          ease: "out(3)"
+        });
+      }
+      if (sections && sections.length > 0) {
+        animate(Array.from(sections), {
+          opacity: [0, 1],
+          y: [8, 0],
+          delay: stagger(35, { start: 90 }),
+          duration: 260,
+          ease: "out(3)"
+        });
+      }
+    },
+    [isGeekModeOpen]
+  );
 
   function chooseFile(file: File | null | undefined) {
     if (!file) {
@@ -313,6 +385,7 @@ export function RealtimeMonitor({
             onPlaybackSnapshot={setPlaybackSnapshot}
             renderedByBackend={showAnalysisOverlay}
             safetyMetrics={showAnalysisOverlay ? activeReport?.safety_metrics ?? null : null}
+            selectedTrackId={showAnalysisOverlay ? selectedTrack?.tracker_id ?? null : null}
             tracks={showAnalysisOverlay ? activeReport?.active_tracks ?? [] : []}
             videoUrl={displayedVideoUrl}
           />
@@ -374,7 +447,7 @@ export function RealtimeMonitor({
         </section>
       </main>
 
-      <aside className="realtime-decision-column">
+      <aside className="realtime-decision-column" ref={decisionColumnRef}>
         <section className="panel controls-panel command-dock">
           <div className="panel-heading compact-heading">
             <h2>任务控制台</h2>
@@ -503,7 +576,12 @@ export function RealtimeMonitor({
       </aside>
 
       {isGeekModeOpen && (
-        <div className="geek-drawer-layer" onClick={() => setIsGeekModeOpen(false)} role="presentation">
+        <div
+          className="geek-drawer-layer"
+          onClick={() => setIsGeekModeOpen(false)}
+          ref={geekLayerRef}
+          role="presentation"
+        >
           <aside
             aria-labelledby="geek-drawer-title"
             aria-modal="true"
@@ -530,38 +608,74 @@ export function RealtimeMonitor({
               <div className="panel-heading compact-heading">
                 <h3>物理语义</h3>
               </div>
+              <div className="geek-target-bar">
+                <label>
+                  <span>当前目标</span>
+                  <select
+                    disabled={!activeReport?.active_tracks.length}
+                    onChange={(event) => setSelectedTrackId(Number(event.target.value))}
+                    value={selectedTrack?.tracker_id ?? ""}
+                  >
+                    {(activeReport?.active_tracks ?? []).map((track) => (
+                      <option key={track.tracker_id} value={track.tracker_id}>
+                        {`#${track.tracker_id} / ${track.class_name} / ${track.physics_valid ? "physics valid" : track.quality_label}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <span>画面对应</span>
+                  <strong>{selectedTrackIdentity}</strong>
+                </div>
+              </div>
               <div className="physics-grid">
                 <div>
+                  <span>Track ID</span>
+                  <strong>{selectedTrack ? `#${selectedTrack.tracker_id}` : "N/A"}</strong>
+                </div>
+                <div>
+                  <span>目标类别</span>
+                  <strong>{selectedTrack?.class_name ?? "N/A"}</strong>
+                </div>
+                <div>
                   <span>地面坐标 X</span>
-                  <strong>{formatMeters(leadTrack?.ground_x_m)}</strong>
+                  <strong>{formatMeters(selectedTrack?.ground_x_m)}</strong>
                 </div>
                 <div>
                   <span>地面坐标 Y</span>
-                  <strong>{formatMeters(leadTrack?.ground_y_m)}</strong>
+                  <strong>{formatMeters(selectedTrack?.ground_y_m)}</strong>
                 </div>
                 <div>
                   <span>速度向量 X</span>
-                  <strong>{formatMetersPerSecond(leadTrack?.velocity_x_mps)}</strong>
+                  <strong>{formatMetersPerSecond(selectedTrack?.velocity_x_mps)}</strong>
                 </div>
                 <div>
                   <span>速度向量 Y</span>
-                  <strong>{formatMetersPerSecond(leadTrack?.velocity_y_mps)}</strong>
+                  <strong>{formatMetersPerSecond(selectedTrack?.velocity_y_mps)}</strong>
                 </div>
                 <div>
                   <span>航向角</span>
-                  <strong>{formatDegrees(leadTrack?.heading_deg)}</strong>
+                  <strong>{formatDegrees(selectedTrack?.heading_deg)}</strong>
                 </div>
                 <div>
                   <span>加速度</span>
-                  <strong>{formatAcceleration(leadTrack?.acceleration_mps2)}</strong>
+                  <strong>{formatAcceleration(selectedTrack?.acceleration_mps2)}</strong>
                 </div>
                 <div>
                   <span>速度误差</span>
-                  <strong>{formatUncertainty(avgUncertainty)}</strong>
+                  <strong>{formatUncertainty(selectedTrack?.speed_uncertainty_kmh)}</strong>
                 </div>
                 <div>
                   <span>速度区间</span>
-                  <strong>{formatSpeedInterval(speedInterval)}</strong>
+                  <strong>{formatSpeedInterval(selectedTrack?.speed_confidence_interval_kmh)}</strong>
+                </div>
+                <div>
+                  <span>速度置信度</span>
+                  <strong>{formatPercent(selectedTrack?.speed_confidence)}</strong>
+                </div>
+                <div>
+                  <span>物理有效性</span>
+                  <strong>{selectedTrack ? (selectedTrack.physics_valid ? "valid" : selectedTrack.quality_label) : "N/A"}</strong>
                 </div>
               </div>
             </section>

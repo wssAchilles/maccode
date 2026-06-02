@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from domain.motion.router import MotionRouter
 from domain.speed.estimator import SpeedEstimator
-from domain.speed.kalman import KalmanConfig, KalmanFilter2D
+from domain.speed.kalman import KalmanConfig, KalmanFilter2D, KalmanMeasurementPrediction
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import ViewTransformer
 
@@ -262,6 +262,46 @@ def test_vehicle_id_switch_under_speed_gate_is_rejected_by_mahalanobis_gate() ->
     assert record is not None
     assert record.physics_valid is False
     assert record.speed_kmh is None
+    assert record.rejection_reason == "mahalanobis_gate"
+
+
+def test_pinv_mahalanobis_path_uses_stricter_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.3)
+    profile = MotionRouter().route_class(2)
+    estimator.update(
+        101,
+        (0.0, 0.0),
+        timestamp_sec=0.0,
+        motion_profile=profile,
+        detection_confidence=0.9,
+    )
+    kalman_filter = estimator._kalman_filters[101]
+
+    def pinv_prediction(
+        position: tuple[float, float],
+        timestamp_sec: float,
+    ) -> KalmanMeasurementPrediction:
+        return KalmanMeasurementPrediction(
+            predicted_position=position,
+            innovation=np.array([[2.0], [0.0]], dtype=np.float64),
+            innovation_covariance=np.eye(2, dtype=np.float64),
+            mahalanobis_d2=7.0,
+            covariance_solver="pinv",
+        )
+
+    monkeypatch.setattr(kalman_filter, "predict_measurement", pinv_prediction)
+
+    rejected_speed = estimator.update(
+        101,
+        (1.0, 0.0),
+        timestamp_sec=1.0,
+        motion_profile=profile,
+        detection_confidence=0.9,
+    )
+    record = estimator.get_record(101)
+
+    assert rejected_speed is None
+    assert record is not None
     assert record.rejection_reason == "mahalanobis_gate"
 
 

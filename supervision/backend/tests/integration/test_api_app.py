@@ -60,6 +60,15 @@ def test_realtime_stats_endpoint_returns_frame_report_contract() -> None:
     }
 
 
+def test_history_stats_endpoint_allows_full_video_report_window() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/api/stats/history?limit=5000")
+
+    assert response.status_code == 200
+    assert isinstance(response.json()["data"], list)
+
+
 def test_ai_report_endpoint_analyzes_frame_report_json(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_ENABLED", "false")
     client = TestClient(create_app())

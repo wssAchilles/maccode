@@ -55,7 +55,8 @@ class DemoRuntime:
         return report
 
     def get_history(self, limit: int = 100) -> list[dict[str, Any]]:
-        self.get_realtime_report()
+        if not self._history:
+            self._history.append(self._with_current_zones(generate_demo_report()))
         return self._history[-limit:]
 
     def get_cumulative_stats(self) -> dict[str, Any]:

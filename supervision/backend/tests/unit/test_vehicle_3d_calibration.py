@@ -238,6 +238,26 @@ def test_intrinsics_boundary_penalizes_weak_focal_length_solution() -> None:
     assert "focal_length_far_from_prior" in checked.quality_issues
 
 
+def test_intrinsics_boundary_rejects_principal_point_out_of_frame_center_band() -> None:
+    service = Vehicle3DCalibrationService()
+    prior = CameraIntrinsicsPrior(fx=1000.0, fy=1000.0, cx=640.0, cy=360.0)
+
+    checked = service.check_intrinsics_bounds(
+        prior,
+        fx=1000.0,
+        fy=1000.0,
+        cx=730.0,
+        cy=360.0,
+        frame_width=1280,
+        frame_height=720,
+        confidence=0.8,
+    )
+
+    assert checked.intrinsic_boundary_hit is True
+    assert checked.confidence == 0.0
+    assert "principal_point_out_of_bounds" in checked.quality_issues
+
+
 def test_homography_consistency_gate_rejects_speed_delta_over_threshold() -> None:
     service = Vehicle3DCalibrationService()
 
@@ -258,6 +278,7 @@ def test_homography_consistency_gate_rejects_speed_delta_over_threshold() -> Non
 
     assert consistent.passed is True
     assert inconsistent.passed is False
+    assert "manual_h_consistency_failed" in inconsistent.quality_issues
     assert "speed_delta_over_3_kmh" in inconsistent.quality_issues
 
 

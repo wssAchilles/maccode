@@ -150,6 +150,22 @@ def test_runtime_starts_playback_at_first_measured_report(
     assert runtime.get_realtime_report()["active_tracks"][0]["speed_kmh"] == 35.0
 
 
+def test_runtime_history_returns_full_window_without_advancing_playback() -> None:
+    runtime = DemoRuntime()
+    runtime._history = [  # noqa: SLF001
+        {"frame_index": frame_index, "timestamp_sec": frame_index / 30, "active_tracks": []}
+        for frame_index in range(1, 901)
+    ]
+    runtime._playback_index = 123  # noqa: SLF001
+
+    history = runtime.get_history(limit=5000)
+
+    assert len(history) == 900
+    assert history[0]["frame_index"] == 1
+    assert history[-1]["frame_index"] == 900
+    assert runtime._playback_index == 123  # noqa: SLF001
+
+
 def test_runtime_preserves_real_video_profile_zone_stats() -> None:
     runtime = DemoRuntime()
     real_report = generate_demo_report() | {

@@ -19,7 +19,7 @@ def get_realtime_stats(request: Request) -> ResponseWrapper[dict[str, Any]]:
 @router.get("/stats/history", response_model=ResponseWrapper[list[dict[str, Any]]])
 def get_history_stats(
     request: Request,
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=100, ge=1, le=5000),
 ) -> ResponseWrapper[list[dict[str, Any]]]:
     return ResponseWrapper.success_response(
         StatsService(request.app.state.runtime).get_history(limit)

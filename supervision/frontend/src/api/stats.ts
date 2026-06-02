@@ -5,7 +5,7 @@ export function getRealtimeStats() {
   return requestJson<FrameReport>("/api/stats/realtime");
 }
 
-export function getHistoryStats(limit = 100) {
+export function getHistoryStats(limit = 5000) {
   return requestJson<FrameReport[]>(`/api/stats/history?limit=${limit}`);
 }
 

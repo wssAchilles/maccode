@@ -14,6 +14,7 @@ from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import ViewTransformer
 
 MAHALANOBIS_ID_SWITCH_THRESHOLD_D2 = 9.21
+PINV_MAHALANOBIS_ID_SWITCH_THRESHOLD_D2 = 6.0
 
 
 @dataclass(frozen=True)
@@ -110,7 +111,12 @@ class SpeedEstimator:
             KalmanFilter2D(kalman_config_for_motion_profile(motion_profile.process_noise)),
         )
         predicted_measurement = kalman_filter.predict_measurement(world_position, timestamp_sec)
-        if predicted_measurement.mahalanobis_d2 > MAHALANOBIS_ID_SWITCH_THRESHOLD_D2:
+        mahalanobis_threshold = (
+            PINV_MAHALANOBIS_ID_SWITCH_THRESHOLD_D2
+            if predicted_measurement.covariance_solver == "pinv"
+            else MAHALANOBIS_ID_SWITCH_THRESHOLD_D2
+        )
+        if predicted_measurement.mahalanobis_d2 > mahalanobis_threshold:
             history.rejected_observations += 1
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,

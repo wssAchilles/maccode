@@ -854,6 +854,8 @@ class Vehicle3DCalibrationService:
             issues.append("grid_corner_shift_over_5_px")
         if value.speed_delta_kmh is None or value.speed_delta_kmh >= 3.0:
             issues.append("speed_delta_over_3_kmh")
+        if issues:
+            issues.append("manual_h_consistency_failed")
         return HomographyConsistencyResult(passed=not issues, quality_issues=issues)
 
     @staticmethod
