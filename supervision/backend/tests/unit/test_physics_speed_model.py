@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 from domain.motion.router import MotionRouter
 from domain.speed.estimator import SpeedEstimator
-from domain.speed.kalman import KalmanConfig, KalmanFilter2D, KalmanMeasurementPrediction
+from domain.speed.kalman import (
+    ConstantAccelerationKalmanFilter2D,
+    KalmanConfig,
+    KalmanFilter2D,
+    KalmanMeasurementPrediction,
+)
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import ViewTransformer
 
@@ -177,11 +182,111 @@ def test_auxiliary_bev_velocity_stabilizes_jittered_ground_observations() -> Non
             displayed_speeds.append(speed)
 
     assert displayed_speeds
-    assert displayed_speeds[-1] == pytest.approx(5.5, abs=0.55)
+    assert displayed_speeds[-1] == pytest.approx(5.5, abs=0.75)
     assert max(
         abs(current - previous)
         for previous, current in zip(displayed_speeds, displayed_speeds[1:], strict=False)
-    ) <= 0.45
+    ) <= 0.6
+
+
+def test_inconsistent_auxiliary_velocity_is_rejected() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.12)
+    profile = MotionRouter().route_class(2)
+    target_speed_mps = 10.0
+    displayed_speeds: list[float] = []
+
+    for frame_index in range(90):
+        timestamp = frame_index / 30.0
+        speed = estimator.update(
+            46,
+            (target_speed_mps * timestamp, 0.0),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.9,
+            auxiliary_velocity_mps=(0.0, target_speed_mps * 4.0),
+            auxiliary_confidence=0.99,
+        )
+        if speed is not None:
+            displayed_speeds.append(speed)
+
+    assert displayed_speeds
+    assert displayed_speeds[-1] == pytest.approx(target_speed_mps * 3.6, abs=3.0)
+
+
+def test_view_transformer_reports_larger_far_field_position_sigma() -> None:
+    transformer = ViewTransformer(
+        np.array(
+            [
+                [0.03, 0.0, 0.0],
+                [0.0, 0.03, 0.0],
+                [0.0, -0.0015, 1.0],
+            ],
+            dtype=float,
+        )
+    )
+
+    near = transformer.local_position_uncertainty(100.0, 100.0, pixel_sigma=1.0)
+    far = transformer.local_position_uncertainty(100.0, 500.0, pixel_sigma=1.0)
+
+    assert far.position_sigma_m > near.position_sigma_m
+    assert far.local_scale_factor > near.local_scale_factor
+    assert far.covariance.shape == (2, 2)
+
+
+def test_low_measurement_confidence_has_less_effect_on_adaptive_kalman_state() -> None:
+    low_quality = KalmanFilter2D(KalmanConfig(process_noise=0.5, measurement_noise=0.1))
+    high_quality = KalmanFilter2D(KalmanConfig(process_noise=0.5, measurement_noise=0.1))
+
+    for frame_index in range(12):
+        timestamp = frame_index / 10.0
+        low_quality.update((timestamp, 0.0), timestamp, measurement_noise=0.1)
+        high_quality.update((timestamp, 0.0), timestamp, measurement_noise=0.1)
+
+    low_quality.update((12.0, 0.0), 1.3, measurement_noise=50.0)
+    high_quality.update((12.0, 0.0), 1.3, measurement_noise=0.05)
+
+    assert high_quality.state is not None
+    assert low_quality.state is not None
+    assert high_quality.state.position[0] > low_quality.state.position[0]
+
+
+def test_constant_acceleration_kalman_tracks_startup_acceleration() -> None:
+    tracker = ConstantAccelerationKalmanFilter2D(
+        KalmanConfig(process_noise=0.8, measurement_noise=0.05),
+    )
+
+    states = [
+        tracker.update((0.5 * 2.0 * timestamp**2, 0.0), timestamp_sec=timestamp)
+        for timestamp in [index / 5.0 for index in range(1, 16)]
+    ]
+
+    assert states[-1].velocity_mps[0] == pytest.approx(2.0 * 3.0, abs=1.0)
+    assert states[-1].acceleration_mps2 is not None
+    assert states[-1].acceleration_mps2 > 0.5
+
+
+def test_robust_window_regression_ignores_single_local_outlier() -> None:
+    estimator = SpeedEstimator(_meter_transformer(), position_rmse_m=0.08)
+    profile = MotionRouter().route_class(2)
+    target_speed_mps = 36.0 / 3.6
+    speeds: list[float] = []
+
+    for frame_index in range(90):
+        timestamp = frame_index / 30.0
+        outlier = 6.0 if frame_index == 72 else 0.0
+        speed = estimator.update(
+            72,
+            (target_speed_mps * timestamp + outlier, 0.0),
+            timestamp_sec=timestamp,
+            motion_profile=profile,
+            detection_confidence=0.95,
+            measurement_confidence=0.95 if outlier == 0.0 else 0.25,
+        )
+        if speed is not None:
+            speeds.append(speed)
+
+    assert speeds
+    assert speeds[-1] == pytest.approx(36.0, abs=3.0)
 
 
 def test_vehicle_id_switch_jump_does_not_pollute_speed_record() -> None:

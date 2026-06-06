@@ -93,7 +93,10 @@ class ProcessedVideoRenderer:
         violation_ids: set[int],
     ) -> None:
         tracker_id = int(track["tracker_id"])
-        x1, y1, x2, y2 = [int(round(value)) for value in track["xyxy"]]
+        box = self._track_box(track)
+        if box is None:
+            return
+        x1, y1, x2, y2 = box
         x1, y1 = self._clamp_point((x1, y1))
         x2, y2 = self._clamp_point((x2, y2))
         color = self._track_color(track, tracker_id, speeding_ids, violation_ids)
@@ -130,6 +133,17 @@ class ProcessedVideoRenderer:
         else:
             speed_text = f"{float(speed):.1f} km/h"
         return f"#{tracker_id} {class_name} {speed_text}"
+
+    @staticmethod
+    def _track_box(track: dict[str, Any]) -> tuple[int, int, int, int] | None:
+        xyxy = track.get("xyxy")
+        if not isinstance(xyxy, (list, tuple)) or len(xyxy) != 4:
+            return None
+        try:
+            x1, y1, x2, y2 = [int(round(float(value))) for value in xyxy]
+        except (TypeError, ValueError):
+            return None
+        return x1, y1, x2, y2
 
     def _draw_label(
         self,

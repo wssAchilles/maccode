@@ -22,6 +22,8 @@ class FrameReport:
     regional_people_count: dict[str, object] | None = None
     infrastructure_semantics: dict[str, object] | None = None
     safety_metrics: dict[str, object] | None = None
+    bev_confidence_map: dict[str, object] | None = None
+    integrity_diagnostics: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -39,6 +41,8 @@ class FrameReport:
             "regional_people_count": self.regional_people_count,
             "infrastructure_semantics": self.infrastructure_semantics,
             "safety_metrics": self.safety_metrics,
+            "bev_confidence_map": self.bev_confidence_map,
+            "integrity_diagnostics": self.integrity_diagnostics,
         }
 
 

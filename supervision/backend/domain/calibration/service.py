@@ -29,6 +29,9 @@ class CalibrationService:
         pixel_points = np.array([point.pixel for point in points], dtype=float)
         world_points = np.array([point.world for point in points], dtype=float)
         matrix, condition_number = self._solve_dlt(pixel_points, world_points)
+        matrix, refinement_applied, refinement_initial_rmse, refinement_final_rmse, iterations = (
+            self._refine_homography(matrix, pixel_points, world_points)
+        )
         pixel_to_world_rmse_m, world_to_pixel_rmse_px = self.compute_bidirectional_errors(
             matrix,
             pixel_points,
@@ -47,6 +50,10 @@ class CalibrationService:
                 condition_number,
                 len(points),
             ),
+            refinement_applied=refinement_applied,
+            refinement_initial_rmse_m=refinement_initial_rmse,
+            refinement_final_rmse_m=refinement_final_rmse,
+            refinement_iterations=iterations,
         )
 
     def compute_homography_ransac(
@@ -55,6 +62,7 @@ class CalibrationService:
         reprojection_threshold: float = 0.5,
         max_iterations: int = 300,
         random_seed: int | None = None,
+        validation_segments: list[dict[str, object]] | None = None,
     ) -> HomographyResult:
         self.validate_points(points)
         if reprojection_threshold <= 0:
@@ -99,7 +107,19 @@ class CalibrationService:
 
         inlier_pixels = pixel_points[best_mask]
         inlier_world = world_points[best_mask]
+        validation_pixels, validation_world = self._validation_segment_points(
+            validation_segments or [],
+        )
         matrix, condition_number = self._solve_dlt(inlier_pixels, inlier_world)
+        matrix, refinement_applied, refinement_initial_rmse, refinement_final_rmse, iterations = (
+            self._refine_homography(
+                matrix,
+                inlier_pixels,
+                inlier_world,
+                validation_pixels=validation_pixels,
+                validation_world=validation_world,
+            )
+        )
         pixel_to_world_rmse_m, world_to_pixel_rmse_px = self.compute_bidirectional_errors(
             matrix,
             inlier_pixels,
@@ -118,6 +138,10 @@ class CalibrationService:
                 condition_number,
                 best_inlier_count,
             ),
+            refinement_applied=refinement_applied,
+            refinement_initial_rmse_m=refinement_initial_rmse,
+            refinement_final_rmse_m=refinement_final_rmse,
+            refinement_iterations=iterations,
         )
 
     def compute_bidirectional_errors(
@@ -318,6 +342,117 @@ class CalibrationService:
             h = h / h[2, 2]
         condition_number = float(singular_values[0] / singular_values[-1])
         return h.astype(np.float64), condition_number
+
+    @staticmethod
+    def _refine_homography(
+        matrix: NDArray[np.float64],
+        pixel_points: NDArray[np.float64],
+        world_points: NDArray[np.float64],
+        validation_pixels: NDArray[np.float64] | None = None,
+        validation_world: NDArray[np.float64] | None = None,
+    ) -> tuple[NDArray[np.float64], bool, float, float, int | None]:
+        initial_rmse = CalibrationService.compute_reprojection_error(
+            CalibrationService(),
+            matrix,
+            pixel_points,
+            world_points,
+        )
+        try:
+            from scipy.optimize import least_squares
+        except ImportError:
+            return matrix, False, initial_rmse, initial_rmse, None
+
+        def pack(homography: NDArray[np.float64]) -> NDArray[np.float64]:
+            normalized = homography / homography[2, 2]
+            return normalized.reshape(-1)[:8]
+
+        def unpack(values: NDArray[np.float64]) -> NDArray[np.float64]:
+            return np.array(
+                [
+                    [values[0], values[1], values[2]],
+                    [values[3], values[4], values[5]],
+                    [values[6], values[7], 1.0],
+                ],
+                dtype=np.float64,
+            )
+
+        def residuals(values: NDArray[np.float64]) -> NDArray[np.float64]:
+            projected = CalibrationService._project_points(unpack(values), pixel_points)
+            control_residuals = (projected - world_points).reshape(-1)
+            if (
+                validation_pixels is None
+                or validation_world is None
+                or len(validation_pixels) == 0
+            ):
+                return control_residuals
+            validation_projected = CalibrationService._project_points(
+                unpack(values),
+                validation_pixels,
+            )
+            validation_residuals = (validation_projected - validation_world).reshape(-1)
+            return np.concatenate([control_residuals, validation_residuals * 0.7])
+
+        result = least_squares(
+            residuals,
+            pack(matrix),
+            loss="huber",
+            f_scale=0.5,
+            max_nfev=80,
+        )
+        refined = unpack(result.x)
+        final_rmse = CalibrationService.compute_reprojection_error(
+            CalibrationService(),
+            refined,
+            pixel_points,
+            world_points,
+        )
+        if not result.success or final_rmse > initial_rmse:
+            return matrix, True, initial_rmse, initial_rmse, int(result.nfev)
+        return refined.astype(np.float64), True, initial_rmse, final_rmse, int(result.nfev)
+
+    @staticmethod
+    def _validation_segment_points(
+        validation_segments: list[dict[str, object]],
+    ) -> tuple[NDArray[np.float64] | None, NDArray[np.float64] | None]:
+        pixel_points: list[tuple[float, float]] = []
+        world_points: list[tuple[float, float]] = []
+        for segment in validation_segments:
+            pixel_start = segment.get("pixel_start")
+            pixel_end = segment.get("pixel_end")
+            world_start = segment.get("world_start")
+            world_end = segment.get("world_end")
+            if not (
+                isinstance(pixel_start, (list, tuple))
+                and isinstance(pixel_end, (list, tuple))
+                and isinstance(world_start, (list, tuple))
+                and isinstance(world_end, (list, tuple))
+                and len(pixel_start) == 2
+                and len(pixel_end) == 2
+                and len(world_start) == 2
+                and len(world_end) == 2
+            ):
+                continue
+            try:
+                pixel_points.extend(
+                    [
+                        (float(pixel_start[0]), float(pixel_start[1])),
+                        (float(pixel_end[0]), float(pixel_end[1])),
+                    ]
+                )
+                world_points.extend(
+                    [
+                        (float(world_start[0]), float(world_start[1])),
+                        (float(world_end[0]), float(world_end[1])),
+                    ]
+                )
+            except (TypeError, ValueError):
+                continue
+        if not pixel_points:
+            return None, None
+        return (
+            np.array(pixel_points, dtype=np.float64),
+            np.array(world_points, dtype=np.float64),
+        )
 
     @staticmethod
     def _normalize_points(

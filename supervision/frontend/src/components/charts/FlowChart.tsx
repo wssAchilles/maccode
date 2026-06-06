@@ -16,16 +16,23 @@ interface FlowBin {
   vehicles: number;
 }
 
-interface HeatCell {
+interface OccupancyBand {
   count: number;
+  label: string;
+  widthPct: number;
+  xPct: number;
+}
+
+interface OccupancyPoint {
   key: string;
-  x: number;
-  y: number;
+  intensity: number;
+  kind: "person" | "vehicle" | "other";
+  xPct: number;
+  yPct: number;
 }
 
 const STATIC_CONTEXT_CLASS_IDS = new Set([9, 10, 11]);
-const HEAT_COLUMNS = 9;
-const HEAT_ROWS = 5;
+const OCCUPANCY_BANDS = 4;
 
 function finiteNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -120,43 +127,283 @@ function buildBins(reports: FrameReport[]) {
   return bins;
 }
 
-function buildHeatCells(reports: FrameReport[]) {
+function trackKind(track: Track): OccupancyPoint["kind"] {
+  if (track.class_id === 0) {
+    return "person";
+  }
+  if ([2, 3, 5, 7].includes(track.class_id)) {
+    return "vehicle";
+  }
+  return "other";
+}
+
+function buildOccupancyMap(reports: FrameReport[]) {
   const observedTracks = reports.flatMap(dynamicTracks);
-  const worldPoints = observedTracks
+  const worldTracks = observedTracks
     .filter((track) => finiteNumber(track.ground_x_m) && finiteNumber(track.ground_y_m))
-    .map((track) => [track.ground_x_m as number, track.ground_y_m as number] as const);
-  const xValues = worldPoints.map(([x]) => x);
-  const yValues = worldPoints.map(([, y]) => y);
+    .map((track) => ({
+      kind: trackKind(track),
+      x: track.ground_x_m as number,
+      y: track.ground_y_m as number
+    }));
+  const xValues = worldTracks.map(({ x }) => x);
+  const yValues = worldTracks.map(({ y }) => y);
   const minX = Math.min(...xValues, 0);
   const maxX = Math.max(...xValues, 1);
   const minY = Math.min(...yValues, 0);
   const maxY = Math.max(...yValues, 1);
-  const cells = new Map<string, HeatCell>();
 
-  for (const [x, y] of worldPoints) {
-    const col = Math.min(
-      HEAT_COLUMNS - 1,
-      Math.max(0, Math.floor(((x - minX) / Math.max(maxX - minX, 1e-6)) * HEAT_COLUMNS))
+  const bandCounts = Array.from({ length: OCCUPANCY_BANDS }, () => 0);
+  const pointBins = new Map<string, number>();
+  for (const track of worldTracks) {
+    const normalizedX = (track.x - minX) / Math.max(maxX - minX, 1e-6);
+    const bandIndex = Math.min(
+      OCCUPANCY_BANDS - 1,
+      Math.max(0, Math.floor(normalizedX * OCCUPANCY_BANDS))
     );
-    const row = Math.min(
-      HEAT_ROWS - 1,
-      Math.max(0, Math.floor(((y - minY) / Math.max(maxY - minY, 1e-6)) * HEAT_ROWS))
-    );
-    const key = `${col}:${row}`;
-    const previous = cells.get(key);
-    cells.set(key, {
-      count: (previous?.count ?? 0) + 1,
-      key,
-      x: col,
-      y: row
-    });
+    const binX = Math.min(11, Math.max(0, Math.floor(normalizedX * 12)));
+    const binY = Math.min(7, Math.max(0, Math.floor(((track.y - minY) / Math.max(maxY - minY, 1e-6)) * 8)));
+    bandCounts[bandIndex] += 1;
+    pointBins.set(`${binX}:${binY}`, (pointBins.get(`${binX}:${binY}`) ?? 0) + 1);
   }
 
+  const maxPointCount = Math.max(...Array.from(pointBins.values()), 1);
+  const points = worldTracks.slice(-42).map((track, index): OccupancyPoint => {
+    const normalizedX = (track.x - minX) / Math.max(maxX - minX, 1e-6);
+    const normalizedY = (track.y - minY) / Math.max(maxY - minY, 1e-6);
+    const binX = Math.min(11, Math.max(0, Math.floor(normalizedX * 12)));
+    const binY = Math.min(7, Math.max(0, Math.floor(normalizedY * 8)));
+    return {
+      intensity: (pointBins.get(`${binX}:${binY}`) ?? 1) / maxPointCount,
+      key: `${track.x}:${track.y}:${index}`,
+      kind: track.kind,
+      xPct: 12 + normalizedX * 76,
+      yPct: 82 - normalizedY * 64
+    };
+  });
+
+  const maxBandCount = Math.max(...bandCounts, 1);
+  const bands = bandCounts.map((count, index): OccupancyBand => {
+    const ratio = count / maxBandCount;
+    return {
+      count,
+      label: index === 0 ? "左侧" : index === OCCUPANCY_BANDS - 1 ? "右侧" : `通道 ${index + 1}`,
+      widthPct: 9 + ratio * 16,
+      xPct: 16 + index * (68 / Math.max(OCCUPANCY_BANDS - 1, 1))
+    };
+  });
+
   return {
-    cells: Array.from(cells.values()),
-    maxCount: Math.max(...Array.from(cells.values()).map((cell) => cell.count), 1),
+    bands,
+    points,
     trackCount: observedTracks.length
   };
+}
+
+function bandLabel(band: OccupancyBand) {
+  if (band.count === 0) {
+    return `${band.label} 空闲`;
+  }
+  return `${band.label} ${band.count} 个样本`;
+}
+
+function pointClassName(point: OccupancyPoint) {
+  return ["occupancy-point", `occupancy-point-${point.kind}`].join(" ");
+}
+
+function pointRadius(point: OccupancyPoint) {
+  return 2.8 + point.intensity * 4.2;
+}
+
+function pointOpacity(point: OccupancyPoint) {
+  return 0.42 + point.intensity * 0.48;
+}
+
+function OccupancyMap({ bands, points }: { bands: OccupancyBand[]; points: OccupancyPoint[] }) {
+  return (
+    <svg className="occupancy-map" role="img" viewBox="0 0 320 184">
+      <title>空间占用鸟瞰图</title>
+      <defs>
+        <linearGradient id="occupancy-road-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#0f2438" />
+          <stop offset="100%" stopColor="#07111e" />
+        </linearGradient>
+        <filter id="occupancy-glow">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
+      </defs>
+      <path
+        className="occupancy-road"
+        d="M54 18 C92 31 230 26 268 14 L292 166 C234 154 87 155 30 171 Z"
+      />
+      <path className="occupancy-crosswalk" d="M61 123 L282 112 L286 131 L55 143 Z" />
+      <path className="occupancy-lane" d="M78 44 C126 55 205 52 254 40" />
+      <path className="occupancy-lane" d="M68 86 C126 96 218 93 270 79" />
+      <path className="occupancy-lane" d="M52 146 C121 137 220 137 288 150" />
+      <path className="occupancy-flow-arrow" d="M158 155 C169 124 172 78 164 34" />
+      <path className="occupancy-flow-arrow-head" d="M164 30 L155 45 L174 42 Z" />
+      {bands.map((band) => (
+        <g key={band.label}>
+          <title>{bandLabel(band)}</title>
+          <ellipse
+            className="occupancy-band-glow"
+            cx={(band.xPct / 100) * 320}
+            cy="98"
+            filter="url(#occupancy-glow)"
+            rx={(band.widthPct / 100) * 320}
+            ry="54"
+          />
+          <ellipse
+            className="occupancy-band"
+            cx={(band.xPct / 100) * 320}
+            cy="98"
+            rx={(band.widthPct / 100) * 320}
+            ry="48"
+          />
+        </g>
+      ))}
+      {points.map((point) => (
+        <circle
+          className={pointClassName(point)}
+          cx={(point.xPct / 100) * 320}
+          cy={(point.yPct / 100) * 184}
+          key={point.key}
+          r={pointRadius(point)}
+          style={{ opacity: pointOpacity(point) }}
+        />
+      ))}
+      <text className="occupancy-label occupancy-label-top" x="24" y="31">
+        入口方向
+      </text>
+      <text className="occupancy-label occupancy-label-bottom" x="218" y="160">
+        交互区域
+      </text>
+    </svg>
+  );
+}
+
+function OccupancyLegend() {
+  return (
+    <div className="occupancy-legend">
+      <span className="occupancy-legend-vehicle">车辆轨迹</span>
+      <span className="occupancy-legend-person">行人轨迹</span>
+      <span className="occupancy-legend-band">高占用带</span>
+    </div>
+  );
+}
+
+function EmptyOccupancyMap() {
+  return (
+    <div className="occupancy-empty">
+      <span>等待地面坐标样本</span>
+      <small>接入视频后显示鸟瞰占用路径</small>
+    </div>
+  );
+}
+
+function OccupancyCard({ bands, points }: { bands: OccupancyBand[]; points: OccupancyPoint[] }) {
+  return (
+    <div className="occupancy-card">
+      <div>
+        <h3>空间占用鸟瞰图</h3>
+        <p>用地面坐标重建通行区域，圆点表示目标轨迹，亮带表示占用更集中的空间走廊。</p>
+      </div>
+      <div className="occupancy-map-shell">
+        {points.length > 0 ? <OccupancyMap bands={bands} points={points} /> : <EmptyOccupancyMap />}
+        <OccupancyLegend />
+      </div>
+    </div>
+  );
+}
+
+function TrackSampleMetric({ trackCount }: { trackCount: number }) {
+  return (
+    <div>
+      <span>空间轨迹样本</span>
+      <strong>{trackCount}</strong>
+    </div>
+  );
+}
+
+function FlowMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function FlowMetrics({
+  currentPeople,
+  currentReport,
+  currentVehicles,
+  trackCount
+}: {
+  currentPeople: number;
+  currentReport: FrameReport;
+  currentVehicles: number;
+  trackCount: number;
+}) {
+  return (
+    <div className="flow-metric-row">
+      <FlowMetric label="当前车辆" value={currentVehicles} />
+      <FlowMetric label="当前行人" value={currentPeople} />
+      <FlowMetric label="流量 q" value={formatMetric(currentReport.traffic_flow?.flow_q_veh_per_hour, " veh/h")} />
+      <FlowMetric label="密度 k" value={formatMetric(currentReport.traffic_flow?.density_k_veh_per_km, " veh/km")} />
+      <FlowMetric label="速度 v" value={formatMetric(latestValidSpeed(currentReport), " km/h")} />
+      <TrackSampleMetric trackCount={trackCount} />
+    </div>
+  );
+}
+
+function FlowPlot({ bins, currentReport }: { bins: FlowBin[]; currentReport: FrameReport }) {
+  const maxFlow = Math.max(...bins.map((bin) => bin.flow), 1);
+  const maxSpeed = Math.max(...bins.map((bin) => bin.speed ?? 0), latestValidSpeed(currentReport) ?? 0, 1);
+  const speedPoints = bins
+    .map((bin, index) => {
+      if (!finiteNumber(bin.speed)) {
+        return null;
+      }
+      const x = 46 + index * (500 / Math.max(bins.length - 1, 1));
+      const y = 172 - (bin.speed / maxSpeed) * 118;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .filter((point): point is string => Boolean(point));
+
+  return (
+    <div className="flow-plot-card">
+      <div className="flow-chart-legend">
+        <span className="legend-flow">流量 q</span>
+        <span className="legend-speed">空间平均速度 v</span>
+      </div>
+      <svg className="flow-svg" role="img" viewBox="0 0 600 220">
+        <line className="axis-line" x1="38" x2="568" y1="180" y2="180" />
+        <line className="axis-line" x1="38" x2="38" y1="34" y2="180" />
+        {bins.map((bin, index) => {
+          const x = 52 + index * (500 / Math.max(bins.length, 1));
+          const height = Math.max(10, (bin.flow / maxFlow) * 120);
+          const showAxisLabel = shouldShowAxisLabel(index, bins.length);
+          return (
+            <g key={`${bin.label}:${index}`}>
+              <title>{bin.label}</title>
+              <rect className="flow-bar" height={height} rx="5" width="28" x={x} y={180 - height} />
+              {showAxisLabel && (
+                <text className="flow-axis-label" x={x + 14} y="204">
+                  {bin.axisLabel}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {speedPoints.length > 1 && <polyline className="speed-line" points={speedPoints.join(" ")} />}
+        {speedPoints.map((point) => {
+          const [x, y] = point.split(",");
+          return <circle className="speed-point" cx={x} cy={y} key={point} r="4" />;
+        })}
+      </svg>
+    </div>
+  );
 }
 
 function latestValidSpeed(report: FrameReport | null) {
@@ -186,19 +433,7 @@ export function FlowChart({ className = "", history, report }: FlowChartProps) {
 
   const bins = buildBins(reports);
   const currentReport = report ?? reports[reports.length - 1];
-  const maxFlow = Math.max(...bins.map((bin) => bin.flow), 1);
-  const maxSpeed = Math.max(...bins.map((bin) => bin.speed ?? 0), latestValidSpeed(currentReport) ?? 0, 1);
-  const speedPoints = bins
-    .map((bin, index) => {
-      if (!finiteNumber(bin.speed)) {
-        return null;
-      }
-      const x = 46 + index * (500 / Math.max(bins.length - 1, 1));
-      const y = 172 - (bin.speed / maxSpeed) * 118;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .filter((point): point is string => Boolean(point));
-  const heat = buildHeatCells(reports);
+  const occupancy = buildOccupancyMap(reports);
   const currentPeople = peopleCount(currentReport);
   const currentVehicles = vehicleCount(currentReport);
 
@@ -206,98 +441,18 @@ export function FlowChart({ className = "", history, report }: FlowChartProps) {
     <section className={rootClassName}>
       <div className="panel-heading">
         <h2>流量趋势</h2>
-        <span className="panel-subtitle">q/k/v + 空间热力分布</span>
+        <span className="panel-subtitle">q/k/v + 鸟瞰占用路径</span>
       </div>
       <div className="flow-dashboard">
-        <div className="flow-plot-card">
-          <div className="flow-chart-legend">
-            <span className="legend-flow">流量 q</span>
-            <span className="legend-speed">空间平均速度 v</span>
-          </div>
-          <svg className="flow-svg" role="img" viewBox="0 0 600 220">
-            <line className="axis-line" x1="38" x2="568" y1="180" y2="180" />
-            <line className="axis-line" x1="38" x2="38" y1="34" y2="180" />
-            {bins.map((bin, index) => {
-              const x = 52 + index * (500 / Math.max(bins.length, 1));
-              const height = Math.max(10, (bin.flow / maxFlow) * 120);
-              const showAxisLabel = shouldShowAxisLabel(index, bins.length);
-              return (
-                <g key={`${bin.label}:${index}`}>
-                  <title>{bin.label}</title>
-                  <rect
-                    className="flow-bar"
-                    height={height}
-                    rx="5"
-                    width="28"
-                    x={x}
-                    y={180 - height}
-                  />
-                  {showAxisLabel && (
-                    <text className="flow-axis-label" x={x + 14} y="204">
-                      {bin.axisLabel}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-            {speedPoints.length > 1 && <polyline className="speed-line" points={speedPoints.join(" ")} />}
-            {speedPoints.map((point) => {
-              const [x, y] = point.split(",");
-              return <circle className="speed-point" cx={x} cy={y} key={point} r="4" />;
-            })}
-          </svg>
-        </div>
-        <div className="heatmap-card">
-          <div>
-            <h3>空间占用热力图</h3>
-            <p>由目标地面坐标轨迹累积生成，颜色越亮表示该真实区域被占用越频繁。</p>
-          </div>
-          <div className="heatmap-grid">
-            {Array.from({ length: HEAT_ROWS * HEAT_COLUMNS }).map((_, index) => {
-              const x = index % HEAT_COLUMNS;
-              const y = Math.floor(index / HEAT_COLUMNS);
-              const cell = heat.cells.find((item) => item.x === x && item.y === y);
-              const intensity = cell ? cell.count / heat.maxCount : 0;
-              return (
-                <span
-                  aria-label={`heat cell ${x}-${y}`}
-                  className="heatmap-cell"
-                  key={`${x}:${y}`}
-                  style={{
-                    backgroundColor: `rgba(96, 165, 250, ${0.08 + intensity * 0.72})`
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
+        <FlowPlot bins={bins} currentReport={currentReport} />
+        <OccupancyCard bands={occupancy.bands} points={occupancy.points} />
       </div>
-      <div className="flow-metric-row">
-        <div>
-          <span>当前车辆</span>
-          <strong>{currentVehicles}</strong>
-        </div>
-        <div>
-          <span>当前行人</span>
-          <strong>{currentPeople}</strong>
-        </div>
-        <div>
-          <span>流量 q</span>
-          <strong>{formatMetric(currentReport.traffic_flow?.flow_q_veh_per_hour, " veh/h")}</strong>
-        </div>
-        <div>
-          <span>密度 k</span>
-          <strong>{formatMetric(currentReport.traffic_flow?.density_k_veh_per_km, " veh/km")}</strong>
-        </div>
-        <div>
-          <span>速度 v</span>
-          <strong>{formatMetric(latestValidSpeed(currentReport), " km/h")}</strong>
-        </div>
-        <div>
-          <span>热力轨迹样本</span>
-          <strong>{heat.trackCount}</strong>
-        </div>
-      </div>
+      <FlowMetrics
+        currentPeople={currentPeople}
+        currentReport={currentReport}
+        currentVehicles={currentVehicles}
+        trackCount={occupancy.trackCount}
+      />
     </section>
   );
 }

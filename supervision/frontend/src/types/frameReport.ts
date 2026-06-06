@@ -28,6 +28,31 @@ export interface Track {
   rejection_reason: string | null;
   track_age_frames: number;
   window_residual_m: number | null;
+  raw_speed_kmh?: number | null;
+  speed_stability_score?: number | null;
+  speed_cv?: number | null;
+  max_speed_jump_kmh?: number | null;
+  speed_jump_p95_kmh?: number | null;
+  acceleration_p95_mps2?: number | null;
+  jerk_p95_mps3?: number | null;
+  stability_label?: string | null;
+  position_sigma_m?: number | null;
+  position_covariance?: number[][] | null;
+  measurement_source?: string | null;
+  measurement_confidence?: number | null;
+  local_scale_factor?: number | null;
+  reconstructed?: boolean;
+  bev_risk_level?: "trusted" | "caution" | "rejected" | string | null;
+  bev_risk_reason?: string | null;
+  local_scale_percentile?: number | null;
+  contact_fusion_sources?: string[] | null;
+  contact_fusion_weights?: Record<string, number> | null;
+  contact_pixel_covariance?: [[number, number], [number, number]] | number[][] | null;
+  contact_fusion_confidence?: number | null;
+  tracking_integrity_state?: string | null;
+  id_switch_risk?: number | null;
+  speed_frozen?: boolean;
+  integrity_rejection_reason?: string | null;
 }
 
 export interface ZoneStats {
@@ -51,6 +76,9 @@ export interface FrameReport {
   regional_people_count: RegionalPeopleCount | null;
   infrastructure_semantics: InfrastructureSemantics | null;
   safety_metrics: SafetyMetrics | null;
+  bev_confidence_map?: BEVConfidenceMap | null;
+  integrity_diagnostics?: IntegrityDiagnostics | null;
+  trajectory_diagnostics?: TrajectoryDiagnostics | null;
 }
 
 export interface HomographyGridLine {
@@ -120,15 +148,64 @@ export interface CalibrationDiagnostics {
   pixel_to_world_rmse_m?: number;
   world_to_pixel_rmse_px?: number;
   validation_max_error_px?: number | null;
+  runtime_homography_source?: string;
+  calibration_candidates?: Array<Record<string, unknown>>;
+  selected_calibration_candidate_id?: string | null;
+  candidate_score_breakdown?: Record<string, unknown>;
+  candidate_rejection_reasons?: Record<string, string[]>;
+  calibration_candidate_score?: number | null;
+  refinement_applied?: boolean;
+  refinement_initial_rmse_m?: number | null;
+  refinement_final_rmse_m?: number | null;
+  refinement_iterations?: number | null;
   reprojection_rmse_px: number;
   inlier_count: number;
   condition_number: number;
   position_rmse_m: number;
   timestamp_uncertainty_sec?: number;
+  local_error_model?: string;
+  calibration_risk_gate?: string;
   scale_uncertainty_pct?: number;
   speed_band_kmh?: [number | null, number | null];
   space_mean_speed_band_kmh?: [number | null, number | null];
   error_sources: string[];
+  model_reference: string;
+}
+
+export interface BEVConfidenceMap {
+  frame_width: number;
+  frame_height: number;
+  p75_local_scale: number;
+  p95_local_scale: number;
+  risk_counts: Record<string, number>;
+  risk_ratios: Record<string, number>;
+  cells: Array<Record<string, unknown>>;
+}
+
+export interface IntegrityDiagnostics {
+  tracking_integrity_state_counts?: Record<string, number>;
+  id_switch_risk_count?: number;
+  speed_frozen_count?: number;
+  speed_frozen_ratio?: number;
+  bev_checked_count?: number;
+  bev_rejected_count?: number;
+  bev_rejected_ratio?: number;
+  contact_fusion_count?: number;
+  contact_fusion_low_confidence_count?: number;
+  contact_fusion_low_confidence_ratio?: number;
+  model_reference?: string;
+}
+
+export interface TrajectoryDiagnostics {
+  track_entry_count: number;
+  reconstructed_track_entries: number;
+  reconstructed_ratio: number;
+  low_confidence_ratio: number;
+  track_fragmentation_count: number;
+  id_switch_risk_count?: number;
+  speed_frozen_ratio?: number;
+  bev_rejected_ratio?: number;
+  contact_fusion_low_confidence_ratio?: number;
   model_reference: string;
 }
 

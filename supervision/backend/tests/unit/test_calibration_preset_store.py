@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 from application.services.calibration_preset_store import CalibrationPresetStore
+from domain.calibration.models import CalibrationPoint
+from domain.calibration.service import CalibrationService
 
 
 def test_calibration_preset_store_saves_video_manual_preset(tmp_path: Path) -> None:
@@ -143,6 +145,28 @@ def test_calibration_preset_store_preserves_vehicle_3d_priors_and_diagnostics(
     assert diagnostics["calibration_source"] == "vehicle_3d_prior_pnp"
     assert diagnostics["calibration_trusted"] is False
     assert "bbox_only_observations_below_minimum" in diagnostics["quality_issues"]
+
+
+def test_ransac_homography_records_refinement_diagnostics() -> None:
+    points = [
+        CalibrationPoint(0.0, 0.0, 0.0, 0.0),
+        CalibrationPoint(100.0, 0.0, 10.0, 0.0),
+        CalibrationPoint(0.0, 100.0, 0.0, 10.0),
+        CalibrationPoint(100.0, 100.0, 10.0, 10.0),
+        CalibrationPoint(50.0, 50.0, 5.2, 4.8),
+        CalibrationPoint(25.0, 80.0, 2.5, 8.1),
+    ]
+
+    result = CalibrationService().compute_homography_ransac(
+        points,
+        reprojection_threshold=1.0,
+        random_seed=7,
+    )
+
+    assert result.refinement_applied is True
+    assert result.refinement_initial_rmse_m is not None
+    assert result.refinement_final_rmse_m is not None
+    assert result.refinement_final_rmse_m <= result.refinement_initial_rmse_m
 
 
 def test_calibration_preset_store_suppresses_grid_without_validation(tmp_path: Path) -> None:

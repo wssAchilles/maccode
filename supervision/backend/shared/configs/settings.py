@@ -27,6 +27,12 @@ class CVConfig(BaseSettings):
     yolo_device: str = Field(default="mps", alias="YOLO_DEVICE")
     confidence_threshold: float = Field(default=0.25, alias="CONFIDENCE_THRESHOLD")
     iou_threshold: float = Field(default=0.45, alias="IOU_THRESHOLD")
+    pose_enabled: bool = Field(default=False, alias="POSE_ENABLED")
+    pose_model: str = Field(default="yolo11n-pose.pt", alias="POSE_MODEL")
+    trajectory_reconstruction_enabled: bool = Field(
+        default=True,
+        alias="TRAJECTORY_RECONSTRUCTION_ENABLED",
+    )
 
 
 class LLMConfig(BaseSettings):

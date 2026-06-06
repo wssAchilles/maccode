@@ -698,7 +698,7 @@ button {
 }
 
 .flow-plot-card,
-.heatmap-card {
+.occupancy-card {
   min-height: 250px;
   padding: 14px;
   background: rgba(15, 23, 42, 0.62);
@@ -765,29 +765,28 @@ button {
   text-anchor: middle;
 }
 
-.heatmap-card {
+.occupancy-card {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 12px;
 }
 
-.heatmap-card h3 {
+.occupancy-card h3 {
   margin: 0 0 6px;
 }
 
-.heatmap-card p {
+.occupancy-card p {
   margin: 0;
   color: #8ea7ca;
   line-height: 1.5;
 }
 
-.heatmap-grid {
+.occupancy-map-shell {
   display: grid;
-  grid-template-columns: repeat(9, minmax(16px, 1fr));
-  gap: 5px;
-  align-self: end;
-  min-height: 130px;
-  padding: 10px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 148px;
+  padding: 8px;
   background:
     linear-gradient(rgba(96, 165, 250, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px),
@@ -797,10 +796,128 @@ button {
   border-radius: 8px;
 }
 
-.heatmap-cell {
-  min-height: 22px;
-  border: 1px solid rgba(191, 219, 254, 0.1);
-  border-radius: 5px;
+.occupancy-map {
+  width: 100%;
+  height: 100%;
+  min-height: 128px;
+}
+
+.occupancy-road {
+  fill: url("#occupancy-road-gradient");
+  stroke: rgba(125, 211, 252, 0.26);
+  stroke-width: 1.4;
+}
+
+.occupancy-crosswalk {
+  fill: rgba(226, 232, 240, 0.1);
+  stroke: rgba(226, 232, 240, 0.18);
+  stroke-width: 1;
+}
+
+.occupancy-lane {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.22);
+  stroke-dasharray: 7 7;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.occupancy-flow-arrow,
+.occupancy-flow-arrow-head {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.72);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.occupancy-flow-arrow-head {
+  fill: rgba(251, 191, 36, 0.18);
+}
+
+.occupancy-band-glow {
+  fill: rgba(56, 189, 248, 0.32);
+}
+
+.occupancy-band {
+  fill: rgba(59, 130, 246, 0.18);
+  stroke: rgba(147, 197, 253, 0.32);
+  stroke-width: 1;
+}
+
+.occupancy-point {
+  stroke-width: 1.2;
+}
+
+.occupancy-point-vehicle {
+  fill: #60a5fa;
+  stroke: #bfdbfe;
+}
+
+.occupancy-point-person {
+  fill: #34d399;
+  stroke: #bbf7d0;
+}
+
+.occupancy-point-other {
+  fill: #c084fc;
+  stroke: #e9d5ff;
+}
+
+.occupancy-label {
+  fill: rgba(203, 213, 225, 0.76);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.occupancy-label-bottom {
+  fill: rgba(187, 247, 208, 0.78);
+}
+
+.occupancy-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #8ea7ca;
+  font-size: 11px;
+}
+
+.occupancy-legend span::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  content: "";
+  border-radius: 50%;
+}
+
+.occupancy-legend-vehicle::before {
+  background: #60a5fa;
+}
+
+.occupancy-legend-person::before {
+  background: #34d399;
+}
+
+.occupancy-legend-band::before {
+  background: rgba(56, 189, 248, 0.45);
+}
+
+.occupancy-empty {
+  display: grid;
+  place-content: center;
+  min-height: 128px;
+  color: #dbeafe;
+  text-align: center;
+}
+
+.occupancy-empty span {
+  font-weight: 800;
+}
+
+.occupancy-empty small {
+  margin-top: 6px;
+  color: #8ea7ca;
 }
 
 .flow-metric-row {
@@ -1592,7 +1709,7 @@ button {
 }
 
 .flow-panel .flow-plot-card,
-.flow-panel .heatmap-card {
+.flow-panel .occupancy-card {
   min-height: 150px;
   padding: 12px;
 }
@@ -1601,12 +1718,22 @@ button {
   min-height: 132px;
 }
 
-.flow-panel .heatmap-card p {
+.flow-panel .occupancy-card p {
   display: none;
 }
 
-.flow-panel .heatmap-grid {
-  min-height: 94px;
+.flow-panel .occupancy-map-shell {
+  min-height: 98px;
+  padding: 6px;
+}
+
+.flow-panel .occupancy-map {
+  min-height: 82px;
+}
+
+.flow-panel .occupancy-legend {
+  gap: 6px;
+  font-size: 10px;
 }
 
 .flow-panel .flow-metric-row {

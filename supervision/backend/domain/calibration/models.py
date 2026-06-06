@@ -41,6 +41,11 @@ class HomographyResult:
     condition_number: float
     inlier_mask: list[bool]
     calibration_quality: str
+    refinement_applied: bool = False
+    refinement_initial_rmse_m: float | None = None
+    refinement_final_rmse_m: float | None = None
+    refinement_iterations: int | None = None
+    runtime_homography_source: str = "planar_homography"
 
 
 @dataclass(frozen=True)

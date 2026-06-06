@@ -21,6 +21,7 @@ class KalmanState:
     speed_kmh: float
     covariance: NDArray[np.float64]
     speed_confidence: float
+    acceleration_mps2: float | None = None
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,18 @@ class KalmanFilter2D:
         self._last_timestamp: float | None = None
         self._last_measurement: tuple[float, float] | None = None
 
-    def update(self, position: tuple[float, float], timestamp_sec: float) -> KalmanState:
+    @property
+    def state(self) -> KalmanState | None:
+        if self._state is None or self._covariance is None:
+            return None
+        return self._to_state()
+
+    def update(
+        self,
+        position: tuple[float, float],
+        timestamp_sec: float,
+        measurement_noise: float | None = None,
+    ) -> KalmanState:
         measurement = np.array([[position[0]], [position[1]]], dtype=float)
         if self._state is None:
             self._state = np.array([[position[0]], [position[1]], [0.0], [0.0]], dtype=float)
@@ -70,10 +82,10 @@ class KalmanFilter2D:
         predicted_covariance = transition @ self._covariance @ transition.T + process_noise
 
         observation = self._observation_matrix()
-        measurement_noise = self._measurement_noise_matrix()
+        measurement_noise_matrix = self._measurement_noise_matrix(measurement_noise)
         innovation = measurement - observation @ predicted_state
         innovation_covariance = (
-            observation @ predicted_covariance @ observation.T + measurement_noise
+            observation @ predicted_covariance @ observation.T + measurement_noise_matrix
         )
         kalman_gain = predicted_covariance @ observation.T @ np.linalg.inv(innovation_covariance)
 
@@ -96,13 +108,17 @@ class KalmanFilter2D:
         self,
         position: tuple[float, float],
         timestamp_sec: float,
+        measurement_noise: float | None = None,
     ) -> KalmanMeasurementPrediction:
         measurement = np.array([[position[0]], [position[1]]], dtype=float)
         observation = self._observation_matrix()
         if self._state is None or self._covariance is None or self._last_timestamp is None:
             innovation_covariance = (
                 np.eye(2, dtype=float)
-                * (self.config.initial_position_variance + self.config.measurement_noise)
+                * (
+                    self.config.initial_position_variance
+                    + self._measurement_noise_value(measurement_noise)
+                )
             )
             return KalmanMeasurementPrediction(
                 predicted_position=position,
@@ -116,7 +132,7 @@ class KalmanFilter2D:
             predicted_position = observation @ self._state
             innovation_covariance = (
                 observation @ self._covariance @ observation.T
-                + self._measurement_noise_matrix()
+                + self._measurement_noise_matrix(measurement_noise)
             )
             innovation = measurement - predicted_position
             mahalanobis_d2, solver, penalty = self._mahalanobis_d2(
@@ -143,7 +159,7 @@ class KalmanFilter2D:
         innovation = measurement - predicted_position
         innovation_covariance = (
             observation @ predicted_covariance @ observation.T
-            + self._measurement_noise_matrix()
+            + self._measurement_noise_matrix(measurement_noise)
         )
         mahalanobis_d2, solver, penalty = self._mahalanobis_d2(
             innovation,
@@ -180,8 +196,16 @@ class KalmanFilter2D:
             dtype=np.float64,
         )
 
-    def _measurement_noise_matrix(self) -> NDArray[np.float64]:
-        return np.eye(2, dtype=np.float64) * self.config.measurement_noise
+    def _measurement_noise_matrix(
+        self,
+        measurement_noise: float | None = None,
+    ) -> NDArray[np.float64]:
+        return np.eye(2, dtype=np.float64) * self._measurement_noise_value(measurement_noise)
+
+    def _measurement_noise_value(self, measurement_noise: float | None = None) -> float:
+        if measurement_noise is None:
+            return float(self.config.measurement_noise)
+        return float(max(measurement_noise, 1e-6))
 
     @staticmethod
     def _mahalanobis_d2(
@@ -236,6 +260,175 @@ class KalmanFilter2D:
             speed_kmh=float(speed_kmh),
             covariance=self._covariance.copy(),
             speed_confidence=float(max(0.0, min(1.0, speed_confidence))),
+        )
+
+
+class ConstantAccelerationKalmanFilter2D:
+    def __init__(self, config: KalmanConfig) -> None:
+        self.config = config
+        self._state: NDArray[np.float64] | None = None
+        self._covariance: NDArray[np.float64] | None = None
+        self._last_timestamp: float | None = None
+
+    @property
+    def state(self) -> KalmanState | None:
+        if self._state is None or self._covariance is None:
+            return None
+        return self._to_state()
+
+    def update(
+        self,
+        position: tuple[float, float],
+        timestamp_sec: float,
+        measurement_noise: float | None = None,
+    ) -> KalmanState:
+        measurement = np.array([[position[0]], [position[1]]], dtype=np.float64)
+        if self._state is None:
+            self._state = np.array(
+                [[position[0]], [position[1]], [0.0], [0.0], [0.0], [0.0]],
+                dtype=np.float64,
+            )
+            self._covariance = np.diag([10.0, 10.0, 10.0, 10.0, 4.0, 4.0]).astype(
+                np.float64
+            )
+            self._last_timestamp = timestamp_sec
+            return self._to_state()
+        if self._last_timestamp is None or self._covariance is None:
+            raise RuntimeError("constant acceleration filter was not initialized correctly")
+        delta_t = timestamp_sec - self._last_timestamp
+        if delta_t <= 0:
+            return self._to_state()
+
+        transition = self._transition_matrix(delta_t)
+        predicted_state = transition @ self._state
+        predicted_covariance = (
+            transition @ self._covariance @ transition.T
+            + self._process_noise_matrix(delta_t)
+        )
+        observation = self._observation_matrix()
+        measurement_covariance = np.eye(2, dtype=np.float64) * self._measurement_noise_value(
+            measurement_noise
+        )
+        innovation = measurement - observation @ predicted_state
+        innovation_covariance = (
+            observation @ predicted_covariance @ observation.T + measurement_covariance
+        )
+        kalman_gain = predicted_covariance @ observation.T @ np.linalg.pinv(
+            innovation_covariance
+        )
+        self._state = predicted_state + kalman_gain @ innovation
+        self._covariance = (
+            np.eye(6, dtype=np.float64) - kalman_gain @ observation
+        ) @ predicted_covariance
+        self._last_timestamp = timestamp_sec
+        return self._to_state()
+
+    def predict_measurement(
+        self,
+        position: tuple[float, float],
+        timestamp_sec: float,
+        measurement_noise: float | None = None,
+    ) -> KalmanMeasurementPrediction:
+        measurement = np.array([[position[0]], [position[1]]], dtype=np.float64)
+        observation = self._observation_matrix()
+        if self._state is None or self._covariance is None or self._last_timestamp is None:
+            covariance = np.eye(2, dtype=np.float64) * (
+                self.config.initial_position_variance
+                + self._measurement_noise_value(measurement_noise)
+            )
+            return KalmanMeasurementPrediction(
+                predicted_position=position,
+                innovation=np.zeros((2, 1), dtype=np.float64),
+                innovation_covariance=covariance,
+                mahalanobis_d2=0.0,
+                covariance_solver="uninitialized",
+            )
+        delta_t = max(timestamp_sec - self._last_timestamp, 0.0)
+        transition = self._transition_matrix(delta_t)
+        predicted_state = transition @ self._state
+        predicted_covariance = (
+            transition @ self._covariance @ transition.T
+            + self._process_noise_matrix(delta_t)
+        )
+        predicted_position = observation @ predicted_state
+        innovation = measurement - predicted_position
+        innovation_covariance = (
+            observation @ predicted_covariance @ observation.T
+            + np.eye(2, dtype=np.float64) * self._measurement_noise_value(measurement_noise)
+        )
+        mahalanobis_d2, solver, penalty = KalmanFilter2D._mahalanobis_d2(
+            innovation,
+            innovation_covariance,
+        )
+        return KalmanMeasurementPrediction(
+            predicted_position=(
+                float(predicted_position[0, 0]),
+                float(predicted_position[1, 0]),
+            ),
+            innovation=innovation,
+            innovation_covariance=innovation_covariance,
+            mahalanobis_d2=mahalanobis_d2,
+            covariance_solver=solver,
+            confidence_penalty=penalty,
+        )
+
+    @staticmethod
+    def _transition_matrix(delta_t: float) -> NDArray[np.float64]:
+        half_dt2 = 0.5 * delta_t**2
+        return np.array(
+            [
+                [1.0, 0.0, delta_t, 0.0, half_dt2, 0.0],
+                [0.0, 1.0, 0.0, delta_t, 0.0, half_dt2],
+                [0.0, 0.0, 1.0, 0.0, delta_t, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0, delta_t],
+                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+    @staticmethod
+    def _observation_matrix() -> NDArray[np.float64]:
+        return np.array(
+            [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]],
+            dtype=np.float64,
+        )
+
+    def _process_noise_matrix(self, delta_t: float) -> NDArray[np.float64]:
+        q = self.config.process_noise
+        return np.diag(
+            [
+                delta_t**4 / 4.0,
+                delta_t**4 / 4.0,
+                delta_t**2,
+                delta_t**2,
+                max(delta_t, 1e-3),
+                max(delta_t, 1e-3),
+            ]
+        ).astype(np.float64) * q
+
+    def _measurement_noise_value(self, measurement_noise: float | None = None) -> float:
+        if measurement_noise is None:
+            return float(self.config.measurement_noise)
+        return float(max(measurement_noise, 1e-6))
+
+    def _to_state(self) -> KalmanState:
+        if self._state is None or self._covariance is None:
+            raise RuntimeError("constant acceleration filter has no state")
+        vx = float(self._state[2, 0])
+        vy = float(self._state[3, 0])
+        ax = float(self._state[4, 0])
+        ay = float(self._state[5, 0])
+        speed_kmh = (vx**2 + vy**2) ** 0.5 * 3.6
+        velocity_variance = max(float(self._covariance[2, 2] + self._covariance[3, 3]), 0.0)
+        speed_confidence = 1.0 / (1.0 + 0.5 * velocity_variance**0.5)
+        return KalmanState(
+            position=(float(self._state[0, 0]), float(self._state[1, 0])),
+            velocity_mps=(vx, vy),
+            speed_kmh=float(speed_kmh),
+            covariance=self._covariance.copy(),
+            speed_confidence=float(max(0.0, min(1.0, speed_confidence))),
+            acceleration_mps2=float((ax**2 + ay**2) ** 0.5),
         )
 
 

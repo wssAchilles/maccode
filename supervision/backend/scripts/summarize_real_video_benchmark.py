@@ -23,6 +23,44 @@ def _successful_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return [result for result in payload.get("results", []) if result.get("status") == "ok"]
 
 
+def _numeric_track_values(tracks: list[dict[str, Any]], key: str) -> list[float]:
+    values: list[float] = []
+    for track in tracks:
+        value = track.get(key)
+        if isinstance(value, int | float):
+            values.append(float(value))
+    return values
+
+
+def _p95(values: list[float]) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, int(round((len(ordered) - 1) * 0.95)))
+    return float(ordered[index])
+
+
+def _ratio_diagnostic(
+    primary: dict[str, Any],
+    fallback: dict[str, Any],
+    key: str,
+) -> float | None:
+    for source in (primary, fallback):
+        value = source.get(key)
+        if isinstance(value, int | float):
+            return float(value)
+    return None
+
+
+def _int_diagnostic(
+    primary: dict[str, Any],
+    fallback: dict[str, Any],
+    key: str,
+) -> int:
+    value = _ratio_diagnostic(primary, fallback, key)
+    return int(value or 0)
+
+
 def grade_row(row: dict[str, Any]) -> dict[str, Any]:
     issues: list[str] = []
     recommendations: list[str] = []
@@ -185,6 +223,12 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
             for track in speed_tracks
             if track.get("speed_uncertainty_kmh") is not None
         ]
+        trajectory_diagnostics = report.get("trajectory_diagnostics") or {}
+        integrity_diagnostics = report.get("integrity_diagnostics") or {}
+        calibration_diagnostics = report.get("calibration_diagnostics") or {}
+        speed_jump_values = _numeric_track_values(speed_tracks, "speed_jump_p95_kmh")
+        acceleration_values = _numeric_track_values(speed_tracks, "acceleration_p95_mps2")
+        jerk_values = _numeric_track_values(speed_tracks, "jerk_p95_mps3")
         all_track_confidences.extend(confidences)
         all_speed_uncertainties.extend(uncertainties)
         coverage = build_physical_quantity_coverage(report, speed_tracks)
@@ -206,6 +250,32 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
             "congestion_level": report["traffic_flow"]["congestion_level"],
             "risk_level": report["safety_metrics"]["risk_level"],
             "effective_processing_fps": result["effective_processing_fps"],
+            "speed_jump_p95_kmh": _p95(speed_jump_values),
+            "acceleration_p95_mps2": _p95(acceleration_values),
+            "jerk_p95_mps3": _p95(jerk_values),
+            "id_switch_risk_count": _int_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "id_switch_risk_count",
+            ),
+            "speed_frozen_ratio": _ratio_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "speed_frozen_ratio",
+            ),
+            "bev_rejected_ratio": _ratio_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "bev_rejected_ratio",
+            ),
+            "contact_fusion_low_confidence_ratio": _ratio_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "contact_fusion_low_confidence_ratio",
+            ),
+            "calibration_candidate_score": calibration_diagnostics.get(
+                "calibration_candidate_score"
+            ),
             "physical_quantity_coverage": coverage,
             "physical_quantity_score": coverage_score(coverage),
         }
@@ -285,6 +355,34 @@ def render_markdown(summary: dict[str, Any]) -> str:
                     row["risk_level"],
                     _fmt(row["effective_processing_fps"]),
                     row["quality_status"],
+                ],
+            )
+            + " |",
+        )
+    lines.extend(
+        [
+            "",
+            "## Precision Diagnostics",
+            "",
+            "| Clip | Speed jump p95 | Accel p95 | Jerk p95 | ID switch risks | "
+            "Frozen ratio | BEV rejected | Contact low conf | Calib candidate score |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ],
+    )
+    for row in summary["rows"]:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    row["clip"],
+                    _fmt(row.get("speed_jump_p95_kmh"), " km/h"),
+                    _fmt(row.get("acceleration_p95_mps2"), " m/s2"),
+                    _fmt(row.get("jerk_p95_mps3"), " m/s3"),
+                    str(row.get("id_switch_risk_count", 0)),
+                    _fmt(row.get("speed_frozen_ratio")),
+                    _fmt(row.get("bev_rejected_ratio")),
+                    _fmt(row.get("contact_fusion_low_confidence_ratio")),
+                    _fmt(row.get("calibration_candidate_score")),
                 ],
             )
             + " |",

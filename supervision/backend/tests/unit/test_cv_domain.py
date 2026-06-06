@@ -1,11 +1,31 @@
 from __future__ import annotations
 
+import numpy as np
+import pytest
+from domain.calibration.models import HomographyResult
 from domain.detection.models import Detection, Detections
 from domain.detection.service import DetectionService
 from domain.reports.generators import ReportGenerator
+from domain.speed.ground_contact import GroundContactPoint
+from domain.speed.models import SpeedRecord
+from domain.tracking.models import Track
 from domain.tracking.service import TrackingService
 from domain.zones.models import ZoneConfig
 from domain.zones.service import ZoneService
+from infrastructure.cv.video_processor import SupervisionVideoProcessor
+
+
+def _homography_result(matrix: np.ndarray) -> HomographyResult:
+    return HomographyResult(
+        homography_matrix=matrix.astype(float),
+        reprojection_rmse=0.1,
+        pixel_to_world_rmse_m=0.1,
+        world_to_pixel_rmse_px=1.0,
+        inlier_count=4,
+        condition_number=100.0,
+        inlier_mask=[True, True, True, True],
+        calibration_quality="excellent",
+    )
 
 
 def test_detection_service_converts_injected_predictions() -> None:
@@ -122,3 +142,111 @@ def test_report_generator_builds_frame_and_cumulative_stats() -> None:
     assert cumulative.total_frames == 1
     assert cumulative.total_unique_tracks == 1
     assert cumulative.avg_fps == 24.0
+
+
+def test_video_processor_keeps_manual_homography_until_candidate_gate_passes() -> None:
+    base = _homography_result(np.eye(3))
+    candidate = [[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 1.0]]
+    processor = SupervisionVideoProcessor(
+        detector=object(),  # type: ignore[arg-type]
+        adapter=object(),  # type: ignore[arg-type]
+        calibration=base,
+        zone=ZoneConfig("main", [0, 0], [10, 0]),
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+            "calibration_3d_diagnostics": {
+                "calibration_trusted": True,
+                "homography_consistency": {"passed": True},
+                "h_pixel_to_world": candidate,
+            },
+        },
+    )
+
+    diagnostics = processor._build_calibration_diagnostics()
+
+    assert processor.calibration.homography_matrix[0, 0] == pytest.approx(1.0)
+    assert diagnostics["runtime_homography_source"] == "planar_homography"
+    assert diagnostics["selected_calibration_candidate_id"] == "manual_runtime_preset"
+    rejection_reasons = diagnostics["candidate_rejection_reasons"]
+    assert isinstance(rejection_reasons, dict)
+    assert "vehicle_3d_prior_pnp" in rejection_reasons
+
+
+def test_video_processor_rejects_bev_inconsistent_observation() -> None:
+    processor = SupervisionVideoProcessor(
+        detector=object(),  # type: ignore[arg-type]
+        adapter=object(),  # type: ignore[arg-type]
+        calibration=_homography_result(np.eye(3)),
+        zone=ZoneConfig("main", [0, 0], [10, 0]),
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
+    )
+    processor.speed_estimator._latest_records[5] = SpeedRecord(
+        tracker_id=5,
+        speed_kmh=36.0,
+        timestamp_sec=1.0,
+        world_x=10.0,
+        world_y=0.0,
+        velocity_x_mps=10.0,
+        velocity_y_mps=0.0,
+        physics_valid=True,
+    )
+
+    assert processor._bev_consistency_pass(
+        tracker_id=5,
+        class_id=2,
+        world_position=(80.0, 0.0),
+        timestamp_sec=2.0,
+    ) is False
+
+
+def test_video_processor_predicts_one_frame_gap_from_flow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    processor = SupervisionVideoProcessor(
+        detector=object(),  # type: ignore[arg-type]
+        adapter=object(),  # type: ignore[arg-type]
+        calibration=_homography_result(np.eye(3)),
+        zone=ZoneConfig("main", [0, 0], [10, 0]),
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
+    )
+    previous = Track(
+        tracker_id=9,
+        class_id=2,
+        class_name="car",
+        confidence=0.9,
+        xyxy=[10.0, 10.0, 30.0, 30.0],
+        first_seen_frame=1,
+        last_seen_frame=1,
+    )
+    processor._previous_frame_image = object()
+    processor._previous_track_metadata = {9: previous}
+    processor._previous_track_boxes = {9: list(previous.xyxy)}
+    processor._previous_contact_points = {9: (20.0, 30.0)}
+
+    def refine_contact_point(**_: object) -> GroundContactPoint:
+        return GroundContactPoint(
+            pixel=(24.0, 30.0),
+            raw_pixel=(24.0, 30.0),
+            confidence=0.8,
+            source="flow_refined_ground_contact",
+            measurement_source="flow_refined_ground_contact",
+        )
+
+    monkeypatch.setattr(
+        processor.optical_flow_estimator,
+        "refine_contact_point",
+        refine_contact_point,
+    )
+
+    predictions = processor._flow_gap_predictions([], object(), frame_index=2)
+
+    assert len(predictions) == 1
+    assert predictions[0].reconstructed is True
+    assert predictions[0].xyxy == pytest.approx([14.0, 10.0, 34.0, 30.0])

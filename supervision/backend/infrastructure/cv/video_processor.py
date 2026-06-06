@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol, cast
 
+import numpy as np
+from domain.calibration.bev_confidence import BEVConfidenceMap, BEVConfidenceMapBuilder
+from domain.calibration.candidate_evaluation import (
+    CalibrationCandidateEvaluation,
+    CalibrationCandidateEvaluator,
+)
 from domain.calibration.models import HomographyResult
 from domain.calibration.service import CalibrationService
 from domain.crowd_density.models import CrowdDensityInput
@@ -13,10 +19,13 @@ from domain.crowd_density.service import CrowdDensityService
 from domain.detection.models import Detections
 from domain.motion.router import MotionRouter
 from domain.reports.generators import ReportGenerator
+from domain.speed.contact_fusion import ContactPointFusion, ContactPointObservation
 from domain.speed.estimator import SpeedEstimator
 from domain.speed.ground_contact import GroundContactCorrector, GroundContactPoint
 from domain.speed.models import SpeedRecord
+from domain.speed.trajectory_reconstruction import TrajectoryReconstructor
 from domain.speed.view_transformer import ViewTransformer
+from domain.tracking.integrity import TrackingIntegrityMonitor, TrackingIntegrityResult
 from domain.tracking.models import Track
 from domain.traffic_flow.models import TrafficFlowInput
 from domain.traffic_flow.service import TrafficFlowService
@@ -24,6 +33,7 @@ from domain.zones.models import ZoneConfig
 from domain.zones.service import ZoneService
 
 from infrastructure.cv.optical_flow import OpticalFlowObservation, OpticalFlowVelocityEstimator
+from infrastructure.cv.pose_ground_contact import PoseGroundContactEstimator
 from infrastructure.cv.processed_video_renderer import ProcessedVideoRenderer
 from infrastructure.cv.traffic_light_state import TrafficLightStateEstimator
 
@@ -111,10 +121,25 @@ class SupervisionVideoProcessor:
         rendered_video_path: Path | None = None,
         rendered_video_fps: float | None = None,
         calibration_context: dict[str, object] | None = None,
+        trajectory_reconstruction_enabled: bool = True,
+        pose_enabled: bool = False,
+        pose_model_path: str = "yolo11n-pose.pt",
+        pose_device: str = "mps",
     ) -> None:
         self.detector = detector
         self.adapter = adapter
-        self.calibration = calibration
+        self.calibration_context = calibration_context or {}
+        self.calibration_candidate_evaluation = CalibrationCandidateEvaluator().evaluate(
+            calibration,
+            self.calibration_context,
+            frame_width=frame_width,
+            frame_height=frame_height,
+        )
+        self.calibration, self.runtime_homography_source = self._select_runtime_calibration(
+            calibration,
+            self.calibration_context,
+            self.calibration_candidate_evaluation,
+        )
         self.zone = zone
         self.fps = fps
         self.frame_width = frame_width
@@ -122,7 +147,6 @@ class SupervisionVideoProcessor:
         self.segment_width_m = segment_width_m
         self.segment_length_m = segment_length_m
         self.grid_spacing_m = grid_spacing_m
-        self.calibration_context = calibration_context or {}
         self.calibration_source = str(
             self.calibration_context.get("calibration_source") or "unknown",
         )
@@ -134,12 +158,22 @@ class SupervisionVideoProcessor:
         )
         self.calibration_trusted = self._is_calibration_trusted()
         self.motion_router = MotionRouter()
+        self.view_transformer = ViewTransformer(self.calibration.homography_matrix)
         self.speed_estimator = SpeedEstimator(
-            ViewTransformer(calibration.homography_matrix),
-            position_rmse_m=max(calibration.pixel_to_world_rmse_m, position_rmse_floor_m),
+            self.view_transformer,
+            position_rmse_m=max(self.calibration.pixel_to_world_rmse_m, position_rmse_floor_m),
             timestamp_uncertainty_sec=1.0 / fps,
         )
+        self.trajectory_reconstruction_enabled = trajectory_reconstruction_enabled
+        self.trajectory_reconstructor = TrajectoryReconstructor(self.motion_router)
         self.ground_contact_corrector = GroundContactCorrector()
+        self.contact_point_fusion = ContactPointFusion()
+        self.tracking_integrity_monitor = TrackingIntegrityMonitor()
+        self.pose_ground_contact = (
+            PoseGroundContactEstimator(pose_model_path, pose_device)
+            if pose_enabled
+            else None
+        )
         self.optical_flow_estimator = OpticalFlowVelocityEstimator(
             self.speed_estimator.view_transformer,
         )
@@ -152,6 +186,13 @@ class SupervisionVideoProcessor:
         )
         self.zone_service = ZoneService([zone])
         self.homography_grid = self._build_homography_grid()
+        self.bev_confidence_map: BEVConfidenceMap = BEVConfidenceMapBuilder(
+            self.view_transformer,
+            frame_width=self.frame_width,
+            frame_height=self.frame_height,
+            road_plane_polygon_world=self.road_plane_polygon_world,
+            validation_max_error_px=self.validation_max_error_px,
+        ).build()
         self.frame_reports: list[dict[str, Any]] = []
         self._pixel_histories: dict[int, list[tuple[float, float]]] = {}
         self._latest_contact_points: dict[int, GroundContactPoint] = {}
@@ -159,7 +200,15 @@ class SupervisionVideoProcessor:
         self._previous_timestamp_sec: float | None = None
         self._previous_track_boxes: dict[int, list[float]] = {}
         self._previous_contact_points: dict[int, tuple[float, float]] = {}
+        self._previous_track_metadata: dict[int, Track] = {}
         self._last_reliable_signal_state = "unknown"
+        self._integrity_results: dict[int, TrackingIntegrityResult] = {}
+        self._bev_checked_count = 0
+        self._bev_rejected_count = 0
+        self._speed_frozen_count = 0
+        self._integrity_event_count = 0
+        self._contact_fusion_count = 0
+        self._contact_fusion_low_confidence_count = 0
         self.rendered_video_path = rendered_video_path
         self._renderer = (
             ProcessedVideoRenderer(
@@ -176,6 +225,7 @@ class SupervisionVideoProcessor:
     def process_frames(self, frames: Iterable[VideoFrame]) -> dict[str, Any]:
         latest_report: dict[str, Any] | None = None
         self.frame_reports = []
+        render_frames: list[object] = []
         try:
             for frame in frames:
                 detections = self.detector.detect(
@@ -191,6 +241,13 @@ class SupervisionVideoProcessor:
                 )
                 tracks = list(adapter_result.tracks)
                 zone_stats = self.zone_service.trigger(tracks)
+                tracks.extend(
+                    self._flow_gap_predictions(
+                        tracks,
+                        frame.image,
+                        frame.frame_index,
+                    )
+                )
                 self._update_pixel_histories(tracks)
                 contact_points = self._update_track_speeds(
                     tracks,
@@ -223,17 +280,31 @@ class SupervisionVideoProcessor:
                     regional_people_count=regional_people_count,
                     infrastructure_semantics=infrastructure_semantics,
                     safety_metrics=safety_metrics,
+                    bev_confidence_map=self.bev_confidence_map.to_dict(),
+                    integrity_diagnostics=self._build_integrity_diagnostics(),
                 )
                 latest_report = report.to_dict()
                 self.frame_reports.append(latest_report)
                 if self._renderer is not None:
-                    self._renderer.render(frame.image, latest_report)
+                    render_frames.append(frame.image)
                 self._remember_optical_flow_state(
                     tracks,
                     contact_points,
                     frame.image,
                     frame.timestamp_sec,
                 )
+            if latest_report is not None and self.trajectory_reconstruction_enabled:
+                self.frame_reports = self.trajectory_reconstructor.reconstruct_reports(
+                    self.frame_reports,
+                )
+                latest_report = self.frame_reports[-1]
+            if self._renderer is not None:
+                for frame_image, frame_report in zip(
+                    render_frames,
+                    self.frame_reports,
+                    strict=False,
+                ):
+                    self._renderer.render(frame_image, frame_report)
         finally:
             if self._renderer is not None:
                 self._renderer.close()
@@ -251,7 +322,7 @@ class SupervisionVideoProcessor:
         ]
         if not self.calibration_trusted:
             error_sources.append("untrusted_calibration_grid_suppressed")
-        return {
+        diagnostics = {
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
             "calibration_trusted": self.calibration_trusted,
@@ -294,9 +365,67 @@ class SupervisionVideoProcessor:
             "condition_number": self.calibration.condition_number,
             "position_rmse_m": self.speed_estimator.position_rmse_m,
             "timestamp_uncertainty_sec": self.speed_estimator.timestamp_uncertainty_sec,
+            "local_error_model": (
+                "homography_jacobian_pixel_covariance -> world_position_sigma"
+            ),
+            "calibration_risk_gate": (
+                "trusted_source && quality != unstable && validation_max_error_px <= 15"
+            ),
             "error_sources": error_sources,
             "model_reference": "Model 1 + Model 3 + Model 6 + Model 10",
+            "runtime_homography_source": self.runtime_homography_source,
         }
+        diagnostics.update(self.calibration_candidate_evaluation.to_diagnostics())
+        selected_score = next(
+            (
+                score.score
+                for score in self.calibration_candidate_evaluation.scores
+                if score.candidate_id
+                == self.calibration_candidate_evaluation.selected_candidate_id
+            ),
+            None,
+        )
+        diagnostics["calibration_candidate_score"] = selected_score
+        return diagnostics
+
+    @staticmethod
+    def _select_runtime_calibration(
+        calibration: HomographyResult,
+        calibration_context: dict[str, object],
+        evaluation: CalibrationCandidateEvaluation,
+    ) -> tuple[HomographyResult, str]:
+        if evaluation.selected_candidate_id != "manual_runtime_preset":
+            candidate = next(
+                (
+                    item
+                    for item in evaluation.candidates
+                    if item.candidate_id == evaluation.selected_candidate_id
+                ),
+                None,
+            )
+            if candidate is not None:
+                return (
+                    HomographyResult(
+                        homography_matrix=candidate.homography_matrix,
+                        reprojection_rmse=calibration.reprojection_rmse,
+                        pixel_to_world_rmse_m=max(
+                            calibration.pixel_to_world_rmse_m,
+                            candidate.metrics.get("control_point_residual_m") or 0.0,
+                        ),
+                        world_to_pixel_rmse_px=calibration.world_to_pixel_rmse_px,
+                        inlier_count=calibration.inlier_count,
+                        condition_number=calibration.condition_number,
+                        inlier_mask=list(calibration.inlier_mask),
+                        calibration_quality=calibration.calibration_quality,
+                        refinement_applied=calibration.refinement_applied,
+                        refinement_initial_rmse_m=calibration.refinement_initial_rmse_m,
+                        refinement_final_rmse_m=calibration.refinement_final_rmse_m,
+                        refinement_iterations=calibration.refinement_iterations,
+                        runtime_homography_source=candidate.source,
+                    ),
+                    candidate.source,
+                )
+        return calibration, calibration.runtime_homography_source
 
     def _build_homography_grid(self) -> dict[str, object] | None:
         if not self.calibration_trusted:
@@ -361,18 +490,88 @@ class SupervisionVideoProcessor:
         frame_image: object,
     ) -> dict[int, GroundContactPoint]:
         contact_points: dict[int, GroundContactPoint] = {}
+        active_ids = {track.tracker_id for track in tracks}
         for track in tracks:
-            contact_point = self.ground_contact_corrector.correct(
+            bbox_contact_point = self.ground_contact_corrector.correct(
                 tracker_id=track.tracker_id,
                 class_id=track.class_id,
                 xyxy=track.xyxy,
                 timestamp_sec=timestamp_sec,
+            )
+            pose_contact_point = (
+                self.pose_ground_contact.estimate(frame_image, track)
+                if self.pose_ground_contact is not None
+                else None
+            )
+            flow_contact_point = self._flow_refined_contact_point(track, frame_image)
+            contact_point = self._fuse_contact_point(
+                bbox_contact_point,
+                pose_contact_point,
+                flow_contact_point,
             )
             contact_points[track.tracker_id] = contact_point
             self._latest_contact_points[track.tracker_id] = contact_point
             profile = self.motion_router.route_class(track.class_id)
             if not profile.should_estimate_speed:
                 continue
+
+            self._contact_fusion_count += 1
+            if (contact_point.fusion_confidence or contact_point.confidence) < 0.45:
+                self._contact_fusion_low_confidence_count += 1
+            bev_risk = self.bev_confidence_map.assess(contact_point.pixel)
+            self._bev_checked_count += 1
+            world_position = self.speed_estimator.view_transformer.transform_point(
+                *contact_point.pixel,
+            )
+            integrity = self.tracking_integrity_monitor.assess(
+                track,
+                world_position=world_position,
+                timestamp_sec=timestamp_sec,
+                previous_record=self.speed_estimator.get_record(track.tracker_id),
+                active_track_ids=active_ids,
+            )
+            self._integrity_results[track.tracker_id] = integrity
+            if integrity.id_switch_risk >= 0.75:
+                self._integrity_event_count += 1
+            if integrity.reset_speed_history:
+                self.speed_estimator.reset_track(track.tracker_id)
+            if integrity.speed_frozen:
+                self._speed_frozen_count += 1
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    tracking_integrity_state=integrity.state,
+                    id_switch_risk=integrity.id_switch_risk,
+                    speed_frozen=True,
+                    integrity_rejection_reason=integrity.rejection_reason,
+                    bev_risk_level=bev_risk.risk_level,
+                    bev_risk_reason=bev_risk.risk_reason,
+                    local_scale_percentile=bev_risk.local_scale_percentile,
+                    contact_fusion_sources=contact_point.fusion_sources,
+                    contact_fusion_weights=contact_point.fusion_weights,
+                    contact_pixel_covariance=contact_point.pixel_covariance,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                )
+                continue
+
+            if bev_risk.risk_level == "rejected":
+                self._bev_rejected_count += 1
+            measurement_confidence = contact_point.confidence
+            pixel_sigma_px = contact_point.observation_sigma_px
+            if bev_risk.risk_level == "caution":
+                measurement_confidence *= 0.65
+                pixel_sigma_px *= 1.5
+            elif bev_risk.risk_level == "rejected":
+                measurement_confidence *= 0.25
+                pixel_sigma_px *= 2.5
+            if not self._bev_consistency_pass(
+                tracker_id=track.tracker_id,
+                class_id=track.class_id,
+                world_position=world_position,
+                timestamp_sec=timestamp_sec,
+            ):
+                self._bev_rejected_count += 1
+                continue
+
             optical_flow = self._optical_flow_observation(
                 track,
                 timestamp_sec,
@@ -383,17 +582,129 @@ class SupervisionVideoProcessor:
                 contact_point.pixel,
                 timestamp_sec,
                 motion_profile=profile,
-                detection_confidence=min(1.0, track.confidence * contact_point.confidence),
+                detection_confidence=min(1.0, track.confidence * measurement_confidence),
+                measurement_confidence=measurement_confidence,
+                pixel_sigma_px=pixel_sigma_px,
+                measurement_source=contact_point.measurement_source,
                 auxiliary_velocity_mps=(
                     optical_flow.velocity_mps if optical_flow is not None else None
                 ),
                 auxiliary_confidence=optical_flow.confidence if optical_flow is not None else 0.0,
             )
-        active_ids = {track.tracker_id for track in tracks}
+            self.speed_estimator.annotate_record(
+                track.tracker_id,
+                bev_risk_level=bev_risk.risk_level,
+                bev_risk_reason=bev_risk.risk_reason,
+                local_scale_percentile=bev_risk.local_scale_percentile,
+                contact_fusion_sources=contact_point.fusion_sources,
+                contact_fusion_weights=contact_point.fusion_weights,
+                contact_pixel_covariance=contact_point.pixel_covariance,
+                contact_fusion_confidence=contact_point.fusion_confidence,
+                tracking_integrity_state=integrity.state,
+                id_switch_risk=integrity.id_switch_risk,
+                speed_frozen=False,
+                integrity_rejection_reason=integrity.rejection_reason,
+            )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
                 self._latest_contact_points.pop(tracker_id, None)
         return contact_points
+
+    def _fuse_contact_point(
+        self,
+        bbox_contact_point: GroundContactPoint,
+        pose_contact_point: GroundContactPoint | None,
+        flow_contact_point: GroundContactPoint | None,
+    ) -> GroundContactPoint:
+        observations = [
+            ContactPointObservation(
+                pixel=bbox_contact_point.pixel,
+                source=bbox_contact_point.measurement_source,
+                confidence=bbox_contact_point.confidence,
+                sigma_px=bbox_contact_point.observation_sigma_px,
+            )
+        ]
+        if pose_contact_point is not None:
+            observations.append(
+                ContactPointObservation(
+                    pixel=pose_contact_point.pixel,
+                    source=pose_contact_point.measurement_source,
+                    confidence=pose_contact_point.confidence,
+                    sigma_px=pose_contact_point.observation_sigma_px,
+                )
+            )
+        if flow_contact_point is not None:
+            observations.append(
+                ContactPointObservation(
+                    pixel=flow_contact_point.pixel,
+                    source=flow_contact_point.measurement_source,
+                    confidence=flow_contact_point.confidence,
+                    sigma_px=flow_contact_point.observation_sigma_px,
+                    enabled=flow_contact_point.confidence >= 0.25,
+                )
+            )
+        fused = self.contact_point_fusion.fuse(observations)
+        covariance = np.asarray(fused.covariance_px, dtype=np.float64)
+        sigma_px = max(0.5, float(np.trace(covariance) / 2.0) ** 0.5)
+        return GroundContactPoint(
+            pixel=fused.pixel,
+            raw_pixel=bbox_contact_point.raw_pixel,
+            confidence=fused.confidence,
+            source="fused_ground_contact",
+            observation_sigma_px=sigma_px,
+            measurement_source="contact_point_fusion",
+            fusion_sources=fused.sources,
+            fusion_weights=fused.weights,
+            pixel_covariance=fused.covariance_px,
+            fusion_confidence=fused.confidence,
+        )
+
+    def _flow_refined_contact_point(
+        self,
+        track: Track,
+        frame_image: object,
+    ) -> GroundContactPoint | None:
+        if self._previous_frame_image is None:
+            return None
+        previous_xyxy = self._previous_track_boxes.get(track.tracker_id)
+        previous_contact_point = self._previous_contact_points.get(track.tracker_id)
+        if previous_xyxy is None or previous_contact_point is None:
+            return None
+        return self.optical_flow_estimator.refine_contact_point(
+            previous_frame=self._previous_frame_image,
+            current_frame=frame_image,
+            previous_xyxy=previous_xyxy,
+            previous_contact_point=previous_contact_point,
+        )
+
+    def _bev_consistency_pass(
+        self,
+        tracker_id: int,
+        class_id: int,
+        world_position: tuple[float, float],
+        timestamp_sec: float,
+    ) -> bool:
+        previous_record = self.speed_estimator.get_record(tracker_id)
+        if (
+            previous_record is None
+            or previous_record.speed_kmh is None
+            or not previous_record.physics_valid
+            or previous_record.velocity_x_mps is None
+            or previous_record.velocity_y_mps is None
+        ):
+            return True
+        delta_t = timestamp_sec - previous_record.timestamp_sec
+        if delta_t <= 0:
+            return True
+        predicted = (
+            previous_record.world_x + previous_record.velocity_x_mps * delta_t,
+            previous_record.world_y + previous_record.velocity_y_mps * delta_t,
+        )
+        error_m = math.dist(predicted, world_position)
+        profile = self.motion_router.route_class(class_id)
+        speed_mps = max((previous_record.speed_kmh or profile.nominal_speed_kmh) / 3.6, 1.0)
+        gate_m = max(8.0, speed_mps * delta_t * 2.5)
+        return error_m <= gate_m
 
     def _optical_flow_observation(
         self,
@@ -415,6 +726,52 @@ class SupervisionVideoProcessor:
             delta_t_sec=timestamp_sec - self._previous_timestamp_sec,
         )
 
+    def _flow_gap_predictions(
+        self,
+        tracks: list[Track],
+        frame_image: object,
+        frame_index: int,
+    ) -> list[Track]:
+        if self._previous_frame_image is None:
+            return []
+        active_ids = {track.tracker_id for track in tracks}
+        predictions: list[Track] = []
+        for tracker_id, previous_track in self._previous_track_metadata.items():
+            if tracker_id in active_ids or previous_track.confidence <= 0.0:
+                continue
+            previous_xyxy = self._previous_track_boxes.get(tracker_id)
+            previous_contact = self._previous_contact_points.get(tracker_id)
+            if previous_xyxy is None or previous_contact is None:
+                continue
+            refined = self.optical_flow_estimator.refine_contact_point(
+                previous_frame=self._previous_frame_image,
+                current_frame=frame_image,
+                previous_xyxy=previous_xyxy,
+                previous_contact_point=previous_contact,
+            )
+            if refined is None or refined.confidence < 0.35:
+                continue
+            dx = refined.pixel[0] - previous_contact[0]
+            dy = refined.pixel[1] - previous_contact[1]
+            shifted_box = [
+                previous_xyxy[0] + dx,
+                previous_xyxy[1] + dy,
+                previous_xyxy[2] + dx,
+                previous_xyxy[3] + dy,
+            ]
+            predictions.append(
+                replace(
+                    previous_track,
+                    xyxy=shifted_box,
+                    confidence=0.0,
+                    last_seen_frame=frame_index,
+                    quality_label="flow_gap_prediction",
+                    physics_valid=False,
+                    reconstructed=True,
+                )
+            )
+        return predictions
+
     def _remember_optical_flow_state(
         self,
         tracks: list[Track],
@@ -432,6 +789,7 @@ class SupervisionVideoProcessor:
             tracker_id: contact.pixel
             for tracker_id, contact in contact_points.items()
         }
+        self._previous_track_metadata = {track.tracker_id: track for track in tracks}
 
     def _build_traffic_flow(
         self,
@@ -635,6 +993,30 @@ class SupervisionVideoProcessor:
                 red_light_violation_track_ids,
             ),
             "model_reference": "trajectory geometry + relative speed safety surrogate",
+        }
+
+    def _build_integrity_diagnostics(self) -> dict[str, object]:
+        checked = max(self._bev_checked_count, 1)
+        fusion_count = max(self._contact_fusion_count, 1)
+        state_counts: dict[str, int] = {}
+        for result in self._integrity_results.values():
+            state_counts[result.state] = state_counts.get(result.state, 0) + 1
+        return {
+            "tracking_integrity_state_counts": state_counts,
+            "id_switch_risk_count": self._integrity_event_count,
+            "speed_frozen_count": self._speed_frozen_count,
+            "speed_frozen_ratio": self._speed_frozen_count / checked,
+            "bev_checked_count": self._bev_checked_count,
+            "bev_rejected_count": self._bev_rejected_count,
+            "bev_rejected_ratio": self._bev_rejected_count / checked,
+            "contact_fusion_count": self._contact_fusion_count,
+            "contact_fusion_low_confidence_count": (
+                self._contact_fusion_low_confidence_count
+            ),
+            "contact_fusion_low_confidence_ratio": (
+                self._contact_fusion_low_confidence_count / fusion_count
+            ),
+            "model_reference": "bev_confidence_map + contact_fusion + tracking_integrity_monitor",
         }
 
     def _profile_speed_limit_kmh(self) -> float:

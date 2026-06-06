@@ -29,3 +29,24 @@ def test_speed_confidence_degrades_with_large_position_rmse() -> None:
     assert clean.speed_confidence > 0.9
     assert noisy.speed_confidence < clean.speed_confidence
     assert noisy.position_rmse_m == pytest.approx(1.0)
+
+
+def test_measurement_confidence_and_local_scale_increase_uncertainty() -> None:
+    baseline = estimate_speed_uncertainty(
+        displacement_m=4.0,
+        delta_t_sec=1.0,
+        position_rmse_m=0.1,
+        measurement_confidence=1.0,
+        local_scale_factor=1.0,
+    )
+    weak_far_observation = estimate_speed_uncertainty(
+        displacement_m=4.0,
+        delta_t_sec=1.0,
+        position_rmse_m=0.1,
+        measurement_confidence=0.35,
+        local_scale_factor=3.0,
+    )
+
+    assert weak_far_observation.speed_uncertainty_kmh > baseline.speed_uncertainty_kmh
+    assert weak_far_observation.speed_confidence < baseline.speed_confidence
+    assert weak_far_observation.position_rmse_m > baseline.position_rmse_m

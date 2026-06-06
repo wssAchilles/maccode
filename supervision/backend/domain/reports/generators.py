@@ -35,6 +35,8 @@ class ReportGenerator:
         regional_people_count: dict[str, object] | None = None,
         infrastructure_semantics: dict[str, object] | None = None,
         safety_metrics: dict[str, object] | None = None,
+        bev_confidence_map: dict[str, object] | None = None,
+        integrity_diagnostics: dict[str, object] | None = None,
     ) -> FrameReport:
         speeds = speeds or {}
         speed_records = speed_records or {}
@@ -57,6 +59,8 @@ class ReportGenerator:
             regional_people_count=regional_people_count,
             infrastructure_semantics=infrastructure_semantics,
             safety_metrics=safety_metrics,
+            bev_confidence_map=bev_confidence_map,
+            integrity_diagnostics=integrity_diagnostics,
         )
         self._frames.append(report)
         return report
@@ -117,6 +121,31 @@ class ReportGenerator:
                 rejection_reason=record.rejection_reason,
                 track_age_frames=record.track_age_frames,
                 window_residual_m=record.window_residual_m,
+                raw_speed_kmh=record.raw_speed_kmh,
+                speed_stability_score=record.speed_stability_score,
+                speed_cv=record.speed_cv,
+                max_speed_jump_kmh=record.max_speed_jump_kmh,
+                speed_jump_p95_kmh=record.speed_jump_p95_kmh,
+                acceleration_p95_mps2=record.acceleration_p95_mps2,
+                jerk_p95_mps3=record.jerk_p95_mps3,
+                stability_label=record.stability_label,
+                position_sigma_m=record.position_sigma_m,
+                position_covariance=record.position_covariance,
+                measurement_source=record.measurement_source,
+                measurement_confidence=record.measurement_confidence,
+                local_scale_factor=record.local_scale_factor,
+                reconstructed=record.reconstructed,
+                bev_risk_level=record.bev_risk_level,
+                bev_risk_reason=record.bev_risk_reason,
+                local_scale_percentile=record.local_scale_percentile,
+                contact_fusion_sources=record.contact_fusion_sources,
+                contact_fusion_weights=record.contact_fusion_weights,
+                contact_pixel_covariance=record.contact_pixel_covariance,
+                contact_fusion_confidence=record.contact_fusion_confidence,
+                tracking_integrity_state=record.tracking_integrity_state,
+                id_switch_risk=record.id_switch_risk,
+                speed_frozen=record.speed_frozen,
+                integrity_rejection_reason=record.integrity_rejection_reason,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

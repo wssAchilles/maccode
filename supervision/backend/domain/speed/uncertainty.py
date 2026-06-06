@@ -18,6 +18,9 @@ def estimate_speed_uncertainty(
     timestamp_uncertainty_sec: float = 0.0,
     residual_m: float = 0.0,
     detection_confidence: float = 1.0,
+    measurement_confidence: float = 1.0,
+    local_scale_factor: float = 1.0,
+    position_sigma_m: float | None = None,
     track_age_frames: int | None = None,
     min_track_age_frames: int | None = None,
     uncertainty_cap_kmh: float | None = None,
@@ -32,9 +35,20 @@ def estimate_speed_uncertainty(
         raise ValueError("timestamp_uncertainty_sec must not be negative")
     if residual_m < 0:
         raise ValueError("residual_m must not be negative")
+    if measurement_confidence < 0:
+        raise ValueError("measurement_confidence must not be negative")
+    if local_scale_factor <= 0:
+        raise ValueError("local_scale_factor must be positive")
+    if position_sigma_m is not None and position_sigma_m < 0:
+        raise ValueError("position_sigma_m must not be negative")
 
     denominator = max(displacement_m, 1e-6)
-    effective_position_error_m = (position_rmse_m**2 + residual_m**2) ** 0.5
+    bounded_measurement_confidence = max(0.05, min(1.0, measurement_confidence))
+    scaled_rmse_m = position_sigma_m if position_sigma_m is not None else (
+        position_rmse_m * local_scale_factor
+    )
+    scaled_rmse_m = scaled_rmse_m / bounded_measurement_confidence**0.5
+    effective_position_error_m = (scaled_rmse_m**2 + residual_m**2) ** 0.5
     relative_distance_error = effective_position_error_m / denominator
     relative_time_error = timestamp_uncertainty_sec / delta_t_sec
     nominal_speed_kmh = displacement_m / delta_t_sec * 3.6
@@ -52,15 +66,22 @@ def estimate_speed_uncertainty(
         else raw_uncertainty_kmh
     )
     detection_factor = max(0.0, min(1.0, detection_confidence))
+    measurement_factor = bounded_measurement_confidence
     age_factor = 1.0
     if track_age_frames is not None and min_track_age_frames is not None:
         age_factor = max(0.0, min(1.0, track_age_frames / max(min_track_age_frames, 1)))
     cap_factor = 0.35 if was_capped else 1.0
-    confidence = (1.0 / (1.0 + relative_error)) * detection_factor * age_factor * cap_factor
+    confidence = (
+        (1.0 / (1.0 + relative_error))
+        * detection_factor
+        * measurement_factor
+        * age_factor
+        * cap_factor
+    )
 
     return SpeedUncertainty(
         speed_uncertainty_kmh=float(uncertainty_kmh),
         speed_confidence=float(max(0.0, min(1.0, confidence))),
-        position_rmse_m=float(position_rmse_m),
+        position_rmse_m=float(scaled_rmse_m),
         was_capped=was_capped,
     )

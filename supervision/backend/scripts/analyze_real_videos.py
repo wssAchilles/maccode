@@ -727,6 +727,7 @@ def analyze_clip(
 ) -> dict[str, Any]:
     if frame_stride <= 0:
         raise ValueError("frame_stride must be positive")
+    settings = Settings()
     metadata = inspect_video(path)
     profile = profile_for_clip(path, presets.scene_profiles)
     camera_profile = match_camera_profile(path, presets.camera_profiles)
@@ -954,6 +955,10 @@ def analyze_clip(
         position_rmse_floor_m=rmse_floor_m,
         rendered_video_path=rendered_video_path,
         rendered_video_fps=max(metadata["fps"] / frame_stride, 1.0),
+        trajectory_reconstruction_enabled=settings.cv.trajectory_reconstruction_enabled,
+        pose_enabled=settings.cv.pose_enabled,
+        pose_model_path=settings.cv.pose_model,
+        pose_device=device,
         calibration_context={
             "calibration_source": calibration_source,
             "calibration_trusted": calibration_trusted,
@@ -1062,7 +1067,8 @@ def analyze_clip(
         "sensitivity": sensitivity,
         "final_report": report
         | {
-            "calibration_diagnostics": {
+            "calibration_diagnostics": (report.get("calibration_diagnostics") or {})
+            | {
                 "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
                 "calibration_source": calibration_source,
                 "calibration_trusted": calibration_trusted,

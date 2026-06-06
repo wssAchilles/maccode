@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import Any, cast
 
 from shared.configs.constants import DEFAULT_MAX_SPEED_KMH, DEFAULT_MIN_DISPLACEMENT_M
 
 from domain.motion.models import MotionProfile
 from domain.speed.filters import max_speed_filter, min_displacement_filter
-from domain.speed.kalman import KalmanFilter2D, kalman_config_for_motion_profile
+from domain.speed.kalman import (
+    ConstantAccelerationKalmanFilter2D,
+    KalmanFilter2D,
+    kalman_config_for_motion_profile,
+)
 from domain.speed.models import SpeedRecord, TrackHistory
 from domain.speed.smoothing import median_smoothing
 from domain.speed.uncertainty import estimate_speed_uncertainty
@@ -44,7 +49,10 @@ class SpeedEstimator:
         self.timestamp_uncertainty_sec = timestamp_uncertainty_sec
         self._histories: dict[int, TrackHistory] = {}
         self._latest_records: dict[int, SpeedRecord] = {}
-        self._kalman_filters: dict[int, KalmanFilter2D] = {}
+        self._kalman_filters: dict[
+            int,
+            KalmanFilter2D | ConstantAccelerationKalmanFilter2D,
+        ] = {}
 
     def update(
         self,
@@ -54,6 +62,9 @@ class SpeedEstimator:
         process_noise: str | None = None,
         motion_profile: MotionProfile | None = None,
         detection_confidence: float = 1.0,
+        measurement_confidence: float = 1.0,
+        pixel_sigma_px: float = 1.0,
+        measurement_source: str | None = None,
         auxiliary_velocity_mps: tuple[float, float] | None = None,
         auxiliary_confidence: float = 0.0,
     ) -> float | None:
@@ -67,16 +78,37 @@ class SpeedEstimator:
         if not motion_profile.should_estimate_speed:
             return None
         world_position = self.view_transformer.transform_point(*pixel_center)
+        local_uncertainty = self.view_transformer.local_position_uncertainty(
+            pixel_center[0],
+            pixel_center[1],
+            pixel_sigma=max(pixel_sigma_px, 0.0),
+        )
+        effective_position_rmse_m = max(
+            self.position_rmse_m,
+            local_uncertainty.position_sigma_m,
+        )
+        bounded_measurement_confidence = max(0.05, min(1.0, measurement_confidence))
+        measurement_noise = max(
+            1e-6,
+            (effective_position_rmse_m**2) / bounded_measurement_confidence,
+        )
         history = self._histories.setdefault(tracker_id, TrackHistory(tracker_id))
         previous_position = history.last_position
         previous_timestamp = history.last_timestamp
 
         if previous_position is None or previous_timestamp is None:
-            history.add_position(world_position, timestamp_sec)
+            history.add_position(
+                world_position,
+                timestamp_sec,
+                bounded_measurement_confidence,
+                local_uncertainty.position_sigma_m,
+            )
             self._kalman_filters.setdefault(
                 tracker_id,
-                KalmanFilter2D(kalman_config_for_motion_profile(motion_profile.process_noise)),
-            ).update(world_position, timestamp_sec)
+                ConstantAccelerationKalmanFilter2D(
+                    kalman_config_for_motion_profile(motion_profile.process_noise),
+                ),
+            ).update(world_position, timestamp_sec, measurement_noise=measurement_noise)
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,
                 timestamp_sec=timestamp_sec,
@@ -84,6 +116,12 @@ class SpeedEstimator:
                 motion_profile=motion_profile,
                 quality_label="warming_up",
                 rejection_reason=None,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
@@ -103,14 +141,32 @@ class SpeedEstimator:
                 motion_profile=motion_profile,
                 quality_label="rejected",
                 rejection_reason="speed_gate",
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
         kalman_filter = self._kalman_filters.setdefault(
             tracker_id,
-            KalmanFilter2D(kalman_config_for_motion_profile(motion_profile.process_noise)),
+            ConstantAccelerationKalmanFilter2D(
+                kalman_config_for_motion_profile(motion_profile.process_noise),
+            ),
         )
-        predicted_measurement = kalman_filter.predict_measurement(world_position, timestamp_sec)
+        try:
+            predicted_measurement = kalman_filter.predict_measurement(
+                world_position,
+                timestamp_sec,
+                measurement_noise=measurement_noise,
+            )
+        except TypeError:
+            predicted_measurement = kalman_filter.predict_measurement(
+                world_position,
+                timestamp_sec,
+            )
         mahalanobis_threshold = (
             PINV_MAHALANOBIS_ID_SWITCH_THRESHOLD_D2
             if predicted_measurement.covariance_solver == "pinv"
@@ -125,11 +181,26 @@ class SpeedEstimator:
                 motion_profile=motion_profile,
                 quality_label="rejected",
                 rejection_reason="mahalanobis_gate",
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
-        history.add_position(world_position, timestamp_sec)
-        kalman_state = kalman_filter.update(world_position, timestamp_sec)
+        history.add_position(
+            world_position,
+            timestamp_sec,
+            bounded_measurement_confidence,
+            local_uncertainty.position_sigma_m,
+        )
+        kalman_state = kalman_filter.update(
+            world_position,
+            timestamp_sec,
+            measurement_noise=measurement_noise,
+        )
         track_age = len(history.positions)
         if track_age < motion_profile.min_track_age_frames:
             self._latest_records[tracker_id] = self._quality_record(
@@ -139,6 +210,12 @@ class SpeedEstimator:
                 motion_profile=motion_profile,
                 quality_label="warming_up",
                 rejection_reason=None,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
@@ -151,14 +228,42 @@ class SpeedEstimator:
                 motion_profile=motion_profile,
                 quality_label="warming_up",
                 rejection_reason=None,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
+
+        state_velocity = kalman_state.velocity_mps
+        state_speed_kmh = kalman_state.speed_kmh
+        if (
+            state_speed_kmh > 1e-6
+            and regression.speed_kmh > 1e-6
+            and self._velocity_angle_deg(state_velocity, regression.velocity_mps) <= 35.0
+            and abs(state_speed_kmh - regression.speed_kmh) / max(regression.speed_kmh, 1.0)
+            <= 0.45
+        ):
+            regression_velocity = (
+                regression.velocity_mps[0] * 0.55 + state_velocity[0] * 0.45,
+                regression.velocity_mps[1] * 0.55 + state_velocity[1] * 0.45,
+            )
+            regression = _RegressionState(
+                velocity_mps=regression_velocity,
+                speed_kmh=self._speed_kmh(regression_velocity),
+                duration_sec=regression.duration_sec,
+                displacement_m=regression.displacement_m,
+                residual_m=regression.residual_m,
+            )
 
         fused_velocity_mps, auxiliary_weight = self._fuse_velocity(
             regression.velocity_mps,
             auxiliary_velocity_mps,
             auxiliary_confidence,
             regression.residual_m,
+            motion_profile,
         )
         fused_speed_kmh = self._speed_kmh(fused_velocity_mps)
         if fused_speed_kmh > hard_max_speed:
@@ -171,6 +276,12 @@ class SpeedEstimator:
                 quality_label="rejected",
                 rejection_reason="speed_gate",
                 window_residual_m=regression.residual_m,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
@@ -178,10 +289,13 @@ class SpeedEstimator:
         uncertainty = estimate_speed_uncertainty(
             displacement_m=max((fused_speed_kmh / 3.6) * regression.duration_sec, 1e-6),
             delta_t_sec=regression.duration_sec,
-            position_rmse_m=self.position_rmse_m,
+            position_rmse_m=effective_position_rmse_m,
             timestamp_uncertainty_sec=self.timestamp_uncertainty_sec,
             residual_m=regression.residual_m,
             detection_confidence=min(1.0, detection_confidence + auxiliary_weight * 0.2),
+            measurement_confidence=bounded_measurement_confidence,
+            local_scale_factor=local_uncertainty.local_scale_factor,
+            position_sigma_m=local_uncertainty.position_sigma_m,
             track_age_frames=track_age,
             min_track_age_frames=motion_profile.min_track_age_frames,
             uncertainty_cap_kmh=uncertainty_cap,
@@ -206,6 +320,12 @@ class SpeedEstimator:
                 speed_confidence=speed_confidence,
                 speed_uncertainty_kmh=uncertainty.speed_uncertainty_kmh,
                 window_residual_m=regression.residual_m,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=local_uncertainty.covariance.tolist(),
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
             )
             return None
 
@@ -238,6 +358,11 @@ class SpeedEstimator:
             speed_uncertainty_kmh=uncertainty.speed_uncertainty_kmh,
             speed_confidence=speed_confidence,
             position_rmse_m=uncertainty.position_rmse_m,
+            position_sigma_m=local_uncertainty.position_sigma_m,
+            position_covariance=local_uncertainty.covariance.tolist(),
+            measurement_source=measurement_source,
+            measurement_confidence=bounded_measurement_confidence,
+            local_scale_factor=local_uncertainty.local_scale_factor,
             velocity_x_mps=display_velocity_mps[0],
             velocity_y_mps=display_velocity_mps[1],
             heading_deg=self._heading_deg(display_velocity_mps),
@@ -357,6 +482,17 @@ class SpeedEstimator:
             if record.speed_kmh is not None
         }
 
+    def annotate_record(self, tracker_id: int, **fields: object) -> None:
+        record = self._latest_records.get(tracker_id)
+        if record is None:
+            return
+        self._latest_records[tracker_id] = replace(record, **cast(Any, fields))
+
+    def reset_track(self, tracker_id: int) -> None:
+        self._histories.pop(tracker_id, None)
+        self._latest_records.pop(tracker_id, None)
+        self._kalman_filters.pop(tracker_id, None)
+
     def reset(self) -> None:
         self._histories.clear()
         self._latest_records.clear()
@@ -374,6 +510,12 @@ class SpeedEstimator:
         speed_confidence: float | None = None,
         speed_uncertainty_kmh: float | None = None,
         window_residual_m: float | None = None,
+        position_rmse_m: float | None = None,
+        position_sigma_m: float | None = None,
+        position_covariance: list[list[float]] | None = None,
+        measurement_source: str | None = None,
+        measurement_confidence: float | None = None,
+        local_scale_factor: float | None = None,
     ) -> SpeedRecord:
         history = self._histories.get(tracker_id)
         return SpeedRecord(
@@ -384,7 +526,14 @@ class SpeedEstimator:
             world_y=world_position[1],
             speed_uncertainty_kmh=speed_uncertainty_kmh,
             speed_confidence=speed_confidence,
-            position_rmse_m=self.position_rmse_m,
+            position_rmse_m=(
+                position_rmse_m if position_rmse_m is not None else self.position_rmse_m
+            ),
+            position_sigma_m=position_sigma_m,
+            position_covariance=position_covariance,
+            measurement_source=measurement_source,
+            measurement_confidence=measurement_confidence,
+            local_scale_factor=local_scale_factor,
             velocity_x_mps=None,
             velocity_y_mps=None,
             heading_deg=None,
@@ -405,14 +554,22 @@ class SpeedEstimator:
             return None
         latest_timestamp = history.timestamps[-1]
         window_start = latest_timestamp - regression_window_sec
-        samples = [
-            (timestamp, position)
-            for timestamp, position in zip(history.timestamps, history.positions, strict=True)
-            if timestamp >= window_start
-        ]
+        samples: list[tuple[float, tuple[float, float], float, float]] = []
+        has_quality = (
+            len(history.measurement_confidences) == len(history.timestamps)
+            and len(history.position_sigmas_m) == len(history.timestamps)
+        )
+        for index, (timestamp, position) in enumerate(
+            zip(history.timestamps, history.positions, strict=True)
+        ):
+            if timestamp < window_start:
+                continue
+            confidence = history.measurement_confidences[index] if has_quality else 1.0
+            sigma = history.position_sigmas_m[index] if has_quality else 0.0
+            samples.append((timestamp, position, confidence, sigma))
         if len(samples) < 3:
             return None
-        timestamps = [timestamp for timestamp, _ in samples]
+        timestamps = [timestamp for timestamp, _, _, _ in samples]
         duration_sec = timestamps[-1] - timestamps[0]
         if duration_sec < 0.25:
             return None
@@ -421,12 +578,14 @@ class SpeedEstimator:
         denominator = sum(value * value for value in centered_t)
         if denominator <= 1e-9:
             return None
-        xs = [position[0] for _, position in samples]
-        ys = [position[1] for _, position in samples]
-        mean_x = sum(xs) / len(xs)
-        mean_y = sum(ys) / len(ys)
-        vx = sum(dt * (x - mean_x) for dt, x in zip(centered_t, xs, strict=True)) / denominator
-        vy = sum(dt * (y - mean_y) for dt, y in zip(centered_t, ys, strict=True)) / denominator
+        xs = [position[0] for _, position, _, _ in samples]
+        ys = [position[1] for _, position, _, _ in samples]
+        base_weights = [
+            max(0.05, min(1.0, confidence)) / (1.0 + max(0.0, sigma))
+            for _, _, confidence, sigma in samples
+        ]
+        mean_x, vx = SpeedEstimator._weighted_line_fit(centered_t, xs, base_weights)
+        mean_y, vy = SpeedEstimator._weighted_line_fit(centered_t, ys, base_weights)
         residuals = [
             math.dist(
                 (x, y),
@@ -434,7 +593,28 @@ class SpeedEstimator:
             )
             for dt, x, y in zip(centered_t, xs, ys, strict=True)
         ]
-        residual_m = (sum(value * value for value in residuals) / len(residuals)) ** 0.5
+        huber_scale = max(0.15, sorted(residuals)[len(residuals) // 2] * 1.4826)
+        robust_weights = [
+            weight * min(1.0, huber_scale / max(residual, 1e-9))
+            for weight, residual in zip(base_weights, residuals, strict=True)
+        ]
+        mean_x, vx = SpeedEstimator._weighted_line_fit(centered_t, xs, robust_weights)
+        mean_y, vy = SpeedEstimator._weighted_line_fit(centered_t, ys, robust_weights)
+        residuals = [
+            math.dist(
+                (x, y),
+                (mean_x + vx * dt, mean_y + vy * dt),
+            )
+            for dt, x, y in zip(centered_t, xs, ys, strict=True)
+        ]
+        weight_sum = max(sum(robust_weights), 1e-9)
+        residual_m = (
+            sum(
+                weight * value * value
+                for weight, value in zip(robust_weights, residuals, strict=True)
+            )
+            / weight_sum
+        ) ** 0.5
         speed_mps = (vx**2 + vy**2) ** 0.5
         return _RegressionState(
             velocity_mps=(float(vx), float(vy)),
@@ -443,6 +623,28 @@ class SpeedEstimator:
             displacement_m=float(speed_mps * duration_sec),
             residual_m=float(residual_m),
         )
+
+    @staticmethod
+    def _weighted_line_fit(
+        centered_t: list[float],
+        values: list[float],
+        weights: list[float],
+    ) -> tuple[float, float]:
+        weight_sum = max(sum(weights), 1e-9)
+        intercept = (
+            sum(weight * value for weight, value in zip(weights, values, strict=True))
+            / weight_sum
+        )
+        denominator = sum(
+            weight * dt * dt for weight, dt in zip(weights, centered_t, strict=True)
+        )
+        if denominator <= 1e-9:
+            return float(intercept), 0.0
+        slope = sum(
+            weight * dt * (value - intercept)
+            for weight, dt, value in zip(weights, centered_t, values, strict=True)
+        ) / denominator
+        return float(intercept), float(slope)
 
     @staticmethod
     def _acceleration_mps2(
@@ -476,6 +678,7 @@ class SpeedEstimator:
             0.35,
             motion_profile.max_acceleration_mps2 * delta_t * 3.6,
         )
+        max_step_kmh = min(max_step_kmh, SpeedEstimator._display_step_cap_kmh(motion_profile))
         lower = previous_speed - max_step_kmh
         upper = previous_speed + max_step_kmh
         stabilized_speed = min(max(candidate_speed_kmh, lower), upper)
@@ -500,14 +703,29 @@ class SpeedEstimator:
         auxiliary_velocity_mps: tuple[float, float] | None,
         auxiliary_confidence: float,
         residual_m: float,
+        motion_profile: MotionProfile,
     ) -> tuple[tuple[float, float], float]:
         if auxiliary_velocity_mps is None or auxiliary_confidence <= 0.0:
             return regression_velocity_mps, 0.0
+        regression_speed = SpeedEstimator._speed_kmh(regression_velocity_mps)
         auxiliary_speed = SpeedEstimator._speed_kmh(auxiliary_velocity_mps)
-        if auxiliary_speed <= 1e-6:
+        if regression_speed <= 1e-6 or auxiliary_speed <= 1e-6:
+            return regression_velocity_mps, 0.0
+        angle_deg = SpeedEstimator._velocity_angle_deg(
+            regression_velocity_mps,
+            auxiliary_velocity_mps,
+        )
+        if angle_deg > 25.0:
+            return regression_velocity_mps, 0.0
+        relative_delta = abs(auxiliary_speed - regression_speed) / max(regression_speed, 1.0)
+        if relative_delta > 0.30:
             return regression_velocity_mps, 0.0
         residual_weight = min(0.2, max(0.0, residual_m) * 0.12)
-        weight = min(0.92, max(0.0, min(1.0, auxiliary_confidence)) * 0.82 + residual_weight)
+        weight_cap = SpeedEstimator._auxiliary_weight_cap(motion_profile)
+        weight = min(
+            weight_cap,
+            max(0.0, min(1.0, auxiliary_confidence)) * weight_cap + residual_weight,
+        )
         return (
             (
                 regression_velocity_mps[0] * (1.0 - weight) + auxiliary_velocity_mps[0] * weight,
@@ -519,6 +737,41 @@ class SpeedEstimator:
     @staticmethod
     def _speed_kmh(velocity_mps: tuple[float, float]) -> float:
         return float(((velocity_mps[0] ** 2 + velocity_mps[1] ** 2) ** 0.5) * 3.6)
+
+    @staticmethod
+    def _velocity_angle_deg(
+        left: tuple[float, float],
+        right: tuple[float, float],
+    ) -> float:
+        left_norm = (left[0] ** 2 + left[1] ** 2) ** 0.5
+        right_norm = (right[0] ** 2 + right[1] ** 2) ** 0.5
+        if left_norm <= 1e-9 or right_norm <= 1e-9:
+            return 180.0
+        cosine = (left[0] * right[0] + left[1] * right[1]) / (left_norm * right_norm)
+        cosine = max(-1.0, min(1.0, cosine))
+        return float(math.degrees(math.acos(cosine)))
+
+    @staticmethod
+    def _auxiliary_weight_cap(motion_profile: MotionProfile) -> float:
+        if motion_profile.category in {"high_inertia_dynamic", "heavy_vehicle_dynamic"}:
+            return 0.35
+        if motion_profile.category == "bicycle_dynamic":
+            return 0.25
+        if motion_profile.category == "low_inertia_dynamic":
+            return 0.20
+        return 0.25
+
+    @staticmethod
+    def _display_step_cap_kmh(motion_profile: MotionProfile) -> float:
+        if motion_profile.category in {"high_inertia_dynamic", "heavy_vehicle_dynamic"}:
+            return 1.5
+        if motion_profile.category == "motorcycle_dynamic":
+            return 1.2
+        if motion_profile.category == "bicycle_dynamic":
+            return 0.9
+        if motion_profile.category == "low_inertia_dynamic":
+            return 0.58
+        return 0.8
 
     @staticmethod
     def _heading_deg(velocity_mps: tuple[float, float]) -> float | None:

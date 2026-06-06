@@ -674,6 +674,22 @@ export function RealtimeMonitor({
                   <strong>{formatPercent(selectedTrack?.speed_confidence)}</strong>
                 </div>
                 <div>
+                  <span>稳定度评分</span>
+                  <strong>{formatPercent(selectedTrack?.speed_stability_score)}</strong>
+                </div>
+                <div>
+                  <span>速度波动系数</span>
+                  <strong>{formatPercent(selectedTrack?.speed_cv)}</strong>
+                </div>
+                <div>
+                  <span>最大速度跳变</span>
+                  <strong>{formatSpeed(selectedTrack?.max_speed_jump_kmh ?? null)}</strong>
+                </div>
+                <div>
+                  <span>稳定性标签</span>
+                  <strong>{selectedTrack?.stability_label ?? "N/A"}</strong>
+                </div>
+                <div>
                   <span>物理有效性</span>
                   <strong>{selectedTrack ? (selectedTrack.physics_valid ? "valid" : selectedTrack.quality_label) : "N/A"}</strong>
                 </div>

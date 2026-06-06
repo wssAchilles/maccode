@@ -105,7 +105,11 @@ class CalibrationPresetStore:
             )
             for point in normalized_entry["points"]
         ]
-        homography = self._service.compute_homography_ransac(points, random_seed=11)
+        homography = self._service.compute_homography_ransac(
+            points,
+            random_seed=11,
+            validation_segments=normalized_entry["validation_segments"],
+        )
         validation_max_error_px = self._validation_segment_max_error_px(
             homography.homography_matrix,
             normalized_entry["validation_segments"],
@@ -155,6 +159,10 @@ class CalibrationPresetStore:
             "inlier_count": homography.inlier_count,
             "condition_number": homography.condition_number,
             "inlier_mask": homography.inlier_mask,
+            "refinement_applied": homography.refinement_applied,
+            "refinement_initial_rmse_m": homography.refinement_initial_rmse_m,
+            "refinement_final_rmse_m": homography.refinement_final_rmse_m,
+            "refinement_iterations": homography.refinement_iterations,
             "position_rmse_m": normalized_entry["position_rmse_floor_m"],
             "scale_uncertainty_pct": normalized_entry["calibration_scale_uncertainty_pct"],
             "world_width_m": world_width_m,
