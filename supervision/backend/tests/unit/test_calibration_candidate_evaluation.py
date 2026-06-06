@@ -75,3 +75,40 @@ def test_untrusted_3d_candidate_cannot_override_manual_runtime() -> None:
     assert isinstance(rejection_reasons, dict)
     typed_reasons = cast(dict[str, list[str]], rejection_reasons)
     assert "vehicle_3d_consistency_gate_failed" in typed_reasons["vehicle_3d_prior_pnp"]
+
+
+def test_auto_candidate_with_worse_sensitivity_cannot_override_manual_runtime() -> None:
+    manual = _homography(np.eye(3), rmse=0.2)
+    context = {
+        "calibration_trusted": True,
+        "validation_max_error_px": 1.0,
+        "auto_calibration": {
+            "auto_calibration_confidence": 0.95,
+            "quality_issues": [],
+            "homography_proposal": {
+                "candidate_points": [
+                    {"pixel": [0, 0], "world": [0, 0]},
+                    {"pixel": [100, 0], "world": [20, 0]},
+                    {"pixel": [100, 100], "world": [20, 80]},
+                    {"pixel": [0, 100], "world": [0, 10]},
+                ]
+            },
+        },
+    }
+
+    evaluation = CalibrationCandidateEvaluator().evaluate(
+        manual,
+        context,
+        frame_width=100,
+        frame_height=100,
+    )
+
+    assert evaluation.selected_candidate_id == "manual_runtime_preset"
+    diagnostics = evaluation.to_diagnostics()
+    rejection_reasons = diagnostics["candidate_rejection_reasons"]
+    assert isinstance(rejection_reasons, dict)
+    typed_reasons = cast(dict[str, list[str]], rejection_reasons)
+    assert set(typed_reasons["auto_vp_lane_vehicle_size_candidate"]) & {
+        "sensitivity_or_extrapolation_gate_failed",
+        "local_scale_p95_high",
+    }

@@ -5,7 +5,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from domain.calibration.models import HomographyResult
+from domain.calibration.models import CalibrationPoint, HomographyResult
+from domain.calibration.service import CalibrationService
 from domain.speed.view_transformer import ViewTransformer
 
 
@@ -90,6 +91,14 @@ class CalibrationCandidateEvaluator:
         )
         if three_d is not None:
             candidates.append(three_d)
+        auto_candidate = self._auto_calibration_candidate(
+            calibration,
+            calibration_context,
+            frame_width,
+            frame_height,
+        )
+        if auto_candidate is not None:
+            candidates.append(auto_candidate)
 
         scores = [self._score(candidate) for candidate in candidates]
         manual_score = scores[0]
@@ -97,6 +106,19 @@ class CalibrationCandidateEvaluator:
         selected_score = manual_score
         for candidate, score in zip(candidates[1:], scores[1:], strict=True):
             improvement = (manual_score.score - score.score) / max(manual_score.score, 1e-9)
+            if score.trusted and not self._sensitivity_gate(candidates[0], candidate):
+                index = scores.index(score)
+                scores[index] = CalibrationCandidateScore(
+                    candidate_id=score.candidate_id,
+                    score=score.score,
+                    breakdown=score.breakdown,
+                    trusted=False,
+                    rejection_reasons=[
+                        *score.rejection_reasons,
+                        "sensitivity_or_extrapolation_gate_failed",
+                    ],
+                )
+                continue
             if score.trusted and improvement >= self.IMPROVEMENT_GATE:
                 selected = candidate
                 selected_score = score
@@ -119,6 +141,31 @@ class CalibrationCandidateEvaluator:
             selected_candidate_id=selected_score.candidate_id,
             runtime_source=selected.source,
         )
+
+    @staticmethod
+    def _sensitivity_gate(
+        manual: CalibrationCandidate,
+        candidate: CalibrationCandidate,
+    ) -> bool:
+        if candidate.source != "auto_vp_lane_vehicle_size_candidate":
+            return True
+        manual_scale = manual.metrics.get("local_scale_p95")
+        candidate_scale = candidate.metrics.get("local_scale_p95")
+        manual_extrapolation = manual.metrics.get("bev_grid_extrapolation_ratio")
+        candidate_extrapolation = candidate.metrics.get("bev_grid_extrapolation_ratio")
+        if (
+            isinstance(manual_scale, int | float)
+            and isinstance(candidate_scale, int | float)
+            and float(candidate_scale) > float(manual_scale) * 1.05
+        ):
+            return False
+        if (
+            isinstance(manual_extrapolation, int | float)
+            and isinstance(candidate_extrapolation, int | float)
+            and float(candidate_extrapolation) > float(manual_extrapolation) + 0.02
+        ):
+            return False
+        return True
 
     def _manual_candidate(
         self,
@@ -185,6 +232,92 @@ class CalibrationCandidateEvaluator:
             candidate_id="vehicle_3d_prior_pnp",
             source="vehicle_3d_prior_pnp",
             homography_matrix=matrix,
+            trusted=trusted,
+            metrics=metrics,
+            rejection_reasons=reasons,
+        )
+
+    def _auto_calibration_candidate(
+        self,
+        calibration: HomographyResult,
+        calibration_context: dict[str, object],
+        frame_width: int,
+        frame_height: int,
+    ) -> CalibrationCandidate | None:
+        auto = calibration_context.get("auto_calibration")
+        if not isinstance(auto, dict):
+            return None
+        proposal = auto.get("homography_proposal")
+        if not isinstance(proposal, dict):
+            return None
+        raw_points = proposal.get("candidate_points")
+        if not isinstance(raw_points, list):
+            return None
+        points: list[CalibrationPoint] = []
+        for item in raw_points:
+            if not isinstance(item, dict):
+                return None
+            pixel = item.get("pixel")
+            world = item.get("world")
+            if (
+                not isinstance(pixel, (list, tuple))
+                or not isinstance(world, (list, tuple))
+                or len(pixel) != 2
+                or len(world) != 2
+            ):
+                return None
+            try:
+                points.append(
+                    CalibrationPoint(
+                        pixel_x=float(pixel[0]),
+                        pixel_y=float(pixel[1]),
+                        world_x=float(world[0]),
+                        world_y=float(world[1]),
+                    )
+                )
+            except (TypeError, ValueError):
+                return None
+        if len(points) < 4:
+            return None
+        try:
+            result = CalibrationService().compute_homography(points)
+        except (ValueError, np.linalg.LinAlgError):
+            return None
+        confidence = self._optional_float(auto.get("auto_calibration_confidence")) or 0.0
+        quality_issues = auto.get("quality_issues")
+        reasons = [
+            str(issue)
+            for issue in quality_issues
+            if isinstance(issue, str)
+        ] if isinstance(quality_issues, list) else []
+        trusted = confidence >= 0.85 and not reasons
+        if not trusted:
+            reasons.append("auto_calibration_confidence_or_quality_gate_failed")
+        result = HomographyResult(
+            homography_matrix=result.homography_matrix,
+            reprojection_rmse=result.reprojection_rmse,
+            pixel_to_world_rmse_m=result.pixel_to_world_rmse_m,
+            world_to_pixel_rmse_px=result.world_to_pixel_rmse_px,
+            inlier_count=result.inlier_count,
+            condition_number=result.condition_number,
+            inlier_mask=result.inlier_mask,
+            calibration_quality=result.calibration_quality,
+            refinement_applied=result.refinement_applied,
+            refinement_initial_rmse_m=result.refinement_initial_rmse_m,
+            refinement_final_rmse_m=result.refinement_final_rmse_m,
+            refinement_iterations=result.refinement_iterations,
+            runtime_homography_source="auto_vp_lane_vehicle_size_candidate",
+        )
+        metrics = self._metrics(result, calibration_context, frame_width, frame_height)
+        metrics["auto_calibration_confidence"] = confidence
+        metrics["manual_consistency_delta"] = self._matrix_delta(
+            calibration.homography_matrix,
+            result.homography_matrix,
+        )
+        return CalibrationCandidate(
+            candidate_id="auto_vp_lane_vehicle_size_candidate",
+            source="auto_vp_lane_vehicle_size_candidate",
+            homography_matrix=result.homography_matrix,
             trusted=trusted,
             metrics=metrics,
             rejection_reasons=reasons,

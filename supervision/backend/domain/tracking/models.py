@@ -53,6 +53,16 @@ class Track:
     id_switch_risk: float | None = None
     speed_frozen: bool = False
     integrity_rejection_reason: str | None = None
+    speed_confidence_calibrated: float | None = None
+    confidence_calibration_bin: str | None = None
+    calibration_uncertainty_band_kmh: list[float | None] | None = None
+    motion_mode: str | None = None
+    motion_mode_probability: float | None = None
+    imm_speed_kmh: float | None = None
+    tracklet_relinked: bool = False
+    tracklet_parent_id: int | None = None
+    association_score: float | None = None
+    association_rejection_reason: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -115,6 +125,16 @@ class Track:
         id_switch_risk: float | None = None,
         speed_frozen: bool = False,
         integrity_rejection_reason: str | None = None,
+        speed_confidence_calibrated: float | None = None,
+        confidence_calibration_bin: str | None = None,
+        calibration_uncertainty_band_kmh: list[float | None] | None = None,
+        motion_mode: str | None = None,
+        motion_mode_probability: float | None = None,
+        imm_speed_kmh: float | None = None,
+        tracklet_relinked: bool = False,
+        tracklet_parent_id: int | None = None,
+        association_score: float | None = None,
+        association_rejection_reason: str | None = None,
     ) -> Track:
         return replace(
             self,
@@ -159,4 +179,14 @@ class Track:
             id_switch_risk=id_switch_risk,
             speed_frozen=speed_frozen,
             integrity_rejection_reason=integrity_rejection_reason,
+            speed_confidence_calibrated=speed_confidence_calibrated,
+            confidence_calibration_bin=confidence_calibration_bin,
+            calibration_uncertainty_band_kmh=calibration_uncertainty_band_kmh,
+            motion_mode=motion_mode,
+            motion_mode_probability=motion_mode_probability,
+            imm_speed_kmh=imm_speed_kmh,
+            tracklet_relinked=tracklet_relinked,
+            tracklet_parent_id=tracklet_parent_id,
+            association_score=association_score,
+            association_rejection_reason=association_rejection_reason,
         )

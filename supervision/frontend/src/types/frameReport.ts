@@ -3,7 +3,7 @@ export interface Track {
   class_id: number;
   class_name: string;
   confidence: number;
-  xyxy: [number, number, number, number];
+  xyxy?: [number, number, number, number] | null;
   first_seen_frame: number;
   last_seen_frame: number;
   speed_kmh: number | null;
@@ -53,6 +53,16 @@ export interface Track {
   id_switch_risk?: number | null;
   speed_frozen?: boolean;
   integrity_rejection_reason?: string | null;
+  speed_confidence_calibrated?: number | null;
+  confidence_calibration_bin?: string | null;
+  calibration_uncertainty_band_kmh?: [number | null, number | null] | null;
+  motion_mode?: string | null;
+  motion_mode_probability?: number | null;
+  imm_speed_kmh?: number | null;
+  tracklet_relinked?: boolean;
+  tracklet_parent_id?: number | null;
+  association_score?: number | null;
+  association_rejection_reason?: string | null;
 }
 
 export interface ZoneStats {
@@ -79,6 +89,10 @@ export interface FrameReport {
   bev_confidence_map?: BEVConfidenceMap | null;
   integrity_diagnostics?: IntegrityDiagnostics | null;
   trajectory_diagnostics?: TrajectoryDiagnostics | null;
+  calibration_sensitivity?: CalibrationSensitivity | null;
+  confidence_calibration_summary?: ConfidenceCalibrationSummary | null;
+  tracklet_reassociation_summary?: TrackletReassociationSummary | null;
+  model_comparison_benchmark?: ModelComparisonBenchmark | null;
 }
 
 export interface HomographyGridLine {
@@ -153,6 +167,7 @@ export interface CalibrationDiagnostics {
   selected_calibration_candidate_id?: string | null;
   candidate_score_breakdown?: Record<string, unknown>;
   candidate_rejection_reasons?: Record<string, string[]>;
+  calibration_sensitivity?: CalibrationSensitivity | null;
   calibration_candidate_score?: number | null;
   refinement_applied?: boolean;
   refinement_initial_rmse_m?: number | null;
@@ -196,6 +211,39 @@ export interface IntegrityDiagnostics {
   model_reference?: string;
 }
 
+export interface CalibrationSensitivity {
+  perturbation_px?: number;
+  speed_sensitivity_p50?: number;
+  speed_sensitivity_p95?: number;
+  calibration_uncertainty_band_kmh?: [number | null, number | null] | Array<number | null>;
+  rejected_ratio_delta?: number;
+  sample_count?: number;
+  model_reference?: string;
+}
+
+export interface ConfidenceCalibrationSummary {
+  speed_track_count?: number;
+  confidence_bins?: Record<string, number>;
+  proxy_low_confidence_count?: number;
+  proxy_low_confidence_ratio?: number;
+  avg_calibrated_confidence?: number | null;
+  model_reference?: string;
+}
+
+export interface TrackletReassociationSummary {
+  candidate_count?: number;
+  relinked_count?: number;
+  rejected_count?: number;
+  model_reference?: string;
+}
+
+export interface ModelComparisonBenchmark {
+  baseline?: Record<string, number | null>;
+  optimized?: Record<string, number | null>;
+  gates?: Record<string, boolean>;
+  model_reference?: string;
+}
+
 export interface TrajectoryDiagnostics {
   track_entry_count: number;
   reconstructed_track_entries: number;
@@ -206,6 +254,8 @@ export interface TrajectoryDiagnostics {
   speed_frozen_ratio?: number;
   bev_rejected_ratio?: number;
   contact_fusion_low_confidence_ratio?: number;
+  tracklet_relinked_count?: number;
+  calibrated_low_confidence_ratio?: number;
   model_reference: string;
 }
 

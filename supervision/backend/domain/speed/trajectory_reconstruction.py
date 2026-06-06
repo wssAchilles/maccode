@@ -7,7 +7,10 @@ from typing import Any
 import numpy as np
 
 from domain.motion.router import MotionRouter
+from domain.speed.confidence_calibration import SpeedConfidenceCalibrator
+from domain.speed.imm import LightweightIMMEstimator
 from domain.speed.stability import SpeedStabilityMetrics, compute_speed_stability
+from domain.tracking.tracklet_reassociation import TrackletReAssociationService
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,9 @@ class TrajectoryPoint:
 class TrajectoryReconstructor:
     def __init__(self, motion_router: MotionRouter | None = None) -> None:
         self.motion_router = motion_router or MotionRouter()
+        self.confidence_calibrator = SpeedConfidenceCalibrator()
+        self.imm_estimator = LightweightIMMEstimator()
+        self.tracklet_reassociation = TrackletReAssociationService()
 
     def reconstruct_reports(self, frame_reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped = self._group_points(frame_reports)
@@ -39,9 +45,18 @@ class TrajectoryReconstructor:
             track_points = self._fill_short_gaps(frame_reports, points)
             reconstructed = self.reconstruct_track(track_points, class_id)
             self._apply_track(updated_reports, tracker_id, class_id, reconstructed)
+        self._apply_imm_modes(updated_reports)
+        updated_reports, reassociation_summary = self.tracklet_reassociation.relink_reports(
+            updated_reports
+        )
+        confidence_summary = self._apply_confidence_calibration(updated_reports)
+        model_benchmark = self._model_comparison_benchmark(frame_reports, updated_reports)
         diagnostics = self._trajectory_diagnostics(updated_reports)
         for report in updated_reports:
             report["trajectory_diagnostics"] = diagnostics
+            report["confidence_calibration_summary"] = confidence_summary
+            report["tracklet_reassociation_summary"] = reassociation_summary.to_dict()
+            report["model_comparison_benchmark"] = model_benchmark
         return updated_reports
 
     def reconstruct_track(
@@ -162,6 +177,8 @@ class TrajectoryReconstructor:
         speed_frozen_entries = 0
         bev_rejected_entries = 0
         contact_low_confidence_entries = 0
+        calibrated_low_confidence_entries = 0
+        tracklet_relinked_entries = 0
         track_frame_indices: dict[int, list[int]] = {}
         for report_index, report in enumerate(frame_reports):
             for track in report.get("active_tracks", []):
@@ -182,6 +199,10 @@ class TrajectoryReconstructor:
                     bev_rejected_entries += 1
                 if float(track.get("contact_fusion_confidence") or 1.0) < 0.45:
                     contact_low_confidence_entries += 1
+                if float(track.get("speed_confidence_calibrated") or 1.0) < 0.4:
+                    calibrated_low_confidence_entries += 1
+                if bool(track.get("tracklet_relinked", False)):
+                    tracklet_relinked_entries += 1
                 tracker_id = int(track.get("tracker_id", -1))
                 if tracker_id >= 0:
                     track_frame_indices.setdefault(tracker_id, []).append(report_index)
@@ -229,7 +250,14 @@ class TrajectoryReconstructor:
             "contact_fusion_low_confidence_ratio": (
                 contact_low_confidence_entries / denominator
             ),
-            "model_reference": "trajectory_gap_fill + kalman_rts_smoother",
+            "tracklet_relinked_count": tracklet_relinked_entries,
+            "calibrated_low_confidence_ratio": (
+                calibrated_low_confidence_entries / denominator
+            ),
+            "model_reference": (
+                "trajectory_gap_fill + kalman_rts_smoother + imm_diagnostics + "
+                "tracklet_reassociation"
+            ),
         }
 
     @staticmethod
@@ -441,6 +469,123 @@ class TrajectoryReconstructor:
                         },
                     }
                 )
+
+    def _apply_imm_modes(self, reports: list[dict[str, Any]]) -> None:
+        grouped = self._group_points(reports)
+        for tracker_id, points in grouped.items():
+            if len(points) < 3:
+                continue
+            ordered = sorted(points, key=lambda point: point.report_index)
+            states = self.imm_estimator.estimate(
+                [point.timestamp_sec for point in ordered],
+                [point.world_x for point in ordered],
+                [point.world_y for point in ordered],
+            )
+            for point, state in zip(ordered, states, strict=False):
+                for track in reports[point.report_index].get("active_tracks", []):
+                    if (
+                        isinstance(track, dict)
+                        and int(track.get("tracker_id", -1)) == tracker_id
+                    ):
+                        track.update(state.to_dict())
+                        break
+
+    def _apply_confidence_calibration(
+        self,
+        reports: list[dict[str, Any]],
+    ) -> dict[str, object]:
+        for report in reports:
+            for track in report.get("active_tracks", []):
+                if not isinstance(track, dict) or track.get("speed_kmh") is None:
+                    continue
+                calibrated = self.confidence_calibrator.calibrate(track)
+                track.update(calibrated.to_dict())
+        return self.confidence_calibrator.summarize(reports)
+
+    @staticmethod
+    def _model_comparison_benchmark(
+        baseline_reports: list[dict[str, Any]],
+        optimized_reports: list[dict[str, Any]],
+    ) -> dict[str, object]:
+        baseline = TrajectoryReconstructor._benchmark_metrics(baseline_reports)
+        optimized = TrajectoryReconstructor._benchmark_metrics(optimized_reports)
+        return {
+            "baseline": baseline,
+            "optimized": optimized,
+            "gates": {
+                "speed_jump_p95_not_increased": (
+                    TrajectoryReconstructor._not_increased(
+                        baseline.get("speed_jump_p95_kmh"),
+                        optimized.get("speed_jump_p95_kmh"),
+                    )
+                ),
+                "acceleration_p95_not_increased": (
+                    TrajectoryReconstructor._not_increased(
+                        baseline.get("acceleration_p95_mps2"),
+                        optimized.get("acceleration_p95_mps2"),
+                    )
+                ),
+                "jerk_p95_not_increased": TrajectoryReconstructor._not_increased(
+                    baseline.get("jerk_p95_mps3"),
+                    optimized.get("jerk_p95_mps3"),
+                ),
+            },
+            "model_reference": "baseline_vs_rts_imm_tracklet_repair",
+        }
+
+    @staticmethod
+    def _benchmark_metrics(reports: list[dict[str, Any]]) -> dict[str, float | None]:
+        speed_jumps: list[float] = []
+        accelerations: list[float] = []
+        jerks: list[float] = []
+        speed_tracks = 0
+        active_tracks = 0
+        for report in reports:
+            for track in report.get("active_tracks", []):
+                if not isinstance(track, dict):
+                    continue
+                active_tracks += 1
+                if track.get("speed_kmh") is not None:
+                    speed_tracks += 1
+                TrajectoryReconstructor._append_numeric(
+                    speed_jumps,
+                    track.get("speed_jump_p95_kmh"),
+                )
+                TrajectoryReconstructor._append_numeric(
+                    accelerations,
+                    track.get("acceleration_p95_mps2"),
+                )
+                TrajectoryReconstructor._append_numeric(jerks, track.get("jerk_p95_mps3"))
+        return {
+            "speed_jump_p95_kmh": TrajectoryReconstructor._p95(speed_jumps),
+            "acceleration_p95_mps2": TrajectoryReconstructor._p95(accelerations),
+            "jerk_p95_mps3": TrajectoryReconstructor._p95(jerks),
+            "speed_tracks": float(speed_tracks),
+            "active_tracks": float(active_tracks),
+            "speed_track_ratio": speed_tracks / max(active_tracks, 1),
+        }
+
+    @staticmethod
+    def _append_numeric(values: list[float], value: object) -> None:
+        if isinstance(value, int | float):
+            values.append(float(value))
+
+    @staticmethod
+    def _p95(values: list[float]) -> float | None:
+        if not values:
+            return None
+        ordered = sorted(values)
+        index = min(len(ordered) - 1, int(round((len(ordered) - 1) * 0.95)))
+        return float(ordered[index])
+
+    @staticmethod
+    def _not_increased(
+        baseline: float | None,
+        optimized: float | None,
+    ) -> bool:
+        if baseline is None or optimized is None:
+            return True
+        return optimized <= baseline + 1e-9
 
     @staticmethod
     def _point_result(

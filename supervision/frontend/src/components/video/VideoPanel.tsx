@@ -29,13 +29,25 @@ export interface VideoPlaybackSnapshot {
 
 const DEFAULT_VIEW_BOX = { width: 1280, height: 720 };
 
+function hasPixelBox(track: Track): track is Track & { xyxy: [number, number, number, number] } {
+  return (
+    Array.isArray(track.xyxy) &&
+    track.xyxy.length >= 4 &&
+    track.xyxy.every((value) => Number.isFinite(value))
+  );
+}
+
 function usesSyntheticScale(tracks: Track[]) {
-  const maxX = Math.max(...tracks.flatMap((track) => [track.xyxy[0], track.xyxy[2]]), 0);
-  const maxY = Math.max(...tracks.flatMap((track) => [track.xyxy[1], track.xyxy[3]]), 0);
+  const drawableTracks = tracks.filter(hasPixelBox);
+  const maxX = Math.max(...drawableTracks.flatMap((track) => [track.xyxy[0], track.xyxy[2]]), 0);
+  const maxY = Math.max(...drawableTracks.flatMap((track) => [track.xyxy[1], track.xyxy[3]]), 0);
   return maxX <= 120 && maxY <= 80;
 }
 
-function scaleBox(track: Track, syntheticScale: boolean): [number, number, number, number] {
+function scaleBox(
+  track: Track & { xyxy: [number, number, number, number] },
+  syntheticScale: boolean
+): [number, number, number, number] {
   if (!syntheticScale) {
     return track.xyxy;
   }
@@ -131,10 +143,11 @@ export function VideoPanel({
   const syntheticScale = !homographyGrid && usesSyntheticScale(tracks);
   const canvasRef = useHomographyCanvas(homographyGrid);
   const showHomographyGrid = Boolean(videoUrl && homographyGrid?.calibration_trusted);
+  const drawableTracks = tracks.filter(hasPixelBox);
   const overlayTracks =
     renderedByBackend && selectedTrackId !== null && selectedTrackId !== undefined
-      ? tracks.filter((track) => track.tracker_id === selectedTrackId)
-      : tracks;
+      ? drawableTracks.filter((track) => track.tracker_id === selectedTrackId)
+      : drawableTracks;
   const showClientTrackOverlay = Boolean(videoUrl) && overlayTracks.length > 0;
   useAnimeScope(
     surfaceRef,

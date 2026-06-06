@@ -47,6 +47,16 @@ class SpeedRecord:
     id_switch_risk: float | None = None
     speed_frozen: bool = False
     integrity_rejection_reason: str | None = None
+    speed_confidence_calibrated: float | None = None
+    confidence_calibration_bin: str | None = None
+    calibration_uncertainty_band_kmh: list[float | None] | None = None
+    motion_mode: str | None = None
+    motion_mode_probability: float | None = None
+    imm_speed_kmh: float | None = None
+    tracklet_relinked: bool = False
+    tracklet_parent_id: int | None = None
+    association_score: float | None = None
+    association_rejection_reason: str | None = None
 
 
 @dataclass

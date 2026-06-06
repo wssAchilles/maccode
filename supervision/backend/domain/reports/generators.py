@@ -37,6 +37,10 @@ class ReportGenerator:
         safety_metrics: dict[str, object] | None = None,
         bev_confidence_map: dict[str, object] | None = None,
         integrity_diagnostics: dict[str, object] | None = None,
+        calibration_sensitivity: dict[str, object] | None = None,
+        confidence_calibration_summary: dict[str, object] | None = None,
+        tracklet_reassociation_summary: dict[str, object] | None = None,
+        model_comparison_benchmark: dict[str, object] | None = None,
     ) -> FrameReport:
         speeds = speeds or {}
         speed_records = speed_records or {}
@@ -61,6 +65,10 @@ class ReportGenerator:
             safety_metrics=safety_metrics,
             bev_confidence_map=bev_confidence_map,
             integrity_diagnostics=integrity_diagnostics,
+            calibration_sensitivity=calibration_sensitivity,
+            confidence_calibration_summary=confidence_calibration_summary,
+            tracklet_reassociation_summary=tracklet_reassociation_summary,
+            model_comparison_benchmark=model_comparison_benchmark,
         )
         self._frames.append(report)
         return report
@@ -146,6 +154,16 @@ class ReportGenerator:
                 id_switch_risk=record.id_switch_risk,
                 speed_frozen=record.speed_frozen,
                 integrity_rejection_reason=record.integrity_rejection_reason,
+                speed_confidence_calibrated=record.speed_confidence_calibrated,
+                confidence_calibration_bin=record.confidence_calibration_bin,
+                calibration_uncertainty_band_kmh=record.calibration_uncertainty_band_kmh,
+                motion_mode=record.motion_mode,
+                motion_mode_probability=record.motion_mode_probability,
+                imm_speed_kmh=record.imm_speed_kmh,
+                tracklet_relinked=record.tracklet_relinked,
+                tracklet_parent_id=record.tracklet_parent_id,
+                association_score=record.association_score,
+                association_rejection_reason=record.association_rejection_reason,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

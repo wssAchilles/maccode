@@ -24,6 +24,10 @@ class FrameReport:
     safety_metrics: dict[str, object] | None = None
     bev_confidence_map: dict[str, object] | None = None
     integrity_diagnostics: dict[str, object] | None = None
+    calibration_sensitivity: dict[str, object] | None = None
+    confidence_calibration_summary: dict[str, object] | None = None
+    tracklet_reassociation_summary: dict[str, object] | None = None
+    model_comparison_benchmark: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -43,6 +47,10 @@ class FrameReport:
             "safety_metrics": self.safety_metrics,
             "bev_confidence_map": self.bev_confidence_map,
             "integrity_diagnostics": self.integrity_diagnostics,
+            "calibration_sensitivity": self.calibration_sensitivity,
+            "confidence_calibration_summary": self.confidence_calibration_summary,
+            "tracklet_reassociation_summary": self.tracklet_reassociation_summary,
+            "model_comparison_benchmark": self.model_comparison_benchmark,
         }
 
 

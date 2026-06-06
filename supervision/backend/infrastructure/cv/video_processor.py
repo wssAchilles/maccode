@@ -13,6 +13,10 @@ from domain.calibration.candidate_evaluation import (
     CalibrationCandidateEvaluator,
 )
 from domain.calibration.models import HomographyResult
+from domain.calibration.sensitivity import (
+    CalibrationSensitivityAnalyzer,
+    CalibrationSensitivityReport,
+)
 from domain.calibration.service import CalibrationService
 from domain.crowd_density.models import CrowdDensityInput
 from domain.crowd_density.service import CrowdDensityService
@@ -193,6 +197,13 @@ class SupervisionVideoProcessor:
             road_plane_polygon_world=self.road_plane_polygon_world,
             validation_max_error_px=self.validation_max_error_px,
         ).build()
+        self.calibration_sensitivity: CalibrationSensitivityReport = (
+            CalibrationSensitivityAnalyzer().analyze(
+                self.calibration,
+                self.bev_confidence_map,
+                self.calibration_context,
+            )
+        )
         self.frame_reports: list[dict[str, Any]] = []
         self._pixel_histories: dict[int, list[tuple[float, float]]] = {}
         self._latest_contact_points: dict[int, GroundContactPoint] = {}
@@ -282,6 +293,7 @@ class SupervisionVideoProcessor:
                     safety_metrics=safety_metrics,
                     bev_confidence_map=self.bev_confidence_map.to_dict(),
                     integrity_diagnostics=self._build_integrity_diagnostics(),
+                    calibration_sensitivity=self.calibration_sensitivity.to_dict(),
                 )
                 latest_report = report.to_dict()
                 self.frame_reports.append(latest_report)
@@ -376,6 +388,7 @@ class SupervisionVideoProcessor:
             "runtime_homography_source": self.runtime_homography_source,
         }
         diagnostics.update(self.calibration_candidate_evaluation.to_diagnostics())
+        diagnostics["calibration_sensitivity"] = self.calibration_sensitivity.to_dict()
         selected_score = next(
             (
                 score.score
@@ -387,6 +400,15 @@ class SupervisionVideoProcessor:
         )
         diagnostics["calibration_candidate_score"] = selected_score
         return diagnostics
+
+    def _calibration_uncertainty_band(
+        self,
+        speed_kmh: float | None,
+    ) -> list[float | None] | None:
+        if speed_kmh is None:
+            return None
+        margin = max(0.0, speed_kmh * self.calibration_sensitivity.speed_sensitivity_p95)
+        return [float(max(0.0, speed_kmh - margin)), float(speed_kmh + margin)]
 
     @staticmethod
     def _select_runtime_calibration(
@@ -537,6 +559,7 @@ class SupervisionVideoProcessor:
                 self.speed_estimator.reset_track(track.tracker_id)
             if integrity.speed_frozen:
                 self._speed_frozen_count += 1
+                frozen_record = self.speed_estimator.get_record(track.tracker_id)
                 self.speed_estimator.annotate_record(
                     track.tracker_id,
                     tracking_integrity_state=integrity.state,
@@ -550,6 +573,9 @@ class SupervisionVideoProcessor:
                     contact_fusion_weights=contact_point.fusion_weights,
                     contact_pixel_covariance=contact_point.pixel_covariance,
                     contact_fusion_confidence=contact_point.fusion_confidence,
+                    calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
+                        frozen_record.speed_kmh if frozen_record is not None else None,
+                    ),
                 )
                 continue
 
@@ -591,6 +617,7 @@ class SupervisionVideoProcessor:
                 ),
                 auxiliary_confidence=optical_flow.confidence if optical_flow is not None else 0.0,
             )
+            latest_record = self.speed_estimator.get_record(track.tracker_id)
             self.speed_estimator.annotate_record(
                 track.tracker_id,
                 bev_risk_level=bev_risk.risk_level,
@@ -604,6 +631,9 @@ class SupervisionVideoProcessor:
                 id_switch_risk=integrity.id_switch_risk,
                 speed_frozen=False,
                 integrity_rejection_reason=integrity.rejection_reason,
+                calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
+                    latest_record.speed_kmh if latest_record is not None else None,
+                ),
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
