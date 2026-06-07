@@ -153,8 +153,27 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
         == "nis_consistency_diagnostics_v1"
     )
     assert report["speed_nis_diagnostics"]["sample_count"] > 0
+    assert (
+        report["speed_geometry_diagnostics"]["model_reference"]
+        == "pedestrian_perspective_geometry_guard_v1"
+    )
+    assert "pedestrian_scale_drift_count" in report["speed_geometry_diagnostics"]
+    assert "pedestrian_speed_suppressed_count" in report["speed_geometry_diagnostics"]
+    assert "pose_geometry_used_count" in report["speed_geometry_diagnostics"]
+    assert "bbox_height_consistency_fail_count" in report["speed_geometry_diagnostics"]
+    assert "pedestrian_scale_drift_detected" in report["active_tracks"][0]
+    assert "speed_inverse_height_correlation" in report["active_tracks"][0]
+    assert "height_consistency_score" in report["active_tracks"][0]
+    assert "recommended_speed_scale_factor" in report["active_tracks"][0]
+    assert "pedestrian_geometry_model_reference" in report["active_tracks"][0]
     assert "contact_innovation_score" in report["active_tracks"][0]
     assert report["calibration_quality"] == "excellent"
+    assert (
+        report["calibration_diagnostics"]["pedestrian_geometry_self_supervision"][
+            "model_reference"
+        ]
+        == "pedestrian_head_foot_scale_drift_v1"
+    )
     assert report["homography_grid"]["generated_from"] == "inverse_homography_projection"
     assert report["homography_grid"]["calibration_trusted"] is True
     assert report["homography_grid"]["lines"]

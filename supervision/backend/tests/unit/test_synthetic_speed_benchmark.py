@@ -83,6 +83,12 @@ def test_default_synthetic_benchmark_returns_three_named_scenarios() -> None:
         "contact_point_bias",
         "weak_scale_bias",
         "short_id_switch",
+        "pedestrian_receding_constant_speed_bad_homography",
+        "pedestrian_receding_constant_speed_guarded",
+        "pedestrian_receding_constant_speed_bbox_height_scale_drift",
+        "pedestrian_receding_constant_speed_corrected_geometry",
+        "pedestrian_receding_pose_ankle_optional",
+        "pedestrian_lateral_motion_no_scale_drift",
     }
 
 
@@ -143,6 +149,64 @@ def test_id_switch_scenario_reports_rejections_or_jumps() -> None:
     assert result.valid_estimate_count > 0
     assert result.rejection_ratio > 0.0 or result.speed_jump_p95_kmh > 0.0
     assert result.mean_adaptive_multiplier > 0.0
+
+
+def test_pedestrian_receding_bad_homography_triggers_perspective_guard() -> None:
+    result = SyntheticSpeedBenchmarkRunner().run_scenario(
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_bad_homography",
+            true_speed_kmh=5.0,
+            duration_sec=8.0,
+            fps=4.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            random_seed=41,
+        )
+    )
+
+    assert result.perspective_rejection_count > 0
+    assert result.far_near_speed_ratio is not None
+    assert result.far_near_speed_ratio >= 1.0
+    assert result.speed_scale_correlation is not None
+    assert result.valid_estimate_count == 0 or result.rmse_kmh < 20.0
+
+
+def test_pedestrian_bbox_height_scale_drift_suppresses_absurd_speed() -> None:
+    result = SyntheticSpeedBenchmarkRunner().run_scenario(
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_bbox_height_scale_drift",
+            true_speed_kmh=5.0,
+            duration_sec=8.0,
+            fps=4.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            pedestrian_bbox_model=True,
+            random_seed=61,
+        )
+    )
+
+    assert result.pedestrian_scale_drift_count > 0
+    assert result.suppressed_pedestrian_speed_count > 0
+    assert result.speed_inverse_height_correlation is not None
+    assert result.max_valid_pedestrian_speed_kmh <= 18.0
+
+
+def test_pedestrian_lateral_motion_does_not_trigger_scale_drift() -> None:
+    result = SyntheticSpeedBenchmarkRunner().run_scenario(
+        SyntheticSpeedScenario(
+            name="pedestrian_lateral_motion_no_scale_drift",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="x",
+            pedestrian_bbox_model=True,
+            random_seed=71,
+        )
+    )
+
+    assert result.pedestrian_scale_drift_count == 0
+    assert result.max_valid_pedestrian_speed_kmh <= 18.0
 
 
 def test_synthetic_sweep_returns_parameter_combination_count() -> None:

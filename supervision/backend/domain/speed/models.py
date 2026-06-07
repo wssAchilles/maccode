@@ -69,6 +69,15 @@ class SpeedRecord:
     weak_calibration_reason: str | None = None
     adaptive_measurement_noise_multiplier: float | None = None
     innovation_nis: float | None = None
+    perspective_speed_inflation_detected: bool = False
+    speed_scale_correlation: float | None = None
+    far_near_speed_ratio: float | None = None
+    geometry_rejection_reason: str | None = None
+    pedestrian_scale_drift_detected: bool = False
+    speed_inverse_height_correlation: float | None = None
+    height_consistency_score: float | None = None
+    recommended_speed_scale_factor: float | None = None
+    pedestrian_geometry_model_reference: str | None = None
 
 
 @dataclass

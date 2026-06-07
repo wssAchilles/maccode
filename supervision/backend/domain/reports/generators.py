@@ -42,6 +42,7 @@ class ReportGenerator:
         tracklet_reassociation_summary: dict[str, object] | None = None,
         model_comparison_benchmark: dict[str, object] | None = None,
         speed_nis_diagnostics: dict[str, object] | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
     ) -> FrameReport:
         speeds = speeds or {}
         speed_records = speed_records or {}
@@ -71,6 +72,7 @@ class ReportGenerator:
             tracklet_reassociation_summary=tracklet_reassociation_summary,
             model_comparison_benchmark=model_comparison_benchmark,
             speed_nis_diagnostics=speed_nis_diagnostics,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
         )
         self._frames.append(report)
         return report
@@ -180,6 +182,19 @@ class ReportGenerator:
                     record.adaptive_measurement_noise_multiplier
                 ),
                 innovation_nis=record.innovation_nis,
+                perspective_speed_inflation_detected=(
+                    record.perspective_speed_inflation_detected
+                ),
+                speed_scale_correlation=record.speed_scale_correlation,
+                far_near_speed_ratio=record.far_near_speed_ratio,
+                geometry_rejection_reason=record.geometry_rejection_reason,
+                pedestrian_scale_drift_detected=record.pedestrian_scale_drift_detected,
+                speed_inverse_height_correlation=record.speed_inverse_height_correlation,
+                height_consistency_score=record.height_consistency_score,
+                recommended_speed_scale_factor=record.recommended_speed_scale_factor,
+                pedestrian_geometry_model_reference=(
+                    record.pedestrian_geometry_model_reference
+                ),
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

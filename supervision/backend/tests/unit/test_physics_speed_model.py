@@ -72,7 +72,7 @@ def test_person_single_frame_jump_is_rejected_as_unphysical() -> None:
     assert record.physics_valid is False
     assert record.quality_label == "rejected"
     assert record.speed_kmh is None
-    assert record.rejection_reason == "speed_gate"
+    assert record.rejection_reason == "pedestrian_physical_speed_gate"
 
 
 def test_car_uniform_speed_is_stable_and_physics_valid() -> None:

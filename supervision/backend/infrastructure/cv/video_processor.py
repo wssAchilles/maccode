@@ -233,6 +233,13 @@ class SupervisionVideoProcessor:
         self._contact_outlier_count = 0
         self._optical_flow_checked_count = 0
         self._optical_flow_low_inlier_count = 0
+        self._perspective_speed_inflation_count = 0
+        self._pedestrian_physical_speed_gate_count = 0
+        self._far_field_bbox_contact_weak_count = 0
+        self._pedestrian_scale_drift_count = 0
+        self._pedestrian_speed_suppressed_count = 0
+        self._pose_geometry_used_count = 0
+        self._bbox_height_consistency_fail_count = 0
         self.rendered_video_path = rendered_video_path
         self._renderer = (
             ProcessedVideoRenderer(
@@ -309,6 +316,7 @@ class SupervisionVideoProcessor:
                     integrity_diagnostics=self._build_integrity_diagnostics(),
                     calibration_sensitivity=self.calibration_sensitivity.to_dict(),
                     speed_nis_diagnostics=self._speed_nis_diagnostics(speed_records),
+                    speed_geometry_diagnostics=self._build_speed_geometry_diagnostics(),
                 )
                 latest_report = report.to_dict()
                 self.frame_reports.append(latest_report)
@@ -407,6 +415,17 @@ class SupervisionVideoProcessor:
             "vehicle_size_prior_used": self._vehicle_size_prior_used(),
             "weak_scale_mode": self.scale_confidence_label == "weak_scale",
             "weak_calibration_reason": self.weak_calibration_reason,
+            "pedestrian_geometry_self_supervision": {
+                "pedestrian_scale_drift_count": self._pedestrian_scale_drift_count,
+                "pedestrian_speed_suppressed_count": (
+                    self._pedestrian_speed_suppressed_count
+                ),
+                "pose_geometry_used_count": self._pose_geometry_used_count,
+                "bbox_height_consistency_fail_count": (
+                    self._bbox_height_consistency_fail_count
+                ),
+                "model_reference": "pedestrian_head_foot_scale_drift_v1",
+            },
         }
         diagnostics.update(self.calibration_candidate_evaluation.to_diagnostics())
         diagnostics["calibration_sensitivity"] = self.calibration_sensitivity.to_dict()
@@ -633,6 +652,8 @@ class SupervisionVideoProcessor:
                 if self.pose_ground_contact is not None
                 else None
             )
+            if pose_contact_point is not None:
+                self._pose_geometry_used_count += 1
             flow_contact_point = self._flow_refined_contact_point(track, frame_image)
             contact_point = self._fuse_contact_point(
                 bbox_contact_point,
@@ -702,12 +723,43 @@ class SupervisionVideoProcessor:
                 self._bev_rejected_count += 1
             measurement_confidence = contact_point.confidence
             pixel_sigma_px = contact_point.observation_sigma_px
+            far_field_person = (
+                track.class_id == 0
+                and bev_risk.local_scale_percentile is not None
+                and bev_risk.local_scale_percentile >= 0.85
+            )
+            fusion_sources = contact_point.fusion_sources or []
+            if far_field_person and (
+                contact_point.measurement_source.startswith("bbox")
+                or "bbox" in fusion_sources
+            ):
+                self._far_field_bbox_contact_weak_count += 1
+                measurement_confidence *= 0.55
+                pixel_sigma_px *= 2.0
             if bev_risk.risk_level == "caution":
                 measurement_confidence *= 0.65
                 pixel_sigma_px *= 1.5
             elif bev_risk.risk_level == "rejected":
                 measurement_confidence *= 0.25
                 pixel_sigma_px *= 2.5
+            if (
+                far_field_person
+                and bev_risk.local_scale_percentile >= 0.85
+                and (contact_point.fusion_confidence or contact_point.confidence) < 0.45
+            ):
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    speed_kmh=None,
+                    physics_valid=False,
+                    quality_label="geometry_invalid",
+                    rejection_reason="far_field_bbox_contact_weak",
+                    geometry_rejection_reason="far_field_bbox_contact_weak",
+                    bev_risk_level=bev_risk.risk_level,
+                    bev_risk_reason=bev_risk.risk_reason,
+                    local_scale_percentile=bev_risk.local_scale_percentile,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                )
+                continue
             if self.scale_confidence_label == "weak_scale":
                 measurement_confidence *= 0.65
                 pixel_sigma_px *= 1.35
@@ -718,6 +770,18 @@ class SupervisionVideoProcessor:
                 timestamp_sec=timestamp_sec,
             ):
                 self._bev_rejected_count += 1
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    speed_kmh=None,
+                    physics_valid=False,
+                    quality_label="geometry_invalid",
+                    rejection_reason="bev_geometry_rejected",
+                    geometry_rejection_reason=bev_risk.risk_reason
+                    or "bev_geometry_rejected",
+                    bev_risk_level=bev_risk.risk_level,
+                    bev_risk_reason=bev_risk.risk_reason,
+                    local_scale_percentile=bev_risk.local_scale_percentile,
+                )
                 continue
 
             optical_flow = self._optical_flow_observation(
@@ -745,8 +809,31 @@ class SupervisionVideoProcessor:
                 ),
                 auxiliary_confidence=auxiliary_confidence,
                 pixel_covariance_px=contact_point.pixel_covariance,
+                local_scale_percentile=bev_risk.local_scale_percentile,
+                bbox_xyxy=track.xyxy,
+                bbox_height_px=max(float(track.xyxy[3] - track.xyxy[1]), 1.0),
+                pose_ankle_pixel=(
+                    pose_contact_point.pixel if pose_contact_point is not None else None
+                ),
             )
             latest_record = self.speed_estimator.get_record(track.tracker_id)
+            if latest_record is not None:
+                if (
+                    latest_record.perspective_speed_inflation_detected
+                    or latest_record.rejection_reason == "perspective_speed_inflation"
+                ):
+                    self._perspective_speed_inflation_count += 1
+                if latest_record.rejection_reason == "pedestrian_physical_speed_gate":
+                    self._pedestrian_physical_speed_gate_count += 1
+                if latest_record.pedestrian_scale_drift_detected:
+                    self._pedestrian_scale_drift_count += 1
+                if latest_record.rejection_reason == "pedestrian_perspective_scale_drift":
+                    self._pedestrian_speed_suppressed_count += 1
+                if (
+                    latest_record.height_consistency_score is not None
+                    and latest_record.height_consistency_score < 0.55
+                ):
+                    self._bbox_height_consistency_fail_count += 1
             quality_label = (
                 "weak_scale"
                 if (
@@ -1230,6 +1317,22 @@ class SupervisionVideoProcessor:
         }
         diagnostics.update(self._tracking_diagnostics)
         return diagnostics
+
+    def _build_speed_geometry_diagnostics(self) -> dict[str, object]:
+        return {
+            "perspective_speed_inflation_count": self._perspective_speed_inflation_count,
+            "pedestrian_physical_speed_gate_count": (
+                self._pedestrian_physical_speed_gate_count
+            ),
+            "far_field_bbox_contact_weak_count": self._far_field_bbox_contact_weak_count,
+            "pedestrian_scale_drift_count": self._pedestrian_scale_drift_count,
+            "pedestrian_speed_suppressed_count": self._pedestrian_speed_suppressed_count,
+            "pose_geometry_used_count": self._pose_geometry_used_count,
+            "bbox_height_consistency_fail_count": (
+                self._bbox_height_consistency_fail_count
+            ),
+            "model_reference": "pedestrian_perspective_geometry_guard_v1",
+        }
 
     def _adapter_tracking_diagnostics(self) -> dict[str, object]:
         diagnostics = getattr(self.adapter, "diagnostics_dict", None)

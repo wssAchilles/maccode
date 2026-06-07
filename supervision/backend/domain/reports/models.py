@@ -29,6 +29,7 @@ class FrameReport:
     tracklet_reassociation_summary: dict[str, object] | None = None
     model_comparison_benchmark: dict[str, object] | None = None
     speed_nis_diagnostics: dict[str, object] | None = None
+    speed_geometry_diagnostics: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -53,6 +54,7 @@ class FrameReport:
             "tracklet_reassociation_summary": self.tracklet_reassociation_summary,
             "model_comparison_benchmark": self.model_comparison_benchmark,
             "speed_nis_diagnostics": self.speed_nis_diagnostics,
+            "speed_geometry_diagnostics": self.speed_geometry_diagnostics,
         }
 
 

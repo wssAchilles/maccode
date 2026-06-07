@@ -75,6 +75,15 @@ class Track:
     weak_calibration_reason: str | None = None
     adaptive_measurement_noise_multiplier: float | None = None
     innovation_nis: float | None = None
+    perspective_speed_inflation_detected: bool = False
+    speed_scale_correlation: float | None = None
+    far_near_speed_ratio: float | None = None
+    geometry_rejection_reason: str | None = None
+    pedestrian_scale_drift_detected: bool = False
+    speed_inverse_height_correlation: float | None = None
+    height_consistency_score: float | None = None
+    recommended_speed_scale_factor: float | None = None
+    pedestrian_geometry_model_reference: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -159,6 +168,15 @@ class Track:
         weak_calibration_reason: str | None = None,
         adaptive_measurement_noise_multiplier: float | None = None,
         innovation_nis: float | None = None,
+        perspective_speed_inflation_detected: bool = False,
+        speed_scale_correlation: float | None = None,
+        far_near_speed_ratio: float | None = None,
+        geometry_rejection_reason: str | None = None,
+        pedestrian_scale_drift_detected: bool = False,
+        speed_inverse_height_correlation: float | None = None,
+        height_consistency_score: float | None = None,
+        recommended_speed_scale_factor: float | None = None,
+        pedestrian_geometry_model_reference: str | None = None,
     ) -> Track:
         return replace(
             self,
@@ -225,4 +243,13 @@ class Track:
             weak_calibration_reason=weak_calibration_reason,
             adaptive_measurement_noise_multiplier=adaptive_measurement_noise_multiplier,
             innovation_nis=innovation_nis,
+            perspective_speed_inflation_detected=perspective_speed_inflation_detected,
+            speed_scale_correlation=speed_scale_correlation,
+            far_near_speed_ratio=far_near_speed_ratio,
+            geometry_rejection_reason=geometry_rejection_reason,
+            pedestrian_scale_drift_detected=pedestrian_scale_drift_detected,
+            speed_inverse_height_correlation=speed_inverse_height_correlation,
+            height_consistency_score=height_consistency_score,
+            recommended_speed_scale_factor=recommended_speed_scale_factor,
+            pedestrian_geometry_model_reference=pedestrian_geometry_model_reference,
         )

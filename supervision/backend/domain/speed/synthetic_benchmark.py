@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from itertools import product
+from typing import Literal
 
 import numpy as np
 
@@ -24,6 +25,11 @@ class SyntheticSpeedScenario:
     scale_bias_pct: float = 0.0
     id_switch_frame_indices: frozenset[int] = field(default_factory=frozenset)
     perspective_strength: float = 0.0
+    actor_class_id: int = 2
+    trajectory_direction: Literal["x", "y", "receding"] = "x"
+    bad_perspective_scale: bool = False
+    pedestrian_bbox_model: bool = False
+    pose_geometry_available: bool = False
     random_seed: int = 0
 
 
@@ -38,6 +44,13 @@ class SyntheticSpeedBenchmarkResult:
     speed_jump_p95_kmh: float = 0.0
     rejection_ratio: float = 0.0
     mean_adaptive_multiplier: float = 0.0
+    far_near_speed_ratio: float | None = None
+    speed_scale_correlation: float | None = None
+    perspective_rejection_count: int = 0
+    pedestrian_scale_drift_count: int = 0
+    speed_inverse_height_correlation: float | None = None
+    suppressed_pedestrian_speed_count: int = 0
+    max_valid_pedestrian_speed_kmh: float = 0.0
     model_reference: str = "synthetic_homography_speed_benchmark"
 
     def to_dict(self) -> dict[str, object]:
@@ -51,6 +64,13 @@ class SyntheticSpeedBenchmarkResult:
             "speed_jump_p95_kmh": self.speed_jump_p95_kmh,
             "rejection_ratio": self.rejection_ratio,
             "mean_adaptive_multiplier": self.mean_adaptive_multiplier,
+            "far_near_speed_ratio": self.far_near_speed_ratio,
+            "speed_scale_correlation": self.speed_scale_correlation,
+            "perspective_rejection_count": self.perspective_rejection_count,
+            "pedestrian_scale_drift_count": self.pedestrian_scale_drift_count,
+            "speed_inverse_height_correlation": self.speed_inverse_height_correlation,
+            "suppressed_pedestrian_speed_count": self.suppressed_pedestrian_speed_count,
+            "max_valid_pedestrian_speed_kmh": self.max_valid_pedestrian_speed_kmh,
             "model_reference": self.model_reference,
         }
 
@@ -134,6 +154,8 @@ class SyntheticSpeedBenchmarkRunner:
             scenario.perspective_strength,
         )
         estimator_homography = true_homography.copy()
+        if scenario.bad_perspective_scale:
+            estimator_homography[2, 1] -= 0.035
         if scenario.scale_bias_pct != 0.0:
             scale = max(0.01, 1.0 + float(scenario.scale_bias_pct))
             estimator_homography[0, :] *= scale
@@ -143,12 +165,19 @@ class SyntheticSpeedBenchmarkRunner:
             position_rmse_m=scenario.position_rmse_m,
             timestamp_uncertainty_sec=1.0 / scenario.fps,
         )
-        motion_profile = MotionRouter().route_class(2)
+        motion_profile = MotionRouter().route_class(scenario.actor_class_id)
         inverse_h = np.linalg.inv(true_homography).astype(np.float64)
         true_speed_mps = max(float(scenario.true_speed_kmh), 0.0) / 3.6
         estimates: list[float] = []
         uncertainties: list[float] = []
         adaptive_multipliers: list[float] = []
+        far_near_speed_ratio: float | None = None
+        speed_scale_correlation: float | None = None
+        perspective_rejection_count = 0
+        pedestrian_scale_drift_count = 0
+        speed_inverse_height_correlation: float | None = None
+        suppressed_pedestrian_speed_count = 0
+        max_valid_pedestrian_speed_kmh = 0.0
         covered = 0
         attempted_frames = 0
         frame_count = int(scenario.duration_sec * scenario.fps) + 1
@@ -158,7 +187,11 @@ class SyntheticSpeedBenchmarkRunner:
                 continue
             attempted_frames += 1
             timestamp_sec = frame_index / scenario.fps
-            world_position = (true_speed_mps * timestamp_sec, 0.0)
+            world_position = self._world_position(
+                true_speed_mps,
+                timestamp_sec,
+                scenario.trajectory_direction,
+            )
             pixel = self._world_to_pixel(inverse_h, world_position)
             if scenario.pixel_noise_sigma > 0:
                 noise = rng.normal(0.0, scenario.pixel_noise_sigma, size=2)
@@ -172,6 +205,12 @@ class SyntheticSpeedBenchmarkRunner:
                     float(pixel[0] + scenario.contact_bias_px[0] * progress_factor),
                     float(pixel[1] + scenario.contact_bias_px[1] * progress_factor),
                 )
+            bbox_xyxy, bbox_height, pose_ankle, pose_head = self._pedestrian_bbox_geometry(
+                pixel,
+                frame_index,
+                frame_count,
+                scenario,
+            )
             tracker_id = 99 if frame_index in scenario.id_switch_frame_indices else 1
             estimator.update(
                 tracker_id=tracker_id,
@@ -186,9 +225,44 @@ class SyntheticSpeedBenchmarkRunner:
                     0.02,
                 ),
                 measurement_source="synthetic_contact_point",
+                local_scale_percentile=(
+                    min(0.99, frame_index / max(frame_count - 1, 1))
+                    if scenario.trajectory_direction == "receding"
+                    else None
+                ),
+                bbox_xyxy=bbox_xyxy,
+                bbox_height_px=bbox_height,
+                pose_ankle_pixel=pose_ankle,
+                pose_head_pixel=pose_head,
             )
             record = estimator.get_record(tracker_id)
             if record is None or record.speed_kmh is None:
+                if record is not None:
+                    far_near_speed_ratio = (
+                        record.far_near_speed_ratio
+                        if record.far_near_speed_ratio is not None
+                        else far_near_speed_ratio
+                    )
+                    speed_scale_correlation = (
+                        record.speed_scale_correlation
+                        if record.speed_scale_correlation is not None
+                        else speed_scale_correlation
+                    )
+                    perspective_rejection_count += int(
+                        record.perspective_speed_inflation_detected
+                        or record.rejection_reason == "perspective_speed_inflation"
+                    )
+                    pedestrian_scale_drift_count += int(
+                        record.pedestrian_scale_drift_detected
+                    )
+                    suppressed_pedestrian_speed_count += int(
+                        record.rejection_reason == "pedestrian_perspective_scale_drift"
+                    )
+                    speed_inverse_height_correlation = (
+                        record.speed_inverse_height_correlation
+                        if record.speed_inverse_height_correlation is not None
+                        else speed_inverse_height_correlation
+                    )
                 if (
                     record is not None
                     and record.adaptive_measurement_noise_multiplier is not None
@@ -196,6 +270,31 @@ class SyntheticSpeedBenchmarkRunner:
                     adaptive_multipliers.append(record.adaptive_measurement_noise_multiplier)
                 continue
             estimates.append(record.speed_kmh)
+            far_near_speed_ratio = (
+                record.far_near_speed_ratio
+                if record.far_near_speed_ratio is not None
+                else far_near_speed_ratio
+            )
+            speed_scale_correlation = (
+                record.speed_scale_correlation
+                if record.speed_scale_correlation is not None
+                else speed_scale_correlation
+            )
+            perspective_rejection_count += int(record.perspective_speed_inflation_detected)
+            pedestrian_scale_drift_count += int(record.pedestrian_scale_drift_detected)
+            suppressed_pedestrian_speed_count += int(
+                record.rejection_reason == "pedestrian_perspective_scale_drift"
+            )
+            speed_inverse_height_correlation = (
+                record.speed_inverse_height_correlation
+                if record.speed_inverse_height_correlation is not None
+                else speed_inverse_height_correlation
+            )
+            if scenario.actor_class_id == 0:
+                max_valid_pedestrian_speed_kmh = max(
+                    max_valid_pedestrian_speed_kmh,
+                    float(record.speed_kmh),
+                )
             if record.adaptive_measurement_noise_multiplier is not None:
                 adaptive_multipliers.append(record.adaptive_measurement_noise_multiplier)
             if record.speed_uncertainty_kmh is not None:
@@ -213,6 +312,13 @@ class SyntheticSpeedBenchmarkRunner:
                 mean_uncertainty_kmh=0.0,
                 valid_estimate_count=0,
                 rejection_ratio=1.0 if attempted_frames else 0.0,
+                far_near_speed_ratio=far_near_speed_ratio,
+                speed_scale_correlation=speed_scale_correlation,
+                perspective_rejection_count=perspective_rejection_count,
+                pedestrian_scale_drift_count=pedestrian_scale_drift_count,
+                speed_inverse_height_correlation=speed_inverse_height_correlation,
+                suppressed_pedestrian_speed_count=suppressed_pedestrian_speed_count,
+                max_valid_pedestrian_speed_kmh=max_valid_pedestrian_speed_kmh,
             )
         errors = np.asarray(estimates, dtype=np.float64) - float(scenario.true_speed_kmh)
         speed_jumps = np.abs(np.diff(np.asarray(estimates, dtype=np.float64)))
@@ -238,6 +344,13 @@ class SyntheticSpeedBenchmarkRunner:
                 if adaptive_multipliers
                 else 0.0
             ),
+            far_near_speed_ratio=far_near_speed_ratio,
+            speed_scale_correlation=speed_scale_correlation,
+            perspective_rejection_count=perspective_rejection_count,
+            pedestrian_scale_drift_count=pedestrian_scale_drift_count,
+            speed_inverse_height_correlation=speed_inverse_height_correlation,
+            suppressed_pedestrian_speed_count=suppressed_pedestrian_speed_count,
+            max_valid_pedestrian_speed_kmh=max_valid_pedestrian_speed_kmh,
         )
 
     @staticmethod
@@ -252,6 +365,47 @@ class SyntheticSpeedBenchmarkRunner:
         projected = inverse_h @ homogeneous
         projected = projected / projected[2]
         return (float(projected[0]), float(projected[1]))
+
+    @staticmethod
+    def _world_position(
+        speed_mps: float,
+        timestamp_sec: float,
+        direction: Literal["x", "y", "receding"],
+    ) -> tuple[float, float]:
+        if direction in {"y", "receding"}:
+            return (0.0, speed_mps * timestamp_sec)
+        return (speed_mps * timestamp_sec, 0.0)
+
+    @staticmethod
+    def _pedestrian_bbox_geometry(
+        footpoint: tuple[float, float],
+        frame_index: int,
+        frame_count: int,
+        scenario: SyntheticSpeedScenario,
+    ) -> tuple[
+        list[float] | None,
+        float | None,
+        tuple[float, float] | None,
+        tuple[float, float] | None,
+    ]:
+        if scenario.actor_class_id != 0 or not scenario.pedestrian_bbox_model:
+            return None, None, None, None
+        progress = frame_index / max(frame_count - 1, 1)
+        if scenario.trajectory_direction == "receding":
+            height = max(28.0, 108.0 * (1.0 - 0.55 * progress))
+        else:
+            height = 92.0
+        width = max(16.0, height * 0.34)
+        x, y = footpoint
+        bbox = [
+            float(x - width / 2.0),
+            float(y - height),
+            float(x + width / 2.0),
+            float(y),
+        ]
+        pose_ankle = footpoint if scenario.pose_geometry_available else None
+        pose_head = (float(x), float(y - height)) if scenario.pose_geometry_available else None
+        return bbox, float(height), pose_ankle, pose_head
 
     @staticmethod
     def _scenario_homography(
@@ -304,6 +458,57 @@ def run_default_synthetic_speed_benchmark() -> list[SyntheticSpeedBenchmarkResul
             true_speed_kmh=36.0,
             id_switch_frame_indices=frozenset({15, 16, 17}),
             random_seed=31,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_bad_homography",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            random_seed=41,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_guarded",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            random_seed=43,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_bbox_height_scale_drift",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            pedestrian_bbox_model=True,
+            random_seed=61,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_constant_speed_corrected_geometry",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            pedestrian_bbox_model=True,
+            random_seed=63,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_receding_pose_ankle_optional",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="receding",
+            bad_perspective_scale=True,
+            pedestrian_bbox_model=True,
+            pose_geometry_available=True,
+            random_seed=67,
+        ),
+        SyntheticSpeedScenario(
+            name="pedestrian_lateral_motion_no_scale_drift",
+            true_speed_kmh=5.0,
+            actor_class_id=0,
+            trajectory_direction="x",
+            pedestrian_bbox_model=True,
+            random_seed=71,
         ),
     ]
     return [runner.run_scenario(scenario) for scenario in scenarios]

@@ -17,6 +17,16 @@ from domain.speed.kalman import (
     kalman_config_for_motion_profile,
 )
 from domain.speed.models import SpeedRecord, TrackHistory
+from domain.speed.pedestrian_scale_drift import (
+    PedestrianGeometrySample,
+    PedestrianScaleDriftAnalyzer,
+    PedestrianScaleDriftResult,
+)
+from domain.speed.perspective_guard import (
+    PerspectiveGuardResult,
+    PerspectiveGuardSample,
+    PerspectiveSpeedInflationDetector,
+)
 from domain.speed.smoothing import median_smoothing
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import LocalPositionUncertainty, ViewTransformer
@@ -57,6 +67,10 @@ class SpeedEstimator:
             KalmanFilter2D | ConstantAccelerationKalmanFilter2D,
         ] = {}
         self._adaptive_noise_controllers: dict[int, AdaptiveMeasurementNoiseController] = {}
+        self._perspective_samples: dict[int, list[PerspectiveGuardSample]] = {}
+        self._perspective_guard = PerspectiveSpeedInflationDetector()
+        self._pedestrian_geometry_samples: dict[int, list[PedestrianGeometrySample]] = {}
+        self._pedestrian_scale_drift = PedestrianScaleDriftAnalyzer()
 
     def update(
         self,
@@ -72,6 +86,11 @@ class SpeedEstimator:
         auxiliary_velocity_mps: tuple[float, float] | None = None,
         auxiliary_confidence: float = 0.0,
         pixel_covariance_px: list[list[float]] | None = None,
+        local_scale_percentile: float | None = None,
+        bbox_xyxy: list[float] | None = None,
+        bbox_height_px: float | None = None,
+        pose_ankle_pixel: tuple[float, float] | None = None,
+        pose_head_pixel: tuple[float, float] | None = None,
     ) -> float | None:
         if motion_profile is None:
             return self._legacy_update(
@@ -143,6 +162,7 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=None,
             )
@@ -157,21 +177,56 @@ class SpeedEstimator:
         hard_max_speed = motion_profile.hard_max_speed_kmh or motion_profile.max_speed_kmh
         if instantaneous_speed_kmh > hard_max_speed:
             history.rejected_observations += 1
+            hard_rejection_reason = self._hard_speed_rejection_reason(motion_profile)
+            perspective_result = self._instant_perspective_result(
+                instantaneous_speed_kmh,
+                local_scale_percentile,
+                motion_profile,
+            )
+            pedestrian_result = self._update_pedestrian_scale_drift(
+                tracker_id=tracker_id,
+                speed_kmh=instantaneous_speed_kmh,
+                pixel_center=pixel_center,
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
+                motion_profile=motion_profile,
+                timestamp_sec=timestamp_sec,
+                bbox_xyxy=bbox_xyxy,
+                bbox_height_px=bbox_height_px,
+                pose_ankle_pixel=pose_ankle_pixel,
+                pose_head_pixel=pose_head_pixel,
+            )
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,
                 timestamp_sec=timestamp_sec,
                 world_position=world_position,
                 motion_profile=motion_profile,
-                quality_label="rejected",
-                rejection_reason="speed_gate",
+                quality_label=(
+                    "geometry_invalid"
+                    if (
+                        perspective_result.perspective_speed_inflation_detected
+                        or pedestrian_result.scale_drift_detected
+                    )
+                    else "rejected"
+                ),
+                rejection_reason=(
+                    pedestrian_result.geometry_rejection_reason
+                    if pedestrian_result.scale_drift_detected
+                    else
+                    perspective_result.geometry_rejection_reason
+                    or hard_rejection_reason
+                ),
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
                 position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=None,
+                perspective_result=perspective_result,
+                pedestrian_result=pedestrian_result,
             )
             return None
 
@@ -213,6 +268,7 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -247,6 +303,7 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -267,6 +324,7 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -303,13 +361,49 @@ class SpeedEstimator:
         fused_speed_kmh = self._speed_kmh(fused_velocity_mps)
         if fused_speed_kmh > hard_max_speed:
             history.rejected_observations += 1
+            hard_rejection_reason = self._hard_speed_rejection_reason(motion_profile)
+            perspective_result = self._update_perspective_guard(
+                tracker_id=tracker_id,
+                speed_kmh=fused_speed_kmh,
+                pixel_y=pixel_center[1],
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
+                timestamp_sec=timestamp_sec,
+                motion_profile=motion_profile,
+            )
+            pedestrian_result = self._update_pedestrian_scale_drift(
+                tracker_id=tracker_id,
+                speed_kmh=fused_speed_kmh,
+                pixel_center=pixel_center,
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
+                motion_profile=motion_profile,
+                timestamp_sec=timestamp_sec,
+                bbox_xyxy=bbox_xyxy,
+                bbox_height_px=bbox_height_px,
+                pose_ankle_pixel=pose_ankle_pixel,
+                pose_head_pixel=pose_head_pixel,
+            )
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,
                 timestamp_sec=timestamp_sec,
                 world_position=world_position,
                 motion_profile=motion_profile,
-                quality_label="rejected",
-                rejection_reason="speed_gate",
+                quality_label=(
+                    "geometry_invalid"
+                    if (
+                        perspective_result.perspective_speed_inflation_detected
+                        or pedestrian_result.scale_drift_detected
+                    )
+                    else "rejected"
+                ),
+                rejection_reason=(
+                    pedestrian_result.geometry_rejection_reason
+                    if pedestrian_result.scale_drift_detected
+                    else
+                    perspective_result.geometry_rejection_reason
+                    or hard_rejection_reason
+                ),
                 window_residual_m=regression.residual_m,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
@@ -317,8 +411,86 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
+                perspective_result=perspective_result,
+                pedestrian_result=pedestrian_result,
+            )
+            return None
+
+        perspective_result = self._update_perspective_guard(
+            tracker_id=tracker_id,
+            speed_kmh=fused_speed_kmh,
+            pixel_y=pixel_center[1],
+            local_scale_factor=local_uncertainty.local_scale_factor,
+            local_scale_percentile=local_scale_percentile,
+            timestamp_sec=timestamp_sec,
+            motion_profile=motion_profile,
+        )
+        pedestrian_result = self._update_pedestrian_scale_drift(
+            tracker_id=tracker_id,
+            speed_kmh=fused_speed_kmh,
+            pixel_center=pixel_center,
+            local_scale_factor=local_uncertainty.local_scale_factor,
+            local_scale_percentile=local_scale_percentile,
+            motion_profile=motion_profile,
+            timestamp_sec=timestamp_sec,
+            bbox_xyxy=bbox_xyxy,
+            bbox_height_px=bbox_height_px,
+            pose_ankle_pixel=pose_ankle_pixel,
+            pose_head_pixel=pose_head_pixel,
+        )
+        if (
+            motion_profile.category == "low_inertia_dynamic"
+            and pedestrian_result.scale_drift_detected
+        ):
+            history.rejected_observations += 1
+            self._latest_records[tracker_id] = self._quality_record(
+                tracker_id=tracker_id,
+                timestamp_sec=timestamp_sec,
+                world_position=world_position,
+                motion_profile=motion_profile,
+                quality_label="geometry_invalid",
+                rejection_reason="pedestrian_perspective_scale_drift",
+                window_residual_m=regression.residual_m,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=position_covariance,
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
+                perspective_result=perspective_result,
+                pedestrian_result=pedestrian_result,
+            )
+            return None
+        if (
+            motion_profile.category == "low_inertia_dynamic"
+            and perspective_result.perspective_speed_inflation_detected
+        ):
+            history.rejected_observations += 1
+            self._latest_records[tracker_id] = self._quality_record(
+                tracker_id=tracker_id,
+                timestamp_sec=timestamp_sec,
+                world_position=world_position,
+                motion_profile=motion_profile,
+                quality_label="geometry_invalid",
+                rejection_reason="perspective_speed_inflation",
+                window_residual_m=regression.residual_m,
+                position_rmse_m=effective_position_rmse_m,
+                position_sigma_m=local_uncertainty.position_sigma_m,
+                position_covariance=position_covariance,
+                measurement_source=measurement_source,
+                measurement_confidence=bounded_measurement_confidence,
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
+                perspective_result=perspective_result,
+                pedestrian_result=pedestrian_result,
             )
             return None
 
@@ -343,14 +515,41 @@ class SpeedEstimator:
             or speed_confidence < motion_profile.confidence_floor
             or uncertainty.was_capped
         ):
+            pedestrian_outlier = (
+                motion_profile.category == "low_inertia_dynamic"
+                and fused_speed_kmh > motion_profile.max_speed_kmh
+            )
+            pedestrian_far_speed = (
+                pedestrian_outlier and (local_scale_percentile or 0.0) >= 0.80
+            )
+            if pedestrian_far_speed and not pedestrian_result.scale_drift_detected:
+                pedestrian_result = PedestrianScaleDriftResult(
+                    True,
+                    pedestrian_result.speed_scale_correlation,
+                    pedestrian_result.speed_inverse_height_correlation,
+                    pedestrian_result.far_near_speed_ratio,
+                    pedestrian_result.height_consistency_score,
+                    pedestrian_result.recommended_speed_scale_factor,
+                    "pedestrian_perspective_scale_drift",
+                )
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,
                 timestamp_sec=timestamp_sec,
                 world_position=world_position,
                 motion_profile=motion_profile,
-                quality_label="low_confidence",
+                quality_label=(
+                    "geometry_invalid"
+                    if pedestrian_far_speed
+                    else "pedestrian_speed_outlier"
+                    if pedestrian_outlier
+                    else "low_confidence"
+                ),
                 rejection_reason=(
-                    "class_speed_limit"
+                    "pedestrian_perspective_scale_drift"
+                    if pedestrian_far_speed
+                    else "pedestrian_speed_outlier"
+                    if pedestrian_outlier
+                    else "class_speed_limit"
                     if fused_speed_kmh > motion_profile.max_speed_kmh
                     else "uncertainty_gate"
                 ),
@@ -363,8 +562,11 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                local_scale_percentile=local_scale_percentile,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
+                perspective_result=perspective_result,
+                pedestrian_result=pedestrian_result,
             )
             return None
 
@@ -402,6 +604,7 @@ class SpeedEstimator:
             measurement_source=measurement_source,
             measurement_confidence=bounded_measurement_confidence,
             local_scale_factor=local_uncertainty.local_scale_factor,
+            local_scale_percentile=local_scale_percentile,
             adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
             innovation_nis=innovation_nis,
             velocity_x_mps=display_velocity_mps[0],
@@ -413,6 +616,21 @@ class SpeedEstimator:
             rejection_reason=None,
             track_age_frames=track_age,
             window_residual_m=regression.residual_m,
+            perspective_speed_inflation_detected=(
+                perspective_result.perspective_speed_inflation_detected
+            ),
+            speed_scale_correlation=perspective_result.speed_scale_correlation,
+            far_near_speed_ratio=perspective_result.far_near_speed_ratio,
+            geometry_rejection_reason=perspective_result.geometry_rejection_reason,
+            pedestrian_scale_drift_detected=pedestrian_result.scale_drift_detected,
+            speed_inverse_height_correlation=(
+                pedestrian_result.speed_inverse_height_correlation
+            ),
+            height_consistency_score=pedestrian_result.height_consistency_score,
+            recommended_speed_scale_factor=(
+                pedestrian_result.recommended_speed_scale_factor
+            ),
+            pedestrian_geometry_model_reference=pedestrian_result.model_reference,
         )
         return smoothed_speed
 
@@ -534,12 +752,16 @@ class SpeedEstimator:
         self._latest_records.pop(tracker_id, None)
         self._kalman_filters.pop(tracker_id, None)
         self._adaptive_noise_controllers.pop(tracker_id, None)
+        self._perspective_samples.pop(tracker_id, None)
+        self._pedestrian_geometry_samples.pop(tracker_id, None)
 
     def reset(self) -> None:
         self._histories.clear()
         self._latest_records.clear()
         self._kalman_filters.clear()
         self._adaptive_noise_controllers.clear()
+        self._perspective_samples.clear()
+        self._pedestrian_geometry_samples.clear()
 
     def _quality_record(
         self,
@@ -559,10 +781,28 @@ class SpeedEstimator:
         measurement_source: str | None = None,
         measurement_confidence: float | None = None,
         local_scale_factor: float | None = None,
+        local_scale_percentile: float | None = None,
         adaptive_measurement_noise_multiplier: float | None = None,
         innovation_nis: float | None = None,
+        perspective_result: PerspectiveGuardResult | None = None,
+        pedestrian_result: PedestrianScaleDriftResult | None = None,
     ) -> SpeedRecord:
         history = self._histories.get(tracker_id)
+        perspective_result = perspective_result or PerspectiveGuardResult(
+            False,
+            None,
+            None,
+            None,
+        )
+        pedestrian_result = pedestrian_result or PedestrianScaleDriftResult(
+            False,
+            None,
+            None,
+            None,
+            0.0,
+            None,
+            None,
+        )
         return SpeedRecord(
             tracker_id=tracker_id,
             speed_kmh=None,
@@ -579,8 +819,24 @@ class SpeedEstimator:
             measurement_source=measurement_source,
             measurement_confidence=measurement_confidence,
             local_scale_factor=local_scale_factor,
+            local_scale_percentile=local_scale_percentile,
             adaptive_measurement_noise_multiplier=adaptive_measurement_noise_multiplier,
             innovation_nis=innovation_nis,
+            perspective_speed_inflation_detected=(
+                perspective_result.perspective_speed_inflation_detected
+            ),
+            speed_scale_correlation=perspective_result.speed_scale_correlation,
+            far_near_speed_ratio=perspective_result.far_near_speed_ratio,
+            geometry_rejection_reason=perspective_result.geometry_rejection_reason,
+            pedestrian_scale_drift_detected=pedestrian_result.scale_drift_detected,
+            speed_inverse_height_correlation=(
+                pedestrian_result.speed_inverse_height_correlation
+            ),
+            height_consistency_score=pedestrian_result.height_consistency_score,
+            recommended_speed_scale_factor=(
+                pedestrian_result.recommended_speed_scale_factor
+            ),
+            pedestrian_geometry_model_reference=pedestrian_result.model_reference,
             velocity_x_mps=None,
             velocity_y_mps=None,
             heading_deg=None,
@@ -591,6 +847,120 @@ class SpeedEstimator:
             track_age_frames=len(history.positions) if history is not None else 0,
             window_residual_m=window_residual_m,
         )
+
+    @staticmethod
+    def _hard_speed_rejection_reason(motion_profile: MotionProfile) -> str:
+        if motion_profile.category == "low_inertia_dynamic":
+            return "pedestrian_physical_speed_gate"
+        return "speed_gate"
+
+    def _instant_perspective_result(
+        self,
+        speed_kmh: float,
+        local_scale_percentile: float | None,
+        motion_profile: MotionProfile,
+    ) -> PerspectiveGuardResult:
+        if (
+            motion_profile.category == "low_inertia_dynamic"
+            and (local_scale_percentile or 0.0) >= 0.85
+            and speed_kmh > motion_profile.max_speed_kmh
+        ):
+            return PerspectiveGuardResult(
+                True,
+                None,
+                None,
+                "perspective_speed_inflation",
+            )
+        return PerspectiveGuardResult(False, None, None, None)
+
+    def _update_perspective_guard(
+        self,
+        *,
+        tracker_id: int,
+        speed_kmh: float,
+        pixel_y: float,
+        local_scale_factor: float,
+        local_scale_percentile: float | None,
+        timestamp_sec: float,
+        motion_profile: MotionProfile,
+    ) -> PerspectiveGuardResult:
+        percentile = (
+            float(local_scale_percentile)
+            if local_scale_percentile is not None
+            else min(1.0, max(0.0, local_scale_factor / 8.0))
+        )
+        samples = self._perspective_samples.setdefault(tracker_id, [])
+        samples.append(
+            PerspectiveGuardSample(
+                speed_kmh=float(speed_kmh),
+                pixel_y=float(pixel_y),
+                local_scale_factor=float(local_scale_factor),
+                local_scale_percentile=percentile,
+                timestamp_sec=float(timestamp_sec),
+            )
+        )
+        if len(samples) > 12:
+            del samples[:-12]
+        return self._perspective_guard.analyze(
+            samples,
+            max_speed_kmh=motion_profile.max_speed_kmh,
+        )
+
+    def _update_pedestrian_scale_drift(
+        self,
+        *,
+        tracker_id: int,
+        speed_kmh: float,
+        pixel_center: tuple[float, float],
+        local_scale_factor: float,
+        local_scale_percentile: float | None,
+        motion_profile: MotionProfile,
+        timestamp_sec: float,
+        bbox_xyxy: list[float] | None,
+        bbox_height_px: float | None,
+        pose_ankle_pixel: tuple[float, float] | None,
+        pose_head_pixel: tuple[float, float] | None,
+    ) -> PedestrianScaleDriftResult:
+        empty = PedestrianScaleDriftResult(False, None, None, None, 0.0, None, None)
+        if motion_profile.category != "low_inertia_dynamic" or bbox_xyxy is None:
+            return empty
+        if len(bbox_xyxy) != 4:
+            return empty
+        x1, y1, x2, y2 = [float(value) for value in bbox_xyxy]
+        height = (
+            float(bbox_height_px)
+            if bbox_height_px is not None
+            else max(y2 - y1, 1.0)
+        )
+        if height <= 0.0:
+            return empty
+        bbox_top = ((x1 + x2) / 2.0, y1)
+        bbox_bottom = ((x1 + x2) / 2.0, y2)
+        percentile = (
+            float(local_scale_percentile)
+            if local_scale_percentile is not None
+            else min(1.0, max(0.0, local_scale_factor / 8.0))
+        )
+        samples = self._pedestrian_geometry_samples.setdefault(tracker_id, [])
+        samples.append(
+            PedestrianGeometrySample(
+                tracker_id=tracker_id,
+                speed_kmh=float(speed_kmh),
+                bbox_top=bbox_top,
+                bbox_bottom=bbox_bottom,
+                bbox_height_px=height,
+                footpoint_pixel=pixel_center,
+                pixel_y=float(pixel_center[1]),
+                local_scale_factor=float(local_scale_factor),
+                local_scale_percentile=percentile,
+                timestamp_sec=float(timestamp_sec),
+                pose_ankle_pixel=pose_ankle_pixel,
+                pose_head_pixel=pose_head_pixel,
+            )
+        )
+        if len(samples) > 12:
+            del samples[:-12]
+        return self._pedestrian_scale_drift.analyze(samples)
 
     def _measurement_covariance(
         self,
