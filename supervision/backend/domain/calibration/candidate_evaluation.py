@@ -310,6 +310,12 @@ class CalibrationCandidateEvaluator:
         )
         metrics = self._metrics(result, calibration_context, frame_width, frame_height)
         metrics["auto_calibration_confidence"] = confidence
+        metrics["vanishing_point_count"] = self._vanishing_point_count(auto)
+        metrics["lane_width_prior_m"] = self._lane_width_prior_m(calibration_context)
+        metrics["vehicle_size_prior_used"] = (
+            1.0 if self._vehicle_size_prior_used(calibration_context, auto) else 0.0
+        )
+        metrics["weak_scale_score"] = self._weak_scale_score(metrics)
         metrics["manual_consistency_delta"] = self._matrix_delta(
             calibration.homography_matrix,
             result.homography_matrix,
@@ -395,6 +401,11 @@ class CalibrationCandidateEvaluator:
             reasons.append("local_scale_p95_high")
         if (m.get("condition_number") or 1.0) > 1e8:
             reasons.append("condition_number_high")
+        if (
+            candidate.source == "auto_vp_lane_vehicle_size_candidate"
+            and (m.get("weak_scale_score") or 0.0) < 0.45
+        ):
+            reasons.append("weak_scale_evidence_insufficient")
         trusted = candidate.trusted and not reasons
         return CalibrationCandidateScore(
             candidate_id=candidate.candidate_id,
@@ -479,6 +490,46 @@ class CalibrationCandidateEvaluator:
                 inside = not inside
             j = i
         return inside
+
+    @staticmethod
+    def _vanishing_point_count(auto: dict[str, object]) -> float:
+        points = auto.get("vanishing_points")
+        return float(len(points)) if isinstance(points, list) else 0.0
+
+    @staticmethod
+    def _lane_width_prior_m(calibration_context: dict[str, object]) -> float:
+        for key in ("lane_width_prior_m", "lane_width_m"):
+            value = calibration_context.get(key)
+            if isinstance(value, (int, float)) and value > 0:
+                return float(value)
+        return 3.5
+
+    @staticmethod
+    def _vehicle_size_prior_used(
+        calibration_context: dict[str, object],
+        auto: dict[str, object],
+    ) -> bool:
+        vehicle_priors = calibration_context.get("vehicle_3d_priors")
+        if isinstance(vehicle_priors, dict) and vehicle_priors:
+            return True
+        return bool(auto.get("vehicle_size_prior_used"))
+
+    @staticmethod
+    def _weak_scale_score(metrics: dict[str, float | None]) -> float:
+        confidence = min((metrics.get("auto_calibration_confidence") or 0.0) / 0.85, 1.0)
+        vp_score = min((metrics.get("vanishing_point_count") or 0.0) / 2.0, 1.0)
+        lane_width = metrics.get("lane_width_prior_m") or 3.5
+        lane_score = 1.0 if 3.0 <= lane_width <= 3.75 else 0.5
+        vehicle_score = 1.0 if (metrics.get("vehicle_size_prior_used") or 0.0) >= 1.0 else 0.0
+        local_scale = metrics.get("local_scale_p95") or 99.0
+        stability_score = 1.0 if local_scale <= 8.0 else max(0.0, 1.0 - (local_scale - 8.0) / 8.0)
+        return float(
+            0.30 * confidence
+            + 0.20 * vp_score
+            + 0.15 * lane_score
+            + 0.15 * vehicle_score
+            + 0.20 * stability_score
+        )
 
     @staticmethod
     def _percentile(values: list[float], percentile: float) -> float | None:

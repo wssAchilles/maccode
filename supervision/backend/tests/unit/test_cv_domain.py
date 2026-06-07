@@ -75,6 +75,59 @@ def test_tracking_service_preserves_tracker_id_for_overlapping_detection() -> No
     assert second_tracks[0].last_seen_frame == 2
 
 
+def test_tracking_service_recovers_low_confidence_detection_without_new_track() -> None:
+    tracker = TrackingService(iou_threshold=0.3)
+    first = Detections(
+        items=[Detection([10, 10, 30, 30], 0.9, 2, "car")],
+        frame_index=1,
+        timestamp_sec=0.0,
+    )
+    second = Detections(
+        items=[Detection([12, 10, 32, 30], 0.3, 2, "car")],
+        frame_index=2,
+        timestamp_sec=0.1,
+    )
+
+    first_tracks = tracker.update(first)
+    second_tracks = tracker.update(second)
+
+    assert len(second_tracks) == 1
+    assert second_tracks[0].tracker_id == first_tracks[0].tracker_id
+    assert second_tracks[0].low_score_recovered is True
+    assert tracker.diagnostics.low_score_recovery_count == 1
+    assert tracker.diagnostics.new_track_count == 0
+
+
+def test_tracking_service_uses_global_assignment_for_competing_matches() -> None:
+    tracker = TrackingService(iou_threshold=0.3, max_center_distance=80.0)
+    tracker.update(
+        Detections(
+            items=[
+                Detection([0, 0, 20, 20], 0.9, 2, "car"),
+                Detection([60, 0, 80, 20], 0.9, 2, "car"),
+            ],
+            frame_index=1,
+            timestamp_sec=0.0,
+        )
+    )
+
+    tracks = tracker.update(
+        Detections(
+            items=[
+                Detection([62, 0, 82, 20], 0.9, 2, "car"),
+                Detection([2, 0, 22, 20], 0.9, 2, "car"),
+            ],
+            frame_index=2,
+            timestamp_sec=0.1,
+        )
+    )
+
+    by_center_x = {round(track.center[0]): track.tracker_id for track in tracks}
+    assert by_center_x[12] == 1
+    assert by_center_x[72] == 2
+    assert tracker.diagnostics.association_match_count == 2
+
+
 def test_zone_service_counts_directional_line_crossing() -> None:
     tracker = TrackingService(iou_threshold=0.3)
     zone_service = ZoneService([ZoneConfig("main_gate", [0, 10], [40, 10])])

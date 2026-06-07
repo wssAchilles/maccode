@@ -66,7 +66,9 @@ def grade_row(row: dict[str, Any]) -> dict[str, Any]:
     recommendations: list[str] = []
     if row["calibration_source"] != "video_manual_preset":
         issues.append("demo_calibration")
-        recommendations.append("replace scene profile with per-video ground-control points")
+        recommendations.append(
+            "treat speeds as weak-scale estimates and strengthen automatic geometry priors",
+        )
     if row["speed_tracks"] == 0:
         issues.append("no_speed_tracks")
         recommendations.append(
@@ -75,12 +77,15 @@ def grade_row(row: dict[str, Any]) -> dict[str, Any]:
     confidence = row["avg_speed_confidence"]
     if confidence is not None and confidence < 0.45:
         issues.append("low_speed_confidence")
-        recommendations.append("tighten calibration points and process a longer temporal window")
+        recommendations.append(
+            "process a longer temporal window and down-rank weak geometry tracks",
+        )
     uncertainty = row["avg_speed_uncertainty_kmh"]
     if uncertainty is not None and uncertainty > 15.0:
         issues.append("high_speed_uncertainty")
         recommendations.append(
-            "lower position_rmse_floor_m via manual calibration or longer tracks",
+            "use automatic geometry priors, contact gating, and longer tracks "
+            "to narrow uncertainty",
         )
     if row["effective_processing_fps"] < 5.0:
         issues.append("slow_processing")
@@ -258,6 +263,21 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
                 integrity_diagnostics,
                 "id_switch_risk_count",
             ),
+            "association_match_count": _int_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "association_match_count",
+            ),
+            "low_score_recovery_count": _int_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "low_score_recovery_count",
+            ),
+            "fragmentation_count": _int_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "fragmentation_count",
+            ),
             "speed_frozen_ratio": _ratio_diagnostic(
                 trajectory_diagnostics,
                 integrity_diagnostics,
@@ -272,6 +292,25 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
                 trajectory_diagnostics,
                 integrity_diagnostics,
                 "contact_fusion_low_confidence_ratio",
+            ),
+            "contact_outlier_ratio": _ratio_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "contact_outlier_ratio",
+            ),
+            "optical_flow_low_inlier_ratio": _ratio_diagnostic(
+                trajectory_diagnostics,
+                integrity_diagnostics,
+                "optical_flow_low_inlier_ratio",
+            ),
+            "weak_scale_track_count": sum(
+                1
+                for track in speed_tracks
+                if track.get("scale_confidence_label") == "weak_scale"
+            ),
+            "weak_scale_mode": bool(
+                calibration_diagnostics.get("weak_scale_mode")
+                or integrity_diagnostics.get("weak_scale_mode")
             ),
             "calibration_candidate_score": calibration_diagnostics.get(
                 "calibration_candidate_score"
@@ -365,8 +404,11 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "## Precision Diagnostics",
             "",
             "| Clip | Speed jump p95 | Accel p95 | Jerk p95 | ID switch risks | "
-            "Frozen ratio | BEV rejected | Contact low conf | Calib candidate score |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            "Assoc matches | Low-score recoveries | Fragmentation | "
+            "Frozen ratio | BEV rejected | Contact low conf | Contact outliers | "
+            "Flow low inliers | Weak-scale tracks | Calib candidate score |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | "
+            "---: | ---: | ---: | ---: | ---: | ---: |",
         ],
     )
     for row in summary["rows"]:
@@ -379,9 +421,15 @@ def render_markdown(summary: dict[str, Any]) -> str:
                     _fmt(row.get("acceleration_p95_mps2"), " m/s2"),
                     _fmt(row.get("jerk_p95_mps3"), " m/s3"),
                     str(row.get("id_switch_risk_count", 0)),
+                    str(row.get("association_match_count", 0)),
+                    str(row.get("low_score_recovery_count", 0)),
+                    str(row.get("fragmentation_count", 0)),
                     _fmt(row.get("speed_frozen_ratio")),
                     _fmt(row.get("bev_rejected_ratio")),
                     _fmt(row.get("contact_fusion_low_confidence_ratio")),
+                    _fmt(row.get("contact_outlier_ratio")),
+                    _fmt(row.get("optical_flow_low_inlier_ratio")),
+                    str(row.get("weak_scale_track_count", 0)),
                     _fmt(row.get("calibration_candidate_score")),
                 ],
             )

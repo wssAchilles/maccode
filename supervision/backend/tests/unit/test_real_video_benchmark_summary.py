@@ -82,8 +82,14 @@ def test_benchmark_summary_renders_physical_quantity_matrix() -> None:
                             "velocity_y_mps": 0.0,
                             "heading_deg": 0.0,
                             "acceleration_mps2": 0.0,
+                            "scale_confidence_label": "weak_scale",
                         },
                     ],
+                    "calibration_diagnostics": {"weak_scale_mode": True},
+                    "integrity_diagnostics": {
+                        "contact_outlier_ratio": 0.25,
+                        "optical_flow_low_inlier_ratio": 0.5,
+                    },
                     "regional_people_count": {"people_count": 0},
                     "infrastructure_semantics": {
                         "traffic_light_count": 1,
@@ -111,7 +117,12 @@ def test_benchmark_summary_renders_physical_quantity_matrix() -> None:
     assert summary["quality_counts"] == {"pass": 1, "warn": 0, "fail": 0}
     assert summary["avg_physical_quantity_score"] == 1.0
     assert summary["rows"][0]["physical_quantity_score"] == 1.0
+    assert summary["rows"][0]["contact_outlier_ratio"] == 0.25
+    assert summary["rows"][0]["optical_flow_low_inlier_ratio"] == 0.5
+    assert summary["rows"][0]["weak_scale_track_count"] == 1
+    assert summary["rows"][0]["weak_scale_mode"] is True
     assert "## Physical Quantity Coverage" in markdown
+    assert "Weak-scale tracks" in markdown
     assert "| clip.mp4 | yes | yes | yes | yes | yes | yes | yes |" in markdown
 
 

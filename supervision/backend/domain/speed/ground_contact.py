@@ -15,6 +15,9 @@ class GroundContactPoint:
     fusion_weights: dict[str, float] | None = None
     pixel_covariance: list[list[float]] | None = None
     fusion_confidence: float | None = None
+    outlier_sources: list[str] | None = None
+    innovation_score: float | None = None
+    optical_flow_inlier_ratio: float | None = None
 
 
 @dataclass

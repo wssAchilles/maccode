@@ -28,6 +28,9 @@ def test_optical_flow_velocity_estimates_bev_world_velocity() -> None:
     assert observation.velocity_mps[0] == pytest.approx(12.0, abs=1.0)
     assert observation.velocity_mps[1] == pytest.approx(0.0, abs=0.5)
     assert observation.confidence >= 0.5
+    assert observation.inlier_ratio > 0.8
+    assert observation.velocity_covariance is not None
+    assert len(observation.velocity_covariance) == 2
 
 
 def test_optical_flow_refines_contact_point_with_forward_backward_checked_flow() -> None:
@@ -53,3 +56,4 @@ def test_optical_flow_refines_contact_point_with_forward_backward_checked_flow()
     assert refined is not None
     assert refined.pixel[0] == pytest.approx(64.0, abs=1.0)
     assert refined.measurement_source == "flow_refined_ground_contact"
+    assert refined.optical_flow_inlier_ratio is not None

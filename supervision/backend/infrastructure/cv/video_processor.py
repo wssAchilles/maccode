@@ -161,6 +161,9 @@ class SupervisionVideoProcessor:
             self.calibration_context.get("road_plane_polygon_world"),
         )
         self.calibration_trusted = self._is_calibration_trusted()
+        self.scale_confidence_label, self.weak_calibration_reason = (
+            self._scale_confidence()
+        )
         self.motion_router = MotionRouter()
         self.view_transformer = ViewTransformer(self.calibration.homography_matrix)
         self.speed_estimator = SpeedEstimator(
@@ -214,12 +217,16 @@ class SupervisionVideoProcessor:
         self._previous_track_metadata: dict[int, Track] = {}
         self._last_reliable_signal_state = "unknown"
         self._integrity_results: dict[int, TrackingIntegrityResult] = {}
+        self._tracking_diagnostics: dict[str, object] = {}
         self._bev_checked_count = 0
         self._bev_rejected_count = 0
         self._speed_frozen_count = 0
         self._integrity_event_count = 0
         self._contact_fusion_count = 0
         self._contact_fusion_low_confidence_count = 0
+        self._contact_outlier_count = 0
+        self._optical_flow_checked_count = 0
+        self._optical_flow_low_inlier_count = 0
         self.rendered_video_path = rendered_video_path
         self._renderer = (
             ProcessedVideoRenderer(
@@ -250,6 +257,7 @@ class SupervisionVideoProcessor:
                     line_end=(float(self.zone.line_end[0]), float(self.zone.line_end[1])),
                     zone_name=self.zone.name,
                 )
+                self._tracking_diagnostics = self._adapter_tracking_diagnostics()
                 tracks = list(adapter_result.tracks)
                 zone_stats = self.zone_service.trigger(tracks)
                 tracks.extend(
@@ -386,6 +394,12 @@ class SupervisionVideoProcessor:
             "error_sources": error_sources,
             "model_reference": "Model 1 + Model 3 + Model 6 + Model 10",
             "runtime_homography_source": self.runtime_homography_source,
+            "auto_geometry_evidence": self._auto_geometry_evidence(),
+            "vanishing_point_count": self._vanishing_point_count(),
+            "lane_width_prior_m": self._lane_width_prior_m(),
+            "vehicle_size_prior_used": self._vehicle_size_prior_used(),
+            "weak_scale_mode": self.scale_confidence_label == "weak_scale",
+            "weak_calibration_reason": self.weak_calibration_reason,
         }
         diagnostics.update(self.calibration_candidate_evaluation.to_diagnostics())
         diagnostics["calibration_sensitivity"] = self.calibration_sensitivity.to_dict()
@@ -407,7 +421,10 @@ class SupervisionVideoProcessor:
     ) -> list[float | None] | None:
         if speed_kmh is None:
             return None
-        margin = max(0.0, speed_kmh * self.calibration_sensitivity.speed_sensitivity_p95)
+        sensitivity = self.calibration_sensitivity.speed_sensitivity_p95
+        if self.scale_confidence_label == "weak_scale":
+            sensitivity = max(sensitivity, 0.18)
+        margin = max(0.0, speed_kmh * sensitivity)
         return [float(max(0.0, speed_kmh - margin)), float(speed_kmh + margin)]
 
     @staticmethod
@@ -480,6 +497,57 @@ class SupervisionVideoProcessor:
             return False
         return True
 
+    def _scale_confidence(self) -> tuple[str, str | None]:
+        if self.calibration_trusted and self.calibration_source in {
+            "video_manual_preset",
+            "camera_manual_preset",
+            "synthetic_demo",
+        }:
+            return "stable", None
+        if self.runtime_homography_source == "auto_vp_lane_vehicle_size_candidate":
+            return "weak_scale", "auto_geometry_prior_runtime_candidate"
+        if self.calibration_context.get("auto_calibration"):
+            return "weak_scale", "auto_geometry_evidence_not_fully_trusted"
+        return "weak_scale", "calibration_source_not_trusted"
+
+    def _auto_geometry_evidence(self) -> dict[str, object]:
+        auto = self.calibration_context.get("auto_calibration")
+        if not isinstance(auto, dict):
+            return {
+                "available": False,
+                "lane_width_prior_m": self._lane_width_prior_m(),
+                "vehicle_size_prior_used": self._vehicle_size_prior_used(),
+            }
+        return {
+            "available": True,
+            "confidence": auto.get("auto_calibration_confidence"),
+            "quality_issues": auto.get("quality_issues", []),
+            "vanishing_point_count": self._vanishing_point_count(),
+            "lane_width_prior_m": self._lane_width_prior_m(),
+            "vehicle_size_prior_used": self._vehicle_size_prior_used(),
+        }
+
+    def _vanishing_point_count(self) -> int:
+        auto = self.calibration_context.get("auto_calibration")
+        if not isinstance(auto, dict):
+            return 0
+        points = auto.get("vanishing_points")
+        return len(points) if isinstance(points, list) else 0
+
+    def _lane_width_prior_m(self) -> float:
+        for key in ("lane_width_prior_m", "lane_width_m"):
+            value = self.calibration_context.get(key)
+            if isinstance(value, (int, float)) and value > 0:
+                return float(value)
+        return 3.5
+
+    def _vehicle_size_prior_used(self) -> bool:
+        vehicle_priors = self.calibration_context.get("vehicle_3d_priors")
+        if isinstance(vehicle_priors, dict) and vehicle_priors:
+            return True
+        auto = self.calibration_context.get("auto_calibration")
+        return isinstance(auto, dict) and bool(auto.get("vehicle_size_prior_used"))
+
     @staticmethod
     def _optional_float(value: object) -> float | None:
         if value is None or isinstance(value, bool):
@@ -540,6 +608,8 @@ class SupervisionVideoProcessor:
             self._contact_fusion_count += 1
             if (contact_point.fusion_confidence or contact_point.confidence) < 0.45:
                 self._contact_fusion_low_confidence_count += 1
+            if contact_point.outlier_sources:
+                self._contact_outlier_count += 1
             bev_risk = self.bev_confidence_map.assess(contact_point.pixel)
             self._bev_checked_count += 1
             world_position = self.speed_estimator.view_transformer.transform_point(
@@ -573,6 +643,11 @@ class SupervisionVideoProcessor:
                     contact_fusion_weights=contact_point.fusion_weights,
                     contact_pixel_covariance=contact_point.pixel_covariance,
                     contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                    contact_innovation_score=contact_point.innovation_score,
+                    optical_flow_inlier_ratio=contact_point.optical_flow_inlier_ratio,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason,
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
                     ),
@@ -589,6 +664,9 @@ class SupervisionVideoProcessor:
             elif bev_risk.risk_level == "rejected":
                 measurement_confidence *= 0.25
                 pixel_sigma_px *= 2.5
+            if self.scale_confidence_label == "weak_scale":
+                measurement_confidence *= 0.65
+                pixel_sigma_px *= 1.35
             if not self._bev_consistency_pass(
                 tracker_id=track.tracker_id,
                 class_id=track.class_id,
@@ -603,6 +681,12 @@ class SupervisionVideoProcessor:
                 timestamp_sec,
                 frame_image,
             )
+            auxiliary_confidence = optical_flow.confidence if optical_flow is not None else 0.0
+            if optical_flow is not None:
+                self._optical_flow_checked_count += 1
+                if optical_flow.inlier_ratio < 0.55:
+                    self._optical_flow_low_inlier_count += 1
+                    auxiliary_confidence *= 0.35
             self.speed_estimator.update(
                 track.tracker_id,
                 contact_point.pixel,
@@ -615,9 +699,21 @@ class SupervisionVideoProcessor:
                 auxiliary_velocity_mps=(
                     optical_flow.velocity_mps if optical_flow is not None else None
                 ),
-                auxiliary_confidence=optical_flow.confidence if optical_flow is not None else 0.0,
+                auxiliary_confidence=auxiliary_confidence,
             )
             latest_record = self.speed_estimator.get_record(track.tracker_id)
+            quality_label = (
+                "weak_scale"
+                if (
+                    self.scale_confidence_label == "weak_scale"
+                    and latest_record is not None
+                    and latest_record.physics_valid
+                    and latest_record.speed_kmh is not None
+                )
+                else latest_record.quality_label
+                if latest_record is not None
+                else None
+            )
             self.speed_estimator.annotate_record(
                 track.tracker_id,
                 bev_risk_level=bev_risk.risk_level,
@@ -627,10 +723,25 @@ class SupervisionVideoProcessor:
                 contact_fusion_weights=contact_point.fusion_weights,
                 contact_pixel_covariance=contact_point.pixel_covariance,
                 contact_fusion_confidence=contact_point.fusion_confidence,
+                contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                contact_innovation_score=contact_point.innovation_score,
+                optical_flow_inlier_ratio=(
+                    optical_flow.inlier_ratio
+                    if optical_flow is not None
+                    else contact_point.optical_flow_inlier_ratio
+                ),
+                optical_flow_velocity_covariance=(
+                    optical_flow.velocity_covariance
+                    if optical_flow is not None
+                    else None
+                ),
                 tracking_integrity_state=integrity.state,
                 id_switch_risk=integrity.id_switch_risk,
                 speed_frozen=False,
                 integrity_rejection_reason=integrity.rejection_reason,
+                **({"quality_label": quality_label} if quality_label is not None else {}),
+                scale_confidence_label=self.scale_confidence_label,
+                weak_calibration_reason=self.weak_calibration_reason,
                 calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                     latest_record.speed_kmh if latest_record is not None else None,
                 ),
@@ -687,7 +798,18 @@ class SupervisionVideoProcessor:
             fusion_weights=fused.weights,
             pixel_covariance=fused.covariance_px,
             fusion_confidence=fused.confidence,
+            outlier_sources=fused.outlier_sources,
+            innovation_score=fused.innovation_score,
+            optical_flow_inlier_ratio=(
+                flow_contact_point.optical_flow_inlier_ratio
+                if flow_contact_point is not None
+                else None
+            ),
         )
+
+    @staticmethod
+    def _joined_sources(sources: list[str] | None) -> str | None:
+        return ",".join(sources) if sources else None
 
     def _flow_refined_contact_point(
         self,
@@ -1031,7 +1153,7 @@ class SupervisionVideoProcessor:
         state_counts: dict[str, int] = {}
         for result in self._integrity_results.values():
             state_counts[result.state] = state_counts.get(result.state, 0) + 1
-        return {
+        diagnostics = {
             "tracking_integrity_state_counts": state_counts,
             "id_switch_risk_count": self._integrity_event_count,
             "speed_frozen_count": self._speed_frozen_count,
@@ -1046,8 +1168,31 @@ class SupervisionVideoProcessor:
             "contact_fusion_low_confidence_ratio": (
                 self._contact_fusion_low_confidence_count / fusion_count
             ),
+            "contact_outlier_count": self._contact_outlier_count,
+            "contact_outlier_ratio": self._contact_outlier_count / fusion_count,
+            "optical_flow_checked_count": self._optical_flow_checked_count,
+            "optical_flow_low_inlier_count": self._optical_flow_low_inlier_count,
+            "optical_flow_low_inlier_ratio": (
+                self._optical_flow_low_inlier_count
+                / max(self._optical_flow_checked_count, 1)
+            ),
+            "weak_scale_mode": self.scale_confidence_label == "weak_scale",
             "model_reference": "bev_confidence_map + contact_fusion + tracking_integrity_monitor",
         }
+        diagnostics.update(self._tracking_diagnostics)
+        return diagnostics
+
+    def _adapter_tracking_diagnostics(self) -> dict[str, object]:
+        diagnostics = getattr(self.adapter, "diagnostics_dict", None)
+        if callable(diagnostics):
+            value = diagnostics()
+            return dict(value) if isinstance(value, dict) else {}
+        diagnostics_value = getattr(self.adapter, "diagnostics", None)
+        to_dict = getattr(diagnostics_value, "to_dict", None)
+        if callable(to_dict):
+            value = to_dict()
+            return dict(value) if isinstance(value, dict) else {}
+        return {}
 
     def _profile_speed_limit_kmh(self) -> float:
         tuning = self.calibration_context.get("profile_tuning")

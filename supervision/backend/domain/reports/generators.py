@@ -164,6 +164,18 @@ class ReportGenerator:
                 tracklet_parent_id=record.tracklet_parent_id,
                 association_score=record.association_score,
                 association_rejection_reason=record.association_rejection_reason,
+                association_quality=record.association_quality,
+                low_score_recovered=record.low_score_recovered,
+                scale_confidence_label=record.scale_confidence_label,
+                contact_outlier_source=record.contact_outlier_source,
+                contact_innovation_score=record.contact_innovation_score,
+                optical_flow_inlier_ratio=record.optical_flow_inlier_ratio,
+                optical_flow_velocity_covariance=record.optical_flow_velocity_covariance,
+                weak_calibration_reason=record.weak_calibration_reason,
+                adaptive_measurement_noise_multiplier=(
+                    record.adaptive_measurement_noise_multiplier
+                ),
+                innovation_nis=record.innovation_nis,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

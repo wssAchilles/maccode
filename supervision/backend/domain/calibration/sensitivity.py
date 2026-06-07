@@ -8,6 +8,10 @@ from numpy.typing import NDArray
 
 from domain.calibration.bev_confidence import BEVConfidenceMap
 from domain.calibration.models import HomographyResult
+from domain.calibration.monte_carlo import (
+    CalibrationMonteCarloAnalyzer,
+    CalibrationSpeedPosterior,
+)
 from domain.speed.view_transformer import ViewTransformer
 
 
@@ -19,6 +23,7 @@ class CalibrationSensitivityReport:
     calibration_uncertainty_band_kmh: tuple[float | None, float | None]
     rejected_ratio_delta: float
     sample_count: int
+    monte_carlo_speed_posterior: CalibrationSpeedPosterior | None = None
     model_reference: str = "homography_perturbation_sensitivity"
 
     def to_dict(self) -> dict[str, object]:
@@ -29,6 +34,11 @@ class CalibrationSensitivityReport:
             "calibration_uncertainty_band_kmh": list(self.calibration_uncertainty_band_kmh),
             "rejected_ratio_delta": self.rejected_ratio_delta,
             "sample_count": self.sample_count,
+            "monte_carlo_speed_posterior": (
+                self.monte_carlo_speed_posterior.to_dict()
+                if self.monte_carlo_speed_posterior is not None
+                else None
+            ),
             "model_reference": self.model_reference,
         }
 
@@ -44,6 +54,9 @@ class CalibrationSensitivityAnalyzer:
         *,
         speed_kmh: float | None = None,
         perturbation_px: float = 1.5,
+        monte_carlo_enabled: bool = False,
+        monte_carlo_sample_count: int = 200,
+        random_seed: int | None = None,
     ) -> CalibrationSensitivityReport:
         matrix = np.asarray(calibration.homography_matrix, dtype=np.float64)
         baseline_scale = self._local_scales(matrix, bev_confidence_map)
@@ -55,6 +68,13 @@ class CalibrationSensitivityAnalyzer:
                 calibration_uncertainty_band_kmh=(speed_kmh, speed_kmh),
                 rejected_ratio_delta=0.0,
                 sample_count=0,
+                monte_carlo_speed_posterior=self._monte_carlo_posterior(
+                    calibration,
+                    speed_kmh,
+                    monte_carlo_enabled,
+                    monte_carlo_sample_count,
+                    random_seed,
+                ),
             )
 
         sensitivities: list[float] = []
@@ -89,6 +109,31 @@ class CalibrationSensitivityAnalyzer:
             calibration_uncertainty_band_kmh=band,
             rejected_ratio_delta=max(0.0, expected_delta - rejected_ratio),
             sample_count=len(sensitivities),
+            monte_carlo_speed_posterior=self._monte_carlo_posterior(
+                calibration,
+                speed_kmh,
+                monte_carlo_enabled,
+                monte_carlo_sample_count,
+                random_seed,
+            ),
+        )
+
+    @staticmethod
+    def _monte_carlo_posterior(
+        calibration: HomographyResult,
+        speed_kmh: float | None,
+        enabled: bool,
+        sample_count: int,
+        random_seed: int | None,
+    ) -> CalibrationSpeedPosterior | None:
+        if not enabled or speed_kmh is None:
+            return None
+        return CalibrationMonteCarloAnalyzer().analyze(
+            calibration,
+            speed_kmh=speed_kmh,
+            sample_count=sample_count,
+            scale_sigma_pct=max(calibration.pixel_to_world_rmse_m * 0.05, 0.01),
+            random_seed=random_seed,
         )
 
     @staticmethod

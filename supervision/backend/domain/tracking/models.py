@@ -63,6 +63,16 @@ class Track:
     tracklet_parent_id: int | None = None
     association_score: float | None = None
     association_rejection_reason: str | None = None
+    association_quality: float | None = None
+    low_score_recovered: bool = False
+    scale_confidence_label: str | None = None
+    contact_outlier_source: str | None = None
+    contact_innovation_score: float | None = None
+    optical_flow_inlier_ratio: float | None = None
+    optical_flow_velocity_covariance: list[list[float]] | None = None
+    weak_calibration_reason: str | None = None
+    adaptive_measurement_noise_multiplier: float | None = None
+    innovation_nis: float | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -135,6 +145,16 @@ class Track:
         tracklet_parent_id: int | None = None,
         association_score: float | None = None,
         association_rejection_reason: str | None = None,
+        association_quality: float | None = None,
+        low_score_recovered: bool = False,
+        scale_confidence_label: str | None = None,
+        contact_outlier_source: str | None = None,
+        contact_innovation_score: float | None = None,
+        optical_flow_inlier_ratio: float | None = None,
+        optical_flow_velocity_covariance: list[list[float]] | None = None,
+        weak_calibration_reason: str | None = None,
+        adaptive_measurement_noise_multiplier: float | None = None,
+        innovation_nis: float | None = None,
     ) -> Track:
         return replace(
             self,
@@ -189,4 +209,14 @@ class Track:
             tracklet_parent_id=tracklet_parent_id,
             association_score=association_score,
             association_rejection_reason=association_rejection_reason,
+            association_quality=association_quality,
+            low_score_recovered=low_score_recovered,
+            scale_confidence_label=scale_confidence_label,
+            contact_outlier_source=contact_outlier_source,
+            contact_innovation_score=contact_innovation_score,
+            optical_flow_inlier_ratio=optical_flow_inlier_ratio,
+            optical_flow_velocity_covariance=optical_flow_velocity_covariance,
+            weak_calibration_reason=weak_calibration_reason,
+            adaptive_measurement_noise_multiplier=adaptive_measurement_noise_multiplier,
+            innovation_nis=innovation_nis,
         )

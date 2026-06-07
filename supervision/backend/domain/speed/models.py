@@ -57,6 +57,16 @@ class SpeedRecord:
     tracklet_parent_id: int | None = None
     association_score: float | None = None
     association_rejection_reason: str | None = None
+    association_quality: float | None = None
+    low_score_recovered: bool = False
+    scale_confidence_label: str | None = None
+    contact_outlier_source: str | None = None
+    contact_innovation_score: float | None = None
+    optical_flow_inlier_ratio: float | None = None
+    optical_flow_velocity_covariance: list[list[float]] | None = None
+    weak_calibration_reason: str | None = None
+    adaptive_measurement_noise_multiplier: float | None = None
+    innovation_nis: float | None = None
 
 
 @dataclass

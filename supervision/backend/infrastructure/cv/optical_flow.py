@@ -13,6 +13,8 @@ class OpticalFlowObservation:
     velocity_mps: tuple[float, float]
     confidence: float
     tracked_points: int
+    inlier_ratio: float = 0.0
+    velocity_covariance: list[list[float]] | None = None
 
 
 class OpticalFlowVelocityEstimator:
@@ -36,7 +38,9 @@ class OpticalFlowVelocityEstimator:
         )
         if pixel_observation is None:
             return None
-        median_displacement, confidence, tracked_points = pixel_observation
+        median_displacement, confidence, tracked_points, inlier_ratio, pixel_covariance = (
+            pixel_observation
+        )
         contact_end = (
             previous_contact_point[0] + float(median_displacement[0]),
             previous_contact_point[1] + float(median_displacement[1]),
@@ -47,10 +51,17 @@ class OpticalFlowVelocityEstimator:
             (world_end[0] - world_start[0]) / delta_t_sec,
             (world_end[1] - world_start[1]) / delta_t_sec,
         )
+        velocity_covariance = self._velocity_covariance(
+            pixel_covariance,
+            previous_contact_point,
+            delta_t_sec,
+        )
         return OpticalFlowObservation(
             velocity_mps=(float(velocity[0]), float(velocity[1])),
             confidence=float(confidence),
             tracked_points=int(tracked_points),
+            inlier_ratio=float(inlier_ratio),
+            velocity_covariance=velocity_covariance,
         )
 
     def refine_contact_point(
@@ -67,7 +78,7 @@ class OpticalFlowVelocityEstimator:
         )
         if pixel_observation is None:
             return None
-        median_displacement, confidence, tracked_points = pixel_observation
+        median_displacement, confidence, tracked_points, inlier_ratio, _ = pixel_observation
         refined_pixel = (
             previous_contact_point[0] + float(median_displacement[0]),
             previous_contact_point[1] + float(median_displacement[1]),
@@ -79,6 +90,7 @@ class OpticalFlowVelocityEstimator:
             source="flow_refined_ground_contact",
             observation_sigma_px=max(0.75, 4.0 / max(tracked_points, 1)),
             measurement_source="flow_refined_ground_contact",
+            optical_flow_inlier_ratio=float(inlier_ratio),
         )
 
     def _pixel_flow_observation(
@@ -86,7 +98,7 @@ class OpticalFlowVelocityEstimator:
         previous_frame: object,
         current_frame: object,
         previous_xyxy: list[float],
-    ) -> tuple[np.ndarray, float, int] | None:
+    ) -> tuple[np.ndarray, float, int, float, np.ndarray] | None:
         try:
             import cv2  # type: ignore[import-not-found]
         except ImportError:
@@ -136,22 +148,61 @@ class OpticalFlowVelocityEstimator:
             backward_points.reshape(-1, 2) - points.reshape(-1, 2),
             axis=1,
         )
-        valid_mask = (
+        base_valid_mask = (
             (status.reshape(-1) == 1)
             & (backward_status.reshape(-1) == 1)
             & (forward_backward_error <= 2.5)
         )
-        if int(valid_mask.sum()) < 3:
+        if int(base_valid_mask.sum()) < 3:
             return None
-        displacements = next_points.reshape(-1, 2)[valid_mask] - points.reshape(-1, 2)[valid_mask]
+        raw_displacements = (
+            next_points.reshape(-1, 2)[base_valid_mask]
+            - points.reshape(-1, 2)[base_valid_mask]
+        )
+        rough_median = np.median(raw_displacements, axis=0)
+        rough_residuals = np.linalg.norm(raw_displacements - rough_median, axis=1)
+        mad = float(np.median(np.abs(rough_residuals - np.median(rough_residuals))))
+        robust_threshold = max(1.5, float(np.median(rough_residuals)) + 2.5 * max(mad, 1e-6))
+        robust_mask = rough_residuals <= robust_threshold
+        if int(robust_mask.sum()) < 3:
+            return None
+        displacements = raw_displacements[robust_mask]
         median_displacement = np.median(displacements, axis=0)
         residuals = np.linalg.norm(displacements - median_displacement, axis=1)
         median_residual = float(np.median(residuals)) if len(residuals) else 0.0
         flow_px = float(np.linalg.norm(median_displacement))
         residual_factor = 1.0 / (1.0 + median_residual / max(flow_px, 1.0))
-        point_factor = min(1.0, int(valid_mask.sum()) / 12.0)
-        confidence = max(0.0, min(1.0, residual_factor * point_factor))
-        return median_displacement, float(confidence), int(valid_mask.sum())
+        point_factor = min(1.0, int(robust_mask.sum()) / 12.0)
+        inlier_ratio = int(robust_mask.sum()) / max(int(base_valid_mask.sum()), 1)
+        confidence = max(0.0, min(1.0, residual_factor * point_factor * inlier_ratio))
+        covariance = (
+            np.cov(displacements.T).astype(np.float64)
+            if len(displacements) >= 3
+            else np.eye(2, dtype=np.float64)
+        )
+        if covariance.shape != (2, 2) or not np.all(np.isfinite(covariance)):
+            covariance = np.eye(2, dtype=np.float64) * max(median_residual, 1.0) ** 2
+        return (
+            median_displacement,
+            float(confidence),
+            int(robust_mask.sum()),
+            float(inlier_ratio),
+            covariance + np.eye(2, dtype=np.float64) * 1e-6,
+        )
+
+    def _velocity_covariance(
+        self,
+        pixel_covariance: np.ndarray,
+        contact_point: tuple[float, float],
+        delta_t_sec: float,
+    ) -> list[list[float]]:
+        jacobian = self.view_transformer.local_jacobian(
+            contact_point[0],
+            contact_point[1],
+        )
+        world_covariance = jacobian @ pixel_covariance @ jacobian.T
+        velocity_covariance = world_covariance / max(delta_t_sec, 1e-6) ** 2
+        return velocity_covariance.astype(float).tolist()
 
     @staticmethod
     def _to_gray(frame: object, cv2: Any) -> np.ndarray | None:

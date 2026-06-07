@@ -7,6 +7,7 @@ from typing import Any, cast
 from shared.configs.constants import DEFAULT_MAX_SPEED_KMH, DEFAULT_MIN_DISPLACEMENT_M
 
 from domain.motion.models import MotionProfile
+from domain.speed.adaptive_noise import AdaptiveMeasurementNoiseController
 from domain.speed.filters import max_speed_filter, min_displacement_filter
 from domain.speed.kalman import (
     ConstantAccelerationKalmanFilter2D,
@@ -53,6 +54,7 @@ class SpeedEstimator:
             int,
             KalmanFilter2D | ConstantAccelerationKalmanFilter2D,
         ] = {}
+        self._adaptive_noise_controllers: dict[int, AdaptiveMeasurementNoiseController] = {}
 
     def update(
         self,
@@ -92,6 +94,11 @@ class SpeedEstimator:
             1e-6,
             (effective_position_rmse_m**2) / bounded_measurement_confidence,
         )
+        adaptive_controller = self._adaptive_noise_controllers.setdefault(
+            tracker_id,
+            AdaptiveMeasurementNoiseController(),
+        )
+        adaptive_measurement_noise = measurement_noise * adaptive_controller.multiplier
         history = self._histories.setdefault(tracker_id, TrackHistory(tracker_id))
         previous_position = history.last_position
         previous_timestamp = history.last_timestamp
@@ -108,7 +115,11 @@ class SpeedEstimator:
                 ConstantAccelerationKalmanFilter2D(
                     kalman_config_for_motion_profile(motion_profile.process_noise),
                 ),
-            ).update(world_position, timestamp_sec, measurement_noise=measurement_noise)
+            ).update(
+                world_position,
+                timestamp_sec,
+                measurement_noise=adaptive_measurement_noise,
+            )
             self._latest_records[tracker_id] = self._quality_record(
                 tracker_id=tracker_id,
                 timestamp_sec=timestamp_sec,
@@ -122,6 +133,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
+                innovation_nis=None,
             )
             return None
 
@@ -147,6 +160,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
+                innovation_nis=None,
             )
             return None
 
@@ -160,13 +175,14 @@ class SpeedEstimator:
             predicted_measurement = kalman_filter.predict_measurement(
                 world_position,
                 timestamp_sec,
-                measurement_noise=measurement_noise,
+                measurement_noise=adaptive_measurement_noise,
             )
         except TypeError:
             predicted_measurement = kalman_filter.predict_measurement(
                 world_position,
                 timestamp_sec,
             )
+        innovation_nis = predicted_measurement.mahalanobis_d2
         mahalanobis_threshold = (
             PINV_MAHALANOBIS_ID_SWITCH_THRESHOLD_D2
             if predicted_measurement.covariance_solver == "pinv"
@@ -187,8 +203,13 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
+                innovation_nis=innovation_nis,
             )
             return None
+
+        adaptive_state = adaptive_controller.update(innovation_nis)
+        adaptive_measurement_noise = measurement_noise * adaptive_state.multiplier
 
         history.add_position(
             world_position,
@@ -199,7 +220,7 @@ class SpeedEstimator:
         kalman_state = kalman_filter.update(
             world_position,
             timestamp_sec,
-            measurement_noise=measurement_noise,
+            measurement_noise=adaptive_measurement_noise,
         )
         track_age = len(history.positions)
         if track_age < motion_profile.min_track_age_frames:
@@ -216,6 +237,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
             )
             return None
 
@@ -234,6 +257,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
             )
             return None
 
@@ -282,6 +307,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
             )
             return None
 
@@ -326,6 +353,8 @@ class SpeedEstimator:
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
+                adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+                innovation_nis=innovation_nis,
             )
             return None
 
@@ -363,6 +392,8 @@ class SpeedEstimator:
             measurement_source=measurement_source,
             measurement_confidence=bounded_measurement_confidence,
             local_scale_factor=local_uncertainty.local_scale_factor,
+            adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
+            innovation_nis=innovation_nis,
             velocity_x_mps=display_velocity_mps[0],
             velocity_y_mps=display_velocity_mps[1],
             heading_deg=self._heading_deg(display_velocity_mps),
@@ -492,11 +523,13 @@ class SpeedEstimator:
         self._histories.pop(tracker_id, None)
         self._latest_records.pop(tracker_id, None)
         self._kalman_filters.pop(tracker_id, None)
+        self._adaptive_noise_controllers.pop(tracker_id, None)
 
     def reset(self) -> None:
         self._histories.clear()
         self._latest_records.clear()
         self._kalman_filters.clear()
+        self._adaptive_noise_controllers.clear()
 
     def _quality_record(
         self,
@@ -516,6 +549,8 @@ class SpeedEstimator:
         measurement_source: str | None = None,
         measurement_confidence: float | None = None,
         local_scale_factor: float | None = None,
+        adaptive_measurement_noise_multiplier: float | None = None,
+        innovation_nis: float | None = None,
     ) -> SpeedRecord:
         history = self._histories.get(tracker_id)
         return SpeedRecord(
@@ -534,6 +569,8 @@ class SpeedEstimator:
             measurement_source=measurement_source,
             measurement_confidence=measurement_confidence,
             local_scale_factor=local_scale_factor,
+            adaptive_measurement_noise_multiplier=adaptive_measurement_noise_multiplier,
+            innovation_nis=innovation_nis,
             velocity_x_mps=None,
             velocity_y_mps=None,
             heading_deg=None,

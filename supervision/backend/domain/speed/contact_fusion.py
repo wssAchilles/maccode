@@ -22,6 +22,8 @@ class FusedContactPoint:
     sources: list[str]
     weights: dict[str, float]
     covariance_px: list[list[float]]
+    outlier_sources: list[str] | None = None
+    innovation_score: float | None = None
 
 
 class ContactPointFusion:
@@ -47,6 +49,22 @@ class ContactPointFusion:
                 sources=[observation.source],
                 weights={observation.source: 1.0},
                 covariance_px=covariance.tolist(),
+                outlier_sources=[],
+                innovation_score=0.0,
+            )
+
+        usable, outlier_sources, innovation_score = self._gate_observations(usable)
+        if len(usable) == 1:
+            observation = usable[0]
+            covariance = self._covariance(observation)
+            return FusedContactPoint(
+                pixel=observation.pixel,
+                confidence=float(max(0.0, min(1.0, observation.confidence)) * 0.85),
+                sources=[observation.source],
+                weights={observation.source: 1.0},
+                covariance_px=covariance.tolist(),
+                outlier_sources=outlier_sources,
+                innovation_score=innovation_score,
             )
 
         weighted_sum = np.zeros(2, dtype=np.float64)
@@ -78,7 +96,61 @@ class ContactPointFusion:
             sources=list(normalized_weights.keys()),
             weights=normalized_weights,
             covariance_px=fused_covariance.astype(float).tolist(),
+            outlier_sources=outlier_sources,
+            innovation_score=innovation_score,
         )
+
+    def _gate_observations(
+        self,
+        observations: list[ContactPointObservation],
+    ) -> tuple[list[ContactPointObservation], list[str], float]:
+        scores: dict[str, float] = {observation.source: 0.0 for observation in observations}
+        counts: dict[str, int] = {observation.source: 0 for observation in observations}
+        for left_index, left in enumerate(observations):
+            for right in observations[left_index + 1:]:
+                distance = self._innovation_d2(left, right)
+                scores[left.source] = max(scores[left.source], distance)
+                scores[right.source] = max(scores[right.source], distance)
+                counts[left.source] += 1
+                counts[right.source] += 1
+        if not scores:
+            return observations, [], 0.0
+        innovation_score = max(scores.values())
+        outliers = [
+            source
+            for source, score in scores.items()
+            if score > 16.0 and counts.get(source, 0) > 0
+        ]
+        if len(outliers) >= len(observations):
+            best = min(
+                observations,
+                key=lambda observation: (
+                    scores.get(observation.source, 0.0),
+                    -observation.confidence,
+                    observation.sigma_px,
+                ),
+            )
+            remaining_outliers = [
+                source for source in outliers if source != best.source
+            ]
+            return [best], remaining_outliers, innovation_score
+        kept = [
+            observation
+            for observation in observations
+            if observation.source not in outliers
+        ]
+        return kept or observations, outliers, innovation_score
+
+    def _innovation_d2(
+        self,
+        left: ContactPointObservation,
+        right: ContactPointObservation,
+    ) -> float:
+        left_point = np.asarray(left.pixel, dtype=np.float64)
+        right_point = np.asarray(right.pixel, dtype=np.float64)
+        covariance = self._covariance(left) + self._covariance(right)
+        delta = left_point - right_point
+        return float(delta.T @ np.linalg.pinv(covariance) @ delta)
 
     @staticmethod
     def _covariance(observation: ContactPointObservation) -> np.ndarray:
