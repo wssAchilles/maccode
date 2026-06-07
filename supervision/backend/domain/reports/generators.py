@@ -157,6 +157,7 @@ class ReportGenerator:
                 speed_confidence_calibrated=record.speed_confidence_calibrated,
                 confidence_calibration_bin=record.confidence_calibration_bin,
                 calibration_uncertainty_band_kmh=record.calibration_uncertainty_band_kmh,
+                calibration_speed_posterior=record.calibration_speed_posterior,
                 motion_mode=record.motion_mode,
                 motion_mode_probability=record.motion_mode_probability,
                 imm_speed_kmh=record.imm_speed_kmh,

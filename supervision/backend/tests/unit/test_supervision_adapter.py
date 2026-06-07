@@ -19,6 +19,11 @@ class FakeSvDetections:
 
 
 class FakeByteTrack:
+    last_kwargs: dict[str, object] = {}
+
+    def __init__(self, **kwargs: object) -> None:
+        type(self).last_kwargs = dict(kwargs)
+
     def update_with_detections(self, detections: FakeSvDetections) -> FakeSvDetections:
         detections.tracker_id = np.arange(1, len(detections.xyxy) + 1)
         return detections
@@ -40,6 +45,7 @@ class FakeLineZone:
 
 def install_fake_supervision(monkeypatch: pytest.MonkeyPatch) -> None:
     FakeLineZone.created_count = 0
+    FakeByteTrack.last_kwargs = {}
     fake = ModuleType("supervision")
     fake_any = cast(Any, fake)
     fake_any.Detections = FakeSvDetections
@@ -118,3 +124,66 @@ def test_supervision_adapter_uses_tracked_class_id_for_class_name(
 
     assert result.tracks[0].class_id == 9
     assert result.tracks[0].class_name == "traffic light"
+
+
+def test_supervision_adapter_passes_bytetrack_config_and_reports_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake_supervision(monkeypatch)
+    adapter = SupervisionRuntimeAdapter(
+        track_activation_threshold=0.41,
+        lost_track_buffer=17,
+        minimum_matching_threshold=0.72,
+        frame_rate=12.0,
+    )
+    detections = Detections(
+        items=[Detection([0, 0, 10, 10], 0.9, 2, "car")],
+        frame_index=1,
+        timestamp_sec=0.0,
+    )
+
+    adapter.track_and_count(detections, line_start=(0.0, 5.0), line_end=(20.0, 5.0))
+    diagnostics = adapter.diagnostics_dict()
+
+    assert FakeByteTrack.last_kwargs == {
+        "track_activation_threshold": 0.41,
+        "lost_track_buffer": 17,
+        "minimum_matching_threshold": 0.72,
+        "frame_rate": 12.0,
+    }
+    assert diagnostics["tracker_type"] == "ByteTrack"
+    assert diagnostics["tracker_config_fallback_used"] is False
+    assert diagnostics["line_zone_count"] == 1
+
+
+def test_supervision_adapter_falls_back_when_bytetrack_rejects_kwargs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class KwargRejectingByteTrack:
+        init_count = 0
+
+        def __init__(self, **kwargs: object) -> None:
+            type(self).init_count += 1
+            if kwargs:
+                raise TypeError("unsupported kwargs")
+
+        def update_with_detections(self, detections: FakeSvDetections) -> FakeSvDetections:
+            detections.tracker_id = np.arange(1, len(detections.xyxy) + 1)
+            return detections
+
+    install_fake_supervision(monkeypatch)
+    fake_module = cast(Any, sys.modules["supervision"])
+    fake_module.ByteTrack = KwargRejectingByteTrack
+    adapter = SupervisionRuntimeAdapter(track_activation_threshold=0.4)
+    detections = Detections(
+        items=[Detection([0, 0, 10, 10], 0.9, 2, "car")],
+        frame_index=1,
+        timestamp_sec=0.0,
+    )
+
+    adapter.track_and_count(detections, line_start=(0.0, 5.0), line_end=(20.0, 5.0))
+    diagnostics = adapter.diagnostics_dict()
+
+    assert KwargRejectingByteTrack.init_count == 2
+    assert diagnostics["tracker_config_fallback_used"] is True
+    assert diagnostics["unsupported_tracker_kwargs"] == ["track_activation_threshold"]

@@ -18,6 +18,11 @@ class SyntheticSpeedScenario:
     pixel_noise_sigma: float = 0.0
     position_rmse_m: float = 0.05
     missing_frame_indices: frozenset[int] = field(default_factory=frozenset)
+    bbox_jitter_px: float = 0.0
+    contact_bias_px: tuple[float, float] = (0.0, 0.0)
+    scale_bias_pct: float = 0.0
+    id_switch_frame_indices: frozenset[int] = field(default_factory=frozenset)
+    perspective_strength: float = 0.0
     random_seed: int = 0
 
 
@@ -29,6 +34,9 @@ class SyntheticSpeedBenchmarkResult:
     coverage_ratio: float
     mean_uncertainty_kmh: float
     valid_estimate_count: int
+    speed_jump_p95_kmh: float = 0.0
+    rejection_ratio: float = 0.0
+    mean_adaptive_multiplier: float = 0.0
     model_reference: str = "synthetic_homography_speed_benchmark"
 
     def to_dict(self) -> dict[str, object]:
@@ -39,6 +47,9 @@ class SyntheticSpeedBenchmarkResult:
             "coverage_ratio": self.coverage_ratio,
             "mean_uncertainty_kmh": self.mean_uncertainty_kmh,
             "valid_estimate_count": self.valid_estimate_count,
+            "speed_jump_p95_kmh": self.speed_jump_p95_kmh,
+            "rejection_ratio": self.rejection_ratio,
+            "mean_adaptive_multiplier": self.mean_adaptive_multiplier,
             "model_reference": self.model_reference,
         }
 
@@ -61,43 +72,78 @@ class SyntheticSpeedBenchmarkRunner:
             raise ValueError("fps must be positive")
         if scenario.pixel_noise_sigma < 0:
             raise ValueError("pixel_noise_sigma must not be negative")
+        if scenario.bbox_jitter_px < 0:
+            raise ValueError("bbox_jitter_px must not be negative")
         rng = np.random.default_rng(scenario.random_seed)
+        true_homography = self._scenario_homography(
+            self.homography_matrix,
+            scenario.perspective_strength,
+        )
+        estimator_homography = true_homography.copy()
+        if scenario.scale_bias_pct != 0.0:
+            scale = max(0.01, 1.0 + float(scenario.scale_bias_pct))
+            estimator_homography[0, :] *= scale
+            estimator_homography[1, :] *= scale
         estimator = SpeedEstimator(
-            ViewTransformer(self.homography_matrix),
+            ViewTransformer(estimator_homography),
             position_rmse_m=scenario.position_rmse_m,
             timestamp_uncertainty_sec=1.0 / scenario.fps,
         )
         motion_profile = MotionRouter().route_class(2)
-        inverse_h = np.linalg.inv(self.homography_matrix).astype(np.float64)
+        inverse_h = np.linalg.inv(true_homography).astype(np.float64)
         true_speed_mps = max(float(scenario.true_speed_kmh), 0.0) / 3.6
         estimates: list[float] = []
         uncertainties: list[float] = []
+        adaptive_multipliers: list[float] = []
         covered = 0
+        attempted_frames = 0
         frame_count = int(scenario.duration_sec * scenario.fps) + 1
 
         for frame_index in range(frame_count):
             if frame_index in scenario.missing_frame_indices:
                 continue
+            attempted_frames += 1
             timestamp_sec = frame_index / scenario.fps
             world_position = (true_speed_mps * timestamp_sec, 0.0)
             pixel = self._world_to_pixel(inverse_h, world_position)
             if scenario.pixel_noise_sigma > 0:
                 noise = rng.normal(0.0, scenario.pixel_noise_sigma, size=2)
                 pixel = (float(pixel[0] + noise[0]), float(pixel[1] + noise[1]))
+            if scenario.bbox_jitter_px > 0:
+                jitter = rng.normal(0.0, scenario.bbox_jitter_px, size=2)
+                pixel = (float(pixel[0] + jitter[0]), float(pixel[1] + jitter[1]))
+            if scenario.contact_bias_px != (0.0, 0.0):
+                progress_factor = 1.0 + 0.04 * frame_index
+                pixel = (
+                    float(pixel[0] + scenario.contact_bias_px[0] * progress_factor),
+                    float(pixel[1] + scenario.contact_bias_px[1] * progress_factor),
+                )
+            tracker_id = 99 if frame_index in scenario.id_switch_frame_indices else 1
             estimator.update(
-                tracker_id=1,
+                tracker_id=tracker_id,
                 pixel_center=pixel,
                 timestamp_sec=timestamp_sec,
                 motion_profile=motion_profile,
                 detection_confidence=0.95,
                 measurement_confidence=0.95,
-                pixel_sigma_px=max(scenario.pixel_noise_sigma, 0.02),
+                pixel_sigma_px=max(
+                    scenario.pixel_noise_sigma,
+                    scenario.bbox_jitter_px,
+                    0.02,
+                ),
                 measurement_source="synthetic_contact_point",
             )
-            record = estimator.get_record(1)
+            record = estimator.get_record(tracker_id)
             if record is None or record.speed_kmh is None:
+                if (
+                    record is not None
+                    and record.adaptive_measurement_noise_multiplier is not None
+                ):
+                    adaptive_multipliers.append(record.adaptive_measurement_noise_multiplier)
                 continue
             estimates.append(record.speed_kmh)
+            if record.adaptive_measurement_noise_multiplier is not None:
+                adaptive_multipliers.append(record.adaptive_measurement_noise_multiplier)
             if record.speed_uncertainty_kmh is not None:
                 uncertainties.append(record.speed_uncertainty_kmh)
                 lower = max(0.0, record.speed_kmh - record.speed_uncertainty_kmh)
@@ -112,8 +158,10 @@ class SyntheticSpeedBenchmarkRunner:
                 coverage_ratio=0.0,
                 mean_uncertainty_kmh=0.0,
                 valid_estimate_count=0,
+                rejection_ratio=1.0 if attempted_frames else 0.0,
             )
         errors = np.asarray(estimates, dtype=np.float64) - float(scenario.true_speed_kmh)
+        speed_jumps = np.abs(np.diff(np.asarray(estimates, dtype=np.float64)))
         return SyntheticSpeedBenchmarkResult(
             scenario_name=scenario.name,
             rmse_kmh=float(np.sqrt(np.mean(errors**2))),
@@ -125,6 +173,17 @@ class SyntheticSpeedBenchmarkRunner:
                 else 0.0
             ),
             valid_estimate_count=len(estimates),
+            speed_jump_p95_kmh=(
+                float(np.percentile(speed_jumps, 95)) if speed_jumps.size else 0.0
+            ),
+            rejection_ratio=float(
+                max(0.0, 1.0 - (len(estimates) / max(attempted_frames, 1))),
+            ),
+            mean_adaptive_multiplier=(
+                float(np.mean(np.asarray(adaptive_multipliers, dtype=np.float64)))
+                if adaptive_multipliers
+                else 0.0
+            ),
         )
 
     @staticmethod
@@ -139,6 +198,16 @@ class SyntheticSpeedBenchmarkRunner:
         projected = inverse_h @ homogeneous
         projected = projected / projected[2]
         return (float(projected[0]), float(projected[1]))
+
+    @staticmethod
+    def _scenario_homography(
+        homography_matrix: np.ndarray,
+        perspective_strength: float,
+    ) -> np.ndarray:
+        homography = np.asarray(homography_matrix, dtype=np.float64).copy()
+        if perspective_strength != 0.0:
+            homography[2, 0] += float(perspective_strength)
+        return homography
 
 
 def run_default_synthetic_speed_benchmark() -> list[SyntheticSpeedBenchmarkResult]:
@@ -163,6 +232,24 @@ def run_default_synthetic_speed_benchmark() -> list[SyntheticSpeedBenchmarkResul
             pixel_noise_sigma=0.35,
             position_rmse_m=0.45,
             random_seed=5,
+        ),
+        SyntheticSpeedScenario(
+            name="contact_point_bias",
+            true_speed_kmh=36.0,
+            contact_bias_px=(0.35, 0.0),
+            random_seed=15,
+        ),
+        SyntheticSpeedScenario(
+            name="weak_scale_bias",
+            true_speed_kmh=36.0,
+            scale_bias_pct=0.15,
+            random_seed=21,
+        ),
+        SyntheticSpeedScenario(
+            name="short_id_switch",
+            true_speed_kmh=36.0,
+            id_switch_frame_indices=frozenset({15, 16, 17}),
+            random_seed=31,
         ),
     ]
     return [runner.run_scenario(scenario) for scenario in scenarios]

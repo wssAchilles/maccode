@@ -56,6 +56,7 @@ class Track:
     speed_confidence_calibrated: float | None = None
     confidence_calibration_bin: str | None = None
     calibration_uncertainty_band_kmh: list[float | None] | None = None
+    calibration_speed_posterior: dict[str, object] | None = None
     motion_mode: str | None = None
     motion_mode_probability: float | None = None
     imm_speed_kmh: float | None = None
@@ -138,6 +139,7 @@ class Track:
         speed_confidence_calibrated: float | None = None,
         confidence_calibration_bin: str | None = None,
         calibration_uncertainty_band_kmh: list[float | None] | None = None,
+        calibration_speed_posterior: dict[str, object] | None = None,
         motion_mode: str | None = None,
         motion_mode_probability: float | None = None,
         imm_speed_kmh: float | None = None,
@@ -202,6 +204,7 @@ class Track:
             speed_confidence_calibrated=speed_confidence_calibrated,
             confidence_calibration_bin=confidence_calibration_bin,
             calibration_uncertainty_band_kmh=calibration_uncertainty_band_kmh,
+            calibration_speed_posterior=calibration_speed_posterior,
             motion_mode=motion_mode,
             motion_mode_probability=motion_mode_probability,
             imm_speed_kmh=imm_speed_kmh,

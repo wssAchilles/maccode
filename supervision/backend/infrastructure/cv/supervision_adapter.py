@@ -16,9 +16,35 @@ class SupervisionAdapterResult:
 
 
 class SupervisionRuntimeAdapter:
-    def __init__(self) -> None:
+    _DEFAULT_TRACKER_CONFIG = {
+        "track_activation_threshold": 0.25,
+        "lost_track_buffer": 30,
+        "minimum_matching_threshold": 0.8,
+        "frame_rate": 30.0,
+    }
+
+    def __init__(
+        self,
+        track_activation_threshold: float | None = None,
+        lost_track_buffer: int | None = None,
+        minimum_matching_threshold: float | None = None,
+        frame_rate: float | None = None,
+    ) -> None:
         self._tracker: Any | None = None
         self._line_zones: dict[tuple[str, float, float, float, float], Any] = {}
+        explicit_config = {
+            "track_activation_threshold": track_activation_threshold,
+            "lost_track_buffer": lost_track_buffer,
+            "minimum_matching_threshold": minimum_matching_threshold,
+            "frame_rate": frame_rate,
+        }
+        self._tracker_kwargs = {
+            key: value for key, value in explicit_config.items() if value is not None
+        }
+        self._tracker_config = dict(self._DEFAULT_TRACKER_CONFIG)
+        self._tracker_config.update(self._tracker_kwargs)
+        self._tracker_config_fallback_used = False
+        self._unsupported_tracker_kwargs: list[str] = []
 
     def track_and_count(
         self,
@@ -52,8 +78,25 @@ class SupervisionRuntimeAdapter:
 
     def _get_tracker(self, sv: Any) -> Any:
         if self._tracker is None:
-            self._tracker = sv.ByteTrack()
+            if self._tracker_kwargs:
+                try:
+                    self._tracker = sv.ByteTrack(**self._tracker_kwargs)
+                except TypeError:
+                    self._tracker_config_fallback_used = True
+                    self._unsupported_tracker_kwargs = list(self._tracker_kwargs)
+                    self._tracker = sv.ByteTrack()
+            else:
+                self._tracker = sv.ByteTrack()
         return self._tracker
+
+    def diagnostics_dict(self) -> dict[str, object]:
+        return {
+            "tracker_type": "ByteTrack",
+            "tracker_config": dict(self._tracker_config),
+            "tracker_config_fallback_used": self._tracker_config_fallback_used,
+            "unsupported_tracker_kwargs": list(self._unsupported_tracker_kwargs),
+            "line_zone_count": len(self._line_zones),
+        }
 
     def _get_line_zone(
         self,

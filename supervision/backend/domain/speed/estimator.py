@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
+import numpy as np
+from numpy.typing import NDArray
 from shared.configs.constants import DEFAULT_MAX_SPEED_KMH, DEFAULT_MIN_DISPLACEMENT_M
 
 from domain.motion.models import MotionProfile
@@ -17,7 +19,7 @@ from domain.speed.kalman import (
 from domain.speed.models import SpeedRecord, TrackHistory
 from domain.speed.smoothing import median_smoothing
 from domain.speed.uncertainty import estimate_speed_uncertainty
-from domain.speed.view_transformer import ViewTransformer
+from domain.speed.view_transformer import LocalPositionUncertainty, ViewTransformer
 
 MAHALANOBIS_ID_SWITCH_THRESHOLD_D2 = 9.21
 PINV_MAHALANOBIS_ID_SWITCH_THRESHOLD_D2 = 6.0
@@ -69,6 +71,7 @@ class SpeedEstimator:
         measurement_source: str | None = None,
         auxiliary_velocity_mps: tuple[float, float] | None = None,
         auxiliary_confidence: float = 0.0,
+        pixel_covariance_px: list[list[float]] | None = None,
     ) -> float | None:
         if motion_profile is None:
             return self._legacy_update(
@@ -94,11 +97,18 @@ class SpeedEstimator:
             1e-6,
             (effective_position_rmse_m**2) / bounded_measurement_confidence,
         )
+        measurement_covariance = self._measurement_covariance(
+            pixel_center,
+            local_uncertainty,
+            measurement_noise,
+            pixel_covariance_px,
+        )
+        position_covariance = measurement_covariance.tolist()
         adaptive_controller = self._adaptive_noise_controllers.setdefault(
             tracker_id,
             AdaptiveMeasurementNoiseController(),
         )
-        adaptive_measurement_noise = measurement_noise * adaptive_controller.multiplier
+        adaptive_measurement_noise = measurement_covariance * adaptive_controller.multiplier
         history = self._histories.setdefault(tracker_id, TrackHistory(tracker_id))
         previous_position = history.last_position
         previous_timestamp = history.last_timestamp
@@ -129,7 +139,7 @@ class SpeedEstimator:
                 rejection_reason=None,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -156,7 +166,7 @@ class SpeedEstimator:
                 rejection_reason="speed_gate",
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -199,7 +209,7 @@ class SpeedEstimator:
                 rejection_reason="mahalanobis_gate",
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -209,7 +219,7 @@ class SpeedEstimator:
             return None
 
         adaptive_state = adaptive_controller.update(innovation_nis)
-        adaptive_measurement_noise = measurement_noise * adaptive_state.multiplier
+        adaptive_measurement_noise = measurement_covariance * adaptive_state.multiplier
 
         history.add_position(
             world_position,
@@ -233,7 +243,7 @@ class SpeedEstimator:
                 rejection_reason=None,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -253,7 +263,7 @@ class SpeedEstimator:
                 rejection_reason=None,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -303,7 +313,7 @@ class SpeedEstimator:
                 window_residual_m=regression.residual_m,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -349,7 +359,7 @@ class SpeedEstimator:
                 window_residual_m=regression.residual_m,
                 position_rmse_m=effective_position_rmse_m,
                 position_sigma_m=local_uncertainty.position_sigma_m,
-                position_covariance=local_uncertainty.covariance.tolist(),
+                position_covariance=position_covariance,
                 measurement_source=measurement_source,
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
@@ -388,7 +398,7 @@ class SpeedEstimator:
             speed_confidence=speed_confidence,
             position_rmse_m=uncertainty.position_rmse_m,
             position_sigma_m=local_uncertainty.position_sigma_m,
-            position_covariance=local_uncertainty.covariance.tolist(),
+            position_covariance=position_covariance,
             measurement_source=measurement_source,
             measurement_confidence=bounded_measurement_confidence,
             local_scale_factor=local_uncertainty.local_scale_factor,
@@ -581,6 +591,39 @@ class SpeedEstimator:
             track_age_frames=len(history.positions) if history is not None else 0,
             window_residual_m=window_residual_m,
         )
+
+    def _measurement_covariance(
+        self,
+        pixel_center: tuple[float, float],
+        local_uncertainty: LocalPositionUncertainty,
+        scalar_measurement_noise: float,
+        pixel_covariance_px: list[list[float]] | None,
+    ) -> NDArray[np.float64]:
+        fallback = np.eye(2, dtype=np.float64) * max(float(scalar_measurement_noise), 1e-6)
+        try:
+            covariance = np.asarray(local_uncertainty.covariance, dtype=np.float64)
+            if covariance.shape != (2, 2):
+                covariance = fallback.copy()
+            else:
+                covariance = covariance.copy()
+            if pixel_covariance_px is not None:
+                pixel_covariance = np.asarray(pixel_covariance_px, dtype=np.float64)
+                if pixel_covariance.shape == (2, 2):
+                    pixel_covariance = (pixel_covariance + pixel_covariance.T) * 0.5
+                    jacobian = self.view_transformer.local_jacobian(
+                        pixel_center[0],
+                        pixel_center[1],
+                    )
+                    covariance += jacobian @ pixel_covariance @ jacobian.T
+            covariance = (covariance + covariance.T) * 0.5
+            covariance[0, 0] = max(float(covariance[0, 0]), scalar_measurement_noise)
+            covariance[1, 1] = max(float(covariance[1, 1]), scalar_measurement_noise)
+            min_eigenvalue = float(np.min(np.linalg.eigvalsh(covariance)))
+            if min_eigenvalue < 1e-9:
+                covariance += np.eye(2, dtype=np.float64) * (1e-9 - min_eigenvalue)
+            return covariance.astype(np.float64)
+        except (TypeError, ValueError, np.linalg.LinAlgError):
+            return fallback
 
     @staticmethod
     def _fit_window(

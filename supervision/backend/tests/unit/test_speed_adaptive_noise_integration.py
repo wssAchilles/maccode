@@ -31,3 +31,6 @@ def test_speed_estimator_records_adaptive_noise_diagnostics() -> None:
     assert record.adaptive_measurement_noise_multiplier is not None
     assert record.innovation_nis is not None
     assert record.adaptive_measurement_noise_multiplier > 0.0
+    assert record.position_covariance is not None
+    assert len(record.position_covariance) == 2
+    assert len(record.position_covariance[0]) == 2

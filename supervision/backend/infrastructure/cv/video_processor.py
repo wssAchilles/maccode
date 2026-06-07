@@ -13,6 +13,7 @@ from domain.calibration.candidate_evaluation import (
     CalibrationCandidateEvaluator,
 )
 from domain.calibration.models import HomographyResult
+from domain.calibration.monte_carlo import CalibrationMonteCarloAnalyzer
 from domain.calibration.sensitivity import (
     CalibrationSensitivityAnalyzer,
     CalibrationSensitivityReport,
@@ -207,6 +208,7 @@ class SupervisionVideoProcessor:
                 self.calibration_context,
             )
         )
+        self.calibration_monte_carlo = CalibrationMonteCarloAnalyzer()
         self.frame_reports: list[dict[str, Any]] = []
         self._pixel_histories: dict[int, list[tuple[float, float]]] = {}
         self._latest_contact_points: dict[int, GroundContactPoint] = {}
@@ -426,6 +428,19 @@ class SupervisionVideoProcessor:
             sensitivity = max(sensitivity, 0.18)
         margin = max(0.0, speed_kmh * sensitivity)
         return [float(max(0.0, speed_kmh - margin)), float(speed_kmh + margin)]
+
+    def _calibration_speed_posterior(
+        self,
+        record: SpeedRecord | None,
+    ) -> dict[str, object] | None:
+        if record is None or record.speed_kmh is None or not record.physics_valid:
+            return None
+        return self.calibration_monte_carlo.analyze(
+            self.calibration,
+            speed_kmh=record.speed_kmh,
+            sample_count=200,
+            random_seed=17,
+        ).to_dict()
 
     @staticmethod
     def _select_runtime_calibration(
@@ -651,6 +666,9 @@ class SupervisionVideoProcessor:
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
                     ),
+                    calibration_speed_posterior=self._calibration_speed_posterior(
+                        frozen_record,
+                    ),
                 )
                 continue
 
@@ -700,6 +718,7 @@ class SupervisionVideoProcessor:
                     optical_flow.velocity_mps if optical_flow is not None else None
                 ),
                 auxiliary_confidence=auxiliary_confidence,
+                pixel_covariance_px=contact_point.pixel_covariance,
             )
             latest_record = self.speed_estimator.get_record(track.tracker_id)
             quality_label = (
@@ -744,6 +763,9 @@ class SupervisionVideoProcessor:
                 weak_calibration_reason=self.weak_calibration_reason,
                 calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                     latest_record.speed_kmh if latest_record is not None else None,
+                ),
+                calibration_speed_posterior=self._calibration_speed_posterior(
+                    latest_record,
                 ),
             )
         for tracker_id in list(self._latest_contact_points):
