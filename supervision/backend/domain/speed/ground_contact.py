@@ -61,6 +61,7 @@ class GroundContactCorrector:
                 source="bbox_ground_contact",
                 observation_sigma_px=self._base_observation_sigma_px(class_id, width, height),
                 measurement_source="bbox_ground_contact",
+                pixel_covariance=self._bbox_covariance(class_id, width, height),
             )
 
         delta_t = max(timestamp_sec - previous.timestamp_sec, 1e-3)
@@ -94,6 +95,12 @@ class GroundContactCorrector:
             source="temporal_ground_contact_correction",
             observation_sigma_px=float(observation_sigma_px),
             measurement_source="temporal_ground_contact_correction",
+            pixel_covariance=self._bbox_covariance(
+                class_id,
+                width,
+                height,
+                scale=1.0 + correction_px / max(width, height, 1.0) + min(size_drift, 2.0),
+            ),
         )
 
     @staticmethod
@@ -133,3 +140,23 @@ class GroundContactCorrector:
         if class_id in GroundContactCorrector.BICYCLE_CLASS_IDS:
             return max(1.2, base * 0.035)
         return max(1.5, base * 0.045)
+
+    @staticmethod
+    def _bbox_covariance(
+        class_id: int,
+        width: float,
+        height: float,
+        *,
+        scale: float = 1.0,
+    ) -> list[list[float]]:
+        sigma_y = GroundContactCorrector._base_observation_sigma_px(
+            class_id,
+            width,
+            height,
+        ) * max(scale, 1.0)
+        sigma_x = sigma_y * 0.75
+        if class_id in GroundContactCorrector.PERSON_CLASS_IDS:
+            sigma_y *= 1.35
+        if class_id in GroundContactCorrector.BICYCLE_CLASS_IDS:
+            sigma_y *= 1.2
+        return [[float(sigma_x**2), 0.0], [0.0, float(sigma_y**2)]]

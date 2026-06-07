@@ -277,6 +277,10 @@ class KalmanFilter2D:
         )
 
 
+class MetricGroundSpeedFilter(KalmanFilter2D):
+    """Constant-velocity ground-plane speed filter using metric position covariance."""
+
+
 class ConstantAccelerationKalmanFilter2D:
     def __init__(self, config: KalmanConfig) -> None:
         self.config = config

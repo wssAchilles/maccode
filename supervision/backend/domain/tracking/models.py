@@ -84,6 +84,10 @@ class Track:
     height_consistency_score: float | None = None
     recommended_speed_scale_factor: float | None = None
     pedestrian_geometry_model_reference: str | None = None
+    plane_id: str | None = None
+    contact_source: str | None = None
+    world_position_covariance: list[list[float]] | None = None
+    speed_geometry_diagnostics: dict[str, object] | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -177,6 +181,10 @@ class Track:
         height_consistency_score: float | None = None,
         recommended_speed_scale_factor: float | None = None,
         pedestrian_geometry_model_reference: str | None = None,
+        plane_id: str | None = None,
+        contact_source: str | None = None,
+        world_position_covariance: list[list[float]] | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
     ) -> Track:
         return replace(
             self,
@@ -252,4 +260,8 @@ class Track:
             height_consistency_score=height_consistency_score,
             recommended_speed_scale_factor=recommended_speed_scale_factor,
             pedestrian_geometry_model_reference=pedestrian_geometry_model_reference,
+            plane_id=plane_id,
+            contact_source=contact_source,
+            world_position_covariance=world_position_covariance,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
         )

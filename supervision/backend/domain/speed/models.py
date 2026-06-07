@@ -78,6 +78,10 @@ class SpeedRecord:
     height_consistency_score: float | None = None
     recommended_speed_scale_factor: float | None = None
     pedestrian_geometry_model_reference: str | None = None
+    plane_id: str | None = None
+    contact_source: str | None = None
+    world_position_covariance: list[list[float]] | None = None
+    speed_geometry_diagnostics: dict[str, object] | None = None
 
 
 @dataclass
@@ -92,6 +96,7 @@ class TrackHistory:
     auxiliary_velocity_weight: float = 0.0
     measurement_confidences: list[float] = field(default_factory=list)
     position_sigmas_m: list[float] = field(default_factory=list)
+    local_scale_percentiles: list[float | None] = field(default_factory=list)
 
     def add_position(
         self,
@@ -99,11 +104,16 @@ class TrackHistory:
         timestamp_sec: float,
         measurement_confidence: float = 1.0,
         position_sigma_m: float = 0.0,
+        local_scale_percentile: float | None = None,
     ) -> None:
         self.positions.append(position)
         self.timestamps.append(timestamp_sec)
         self.measurement_confidences.append(max(0.05, min(1.0, measurement_confidence)))
         self.position_sigmas_m.append(max(0.0, position_sigma_m))
+        if local_scale_percentile is None:
+            self.local_scale_percentiles.append(None)
+        else:
+            self.local_scale_percentiles.append(max(0.0, min(1.0, local_scale_percentile)))
 
     @property
     def last_position(self) -> tuple[float, float] | None:

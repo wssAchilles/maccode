@@ -82,6 +82,7 @@ class VideoCalibrationPreset:
     vehicle_3d_priors: dict[str, Any] = field(default_factory=dict)
     vehicle_3d_observations: list[dict[str, Any]] = field(default_factory=list)
     calibration_3d_diagnostics: dict[str, Any] = field(default_factory=dict)
+    metric_planes: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,7 @@ class CameraProfilePreset:
     fallback_policy: str
     auto_candidate_lines: list[CandidateLine]
     scale_prior_used: str | None
+    road_plane_polygon_pixel: list[tuple[float, float]] | None = None
     annotation_method: str | None = None
     evidence_sources: list[str] | None = None
     camera_intrinsics_prior: dict[str, Any] = field(default_factory=dict)
@@ -115,6 +117,7 @@ class CameraProfilePreset:
     vehicle_3d_priors: dict[str, Any] = field(default_factory=dict)
     vehicle_3d_observations: list[dict[str, Any]] = field(default_factory=list)
     calibration_3d_diagnostics: dict[str, Any] = field(default_factory=dict)
+    metric_planes: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -425,6 +428,9 @@ def load_camera_profiles(path: Path) -> dict[str, CameraProfilePreset]:
             road_plane_polygon_world=_parse_world_polygon(
                 value.get("road_plane_polygon_world"),
             ),
+            road_plane_polygon_pixel=_parse_world_polygon(
+                value.get("road_plane_polygon_pixel"),
+            ),
             validation_segments=_parse_validation_segments(
                 value.get("validation_segments"),
             ),
@@ -456,6 +462,9 @@ def load_camera_profiles(path: Path) -> dict[str, CameraProfilePreset]:
             vehicle_3d_priors=dict(value.get("vehicle_3d_priors", {})),
             vehicle_3d_observations=list(value.get("vehicle_3d_observations", [])),
             calibration_3d_diagnostics=dict(value.get("calibration_3d_diagnostics", {})),
+            metric_planes=list(value.get("metric_planes", []))
+            if isinstance(value.get("metric_planes"), list)
+            else [],
         )
     return profiles
 
@@ -505,6 +514,9 @@ def load_calibration_presets(path: Path) -> CalibrationPresetCatalog:
             vehicle_3d_priors=dict(value.get("vehicle_3d_priors", {})),
             vehicle_3d_observations=list(value.get("vehicle_3d_observations", [])),
             calibration_3d_diagnostics=dict(value.get("calibration_3d_diagnostics", {})),
+            metric_planes=list(value.get("metric_planes", []))
+            if isinstance(value.get("metric_planes"), list)
+            else [],
         )
     return CalibrationPresetCatalog(
         scene_profiles=profiles,
@@ -797,6 +809,13 @@ def analyze_clip(
         if camera_profile is not None
         else None
     )
+    road_plane_polygon_pixel = (
+        video_preset.road_plane_polygon_pixel
+        if video_preset is not None
+        else camera_profile.road_plane_polygon_pixel
+        if camera_profile is not None
+        else None
+    )
     validation_segments = (
         video_preset.validation_segments
         if video_preset is not None
@@ -838,6 +857,13 @@ def analyze_clip(
         video_preset.points
         if video_preset is not None
         else camera_profile.manual_control_points
+        if camera_profile is not None
+        else []
+    )
+    metric_planes = (
+        video_preset.metric_planes
+        if video_preset is not None
+        else camera_profile.metric_planes
         if camera_profile is not None
         else []
     )
@@ -964,8 +990,20 @@ def analyze_clip(
             "calibration_trusted": calibration_trusted,
             "declared_calibration_trusted": declared_calibration_trusted,
             "road_plane_polygon_world": road_plane_polygon_world,
+            "road_plane_polygon_pixel": road_plane_polygon_pixel,
             "validation_segments": validation_segments,
             "validation_max_error_px": validation_max_error_px,
+            "manual_control_point_count": len(calibration_points),
+            "manual_control_points": [
+                {
+                    "pixel_x": point.pixel_x,
+                    "pixel_y": point.pixel_y,
+                    "world_x": point.world_x,
+                    "world_y": point.world_y,
+                }
+                for point in calibration_points
+            ],
+            "metric_planes": metric_planes,
             "independent_validation_segment_count": independent_validation_segment_count,
             "annotation_method": calibration_annotation_method,
             "evidence_sources": calibration_evidence_sources,

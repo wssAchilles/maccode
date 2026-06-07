@@ -125,6 +125,7 @@ def test_scale_bias_creates_systematic_speed_error() -> None:
             true_speed_kmh=36.0,
             duration_sec=8.0,
             fps=4.0,
+            position_rmse_m=0.5,
             scale_bias_pct=0.15,
             random_seed=21,
         )

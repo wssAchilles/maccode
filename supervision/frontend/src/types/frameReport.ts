@@ -63,6 +63,10 @@ export interface Track {
   tracklet_parent_id?: number | null;
   association_score?: number | null;
   association_rejection_reason?: string | null;
+  plane_id?: string | null;
+  contact_source?: string | null;
+  world_position_covariance?: number[][] | null;
+  speed_geometry_diagnostics?: Record<string, unknown> | null;
 }
 
 export interface ZoneStats {
@@ -159,6 +163,12 @@ export interface CalibrationDiagnostics {
   calibration_quality: string;
   calibration_trusted?: boolean;
   declared_calibration_trusted?: boolean;
+  metric_speed_admitted?: boolean;
+  metric_speed_gate_reason?: string | null;
+  metric_planes?: Array<Record<string, unknown>>;
+  selected_plane_id?: string | null;
+  plane_validation_errors?: Record<string, number>;
+  track_geometry_diagnostics?: Record<string, unknown>;
   pixel_to_world_rmse_m?: number;
   world_to_pixel_rmse_px?: number;
   validation_max_error_px?: number | null;

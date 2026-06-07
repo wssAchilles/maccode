@@ -263,6 +263,9 @@ class CalibrationPresetStore:
             "validation_segments": CalibrationPresetStore._normalize_validation_segments(
                 entry.get("validation_segments", []),
             ),
+            "metric_planes": CalibrationPresetStore._normalize_metric_planes(
+                entry.get("metric_planes", []),
+            ),
             "camera_intrinsics_prior": deepcopy(entry.get("camera_intrinsics_prior"))
             if isinstance(entry.get("camera_intrinsics_prior"), dict)
             else {},
@@ -380,6 +383,48 @@ class CalibrationPresetStore:
             if isinstance(segment, dict):
                 normalized.append(deepcopy(segment))
         return normalized
+
+    @staticmethod
+    def _normalize_metric_planes(value: object) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        normalized: list[dict[str, Any]] = []
+        for plane in value:
+            if not isinstance(plane, dict):
+                continue
+            normalized.append(
+                {
+                    "plane_id": str(plane.get("plane_id") or plane.get("id") or ""),
+                    "plane_kind": str(plane.get("plane_kind") or plane.get("kind") or "road"),
+                    "trusted": bool(
+                        plane.get("trusted", plane.get("calibration_trusted", False)),
+                    ),
+                    "pixel_polygon": CalibrationPresetStore._normalize_pixel_polygon(
+                        plane.get("pixel_polygon"),
+                    ),
+                    "world_polygon": CalibrationPresetStore._normalize_world_polygon(
+                        plane.get("world_polygon"),
+                    ),
+                    "control_points": [
+                        {
+                            "pixel_x": float(point["pixel_x"]),
+                            "pixel_y": float(point["pixel_y"]),
+                            "world_x": float(point["world_x"]),
+                            "world_y": float(point["world_y"]),
+                        }
+                        for point in plane.get("control_points", [])
+                        if isinstance(point, dict)
+                    ],
+                    "validation_segments": CalibrationPresetStore._normalize_validation_segments(
+                        plane.get("validation_segments", []),
+                    ),
+                }
+            )
+        return [
+            plane
+            for plane in normalized
+            if plane["plane_id"] and len(plane["control_points"]) >= 4
+        ]
 
     @staticmethod
     def _vehicle_3d_diagnostics(

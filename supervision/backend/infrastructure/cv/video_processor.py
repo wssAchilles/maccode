@@ -12,7 +12,7 @@ from domain.calibration.candidate_evaluation import (
     CalibrationCandidateEvaluation,
     CalibrationCandidateEvaluator,
 )
-from domain.calibration.models import HomographyResult
+from domain.calibration.models import CalibrationPoint, HomographyResult
 from domain.calibration.monte_carlo import CalibrationMonteCarloAnalyzer
 from domain.calibration.sensitivity import (
     CalibrationSensitivityAnalyzer,
@@ -163,7 +163,13 @@ class SupervisionVideoProcessor:
         self.road_plane_polygon_world = self._world_polygon(
             self.calibration_context.get("road_plane_polygon_world"),
         )
+        self.road_plane_polygon_pixel = self._world_polygon(
+            self.calibration_context.get("road_plane_polygon_pixel"),
+        )
         self.calibration_trusted = self._is_calibration_trusted()
+        self.metric_speed_admitted, self.metric_speed_gate_reason = (
+            self._metric_speed_gate()
+        )
         self.scale_confidence_label, self.weak_calibration_reason = (
             self._scale_confidence()
         )
@@ -174,6 +180,23 @@ class SupervisionVideoProcessor:
             position_rmse_m=max(self.calibration.pixel_to_world_rmse_m, position_rmse_floor_m),
             timestamp_uncertainty_sec=1.0 / fps,
         )
+        self.metric_plane_set = CalibrationService().build_metric_plane_set(
+            metric_planes=self._metric_plane_configs(),
+            default_control_points=self._calibration_points_from_context(),
+            default_pixel_polygon=(
+                self.road_plane_polygon_pixel or self._default_metric_pixel_polygon()
+            ),
+            default_world_polygon=(
+                self.road_plane_polygon_world or self._default_metric_world_polygon()
+            ),
+            default_trusted=self.metric_speed_admitted,
+            default_validation_segments=self._validation_segments_from_context(),
+            default_homography=self.calibration,
+        )
+        self.plane_transformers = {
+            plane.plane_id: ViewTransformer(plane.homography.homography_matrix)
+            for plane in self.metric_plane_set.planes
+        }
         self.trajectory_reconstruction_enabled = trajectory_reconstruction_enabled
         self.trajectory_reconstructor = TrajectoryReconstructor(self.motion_router)
         self.ground_contact_corrector = GroundContactCorrector()
@@ -203,6 +226,17 @@ class SupervisionVideoProcessor:
             road_plane_polygon_world=self.road_plane_polygon_world,
             validation_max_error_px=self.validation_max_error_px,
         ).build()
+        self.plane_bev_confidence_maps: dict[str, BEVConfidenceMap] = {
+            plane.plane_id: BEVConfidenceMapBuilder(
+                self.plane_transformers[plane.plane_id],
+                frame_width=self.frame_width,
+                frame_height=self.frame_height,
+                road_plane_polygon_world=plane.world_polygon,
+                validation_max_error_px=self.validation_max_error_px,
+            ).build()
+            for plane in self.metric_plane_set.planes
+            if plane.plane_id in self.plane_transformers
+        }
         self.calibration_sensitivity: CalibrationSensitivityReport = (
             CalibrationSensitivityAnalyzer().analyze(
                 self.calibration,
@@ -361,6 +395,13 @@ class SupervisionVideoProcessor:
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
             "calibration_trusted": self.calibration_trusted,
+            "metric_speed_admitted": self.metric_speed_admitted,
+            "metric_speed_gate_reason": self.metric_speed_gate_reason,
+            "metric_planes": self.metric_plane_set.to_diagnostics(),
+            "plane_validation_errors": {
+                plane.plane_id: plane.homography.world_to_pixel_rmse_px
+                for plane in self.metric_plane_set.planes
+            },
             "camera_profile_id": self.calibration_context.get("camera_profile_id"),
             "camera_profile_display_name": self.calibration_context.get(
                 "camera_profile_display_name",
@@ -556,13 +597,44 @@ class SupervisionVideoProcessor:
             return False
         return True
 
+    def _metric_speed_gate(self) -> tuple[bool, str | None]:
+        has_trusted_metric_plane = any(
+            bool(plane.get("trusted", plane.get("calibration_trusted", False)))
+            for plane in self._metric_plane_configs()
+        )
+        if has_trusted_metric_plane:
+            return True, None
+        if not self.calibration_trusted:
+            return False, "metric_calibration_not_trusted"
+        if self.calibration_source == "synthetic_demo":
+            return True, None
+        control_point_count = self._optional_int(
+            self.calibration_context.get("manual_control_point_count"),
+        )
+        if control_point_count is not None and control_point_count < 4:
+            return False, "insufficient_metric_ground_control_points"
+        independent_segment_count = self._optional_int(
+            self.calibration_context.get("independent_validation_segment_count"),
+        )
+        if independent_segment_count is not None and independent_segment_count < 1:
+            return False, "missing_independent_metric_validation_segment"
+        if self.calibration.world_to_pixel_rmse_px > 15.0:
+            return False, "world_to_pixel_rmse_gate_failed"
+        if self.calibration.pixel_to_world_rmse_m > 2.0:
+            return False, "pixel_to_world_rmse_gate_failed"
+        if self.calibration.condition_number > 1e8:
+            return False, "homography_condition_number_gate_failed"
+        return True, None
+
     def _scale_confidence(self) -> tuple[str, str | None]:
-        if self.calibration_trusted and self.calibration_source in {
+        if self.metric_speed_admitted and self.calibration_source in {
             "video_manual_preset",
             "camera_manual_preset",
             "synthetic_demo",
         }:
             return "stable", None
+        if self.calibration_trusted and not self.metric_speed_admitted:
+            return "weak_scale", self.metric_speed_gate_reason
         if self.runtime_homography_source == "auto_vp_lane_vehicle_size_candidate":
             return "weak_scale", "auto_geometry_prior_runtime_candidate"
         if self.calibration_context.get("auto_calibration"):
@@ -619,6 +691,64 @@ class SupervisionVideoProcessor:
             return None
 
     @staticmethod
+    def _optional_int(value: object) -> int | None:
+        if value is None or isinstance(value, bool):
+            return None
+        if not isinstance(value, (int, float, str)):
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _metric_plane_configs(self) -> list[dict[str, object]]:
+        value = self.calibration_context.get("metric_planes")
+        if not isinstance(value, list):
+            return []
+        return [dict(item) for item in value if isinstance(item, dict)]
+
+    def _calibration_points_from_context(self) -> list[CalibrationPoint]:
+        raw_points = self.calibration_context.get("manual_control_points")
+        if not isinstance(raw_points, list):
+            return []
+        points: list[CalibrationPoint] = []
+        for item in raw_points:
+            if not isinstance(item, dict):
+                return []
+            try:
+                points.append(
+                    CalibrationPoint(
+                        pixel_x=float(item["pixel_x"]),
+                        pixel_y=float(item["pixel_y"]),
+                        world_x=float(item["world_x"]),
+                        world_y=float(item["world_y"]),
+                    )
+                )
+            except (KeyError, TypeError, ValueError):
+                return []
+        return points
+
+    def _validation_segments_from_context(self) -> list[dict[str, object]]:
+        value = self.calibration_context.get("validation_segments")
+        if not isinstance(value, list):
+            return []
+        return [dict(item) for item in value if isinstance(item, dict)]
+
+    def _default_metric_pixel_polygon(self) -> list[tuple[float, float]]:
+        return [
+            (0.0, 0.0),
+            (float(self.frame_width), 0.0),
+            (float(self.frame_width), float(self.frame_height)),
+            (0.0, float(self.frame_height)),
+        ]
+
+    def _default_metric_world_polygon(self) -> list[tuple[float, float]]:
+        return [
+            self.view_transformer.transform_point(x, y)
+            for x, y in self._default_metric_pixel_polygon()
+        ]
+
+    @staticmethod
     def _world_polygon(value: object) -> list[tuple[float, float]] | None:
         if not isinstance(value, list):
             return None
@@ -671,11 +801,113 @@ class SupervisionVideoProcessor:
                 self._contact_fusion_low_confidence_count += 1
             if contact_point.outlier_sources:
                 self._contact_outlier_count += 1
-            bev_risk = self.bev_confidence_map.assess(contact_point.pixel)
-            self._bev_checked_count += 1
-            world_position = self.speed_estimator.view_transformer.transform_point(
-                *contact_point.pixel,
+            if not self.metric_speed_admitted:
+                self.speed_estimator.view_transformer = self.view_transformer
+                self.speed_estimator.suppress_measurement(
+                    tracker_id=track.tracker_id,
+                    pixel_point=contact_point.pixel,
+                    timestamp_sec=timestamp_sec,
+                    quality_label="weak_scale",
+                    rejection_reason=(
+                        self.metric_speed_gate_reason
+                        or "metric_calibration_not_trusted"
+                    ),
+                    preserve_previous_speed=False,
+                    measurement_source=contact_point.measurement_source,
+                    measurement_confidence=contact_point.confidence,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason,
+                    speed_geometry_diagnostics=self._speed_geometry_diagnostics(
+                        track,
+                        contact_point,
+                        plane_id=None,
+                        plane_status="not_admitted",
+                        plane_reason=self.metric_speed_gate_reason,
+                    ),
+                )
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    contact_fusion_sources=contact_point.fusion_sources,
+                    contact_fusion_weights=contact_point.fusion_weights,
+                    contact_pixel_covariance=contact_point.pixel_covariance,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                    contact_innovation_score=contact_point.innovation_score,
+                )
+                continue
+            plane_selection = self.metric_plane_set.select(contact_point.pixel)
+            selected_plane = plane_selection.plane
+            if selected_plane is None:
+                self.speed_estimator.suppress_measurement(
+                    tracker_id=track.tracker_id,
+                    pixel_point=contact_point.pixel,
+                    timestamp_sec=timestamp_sec,
+                    quality_label="geometry_invalid",
+                    rejection_reason=plane_selection.reason or "plane_unresolved",
+                    preserve_previous_speed=True,
+                    measurement_source=contact_point.measurement_source,
+                    measurement_confidence=contact_point.confidence,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason,
+                    speed_geometry_diagnostics=self._speed_geometry_diagnostics(
+                        track,
+                        contact_point,
+                        plane_id=None,
+                        plane_status=plane_selection.status,
+                        plane_reason=plane_selection.reason,
+                    ),
+                )
+                continue
+            active_transformer = self.plane_transformers.get(
+                selected_plane.plane_id,
+                self.view_transformer,
             )
+            self.speed_estimator.view_transformer = active_transformer
+            bev_map = self.plane_bev_confidence_maps.get(
+                selected_plane.plane_id,
+                self.bev_confidence_map,
+            )
+            bev_risk = bev_map.assess(contact_point.pixel)
+            self._bev_checked_count += 1
+            world_position = active_transformer.transform_point(*contact_point.pixel)
+            speed_geometry_diagnostics = self._speed_geometry_diagnostics(
+                track,
+                contact_point,
+                plane_id=selected_plane.plane_id,
+                plane_status=plane_selection.status,
+                plane_reason=plane_selection.reason,
+            )
+            if not self.metric_speed_admitted:
+                self.speed_estimator.suppress_measurement(
+                    tracker_id=track.tracker_id,
+                    pixel_point=contact_point.pixel,
+                    timestamp_sec=timestamp_sec,
+                    quality_label="weak_scale",
+                    rejection_reason=(
+                        self.metric_speed_gate_reason
+                        or "metric_calibration_not_trusted"
+                    ),
+                    preserve_previous_speed=False,
+                    measurement_source=contact_point.measurement_source,
+                    measurement_confidence=contact_point.confidence,
+                    local_scale_percentile=bev_risk.local_scale_percentile,
+                    bev_risk_level=bev_risk.risk_level,
+                    bev_risk_reason=bev_risk.risk_reason,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason,
+                    plane_id=selected_plane.plane_id,
+                    speed_geometry_diagnostics=speed_geometry_diagnostics,
+                )
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    contact_fusion_sources=contact_point.fusion_sources,
+                    contact_fusion_weights=contact_point.fusion_weights,
+                    contact_pixel_covariance=contact_point.pixel_covariance,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                    contact_innovation_score=contact_point.innovation_score,
+                )
+                continue
             integrity = self.tracking_integrity_monitor.assess(
                 track,
                 world_position=world_position,
@@ -709,6 +941,8 @@ class SupervisionVideoProcessor:
                     optical_flow_inlier_ratio=contact_point.optical_flow_inlier_ratio,
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
+                    plane_id=selected_plane.plane_id,
+                    speed_geometry_diagnostics=speed_geometry_diagnostics,
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
                     ),
@@ -742,6 +976,43 @@ class SupervisionVideoProcessor:
             elif bev_risk.risk_level == "rejected":
                 measurement_confidence *= 0.25
                 pixel_sigma_px *= 2.5
+            if (
+                track.class_id == 0
+                and (
+                    bev_risk.risk_level == "rejected"
+                    or (
+                        bev_risk.local_scale_percentile is not None
+                        and bev_risk.local_scale_percentile >= 0.95
+                    )
+                )
+            ):
+                self.speed_estimator.suppress_measurement(
+                    tracker_id=track.tracker_id,
+                    pixel_point=contact_point.pixel,
+                    timestamp_sec=timestamp_sec,
+                    quality_label="geometry_invalid",
+                    rejection_reason="far_field_perspective_rejected",
+                    preserve_previous_speed=True,
+                    measurement_source=contact_point.measurement_source,
+                    measurement_confidence=measurement_confidence,
+                    local_scale_percentile=bev_risk.local_scale_percentile,
+                    bev_risk_level=bev_risk.risk_level,
+                    bev_risk_reason=bev_risk.risk_reason,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason,
+                    plane_id=selected_plane.plane_id,
+                    speed_geometry_diagnostics=speed_geometry_diagnostics,
+                )
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    contact_fusion_sources=contact_point.fusion_sources,
+                    contact_fusion_weights=contact_point.fusion_weights,
+                    contact_pixel_covariance=contact_point.pixel_covariance,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                    contact_innovation_score=contact_point.innovation_score,
+                )
+                continue
             if (
                 far_field_person
                 and bev_risk.local_scale_percentile >= 0.85
@@ -781,6 +1052,9 @@ class SupervisionVideoProcessor:
                     bev_risk_level=bev_risk.risk_level,
                     bev_risk_reason=bev_risk.risk_reason,
                     local_scale_percentile=bev_risk.local_scale_percentile,
+                    plane_id=selected_plane.plane_id,
+                    contact_source=contact_point.measurement_source,
+                    speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 continue
 
@@ -815,6 +1089,8 @@ class SupervisionVideoProcessor:
                 pose_ankle_pixel=(
                     pose_contact_point.pixel if pose_contact_point is not None else None
                 ),
+                plane_id=selected_plane.plane_id,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
             )
             latest_record = self.speed_estimator.get_record(track.tracker_id)
             if latest_record is not None:
@@ -899,6 +1175,7 @@ class SupervisionVideoProcessor:
                 source=bbox_contact_point.measurement_source,
                 confidence=bbox_contact_point.confidence,
                 sigma_px=bbox_contact_point.observation_sigma_px,
+                covariance_px=bbox_contact_point.pixel_covariance,
             )
         ]
         if pose_contact_point is not None:
@@ -908,6 +1185,7 @@ class SupervisionVideoProcessor:
                     source=pose_contact_point.measurement_source,
                     confidence=pose_contact_point.confidence,
                     sigma_px=pose_contact_point.observation_sigma_px,
+                    covariance_px=pose_contact_point.pixel_covariance,
                 )
             )
         if flow_contact_point is not None:
@@ -917,6 +1195,7 @@ class SupervisionVideoProcessor:
                     source=flow_contact_point.measurement_source,
                     confidence=flow_contact_point.confidence,
                     sigma_px=flow_contact_point.observation_sigma_px,
+                    covariance_px=flow_contact_point.pixel_covariance,
                     enabled=flow_contact_point.confidence >= 0.25,
                 )
             )
@@ -946,6 +1225,44 @@ class SupervisionVideoProcessor:
     @staticmethod
     def _joined_sources(sources: list[str] | None) -> str | None:
         return ",".join(sources) if sources else None
+
+    @staticmethod
+    def _speed_geometry_diagnostics(
+        track: Track,
+        contact_point: GroundContactPoint,
+        *,
+        plane_id: str | None,
+        plane_status: str,
+        plane_reason: str | None,
+    ) -> dict[str, object]:
+        bbox_height = max(float(track.xyxy[3] - track.xyxy[1]), 1.0)
+        bbox_width = max(float(track.xyxy[2] - track.xyxy[0]), 1.0)
+        aspect_ratio = bbox_width / bbox_height
+        contaminated = bool(
+            track.class_id == 0
+            and (
+                aspect_ratio > 0.85
+                or contact_point.measurement_source.startswith("bbox")
+                and contact_point.confidence < 0.45
+            )
+        )
+        return {
+            "plane_id": plane_id,
+            "plane_status": plane_status,
+            "plane_reason": plane_reason,
+            "bbox_xyxy": list(track.xyxy),
+            "bbox_height_px": bbox_height,
+            "bbox_width_px": bbox_width,
+            "bbox_aspect_ratio": aspect_ratio,
+            "raw_bbox_foot": list(contact_point.raw_pixel),
+            "fused_foot": list(contact_point.pixel),
+            "contact_source": contact_point.measurement_source,
+            "contact_covariance_px": contact_point.pixel_covariance,
+            "contact_confidence": contact_point.confidence,
+            "contact_fusion_confidence": contact_point.fusion_confidence,
+            "contact_fusion_sources": contact_point.fusion_sources,
+            "bbox_contact_contaminated": contaminated,
+        }
 
     def _flow_refined_contact_point(
         self,

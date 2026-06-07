@@ -11,10 +11,110 @@ from domain.calibration.models import (
     HomographyGrid,
     HomographyGridLine,
     HomographyResult,
+    MetricPlaneCalibration,
+    MetricPlaneSet,
 )
 
 
 class CalibrationService:
+    def build_metric_plane_set(
+        self,
+        *,
+        metric_planes: list[dict[str, object]] | None = None,
+        default_control_points: list[CalibrationPoint] | None = None,
+        default_pixel_polygon: list[tuple[float, float]] | None = None,
+        default_world_polygon: list[tuple[float, float]] | None = None,
+        default_trusted: bool = False,
+        default_validation_segments: list[dict[str, object]] | None = None,
+        default_homography: HomographyResult | None = None,
+    ) -> MetricPlaneSet:
+        planes: list[MetricPlaneCalibration] = []
+        explicit_metric_planes = bool(metric_planes)
+        for raw_plane in metric_planes or []:
+            plane = self._metric_plane_from_mapping(raw_plane)
+            if plane is not None:
+                planes.append(plane)
+        if not planes and default_homography is not None:
+            control_points = default_control_points or []
+            pixel_polygon = default_pixel_polygon or [
+                point.pixel for point in control_points[:4]
+            ]
+            world_polygon = default_world_polygon or [
+                point.world for point in control_points[:4]
+            ]
+            if len(pixel_polygon) >= 3 and len(world_polygon) >= 3:
+                planes.append(
+                    MetricPlaneCalibration(
+                        plane_id="road",
+                        plane_kind="road",
+                        pixel_polygon=list(pixel_polygon),
+                        world_polygon=list(world_polygon),
+                        control_points=list(control_points),
+                        validation_segments=list(default_validation_segments or []),
+                        homography=default_homography,
+                        trusted=bool(default_trusted),
+                    )
+                )
+        return MetricPlaneSet(
+            planes=planes,
+            allow_default_fallback=not explicit_metric_planes,
+        )
+
+    def _metric_plane_from_mapping(
+        self,
+        raw_plane: dict[str, object],
+    ) -> MetricPlaneCalibration | None:
+        plane_id = str(raw_plane.get("plane_id") or raw_plane.get("id") or "").strip()
+        if not plane_id:
+            return None
+        plane_kind = str(raw_plane.get("plane_kind") or raw_plane.get("kind") or "road")
+        raw_points = raw_plane.get("control_points")
+        if not isinstance(raw_points, list):
+            return None
+        control_points: list[CalibrationPoint] = []
+        for item in raw_points:
+            if not isinstance(item, dict):
+                return None
+            try:
+                control_points.append(
+                    CalibrationPoint(
+                        pixel_x=float(item["pixel_x"]),
+                        pixel_y=float(item["pixel_y"]),
+                        world_x=float(item["world_x"]),
+                        world_y=float(item["world_y"]),
+                    )
+                )
+            except (KeyError, TypeError, ValueError):
+                return None
+        if len(control_points) < 4:
+            return None
+        validation_segments = raw_plane.get("validation_segments")
+        homography = self.compute_homography_ransac(
+            control_points,
+            random_seed=11,
+            validation_segments=(
+                validation_segments if isinstance(validation_segments, list) else []
+            ),
+        )
+        pixel_polygon = self._polygon_from_raw(raw_plane.get("pixel_polygon"))
+        world_polygon = self._polygon_from_raw(raw_plane.get("world_polygon"))
+        if len(pixel_polygon) < 3:
+            pixel_polygon = [point.pixel for point in control_points[:4]]
+        if len(world_polygon) < 3:
+            world_polygon = [point.world for point in control_points[:4]]
+        return MetricPlaneCalibration(
+            plane_id=plane_id,
+            plane_kind=plane_kind,
+            pixel_polygon=pixel_polygon,
+            world_polygon=world_polygon,
+            control_points=control_points,
+            validation_segments=(
+                validation_segments if isinstance(validation_segments, list) else []
+            ),
+            homography=homography,
+            trusted=bool(raw_plane.get("trusted", raw_plane.get("calibration_trusted", False))),
+        )
+
     def validate_points(self, points: list[CalibrationPoint]) -> bool:
         if len(points) < 4:
             raise ValueError("homography calibration requires at least 4 points")
@@ -252,6 +352,20 @@ class CalibrationService:
             road_plane_polygon_world=clipping_polygon,
             lines=lines,
         )
+
+    @staticmethod
+    def _polygon_from_raw(value: object) -> list[tuple[float, float]]:
+        if not isinstance(value, list):
+            return []
+        polygon: list[tuple[float, float]] = []
+        for point in value:
+            if not isinstance(point, (list, tuple)) or len(point) != 2:
+                return []
+            try:
+                polygon.append((float(point[0]), float(point[1])))
+            except (TypeError, ValueError):
+                return []
+        return polygon
 
     @staticmethod
     def _clip_segment_to_convex_polygon(

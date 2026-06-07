@@ -291,7 +291,15 @@ def test_scene_profile_preset_does_not_generate_homography_grid() -> None:
 
     assert report["homography_grid"] is None
     assert report["calibration_diagnostics"]["calibration_trusted"] is False
+    assert report["calibration_diagnostics"]["metric_speed_admitted"] is False
+    assert (
+        report["calibration_diagnostics"]["metric_speed_gate_reason"]
+        == "metric_calibration_not_trusted"
+    )
     assert report["calibration_diagnostics"]["weak_scale_mode"] is True
+    assert report["active_tracks"][0]["speed_kmh"] is None
+    assert report["active_tracks"][0]["physics_valid"] is False
+    assert report["active_tracks"][0]["quality_label"] == "weak_scale"
     assert report["active_tracks"][0]["scale_confidence_label"] == "weak_scale"
     assert report["active_tracks"][0]["calibration_speed_posterior"] is None
     assert report["active_tracks"][0]["joint_speed_posterior"] is None
@@ -300,6 +308,103 @@ def test_scene_profile_preset_does_not_generate_homography_grid() -> None:
         "untrusted_calibration_grid_suppressed"
         in report["calibration_diagnostics"]["error_sources"]
     )
+
+
+def test_metric_speed_gate_rejects_missing_independent_validation() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=FakeDetector(),
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 5], [100, 5]),
+        fps=24.0,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+            "manual_control_point_count": 6,
+            "independent_validation_segment_count": 0,
+        },
+    ).process_frames(
+        [VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), frame_index=1, timestamp_sec=0.0)]
+    )
+
+    assert report["calibration_diagnostics"]["calibration_trusted"] is True
+    assert report["calibration_diagnostics"]["metric_speed_admitted"] is False
+    assert (
+        report["calibration_diagnostics"]["metric_speed_gate_reason"]
+        == "missing_independent_metric_validation_segment"
+    )
+    assert report["active_tracks"][0]["speed_kmh"] is None
+    assert report["active_tracks"][0]["physics_valid"] is False
+    assert report["active_tracks"][0]["quality_label"] == "weak_scale"
+
+
+def test_metric_plane_selection_is_propagated_to_track_report() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+    detector = SequenceDetector(
+        {
+            1: [Detection([60.0, 10.0, 72.0, 42.0], 0.9, 0, "person")],
+            2: [Detection([62.0, 10.0, 74.0, 42.0], 0.9, 0, "person")],
+        }
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=detector,
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 50], [100, 50]),
+        fps=24.0,
+        frame_width=100,
+        frame_height=100,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": False,
+            "metric_planes": [
+                {
+                    "plane_id": "sidewalk",
+                    "plane_kind": "sidewalk",
+                    "trusted": True,
+                    "pixel_polygon": [[50, 0], [100, 0], [100, 100], [50, 100]],
+                    "world_polygon": [[0, 0], [5, 0], [5, 10], [0, 10]],
+                    "control_points": [
+                        {"pixel_x": 50, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 0, "world_x": 5, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 100, "world_x": 5, "world_y": 10},
+                        {"pixel_x": 50, "pixel_y": 100, "world_x": 0, "world_y": 10},
+                    ],
+                }
+            ],
+        },
+    ).process_frames(
+        [
+            VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), 1, 0.0),
+            VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), 2, 1.0),
+        ]
+    )
+
+    track = report["active_tracks"][0]
+
+    assert report["calibration_diagnostics"]["metric_speed_admitted"] is True
+    assert report["calibration_diagnostics"]["metric_planes"][0]["plane_id"] == "sidewalk"
+    assert track["plane_id"] == "sidewalk"
+    assert track["contact_source"] is not None
+    assert track["world_position_covariance"] is not None
+    assert track["speed_geometry_diagnostics"]["plane_status"] == "selected"
 
 
 def test_real_video_processor_counts_line_crossing_from_persistent_track_geometry() -> None:

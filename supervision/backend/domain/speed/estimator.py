@@ -14,6 +14,7 @@ from domain.speed.filters import max_speed_filter, min_displacement_filter
 from domain.speed.kalman import (
     ConstantAccelerationKalmanFilter2D,
     KalmanFilter2D,
+    MetricGroundSpeedFilter,
     kalman_config_for_motion_profile,
 )
 from domain.speed.models import SpeedRecord, TrackHistory
@@ -64,7 +65,7 @@ class SpeedEstimator:
         self._latest_records: dict[int, SpeedRecord] = {}
         self._kalman_filters: dict[
             int,
-            KalmanFilter2D | ConstantAccelerationKalmanFilter2D,
+            KalmanFilter2D | MetricGroundSpeedFilter | ConstantAccelerationKalmanFilter2D,
         ] = {}
         self._adaptive_noise_controllers: dict[int, AdaptiveMeasurementNoiseController] = {}
         self._perspective_samples: dict[int, list[PerspectiveGuardSample]] = {}
@@ -91,6 +92,8 @@ class SpeedEstimator:
         bbox_height_px: float | None = None,
         pose_ankle_pixel: tuple[float, float] | None = None,
         pose_head_pixel: tuple[float, float] | None = None,
+        plane_id: str | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
     ) -> float | None:
         if motion_profile is None:
             return self._legacy_update(
@@ -138,10 +141,11 @@ class SpeedEstimator:
                 timestamp_sec,
                 bounded_measurement_confidence,
                 local_uncertainty.position_sigma_m,
+                local_scale_percentile,
             )
             self._kalman_filters.setdefault(
                 tracker_id,
-                ConstantAccelerationKalmanFilter2D(
+                MetricGroundSpeedFilter(
                     kalman_config_for_motion_profile(motion_profile.process_noise),
                 ),
             ).update(
@@ -163,6 +167,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=None,
             )
@@ -223,6 +231,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=None,
                 perspective_result=perspective_result,
@@ -232,7 +244,7 @@ class SpeedEstimator:
 
         kalman_filter = self._kalman_filters.setdefault(
             tracker_id,
-            ConstantAccelerationKalmanFilter2D(
+            MetricGroundSpeedFilter(
                 kalman_config_for_motion_profile(motion_profile.process_noise),
             ),
         )
@@ -269,6 +281,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_controller.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -282,6 +298,7 @@ class SpeedEstimator:
             timestamp_sec,
             bounded_measurement_confidence,
             local_uncertainty.position_sigma_m,
+            local_scale_percentile,
         )
         kalman_state = kalman_filter.update(
             world_position,
@@ -304,6 +321,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -325,6 +346,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
             )
@@ -412,6 +437,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
                 perspective_result=perspective_result,
@@ -461,6 +490,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
                 perspective_result=perspective_result,
@@ -487,6 +520,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
                 perspective_result=perspective_result,
@@ -563,6 +600,10 @@ class SpeedEstimator:
                 measurement_confidence=bounded_measurement_confidence,
                 local_scale_factor=local_uncertainty.local_scale_factor,
                 local_scale_percentile=local_scale_percentile,
+                plane_id=plane_id,
+                contact_source=measurement_source,
+                world_position_covariance=position_covariance,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
                 adaptive_measurement_noise_multiplier=adaptive_state.multiplier,
                 innovation_nis=innovation_nis,
                 perspective_result=perspective_result,
@@ -631,6 +672,10 @@ class SpeedEstimator:
                 pedestrian_result.recommended_speed_scale_factor
             ),
             pedestrian_geometry_model_reference=pedestrian_result.model_reference,
+            plane_id=plane_id,
+            contact_source=measurement_source,
+            world_position_covariance=position_covariance,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
         )
         return smoothed_speed
 
@@ -747,6 +792,79 @@ class SpeedEstimator:
             return
         self._latest_records[tracker_id] = replace(record, **cast(Any, fields))
 
+    def suppress_measurement(
+        self,
+        *,
+        tracker_id: int,
+        pixel_point: tuple[float, float],
+        timestamp_sec: float,
+        quality_label: str,
+        rejection_reason: str,
+        preserve_previous_speed: bool = False,
+        measurement_source: str | None = None,
+        measurement_confidence: float | None = None,
+        local_scale_percentile: float | None = None,
+        bev_risk_level: str | None = None,
+        bev_risk_reason: str | None = None,
+        scale_confidence_label: str | None = None,
+        weak_calibration_reason: str | None = None,
+        plane_id: str | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
+    ) -> SpeedRecord:
+        world_position = self.view_transformer.transform_point(*pixel_point)
+        previous = self._latest_records.get(tracker_id)
+        keep_previous = (
+            preserve_previous_speed
+            and previous is not None
+            and previous.physics_valid
+            and previous.speed_kmh is not None
+        )
+        record = SpeedRecord(
+            tracker_id=tracker_id,
+            speed_kmh=previous.speed_kmh if keep_previous and previous is not None else None,
+            timestamp_sec=timestamp_sec,
+            world_x=world_position[0],
+            world_y=world_position[1],
+            speed_uncertainty_kmh=(
+                previous.speed_uncertainty_kmh
+                if keep_previous and previous is not None
+                else None
+            ),
+            speed_confidence=(
+                previous.speed_confidence if keep_previous and previous is not None else None
+            ),
+            position_rmse_m=self.position_rmse_m,
+            velocity_x_mps=(
+                previous.velocity_x_mps if keep_previous and previous is not None else None
+            ),
+            velocity_y_mps=(
+                previous.velocity_y_mps if keep_previous and previous is not None else None
+            ),
+            heading_deg=previous.heading_deg if keep_previous and previous is not None else None,
+            physics_valid=False,
+            quality_label=quality_label,
+            rejection_reason=rejection_reason,
+            track_age_frames=(
+                len(self._histories[tracker_id].positions)
+                if tracker_id in self._histories
+                else 0
+            ),
+            measurement_source=measurement_source,
+            measurement_confidence=measurement_confidence,
+            local_scale_percentile=local_scale_percentile,
+            bev_risk_level=bev_risk_level,
+            bev_risk_reason=bev_risk_reason,
+            speed_frozen=bool(keep_previous),
+            scale_confidence_label=scale_confidence_label,
+            weak_calibration_reason=weak_calibration_reason,
+            geometry_rejection_reason=rejection_reason,
+            plane_id=plane_id,
+            contact_source=measurement_source,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
+        )
+        self._latest_records[tracker_id] = record
+        return record
+
     def reset_track(self, tracker_id: int) -> None:
         self._histories.pop(tracker_id, None)
         self._latest_records.pop(tracker_id, None)
@@ -782,6 +900,10 @@ class SpeedEstimator:
         measurement_confidence: float | None = None,
         local_scale_factor: float | None = None,
         local_scale_percentile: float | None = None,
+        plane_id: str | None = None,
+        contact_source: str | None = None,
+        world_position_covariance: list[list[float]] | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
         adaptive_measurement_noise_multiplier: float | None = None,
         innovation_nis: float | None = None,
         perspective_result: PerspectiveGuardResult | None = None,
@@ -820,6 +942,10 @@ class SpeedEstimator:
             measurement_confidence=measurement_confidence,
             local_scale_factor=local_scale_factor,
             local_scale_percentile=local_scale_percentile,
+            plane_id=plane_id,
+            contact_source=contact_source,
+            world_position_covariance=world_position_covariance,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
             adaptive_measurement_noise_multiplier=adaptive_measurement_noise_multiplier,
             innovation_nis=innovation_nis,
             perspective_speed_inflation_detected=(
@@ -1004,10 +1130,13 @@ class SpeedEstimator:
             return None
         latest_timestamp = history.timestamps[-1]
         window_start = latest_timestamp - regression_window_sec
-        samples: list[tuple[float, tuple[float, float], float, float]] = []
+        samples: list[tuple[float, tuple[float, float], float, float, float | None]] = []
         has_quality = (
             len(history.measurement_confidences) == len(history.timestamps)
             and len(history.position_sigmas_m) == len(history.timestamps)
+        )
+        has_scale_percentiles = len(history.local_scale_percentiles) == len(
+            history.timestamps,
         )
         for index, (timestamp, position) in enumerate(
             zip(history.timestamps, history.positions, strict=True)
@@ -1016,24 +1145,41 @@ class SpeedEstimator:
                 continue
             confidence = history.measurement_confidences[index] if has_quality else 1.0
             sigma = history.position_sigmas_m[index] if has_quality else 0.0
-            samples.append((timestamp, position, confidence, sigma))
+            scale_percentile = (
+                history.local_scale_percentiles[index] if has_scale_percentiles else None
+            )
+            samples.append((timestamp, position, confidence, sigma, scale_percentile))
         if len(samples) < 3:
             return None
-        timestamps = [timestamp for timestamp, _, _, _ in samples]
+        timestamps = [timestamp for timestamp, _, _, _, _ in samples]
         duration_sec = timestamps[-1] - timestamps[0]
         if duration_sec < 0.25:
             return None
-        mean_t = sum(timestamps) / len(timestamps)
+        xs = [position[0] for _, position, _, _, _ in samples]
+        ys = [position[1] for _, position, _, _, _ in samples]
+        base_weights = [
+            (
+                max(0.05, min(1.0, confidence))
+                / (1.0 + max(0.0, sigma))
+                * SpeedEstimator._perspective_regression_weight(scale_percentile)
+            )
+            for _, _, confidence, sigma, scale_percentile in samples
+        ]
+        base_weight_sum = max(sum(base_weights), 1e-9)
+        mean_t = (
+            sum(
+                weight * timestamp
+                for weight, timestamp in zip(base_weights, timestamps, strict=True)
+            )
+            / base_weight_sum
+        )
         centered_t = [timestamp - mean_t for timestamp in timestamps]
-        denominator = sum(value * value for value in centered_t)
+        denominator = sum(
+            weight * value * value
+            for weight, value in zip(base_weights, centered_t, strict=True)
+        )
         if denominator <= 1e-9:
             return None
-        xs = [position[0] for _, position, _, _ in samples]
-        ys = [position[1] for _, position, _, _ in samples]
-        base_weights = [
-            max(0.05, min(1.0, confidence)) / (1.0 + max(0.0, sigma))
-            for _, _, confidence, sigma in samples
-        ]
         mean_x, vx = SpeedEstimator._weighted_line_fit(centered_t, xs, base_weights)
         mean_y, vy = SpeedEstimator._weighted_line_fit(centered_t, ys, base_weights)
         residuals = [
@@ -1073,6 +1219,15 @@ class SpeedEstimator:
             displacement_m=float(speed_mps * duration_sec),
             residual_m=float(residual_m),
         )
+
+    @staticmethod
+    def _perspective_regression_weight(local_scale_percentile: float | None) -> float:
+        if local_scale_percentile is None:
+            return 1.0
+        percentile = max(0.0, min(1.0, float(local_scale_percentile)))
+        if percentile <= 0.75:
+            return 1.0
+        return max(0.05, 1.0 / (1.0 + ((percentile - 0.75) * 10.0) ** 2))
 
     @staticmethod
     def _weighted_line_fit(

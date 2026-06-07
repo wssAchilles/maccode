@@ -27,6 +27,7 @@ class CalibrationEntryPayload(BaseModel):
     road_plane_polygon_pixel: list[list[float]] | None = None
     road_plane_polygon_world: list[list[float]] | None = None
     validation_segments: list[dict[str, Any]] = Field(default_factory=list)
+    metric_planes: list[dict[str, Any]] = Field(default_factory=list)
     camera_intrinsics_prior: dict[str, Any] = Field(default_factory=dict)
     camera_mount_prior: dict[str, Any] = Field(default_factory=dict)
     vehicle_3d_priors: dict[str, Any] = Field(default_factory=dict)

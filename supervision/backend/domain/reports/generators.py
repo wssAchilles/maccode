@@ -195,6 +195,10 @@ class ReportGenerator:
                 pedestrian_geometry_model_reference=(
                     record.pedestrian_geometry_model_reference
                 ),
+                plane_id=record.plane_id,
+                contact_source=record.contact_source,
+                world_position_covariance=record.world_position_covariance,
+                speed_geometry_diagnostics=record.speed_geometry_diagnostics,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])
