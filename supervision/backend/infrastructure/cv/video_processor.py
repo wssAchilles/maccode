@@ -392,6 +392,26 @@ class SupervisionVideoProcessor:
         ]
         if not self.calibration_trusted:
             error_sources.append("untrusted_calibration_grid_suppressed")
+        intrinsics_unverified = self._intrinsics_unverified()
+        intrinsics_verified = not intrinsics_unverified
+        homography_coordinate_space = str(
+            self.calibration_context.get("homography_coordinate_space", "raw_frame"),
+        )
+        undistortion_applied = bool(
+            self.calibration_context.get("undistortion_applied", False),
+        )
+        undistorted_metric_profile = bool(
+            intrinsics_verified
+            and undistortion_applied
+            and homography_coordinate_space == "undistorted_frame"
+        )
+        coordinate_space_warning = None
+        if (
+            self.calibration_context.get("camera_intrinsics") is not None
+            and homography_coordinate_space != "undistorted_frame"
+        ):
+            coordinate_space_warning = "intrinsics_present_but_homography_raw_frame"
+            error_sources.append(coordinate_space_warning)
         diagnostics = {
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
@@ -431,7 +451,12 @@ class SupervisionVideoProcessor:
             "undistorted_frame_size": self.calibration_context.get(
                 "undistorted_frame_size",
             ),
-            "intrinsics_unverified": self._intrinsics_unverified(),
+            "intrinsics_unverified": intrinsics_unverified,
+            "intrinsics_verified": intrinsics_verified,
+            "undistortion_applied": undistortion_applied,
+            "homography_coordinate_space": homography_coordinate_space,
+            "undistorted_metric_profile": undistorted_metric_profile,
+            "coordinate_space_warning": coordinate_space_warning,
             "camera_intrinsics_prior": self.calibration_context.get(
                 "camera_intrinsics_prior",
                 {},
@@ -529,6 +554,56 @@ class SupervisionVideoProcessor:
             sample_count=200,
             random_seed=23,
         ).to_dict()
+
+    def _joint_physics_posterior(
+        self,
+        record: SpeedRecord | None,
+    ) -> dict[str, object] | None:
+        posterior = self._joint_speed_posterior(record)
+        if posterior is None or record is None:
+            return None
+        posterior = dict(posterior)
+        posterior["speed_posterior_model_reference"] = posterior.get("model_reference")
+        posterior["model_reference"] = "joint_physics_posterior_v1"
+        posterior["primary_risk_source"] = self._primary_physics_risk_source(record)
+        posterior["confidence_factors"] = {
+            "calibration": record.calibration_confidence,
+            "contact": record.contact_confidence,
+            "tracking": record.tracking_confidence,
+            "occlusion": record.occlusion_confidence,
+            "dynamics": record.dynamics_confidence,
+        }
+        return posterior
+
+    @staticmethod
+    def _primary_physics_risk_source(record: SpeedRecord) -> str | None:
+        explicit_reason = (
+            record.confidence_rejection_reason
+            or record.geometry_rejection_reason
+            or record.integrity_rejection_reason
+            or record.rejection_reason
+        )
+        if explicit_reason:
+            return explicit_reason
+        factors = {
+            "calibration": record.calibration_confidence,
+            "contact": record.contact_confidence,
+            "tracking": record.tracking_confidence,
+            "occlusion": record.occlusion_confidence,
+            "dynamics": record.dynamics_confidence,
+        }
+        numeric_factors = {
+            name: float(value)
+            for name, value in factors.items()
+            if isinstance(value, int | float)
+        }
+        if not numeric_factors:
+            return None
+        weakest_name, weakest_value = min(
+            numeric_factors.items(),
+            key=lambda item: item[1],
+        )
+        return f"low_{weakest_name}_confidence" if weakest_value < 0.65 else None
 
     def _speed_nis_diagnostics(
         self,
@@ -829,6 +904,7 @@ class SupervisionVideoProcessor:
                     measurement_confidence=contact_point.confidence,
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=self._speed_geometry_diagnostics(
                         track,
                         contact_point,
@@ -845,6 +921,7 @@ class SupervisionVideoProcessor:
                     contact_fusion_confidence=contact_point.fusion_confidence,
                     contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
                     contact_innovation_score=contact_point.innovation_score,
+                    contact_state=contact_point.contact_state,
                 )
                 continue
             plane_selection = self.metric_plane_set.select(contact_point.pixel)
@@ -861,6 +938,7 @@ class SupervisionVideoProcessor:
                     measurement_confidence=contact_point.confidence,
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=self._speed_geometry_diagnostics(
                         track,
                         contact_point,
@@ -927,6 +1005,7 @@ class SupervisionVideoProcessor:
                         or pedestrian_admission.reason
                     ),
                     plane_id=selected_plane.plane_id,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 self.speed_estimator.annotate_record(
@@ -937,6 +1016,7 @@ class SupervisionVideoProcessor:
                     contact_fusion_confidence=contact_point.fusion_confidence,
                     contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
                     contact_innovation_score=contact_point.innovation_score,
+                    contact_state=contact_point.contact_state,
                 )
                 continue
             integrity = self.tracking_integrity_monitor.assess(
@@ -973,6 +1053,7 @@ class SupervisionVideoProcessor:
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
                     plane_id=selected_plane.plane_id,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
@@ -981,6 +1062,7 @@ class SupervisionVideoProcessor:
                         frozen_record,
                     ),
                     joint_speed_posterior=self._joint_speed_posterior(frozen_record),
+                    joint_physics_posterior=self._joint_physics_posterior(frozen_record),
                 )
                 continue
 
@@ -1032,6 +1114,7 @@ class SupervisionVideoProcessor:
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
                     plane_id=selected_plane.plane_id,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 self.speed_estimator.annotate_record(
@@ -1060,6 +1143,9 @@ class SupervisionVideoProcessor:
                     bev_risk_reason=bev_risk.risk_reason,
                     local_scale_percentile=bev_risk.local_scale_percentile,
                     contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_state=contact_point.contact_state,
+                    contact_source=contact_point.measurement_source,
+                    speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 continue
             if self.scale_confidence_label == "weak_scale":
@@ -1085,6 +1171,7 @@ class SupervisionVideoProcessor:
                     local_scale_percentile=bev_risk.local_scale_percentile,
                     plane_id=selected_plane.plane_id,
                     contact_source=contact_point.measurement_source,
+                    contact_state=contact_point.contact_state,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 continue
@@ -1188,6 +1275,8 @@ class SupervisionVideoProcessor:
                     latest_record,
                 ),
                 joint_speed_posterior=self._joint_speed_posterior(latest_record),
+                joint_physics_posterior=self._joint_physics_posterior(latest_record),
+                contact_state=contact_point.contact_state,
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
@@ -1251,7 +1340,38 @@ class SupervisionVideoProcessor:
                 if flow_contact_point is not None
                 else None
             ),
+            contact_state=self._fused_contact_state(
+                fused.sources,
+                fused.weights,
+                pose_contact_point,
+                flow_contact_point,
+            ),
         )
+
+    @staticmethod
+    def _fused_contact_state(
+        sources: list[str],
+        weights: dict[str, float],
+        pose_contact_point: GroundContactPoint | None,
+        flow_contact_point: GroundContactPoint | None,
+    ) -> str:
+        pose_weight = max(
+            (weights.get(source, 0.0) for source in sources if "pose" in source),
+            default=0.0,
+        )
+        flow_weight = max(
+            (weights.get(source, 0.0) for source in sources if "flow" in source),
+            default=0.0,
+        )
+        if pose_contact_point is not None and pose_weight >= 0.35:
+            return pose_contact_point.contact_state or "stance_foot"
+        if (
+            flow_contact_point is not None
+            and flow_weight >= 0.35
+            and (flow_contact_point.optical_flow_inlier_ratio or 0.0) >= 0.55
+        ):
+            return flow_contact_point.contact_state or "stance_foot"
+        return "unknown"
 
     @staticmethod
     def _joined_sources(sources: list[str] | None) -> str | None:
@@ -1295,6 +1415,7 @@ class SupervisionVideoProcessor:
             "raw_bbox_foot": list(contact_point.raw_pixel),
             "fused_foot": list(contact_point.pixel),
             "contact_source": contact_point.measurement_source,
+            "contact_state": contact_point.contact_state,
             "contact_covariance_px": contact_point.pixel_covariance,
             "contact_confidence": contact_point.confidence,
             "contact_fusion_confidence": contact_point.fusion_confidence,

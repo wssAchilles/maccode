@@ -52,6 +52,7 @@ class SpeedRecord:
     calibration_uncertainty_band_kmh: list[float | None] | None = None
     calibration_speed_posterior: dict[str, object] | None = None
     joint_speed_posterior: dict[str, object] | None = None
+    joint_physics_posterior: dict[str, object] | None = None
     motion_mode: str | None = None
     motion_mode_probability: float | None = None
     imm_speed_kmh: float | None = None
@@ -80,6 +81,7 @@ class SpeedRecord:
     pedestrian_geometry_model_reference: str | None = None
     plane_id: str | None = None
     contact_source: str | None = None
+    contact_state: str | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
     physics_confidence: float | None = None

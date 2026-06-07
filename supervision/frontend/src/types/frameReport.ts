@@ -56,6 +56,8 @@ export interface Track {
   speed_confidence_calibrated?: number | null;
   confidence_calibration_bin?: string | null;
   calibration_uncertainty_band_kmh?: [number | null, number | null] | null;
+  joint_speed_posterior?: Record<string, unknown> | null;
+  joint_physics_posterior?: Record<string, unknown> | null;
   motion_mode?: string | null;
   motion_mode_probability?: number | null;
   imm_speed_kmh?: number | null;
@@ -65,6 +67,7 @@ export interface Track {
   association_rejection_reason?: string | null;
   plane_id?: string | null;
   contact_source?: string | null;
+  contact_state?: string | null;
   world_position_covariance?: number[][] | null;
   speed_geometry_diagnostics?: Record<string, unknown> | null;
   physics_confidence?: number | null;
@@ -183,6 +186,11 @@ export interface CalibrationDiagnostics {
   distortion_coefficients?: number[] | Record<string, unknown> | null;
   undistorted_frame_size?: [number, number] | Record<string, unknown> | null;
   intrinsics_unverified?: boolean;
+  intrinsics_verified?: boolean;
+  undistortion_applied?: boolean;
+  homography_coordinate_space?: string;
+  undistorted_metric_profile?: boolean;
+  coordinate_space_warning?: string | null;
   runtime_homography_source?: string;
   calibration_candidates?: Array<Record<string, unknown>>;
   selected_calibration_candidate_id?: string | null;

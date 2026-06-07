@@ -18,6 +18,7 @@ class GroundContactPoint:
     outlier_sources: list[str] | None = None
     innovation_score: float | None = None
     optical_flow_inlier_ratio: float | None = None
+    contact_state: str | None = None
 
 
 @dataclass
@@ -62,6 +63,7 @@ class GroundContactCorrector:
                 observation_sigma_px=self._base_observation_sigma_px(class_id, width, height),
                 measurement_source="bbox_ground_contact",
                 pixel_covariance=self._bbox_covariance(class_id, width, height),
+                contact_state="unknown",
             )
 
         delta_t = max(timestamp_sec - previous.timestamp_sec, 1e-3)
@@ -101,6 +103,7 @@ class GroundContactCorrector:
                 height,
                 scale=1.0 + correction_px / max(width, height, 1.0) + min(size_drift, 2.0),
             ),
+            contact_state="unknown",
         )
 
     @staticmethod

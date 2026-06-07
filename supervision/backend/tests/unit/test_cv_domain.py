@@ -226,6 +226,63 @@ def test_video_processor_keeps_manual_homography_until_candidate_gate_passes() -
     assert "vehicle_3d_prior_pnp" in rejection_reasons
 
 
+def test_calibration_diagnostics_do_not_mark_raw_homography_as_undistorted() -> None:
+    processor = SupervisionVideoProcessor(
+        detector=object(),  # type: ignore[arg-type]
+        adapter=object(),  # type: ignore[arg-type]
+        calibration=_homography_result(np.eye(3)),
+        zone=ZoneConfig("main", [0, 0], [10, 0]),
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+            "camera_intrinsics": {"fx": 900.0, "fy": 900.0, "cx": 50.0, "cy": 50.0},
+            "distortion_coefficients": [0.1, -0.02, 0.0, 0.0, 0.0],
+        },
+    )
+
+    diagnostics = processor._build_calibration_diagnostics()
+
+    assert diagnostics["homography_coordinate_space"] == "raw_frame"
+    assert diagnostics["undistortion_applied"] is False
+    assert diagnostics["undistorted_metric_profile"] is False
+    assert (
+        diagnostics["coordinate_space_warning"]
+        == "intrinsics_present_but_homography_raw_frame"
+    )
+
+
+def test_contact_fusion_reports_pose_stance_state() -> None:
+    processor = SupervisionVideoProcessor(
+        detector=object(),  # type: ignore[arg-type]
+        adapter=object(),  # type: ignore[arg-type]
+        calibration=_homography_result(np.eye(3)),
+        zone=ZoneConfig("main", [0, 0], [10, 0]),
+    )
+    bbox = GroundContactPoint(
+        pixel=(10.0, 20.0),
+        raw_pixel=(10.0, 20.0),
+        confidence=0.6,
+        source="bbox_ground_contact",
+        measurement_source="bbox_ground_contact",
+        observation_sigma_px=4.0,
+        contact_state="unknown",
+    )
+    pose = GroundContactPoint(
+        pixel=(10.5, 19.5),
+        raw_pixel=(10.5, 19.5),
+        confidence=0.9,
+        source="pose_ankle_ground_contact",
+        measurement_source="pose_ankle_ground_contact",
+        observation_sigma_px=1.0,
+        contact_state="stance_foot",
+    )
+
+    fused = processor._fuse_contact_point(bbox, pose, None)
+
+    assert fused.contact_state == "stance_foot"
+    assert "pose_ankle_ground_contact" in (fused.fusion_sources or [])
+
+
 def test_video_processor_rejects_bev_inconsistent_observation() -> None:
     processor = SupervisionVideoProcessor(
         detector=object(),  # type: ignore[arg-type]

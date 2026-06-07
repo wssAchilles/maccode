@@ -63,6 +63,7 @@ class PoseGroundContactEstimator:
             source="pose_ankle_ground_contact",
             observation_sigma_px=max(1.0, 3.0 / max(best_confidence, 0.1)),
             measurement_source="pose_ankle_ground_contact",
+            contact_state="stance_foot",
         )
 
     def _load_model(self) -> Any:

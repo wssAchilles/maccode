@@ -154,7 +154,13 @@ function trackGeometryLabel(track: Track | null | undefined) {
   }
   const plane = track.plane_id ? `plane ${track.plane_id}` : "plane N/A";
   const contact = track.contact_source ? `contact ${track.contact_source}` : "contact N/A";
-  return `${formatTrackBox(track)} · ${plane} · ${contact}`;
+  const contactState = track.contact_state ? `state ${track.contact_state}` : "state N/A";
+  return `${formatTrackBox(track)} · ${plane} · ${contact} · ${contactState}`;
+}
+
+function posteriorRiskLabel(track: Track | null | undefined) {
+  const risk = track?.joint_physics_posterior?.primary_risk_source;
+  return typeof risk === "string" && risk.length > 0 ? risk : "N/A";
 }
 
 function trackOptionLabel(track: Track) {
@@ -729,6 +735,22 @@ export function RealtimeMonitor({
                   <span>物理有效性</span>
                   <strong>{selectedTrack ? (selectedTrack.physics_valid ? "valid" : selectedTrack.quality_label) : "N/A"}</strong>
                 </div>
+                <div>
+                  <span>接触状态</span>
+                  <strong>{selectedTrack?.contact_state ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>H 坐标系</span>
+                  <strong>{calibrationDiagnostics?.homography_coordinate_space ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>畸变一致性</span>
+                  <strong>
+                    {calibrationDiagnostics?.undistorted_metric_profile
+                      ? "undistorted metric"
+                      : calibrationDiagnostics?.coordinate_space_warning ?? "raw/unchecked"}
+                  </strong>
+                </div>
               </div>
             </section>
 
@@ -760,6 +782,10 @@ export function RealtimeMonitor({
                 <div>
                   <span>主要风险因子</span>
                   <strong>{selectedTrack?.confidence_rejection_reason ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>后验主风险</span>
+                  <strong>{posteriorRiskLabel(selectedTrack)}</strong>
                 </div>
               </div>
             </section>

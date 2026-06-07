@@ -58,6 +58,7 @@ class Track:
     calibration_uncertainty_band_kmh: list[float | None] | None = None
     calibration_speed_posterior: dict[str, object] | None = None
     joint_speed_posterior: dict[str, object] | None = None
+    joint_physics_posterior: dict[str, object] | None = None
     motion_mode: str | None = None
     motion_mode_probability: float | None = None
     imm_speed_kmh: float | None = None
@@ -86,6 +87,7 @@ class Track:
     pedestrian_geometry_model_reference: str | None = None
     plane_id: str | None = None
     contact_source: str | None = None
+    contact_state: str | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
     physics_confidence: float | None = None
@@ -162,6 +164,7 @@ class Track:
         calibration_uncertainty_band_kmh: list[float | None] | None = None,
         calibration_speed_posterior: dict[str, object] | None = None,
         joint_speed_posterior: dict[str, object] | None = None,
+        joint_physics_posterior: dict[str, object] | None = None,
         motion_mode: str | None = None,
         motion_mode_probability: float | None = None,
         imm_speed_kmh: float | None = None,
@@ -190,6 +193,7 @@ class Track:
         pedestrian_geometry_model_reference: str | None = None,
         plane_id: str | None = None,
         contact_source: str | None = None,
+        contact_state: str | None = None,
         world_position_covariance: list[list[float]] | None = None,
         speed_geometry_diagnostics: dict[str, object] | None = None,
         physics_confidence: float | None = None,
@@ -248,6 +252,7 @@ class Track:
             calibration_uncertainty_band_kmh=calibration_uncertainty_band_kmh,
             calibration_speed_posterior=calibration_speed_posterior,
             joint_speed_posterior=joint_speed_posterior,
+            joint_physics_posterior=joint_physics_posterior,
             motion_mode=motion_mode,
             motion_mode_probability=motion_mode_probability,
             imm_speed_kmh=imm_speed_kmh,
@@ -276,6 +281,7 @@ class Track:
             pedestrian_geometry_model_reference=pedestrian_geometry_model_reference,
             plane_id=plane_id,
             contact_source=contact_source,
+            contact_state=contact_state,
             world_position_covariance=world_position_covariance,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
             physics_confidence=physics_confidence,

@@ -830,6 +830,7 @@ class SpeedEstimator:
         scale_confidence_label: str | None = None,
         weak_calibration_reason: str | None = None,
         plane_id: str | None = None,
+        contact_state: str | None = None,
         speed_geometry_diagnostics: dict[str, object] | None = None,
     ) -> SpeedRecord:
         world_position = self.view_transformer.transform_point(*pixel_point)
@@ -881,6 +882,7 @@ class SpeedEstimator:
             geometry_rejection_reason=rejection_reason,
             plane_id=plane_id,
             contact_source=measurement_source,
+            contact_state=contact_state,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
             **self._physics_confidence_fields(
                 position_rmse_m=self.position_rmse_m,
