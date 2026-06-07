@@ -125,14 +125,19 @@ class ProcessedVideoRenderer:
             return (70, 220, 90)
         return (245, 150, 65)
 
-    def _track_label(self, track: dict[str, Any], tracker_id: int) -> str:
+    @staticmethod
+    def _track_label(track: dict[str, Any], tracker_id: int) -> str:
         class_name = str(track.get("class_name", "object"))
         speed = track.get("speed_kmh")
-        if speed is None:
+        physics_valid = bool(track.get("physics_valid", True))
+        if speed is None or not physics_valid:
             speed_text = "N/A"
         else:
             speed_text = f"{float(speed):.1f} km/h"
-        return f"#{tracker_id} {class_name} {speed_text}"
+        quality = None if physics_valid else str(track.get("quality_label") or "invalid")
+        return f"#{tracker_id} {class_name} {speed_text}" + (
+            f" {quality}" if quality else ""
+        )
 
     @staticmethod
     def _track_box(track: dict[str, Any]) -> tuple[int, int, int, int] | None:

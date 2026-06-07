@@ -53,6 +53,7 @@ class CalibrationService:
                         validation_segments=list(default_validation_segments or []),
                         homography=default_homography,
                         trusted=bool(default_trusted),
+                        explicit_metric_plane=False,
                     )
                 )
         return MetricPlaneSet(
@@ -113,6 +114,7 @@ class CalibrationService:
             ),
             homography=homography,
             trusted=bool(raw_plane.get("trusted", raw_plane.get("calibration_trusted", False))),
+            explicit_metric_plane=True,
         )
 
     def validate_points(self, points: list[CalibrationPoint]) -> bool:

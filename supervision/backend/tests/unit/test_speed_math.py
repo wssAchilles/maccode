@@ -5,6 +5,10 @@ import math
 import numpy as np
 import pytest
 from domain.calibration.models import CalibrationPoint
+from domain.calibration.pedestrian_candidate import (
+    PedestrianCalibrationCandidateBuilder,
+    PedestrianTrackSample,
+)
 from domain.calibration.service import CalibrationService
 from domain.speed.estimator import SpeedEstimator
 from domain.speed.filters import max_speed_filter, min_displacement_filter
@@ -248,6 +252,124 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
     assert diagnostic.metrics["sample_count"] == 4
     assert diagnostic.metrics["speed_cv"] is not None
     assert diagnostic.metrics["perspective_coupled_speed_drift"] is True
+
+
+def test_track_geometry_diagnostics_flags_wrong_plane_for_pedestrian() -> None:
+    reports = [
+        {
+            "frame_index": 1,
+            "timestamp_sec": 1.0,
+            "active_tracks": [
+                {
+                    "tracker_id": 13,
+                    "class_id": 0,
+                    "class_name": "person",
+                    "xyxy": [10.0, 10.0, 30.0, 70.0],
+                    "ground_x_m": 0.0,
+                    "ground_y_m": 0.0,
+                    "speed_kmh": 12.0,
+                    "physics_valid": True,
+                    "speed_geometry_diagnostics": {
+                        "bbox_height_px": 60.0,
+                        "fused_foot": [20.0, 70.0],
+                        "plane_id": "road",
+                        "plane_kind": "road",
+                        "plane_status": "default",
+                        "explicit_metric_plane": False,
+                    },
+                }
+            ],
+        },
+        {
+            "frame_index": 2,
+            "timestamp_sec": 2.0,
+            "active_tracks": [
+                {
+                    "tracker_id": 13,
+                    "class_id": 0,
+                    "class_name": "person",
+                    "xyxy": [12.0, 10.0, 32.0, 64.0],
+                    "ground_x_m": 1.0,
+                    "ground_y_m": 0.0,
+                    "speed_kmh": 18.0,
+                    "physics_valid": True,
+                    "speed_geometry_diagnostics": {
+                        "bbox_height_px": 54.0,
+                        "fused_foot": [22.0, 64.0],
+                        "plane_id": "road",
+                        "plane_kind": "road",
+                        "plane_status": "default",
+                        "explicit_metric_plane": False,
+                    },
+                }
+            ],
+        },
+        {
+            "frame_index": 3,
+            "timestamp_sec": 3.0,
+            "active_tracks": [
+                {
+                    "tracker_id": 13,
+                    "class_id": 0,
+                    "class_name": "person",
+                    "xyxy": [14.0, 10.0, 34.0, 58.0],
+                    "ground_x_m": 2.0,
+                    "ground_y_m": 0.0,
+                    "speed_kmh": 22.0,
+                    "physics_valid": True,
+                    "speed_geometry_diagnostics": {
+                        "bbox_height_px": 48.0,
+                        "fused_foot": [24.0, 58.0],
+                        "plane_id": "road",
+                        "plane_kind": "road",
+                        "plane_status": "default",
+                        "explicit_metric_plane": False,
+                    },
+                }
+            ],
+        },
+    ]
+
+    diagnostic = TrackGeometryDiagnosticBuilder().build(reports, tracker_id=13)
+
+    assert "missing_pedestrian_metric_plane" in diagnostic.metrics["root_cause_verdicts"]
+    assert "wrong_plane_likely" in diagnostic.metrics["root_cause_verdicts"]
+
+
+def test_pedestrian_candidate_builder_recovers_straight_walking_candidate() -> None:
+    samples = [
+        PedestrianTrackSample(
+            timestamp_sec=index / 10.0,
+            foot_pixel=(20.0 + index * 3.0, 50.0 + math.sin(index * math.pi / 2.0)),
+            head_pixel=(20.0 + index * 3.0, 15.0 + math.sin(index * math.pi / 2.0)),
+        )
+        for index in range(12)
+    ]
+
+    candidate = PedestrianCalibrationCandidateBuilder().build(samples)
+
+    assert candidate.walking_vp_pixel is not None
+    assert candidate.quality_score > 0.65
+    assert candidate.foot_periodicity_score > 0.3
+    assert candidate.trusted is False
+    assert candidate.rejection_reason == "requires_metric_validation_segments"
+
+
+def test_pedestrian_candidate_builder_rejects_curved_or_noisy_trace() -> None:
+    samples = [
+        PedestrianTrackSample(
+            timestamp_sec=index / 10.0,
+            foot_pixel=(20.0 + index * 2.0, 50.0 + (index % 3) * 12.0),
+            head_pixel=(20.0 + index * 2.0, 15.0 + (index % 3) * 12.0),
+        )
+        for index in range(12)
+    ]
+
+    candidate = PedestrianCalibrationCandidateBuilder().build(samples)
+
+    assert candidate.trusted is False
+    assert candidate.quality_score < 0.65
+    assert candidate.rejection_reason == "pedestrian_trace_quality_gate_failed"
 
 
 def test_speed_estimator_filters_static_and_unrealistic_motion() -> None:

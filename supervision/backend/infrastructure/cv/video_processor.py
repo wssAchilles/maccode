@@ -29,6 +29,7 @@ from domain.speed.estimator import SpeedEstimator
 from domain.speed.ground_contact import GroundContactCorrector, GroundContactPoint
 from domain.speed.models import SpeedRecord
 from domain.speed.nis_diagnostics import NISDiagnosticsAnalyzer
+from domain.speed.pedestrian_admission import assess_pedestrian_metric_admission
 from domain.speed.posterior import SpeedPosteriorAnalyzer
 from domain.speed.trajectory_reconstruction import TrajectoryReconstructor
 from domain.speed.view_transformer import ViewTransformer
@@ -423,6 +424,14 @@ class SupervisionVideoProcessor:
             "world_to_pixel_rmse_px": self.calibration.world_to_pixel_rmse_px,
             "reprojection_rmse_px": self.calibration.world_to_pixel_rmse_px,
             "validation_max_error_px": self.validation_max_error_px,
+            "camera_intrinsics": self.calibration_context.get("camera_intrinsics"),
+            "distortion_coefficients": self.calibration_context.get(
+                "distortion_coefficients",
+            ),
+            "undistorted_frame_size": self.calibration_context.get(
+                "undistorted_frame_size",
+            ),
+            "intrinsics_unverified": self._intrinsics_unverified(),
             "camera_intrinsics_prior": self.calibration_context.get(
                 "camera_intrinsics_prior",
                 {},
@@ -734,6 +743,9 @@ class SupervisionVideoProcessor:
             return []
         return [dict(item) for item in value if isinstance(item, dict)]
 
+    def _intrinsics_unverified(self) -> bool:
+        return not isinstance(self.calibration_context.get("camera_intrinsics"), dict)
+
     def _default_metric_pixel_polygon(self) -> list[tuple[float, float]]:
         return [
             (0.0, 0.0),
@@ -844,7 +856,7 @@ class SupervisionVideoProcessor:
                     timestamp_sec=timestamp_sec,
                     quality_label="geometry_invalid",
                     rejection_reason=plane_selection.reason or "plane_unresolved",
-                    preserve_previous_speed=True,
+                    preserve_previous_speed=False,
                     measurement_source=contact_point.measurement_source,
                     measurement_confidence=contact_point.confidence,
                     scale_confidence_label=self.scale_confidence_label,
@@ -873,20 +885,36 @@ class SupervisionVideoProcessor:
             speed_geometry_diagnostics = self._speed_geometry_diagnostics(
                 track,
                 contact_point,
+                selected_plane=selected_plane,
                 plane_id=selected_plane.plane_id,
                 plane_status=plane_selection.status,
                 plane_reason=plane_selection.reason,
             )
-            if not self.metric_speed_admitted:
+            pedestrian_admission = assess_pedestrian_metric_admission(
+                class_id=track.class_id,
+                plane_selection=plane_selection,
+                contact_point=contact_point,
+                bbox_contact_contaminated=bool(
+                    speed_geometry_diagnostics.get("bbox_contact_contaminated"),
+                ),
+            )
+            speed_geometry_diagnostics.update(
+                {
+                    "pedestrian_metric_admitted": pedestrian_admission.admitted,
+                    "pedestrian_metric_rejection_reason": pedestrian_admission.reason,
+                    "pedestrian_requires_explicit_plane": (
+                        pedestrian_admission.requires_explicit_plane
+                    ),
+                }
+            )
+            if not pedestrian_admission.admitted:
                 self.speed_estimator.suppress_measurement(
                     tracker_id=track.tracker_id,
                     pixel_point=contact_point.pixel,
                     timestamp_sec=timestamp_sec,
-                    quality_label="weak_scale",
-                    rejection_reason=(
-                        self.metric_speed_gate_reason
-                        or "metric_calibration_not_trusted"
-                    ),
+                    quality_label="geometry_invalid",
+                    rejection_reason=pedestrian_admission.reason
+                    or "person_metric_plane_required",
                     preserve_previous_speed=False,
                     measurement_source=contact_point.measurement_source,
                     measurement_confidence=contact_point.confidence,
@@ -894,7 +922,10 @@ class SupervisionVideoProcessor:
                     bev_risk_level=bev_risk.risk_level,
                     bev_risk_reason=bev_risk.risk_reason,
                     scale_confidence_label=self.scale_confidence_label,
-                    weak_calibration_reason=self.weak_calibration_reason,
+                    weak_calibration_reason=(
+                        self.weak_calibration_reason
+                        or pedestrian_admission.reason
+                    ),
                     plane_id=selected_plane.plane_id,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
@@ -1231,6 +1262,7 @@ class SupervisionVideoProcessor:
         track: Track,
         contact_point: GroundContactPoint,
         *,
+        selected_plane: object | None = None,
         plane_id: str | None,
         plane_status: str,
         plane_reason: str | None,
@@ -1248,8 +1280,14 @@ class SupervisionVideoProcessor:
         )
         return {
             "plane_id": plane_id,
+            "plane_kind": getattr(selected_plane, "plane_kind", None),
             "plane_status": plane_status,
             "plane_reason": plane_reason,
+            "explicit_metric_plane": bool(
+                getattr(selected_plane, "explicit_metric_plane", False),
+            )
+            if selected_plane is not None
+            else False,
             "bbox_xyxy": list(track.xyxy),
             "bbox_height_px": bbox_height,
             "bbox_width_px": bbox_width,

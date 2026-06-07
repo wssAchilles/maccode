@@ -407,6 +407,95 @@ def test_metric_plane_selection_is_propagated_to_track_report() -> None:
     assert track["speed_geometry_diagnostics"]["plane_status"] == "selected"
 
 
+def test_pedestrian_default_road_plane_does_not_output_metric_speed() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+    detector = SequenceDetector(
+        {1: [Detection([20.0, 10.0, 32.0, 52.0], 0.9, 0, "person")]}
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=detector,
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 50], [100, 50]),
+        fps=24.0,
+        frame_width=100,
+        frame_height=100,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": True,
+        },
+    ).process_frames([VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), 1, 0.0)])
+
+    track = report["active_tracks"][0]
+
+    assert track["speed_kmh"] is None
+    assert track["physics_valid"] is False
+    assert track["rejection_reason"] == "person_metric_plane_required"
+    assert track["speed_geometry_diagnostics"]["pedestrian_metric_admitted"] is False
+    assert (
+        track["speed_geometry_diagnostics"]["pedestrian_metric_rejection_reason"]
+        == "person_metric_plane_required"
+    )
+
+
+def test_pedestrian_bbox_contact_contamination_blocks_sidewalk_speed() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 10, 0),
+            CalibrationPoint(100, 100, 10, 10),
+            CalibrationPoint(0, 100, 0, 10),
+        ]
+    )
+    detector = SequenceDetector(
+        {1: [Detection([55.0, 20.0, 95.0, 55.0], 0.9, 0, "person")]}
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=detector,
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 50], [100, 50]),
+        fps=24.0,
+        frame_width=100,
+        frame_height=100,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": False,
+            "metric_planes": [
+                {
+                    "plane_id": "sidewalk_main",
+                    "plane_kind": "sidewalk",
+                    "trusted": True,
+                    "pixel_polygon": [[50, 0], [100, 0], [100, 100], [50, 100]],
+                    "world_polygon": [[0, 0], [5, 0], [5, 10], [0, 10]],
+                    "control_points": [
+                        {"pixel_x": 50, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 0, "world_x": 5, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 100, "world_x": 5, "world_y": 10},
+                        {"pixel_x": 50, "pixel_y": 100, "world_x": 0, "world_y": 10},
+                    ],
+                }
+            ],
+        },
+    ).process_frames([VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), 1, 0.0)])
+
+    track = report["active_tracks"][0]
+
+    assert track["speed_kmh"] is None
+    assert track["physics_valid"] is False
+    assert track["rejection_reason"] == "pedestrian_contact_contaminated"
+    assert track["speed_geometry_diagnostics"]["bbox_contact_contaminated"] is True
+
+
 def test_real_video_processor_counts_line_crossing_from_persistent_track_geometry() -> None:
     calibration = CalibrationService().compute_homography(
         [

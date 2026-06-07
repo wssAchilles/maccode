@@ -58,6 +58,7 @@ class MetricPlaneCalibration:
     validation_segments: list[dict[str, object]]
     homography: HomographyResult
     trusted: bool
+    explicit_metric_plane: bool = True
 
     def contains_pixel(self, pixel: tuple[float, float]) -> bool:
         return self._point_in_polygon(pixel, self.pixel_polygon)
@@ -67,6 +68,7 @@ class MetricPlaneCalibration:
             "plane_id": self.plane_id,
             "plane_kind": self.plane_kind,
             "trusted": self.trusted,
+            "explicit_metric_plane": self.explicit_metric_plane,
             "control_point_count": len(self.control_points),
             "validation_segment_count": len(self.validation_segments),
             "pixel_polygon": [[x, y] for x, y in self.pixel_polygon],

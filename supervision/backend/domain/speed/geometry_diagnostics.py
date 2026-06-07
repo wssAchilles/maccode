@@ -26,15 +26,23 @@ class TrackGeometryDiagnostic:
             "bbox_height_px",
             "raw_bbox_foot",
             "fused_foot",
+            "foot_pixel",
             "contact_source",
             "contact_covariance_px",
             "plane_id",
+            "plane_kind",
             "plane_status",
+            "explicit_metric_plane",
+            "pedestrian_metric_admitted",
+            "pedestrian_metric_rejection_reason",
+            "bbox_contact_contaminated",
             "world_x",
             "world_y",
+            "world_xy",
             "local_scale_factor",
             "local_scale_percentile",
             "position_covariance",
+            "Sigma_world",
             "instantaneous_speed_kmh",
             "filtered_speed_kmh",
             "physics_valid",
@@ -99,23 +107,39 @@ class TrackGeometryDiagnosticBuilder:
                     "frame_index": report.get("frame_index"),
                     "timestamp_sec": timestamp,
                     "tracker_id": tracker_id,
+                    "class_id": track.get("class_id"),
                     "class_name": track.get("class_name"),
                     "bbox_xyxy": track.get("xyxy"),
                     "bbox_height_px": diagnostics.get("bbox_height_px"),
                     "raw_bbox_foot": diagnostics.get("raw_bbox_foot"),
                     "fused_foot": diagnostics.get("fused_foot"),
+                    "foot_pixel": diagnostics.get("fused_foot"),
                     "contact_source": track.get("contact_source")
                     or diagnostics.get("contact_source")
                     or track.get("measurement_source"),
                     "contact_covariance_px": track.get("contact_pixel_covariance")
                     or diagnostics.get("contact_covariance_px"),
                     "plane_id": track.get("plane_id") or diagnostics.get("plane_id"),
+                    "plane_kind": diagnostics.get("plane_kind"),
                     "plane_status": diagnostics.get("plane_status"),
+                    "explicit_metric_plane": diagnostics.get("explicit_metric_plane"),
+                    "pedestrian_metric_admitted": diagnostics.get(
+                        "pedestrian_metric_admitted",
+                    ),
+                    "pedestrian_metric_rejection_reason": diagnostics.get(
+                        "pedestrian_metric_rejection_reason",
+                    ),
+                    "bbox_contact_contaminated": diagnostics.get(
+                        "bbox_contact_contaminated",
+                    ),
                     "world_x": world[0] if world is not None else None,
                     "world_y": world[1] if world is not None else None,
+                    "world_xy": list(world) if world is not None else None,
                     "local_scale_factor": track.get("local_scale_factor"),
                     "local_scale_percentile": track.get("local_scale_percentile"),
                     "position_covariance": track.get("world_position_covariance")
+                    or track.get("position_covariance"),
+                    "Sigma_world": track.get("world_position_covariance")
                     or track.get("position_covariance"),
                     "instantaneous_speed_kmh": instantaneous_speed,
                     "filtered_speed_kmh": track.get("speed_kmh"),
@@ -173,6 +197,7 @@ class TrackGeometryDiagnosticBuilder:
                 scales,
                 inverse_heights,
             ),
+            "root_cause_verdicts": _root_cause_verdicts(rows, speeds, scales, inverse_heights),
         }
 
 
@@ -282,6 +307,50 @@ def _perspective_coupled(
         (scale_corr is not None and abs(scale_corr) >= 0.6)
         or (height_corr is not None and abs(height_corr) >= 0.6)
     )
+
+
+def _root_cause_verdicts(
+    rows: list[dict[str, object]],
+    speeds: list[float],
+    scales: list[float],
+    inverse_heights: list[float],
+) -> list[str]:
+    verdicts: list[str] = []
+    if any(_is_pedestrian(row) and not _truthy(row.get("explicit_metric_plane")) for row in rows):
+        verdicts.append("missing_pedestrian_metric_plane")
+    if any(
+        _is_pedestrian(row)
+        and (
+            str(row.get("plane_kind") or "").lower() == "road"
+            or str(row.get("plane_status") or "").lower() == "default"
+        )
+        for row in rows
+    ):
+        verdicts.append("wrong_plane_likely")
+    if any(_truthy(row.get("bbox_contact_contaminated")) for row in rows):
+        verdicts.append("bbox_contact_contaminated")
+    if _perspective_coupled(speeds, scales, inverse_heights):
+        verdicts.append("perspective_coupled_speed_drift")
+    if any(
+        str(row.get("pedestrian_metric_rejection_reason") or "") == "intrinsics_unverified"
+        for row in rows
+    ):
+        verdicts.append("intrinsics_or_distortion_likely")
+    return verdicts
+
+
+def _is_pedestrian(row: dict[str, object]) -> bool:
+    class_id = row.get("class_id")
+    class_name = str(row.get("class_name") or "").lower()
+    return class_id == 0 or class_name == "person"
+
+
+def _truthy(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in {"1", "true", "yes"}
+    return bool(value)
 
 
 def _csv_value(value: object) -> object:

@@ -172,6 +172,10 @@ export interface CalibrationDiagnostics {
   pixel_to_world_rmse_m?: number;
   world_to_pixel_rmse_px?: number;
   validation_max_error_px?: number | null;
+  camera_intrinsics?: Record<string, unknown> | null;
+  distortion_coefficients?: number[] | Record<string, unknown> | null;
+  undistorted_frame_size?: [number, number] | Record<string, unknown> | null;
+  intrinsics_unverified?: boolean;
   runtime_homography_source?: string;
   calibration_candidates?: Array<Record<string, unknown>>;
   selected_calibration_candidate_id?: string | null;

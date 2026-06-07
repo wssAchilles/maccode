@@ -25,3 +25,20 @@ def test_renderer_accepts_numeric_pixel_box() -> None:
     }
 
     assert ProcessedVideoRenderer._track_box(track) == (1, 2, 11, 12)
+
+
+def test_renderer_does_not_print_invalid_frozen_speed_as_metric_speed() -> None:
+    track = {
+        "tracker_id": 30,
+        "class_name": "person",
+        "speed_kmh": 15.5,
+        "physics_valid": False,
+        "quality_label": "geometry_invalid",
+        "rejection_reason": "person_metric_plane_required",
+    }
+
+    label = ProcessedVideoRenderer._track_label(track, 30)
+
+    assert "15.5 km/h" not in label
+    assert "N/A" in label
+    assert "geometry_invalid" in label
