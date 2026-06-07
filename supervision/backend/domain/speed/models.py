@@ -51,6 +51,7 @@ class SpeedRecord:
     confidence_calibration_bin: str | None = None
     calibration_uncertainty_band_kmh: list[float | None] | None = None
     calibration_speed_posterior: dict[str, object] | None = None
+    joint_speed_posterior: dict[str, object] | None = None
     motion_mode: str | None = None
     motion_mode_probability: float | None = None
     imm_speed_kmh: float | None = None

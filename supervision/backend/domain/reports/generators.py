@@ -41,6 +41,7 @@ class ReportGenerator:
         confidence_calibration_summary: dict[str, object] | None = None,
         tracklet_reassociation_summary: dict[str, object] | None = None,
         model_comparison_benchmark: dict[str, object] | None = None,
+        speed_nis_diagnostics: dict[str, object] | None = None,
     ) -> FrameReport:
         speeds = speeds or {}
         speed_records = speed_records or {}
@@ -69,6 +70,7 @@ class ReportGenerator:
             confidence_calibration_summary=confidence_calibration_summary,
             tracklet_reassociation_summary=tracklet_reassociation_summary,
             model_comparison_benchmark=model_comparison_benchmark,
+            speed_nis_diagnostics=speed_nis_diagnostics,
         )
         self._frames.append(report)
         return report
@@ -158,6 +160,7 @@ class ReportGenerator:
                 confidence_calibration_bin=record.confidence_calibration_bin,
                 calibration_uncertainty_band_kmh=record.calibration_uncertainty_band_kmh,
                 calibration_speed_posterior=record.calibration_speed_posterior,
+                joint_speed_posterior=record.joint_speed_posterior,
                 motion_mode=record.motion_mode,
                 motion_mode_probability=record.motion_mode_probability,
                 imm_speed_kmh=record.imm_speed_kmh,

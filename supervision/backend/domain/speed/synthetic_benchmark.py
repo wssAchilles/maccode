@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import product
 
 import numpy as np
 
@@ -51,6 +52,59 @@ class SyntheticSpeedBenchmarkResult:
             "rejection_ratio": self.rejection_ratio,
             "mean_adaptive_multiplier": self.mean_adaptive_multiplier,
             "model_reference": self.model_reference,
+        }
+
+
+@dataclass(frozen=True)
+class SyntheticSpeedSweepConfig:
+    pixel_noise_sigmas: tuple[float, ...] = (0.0, 0.2, 0.5, 1.0)
+    scale_bias_pcts: tuple[float, ...] = (-0.15, 0.0, 0.15)
+    missing_ratios: tuple[float, ...] = (0.0, 0.15, 0.35)
+    id_switch_lengths: tuple[int, ...] = (0, 2, 5)
+    random_seeds: tuple[int, ...] = (3, 7, 11)
+
+
+@dataclass(frozen=True)
+class SyntheticSpeedSweepSummary:
+    scenario_count: int
+    mean_rmse_kmh: float
+    p95_rmse_kmh: float
+    worst_case_rmse_kmh: float
+    worst_case_scenario: str
+    mean_coverage_ratio: float
+    mean_rejection_ratio: float
+    mean_speed_jump_p95_kmh: float
+    model_reference: str = "synthetic_speed_parameter_sweep_v1"
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "scenario_count": self.scenario_count,
+            "mean_rmse_kmh": self.mean_rmse_kmh,
+            "p95_rmse_kmh": self.p95_rmse_kmh,
+            "worst_case_rmse_kmh": self.worst_case_rmse_kmh,
+            "worst_case_scenario": self.worst_case_scenario,
+            "mean_coverage_ratio": self.mean_coverage_ratio,
+            "mean_rejection_ratio": self.mean_rejection_ratio,
+            "mean_speed_jump_p95_kmh": self.mean_speed_jump_p95_kmh,
+            "model_reference": self.model_reference,
+        }
+
+
+@dataclass(frozen=True)
+class SyntheticSpeedSweepResult:
+    summary: SyntheticSpeedSweepSummary
+    results: list[SyntheticSpeedBenchmarkResult]
+
+    def top_failures(self, limit: int = 5) -> list[SyntheticSpeedBenchmarkResult]:
+        return sorted(self.results, key=lambda result: result.rmse_kmh, reverse=True)[
+            : max(limit, 0)
+        ]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "summary": self.summary.to_dict(),
+            "top_failures": [result.to_dict() for result in self.top_failures()],
+            "scenario_count": self.summary.scenario_count,
         }
 
 
@@ -253,3 +307,87 @@ def run_default_synthetic_speed_benchmark() -> list[SyntheticSpeedBenchmarkResul
         ),
     ]
     return [runner.run_scenario(scenario) for scenario in scenarios]
+
+
+class SyntheticSpeedSweepRunner:
+    def __init__(self, homography_matrix: np.ndarray | None = None) -> None:
+        self.benchmark_runner = SyntheticSpeedBenchmarkRunner(homography_matrix)
+
+    def run(self, config: SyntheticSpeedSweepConfig | None = None) -> SyntheticSpeedSweepResult:
+        config = config or SyntheticSpeedSweepConfig()
+        results = [
+            self.benchmark_runner.run_scenario(scenario)
+            for scenario in self._scenarios(config)
+        ]
+        return SyntheticSpeedSweepResult(
+            summary=self._summary(results),
+            results=results,
+        )
+
+    def _scenarios(self, config: SyntheticSpeedSweepConfig) -> list[SyntheticSpeedScenario]:
+        scenarios: list[SyntheticSpeedScenario] = []
+        for noise, scale_bias, missing_ratio, switch_length, seed in product(
+            config.pixel_noise_sigmas,
+            config.scale_bias_pcts,
+            config.missing_ratios,
+            config.id_switch_lengths,
+            config.random_seeds,
+        ):
+            scenarios.append(
+                SyntheticSpeedScenario(
+                    name=(
+                        f"sweep_noise_{noise:.2f}_scale_{scale_bias:.2f}_"
+                        f"missing_{missing_ratio:.2f}_switch_{switch_length}_seed_{seed}"
+                    ),
+                    true_speed_kmh=36.0,
+                    pixel_noise_sigma=float(noise),
+                    scale_bias_pct=float(scale_bias),
+                    missing_frame_indices=self._missing_indices(float(missing_ratio)),
+                    id_switch_frame_indices=self._id_switch_indices(int(switch_length)),
+                    random_seed=int(seed),
+                )
+            )
+        return scenarios
+
+    @staticmethod
+    def _missing_indices(missing_ratio: float, frame_count: int = 33) -> frozenset[int]:
+        count = max(0, min(frame_count - 1, int(round(frame_count * missing_ratio))))
+        if count == 0:
+            return frozenset()
+        start = max(1, (frame_count - count) // 2)
+        return frozenset(range(start, start + count))
+
+    @staticmethod
+    def _id_switch_indices(switch_length: int, frame_count: int = 33) -> frozenset[int]:
+        if switch_length <= 0:
+            return frozenset()
+        start = max(1, frame_count // 2 - switch_length // 2)
+        return frozenset(range(start, min(start + switch_length, frame_count)))
+
+    @staticmethod
+    def _summary(results: list[SyntheticSpeedBenchmarkResult]) -> SyntheticSpeedSweepSummary:
+        if not results:
+            return SyntheticSpeedSweepSummary(
+                scenario_count=0,
+                mean_rmse_kmh=0.0,
+                p95_rmse_kmh=0.0,
+                worst_case_rmse_kmh=0.0,
+                worst_case_scenario="",
+                mean_coverage_ratio=0.0,
+                mean_rejection_ratio=0.0,
+                mean_speed_jump_p95_kmh=0.0,
+            )
+        rmse = np.asarray([result.rmse_kmh for result in results], dtype=np.float64)
+        worst = max(results, key=lambda result: result.rmse_kmh)
+        return SyntheticSpeedSweepSummary(
+            scenario_count=len(results),
+            mean_rmse_kmh=float(np.mean(rmse)),
+            p95_rmse_kmh=float(np.percentile(rmse, 95)),
+            worst_case_rmse_kmh=float(worst.rmse_kmh),
+            worst_case_scenario=worst.scenario_name,
+            mean_coverage_ratio=float(np.mean([result.coverage_ratio for result in results])),
+            mean_rejection_ratio=float(np.mean([result.rejection_ratio for result in results])),
+            mean_speed_jump_p95_kmh=float(
+                np.mean([result.speed_jump_p95_kmh for result in results])
+            ),
+        )

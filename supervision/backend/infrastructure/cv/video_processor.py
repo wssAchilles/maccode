@@ -28,6 +28,8 @@ from domain.speed.contact_fusion import ContactPointFusion, ContactPointObservat
 from domain.speed.estimator import SpeedEstimator
 from domain.speed.ground_contact import GroundContactCorrector, GroundContactPoint
 from domain.speed.models import SpeedRecord
+from domain.speed.nis_diagnostics import NISDiagnosticsAnalyzer
+from domain.speed.posterior import SpeedPosteriorAnalyzer
 from domain.speed.trajectory_reconstruction import TrajectoryReconstructor
 from domain.speed.view_transformer import ViewTransformer
 from domain.tracking.integrity import TrackingIntegrityMonitor, TrackingIntegrityResult
@@ -209,6 +211,8 @@ class SupervisionVideoProcessor:
             )
         )
         self.calibration_monte_carlo = CalibrationMonteCarloAnalyzer()
+        self.speed_posterior_analyzer = SpeedPosteriorAnalyzer()
+        self.nis_diagnostics_analyzer = NISDiagnosticsAnalyzer()
         self.frame_reports: list[dict[str, Any]] = []
         self._pixel_histories: dict[int, list[tuple[float, float]]] = {}
         self._latest_contact_points: dict[int, GroundContactPoint] = {}
@@ -304,6 +308,7 @@ class SupervisionVideoProcessor:
                     bev_confidence_map=self.bev_confidence_map.to_dict(),
                     integrity_diagnostics=self._build_integrity_diagnostics(),
                     calibration_sensitivity=self.calibration_sensitivity.to_dict(),
+                    speed_nis_diagnostics=self._speed_nis_diagnostics(speed_records),
                 )
                 latest_report = report.to_dict()
                 self.frame_reports.append(latest_report)
@@ -441,6 +446,26 @@ class SupervisionVideoProcessor:
             sample_count=200,
             random_seed=17,
         ).to_dict()
+
+    def _joint_speed_posterior(
+        self,
+        record: SpeedRecord | None,
+    ) -> dict[str, object] | None:
+        if record is None or record.speed_kmh is None or not record.physics_valid:
+            return None
+        return self.speed_posterior_analyzer.analyze(
+            record,
+            self.calibration,
+            timestamp_uncertainty_sec=self.speed_estimator.timestamp_uncertainty_sec,
+            sample_count=200,
+            random_seed=23,
+        ).to_dict()
+
+    def _speed_nis_diagnostics(
+        self,
+        speed_records: dict[int, SpeedRecord],
+    ) -> dict[str, object]:
+        return self.nis_diagnostics_analyzer.analyze(speed_records).to_dict()
 
     @staticmethod
     def _select_runtime_calibration(
@@ -669,6 +694,7 @@ class SupervisionVideoProcessor:
                     calibration_speed_posterior=self._calibration_speed_posterior(
                         frozen_record,
                     ),
+                    joint_speed_posterior=self._joint_speed_posterior(frozen_record),
                 )
                 continue
 
@@ -767,6 +793,7 @@ class SupervisionVideoProcessor:
                 calibration_speed_posterior=self._calibration_speed_posterior(
                     latest_record,
                 ),
+                joint_speed_posterior=self._joint_speed_posterior(latest_record),
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:

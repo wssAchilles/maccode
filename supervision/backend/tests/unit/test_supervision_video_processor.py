@@ -144,6 +144,15 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
         report["active_tracks"][0]["calibration_speed_posterior"]["model_reference"]
         == "homography_monte_carlo_speed_posterior"
     )
+    assert (
+        report["active_tracks"][0]["joint_speed_posterior"]["model_reference"]
+        == "joint_speed_uncertainty_posterior_v1"
+    )
+    assert (
+        report["speed_nis_diagnostics"]["model_reference"]
+        == "nis_consistency_diagnostics_v1"
+    )
+    assert report["speed_nis_diagnostics"]["sample_count"] > 0
     assert "contact_innovation_score" in report["active_tracks"][0]
     assert report["calibration_quality"] == "excellent"
     assert report["homography_grid"]["generated_from"] == "inverse_homography_projection"
@@ -266,6 +275,7 @@ def test_scene_profile_preset_does_not_generate_homography_grid() -> None:
     assert report["calibration_diagnostics"]["weak_scale_mode"] is True
     assert report["active_tracks"][0]["scale_confidence_label"] == "weak_scale"
     assert report["active_tracks"][0]["calibration_speed_posterior"] is None
+    assert report["active_tracks"][0]["joint_speed_posterior"] is None
     assert report["active_tracks"][0]["weak_calibration_reason"] is not None
     assert (
         "untrusted_calibration_grid_suppressed"
