@@ -3,6 +3,7 @@ library;
 
 import '../models/job_record.dart';
 import '../models/job_stream_frame.dart';
+import '../models/operation_action_result.dart';
 import '../services/api_service.dart';
 
 abstract class JobRepository {
@@ -32,10 +33,7 @@ abstract class JobRepository {
     throw UnsupportedError('Approval is not supported by this repository');
   }
 
-  Stream<JobStreamFrame> streamJob(
-    String jobId, {
-    String? operationId,
-  }) {
+  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) {
     throw UnsupportedError('Streaming is not supported by this repository');
   }
 
@@ -101,7 +99,7 @@ class ApiJobRepository implements JobRepository {
   @override
   Future<JobRecord> cancelJob(String jobId, {String? operationId}) async {
     final payload = await ApiService.cancelOperation(operationId ?? jobId);
-    return JobRecord.fromJson(payload);
+    return OperationActionResult.fromJson(payload).operation;
   }
 
   @override
@@ -116,14 +114,11 @@ class ApiJobRepository implements JobRepository {
       approved: approved,
       message: message,
     );
-    return JobRecord.fromJson(payload);
+    return OperationActionResult.fromJson(payload).operation;
   }
 
   @override
-  Stream<JobStreamFrame> streamJob(
-    String jobId, {
-    String? operationId,
-  }) {
+  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) {
     return ApiService.streamOperation(operationId ?? jobId);
   }
 

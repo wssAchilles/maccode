@@ -195,7 +195,9 @@ class _FocusQueueTile extends StatelessWidget {
     );
     final chainTone = _chainColor(chain.key);
     final cardLabel = buildDutyContextCardValue(chain.cardTargetLabel);
-    final incidentLabel = buildDutyContextIncidentValue(chain.incidentTargetLabel);
+    final incidentLabel = buildDutyContextIncidentValue(
+      chain.incidentTargetLabel,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -267,7 +269,10 @@ class _FocusQueueTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(cardLabel ?? chain.workspaceTargetLabel, style: AppTextStyles.labelLarge),
+                Text(
+                  cardLabel ?? chain.workspaceTargetLabel,
+                  style: AppTextStyles.labelLarge,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   buildChainWorkspaceSummary(chain),
@@ -520,7 +525,9 @@ class _FocusSignal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final incidentLabel = buildDutyContextIncidentValue(chain.incidentTargetLabel);
+    final incidentLabel = buildDutyContextIncidentValue(
+      chain.incidentTargetLabel,
+    );
     final watchSummary = sanitizeWorkspaceSummaryText(
       chain.incidentBrief,
       duplicatedLabels: [

@@ -117,7 +117,8 @@ class ControlPlaneStatus {
       message: (json['message'] ?? '').toString(),
       dispatchTimeoutS: _asInt(json['dispatch_timeout_s']) ?? 0,
       activeOperations: _asInt(json['active_operations']) ?? 0,
-      pythonWorkerConfigured: _asBool(json['python_worker_configured']) ?? false,
+      pythonWorkerConfigured:
+          _asBool(json['python_worker_configured']) ?? false,
       lightLane: ControlPlaneLane.fromJson(
         json['light_lane'] is Map
             ? Map<String, dynamic>.from(json['light_lane'] as Map)
@@ -149,10 +150,7 @@ class ControlPlaneLane {
     required this.inUse,
   });
 
-  const ControlPlaneLane.empty()
-    : capacity = 0,
-      available = 0,
-      inUse = 0;
+  const ControlPlaneLane.empty() : capacity = 0, available = 0, inUse = 0;
 
   final int capacity;
   final int available;

@@ -52,14 +52,16 @@ class DataAnalysisStartButton extends StatelessWidget {
     super.key,
     required this.canAnalyze,
     required this.onStart,
+    this.disabledReason,
   });
 
   final bool canAnalyze;
   final VoidCallback onStart;
+  final String? disabledReason;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    final button = AnimatedContainer(
       duration: AppDecorations.animationFast,
       height: 56,
       decoration: BoxDecoration(
@@ -94,6 +96,22 @@ class DataAnalysisStartButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+    final reason = disabledReason;
+    if (canAnalyze || reason == null || reason.isEmpty) {
+      return button;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Tooltip(message: reason, child: button),
+        const SizedBox(height: 8),
+        Text(
+          reason,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+        ),
+      ],
     );
   }
 }

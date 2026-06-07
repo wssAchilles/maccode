@@ -151,11 +151,7 @@ class _PriorityStripTile extends StatelessWidget {
     );
     final watchSummary = sanitizeWorkspaceSummaryText(
       chain.incidentBrief,
-      duplicatedLabels: [
-        chain.workspaceTargetLabel,
-        cardLabel,
-        incidentLabel,
-      ],
+      duplicatedLabels: [chain.workspaceTargetLabel, cardLabel, incidentLabel],
     );
     return Container(
       padding: const EdgeInsets.all(14),
@@ -219,7 +215,10 @@ class _PriorityStripTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(cardLabel ?? chain.workspaceTargetLabel, style: AppTextStyles.labelLarge),
+          Text(
+            cardLabel ?? chain.workspaceTargetLabel,
+            style: AppTextStyles.labelLarge,
+          ),
           const SizedBox(height: 4),
           Text(
             buildChainWorkspaceSummary(chain),

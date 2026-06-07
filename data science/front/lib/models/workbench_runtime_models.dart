@@ -14,16 +14,6 @@ enum WorkbenchTab {
   }
 }
 
-enum JobFeedKey {
-  optimization,
-  analysis,
-  mlTrain,
-  ragIngest,
-  historyAudit,
-}
+enum JobFeedKey { optimization, analysis, mlTrain, ragIngest, historyAudit }
 
-enum ShellRuntimePanelKind {
-  approvals,
-  operations,
-  notifications,
-}
+enum ShellRuntimePanelKind { approvals, operations, notifications }

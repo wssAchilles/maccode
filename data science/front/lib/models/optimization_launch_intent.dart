@@ -40,7 +40,8 @@ class OptimizationLaunchIntent {
       batteryPower: _asDouble(job.input['battery_power']),
       temperatureAdjust: _asDouble(job.input['temperature_adjust']),
       resultPayload: _asMap(job.result),
-      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      sourceLabel:
+          sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
       context: context,
     );
   }

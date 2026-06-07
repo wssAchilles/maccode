@@ -61,7 +61,9 @@ class _JobEmptyState extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }

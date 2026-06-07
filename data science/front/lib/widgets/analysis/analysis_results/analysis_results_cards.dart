@@ -671,8 +671,7 @@ class _ConsoleCardHeader extends StatelessWidget {
       workspaceLabel:
           continuationContext?.workspaceTargetLabel ??
           chain?.workspaceTargetLabel,
-      cardLabel:
-          continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel,
+      cardLabel: continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel,
       incidentLabel:
           continuationContext?.incidentTargetLabel ??
           chain?.incidentTargetLabel,

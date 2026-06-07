@@ -89,11 +89,7 @@ class DeepLearningConfigPanel extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.play_arrow_rounded),
-              label: Text(
-                isTraining
-                    ? '训练进行中...'
-                    : '启动云端训练',
-              ),
+              label: Text(isTraining ? '训练进行中...' : '启动云端训练'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
               ),

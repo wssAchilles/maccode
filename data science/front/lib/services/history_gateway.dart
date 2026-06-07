@@ -32,7 +32,11 @@ class ApiHistoryGateway implements HistoryGateway {
     String? status,
     int limit = 50,
   }) {
-    return _apiClient.getAuditActivity(type: type, status: status, limit: limit);
+    return _apiClient.getAuditActivity(
+      type: type,
+      status: status,
+      limit: limit,
+    );
   }
 
   @override

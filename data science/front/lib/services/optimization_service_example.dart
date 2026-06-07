@@ -9,12 +9,12 @@ import '../models/optimization_result.dart';
 /// 优化服务使用示例类
 class OptimizationServiceExample {
   /// 示例 1: 基础优化调用
-  /// 
+  ///
   /// 使用默认参数运行优化
   static Future<void> basicOptimization() async {
     try {
       print('执行基础优化...');
-      
+
       final result = await ApiService.runOptimization(
         initialSoc: 0.5, // 初始电量 50%
       );
@@ -36,7 +36,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 2: 带温度预测的优化
-  /// 
+  ///
   /// 提供24小时温度预测数据
   static Future<void> optimizationWithTemperature() async {
     try {
@@ -66,7 +66,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 3: 指定日期的优化
-  /// 
+  ///
   /// 为特定日期进行优化
   static Future<void> optimizationForSpecificDate() async {
     try {
@@ -89,7 +89,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 4: 自定义电池参数
-  /// 
+  ///
   /// 使用自定义电池配置
   static Future<void> optimizationWithCustomBattery() async {
     try {
@@ -113,7 +113,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 5: 获取优化配置
-  /// 
+  ///
   /// 获取系统默认的电池和电价配置
   static Future<void> getConfiguration() async {
     try {
@@ -128,12 +128,20 @@ class OptimizationServiceExample {
         print('电池配置:');
         print('  容量: ${batteryConfig['battery_capacity']} kWh');
         print('  功率: ${batteryConfig['max_power']} kW');
-        print('  效率: ${(batteryConfig['efficiency'] * 100).toStringAsFixed(0)}%');
+        print(
+          '  效率: ${(batteryConfig['efficiency'] * 100).toStringAsFixed(0)}%',
+        );
 
         print('\n电价配置:');
-        print('  谷时: ${priceSchedule['valley']} 元/kWh (${priceSchedule['valley_hours']})');
-        print('  平时: ${priceSchedule['normal']} 元/kWh (${priceSchedule['normal_hours']})');
-        print('  峰时: ${priceSchedule['peak']} 元/kWh (${priceSchedule['peak_hours']})');
+        print(
+          '  谷时: ${priceSchedule['valley']} 元/kWh (${priceSchedule['valley_hours']})',
+        );
+        print(
+          '  平时: ${priceSchedule['normal']} 元/kWh (${priceSchedule['normal_hours']})',
+        );
+        print(
+          '  峰时: ${priceSchedule['peak']} 元/kWh (${priceSchedule['peak_hours']})',
+        );
       }
     } catch (e) {
       print('获取配置出错: $e');
@@ -141,7 +149,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 6: 场景模拟对比
-  /// 
+  ///
   /// 对比不同电池配置的效果
   static Future<void> compareScenarios() async {
     try {
@@ -154,14 +162,12 @@ class OptimizationServiceExample {
         {'name': '大型电池 (20kWh)', 'capacity': 20, 'power': 7},
       ];
 
-      final result = await ApiService.simulateScenarios(
-        scenarios: scenarios,
-      );
+      final result = await ApiService.simulateScenarios(scenarios: scenarios);
 
       if (result['success'] == true) {
         print('\n场景对比结果:');
         final comparison = result['comparison'] as List;
-        
+
         for (var item in comparison) {
           print('\n${item['scenario']}:');
           print('  成本: ${item['cost']} 元');
@@ -178,7 +184,7 @@ class OptimizationServiceExample {
   }
 
   /// 示例 7: 分析优化结果详情
-  /// 
+  ///
   /// 详细分析每小时的调度计划
   static Future<void> analyzeOptimizationDetails() async {
     try {
@@ -214,10 +220,12 @@ class OptimizationServiceExample {
   static void _printOptimizationDetails(OptimizationData opt) {
     print('\n优化结果详情:');
     print('─' * 60);
-    
+
     // 成本信息
     print('💰 成本分析:');
-    print('  无电池成本: ${opt.summary.totalCostWithoutBattery.toStringAsFixed(2)} 元');
+    print(
+      '  无电池成本: ${opt.summary.totalCostWithoutBattery.toStringAsFixed(2)} 元',
+    );
     print('  有电池成本: ${opt.summary.totalCostWithBattery.toStringAsFixed(2)} 元');
     print('  节省金额: ${opt.summary.savingsFormatted}');
     print('  节省比例: ${opt.summary.savingsPercentFormatted}');

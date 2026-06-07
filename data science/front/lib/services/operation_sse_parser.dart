@@ -10,9 +10,8 @@ Stream<JobStreamFrame> parseOperationSse(Stream<List<int>> byteStream) async* {
   String? currentId;
   final dataLines = <String>[];
 
-  await for (final line in byteStream
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())) {
+  await for (final line
+      in byteStream.transform(utf8.decoder).transform(const LineSplitter())) {
     if (line.isEmpty) {
       final frame = _flushFrame(
         currentEvent: currentEvent,
@@ -65,7 +64,9 @@ JobStreamFrame? _flushFrame({
   }
 
   final rawData = dataLines.join('\n').trim();
-  final payload = rawData.isEmpty ? const <String, dynamic>{} : _decodePayload(rawData);
+  final payload = rawData.isEmpty
+      ? const <String, dynamic>{}
+      : _decodePayload(rawData);
 
   return JobStreamFrame(
     event: currentEvent == null || currentEvent.isEmpty

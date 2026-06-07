@@ -380,26 +380,26 @@ String _watchValue(
   required String? cardLabel,
   required String? incidentLabel,
 }) {
-  final rawWatchSummary = continuationContext?.watchSummary ?? chain.incidentBrief;
+  final rawWatchSummary =
+      continuationContext?.watchSummary ?? chain.incidentBrief;
   final cleanedWatchSummary = sanitizeWorkspaceSummaryText(
     rawWatchSummary,
     duplicatedLabels: [workspaceLabel, cardLabel, incidentLabel],
   );
 
-  final watchSummary =
-      chain.isOverdue || chain.status == 'incident'
-          ? cleanedWatchSummary
-          : buildWorkspaceSummaryText(
-              workspaceTarget:
-                  continuationContext?.workspaceTarget ?? chain.workspaceTarget,
-              workspaceTargetLabel: workspaceLabel,
-              workspaceBrief: chain.workspaceBrief,
-              incidentBrief: cleanedWatchSummary ?? rawWatchSummary,
-              cardTargetLabel: cardLabel,
-              incidentTargetLabel: incidentLabel,
-              sectionTargetLabel: chain.sectionTargetLabel,
-              focusTargetLabel: chain.focusTargetLabel,
-            );
+  final watchSummary = chain.isOverdue || chain.status == 'incident'
+      ? cleanedWatchSummary
+      : buildWorkspaceSummaryText(
+          workspaceTarget:
+              continuationContext?.workspaceTarget ?? chain.workspaceTarget,
+          workspaceTargetLabel: workspaceLabel,
+          workspaceBrief: chain.workspaceBrief,
+          incidentBrief: cleanedWatchSummary ?? rawWatchSummary,
+          cardTargetLabel: cardLabel,
+          incidentTargetLabel: incidentLabel,
+          sectionTargetLabel: chain.sectionTargetLabel,
+          focusTargetLabel: chain.focusTargetLabel,
+        );
 
   return buildIncidentWatchValue(
     incidentLabel,

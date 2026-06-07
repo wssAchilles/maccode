@@ -18,11 +18,7 @@ class ModelingControlsState {
 
   factory ModelingControlsState.initial({DateTime? now}) {
     final baseNow = now ?? DateTime.now();
-    final normalizedNow = DateTime(
-      baseNow.year,
-      baseNow.month,
-      baseNow.day,
-    );
+    final normalizedNow = DateTime(baseNow.year, baseNow.month, baseNow.day);
 
     return ModelingControlsState(
       initialSoc: AppConstants.defaultInitialSoc,

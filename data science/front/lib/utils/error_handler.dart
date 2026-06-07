@@ -39,7 +39,7 @@ class ErrorHandler {
 
   static String _getExceptionMessage(Exception error) {
     final errorString = error.toString();
-    
+
     if (errorString.contains('SocketException') ||
         errorString.contains('NetworkException')) {
       return AppConstants.networkError;
@@ -89,7 +89,7 @@ class ErrorHandler {
     String title = '错误',
   }) async {
     final message = getErrorMessage(error);
-    
+
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(

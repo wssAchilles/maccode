@@ -41,7 +41,9 @@ class ControlTaskRecord {
   final DateTime? updatedAt;
 
   bool get canRunByDependency =>
-      dependencyState.isEmpty || dependencyState == 'none' || dependencyState == 'ready';
+      dependencyState.isEmpty ||
+      dependencyState == 'none' ||
+      dependencyState == 'ready';
 
   bool get isDependencyBlocked =>
       dependencyState == 'blocked' || dependencyState == 'missing';

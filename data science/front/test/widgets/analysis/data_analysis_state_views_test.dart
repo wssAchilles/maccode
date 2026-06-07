@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(find.text('登录中...'), findsOneWidget);
+    expect(find.text('认证处理中'), findsOneWidget);
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -37,7 +37,7 @@ void main() {
       ),
     );
 
-    expect(find.text('分析中，请稍候...'), findsOneWidget);
+    expect(find.text('分析任务执行中'), findsOneWidget);
   });
 
   testWidgets('DataAnalysisStartButton respects enabled state', (

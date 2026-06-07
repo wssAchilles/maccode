@@ -11,10 +11,7 @@ import '../common/glass_card.dart';
 class UserInfoWidget extends StatelessWidget {
   final User user;
 
-  const UserInfoWidget({
-    super.key,
-    required this.user,
-  });
+  const UserInfoWidget({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +31,7 @@ class UserInfoWidget extends StatelessWidget {
                   user.displayName ?? user.email ?? '用户',
                   style: AppTextStyles.labelLarge,
                 ),
-                Text(
-                  user.email ?? '',
-                  style: AppTextStyles.bodySmall,
-                ),
+                Text(user.email ?? '', style: AppTextStyles.bodySmall),
               ],
             ),
           ),
@@ -77,7 +71,10 @@ class UserInfoWidget extends StatelessWidget {
         children: [
           const Icon(Icons.check_circle, size: 14, color: AppColors.success),
           const SizedBox(width: 4),
-          Text('已登录', style: AppTextStyles.labelMedium.copyWith(color: AppColors.success)),
+          Text(
+            '已登录',
+            style: AppTextStyles.labelMedium.copyWith(color: AppColors.success),
+          ),
         ],
       ),
     );

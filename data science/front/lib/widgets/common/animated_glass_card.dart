@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
+import '../../motion/motion_tokens.dart';
 
 /// 高级动态玻璃卡片
 /// 支持鼠标悬停光泽效果、淡入动画和点击反馈。
@@ -41,12 +42,12 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: MotionTokens.standard,
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.02,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: MotionTokens.hoverScale)
+        .animate(
+          CurvedAnimation(parent: _controller, curve: MotionTokens.easeOut),
+        );
   }
 
   @override
@@ -117,7 +118,8 @@ class _AnimatedGlassCardState extends State<AnimatedGlassCard>
       ),
     );
 
-    if (kIsWeb) {
+    final reducedMotion = ReducedMotionPolicy.fromContext(context);
+    if (kIsWeb || reducedMotion.disableTransformMotion) {
       return cardContent;
     }
 

@@ -64,7 +64,7 @@ void main() {
     );
 
     expect(find.text('暂无历史记录'), findsOneWidget);
-    expect(find.text('开始分析数据后，历史记录会显示在这里'), findsOneWidget);
+    expect(find.text('开始一次数据分析、训练或优化任务后，历史记录会显示在这里。'), findsOneWidget);
   });
 
   testWidgets('HistoryRecordCard renders content and handles actions', (

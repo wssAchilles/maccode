@@ -57,37 +57,42 @@ List<OperationComputeMetric> extractOperationComputeMetrics(
     return const <OperationComputeMetric>[];
   }
 
-  return raw.entries.map((entry) {
-    final payload = entry.value is Map
-        ? Map<String, dynamic>.from(entry.value as Map)
-        : const <String, dynamic>{};
-    return OperationComputeMetric(
-      key: entry.key.toString(),
-      label: (payload['label'] ?? _defaultLabel(entry.key.toString())).toString(),
-      backend: (payload['backend'] ?? 'python_pandas').toString(),
-      rolloutMode: (payload['rollout_mode'] ?? '').toString(),
-      rolloutReason: (payload['rollout_reason'] ?? '').toString(),
-      fallbackReason: (payload['fallback_reason'] ?? '').toString(),
-      durationMs: _asDouble(payload['duration_ms']) ?? 0,
-      rows: _asInt(payload['rows']) ?? 0,
-      context: (payload['context'] ?? '').toString(),
-      nativeEnabled: _asBool(payload['native_enabled']) ?? false,
-      nativeAvailable: _asBool(payload['native_available']) ?? false,
-      benchmarkReady: _asBool(payload['benchmark_ready']) ?? false,
-      benchmarkStatus: (payload['benchmark_status'] ?? '').toString(),
-      benchmarkSummary: (payload['benchmark_summary'] ?? '').toString(),
-      benchmarkSpeedupRatio: _asDouble(payload['benchmark_speedup_ratio']),
-      guardRecentFailureCount: _asInt(payload['guard_recent_failure_count']) ?? 0,
-      guardFailureThreshold: _asInt(payload['guard_failure_threshold']) ?? 0,
-      guardWindowMinutes: _asInt(payload['guard_window_minutes']) ?? 0,
-      guardAutoRollbackApplied:
-          _asBool(payload['guard_auto_rollback_applied']) ?? false,
-      guardLastAutoRollbackAt:
-          (payload['guard_last_auto_rollback_at'] ?? '').toString(),
-      guardLastAutoRollbackReason:
-          (payload['guard_last_auto_rollback_reason'] ?? '').toString(),
-    );
-  }).toList(growable: false);
+  return raw.entries
+      .map((entry) {
+        final payload = entry.value is Map
+            ? Map<String, dynamic>.from(entry.value as Map)
+            : const <String, dynamic>{};
+        return OperationComputeMetric(
+          key: entry.key.toString(),
+          label: (payload['label'] ?? _defaultLabel(entry.key.toString()))
+              .toString(),
+          backend: (payload['backend'] ?? 'python_pandas').toString(),
+          rolloutMode: (payload['rollout_mode'] ?? '').toString(),
+          rolloutReason: (payload['rollout_reason'] ?? '').toString(),
+          fallbackReason: (payload['fallback_reason'] ?? '').toString(),
+          durationMs: _asDouble(payload['duration_ms']) ?? 0,
+          rows: _asInt(payload['rows']) ?? 0,
+          context: (payload['context'] ?? '').toString(),
+          nativeEnabled: _asBool(payload['native_enabled']) ?? false,
+          nativeAvailable: _asBool(payload['native_available']) ?? false,
+          benchmarkReady: _asBool(payload['benchmark_ready']) ?? false,
+          benchmarkStatus: (payload['benchmark_status'] ?? '').toString(),
+          benchmarkSummary: (payload['benchmark_summary'] ?? '').toString(),
+          benchmarkSpeedupRatio: _asDouble(payload['benchmark_speedup_ratio']),
+          guardRecentFailureCount:
+              _asInt(payload['guard_recent_failure_count']) ?? 0,
+          guardFailureThreshold:
+              _asInt(payload['guard_failure_threshold']) ?? 0,
+          guardWindowMinutes: _asInt(payload['guard_window_minutes']) ?? 0,
+          guardAutoRollbackApplied:
+              _asBool(payload['guard_auto_rollback_applied']) ?? false,
+          guardLastAutoRollbackAt:
+              (payload['guard_last_auto_rollback_at'] ?? '').toString(),
+          guardLastAutoRollbackReason:
+              (payload['guard_last_auto_rollback_reason'] ?? '').toString(),
+        );
+      })
+      .toList(growable: false);
 }
 
 String buildComputeSummaryLine(Map<String, dynamic> metrics) {

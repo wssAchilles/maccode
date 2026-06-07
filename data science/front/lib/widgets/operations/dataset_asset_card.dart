@@ -19,10 +19,10 @@ class DatasetAssetCard extends StatelessWidget {
     final qualityColor = qualityScore == null
         ? AppColors.textMuted
         : qualityScore >= 80
-            ? AppColors.success
-            : qualityScore >= 60
-                ? AppColors.warning
-                : AppColors.error;
+        ? AppColors.success
+        : qualityScore >= 60
+        ? AppColors.warning
+        : AppColors.error;
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
@@ -58,7 +58,9 @@ class DatasetAssetCard extends StatelessWidget {
           Text(
             asset.createdAt == null
                 ? '时间未知'
-                : DateFormat('yyyy-MM-dd HH:mm').format(asset.createdAt!.toLocal()),
+                : DateFormat(
+                    'yyyy-MM-dd HH:mm',
+                  ).format(asset.createdAt!.toLocal()),
             style: AppTextStyles.bodySmall,
           ),
           const SizedBox(height: 10),

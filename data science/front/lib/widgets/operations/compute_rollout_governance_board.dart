@@ -228,9 +228,7 @@ class _ComponentPolicyCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               '自动回退 · ${component.lastAutoRollbackReason}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.warning,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
           ],
           if (component.lastFailureReason.isNotEmpty) ...[

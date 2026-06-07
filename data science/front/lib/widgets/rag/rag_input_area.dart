@@ -31,25 +31,39 @@ class RagInputArea extends StatelessWidget {
               controller: controller,
               enabled: !isLoading,
               decoration: const InputDecoration(
+                labelText: 'RAG 问题',
                 hintText: '询问文档摘要、出处定位或关键对比...',
+                helperText: '输入问题后发送，空问题不会提交。',
                 border: InputBorder.none,
                 focusedBorder: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 fillColor: Colors.transparent,
               ),
-              onSubmitted: (_) => onSend(),
+              onSubmitted: (_) {
+                final canSend = !isLoading && controller.text.trim().isNotEmpty;
+                if (canSend) {
+                  onSend();
+                }
+              },
             ),
           ),
-          IconButton(
-            key: const ValueKey('rag-send-button'),
-            onPressed: isLoading ? null : onSend,
-            icon: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send_rounded, color: Color(0xFF0EA5E9)),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final canSend = !isLoading && value.text.trim().isNotEmpty;
+              return IconButton(
+                key: const ValueKey('rag-send-button'),
+                tooltip: canSend ? '发送问题' : '请输入问题后发送',
+                onPressed: canSend ? onSend : null,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded, color: Color(0xFF0EA5E9)),
+              );
+            },
           ),
         ],
       ),

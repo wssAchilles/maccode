@@ -89,10 +89,7 @@ class JobFeedRegistry extends ChangeNotifier {
         jobType: 'analysis',
         limit: 8,
       ),
-      JobFeedKey.mlTrain => const _JobFeedConfig(
-        jobType: 'ml_train',
-        limit: 8,
-      ),
+      JobFeedKey.mlTrain => const _JobFeedConfig(jobType: 'ml_train', limit: 8),
       JobFeedKey.ragIngest => const _JobFeedConfig(
         jobType: 'rag_ingest',
         limit: 8,

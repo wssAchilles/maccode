@@ -147,18 +147,19 @@ class DataAssetGovernanceBoard extends StatelessWidget {
                 accent: AppColors.cta,
                 icon: Icons.analytics_rounded,
                 title: '资产对比与漂移检测',
-                subtitle:
-                    '基于最近资产选择基线，针对关键数值字段运行 PSI 漂移检测，决定是否需要重新训练或继续监控。',
+                subtitle: '基于最近资产选择基线，针对关键数值字段运行 PSI 漂移检测，决定是否需要重新训练或继续监控。',
                 workspaceLabel:
                     continuationContext?.workspaceTargetLabel ??
                     chain?.workspaceTargetLabel,
                 cardLabel:
-                    continuationContext?.cardTargetLabel ?? chain?.cardTargetLabel,
+                    continuationContext?.cardTargetLabel ??
+                    chain?.cardTargetLabel,
                 incidentLabel:
                     continuationContext?.incidentTargetLabel ??
                     chain?.incidentTargetLabel,
                 summary:
-                    continuationContext?.workspaceBrief ?? chain?.workspaceBrief,
+                    continuationContext?.workspaceBrief ??
+                    chain?.workspaceBrief,
               ),
               const SizedBox(height: 16),
               Text('检测字段', style: AppTextStyles.labelLarge),

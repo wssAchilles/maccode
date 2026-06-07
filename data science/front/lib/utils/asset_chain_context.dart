@@ -611,11 +611,17 @@ String _normalizeWorkspaceBriefPart(String part) {
     return 'SLA 关注';
   }
 
-  final overdue = RegExp(r'^overdue\s+(.+)$', caseSensitive: false).firstMatch(trimmed);
+  final overdue = RegExp(
+    r'^overdue\s+(.+)$',
+    caseSensitive: false,
+  ).firstMatch(trimmed);
   if (overdue != null) {
     return '超时 ${overdue.group(1)!}';
   }
-  final elapsed = RegExp(r'^elapsed\s+(.+)$', caseSensitive: false).firstMatch(trimmed);
+  final elapsed = RegExp(
+    r'^elapsed\s+(.+)$',
+    caseSensitive: false,
+  ).firstMatch(trimmed);
   if (elapsed != null) {
     return '已运行 ${elapsed.group(1)!}';
   }
@@ -682,19 +688,11 @@ bool _isMachineWorkspaceBriefPart(String part, Set<String> duplicatedLabels) {
 }
 
 bool _isGenericDutyCardLabel(String label) {
-  return {
-    '当前卡片',
-    '摘要卡',
-    'summary',
-  }.contains(label);
+  return {'当前卡片', '摘要卡', 'summary'}.contains(label);
 }
 
 bool _isGenericDutyIncidentLabel(String label) {
-  return {
-    '值班时限',
-    '当前焦点',
-    'focus',
-  }.contains(label);
+  return {'值班时限', '当前焦点', 'focus'}.contains(label);
 }
 
 String? _resolvedCardLabel({

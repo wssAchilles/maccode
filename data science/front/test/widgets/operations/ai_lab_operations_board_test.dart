@@ -8,8 +8,18 @@ import 'package:front/widgets/operations/ai_lab_operations_board.dart';
 DashboardSummary _summary() {
   return DashboardSummary.fromJson({
     'system_status': [
-      {'key': 'model', 'label': 'Model', 'status': 'healthy', 'message': 'Forecast model metadata available'},
-      {'key': 'rag', 'label': 'RAG', 'status': 'healthy', 'message': 'Knowledge service ready'},
+      {
+        'key': 'model',
+        'label': 'Model',
+        'status': 'healthy',
+        'message': 'Forecast model metadata available',
+      },
+      {
+        'key': 'rag',
+        'label': 'RAG',
+        'status': 'healthy',
+        'message': 'Knowledge service ready',
+      },
     ],
     'kpis': {
       'dataset_count': 0,
@@ -18,10 +28,7 @@ DashboardSummary _summary() {
       'jobs_24h': 0,
       'failed_jobs': 0,
     },
-    'duty_summary': {
-      'overview_actions': [],
-      'audit_actions': [],
-    },
+    'duty_summary': {'overview_actions': [], 'audit_actions': []},
     'recent_jobs': [],
     'recent_assets': [],
     'recent_history': [],
@@ -45,7 +52,9 @@ DashboardSummary _summary() {
 }
 
 void main() {
-  testWidgets('AiLabOperationsBoard localizes generic queue status summaries', (tester) async {
+  testWidgets('AiLabOperationsBoard localizes generic queue status summaries', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 

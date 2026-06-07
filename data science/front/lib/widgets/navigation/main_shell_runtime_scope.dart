@@ -4,7 +4,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../viewmodels/main_shell_runtime_view_model.dart';
 
-class MainShellRuntimeScope extends InheritedNotifier<MainShellRuntimeViewModel> {
+class MainShellRuntimeScope
+    extends InheritedNotifier<MainShellRuntimeViewModel> {
   const MainShellRuntimeScope({
     super.key,
     required MainShellRuntimeViewModel runtime,
@@ -19,8 +20,8 @@ class MainShellRuntimeScope extends InheritedNotifier<MainShellRuntimeViewModel>
   }
 
   static MainShellRuntimeViewModel? maybeOf(BuildContext context) {
-    final element = context.getElementForInheritedWidgetOfExactType<
-        MainShellRuntimeScope>();
+    final element = context
+        .getElementForInheritedWidgetOfExactType<MainShellRuntimeScope>();
     final widget = element?.widget;
     if (widget is! MainShellRuntimeScope) {
       return null;

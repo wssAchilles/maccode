@@ -73,7 +73,8 @@ class AiLabLaunchIntent {
         job.result['target_column'],
         job.input['target_column'],
       ]),
-      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      sourceLabel:
+          sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
       context: context,
     );
   }
@@ -94,7 +95,8 @@ class AiLabLaunchIntent {
         job.input['collection_name'],
       ]),
       resetCollection: _asBool(job.input['reset']) ?? false,
-      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      sourceLabel:
+          sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
       context: context,
     );
   }

@@ -43,7 +43,8 @@ class OptimizationAssetRegistryBoard extends StatelessWidget {
         chain?.sectionTarget == 'optimization_assets';
     final cardTarget = continuationContext?.cardTarget ?? chain?.cardTarget;
     final summaryFocused =
-        cardTarget == 'registry_summary' || cardTarget == 'optimization_registry';
+        cardTarget == 'registry_summary' ||
+        cardTarget == 'optimization_registry';
     final snapshotFocused =
         cardTarget == 'latest_snapshot' || cardTarget == 'registry_snapshot';
     final cards = <Widget>[

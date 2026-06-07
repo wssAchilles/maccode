@@ -50,10 +50,7 @@ class ComputeGovernanceActivityBoard extends StatelessWidget {
 }
 
 class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({
-    required this.entry,
-    this.onOpenOperation,
-  });
+  const _ActivityTile({required this.entry, this.onOpenOperation});
 
   final ComputeGovernanceActivityEntry entry;
   final ValueChanged<ComputeGovernanceActivityEntry>? onOpenOperation;
@@ -131,7 +128,10 @@ class _ActivityTile extends StatelessWidget {
             runSpacing: 8,
             children: [
               if (entry.rolloutMode.trim().isNotEmpty)
-                _InfoChip(label: 'Rollout', value: _rolloutLabel(entry.rolloutMode)),
+                _InfoChip(
+                  label: 'Rollout',
+                  value: _rolloutLabel(entry.rolloutMode),
+                ),
               if (entry.benchmarkStatus.trim().isNotEmpty)
                 _InfoChip(label: 'Benchmark', value: entry.benchmarkStatus),
               if (entry.operationId.trim().isNotEmpty)
@@ -157,21 +157,12 @@ class _ActivityTile extends StatelessWidget {
   final status = entry.status.toLowerCase();
   final severity = entry.severity.toLowerCase();
   if (status == 'failed' || severity == 'error') {
-    return (
-      foreground: AppColors.error,
-      background: AppColors.errorLight,
-    );
+    return (foreground: AppColors.error, background: AppColors.errorLight);
   }
   if (severity == 'warning' || status == 'awaiting_approval') {
-    return (
-      foreground: AppColors.warning,
-      background: AppColors.warningLight,
-    );
+    return (foreground: AppColors.warning, background: AppColors.warningLight);
   }
-  return (
-    foreground: AppColors.success,
-    background: AppColors.successLight,
-  );
+  return (foreground: AppColors.success, background: AppColors.successLight);
 }
 
 String _kindLabel(ComputeGovernanceActivityEntry entry) {

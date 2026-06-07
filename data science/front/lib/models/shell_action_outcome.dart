@@ -1,11 +1,6 @@
 library;
 
-enum ShellActionTone {
-  success,
-  warning,
-  error,
-  info,
-}
+enum ShellActionTone { success, warning, error, info }
 
 class ShellActionOutcome<T> {
   const ShellActionOutcome({
@@ -28,10 +23,7 @@ class ShellActionOutcome<T> {
     return ShellActionOutcome<T>(message: message, tone: tone, data: data);
   }
 
-  static ShellActionOutcome<T> failure<T>(
-    String message, {
-    T? data,
-  }) {
+  static ShellActionOutcome<T> failure<T>(String message, {T? data}) {
     return ShellActionOutcome<T>(
       message: message,
       tone: ShellActionTone.error,

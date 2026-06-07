@@ -24,6 +24,7 @@ import '../viewmodels/control_task_view_model.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/main_shell_runtime_view_model.dart';
 import '../viewmodels/operation_console_view_model.dart';
+import '../viewmodels/operations_hub_coordinator.dart';
 import '../widgets/navigation/main_shell_runtime_scope.dart';
 import '../widgets/operations/alert_panel.dart';
 import '../widgets/operations/approval_queue_board.dart';
@@ -94,6 +95,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   String? _lastGovernanceSyncedOperationId;
   bool _deferredSectionsReady = false;
   bool _didActivateWorkspace = false;
+  late final OperationsHubCoordinator _coordinator;
 
   MainShellRuntimeViewModel? get _runtime => widget.sharedRuntimeManaged
       ? MainShellRuntimeScope.maybeOf(context)
@@ -103,6 +105,12 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   @override
   void initState() {
     super.initState();
+    _coordinator = OperationsHubCoordinator(
+      navigateToTab: widget.onNavigateToTab,
+      openAiLab: widget.onOpenAiLab,
+      openDataAnalysis: widget.onOpenDataAnalysis,
+      openOptimization: widget.onOpenOptimization,
+    );
     widget.operationConsoleViewModel?.addListener(
       _handleOperationConsoleUpdate,
     );
@@ -240,70 +248,7 @@ class _OperationsHubScreenState extends State<OperationsHubScreen> {
   }
 
   void _openChainWorkspace(AssetChainSummary chain, {required String source}) {
-    final context = buildLaunchContextFromChain(chain, prefix: source);
-    final sourceLabel = buildChainSourceLabel(
-      chain,
-      prefix: source,
-      includeWorkspaceBrief: true,
-    );
-    switch (chain.key) {
-      case 'dataset':
-        final onOpenDataAnalysis = widget.onOpenDataAnalysis;
-        if (onOpenDataAnalysis != null) {
-          onOpenDataAnalysis(
-            DataAnalysisLaunchIntent.workspace(
-              sourceLabel: sourceLabel,
-              context: context,
-            ),
-          );
-        } else {
-          widget.onNavigateToTab(2);
-        }
-        break;
-      case 'model':
-        final onOpenAiLab = widget.onOpenAiLab;
-        if (onOpenAiLab != null) {
-          onOpenAiLab(
-            AiLabLaunchIntent.deepLearning(
-              '',
-              sourceLabel: sourceLabel,
-              context: context,
-            ),
-          );
-        } else {
-          widget.onNavigateToTab(3);
-        }
-        break;
-      case 'knowledge':
-        final onOpenAiLab = widget.onOpenAiLab;
-        if (onOpenAiLab != null) {
-          onOpenAiLab(
-            AiLabLaunchIntent.rag(
-              '',
-              sourceLabel: sourceLabel,
-              context: context,
-            ),
-          );
-        } else {
-          widget.onNavigateToTab(3);
-        }
-        break;
-      case 'optimization':
-        final onOpenOptimization = widget.onOpenOptimization;
-        if (onOpenOptimization != null) {
-          onOpenOptimization(
-            OptimizationLaunchIntent(
-              sourceLabel: sourceLabel,
-              context: context,
-            ),
-          );
-        } else {
-          widget.onNavigateToTab(1);
-        }
-        break;
-      default:
-        widget.onNavigateToTab(0);
-    }
+    _coordinator.openChainWorkspace(chain, source: source);
   }
 
   Future<void> _runControlTask(ControlTaskRecord task) async {

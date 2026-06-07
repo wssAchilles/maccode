@@ -106,8 +106,7 @@ class AssetVersionTimelineBoard extends StatelessWidget {
             description: '最近后台优化登记到台账的版本和节省结果。',
             accent: AppColors.warning,
             icon: Icons.bolt_rounded,
-            actionLabel:
-                _chainFor('optimization')?.actionLabel ?? '打开能源优化',
+            actionLabel: _chainFor('optimization')?.actionLabel ?? '打开能源优化',
             onTap: () => _openChain('optimization', fallbackTab: 1),
             items: summary.optimizations
                 .take(3)

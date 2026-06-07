@@ -158,7 +158,6 @@ class _LoginScreenState extends State<LoginScreen>
           child: Center(
             child: ResponsiveWrapper(
               maxWidth: 1120,
-              mobileBreakpoint: 940,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,

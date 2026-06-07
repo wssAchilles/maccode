@@ -128,6 +128,13 @@ class _ScaffoldPage extends StatelessWidget {
 }
 
 void main() {
+  void setDesktopViewport(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+  }
+
   MainNavigation buildShell() {
     return MainNavigation.custom(
       authRepository: _FakeAuthRepository(),
@@ -144,6 +151,7 @@ void main() {
   testWidgets('uses a single shell scaffold without top-level AppBar', (
     WidgetTester tester,
   ) async {
+    setDesktopViewport(tester);
     await tester.pumpWidget(MaterialApp(home: buildShell()));
 
     expect(find.byType(Scaffold), findsOneWidget);
@@ -154,6 +162,7 @@ void main() {
   testWidgets('switches tabs through bottom navigation items', (
     WidgetTester tester,
   ) async {
+    setDesktopViewport(tester);
     await tester.pumpWidget(MaterialApp(home: buildShell()));
 
     expect(find.text('概览内容'), findsOneWidget);
@@ -177,6 +186,7 @@ void main() {
   testWidgets(
     'keeps only child page app bar when tabs use their own scaffold',
     (WidgetTester tester) async {
+      setDesktopViewport(tester);
       await tester.pumpWidget(
         MaterialApp(
           home: MainNavigation.custom(
@@ -207,6 +217,7 @@ void main() {
   testWidgets('disables auth actions when no current user is available', (
     WidgetTester tester,
   ) async {
+    setDesktopViewport(tester);
     await tester.pumpWidget(MaterialApp(home: buildShell()));
 
     final userInfoButton = tester.widget<OutlinedButton>(
@@ -223,6 +234,7 @@ void main() {
   testWidgets('reacts to auth state changes and enables user actions', (
     WidgetTester tester,
   ) async {
+    setDesktopViewport(tester);
     final authRepository = _ReactiveAuthRepository();
     addTearDown(authRepository.dispose);
 
@@ -277,7 +289,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('main-nav-user-info')));
     await tester.pumpAndSettle();
 
-    expect(find.text('用户信息'), findsNWidgets(2));
+    expect(find.text('用户信息'), findsOneWidget);
     expect(find.text('user@example.com'), findsOneWidget);
   });
 }

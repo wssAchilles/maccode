@@ -46,19 +46,20 @@ class FilePickerWidget extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
                 ),
-                child: const Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 20),
+                child: const Icon(
+                  Icons.upload_file_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Text('选择 CSV 文件', style: AppTextStyles.h4),
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // 拖放区域或已选文件
-          if (selectedFile == null)
-            _buildDropZone()
-          else
-            _buildSelectedFile(),
+          if (selectedFile == null) _buildDropZone() else _buildSelectedFile(),
         ],
       ),
     );
@@ -78,15 +79,16 @@ class FilePickerWidget extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              isLoggedIn ? '点击选择文件' : '请先登录',
+              isLoggedIn ? '点击选择文件' : '先完成登录后上传',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: isLoggedIn ? AppColors.primary : AppColors.textMuted,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              '仅支持 CSV 格式',
+              isLoggedIn ? '仅支持 CSV 格式' : '登录后将自动启用 CSV 文件选择',
               style: AppTextStyles.bodySmall,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -113,7 +115,11 @@ class FilePickerWidget extends StatelessWidget {
                   color: AppColors.success.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
                 ),
-                child: const Icon(Icons.description_rounded, color: AppColors.success, size: 20),
+                child: const Icon(
+                  Icons.description_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -176,7 +182,11 @@ class FilePickerWidget extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.cloud_outlined, color: AppColors.textMuted, size: 20),
+          const Icon(
+            Icons.cloud_outlined,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
         ],
       ),
     );

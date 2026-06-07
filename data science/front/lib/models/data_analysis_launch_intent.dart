@@ -74,7 +74,8 @@ class DataAnalysisLaunchIntent {
       savedAsAsset: retained is bool
           ? retained
           : (storagePath != null && storagePath.isNotEmpty),
-      sourceLabel: sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
+      sourceLabel:
+          sourceLabel ?? '${job.displayTitle} ${job.jobId.substring(0, 8)}',
       context: context,
     );
   }

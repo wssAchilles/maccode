@@ -7,10 +7,7 @@ import '../../config/app_theme.dart';
 import '../../models/job_record.dart';
 
 class OperationComputeGovernanceSummary extends StatelessWidget {
-  const OperationComputeGovernanceSummary({
-    super.key,
-    required this.operation,
-  });
+  const OperationComputeGovernanceSummary({super.key, required this.operation});
 
   final JobRecord operation;
 
@@ -73,14 +70,15 @@ class OperationComputeGovernanceSummary extends StatelessWidget {
                     'After · ${_rolloutLabel((after['rollout_mode'] ?? '').toString())}',
               ),
               _Chip(
-                label:
-                    'Canary · ${(after['canary_percent'] ?? 0).toString()}%',
+                label: 'Canary · ${(after['canary_percent'] ?? 0).toString()}%',
               ),
               if (requestKind.isNotEmpty)
                 _Chip(
                   label: requestKind == 'rollback' ? '请求 · 回退' : '请求 · 治理变更',
                 ),
-              if ((afterStatusMap['rollout_status'] ?? '').toString().isNotEmpty)
+              if ((afterStatusMap['rollout_status'] ?? '')
+                  .toString()
+                  .isNotEmpty)
                 _Chip(
                   label:
                       '状态 · ${_runtimeLabel((afterStatusMap['rollout_status'] ?? '').toString())}',
@@ -105,22 +103,24 @@ class OperationComputeGovernanceSummary extends StatelessWidget {
               ),
             ),
           ],
-          if ((beforeStatusMap['rollout_blocker'] ?? '').toString().trim().isNotEmpty) ...[
+          if ((beforeStatusMap['rollout_blocker'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               '变更前阻塞 · ${(beforeStatusMap['rollout_blocker'] ?? '').toString()}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.warning,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
           ],
-          if ((afterStatusMap['last_auto_rollback_reason'] ?? '').toString().trim().isNotEmpty) ...[
+          if ((afterStatusMap['last_auto_rollback_reason'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               '自动回退记录 · ${(afterStatusMap['last_auto_rollback_reason'] ?? '').toString()}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.warning,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
           ],
         ],

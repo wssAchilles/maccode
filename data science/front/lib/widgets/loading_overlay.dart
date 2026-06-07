@@ -19,31 +19,39 @@ class LoadingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loadingMessage = message ?? '正在加载，请稍候';
     return Stack(
       children: [
         child,
         if (isLoading)
-          Container(
-            color: backgroundColor ?? Colors.black.withValues(alpha: 0.5),
-            child: Center(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      if (message != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          message!,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ],
+          Semantics(
+            label: loadingMessage,
+            liveRegion: true,
+            child: Stack(
+              children: [
+                ModalBarrier(
+                  dismissible: false,
+                  color: backgroundColor ?? Colors.black.withValues(alpha: 0.5),
+                ),
+                Center(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            loadingMessage,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
       ],
@@ -55,10 +63,7 @@ class LoadingOverlay extends StatelessWidget {
 class SimpleLoadingIndicator extends StatelessWidget {
   final String? message;
 
-  const SimpleLoadingIndicator({
-    super.key,
-    this.message,
-  });
+  const SimpleLoadingIndicator({super.key, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -69,10 +74,7 @@ class SimpleLoadingIndicator extends StatelessWidget {
           const CircularProgressIndicator(),
           if (message != null) ...[
             const SizedBox(height: 16),
-            Text(
-              message!,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(message!, style: Theme.of(context).textTheme.bodyMedium),
           ],
         ],
       ),

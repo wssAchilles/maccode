@@ -95,28 +95,29 @@ void main() {
     expect(find.text('completed · 100% · 运行控制区'), findsNothing);
   });
 
-  testWidgets('WorkspaceContextBanner hides generic chips and machine summary', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: WorkspaceContextBanner(
-            accent: Colors.blue,
-            workspaceLabel: 'AI 运行控制区',
-            cardLabel: '当前卡片',
-            incidentLabel: '值班时限',
-            summary: 'completed · 100% · 运行控制区',
+  testWidgets(
+    'WorkspaceContextBanner hides generic chips and machine summary',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: WorkspaceContextBanner(
+              accent: Colors.blue,
+              workspaceLabel: 'AI 运行控制区',
+              cardLabel: '当前卡片',
+              incidentLabel: '值班时限',
+              summary: 'completed · 100% · 运行控制区',
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('AI 运行控制区'), findsOneWidget);
-    expect(find.text('当前卡片'), findsNothing);
-    expect(find.text('Current watch · 值班时限'), findsNothing);
-    expect(find.text('completed · 100% · 运行控制区'), findsNothing);
-  });
+      expect(find.text('AI 运行控制区'), findsOneWidget);
+      expect(find.text('当前卡片'), findsNothing);
+      expect(find.text('Current watch · 值班时限'), findsNothing);
+      expect(find.text('completed · 100% · 运行控制区'), findsNothing);
+    },
+  );
 
   testWidgets('WorkbenchSectionSignal hides generic chips and machine state', (
     tester,
@@ -179,14 +180,8 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('latest v1 · 最新版本 · 优化注册表'),
-        findsNothing,
-      );
-      expect(
-        find.text('资产状态 · 资产状态 · 优化注册表 · 2026-03-14'),
-        findsNothing,
-      );
+      expect(find.text('latest v1 · 最新版本 · 优化注册表'), findsNothing);
+      expect(find.text('资产状态 · 资产状态 · 优化注册表 · 2026-03-14'), findsNothing);
       expect(find.text('资产状态 · 优先核对最新快照与结果摘要。'), findsOneWidget);
     },
   );
@@ -239,82 +234,83 @@ void main() {
     expect(find.text('优先跟进训练队列、产物与模型资产。'), findsOneWidget);
   });
 
-  testWidgets('OperationsEventBusBoard hides generic chips and machine summary', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: OperationsEventBusBoard(
-              summary: DashboardSummary(
-                systemStatus: const [],
-                kpis: const DashboardKpis(
-                  datasetCount: 0,
-                  analysisCount: 0,
-                  modelCount: 0,
-                  jobs24h: 0,
-                  failedJobs: 0,
-                ),
-                recentJobs: const [],
-                recentAssets: const [],
-                recentHistory: const [],
-                alerts: const [],
-                assetSummary: AssetSummary(
-                  inventory: const AssetInventory(
-                    datasetAssets: 0,
-                    modelAssets: 0,
-                    knowledgeAssets: 0,
-                    optimizationAssets: 0,
+  testWidgets(
+    'OperationsEventBusBoard hides generic chips and machine summary',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: OperationsEventBusBoard(
+                summary: DashboardSummary(
+                  systemStatus: const [],
+                  kpis: const DashboardKpis(
+                    datasetCount: 0,
+                    analysisCount: 0,
+                    modelCount: 0,
+                    jobs24h: 0,
+                    failedJobs: 0,
                   ),
-                  datasets: const [],
-                  models: const [],
-                  knowledgeBases: const [],
-                  optimizations: const [],
-                  failureChains: const [],
-                  governance: const [],
-                  chainSummaries: [
-                    _chain(
-                      key: 'model',
-                      label: '模型资产',
-                      workspaceTarget: 'ai_runtime',
-                      workspaceTargetLabel: 'AI 运行控制区',
-                      cardTarget: 'summary',
-                      cardTargetLabel: '当前卡片',
-                      incidentTarget: 'focus',
-                      incidentTargetLabel: '值班时限',
-                      workspaceBrief: 'completed · 100% · 当前卡片',
-                      incidentBrief: 'completed · 100% · 运行控制区',
-                      timeline: const [
-                        AssetChainNode(
-                          kind: 'event',
-                          title: '训练产物更新',
-                          detail: '已同步最近模型资产',
-                          level: 'info',
-                          badge: 'UPDATE',
-                          sourceLabel: 'unit-test',
-                          versionTag: 'v1',
-                          phaseLabel: 'completed',
-                        ),
-                      ],
+                  recentJobs: const [],
+                  recentAssets: const [],
+                  recentHistory: const [],
+                  alerts: const [],
+                  assetSummary: AssetSummary(
+                    inventory: const AssetInventory(
+                      datasetAssets: 0,
+                      modelAssets: 0,
+                      knowledgeAssets: 0,
+                      optimizationAssets: 0,
                     ),
-                  ],
+                    datasets: const [],
+                    models: const [],
+                    knowledgeBases: const [],
+                    optimizations: const [],
+                    failureChains: const [],
+                    governance: const [],
+                    chainSummaries: [
+                      _chain(
+                        key: 'model',
+                        label: '模型资产',
+                        workspaceTarget: 'ai_runtime',
+                        workspaceTargetLabel: 'AI 运行控制区',
+                        cardTarget: 'summary',
+                        cardTargetLabel: '当前卡片',
+                        incidentTarget: 'focus',
+                        incidentTargetLabel: '值班时限',
+                        workspaceBrief: 'completed · 100% · 当前卡片',
+                        incidentBrief: 'completed · 100% · 运行控制区',
+                        timeline: const [
+                          AssetChainNode(
+                            kind: 'event',
+                            title: '训练产物更新',
+                            detail: '已同步最近模型资产',
+                            level: 'info',
+                            badge: 'UPDATE',
+                            sourceLabel: 'unit-test',
+                            versionTag: 'v1',
+                            phaseLabel: 'completed',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
+                onOpenChain: _noopChain,
               ),
-              onOpenChain: _noopChain,
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('当前卡片'), findsNothing);
-    expect(find.text('值班时限'), findsNothing);
-    expect(find.text('completed · 100% · 当前卡片'), findsNothing);
-    expect(find.text('completed · 100% · 运行控制区'), findsNothing);
-    expect(find.text('AI 运行控制区'), findsWidgets);
-    expect(find.text('优先跟进训练队列、产物与模型资产。'), findsOneWidget);
-  });
+      expect(find.text('当前卡片'), findsNothing);
+      expect(find.text('值班时限'), findsNothing);
+      expect(find.text('completed · 100% · 当前卡片'), findsNothing);
+      expect(find.text('completed · 100% · 运行控制区'), findsNothing);
+      expect(find.text('AI 运行控制区'), findsWidgets);
+      expect(find.text('优先跟进训练队列、产物与模型资产。'), findsOneWidget);
+    },
+  );
 }
 
 void _noopGovernance(AssetGovernanceItem _) {}

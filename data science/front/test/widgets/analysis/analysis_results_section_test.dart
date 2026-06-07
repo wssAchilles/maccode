@@ -31,11 +31,10 @@ void main() {
       ),
     );
 
-    expect(find.text('分析结果'), findsOneWidget);
-    expect(find.text('基本信息'), findsOneWidget);
+    expect(find.text('分析结果总览'), findsOneWidget);
     expect(find.text('行数'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
-    expect(find.text('数据预览 (前5行)'), findsOneWidget);
+    expect(find.text('数据预览'), findsOneWidget);
     expect(find.byType(DataTable), findsOneWidget);
   });
 

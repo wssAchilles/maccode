@@ -52,11 +52,7 @@ class AuditViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> applyFilters({
-    String? type,
-    String? status,
-    int limit = 50,
-  }) {
+  Future<void> applyFilters({String? type, String? status, int limit = 50}) {
     _typeFilter = type;
     _statusFilter = status;
     return loadActivity(limit: limit);

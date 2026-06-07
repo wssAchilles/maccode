@@ -7,26 +7,14 @@ class ApiResponse<T> {
   final ApiError? error;
   final Map<String, dynamic>? metadata;
 
-  ApiResponse({
-    required this.success,
-    this.data,
-    this.error,
-    this.metadata,
-  });
+  ApiResponse({required this.success, this.data, this.error, this.metadata});
 
   factory ApiResponse.success(T data, {Map<String, dynamic>? metadata}) {
-    return ApiResponse(
-      success: true,
-      data: data,
-      metadata: metadata,
-    );
+    return ApiResponse(success: true, data: data, metadata: metadata);
   }
 
   factory ApiResponse.failure(ApiError error) {
-    return ApiResponse(
-      success: false,
-      error: error,
-    );
+    return ApiResponse(success: false, error: error);
   }
 
   factory ApiResponse.fromJson(
@@ -61,11 +49,7 @@ class ApiError {
   final String message;
   final Map<String, dynamic>? details;
 
-  ApiError({
-    required this.code,
-    required this.message,
-    this.details,
-  });
+  ApiError({required this.code, required this.message, this.details});
 
   factory ApiError.fromJson(Map<String, dynamic> json) {
     return ApiError(

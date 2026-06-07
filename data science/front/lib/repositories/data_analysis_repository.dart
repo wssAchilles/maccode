@@ -7,7 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import '../models/data_analysis_error.dart';
 import '../models/data_analysis_job_submission_result.dart';
 import '../models/data_analysis_submission_result.dart';
-import '../models/job_record.dart';
+import '../models/analysis_job_payload.dart';
+import '../models/upload_submission_result.dart';
 import '../services/api_service_exception.dart';
 import '../services/data_analysis_gateway.dart';
 
@@ -99,8 +100,9 @@ class GatewayDataAnalysisRepository implements DataAnalysisRepository {
         filename: file.name,
         saveToStorage: saveToStorage,
       );
+      final analysisJob = AnalysisJobPayload.fromJson(jobPayload);
       return DataAnalysisJobSubmissionResult.success(
-        JobRecord.fromJson(jobPayload),
+        analysisJob.job,
         storagePath: upload.storagePath,
       );
     } catch (error) {
@@ -113,29 +115,21 @@ class GatewayDataAnalysisRepository implements DataAnalysisRepository {
     required List<int> bytes,
     void Function(_SubmissionStep step)? onStep,
   }) async {
-    final uploadInfo = await _dataGateway.getUploadUrl(
-      fileName: file.name,
-      contentType: 'text/csv',
+    final uploadInfo = UploadSubmissionResult.fromJson(
+      await _dataGateway.getUploadUrl(
+        fileName: file.name,
+        contentType: 'text/csv',
+      ),
     );
-
-    final uploadUrl = uploadInfo['uploadUrl'] as String?;
-    final storagePath = uploadInfo['storagePath'] as String?;
-
-    if (uploadUrl == null || storagePath == null) {
-      throw const ApiServiceException(
-        '上传信息不完整，请稍后重试',
-        kind: ApiServiceErrorKind.badResponse,
-      );
-    }
 
     onStep?.call(_SubmissionStep.uploadFile);
     await _dataGateway.uploadFileToGcs(
-      uploadUrl: uploadUrl,
+      uploadUrl: uploadInfo.uploadUrl,
       fileData: bytes,
       contentType: 'text/csv',
     );
 
-    return _PreparedUpload(storagePath: storagePath);
+    return _PreparedUpload(storagePath: uploadInfo.storagePath);
   }
 
   DataAnalysisError _mapFailure(_SubmissionStep step, Object error) {

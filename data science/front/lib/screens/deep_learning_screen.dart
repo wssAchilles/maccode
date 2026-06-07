@@ -10,11 +10,7 @@ import '../viewmodels/deep_learning_view_model.dart';
 import 'ai_lab_screen.dart';
 
 class DeepLearningScreen extends StatefulWidget {
-  const DeepLearningScreen({
-    super.key,
-    this.storagePath,
-    this.viewModel,
-  });
+  const DeepLearningScreen({super.key, this.storagePath, this.viewModel});
 
   final String? storagePath;
 

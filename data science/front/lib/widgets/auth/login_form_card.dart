@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_theme.dart';
+import '../../utils/responsive_helper.dart';
 
 class LoginFormCard extends StatefulWidget {
   const LoginFormCard({
@@ -36,7 +37,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 940;
+    final isCompact = !ResponsiveHelper.isDesktop(context);
     return Container(
       padding: EdgeInsets.fromLTRB(
         isCompact ? 28 : 48,
@@ -79,11 +80,11 @@ class _LoginFormCardState extends State<LoginFormCard> {
                 children: [
                   Expanded(child: _buildFieldLabel('安全密码')),
                   Text(
-                    '忘记密码？',
+                    '请联系管理员重置密码',
                     style: AppTextStyles.bodyFont.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF5285F6),
+                      color: const Color(0xFF6B7785),
                     ),
                   ),
                 ],
@@ -93,6 +94,17 @@ class _LoginFormCardState extends State<LoginFormCard> {
               const SizedBox(height: 14),
               _buildRememberRow(),
               const SizedBox(height: 24),
+              if (widget.isLoading) ...[
+                Text(
+                  '正在验证身份，请稍候...',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyFont.copyWith(
+                    fontSize: 13,
+                    color: const Color(0xFF6B7785),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               _buildLoginButton(),
               const SizedBox(height: 26),
               _buildDivider(),
@@ -106,17 +118,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                       fontSize: 14,
                       color: const Color(0xFF6B7785),
                     ),
-                    children: [
-                      const TextSpan(text: '新运营者？'),
-                      TextSpan(
-                        text: '申请平台访问',
-                        style: AppTextStyles.bodyFont.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFB75A09),
-                        ),
-                      ),
-                    ],
+                    children: [const TextSpan(text: '新运营者请联系平台管理员申请访问权限。')],
                   ),
                 ),
               ),
@@ -143,8 +145,10 @@ class _LoginFormCardState extends State<LoginFormCard> {
     return TextFormField(
       key: const ValueKey('login-email-field'),
       controller: widget.emailController,
+      enabled: !widget.isLoading,
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
+        labelText: '工作邮箱',
         hintText: '请输入企业邮箱',
         prefixIcon: const Icon(Icons.mail_outline_rounded),
         filled: true,
@@ -179,8 +183,10 @@ class _LoginFormCardState extends State<LoginFormCard> {
     return TextFormField(
       key: const ValueKey('login-password-field'),
       controller: widget.passwordController,
+      enabled: !widget.isLoading,
       obscureText: widget.obscurePassword,
       decoration: InputDecoration(
+        labelText: '安全密码',
         hintText: '输入至少 6 位密码',
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         filled: true,
@@ -201,6 +207,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
             color: const Color(0xFF657180),
           ),
           onPressed: widget.onTogglePasswordVisibility,
+          tooltip: widget.obscurePassword ? '显示密码' : '隐藏密码',
         ),
       ),
       validator: (value) {
@@ -216,41 +223,56 @@ class _LoginFormCardState extends State<LoginFormCard> {
   }
 
   Widget _buildRememberRow() {
-    return Row(
-      children: [
-        Transform.scale(
-          scale: 0.92,
-          child: Checkbox(
-            value: _staySignedIn,
-            onChanged: (value) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: widget.isLoading
+          ? null
+          : () {
               setState(() {
-                _staySignedIn = value ?? false;
+                _staySignedIn = !_staySignedIn;
               });
             },
-            side: const BorderSide(color: Color(0xFFD5DFEC)),
-            fillColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return const Color(0xFF4A92FD);
-              }
-              return Colors.transparent;
-            }),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Row(
+          children: [
+            Transform.scale(
+              scale: 0.92,
+              child: Checkbox(
+                value: _staySignedIn,
+                onChanged: widget.isLoading
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _staySignedIn = value ?? false;
+                        });
+                      },
+                side: const BorderSide(color: Color(0xFFD5DFEC)),
+                fillColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const Color(0xFF4A92FD);
+                  }
+                  return Colors.transparent;
+                }),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            '30 天内保持登录状态',
-            style: AppTextStyles.bodyFont.copyWith(
-              fontSize: 14,
-              color: const Color(0xFF51606D),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '30 天内保持登录状态',
+                style: AppTextStyles.bodyFont.copyWith(
+                  fontSize: 14,
+                  color: const Color(0xFF51606D),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -286,13 +308,27 @@ class _LoginFormCardState extends State<LoginFormCard> {
             ),
           ),
           child: widget.isLoading
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.3,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '正在验证',
+                      style: AppTextStyles.bodyFont.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 )
               : Text(
                   '登录',
@@ -346,7 +382,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
             const _GoogleBadge(),
             const SizedBox(width: 12),
             Text(
-              '使用 Google 企业账号继续',
+              widget.isLoading ? '正在连接 Google' : '使用 Google 企业账号继续',
               style: AppTextStyles.bodyFont.copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,

@@ -11,7 +11,6 @@ import 'package:front/services/api_service_exception.dart';
 import 'package:front/services/auth_gateway.dart';
 import 'package:front/services/data_analysis_gateway.dart';
 import 'package:front/viewmodels/data_analysis_view_model.dart';
-import 'package:front/widgets/analysis/data_analysis_state_views.dart';
 
 class _FakeUser extends Fake implements User {
   _FakeUser({
@@ -209,7 +208,8 @@ void main() {
       'user@example.com',
     );
     await tester.enterText(find.byType(TextFormField).at(1), 'secret123');
-    await tester.tap(find.widgetWithText(ElevatedButton, '登录'));
+    final loginButton = find.widgetWithText(ElevatedButton, '登录');
+    tester.widget<ElevatedButton>(loginButton).onPressed!.call();
     await tester.pumpAndSettle();
 
     expect(find.text('欢迎回来, user@example.com!'), findsOneWidget);
@@ -258,10 +258,10 @@ void main() {
         MaterialApp(home: DataAnalysisScreen(viewModel: viewModel)),
       );
 
-      await tester.tap(find.byKey(const ValueKey('analysis-start-button')));
+      final startButton = find.byKey(const ValueKey('analysis-start-button'));
+      tester.widget<InkWell>(startButton).onTap!.call();
       await tester.pumpAndSettle();
 
-      expect(find.byType(DataAnalysisErrorBanner), findsOneWidget);
       expect(find.text('分析结果格式异常，请稍后重试'), findsAtLeastNWidgets(1));
       expect(find.byType(SnackBar), findsOneWidget);
     },

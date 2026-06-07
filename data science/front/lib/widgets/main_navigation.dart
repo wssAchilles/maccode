@@ -375,6 +375,14 @@ class _MainNavigationState extends State<MainNavigation> {
                       pageBuilder: _buildPage,
                     ),
             ),
+            floatingActionButton: _usesDefaultShell
+                ? FloatingActionButton.small(
+                    key: const ValueKey('mobile-shell-actions-button'),
+                    tooltip: '工作台操作',
+                    onPressed: _showMobileActionSheet,
+                    child: const Icon(Icons.more_horiz_rounded),
+                  )
+                : null,
             bottomNavigationBar: Container(
               decoration: BoxDecoration(
                 color: AppColors.surface,
@@ -382,28 +390,17 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
               child: SafeArea(
                 top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                      child: Row(
-                        children: [Expanded(child: _buildAccountActions())],
-                      ),
-                    ),
-                    NavigationBar(
-                      selectedIndex: _currentIndex,
-                      onDestinationSelected: _onNavTap,
-                      destinations: _destinations
-                          .map(
-                            (item) => NavigationDestination(
-                              icon: Icon(item.icon),
-                              label: item.label,
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ],
+                child: NavigationBar(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: _onNavTap,
+                  destinations: _destinations
+                      .map(
+                        (item) => NavigationDestination(
+                          icon: Icon(item.icon),
+                          label: item.label,
+                        ),
+                      )
+                      .toList(growable: false),
                 ),
               ),
             ),
@@ -757,6 +754,74 @@ class _MainNavigationState extends State<MainNavigation> {
       return;
     }
     unawaited(_showMobileShellPanel(kind));
+  }
+
+  Future<void> _showMobileActionSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Text('工作台操作', style: AppTextStyles.h4),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.fact_check_rounded),
+                title: const Text('审批中心'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openApprovalPanel();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.terminal_rounded),
+                title: const Text('运行控制台'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openOperationPanel();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_rounded),
+                title: const Text('通知中心'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openNotificationsPanel();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                enabled: _hasAuthenticatedUser,
+                leading: const Icon(Icons.account_circle_outlined),
+                title: const Text('用户信息'),
+                onTap: !_hasAuthenticatedUser
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        _showUserInfo();
+                      },
+              ),
+              ListTile(
+                enabled: _hasAuthenticatedUser,
+                leading: const Icon(Icons.logout_rounded),
+                title: const Text('退出登录'),
+                onTap: !_hasAuthenticatedUser
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        unawaited(_handleSignOut());
+                      },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showMobileShellPanel(ShellRuntimePanelKind kind) async {

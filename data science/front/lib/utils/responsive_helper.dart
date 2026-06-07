@@ -4,16 +4,25 @@ library;
 
 import 'package:flutter/material.dart';
 
+class ResponsiveBreakpoints {
+  const ResponsiveBreakpoints._();
+
+  static const double mobile = 600;
+  static const double tablet = 900;
+  static const double desktop = 900;
+  static const double largeDesktop = 1200;
+}
+
 class ResponsiveHelper {
   /// 屏幕断点定义
-  static const double mobileBreakpoint = 600;
-  static const double tabletBreakpoint = 900;
-  static const double desktopBreakpoint = 1200;
-  
+  static const double mobileBreakpoint = ResponsiveBreakpoints.mobile;
+  static const double tabletBreakpoint = ResponsiveBreakpoints.tablet;
+  static const double desktopBreakpoint = ResponsiveBreakpoints.largeDesktop;
+
   /// 获取屏幕类型
   static ScreenType getScreenType(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    
+
     if (width < mobileBreakpoint) {
       return ScreenType.mobile;
     } else if (width < tabletBreakpoint) {
@@ -24,23 +33,23 @@ class ResponsiveHelper {
       return ScreenType.largeDesktop;
     }
   }
-  
+
   /// 判断是否为移动端
   static bool isMobile(BuildContext context) {
     return MediaQuery.of(context).size.width < mobileBreakpoint;
   }
-  
+
   /// 判断是否为平板
   static bool isTablet(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     return width >= mobileBreakpoint && width < tabletBreakpoint;
   }
-  
+
   /// 判断是否为桌面端
   static bool isDesktop(BuildContext context) {
     return MediaQuery.of(context).size.width >= tabletBreakpoint;
   }
-  
+
   /// 获取响应式值
   /// 根据屏幕大小返回不同的值
   static T getResponsiveValue<T>(
@@ -51,7 +60,7 @@ class ResponsiveHelper {
     T? largeDesktop,
   }) {
     final screenType = getScreenType(context);
-    
+
     switch (screenType) {
       case ScreenType.mobile:
         return mobile;
@@ -63,7 +72,7 @@ class ResponsiveHelper {
         return largeDesktop ?? desktop ?? tablet ?? mobile;
     }
   }
-  
+
   /// 获取响应式字体大小
   static double getResponsiveFontSize(
     BuildContext context, {
@@ -78,7 +87,7 @@ class ResponsiveHelper {
       desktop: desktop,
     );
   }
-  
+
   /// 获取响应式间距
   static double getResponsiveSpacing(
     BuildContext context, {
@@ -93,9 +102,10 @@ class ResponsiveHelper {
       desktop: desktop,
     );
   }
-  
+
   /// 获取网格列数
-  static int getGridColumns(BuildContext context, {
+  static int getGridColumns(
+    BuildContext context, {
     int mobile = 1,
     int tablet = 2,
     int desktop = 3,
@@ -107,7 +117,7 @@ class ResponsiveHelper {
       desktop: desktop,
     );
   }
-  
+
   /// 获取内容最大宽度
   static double getMaxContentWidth(BuildContext context) {
     return getResponsiveValue(
@@ -118,49 +128,31 @@ class ResponsiveHelper {
       largeDesktop: 1400,
     );
   }
-  
+
   /// 获取卡片边距
   static EdgeInsets getCardPadding(BuildContext context) {
     return EdgeInsets.all(
-      getResponsiveValue(
-        context,
-        mobile: 12.0,
-        tablet: 16.0,
-        desktop: 20.0,
-      ),
+      getResponsiveValue(context, mobile: 12.0, tablet: 16.0, desktop: 20.0),
     );
   }
-  
+
   /// 获取页面边距
   static EdgeInsets getPagePadding(BuildContext context) {
     return EdgeInsets.all(
-      getResponsiveValue(
-        context,
-        mobile: 16.0,
-        tablet: 24.0,
-        desktop: 32.0,
-      ),
+      getResponsiveValue(context, mobile: 16.0, tablet: 24.0, desktop: 32.0),
     );
   }
 }
 
 /// 屏幕类型枚举
-enum ScreenType {
-  mobile,
-  tablet,
-  desktop,
-  largeDesktop,
-}
+enum ScreenType { mobile, tablet, desktop, largeDesktop }
 
 /// 响应式布局构建器
 class ResponsiveBuilder extends StatelessWidget {
   final Widget Function(BuildContext context, ScreenType screenType) builder;
-  
-  const ResponsiveBuilder({
-    super.key,
-    required this.builder,
-  });
-  
+
+  const ResponsiveBuilder({super.key, required this.builder});
+
   @override
   Widget build(BuildContext context) {
     final screenType = ResponsiveHelper.getScreenType(context);
@@ -176,7 +168,7 @@ class ResponsiveGrid extends StatelessWidget {
   final int desktopColumns;
   final double spacing;
   final double runSpacing;
-  
+
   const ResponsiveGrid({
     super.key,
     required this.children,
@@ -186,7 +178,7 @@ class ResponsiveGrid extends StatelessWidget {
     this.spacing = 16.0,
     this.runSpacing = 16.0,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final columns = ResponsiveHelper.getGridColumns(
@@ -195,7 +187,7 @@ class ResponsiveGrid extends StatelessWidget {
       tablet: tabletColumns,
       desktop: desktopColumns,
     );
-    
+
     return GridView.count(
       crossAxisCount: columns,
       crossAxisSpacing: spacing,

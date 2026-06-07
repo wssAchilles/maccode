@@ -104,10 +104,7 @@ class ShellOperationSessionController extends ChangeNotifier {
     return ShellOperationSessionPhase.live;
   }
 
-  bool _sessionEquals(
-    ShellOperationSession left,
-    ShellOperationSession right,
-  ) {
+  bool _sessionEquals(ShellOperationSession left, ShellOperationSession right) {
     return left.operationId == right.operationId &&
         left.phase == right.phase &&
         left.streaming == right.streaming &&

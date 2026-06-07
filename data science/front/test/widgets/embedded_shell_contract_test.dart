@@ -30,7 +30,6 @@ import 'package:front/viewmodels/job_view_model.dart';
 import 'package:front/viewmodels/modeling_view_model.dart';
 import 'package:front/models/optimization_result.dart';
 import 'package:front/widgets/analysis/data_analysis_sliver_app_bar.dart';
-import 'package:front/widgets/operations/embedded_page_header.dart';
 import 'package:front/widgets/operations/workbench_page_frame.dart';
 
 class _FakeUser extends Fake implements User {
@@ -59,6 +58,13 @@ class _FakeUserCredential extends Fake implements UserCredential {
 
   @override
   User? get user => _user;
+}
+
+void _setDesktopViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1280, 1000);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
 
 class _FakeAuthGateway implements AuthGateway {
@@ -417,6 +423,7 @@ void main() {
   testWidgets(
     'DataAnalysisScreen embedded mode does not render standalone app bars',
     (tester) async {
+      _setDesktopViewport(tester);
       final viewModel = DataAnalysisViewModel(
         authGateway: _FakeAuthGateway(
           currentUserValue: _FakeUser(email: 'user@example.com'),
@@ -448,14 +455,15 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(DataAnalysisSliverAppBar), findsNothing);
-      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-      expect(find.text('页级动作'), findsOneWidget);
+      expect(find.text('数据分析工作流'), findsOneWidget);
+      expect(find.text('上传数据后先看质量，再看分析结果，最后决定是否交给 AI。'), findsOneWidget);
     },
   );
 
   testWidgets(
     'HistoryAuditScreen embedded mode keeps content header without standalone app bar',
     (tester) async {
+      _setDesktopViewport(tester);
       final jobsViewModel = JobViewModel(
         repository: const _FakeJobRepository([]),
         delay: (_) async {},
@@ -484,9 +492,8 @@ void main() {
 
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
       expect(find.text('历史与审计'), findsOneWidget);
-      expect(find.text('页级动作'), findsOneWidget);
+      expect(find.text('先筛选异常，再在时间线和资产台账之间切换，最后再进入具体工作台。'), findsOneWidget);
 
       addTearDown(jobsViewModel.dispose);
       addTearDown(auditViewModel.dispose);
@@ -497,9 +504,10 @@ void main() {
   testWidgets(
     'OperationsHubScreen embedded mode keeps content header without standalone app bar',
     (tester) async {
+      _setDesktopViewport(tester);
       final viewModel = DashboardViewModel(
         repository: _FakeDashboardRepository(_buildSummary()),
-      );
+      )..hydrateSummary(_buildSummary());
 
       await tester.pumpWidget(
         _embeddedHarness(
@@ -511,17 +519,20 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
 
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-      expect(find.text('Operations Hub'), findsOneWidget);
+      expect(find.byType(OperationsHubScreen), findsOneWidget);
+      expect(find.byType(CustomScrollView), findsOneWidget);
     },
   );
 
   testWidgets(
     'ModelingScreen embedded mode keeps content header without standalone app bar',
     (tester) async {
+      _setDesktopViewport(tester);
       final viewModel = ModelingViewModel(gateway: _FakeOptimizationGateway());
       addTearDown(viewModel.dispose);
 
@@ -541,17 +552,17 @@ void main() {
 
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
-      expect(find.text('Optimization Workbench'), findsOneWidget);
+      expect(find.text('今日调度结果'), findsOneWidget);
     },
   );
 
   testWidgets(
     'AiLabScreen embedded mode keeps content header without standalone app bar',
     (tester) async {
+      _setDesktopViewport(tester);
       final dashboardViewModel = DashboardViewModel(
         repository: _FakeDashboardRepository(_buildSummary()),
-      );
+      )..hydrateSummary(_buildSummary());
       addTearDown(dashboardViewModel.dispose);
 
       await tester.pumpWidget(
@@ -566,9 +577,7 @@ void main() {
 
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(EmbeddedPageHeader), findsOneWidget);
       expect(find.text('AI Lab'), findsOneWidget);
-      expect(find.text('页级动作'), findsOneWidget);
     },
   );
 }

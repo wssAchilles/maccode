@@ -43,6 +43,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? _activeJobId;
   Future<void>? _pollingTask;
   StreamSubscription<JobStreamFrame>? _streamSubscription;
+  int _loadJobsSeq = 0;
 
   List<JobRecord> get jobs => List.unmodifiable(_jobs);
   bool get isLoading => _isLoading;
@@ -67,27 +68,51 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> loadJobs() async {
+    final requestSeq = ++_loadJobsSeq;
+    final requestedType = _jobType;
+    final requestedStatus = _statusFilter;
     _isLoading = true;
     _errorMessage = null;
     _notifySafely();
 
     try {
-      _jobs = await _repository.listJobs(
-        type: _jobType,
-        status: _statusFilter,
+      final jobs = await _repository.listJobs(
+        type: requestedType,
+        status: requestedStatus,
         limit: limit,
       );
+      if (!_isLatestLoadJobsRequest(
+        requestSeq,
+        requestedType,
+        requestedStatus,
+      )) {
+        return;
+      }
+      _jobs = jobs;
       _promoteActiveJob();
       if (!_isPolling && _isRuntimeActive && activeJob?.isRunning == true) {
         unawaited(startPolling());
       }
     } catch (e) {
+      if (!_isLatestLoadJobsRequest(
+        requestSeq,
+        requestedType,
+        requestedStatus,
+      )) {
+        return;
+      }
       if (!(_isPolling && _jobs.isNotEmpty && _isTransientApiError(e))) {
         _errorMessage = '加载任务失败: ${_readableErrorMessage(e)}';
       }
     } finally {
-      _isLoading = false;
-      _notifySafely();
+      if (_isLatestLoadJobsRequest(
+        requestSeq,
+        requestedType,
+        requestedStatus,
+      )) {
+        _isLoading = false;
+        _notifySafely();
+      }
     }
   }
 
@@ -313,6 +338,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     if (!_isRuntimeActive) {
+      _loadJobsSeq++;
       stopPolling();
       return;
     }
@@ -327,6 +353,7 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
     }
     _isWorkspaceActive = isActive;
     if (!_isRuntimeActive) {
+      _loadJobsSeq++;
       stopPolling();
       return;
     }
@@ -342,8 +369,10 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
     );
     final nextJob = mergeJobStreamFrame(current ?? seedJob, frame);
     _activeJobId = nextJob.jobId;
-    _jobs = [nextJob, ..._jobs.where((item) => item.jobId != nextJob.jobId)]
-        .toList(growable: false);
+    _jobs = [
+      nextJob,
+      ..._jobs.where((item) => item.jobId != nextJob.jobId),
+    ].toList(growable: false);
     _notifySafely();
   }
 
@@ -359,9 +388,21 @@ class JobViewModel extends ChangeNotifier with WidgetsBindingObserver {
   bool get _isRuntimeActive => _isForeground && _isWorkspaceActive;
 
   Future<void> applyFilters({String? jobType, String? statusFilter}) {
+    _loadJobsSeq++;
     _jobType = jobType;
     _statusFilter = statusFilter;
     return loadJobs();
+  }
+
+  bool _isLatestLoadJobsRequest(
+    int requestSeq,
+    String? requestedType,
+    String? requestedStatus,
+  ) {
+    return !_isDisposed &&
+        requestSeq == _loadJobsSeq &&
+        requestedType == _jobType &&
+        requestedStatus == _statusFilter;
   }
 
   Future<JobRecord?> _submitJob(

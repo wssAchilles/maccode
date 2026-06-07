@@ -8,10 +8,7 @@ import '../../models/rag_message.dart';
 import '../common/animated_glass_card.dart';
 
 class RagMessageBubble extends StatelessWidget {
-  const RagMessageBubble({
-    super.key,
-    required this.message,
-  });
+  const RagMessageBubble({super.key, required this.message});
 
   final RagMessage message;
 
@@ -42,7 +39,9 @@ class RagMessageBubble extends StatelessWidget {
                 ),
               ),
             ),
-            if (!isUser && message.sources != null && message.sources!.isNotEmpty)
+            if (!isUser &&
+                message.sources != null &&
+                message.sources!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 8, bottom: 16),
                 child: Wrap(

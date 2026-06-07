@@ -38,19 +38,18 @@ class OperationComputeMetricsStrip extends StatelessWidget {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: items.map((item) {
-          return _ComputePill(item: item, compact: compact);
-        }).toList(growable: false),
+        children: items
+            .map((item) {
+              return _ComputePill(item: item, compact: compact);
+            })
+            .toList(growable: false),
       ),
     );
   }
 }
 
 class _ComputePill extends StatelessWidget {
-  const _ComputePill({
-    required this.item,
-    required this.compact,
-  });
+  const _ComputePill({required this.item, required this.compact});
 
   final OperationComputeMetric item;
   final bool compact;
@@ -121,16 +120,12 @@ class _ComputePill extends StatelessWidget {
           if (!compact && item.fallbackReason.isNotEmpty)
             Text(
               'fallback · ${item.fallbackReason}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.warning,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
           if (!compact && item.guardAutoRollbackApplied)
             Text(
               'auto rollback · ${item.guardLastAutoRollbackReason.isEmpty ? "stable python" : item.guardLastAutoRollbackReason}',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.warning,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
             ),
         ],
       ),

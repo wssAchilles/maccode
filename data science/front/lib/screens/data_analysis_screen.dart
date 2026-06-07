@@ -28,6 +28,7 @@ import '../widgets/analysis/data_analysis_operations_board.dart';
 import '../widgets/common/glass_card.dart';
 import '../viewmodels/dashboard_view_model.dart';
 import '../viewmodels/data_analysis_view_model.dart';
+import '../viewmodels/data_analysis_workflow_coordinator.dart';
 import '../viewmodels/data_drift_view_model.dart';
 import '../viewmodels/history_view_model.dart';
 import '../viewmodels/job_view_model.dart';
@@ -36,7 +37,6 @@ import '../widgets/operations/job_activity_list.dart';
 import '../widgets/operations/job_event_timeline.dart';
 import '../widgets/operations/decision_layout.dart';
 import '../widgets/operations/workbench_page_frame.dart';
-import 'history_audit_screen.dart';
 
 class DataAnalysisScreen extends StatefulWidget {
   const DataAnalysisScreen({
@@ -82,6 +82,7 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
   late final JobViewModel _analysisJobsViewModel;
   late final HistoryViewModel _historyViewModel;
   late final DataDriftViewModel _driftViewModel;
+  late final DataAnalysisWorkflowCoordinator _workflowCoordinator;
   late final bool _ownsViewModel;
   late final bool _ownsDashboardViewModel;
   late final bool _ownsAnalysisJobsViewModel;
@@ -119,6 +120,17 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
     _ownsAnalysisJobsViewModel = widget.analysisJobsViewModel == null;
     _historyViewModel = HistoryViewModel();
     _driftViewModel = DataDriftViewModel();
+    _workflowCoordinator = DataAnalysisWorkflowCoordinator(
+      viewModel: _viewModel,
+      analysisJobsViewModel: _analysisJobsViewModel,
+      refreshSharedProjection: _refreshSharedProjection,
+      openJob: _openJobInShellRuntime,
+      showError: _showViewModelError,
+      showSuccess: _showSuccessFeedback,
+      focusAnalysisResult: _focusAnalysisResult,
+      datasetFeedbackMessage: _datasetFeedbackMessage,
+      isMounted: () => mounted,
+    );
     _applyLaunchIntent(widget.launchIntent);
     _handleWorkspaceActivation(widget.isActive);
   }
@@ -238,45 +250,22 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
 
   /// 选择文件
   Future<void> _pickFile() async {
-    await _viewModel.pickFile();
-    if (!mounted) return;
-    _showViewModelError();
+    await _workflowCoordinator.pickFile();
   }
 
   /// 开始分析 - 核心功能
   Future<void> _startAnalysis() async {
-    if (_currentUser == null || _pickedFile == null) {
-      return;
-    }
-
-    final success = await _viewModel.startAnalysis();
-    if (!mounted) return;
-
-    if (success) {
-      await _refreshSharedProjection();
-      _showSuccessFeedback(_datasetFeedbackMessage('分析完成'));
-      _focusAnalysisResult();
-      return;
-    }
-
-    _showViewModelError(duration: _analysisErrorDuration);
+    await _workflowCoordinator.startAnalysis(
+      currentUser: _currentUser,
+      pickedFile: _pickedFile,
+      errorDuration: _analysisErrorDuration,
+    );
   }
 
   Future<void> _submitAnalysisJob() async {
-    final job = await _viewModel.submitAnalysisJob();
-    if (!mounted) {
-      return;
-    }
-
-    if (job != null) {
-      await _openJobInShellRuntime(job);
-      _showSuccessFeedback(_datasetFeedbackMessage('后台分析任务已提交'));
-      await _analysisJobsViewModel.loadJobs();
-      await _refreshSharedProjection();
-      return;
-    }
-
-    _showViewModelError(duration: _analysisErrorDuration);
+    await _workflowCoordinator.submitAnalysisJob(
+      errorDuration: _analysisErrorDuration,
+    );
   }
 
   void _openHistory() {
@@ -286,9 +275,9 @@ class _DataAnalysisScreenState extends State<DataAnalysisScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const HistoryAuditScreen()),
+    _showFeedback(
+      message: '历史与审计是顶级工作台，请通过主导航进入。',
+      backgroundColor: AppColors.primary,
     );
   }
 

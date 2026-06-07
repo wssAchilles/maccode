@@ -50,7 +50,9 @@ class HistoryAuditOverview extends StatelessWidget {
     final completedJobs = jobs.where((job) => job.status == 'succeeded').length;
     final latestJob = jobs.isEmpty ? null : jobs.first;
     final focusChain = selectDutyFocusChain(assetSummary, dutySummary);
-    final cardFactValue = buildDutyContextCardValue(focusChain?.cardTargetLabel);
+    final cardFactValue = buildDutyContextCardValue(
+      focusChain?.cardTargetLabel,
+    );
     final incidentFactValue = buildDutyContextIncidentValue(
       focusChain?.incidentTargetLabel,
     );

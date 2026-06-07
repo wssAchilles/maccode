@@ -175,7 +175,8 @@ void main() {
 
     test('omits generic card label from governance queue arrival context', () {
       const context = WorkbenchLaunchContext(
-        sourceLabel: 'Asset Governance Queue · 知识快照 · AI 运行控制区 · 当前卡片 · completed · 100% · 当前卡片',
+        sourceLabel:
+            'Asset Governance Queue · 知识快照 · AI 运行控制区 · 当前卡片 · completed · 100% · 当前卡片',
         workspaceTarget: 'ai_runtime',
         workspaceTargetLabel: 'AI 运行控制区',
         cardTarget: 'summary',

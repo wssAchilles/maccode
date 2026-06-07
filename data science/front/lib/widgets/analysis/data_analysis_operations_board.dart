@@ -99,7 +99,8 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                           chain?.incidentTargetLabel
                     : null,
                 summary: focusArea == 'strategy'
-                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    ? continuationContext?.workspaceBrief ??
+                          chain?.workspaceBrief
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +175,8 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                           chain?.incidentTargetLabel
                     : null,
                 summary: focusArea == 'task'
-                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    ? continuationContext?.workspaceBrief ??
+                          chain?.workspaceBrief
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +222,8 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                           chain?.incidentTargetLabel
                     : null,
                 summary: focusArea == 'asset'
-                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    ? continuationContext?.workspaceBrief ??
+                          chain?.workspaceBrief
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,7 +283,8 @@ class DataAnalysisOperationsBoard extends StatelessWidget {
                           chain?.incidentTargetLabel
                     : null,
                 summary: focusArea == 'quality'
-                    ? continuationContext?.workspaceBrief ?? chain?.workspaceBrief
+                    ? continuationContext?.workspaceBrief ??
+                          chain?.workspaceBrief
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,10 +399,7 @@ class _OperationsCard extends StatelessWidget {
             title: title,
             subtitle: subtitle,
             trailing: highlighted && cardLabel != null
-                ? _StateBadge(
-                    label: cardLabel!,
-                    tone: _BadgeTone.info,
-                  )
+                ? _StateBadge(label: cardLabel!, tone: _BadgeTone.info)
                 : null,
             workspaceLabel: highlighted ? workspaceLabel : null,
             cardLabel: highlighted ? cardLabel : null,

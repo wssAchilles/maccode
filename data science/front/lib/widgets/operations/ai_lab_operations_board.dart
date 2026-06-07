@@ -790,13 +790,16 @@ String _queueSummaryText(
       return true;
     }
     final normalized = value.toLowerCase();
-    return normalized == job.status.toLowerCase() || normalized == 'job completed';
+    return normalized == job.status.toLowerCase() ||
+        normalized == 'job completed';
   }
 
   if (!isGenericStatusMessage(statusMessage)) {
     return statusMessage!;
   }
-  if (job.status == 'running' && latestEventMessage != null && latestEventMessage.isNotEmpty) {
+  if (job.status == 'running' &&
+      latestEventMessage != null &&
+      latestEventMessage.isNotEmpty) {
     return latestEventMessage;
   }
 

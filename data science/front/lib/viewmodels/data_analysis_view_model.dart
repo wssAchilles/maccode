@@ -37,6 +37,8 @@ class DataAnalysisViewModel extends ChangeNotifier {
   StreamSubscription<User?>? _authSubscription;
   bool _isDisposed = false;
   bool _isInitialized = false;
+  int _analysisRequestSeq = 0;
+  int _jobSubmissionSeq = 0;
 
   User? _currentUser;
   PlatformFile? _pickedFile;
@@ -71,6 +73,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _authSubscription = _authRepository.authStateChanges.listen((user) {
       _currentUser = user;
       if (user == null) {
+        _invalidateAnalysisRequests();
         _pickedFile = null;
         _analysisResult = null;
         _latestStoragePath = null;
@@ -92,6 +95,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
   }
 
   void clearPickedFile() {
+    _invalidateAnalysisRequests();
     _pickedFile = null;
     _latestStoragePath = null;
     _notifySafely();
@@ -178,6 +182,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _authRepository.signOut();
+    _invalidateAnalysisRequests();
     _currentUser = null;
     _pickedFile = null;
     _analysisResult = null;
@@ -195,6 +200,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
       );
 
       if (result != null && result.files.isNotEmpty) {
+        _invalidateAnalysisRequests();
         _pickedFile = result.files.first;
         _analysisResult = null;
         _error = null;
@@ -217,6 +223,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
       return false;
     }
 
+    final requestSeq = ++_analysisRequestSeq;
     _setLoading(true);
     _error = null;
     _analysisResult = null;
@@ -229,6 +236,9 @@ class DataAnalysisViewModel extends ChangeNotifier {
         saveToStorage: _saveToStorage,
       );
 
+      if (!_isLatestAnalysisRequest(requestSeq)) {
+        return false;
+      }
       if (submission.isSuccess) {
         _analysisResult = submission.analysisResult;
         _latestStoragePath = submission.storagePath;
@@ -238,8 +248,10 @@ class DataAnalysisViewModel extends ChangeNotifier {
       _error = submission.error;
       return false;
     } finally {
-      _setLoading(false);
-      _notifySafely();
+      if (_isLatestAnalysisRequest(requestSeq)) {
+        _setLoading(false);
+        _notifySafely();
+      }
     }
   }
 
@@ -251,6 +263,7 @@ class DataAnalysisViewModel extends ChangeNotifier {
       return null;
     }
 
+    final requestSeq = ++_jobSubmissionSeq;
     _isSubmittingAnalysisJob = true;
     _error = null;
     _notifySafely();
@@ -260,6 +273,9 @@ class DataAnalysisViewModel extends ChangeNotifier {
         file: file,
         saveToStorage: _saveToStorage,
       );
+      if (!_isLatestJobSubmission(requestSeq)) {
+        return null;
+      }
       if (submission.isSuccess) {
         _latestStoragePath = submission.storagePath;
         return submission.job;
@@ -268,8 +284,10 @@ class DataAnalysisViewModel extends ChangeNotifier {
       _error = submission.error;
       return null;
     } finally {
-      _isSubmittingAnalysisJob = false;
-      _notifySafely();
+      if (_isLatestJobSubmission(requestSeq)) {
+        _isSubmittingAnalysisJob = false;
+        _notifySafely();
+      }
     }
   }
 
@@ -324,8 +342,24 @@ class DataAnalysisViewModel extends ChangeNotifier {
     _isLoading = value;
   }
 
+  void _invalidateAnalysisRequests() {
+    _analysisRequestSeq++;
+    _jobSubmissionSeq++;
+    _isLoading = false;
+    _isSubmittingAnalysisJob = false;
+  }
+
+  bool _isLatestAnalysisRequest(int requestSeq) {
+    return !_isDisposed && requestSeq == _analysisRequestSeq;
+  }
+
+  bool _isLatestJobSubmission(int requestSeq) {
+    return !_isDisposed && requestSeq == _jobSubmissionSeq;
+  }
+
   @visibleForTesting
   void setPickedFileForTesting(PlatformFile? file) {
+    _invalidateAnalysisRequests();
     _pickedFile = file;
   }
 

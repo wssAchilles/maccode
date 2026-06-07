@@ -1,16 +1,51 @@
-# front
+# Sentinel Ops Frontend
 
-A new Flutter project.
+Flutter multi-platform client for the data-science-as-a-service workspace.
 
-## Getting Started
+## Product Shape
 
-This project is a starting point for a Flutter application.
+The app is an authenticated operations console with five workspaces:
 
-A few resources to get you started if this is your first Flutter project:
+- 概览: operations hub, asset chains, approvals, control tasks, runtime console
+- 能源优化: battery and power optimization workflows
+- 数据分析: CSV upload, analysis, quality review, background analysis jobs
+- AI Lab: deep learning training and RAG ingestion/chat workflows
+- 历史与审计: job history, audit trail, analysis details, asset ledger
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+The UI follows the existing MVVM-style flow:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```text
+Widget/Screen -> ChangeNotifier ViewModel -> Repository/Gateway -> ApiService/Firebase
+```
+
+## Runtime Configuration
+
+API endpoints can be overridden at build time:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=HEAVY_API_BASE_URL=http://localhost:8000
+```
+
+Default development endpoints are selected per platform in `lib/config/constants.dart`.
+
+## Common Commands
+
+```bash
+flutter pub get
+rtk flutter analyze
+rtk flutter test
+```
+
+Run a focused test file:
+
+```bash
+rtk flutter test test/viewmodels/data_analysis_view_model_test.dart
+```
+
+## Architecture Notes
+
+- `MainShellRuntimeViewModel` is a facade over smaller shell runtime pieces: navigation state, workspace runtime registry, projection building, and operation runtime control.
+- Screens should remain layout and event-forwarding surfaces. Cross-viewmodel workflows belong in coordinators.
+- New motion behavior should use `lib/motion/` tokens and sequence helpers instead of hardcoded durations and curves.
+- New API boundaries should prefer typed DTO/model objects over raw `Map<String, dynamic>` in ViewModels.

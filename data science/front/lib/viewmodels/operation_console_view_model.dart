@@ -188,7 +188,10 @@ class OperationConsoleViewModel extends ChangeNotifier
       _isStreaming = true;
       _notifySafely();
       try {
-        final shouldContinue = await _consumeOperationStream(operationId, token);
+        final shouldContinue = await _consumeOperationStream(
+          operationId,
+          token,
+        );
         if (!shouldContinue) {
           return;
         }
@@ -238,46 +241,48 @@ class OperationConsoleViewModel extends ChangeNotifier
       }
     }
 
-    subscription = _repository.streamOperation(operationId).listen(
-      (frame) {
-        if (_isDisposed ||
-            !_isRuntimeActive ||
-            token != _streamToken ||
-            _selectedOperationId != operationId) {
-          finish(false);
-          unawaited(subscription?.cancel() ?? Future<void>.value());
-          return;
-        }
-        _applyStreamFrame(frame);
-        final refreshed = _selectedOperation;
-        if (refreshed == null || refreshed.isTerminal) {
-          finish(false);
-          unawaited(subscription?.cancel() ?? Future<void>.value());
-        }
-      },
-      onError: (Object error, StackTrace _) {
-        if (!_isDisposed &&
-            token == _streamToken &&
-            _selectedOperationId == operationId &&
-            !_isTransientApiError(error)) {
-          _errorMessage = '实时流连接失败: ${_readableError(error)}';
-          _notifySafely();
-        }
-        finish(
-          _isRuntimeActive &&
-              token == _streamToken &&
-              _selectedOperationId == operationId,
+    subscription = _repository
+        .streamOperation(operationId)
+        .listen(
+          (frame) {
+            if (_isDisposed ||
+                !_isRuntimeActive ||
+                token != _streamToken ||
+                _selectedOperationId != operationId) {
+              finish(false);
+              unawaited(subscription?.cancel() ?? Future<void>.value());
+              return;
+            }
+            _applyStreamFrame(frame);
+            final refreshed = _selectedOperation;
+            if (refreshed == null || refreshed.isTerminal) {
+              finish(false);
+              unawaited(subscription?.cancel() ?? Future<void>.value());
+            }
+          },
+          onError: (Object error, StackTrace _) {
+            if (!_isDisposed &&
+                token == _streamToken &&
+                _selectedOperationId == operationId &&
+                !_isTransientApiError(error)) {
+              _errorMessage = '实时流连接失败: ${_readableError(error)}';
+              _notifySafely();
+            }
+            finish(
+              _isRuntimeActive &&
+                  token == _streamToken &&
+                  _selectedOperationId == operationId,
+            );
+          },
+          onDone: () {
+            finish(
+              _isRuntimeActive &&
+                  token == _streamToken &&
+                  _selectedOperationId == operationId,
+            );
+          },
+          cancelOnError: false,
         );
-      },
-      onDone: () {
-        finish(
-          _isRuntimeActive &&
-              token == _streamToken &&
-              _selectedOperationId == operationId,
-        );
-      },
-      cancelOnError: false,
-    );
 
     _streamSubscription = subscription;
     try {

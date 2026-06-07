@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:front/models/job_record.dart';
@@ -204,7 +206,91 @@ class _FakeJobRepository implements JobRepository {
   }
 }
 
+class _SequencedJobRepository implements JobRepository {
+  final requests = <Completer<List<JobRecord>>>[];
+
+  @override
+  bool get supportsStreaming => false;
+
+  @override
+  Future<List<JobRecord>> listJobs({
+    String? type,
+    String? status,
+    int limit = 20,
+    String scope = 'private',
+  }) {
+    final completer = Completer<List<JobRecord>>();
+    requests.add(completer);
+    return completer.future;
+  }
+
+  @override
+  Future<JobRecord> cancelJob(String jobId, {String? operationId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> approveJob(
+    String jobId, {
+    required bool approved,
+    String? message,
+    String? operationId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> getJob(String jobId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> retryJob(String jobId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> createOptimizationJob({
+    required double initialSoc,
+    DateTime? targetDate,
+    double? batteryCapacity,
+    double? batteryPower,
+    double? batteryEfficiency,
+    double? temperatureAdjust,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> createMlTrainJob({
+    required String storagePath,
+    required String modelType,
+    required int epochs,
+    required int batchSize,
+    required int windowSize,
+    required String targetColumn,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<JobRecord> createRagIngestJob({
+    required String storagePath,
+    String? collectionName,
+    bool reset = false,
+  }) {
+    throw UnimplementedError();
+  }
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('cancelJob updates active job state without polling', () async {
     final repository = _FakeJobRepository(
       jobs: const [
@@ -338,4 +424,46 @@ void main() {
       viewModel.dispose();
     },
   );
+
+  test('loadJobs ignores stale response after filters change', () async {
+    final repository = _SequencedJobRepository();
+    final viewModel = JobViewModel(repository: repository, delay: (_) async {});
+
+    final first = viewModel.loadJobs();
+    await Future<void>.delayed(Duration.zero);
+    final second = viewModel.applyFilters(jobType: 'ml_train');
+    await Future<void>.delayed(Duration.zero);
+
+    repository.requests[1].complete([
+      const JobRecord(
+        jobId: 'new-job',
+        operationId: 'new-job',
+        type: 'analysis',
+        status: 'queued',
+        progress: 0,
+        requestedBy: 'tester',
+        attemptCount: 1,
+        maxAttempts: 3,
+      ),
+    ]);
+    await second;
+
+    repository.requests[0].complete([
+      const JobRecord(
+        jobId: 'old-job',
+        operationId: 'old-job',
+        type: 'analysis',
+        status: 'queued',
+        progress: 0,
+        requestedBy: 'tester',
+        attemptCount: 1,
+        maxAttempts: 3,
+      ),
+    ]);
+    await first;
+
+    expect(viewModel.jobs.map((job) => job.jobId), const ['new-job']);
+    expect(viewModel.jobType, 'ml_train');
+    viewModel.dispose();
+  });
 }

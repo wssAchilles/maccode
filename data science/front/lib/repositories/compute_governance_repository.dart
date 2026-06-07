@@ -10,7 +10,9 @@ import '../services/api_service.dart';
 
 abstract class ComputeGovernanceRepository {
   Future<ComputeRolloutPolicy> getPolicy();
-  Future<List<ComputeGovernanceActivityEntry>> getRecentActivity({int limit = 8});
+  Future<List<ComputeGovernanceActivityEntry>> getRecentActivity({
+    int limit = 8,
+  });
 
   Future<JobRecord> requestComponentPolicyChange(
     String componentKey, {

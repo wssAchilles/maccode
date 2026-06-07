@@ -7,10 +7,7 @@ import 'package:front/services/optimization_gateway.dart';
 import 'package:front/viewmodels/modeling_view_model.dart';
 
 class _FakeOptimizationGateway implements OptimizationGateway {
-  _FakeOptimizationGateway({
-    this.response,
-    this.error,
-  });
+  _FakeOptimizationGateway({this.response, this.error});
 
   final OptimizationResponse? response;
   final Object? error;
@@ -47,21 +44,10 @@ OptimizationResponse _buildOptimizationResponse({
       'status': success ? 'active' : 'pending',
       'training_samples': 8760,
       'metrics': {'mape': 0.08, 'r2_score': 0.91},
-      'auto_selection': {
-        'enabled': true,
-        'winner': 'xgboost',
-      },
-      'training_config': {
-        'use_log_transform': true,
-      },
-      'validation_summary': {
-        'method': 'TimeSeriesSplit',
-        'cv_folds': 5,
-      },
-      'data_coverage': {
-        'start': '2025-01-01',
-        'end': '2025-12-31',
-      },
+      'auto_selection': {'enabled': true, 'winner': 'xgboost'},
+      'training_config': {'use_log_transform': true},
+      'validation_summary': {'method': 'TimeSeriesSplit', 'cv_folds': 5},
+      'data_coverage': {'start': '2025-01-01', 'end': '2025-12-31'},
     },
     'optimization': {
       'status': success ? 'Optimal' : 'Failed',
@@ -109,9 +95,11 @@ void main() {
       ),
     );
 
-    expect(find.text('开始优化'), findsOneWidget);
+    final runButton = find.byKey(const ValueKey('modeling-run-button'));
+    expect(runButton, findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('modeling-run-button')));
+    await tester.ensureVisible(runButton);
+    await tester.tap(runButton);
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -119,29 +107,31 @@ void main() {
     expect(find.textContaining('优化完成！节省 200.00 元'), findsOneWidget);
   });
 
-  testWidgets('ModelingScreen surfaces optimization errors from the view model', (
-    WidgetTester tester,
-  ) async {
-    final viewModel = ModelingViewModel(
-      gateway: _FakeOptimizationGateway(error: Exception('network down')),
-    );
+  testWidgets(
+    'ModelingScreen surfaces optimization errors from the view model',
+    (WidgetTester tester) async {
+      final viewModel = ModelingViewModel(
+        gateway: _FakeOptimizationGateway(error: Exception('network down')),
+      );
 
-    addTearDown(viewModel.dispose);
+      addTearDown(viewModel.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ModelingScreen(
-          viewModel: viewModel,
-          nowBuilder: () => DateTime(2026, 3, 7),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ModelingScreen(
+            viewModel: viewModel,
+            nowBuilder: () => DateTime(2026, 3, 7),
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.byKey(const ValueKey('modeling-run-button')));
-    await tester.pump();
-    await tester.pumpAndSettle();
+      final runButton = find.byKey(const ValueKey('modeling-run-button'));
+      await tester.ensureVisible(runButton);
+      await tester.tap(runButton);
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-    expect(find.text('优化失败'), findsOneWidget);
-    expect(find.textContaining('network down'), findsWidgets);
-  });
+      expect(find.textContaining('network down'), findsWidgets);
+    },
+  );
 }

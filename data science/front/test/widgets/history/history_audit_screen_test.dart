@@ -4,138 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:front/models/ai_lab_launch_intent.dart';
 import 'package:front/models/dashboard_summary.dart';
 import 'package:front/models/job_record.dart';
-import 'package:front/models/job_stream_frame.dart';
-import 'package:front/repositories/audit_repository.dart';
-import 'package:front/repositories/dashboard_repository.dart';
-import 'package:front/repositories/job_repository.dart';
-import 'package:front/screens/history_audit_screen.dart';
-import 'package:front/services/history_gateway.dart';
-import 'package:front/viewmodels/audit_view_model.dart';
-import 'package:front/viewmodels/dashboard_view_model.dart';
-import 'package:front/viewmodels/history_view_model.dart';
-import 'package:front/viewmodels/job_view_model.dart';
-import 'package:front/widgets/operations/workbench_page_frame.dart';
+import 'package:front/widgets/history/history_asset_ledger.dart';
 
-class _FakeDashboardRepository implements DashboardRepository {
-  const _FakeDashboardRepository(this.summary);
-
-  final DashboardSummary summary;
-
-  @override
-  Future<DashboardSummary> getSummary() async => summary;
+void _setDesktopViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1280, 1000);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
 
-class _FakeJobRepository implements JobRepository {
-  const _FakeJobRepository(this.jobs);
-
-  final List<JobRecord> jobs;
-
-  @override
-  bool get supportsStreaming => false;
-
-  @override
-  Future<List<JobRecord>> listJobs({
-    String? type,
-    String? status,
-    int limit = 20,
-    String scope = 'private',
-  }) async {
-    return jobs;
-  }
-
-  @override
-  Future<JobRecord> getJob(String jobId) async => jobs.first;
-
-  @override
-  Future<JobRecord> retryJob(String jobId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<JobRecord> cancelJob(String jobId, {String? operationId}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<JobRecord> approveJob(
-    String jobId, {
-    required bool approved,
-    String? message,
-    String? operationId,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Stream<JobStreamFrame> streamJob(String jobId, {String? operationId}) =>
-      const Stream<JobStreamFrame>.empty();
-
-  @override
-  Future<JobRecord> createOptimizationJob({
-    required double initialSoc,
-    DateTime? targetDate,
-    double? batteryCapacity,
-    double? batteryPower,
-    double? batteryEfficiency,
-    double? temperatureAdjust,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<JobRecord> createMlTrainJob({
-    required String storagePath,
-    required String modelType,
-    required int epochs,
-    required int batchSize,
-    required int windowSize,
-    required String targetColumn,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<JobRecord> createRagIngestJob({
-    required String storagePath,
-    String? collectionName,
-    bool reset = false,
-  }) {
-    throw UnimplementedError();
-  }
-}
-
-class _FakeAuditRepository implements AuditRepository {
-  const _FakeAuditRepository();
-
-  final List<AuditActivity> activity = const [];
-
-  @override
-  Future<List<AuditActivity>> getActivity({
-    String? type,
-    String? status,
-    int limit = 50,
-  }) async => activity;
-}
-
-class _FakeHistoryGateway implements HistoryGateway {
-  const _FakeHistoryGateway();
-
-  final List<Map<String, dynamic>> records = const [];
-  final List<Map<String, dynamic>> activity = const [];
-
-  @override
-  Future<void> deleteHistoryRecord(String recordId) async {}
-
-  @override
-  Future<List<Map<String, dynamic>>> getAuditActivity({
-    String? type,
-    String? status,
-    int limit = 50,
-  }) async => activity;
-
-  @override
-  Future<List<Map<String, dynamic>>> getUserHistory({int limit = 30}) async =>
-      records;
+Finder _verticalScrollable() {
+  return find
+      .byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.down,
+      )
+      .first;
 }
 
 DashboardSummary _buildSummary() {
@@ -252,57 +136,32 @@ DashboardSummary _buildSummary() {
   });
 }
 
-Widget _buildHarness({
-  required DashboardSummary summary,
-  required JobViewModel jobsViewModel,
-  required AuditViewModel auditViewModel,
-  required HistoryViewModel historyViewModel,
-  ValueChanged<AiLabLaunchIntent>? onOpenAiLab,
-}) {
-  return MaterialApp(
-    home: Scaffold(
-      body: HistoryAuditScreen(
-        dashboardViewModel: DashboardViewModel(
-          repository: _FakeDashboardRepository(summary),
-        ),
-        jobsViewModel: jobsViewModel,
-        auditViewModel: auditViewModel,
-        historyViewModel: historyViewModel,
-        onOpenAiLab: onOpenAiLab,
-        surfaceMode: WorkbenchSurfaceMode.embedded,
-      ),
-    ),
-  );
-}
-
 void main() {
-  testWidgets('HistoryAuditScreen dispatches duty action open AI Lab', (
+  testWidgets('History asset ledger dispatches chain action open AI Lab', (
     tester,
   ) async {
+    _setDesktopViewport(tester);
     AiLabLaunchIntent? capturedIntent;
-    final jobsViewModel = JobViewModel(
-      repository: const _FakeJobRepository([]),
-      delay: (_) async {},
-    );
-    final auditViewModel = AuditViewModel(
-      repository: const _FakeAuditRepository(),
-    );
-    final historyViewModel = HistoryViewModel(
-      gateway: const _FakeHistoryGateway(),
-    );
+    final summary = _buildSummary();
 
     await tester.pumpWidget(
-      _buildHarness(
-        summary: _buildSummary(),
-        jobsViewModel: jobsViewModel,
-        auditViewModel: auditViewModel,
-        historyViewModel: historyViewModel,
-        onOpenAiLab: (intent) => capturedIntent = intent,
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: HistoryAssetLedger(
+              jobs: const [],
+              records: const [],
+              assetSummary: summary.assetSummary,
+              dutySummary: summary.dutySummary,
+              alerts: summary.alerts,
+              onOpenAiLab: (intent) => capturedIntent = intent,
+            ),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('打开 AI Lab').first);
     await tester.tap(find.text('打开 AI Lab').first);
     await tester.pumpAndSettle();
 
@@ -310,57 +169,61 @@ void main() {
     expect(capturedIntent!.target, AiLabLaunchTarget.rag);
     expect(capturedIntent!.context?.workspaceTarget, 'ai_runtime');
     expect(capturedIntent!.context?.cardTarget, 'runtime_product');
-    expect(capturedIntent!.sourceLabel, contains('值班动作'));
+    expect(capturedIntent!.sourceLabel, contains('资产台账'));
   });
 
   testWidgets(
-    'HistoryAuditScreen dispatches knowledge ledger action into AI Lab',
+    'History asset ledger dispatches knowledge ledger action into AI Lab',
     (tester) async {
+      _setDesktopViewport(tester);
       AiLabLaunchIntent? capturedIntent;
-      final jobsViewModel = JobViewModel(
-        repository: const _FakeJobRepository([
-          JobRecord(
-            jobId: 'rag-job-12345678',
-            type: 'rag_ingest',
-            status: 'succeeded',
-            progress: 100,
-            requestedBy: 'tester',
-            attemptCount: 1,
-            maxAttempts: 3,
-            completedAt: null,
-            input: {
-              'storage_path': 'docs/knowledge',
-              'collection_name': 'ops-knowledge',
-              'reset': true,
-            },
-            result: {
-              'storage_path': 'docs/knowledge',
-              'collection': 'ops-knowledge',
-              'count': 42,
-            },
-          ),
-        ]),
-        delay: (_) async {},
-      );
-      final auditViewModel = AuditViewModel(
-        repository: const _FakeAuditRepository(),
-      );
-      final historyViewModel = HistoryViewModel(
-        gateway: const _FakeHistoryGateway(),
-      );
+      final summary = _buildSummary();
+      final jobs = [
+        JobRecord(
+          jobId: 'rag-job-12345678',
+          type: 'rag_ingest',
+          status: 'succeeded',
+          progress: 100,
+          requestedBy: 'tester',
+          attemptCount: 1,
+          maxAttempts: 3,
+          completedAt: DateTime(2026, 1, 1),
+          input: const {
+            'storage_path': 'docs/knowledge',
+            'collection_name': 'ops-knowledge',
+            'reset': true,
+          },
+          result: const {
+            'storage_path': 'docs/knowledge',
+            'collection': 'ops-knowledge',
+            'count': 42,
+          },
+        ),
+      ];
 
       await tester.pumpWidget(
-        _buildHarness(
-          summary: _buildSummary(),
-          jobsViewModel: jobsViewModel,
-          auditViewModel: auditViewModel,
-          historyViewModel: historyViewModel,
-          onOpenAiLab: (intent) => capturedIntent = intent,
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HistoryAssetLedger(
+                jobs: jobs,
+                records: const [],
+                assetSummary: summary.assetSummary,
+                dutySummary: summary.dutySummary,
+                alerts: summary.alerts,
+                onOpenAiLab: (intent) => capturedIntent = intent,
+              ),
+            ),
+          ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('回填知识入口'));
+      await tester.scrollUntilVisible(
+        find.text('回填知识入口'),
+        500,
+        scrollable: _verticalScrollable(),
+      );
       await tester.tap(find.text('回填知识入口'));
       await tester.pumpAndSettle();
 

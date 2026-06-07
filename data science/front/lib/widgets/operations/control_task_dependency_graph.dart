@@ -52,7 +52,9 @@ class ControlTaskDependencyGraph extends StatelessWidget {
                   accentColor: _dependencyAccentColor(
                     _lookupState(dependencies[index]),
                   ),
-                  caption: _dependencyCaption(_lookupState(dependencies[index])),
+                  caption: _dependencyCaption(
+                    _lookupState(dependencies[index]),
+                  ),
                   highlighted: highlightedTaskId == dependencies[index],
                   onTap: onNodeTap == null
                       ? null

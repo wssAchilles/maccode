@@ -537,4 +537,78 @@ void main() {
 
     viewModel.dispose();
   });
+
+  test(
+    'startAnalysis ignores stale response after selected file changes',
+    () async {
+      final completers = <String, Completer<AnalysisResult>>{};
+      final gateway = _FakeDataAnalysisGateway(
+        analyzeCsvHandler:
+            ({required storagePath, filename, saveToStorage = true}) {
+              final completer = Completer<AnalysisResult>();
+              completers[storagePath] = completer;
+              return completer.future;
+            },
+      );
+      final viewModel = DataAnalysisViewModel(
+        authGateway: _FakeAuthGateway(),
+        dataGateway: gateway,
+        isAuthenticated: () => true,
+      );
+
+      viewModel.setPickedFileForTesting(
+        PlatformFile(
+          name: 'first.csv',
+          size: 2,
+          bytes: Uint8List.fromList([1, 2]),
+        ),
+      );
+      final first = viewModel.startAnalysis();
+
+      await Future<void>.delayed(Duration.zero);
+      viewModel.setPickedFileForTesting(
+        PlatformFile(
+          name: 'second.csv',
+          size: 2,
+          bytes: Uint8List.fromList([3, 4]),
+        ),
+      );
+      final second = viewModel.startAnalysis();
+
+      await Future<void>.delayed(Duration.zero);
+      completers['uploads/second.csv']!.complete(
+        AnalysisResult(
+          basicInfo: BasicInfo(
+            rows: 2,
+            columns: 1,
+            columnNames: const ['second'],
+            columnTypes: const {'second': 'int64'},
+          ),
+          preview: const [
+            {'second': 2},
+          ],
+        ),
+      );
+      expect(await second, isTrue);
+      expect(viewModel.analysisResult?.basicInfo.columnNames, const ['second']);
+
+      completers['uploads/first.csv']!.complete(
+        AnalysisResult(
+          basicInfo: BasicInfo(
+            rows: 1,
+            columns: 1,
+            columnNames: const ['first'],
+            columnTypes: const {'first': 'int64'},
+          ),
+          preview: const [
+            {'first': 1},
+          ],
+        ),
+      );
+      expect(await first, isFalse);
+      expect(viewModel.analysisResult?.basicInfo.columnNames, const ['second']);
+
+      viewModel.dispose();
+    },
+  );
 }

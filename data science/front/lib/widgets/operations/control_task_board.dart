@@ -166,181 +166,183 @@ class _ControlTaskTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(task.title, style: AppTextStyles.labelLarge),
-                    const SizedBox(height: 6),
-                    Text(
-                      task.id,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(task.title, style: AppTextStyles.labelLarge),
+                      const SizedBox(height: 6),
+                      Text(
+                        task.id,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _Badge(
-                label: task.enabled ? 'ACTIVE' : 'PAUSED',
-                foreground: task.enabled
-                    ? AppColors.success
-                    : AppColors.warning,
-                background: task.enabled
-                    ? AppColors.successLight
-                    : AppColors.warningLight,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Badge(
-                label: task.kind.toUpperCase(),
-                foreground: AppColors.primary,
-                background: AppColors.infoLight,
-              ),
-              _Badge(
-                label: requiredApproval
-                    ? '审批 ${approvalMode.toUpperCase()}'
-                    : '审批 AUTO',
-                foreground: requiredApproval
-                    ? AppColors.warning
-                    : AppColors.textPrimary,
-                background: requiredApproval
-                    ? AppColors.warningLight
-                    : AppColors.surfaceVariant,
-              ),
-              _Badge(
-                label: dependencyState?.label ?? dependencyLabel,
-                foreground:
-                    dependencyState?.foreground ?? AppColors.textPrimary,
-                background:
-                    dependencyState?.background ?? AppColors.surfaceVariant,
-              ),
-              if (latestOperation != null)
-                _Badge(
-                  label: '运行 ${latestOperation.status.toUpperCase()}',
-                  foreground: _operationStatusColor(latestOperation.status),
-                  background: _operationStatusBackground(
-                    latestOperation.status,
+                    ],
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _DetailRow(
-            label: '调度',
-            value:
-                schedule == null ||
-                    schedule.isEmpty ||
-                    schedule.toLowerCase() == 'manual'
-                ? '手动触发'
-                : schedule,
-          ),
-          if (task.operationType.isNotEmpty)
-            _DetailRow(label: '运行类型', value: task.operationType),
-          _DetailRow(
-            label: '责任人',
-            value: task.owner.isEmpty ? 'system' : task.owner,
-          ),
-          if (nextRunLabel != null)
-            _DetailRow(label: '下次运行', value: nextRunLabel),
-          _DetailRow(
-            label: '默认输入',
-            value: task.defaultInput.isEmpty
-                ? '无'
-                : task.defaultInput.keys.take(3).join(' / '),
-          ),
-          if (task.dependencies.isNotEmpty)
+                const SizedBox(width: 12),
+                _Badge(
+                  label: task.enabled ? 'ACTIVE' : 'PAUSED',
+                  foreground: task.enabled
+                      ? AppColors.success
+                      : AppColors.warning,
+                  background: task.enabled
+                      ? AppColors.successLight
+                      : AppColors.warningLight,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Badge(
+                  label: task.kind.toUpperCase(),
+                  foreground: AppColors.primary,
+                  background: AppColors.infoLight,
+                ),
+                _Badge(
+                  label: requiredApproval
+                      ? '审批 ${approvalMode.toUpperCase()}'
+                      : '审批 AUTO',
+                  foreground: requiredApproval
+                      ? AppColors.warning
+                      : AppColors.textPrimary,
+                  background: requiredApproval
+                      ? AppColors.warningLight
+                      : AppColors.surfaceVariant,
+                ),
+                _Badge(
+                  label: dependencyState?.label ?? dependencyLabel,
+                  foreground:
+                      dependencyState?.foreground ?? AppColors.textPrimary,
+                  background:
+                      dependencyState?.background ?? AppColors.surfaceVariant,
+                ),
+                if (latestOperation != null)
+                  _Badge(
+                    label: '运行 ${latestOperation.status.toUpperCase()}',
+                    foreground: _operationStatusColor(latestOperation.status),
+                    background: _operationStatusBackground(
+                      latestOperation.status,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
             _DetailRow(
-              label: '依赖',
-              value: task.dependencies.take(3).join(' / '),
+              label: '调度',
+              value:
+                  schedule == null ||
+                      schedule.isEmpty ||
+                      schedule.toLowerCase() == 'manual'
+                  ? '手动触发'
+                  : schedule,
             ),
-          if (task.dependencySummary.isNotEmpty)
-            _DetailRow(label: '依赖状态', value: task.dependencySummary),
-          if (latestOperation != null)
+            if (task.operationType.isNotEmpty)
+              _DetailRow(label: '运行类型', value: task.operationType),
             _DetailRow(
-              label: '最近运行',
-              value: _formatLatestOperation(latestOperation),
+              label: '责任人',
+              value: task.owner.isEmpty ? 'system' : task.owner,
             ),
-          if (approvalReason.isNotEmpty)
-            _DetailRow(label: '审批原因', value: approvalReason),
-          if (task.isDependencyBlocked) ...[
-            const SizedBox(height: 8),
-            _InlineNotice(message: task.dependencyGateMessage),
-          ],
-          if (task.dependencies.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ControlTaskDependencyGraph(
-              taskId: task.id,
-              dependencies: task.dependencies,
-              dependencyDetails: task.dependencyDetails,
-              highlightedTaskId: highlightedTaskId,
-              onNodeTap: onInspectTaskId,
+            if (nextRunLabel != null)
+              _DetailRow(label: '下次运行', value: nextRunLabel),
+            _DetailRow(
+              label: '默认输入',
+              value: task.defaultInput.isEmpty
+                  ? '无'
+                  : task.defaultInput.keys.take(3).join(' / '),
             ),
-          ],
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.tonalIcon(
-                onPressed: canRun ? onRunTask : null,
-                icon: isRunning
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.play_arrow_rounded),
-                label: Text(runLabel),
+            if (task.dependencies.isNotEmpty)
+              _DetailRow(
+                label: '依赖',
+                value: task.dependencies.take(3).join(' / '),
               ),
-              OutlinedButton.icon(
-                onPressed: !isUpdating ? onToggleTask : null,
-                icon: isUpdating
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        task.enabled
-                            ? Icons.pause_circle_outline_rounded
-                            : Icons.play_circle_outline_rounded,
-                      ),
-                label: Text(isUpdating ? '更新中' : (task.enabled ? '暂停' : '恢复')),
+            if (task.dependencySummary.isNotEmpty)
+              _DetailRow(label: '依赖状态', value: task.dependencySummary),
+            if (latestOperation != null)
+              _DetailRow(
+                label: '最近运行',
+                value: _formatLatestOperation(latestOperation),
               ),
-              OutlinedButton.icon(
-                onPressed: !isUpdating ? onToggleApproval : null,
-                icon: Icon(
-                  requiredApproval
-                      ? Icons.verified_user_outlined
-                      : Icons.bolt_outlined,
-                ),
-                label: Text(
-                  isUpdating ? '更新中' : (requiredApproval ? '改为自动' : '改为审批'),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: !isUpdating ? onEditDefinition : null,
-                icon: const Icon(Icons.tune_rounded),
-                label: Text(isUpdating ? '更新中' : '编辑定义'),
-              ),
-              if (onOpenLatestOperation != null)
-                TextButton.icon(
-                  onPressed: onOpenLatestOperation,
-                  icon: const Icon(Icons.travel_explore_rounded),
-                  label: const Text('查看运行'),
-                ),
+            if (approvalReason.isNotEmpty)
+              _DetailRow(label: '审批原因', value: approvalReason),
+            if (task.isDependencyBlocked) ...[
+              const SizedBox(height: 8),
+              _InlineNotice(message: task.dependencyGateMessage),
             ],
-          ),
+            if (task.dependencies.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ControlTaskDependencyGraph(
+                taskId: task.id,
+                dependencies: task.dependencies,
+                dependencyDetails: task.dependencyDetails,
+                highlightedTaskId: highlightedTaskId,
+                onNodeTap: onInspectTaskId,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: canRun ? onRunTask : null,
+                  icon: isRunning
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_arrow_rounded),
+                  label: Text(runLabel),
+                ),
+                OutlinedButton.icon(
+                  onPressed: !isUpdating ? onToggleTask : null,
+                  icon: isUpdating
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          task.enabled
+                              ? Icons.pause_circle_outline_rounded
+                              : Icons.play_circle_outline_rounded,
+                        ),
+                  label: Text(
+                    isUpdating ? '更新中' : (task.enabled ? '暂停' : '恢复'),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: !isUpdating ? onToggleApproval : null,
+                  icon: Icon(
+                    requiredApproval
+                        ? Icons.verified_user_outlined
+                        : Icons.bolt_outlined,
+                  ),
+                  label: Text(
+                    isUpdating ? '更新中' : (requiredApproval ? '改为自动' : '改为审批'),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: !isUpdating ? onEditDefinition : null,
+                  icon: const Icon(Icons.tune_rounded),
+                  label: Text(isUpdating ? '更新中' : '编辑定义'),
+                ),
+                if (onOpenLatestOperation != null)
+                  TextButton.icon(
+                    onPressed: onOpenLatestOperation,
+                    icon: const Icon(Icons.travel_explore_rounded),
+                    label: const Text('查看运行'),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

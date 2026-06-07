@@ -61,7 +61,8 @@ class AuthService {
       }
 
       // 移动 & 桌面平台使用 google_sign_in 插件
-      final GoogleSignInAccount? googleUser = await _nativeGoogleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _nativeGoogleSignIn
+          .signIn();
 
       if (googleUser == null) {
         throw const AuthFailureException(

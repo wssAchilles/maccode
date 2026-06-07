@@ -57,9 +57,8 @@ class AppTextStyles {
       _withCjkFallback(const TextStyle(fontFamily: _headingFamily));
   static TextStyle get bodyFont =>
       _withCjkFallback(const TextStyle(fontFamily: _bodyFamily));
-  static TextStyle get codeFont => _withCjkFallback(
-    const TextStyle(fontFamily: _codeFamily),
-  );
+  static TextStyle get codeFont =>
+      _withCjkFallback(const TextStyle(fontFamily: _codeFamily));
 
   static TextStyle get h1 => _headingStyle(
     fontSize: 32,

@@ -98,9 +98,7 @@ class ShellRuntimeActionBar extends StatelessWidget {
           key: const ValueKey('main-nav-sign-out'),
           onPressed: enableAccountActions ? onSignOut : null,
           icon: const Icon(Icons.logout_rounded),
-          style: FilledButton.styleFrom(
-            foregroundColor: AppColors.textPrimary,
-          ),
+          style: FilledButton.styleFrom(foregroundColor: AppColors.textPrimary),
           label: Text(compact ? '退出' : '退出登录'),
         ),
       ],

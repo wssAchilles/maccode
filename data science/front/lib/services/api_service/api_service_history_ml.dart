@@ -100,9 +100,7 @@ Future<Map<String, dynamic>> _trainModel({
       ...?targetColumn == null
           ? null
           : <String, dynamic>{'target_column': targetColumn},
-      ...?modelName == null
-          ? null
-          : <String, dynamic>{'model_name': modelName},
+      ...?modelName == null ? null : <String, dynamic>{'model_name': modelName},
       ...?nClusters == null ? null : <String, dynamic>{'n_clusters': nClusters},
     }),
     timeout: AppConstants.optimizationTimeout,
@@ -125,9 +123,7 @@ Future<Map<String, dynamic>> _predict({
     '/api/ml/predict',
     body: jsonEncode(<String, dynamic>{
       'model_path': modelPath,
-      ...?inputData == null
-          ? null
-          : <String, dynamic>{'input_data': inputData},
+      ...?inputData == null ? null : <String, dynamic>{'input_data': inputData},
       ...?storagePath == null
           ? null
           : <String, dynamic>{'storage_path': storagePath},

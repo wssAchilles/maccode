@@ -76,8 +76,7 @@ class OptimizationOperationsBoard extends StatelessWidget {
           'constraint',
           continuationContext,
         ),
-        noteLabel:
-            _focusTelemetryCard(chain, 'constraint', continuationContext)
+        noteLabel: _focusTelemetryCard(chain, 'constraint', continuationContext)
             ? continuationContext?.incidentTargetLabel ??
                   chain?.incidentTargetLabel
             : null,
@@ -125,9 +124,12 @@ class OptimizationOperationsBoard extends StatelessWidget {
         badge: latestCompletedJob == null
             ? 'IDLE'
             : latestCompletedJob!.jobId.substring(0, 8),
-        highlighted: _focusTelemetryCard(chain, 'artifact', continuationContext),
-        noteLabel:
-            _focusTelemetryCard(chain, 'artifact', continuationContext)
+        highlighted: _focusTelemetryCard(
+          chain,
+          'artifact',
+          continuationContext,
+        ),
+        noteLabel: _focusTelemetryCard(chain, 'artifact', continuationContext)
             ? continuationContext?.incidentTargetLabel ??
                   chain?.incidentTargetLabel
             : null,

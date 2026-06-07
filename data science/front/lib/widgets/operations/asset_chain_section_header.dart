@@ -115,10 +115,10 @@ class AssetChainSectionHeader extends StatelessWidget {
                   (watchSummary ?? '').isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
-                  [
-                    workspaceLabel,
-                    watchSummary,
-                  ].whereType<String>().where((item) => item.isNotEmpty).join(' · '),
+                  [workspaceLabel, watchSummary]
+                      .whereType<String>()
+                      .where((item) => item.isNotEmpty)
+                      .join(' · '),
                   style: AppTextStyles.bodySmall.copyWith(color: tone),
                 ),
               ],

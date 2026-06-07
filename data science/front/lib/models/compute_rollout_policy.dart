@@ -14,7 +14,7 @@ class ComputeRolloutPolicy {
   });
 
   const ComputeRolloutPolicy.empty()
-      : enabled = false,
+    : enabled = false,
       updatedAt = '',
       updatedBy = '',
       guardEnabled = false,

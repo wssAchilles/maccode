@@ -150,7 +150,14 @@ void main() {
     controller.addError(Exception('boom'));
     await tester.pump();
 
-    expect(find.textContaining('认证服务出错'), findsOneWidget);
+    expect(find.text('认证服务暂时不可用'), findsOneWidget);
+    expect(find.text('重试认证状态'), findsOneWidget);
+    expect(find.text('返回登录页'), findsOneWidget);
+
+    await tester.tap(find.text('返回登录页'));
+    await tester.pump();
+
+    expect(find.text('未登录'), findsOneWidget);
 
     await controller.close();
   });

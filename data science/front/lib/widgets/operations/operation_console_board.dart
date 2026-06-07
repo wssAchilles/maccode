@@ -216,13 +216,30 @@ class _EmptyOperationConsole extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            errorMessage ?? '从审批中心或规划任务板选择一个运行实例，即可进入实时控制台。',
+            errorMessage ?? '选择一个待审批任务、运行中作业或规划任务后，这里会显示实时日志、审批动作和运行时间线。',
             style: AppTextStyles.bodyMedium.copyWith(
               color: errorMessage == null
                   ? AppColors.textSecondary
                   : AppColors.error,
             ),
           ),
+          if (errorMessage == null) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: const [
+                Chip(
+                  avatar: Icon(Icons.fact_check_rounded, size: 16),
+                  label: Text('打开审批中心'),
+                ),
+                Chip(
+                  avatar: Icon(Icons.schema_rounded, size: 16),
+                  label: Text('查看规划任务'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -9,10 +9,7 @@ import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 
 class ControlPlaneStatusBoard extends StatelessWidget {
-  const ControlPlaneStatusBoard({
-    super.key,
-    required this.status,
-  });
+  const ControlPlaneStatusBoard({super.key, required this.status});
 
   final ControlPlaneStatus status;
 
@@ -37,7 +34,8 @@ class ControlPlaneStatusBoard extends StatelessWidget {
                   background: tone.background,
                 ),
                 _Pill(
-                  label: 'MODE · ${status.executionMode.isEmpty ? '--' : status.executionMode}',
+                  label:
+                      'MODE · ${status.executionMode.isEmpty ? '--' : status.executionMode}',
                   foreground: AppColors.textPrimary,
                   background: AppColors.surfaceVariant,
                 ),
@@ -56,9 +54,7 @@ class ControlPlaneStatusBoard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               status.message.isEmpty ? '控制面状态正常' : status.message,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: tone.foreground,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: tone.foreground),
             ),
             const SizedBox(height: 14),
             Row(
@@ -164,10 +160,7 @@ class _LaneCard extends StatelessWidget {
         children: [
           Text(label, style: AppTextStyles.labelMedium),
           const SizedBox(height: 8),
-          Text(
-            '${lane.inUse}/${lane.capacity}',
-            style: AppTextStyles.h4,
-          ),
+          Text('${lane.inUse}/${lane.capacity}', style: AppTextStyles.h4),
           const SizedBox(height: 6),
           Text(
             '占用 / 容量',

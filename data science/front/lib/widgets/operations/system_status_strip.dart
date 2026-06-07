@@ -26,7 +26,22 @@ class SystemStatusStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const SizedBox.shrink();
+      if (trailing == null) {
+        return const SizedBox.shrink();
+      }
+
+      return Container(
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 12 : 20,
+          vertical: compact ? 10 : 12,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: const Border(bottom: BorderSide(color: AppColors.border)),
+        ),
+        child: trailing,
+      );
     }
 
     final visibleItems = _prioritizeItems(items);

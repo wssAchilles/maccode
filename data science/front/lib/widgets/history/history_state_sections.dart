@@ -114,9 +114,15 @@ class HistoryEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '开始分析数据后，历史记录会显示在这里',
+            '开始一次数据分析、训练或优化任务后，历史记录会显示在这里。',
             style: AppTextStyles.bodyMedium,
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonalIcon(
+            onPressed: null,
+            icon: const Icon(Icons.analytics_rounded),
+            label: const Text('前往数据分析后将自动生成历史'),
           ),
         ],
       ),

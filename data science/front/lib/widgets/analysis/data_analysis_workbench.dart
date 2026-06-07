@@ -180,6 +180,12 @@ class DataAnalysisCommandDeck extends StatelessWidget {
   Widget build(BuildContext context) {
     final canAnalyze = isAuthenticated && hasFile && !isLoading;
     final hasResult = analysisResult != null;
+    final nextActionText = _nextActionText(
+      isAuthenticated: isAuthenticated,
+      hasFile: hasFile,
+      hasResult: hasResult,
+      saveToStorage: saveToStorage,
+    );
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -243,12 +249,7 @@ class DataAnalysisCommandDeck extends StatelessWidget {
               ),
             ),
             child: Text(
-              _nextActionText(
-                isAuthenticated: isAuthenticated,
-                hasFile: hasFile,
-                hasResult: hasResult,
-                saveToStorage: saveToStorage,
-              ),
+              nextActionText,
               style: AppTextStyles.bodySmall.copyWith(
                 color: hasResult ? AppColors.success : AppColors.textSecondary,
               ),
@@ -258,6 +259,7 @@ class DataAnalysisCommandDeck extends StatelessWidget {
           DataAnalysisStartButton(
             canAnalyze: canAnalyze,
             onStart: onStartAnalysis,
+            disabledReason: canAnalyze ? null : nextActionText,
           ),
           const SizedBox(height: 12),
           SizedBox(

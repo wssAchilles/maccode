@@ -177,9 +177,7 @@ class _ComputeRolloutChangeDialogState
             );
           },
           icon: Icon(
-            _isRollback
-                ? Icons.restore_rounded
-                : Icons.rocket_launch_rounded,
+            _isRollback ? Icons.restore_rounded : Icons.rocket_launch_rounded,
           ),
           label: Text(_isRollback ? '提交回退' : '提交变更'),
         ),

@@ -9,10 +9,7 @@ import '../common/glass_card.dart';
 import 'duty_section_block.dart';
 
 class ComputeAccelerationBoard extends StatelessWidget {
-  const ComputeAccelerationBoard({
-    super.key,
-    required this.status,
-  });
+  const ComputeAccelerationBoard({super.key, required this.status});
 
   final ComputeAccelerationStatus status;
 
@@ -72,7 +69,9 @@ class ComputeAccelerationBoard extends StatelessWidget {
                   child: _MetaCard(
                     label: 'Preferred',
                     value: _backendLabel(status.preferredBackend),
-                    hint: status.nativeEnabled ? 'native requested' : 'python stable path',
+                    hint: status.nativeEnabled
+                        ? 'native requested'
+                        : 'python stable path',
                     accent: AppColors.info,
                   ),
                 ),
@@ -81,8 +80,12 @@ class ComputeAccelerationBoard extends StatelessWidget {
                   child: _MetaCard(
                     label: 'Native',
                     value: status.nativeAvailable ? 'Ready' : 'Fallback',
-                    hint: status.nativeAvailable ? 'module discovered' : 'Python fallback active',
-                    accent: status.nativeAvailable ? AppColors.success : AppColors.warning,
+                    hint: status.nativeAvailable
+                        ? 'module discovered'
+                        : 'Python fallback active',
+                    accent: status.nativeAvailable
+                        ? AppColors.success
+                        : AppColors.warning,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -90,8 +93,12 @@ class ComputeAccelerationBoard extends StatelessWidget {
                   child: _MetaCard(
                     label: 'Benchmark',
                     value: status.benchmarkReady ? 'Primed' : 'Pending',
-                    hint: status.lastUpdatedAt.isEmpty ? 'waiting for first sample' : 'telemetry updated',
-                    accent: status.benchmarkReady ? AppColors.success : AppColors.surfaceVariant,
+                    hint: status.lastUpdatedAt.isEmpty
+                        ? 'waiting for first sample'
+                        : 'telemetry updated',
+                    accent: status.benchmarkReady
+                        ? AppColors.success
+                        : AppColors.surfaceVariant,
                   ),
                 ),
               ],
