@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from domain.calibration.camera_model import CoordinateSpaceContract
 from domain.calibration.models import HomographyResult
 from domain.detection.models import Detection, Detections
 from domain.detection.service import DetectionService
 from domain.reports.generators import ReportGenerator
+from domain.speed.contact_state import PedestrianContactStateEstimator
 from domain.speed.ground_contact import GroundContactPoint
 from domain.speed.models import SpeedRecord
 from domain.tracking.models import Track
@@ -251,6 +253,23 @@ def test_calibration_diagnostics_do_not_mark_raw_homography_as_undistorted() -> 
     )
 
 
+def test_coordinate_contract_rejects_undistorted_h_without_intrinsics() -> None:
+    contract = CoordinateSpaceContract.from_context(
+        {
+            "homography_coordinate_space": "undistorted_pixel",
+            "control_point_coordinate_space": "undistorted_pixel",
+        },
+        frame_width=100,
+        frame_height=100,
+    )
+
+    result = contract.transform_pixel((10.0, 20.0))
+
+    assert contract.gate_reason == "distortion_model_missing"
+    assert result.pixel is None
+    assert result.gate_reason == "distortion_model_missing"
+
+
 def test_contact_fusion_reports_pose_stance_state() -> None:
     processor = SupervisionVideoProcessor(
         detector=object(),  # type: ignore[arg-type]
@@ -281,6 +300,30 @@ def test_contact_fusion_reports_pose_stance_state() -> None:
 
     assert fused.contact_state == "stance_foot"
     assert "pose_ankle_ground_contact" in (fused.fusion_sources or [])
+
+
+def test_pedestrian_contact_state_rejects_bicycle_polluted_bbox() -> None:
+    estimator = PedestrianContactStateEstimator()
+    contact = GroundContactPoint(
+        pixel=(15.0, 50.0),
+        raw_pixel=(15.0, 50.0),
+        confidence=0.9,
+        source="bbox_ground_contact",
+        measurement_source="bbox_ground_contact",
+        contact_state="unknown",
+    )
+
+    result = estimator.assess(
+        tracker_id=13,
+        class_id=0,
+        bbox_xyxy=[0.0, 0.0, 40.0, 50.0],
+        contact_point=contact,
+        timestamp_sec=1.0,
+        person_bicycle_overlap=0.2,
+    )
+
+    assert result.contact_state == "bicycle_push"
+    assert result.measurement_policy == "reject"
 
 
 def test_video_processor_rejects_bev_inconsistent_observation() -> None:

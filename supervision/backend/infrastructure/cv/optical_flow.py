@@ -91,7 +91,11 @@ class OpticalFlowVelocityEstimator:
             observation_sigma_px=max(0.75, 4.0 / max(tracked_points, 1)),
             measurement_source="flow_refined_ground_contact",
             optical_flow_inlier_ratio=float(inlier_ratio),
-            contact_state="stance_foot" if inlier_ratio >= 0.55 else "unknown",
+            contact_state="double_support" if inlier_ratio >= 0.55 else "unknown",
+            contact_state_probabilities={
+                "double_support": float(inlier_ratio) if inlier_ratio >= 0.55 else 0.0,
+                "unknown": 1.0 - float(inlier_ratio) if inlier_ratio < 1.0 else 0.0,
+            },
         )
 
     def _pixel_flow_observation(

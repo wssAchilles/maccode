@@ -71,6 +71,66 @@ def write_world_path_plot(diagnostic: TrackGeometryDiagnostic, path: Path) -> No
     plt.close(fig)
 
 
+def write_contact_timeline_plot(diagnostic: TrackGeometryDiagnostic, path: Path) -> None:
+    import matplotlib.pyplot as plt
+
+    rows = [row for row in diagnostic.rows if row.get("timestamp_sec") is not None]
+    if not rows:
+        return
+    labels = sorted(
+        {
+            str(row.get("contact_state") or row.get("measurement_policy") or "unknown")
+            for row in rows
+        }
+    )
+    label_to_y = {label: index for index, label in enumerate(labels)}
+    timestamps = [float(row["timestamp_sec"]) for row in rows]
+    states = [
+        label_to_y[str(row.get("contact_state") or row.get("measurement_policy") or "unknown")]
+        for row in rows
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, axis = plt.subplots(figsize=(8, 3.5))
+    axis.step(timestamps, states, where="post", linewidth=1.5)
+    axis.set_yticks(list(label_to_y.values()), list(label_to_y.keys()))
+    axis.set_xlabel("time (s)")
+    axis.set_title(f"track {diagnostic.tracker_id} contact state timeline")
+    axis.grid(True, axis="x", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+def write_posterior_interval_plot(diagnostic: TrackGeometryDiagnostic, path: Path) -> None:
+    import matplotlib.pyplot as plt
+
+    rows = [
+        row
+        for row in diagnostic.rows
+        if row.get("timestamp_sec") is not None
+        and isinstance(row.get("posterior_speed_p05_p50_p95_kmh"), list)
+        and len(row["posterior_speed_p05_p50_p95_kmh"]) == 3
+    ]
+    if not rows:
+        return
+    timestamps = [float(row["timestamp_sec"]) for row in rows]
+    intervals = [row["posterior_speed_p05_p50_p95_kmh"] for row in rows]
+    p05 = [float(interval[0]) for interval in intervals]
+    p50 = [float(interval[1]) for interval in intervals]
+    p95 = [float(interval[2]) for interval in intervals]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, axis = plt.subplots(figsize=(8, 4))
+    axis.fill_between(timestamps, p05, p95, alpha=0.2)
+    axis.plot(timestamps, p50, linewidth=1.5)
+    axis.set_xlabel("time (s)")
+    axis.set_ylabel("posterior speed (km/h)")
+    axis.set_title(f"track {diagnostic.tracker_id} posterior interval")
+    axis.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def write_plane_grid_overlay(
     payload: dict[str, Any],
     reports: list[dict[str, Any]],
@@ -142,6 +202,14 @@ def main() -> None:
     diagnostic.write_json(args.output_dir / f"{prefix}_geometry.json")
     write_speed_plot(diagnostic, args.output_dir / f"{prefix}_speed_plot.png")
     write_world_path_plot(diagnostic, args.output_dir / f"{prefix}_world_path.png")
+    write_contact_timeline_plot(
+        diagnostic,
+        args.output_dir / f"{prefix}_contact_timeline.png",
+    )
+    write_posterior_interval_plot(
+        diagnostic,
+        args.output_dir / f"{prefix}_posterior_interval.png",
+    )
     write_plane_grid_overlay(payload, reports, args.output_dir / "plane_grid_overlay.png")
 
 

@@ -19,6 +19,8 @@ class GroundContactPoint:
     innovation_score: float | None = None
     optical_flow_inlier_ratio: float | None = None
     contact_state: str | None = None
+    measurement_policy: str | None = None
+    contact_state_probabilities: dict[str, float] | None = None
 
 
 @dataclass

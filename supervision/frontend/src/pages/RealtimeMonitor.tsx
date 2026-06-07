@@ -163,6 +163,18 @@ function posteriorRiskLabel(track: Track | null | undefined) {
   return typeof risk === "string" && risk.length > 0 ? risk : "N/A";
 }
 
+function posteriorSpeedInterval(track: Track | null | undefined) {
+  const interval = track?.joint_physics_posterior?.speed_p05_p50_p95_kmh;
+  if (!Array.isArray(interval) || interval.length !== 3) {
+    return "N/A";
+  }
+  const [p05, p50, p95] = interval;
+  if (!finiteNumber(p05) || !finiteNumber(p50) || !finiteNumber(p95)) {
+    return "N/A";
+  }
+  return `${p05.toFixed(1)} / ${p50.toFixed(1)} / ${p95.toFixed(1)} km/h`;
+}
+
 function trackOptionLabel(track: Track) {
   const state = track.physics_valid ? "physics valid" : track.quality_label;
   return `#${track.tracker_id} / ${track.class_name} / ${state} / ${formatTrackBox(track)}`;
@@ -740,8 +752,16 @@ export function RealtimeMonitor({
                   <strong>{selectedTrack?.contact_state ?? "N/A"}</strong>
                 </div>
                 <div>
+                  <span>测量策略</span>
+                  <strong>{selectedTrack?.measurement_policy ?? "N/A"}</strong>
+                </div>
+                <div>
                   <span>H 坐标系</span>
                   <strong>{calibrationDiagnostics?.homography_coordinate_space ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>坐标 Gate</span>
+                  <strong>{calibrationDiagnostics?.coordinate_space_gate_reason ?? "pass"}</strong>
                 </div>
                 <div>
                   <span>畸变一致性</span>
@@ -786,6 +806,14 @@ export function RealtimeMonitor({
                 <div>
                   <span>后验主风险</span>
                   <strong>{posteriorRiskLabel(selectedTrack)}</strong>
+                </div>
+                <div>
+                  <span>后验速度 p05/p50/p95</span>
+                  <strong>{posteriorSpeedInterval(selectedTrack)}</strong>
+                </div>
+                <div>
+                  <span>主不确定性</span>
+                  <strong>{selectedTrack?.dominant_uncertainty_source ?? "N/A"}</strong>
                 </div>
               </div>
             </section>

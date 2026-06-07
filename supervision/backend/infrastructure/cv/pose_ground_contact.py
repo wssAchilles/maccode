@@ -26,6 +26,7 @@ class PoseGroundContactEstimator:
             return None
         best_point: tuple[float, float] | None = None
         best_confidence = 0.0
+        best_state = "unknown"
         for result in results:
             keypoints = getattr(result, "keypoints", None)
             boxes = getattr(result, "boxes", None)
@@ -42,18 +43,24 @@ class PoseGroundContactEstimator:
                 xy_values = keypoint_xy[index].cpu().numpy().tolist()
                 conf_values = keypoint_conf[index].cpu().numpy().tolist()
                 ankles = [
-                    (xy_values[15], conf_values[15]),
-                    (xy_values[16], conf_values[16]),
+                    ("left_stance", xy_values[15], conf_values[15]),
+                    ("right_stance", xy_values[16], conf_values[16]),
                 ]
-                valid = [(point, conf) for point, conf in ankles if conf >= 0.25]
+                valid = [(state, point, conf) for state, point, conf in ankles if conf >= 0.25]
                 if not valid:
                     continue
-                x = sum(point[0] * conf for point, conf in valid) / sum(conf for _, conf in valid)
-                y = sum(point[1] * conf for point, conf in valid) / sum(conf for _, conf in valid)
-                confidence = min(1.0, sum(conf for _, conf in valid) / len(valid))
+                x = sum(point[0] * conf for _, point, conf in valid) / sum(
+                    conf for _, _, conf in valid
+                )
+                y = sum(point[1] * conf for _, point, conf in valid) / sum(
+                    conf for _, _, conf in valid
+                )
+                confidence = min(1.0, sum(conf for _, _, conf in valid) / len(valid))
+                state = "double_support" if len(valid) >= 2 else valid[0][0]
                 if confidence > best_confidence:
                     best_point = (float(x), float(y))
                     best_confidence = float(confidence)
+                    best_state = state
         if best_point is None:
             return None
         return GroundContactPoint(
@@ -63,7 +70,11 @@ class PoseGroundContactEstimator:
             source="pose_ankle_ground_contact",
             observation_sigma_px=max(1.0, 3.0 / max(best_confidence, 0.1)),
             measurement_source="pose_ankle_ground_contact",
-            contact_state="stance_foot",
+            contact_state=best_state,
+            contact_state_probabilities={
+                best_state: best_confidence,
+                "unknown": max(0.0, 1.0 - best_confidence),
+            },
         )
 
     def _load_model(self) -> Any:

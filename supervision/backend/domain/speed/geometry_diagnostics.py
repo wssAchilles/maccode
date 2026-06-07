@@ -28,6 +28,9 @@ class TrackGeometryDiagnostic:
             "fused_foot",
             "foot_pixel",
             "contact_source",
+            "contact_state",
+            "measurement_policy",
+            "contact_state_probabilities",
             "contact_covariance_px",
             "plane_id",
             "plane_kind",
@@ -45,6 +48,8 @@ class TrackGeometryDiagnostic:
             "Sigma_world",
             "instantaneous_speed_kmh",
             "filtered_speed_kmh",
+            "posterior_speed_p05_p50_p95_kmh",
+            "dominant_uncertainty_source",
             "physics_valid",
             "rejection_reason",
         ]
@@ -117,6 +122,14 @@ class TrackGeometryDiagnosticBuilder:
                     "contact_source": track.get("contact_source")
                     or diagnostics.get("contact_source")
                     or track.get("measurement_source"),
+                    "contact_state": track.get("contact_state")
+                    or diagnostics.get("contact_state"),
+                    "measurement_policy": track.get("measurement_policy")
+                    or diagnostics.get("measurement_policy"),
+                    "contact_state_probabilities": track.get(
+                        "contact_state_probabilities",
+                    )
+                    or diagnostics.get("contact_state_probabilities"),
                     "contact_covariance_px": track.get("contact_pixel_covariance")
                     or diagnostics.get("contact_covariance_px"),
                     "plane_id": track.get("plane_id") or diagnostics.get("plane_id"),
@@ -143,6 +156,23 @@ class TrackGeometryDiagnosticBuilder:
                     or track.get("position_covariance"),
                     "instantaneous_speed_kmh": instantaneous_speed,
                     "filtered_speed_kmh": track.get("speed_kmh"),
+                    "posterior_speed_p05_p50_p95_kmh": (
+                        (track.get("joint_physics_posterior") or {}).get(
+                            "speed_p05_p50_p95_kmh",
+                        )
+                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        else None
+                    ),
+                    "dominant_uncertainty_source": track.get(
+                        "dominant_uncertainty_source",
+                    )
+                    or (
+                        (track.get("joint_physics_posterior") or {}).get(
+                            "dominant_uncertainty_source",
+                        )
+                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        else None
+                    ),
                     "physics_valid": track.get("physics_valid"),
                     "rejection_reason": track.get("rejection_reason"),
                 }
@@ -329,6 +359,17 @@ def _root_cause_verdicts(
         verdicts.append("wrong_plane_likely")
     if any(_truthy(row.get("bbox_contact_contaminated")) for row in rows):
         verdicts.append("bbox_contact_contaminated")
+    if any(
+        str(row.get("measurement_policy") or "") in {"reject", "predict_only"}
+        for row in rows
+    ):
+        verdicts.append("contact_state_unstable")
+    if any(str(row.get("dominant_uncertainty_source") or "") == "Sigma_H" for row in rows):
+        verdicts.append("Sigma_H_dominant")
+    if any("tracking" in str(row.get("dominant_uncertainty_source") or "") for row in rows):
+        verdicts.append("tracking_identity_risk")
+    if any("coordinate_space" in str(row.get("contact_source") or "") for row in rows):
+        verdicts.append("coordinate_space_mismatch")
     if _perspective_coupled(speeds, scales, inverse_heights):
         verdicts.append("perspective_coupled_speed_drift")
     if any(

@@ -8,6 +8,10 @@ from typing import Any, Protocol, cast
 
 import numpy as np
 from domain.calibration.bev_confidence import BEVConfidenceMap, BEVConfidenceMapBuilder
+from domain.calibration.camera_model import (
+    RAW_DISTORTED_PIXEL,
+    CoordinateSpaceContract,
+)
 from domain.calibration.candidate_evaluation import (
     CalibrationCandidateEvaluation,
     CalibrationCandidateEvaluator,
@@ -25,6 +29,7 @@ from domain.detection.models import Detections
 from domain.motion.router import MotionRouter
 from domain.reports.generators import ReportGenerator
 from domain.speed.contact_fusion import ContactPointFusion, ContactPointObservation
+from domain.speed.contact_state import PedestrianContactStateEstimator
 from domain.speed.estimator import SpeedEstimator
 from domain.speed.ground_contact import GroundContactCorrector, GroundContactPoint
 from domain.speed.models import SpeedRecord
@@ -152,6 +157,11 @@ class SupervisionVideoProcessor:
         self.fps = fps
         self.frame_width = frame_width
         self.frame_height = frame_height
+        self.coordinate_contract = CoordinateSpaceContract.from_context(
+            self.calibration_context,
+            frame_width=frame_width,
+            frame_height=frame_height,
+        )
         self.segment_width_m = segment_width_m
         self.segment_length_m = segment_length_m
         self.grid_spacing_m = grid_spacing_m
@@ -202,6 +212,7 @@ class SupervisionVideoProcessor:
         self.trajectory_reconstructor = TrajectoryReconstructor(self.motion_router)
         self.ground_contact_corrector = GroundContactCorrector()
         self.contact_point_fusion = ContactPointFusion()
+        self.pedestrian_contact_state = PedestrianContactStateEstimator()
         self.tracking_integrity_monitor = TrackingIntegrityMonitor()
         self.pose_ground_contact = (
             PoseGroundContactEstimator(pose_model_path, pose_device)
@@ -412,6 +423,9 @@ class SupervisionVideoProcessor:
         ):
             coordinate_space_warning = "intrinsics_present_but_homography_raw_frame"
             error_sources.append(coordinate_space_warning)
+        coordinate_space_gate_reason = self.coordinate_contract.gate_reason
+        if coordinate_space_gate_reason is not None:
+            error_sources.append(coordinate_space_gate_reason)
         diagnostics = {
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
@@ -457,6 +471,10 @@ class SupervisionVideoProcessor:
             "homography_coordinate_space": homography_coordinate_space,
             "undistorted_metric_profile": undistorted_metric_profile,
             "coordinate_space_warning": coordinate_space_warning,
+            "coordinate_space_contract": self.coordinate_contract.to_diagnostics(),
+            "distortion_diagnostics": self.coordinate_contract.distortion_diagnostics(),
+            "rectification_applied": self.coordinate_contract.rectification_applied,
+            "coordinate_space_gate_reason": coordinate_space_gate_reason,
             "camera_intrinsics_prior": self.calibration_context.get(
                 "camera_intrinsics_prior",
                 {},
@@ -564,7 +582,7 @@ class SupervisionVideoProcessor:
             return None
         posterior = dict(posterior)
         posterior["speed_posterior_model_reference"] = posterior.get("model_reference")
-        posterior["model_reference"] = "joint_physics_posterior_v1"
+        posterior["model_reference"] = "joint_physics_posterior_v2"
         posterior["primary_risk_source"] = self._primary_physics_risk_source(record)
         posterior["confidence_factors"] = {
             "calibration": record.calibration_confidence,
@@ -573,7 +591,18 @@ class SupervisionVideoProcessor:
             "occlusion": record.occlusion_confidence,
             "dynamics": record.dynamics_confidence,
         }
+        posterior["dominant_uncertainty_source"] = (
+            posterior.get("dominant_uncertainty_source")
+            or posterior["primary_risk_source"]
+        )
         return posterior
+
+    def _posterior_dominant_source(self, record: SpeedRecord | None) -> str | None:
+        posterior = self._joint_physics_posterior(record)
+        if posterior is None:
+            return None
+        source = posterior.get("dominant_uncertainty_source")
+        return str(source) if source is not None else None
 
     @staticmethod
     def _primary_physics_risk_source(record: SpeedRecord) -> str | None:
@@ -877,6 +906,33 @@ class SupervisionVideoProcessor:
                 pose_contact_point,
                 flow_contact_point,
             )
+            contact_state = self.pedestrian_contact_state.assess(
+                tracker_id=track.tracker_id,
+                class_id=track.class_id,
+                bbox_xyxy=track.xyxy,
+                contact_point=contact_point,
+                timestamp_sec=timestamp_sec,
+                person_bicycle_overlap=self._person_bicycle_overlap(track, tracks),
+            )
+            contact_point = replace(
+                contact_point,
+                contact_state=contact_state.contact_state,
+                measurement_policy=contact_state.measurement_policy,
+                contact_state_probabilities=contact_state.state_probabilities,
+                confidence=max(
+                    0.05,
+                    min(
+                        1.0,
+                        contact_point.confidence
+                        * contact_state.measurement_confidence_multiplier,
+                    ),
+                ),
+                observation_sigma_px=(
+                    contact_point.observation_sigma_px
+                    * contact_state.pixel_sigma_multiplier
+                ),
+            )
+            contact_point = self._rectified_contact_point(contact_point)
             contact_points[track.tracker_id] = contact_point
             self._latest_contact_points[track.tracker_id] = contact_point
             profile = self.motion_router.route_class(track.class_id)
@@ -888,6 +944,43 @@ class SupervisionVideoProcessor:
                 self._contact_fusion_low_confidence_count += 1
             if contact_point.outlier_sources:
                 self._contact_outlier_count += 1
+            if contact_point.measurement_policy in {"reject", "predict_only"}:
+                reason = self._contact_policy_rejection_reason(contact_point)
+                self.speed_estimator.suppress_measurement(
+                    tracker_id=track.tracker_id,
+                    pixel_point=contact_point.pixel,
+                    timestamp_sec=timestamp_sec,
+                    quality_label="geometry_invalid",
+                    rejection_reason=reason,
+                    preserve_previous_speed=contact_point.measurement_policy == "predict_only",
+                    measurement_source=contact_point.measurement_source,
+                    measurement_confidence=contact_point.confidence,
+                    scale_confidence_label=self.scale_confidence_label,
+                    weak_calibration_reason=self.weak_calibration_reason or reason,
+                    contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
+                    speed_geometry_diagnostics=self._speed_geometry_diagnostics(
+                        track,
+                        contact_point,
+                        plane_id=None,
+                        plane_status="contact_policy",
+                        plane_reason=reason,
+                    ),
+                )
+                self.speed_estimator.annotate_record(
+                    track.tracker_id,
+                    contact_fusion_sources=contact_point.fusion_sources,
+                    contact_fusion_weights=contact_point.fusion_weights,
+                    contact_pixel_covariance=contact_point.pixel_covariance,
+                    contact_fusion_confidence=contact_point.fusion_confidence,
+                    contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
+                    contact_innovation_score=contact_point.innovation_score,
+                    contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
+                )
+                continue
             if not self.metric_speed_admitted:
                 self.speed_estimator.view_transformer = self.view_transformer
                 self.speed_estimator.suppress_measurement(
@@ -905,6 +998,8 @@ class SupervisionVideoProcessor:
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=self._speed_geometry_diagnostics(
                         track,
                         contact_point,
@@ -922,6 +1017,8 @@ class SupervisionVideoProcessor:
                     contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
                     contact_innovation_score=contact_point.innovation_score,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                 )
                 continue
             plane_selection = self.metric_plane_set.select(contact_point.pixel)
@@ -939,6 +1036,8 @@ class SupervisionVideoProcessor:
                     scale_confidence_label=self.scale_confidence_label,
                     weak_calibration_reason=self.weak_calibration_reason,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=self._speed_geometry_diagnostics(
                         track,
                         contact_point,
@@ -1006,6 +1105,8 @@ class SupervisionVideoProcessor:
                     ),
                     plane_id=selected_plane.plane_id,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 self.speed_estimator.annotate_record(
@@ -1017,6 +1118,8 @@ class SupervisionVideoProcessor:
                     contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
                     contact_innovation_score=contact_point.innovation_score,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                 )
                 continue
             integrity = self.tracking_integrity_monitor.assess(
@@ -1054,6 +1157,8 @@ class SupervisionVideoProcessor:
                     weak_calibration_reason=self.weak_calibration_reason,
                     plane_id=selected_plane.plane_id,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
@@ -1063,6 +1168,7 @@ class SupervisionVideoProcessor:
                     ),
                     joint_speed_posterior=self._joint_speed_posterior(frozen_record),
                     joint_physics_posterior=self._joint_physics_posterior(frozen_record),
+                    dominant_uncertainty_source=self._posterior_dominant_source(frozen_record),
                 )
                 continue
 
@@ -1115,6 +1221,8 @@ class SupervisionVideoProcessor:
                     weak_calibration_reason=self.weak_calibration_reason,
                     plane_id=selected_plane.plane_id,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 self.speed_estimator.annotate_record(
@@ -1125,6 +1233,9 @@ class SupervisionVideoProcessor:
                     contact_fusion_confidence=contact_point.fusion_confidence,
                     contact_outlier_source=self._joined_sources(contact_point.outlier_sources),
                     contact_innovation_score=contact_point.innovation_score,
+                    contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                 )
                 continue
             if (
@@ -1144,6 +1255,8 @@ class SupervisionVideoProcessor:
                     local_scale_percentile=bev_risk.local_scale_percentile,
                     contact_fusion_confidence=contact_point.fusion_confidence,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     contact_source=contact_point.measurement_source,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
@@ -1172,6 +1285,8 @@ class SupervisionVideoProcessor:
                     plane_id=selected_plane.plane_id,
                     contact_source=contact_point.measurement_source,
                     contact_state=contact_point.contact_state,
+                    measurement_policy=contact_point.measurement_policy,
+                    contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
                 )
                 continue
@@ -1277,6 +1392,9 @@ class SupervisionVideoProcessor:
                 joint_speed_posterior=self._joint_speed_posterior(latest_record),
                 joint_physics_posterior=self._joint_physics_posterior(latest_record),
                 contact_state=contact_point.contact_state,
+                measurement_policy=contact_point.measurement_policy,
+                contact_state_probabilities=contact_point.contact_state_probabilities,
+                dominant_uncertainty_source=self._posterior_dominant_source(latest_record),
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
@@ -1373,6 +1491,101 @@ class SupervisionVideoProcessor:
             return flow_contact_point.contact_state or "stance_foot"
         return "unknown"
 
+    def _rectified_contact_point(self, contact_point: GroundContactPoint) -> GroundContactPoint:
+        if self.coordinate_contract.gate_reason is not None:
+            return replace(
+                contact_point,
+                measurement_policy="reject",
+                measurement_source=(
+                    f"{contact_point.measurement_source}:"
+                    f"{self.coordinate_contract.gate_reason}"
+                ),
+                outlier_sources=[
+                    *(contact_point.outlier_sources or []),
+                    self.coordinate_contract.gate_reason,
+                ],
+                contact_state=contact_point.contact_state or "unknown",
+                contact_state_probabilities=contact_point.contact_state_probabilities
+                or {"unknown": 1.0},
+            )
+        result = self.coordinate_contract.transform_pixel(
+            contact_point.pixel,
+            input_space=RAW_DISTORTED_PIXEL,
+        )
+        if result.pixel is None:
+            return replace(
+                contact_point,
+                measurement_policy="reject",
+                measurement_source=f"{contact_point.measurement_source}:coordinate_space_rejected",
+                outlier_sources=[
+                    *(contact_point.outlier_sources or []),
+                    result.gate_reason or "coordinate_space_mismatch",
+                ],
+                contact_state=contact_point.contact_state or "unknown",
+                contact_state_probabilities=contact_point.contact_state_probabilities
+                or {"unknown": 1.0},
+                fusion_weights={
+                    **(contact_point.fusion_weights or {}),
+                    "coordinate_space_contract": 0.0,
+                },
+            )
+        if result.rectification_applied:
+            return replace(
+                contact_point,
+                pixel=result.pixel,
+                source=f"{contact_point.source}:rectified",
+                measurement_source=f"{contact_point.measurement_source}:rectified",
+                fusion_weights={
+                    **(contact_point.fusion_weights or {}),
+                    "coordinate_space_contract": 1.0,
+                },
+                outlier_sources=contact_point.outlier_sources,
+            )
+        return replace(
+            contact_point,
+            fusion_weights={
+                **(contact_point.fusion_weights or {}),
+                "coordinate_space_contract": 1.0,
+            },
+        )
+
+    @staticmethod
+    def _contact_policy_rejection_reason(contact_point: GroundContactPoint) -> str:
+        if contact_point.contact_state == "bbox_polluted":
+            return "pedestrian_contact_contaminated"
+        if contact_point.contact_state == "bicycle_push":
+            return "bicycle_push_contact_contaminated"
+        if any("coordinate_space" in source for source in contact_point.outlier_sources or []):
+            return "coordinate_space_mismatch"
+        return f"contact_policy_{contact_point.measurement_policy}"
+
+    @staticmethod
+    def _person_bicycle_overlap(track: Track, tracks: list[Track]) -> float:
+        if track.class_id != 0:
+            return 0.0
+        return max(
+            (
+                SupervisionVideoProcessor._box_iou(track.xyxy, candidate.xyxy)
+                for candidate in tracks
+                if candidate.class_id == 1 and candidate.tracker_id != track.tracker_id
+            ),
+            default=0.0,
+        )
+
+    @staticmethod
+    def _box_iou(left: list[float], right: list[float]) -> float:
+        lx1, ly1, lx2, ly2 = left
+        rx1, ry1, rx2, ry2 = right
+        ix1 = max(lx1, rx1)
+        iy1 = max(ly1, ry1)
+        ix2 = min(lx2, rx2)
+        iy2 = min(ly2, ry2)
+        intersection = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+        left_area = max(0.0, lx2 - lx1) * max(0.0, ly2 - ly1)
+        right_area = max(0.0, rx2 - rx1) * max(0.0, ry2 - ry1)
+        union = left_area + right_area - intersection
+        return float(intersection / union) if union > 0.0 else 0.0
+
     @staticmethod
     def _joined_sources(sources: list[str] | None) -> str | None:
         return ",".join(sources) if sources else None
@@ -1416,10 +1629,13 @@ class SupervisionVideoProcessor:
             "fused_foot": list(contact_point.pixel),
             "contact_source": contact_point.measurement_source,
             "contact_state": contact_point.contact_state,
+            "measurement_policy": contact_point.measurement_policy,
+            "contact_state_probabilities": contact_point.contact_state_probabilities,
             "contact_covariance_px": contact_point.pixel_covariance,
             "contact_confidence": contact_point.confidence,
             "contact_fusion_confidence": contact_point.fusion_confidence,
             "contact_fusion_sources": contact_point.fusion_sources,
+            "contact_innovation_score": contact_point.innovation_score,
             "bbox_contact_contaminated": contaminated,
         }
 

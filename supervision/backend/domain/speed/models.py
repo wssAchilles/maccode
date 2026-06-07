@@ -82,8 +82,11 @@ class SpeedRecord:
     plane_id: str | None = None
     contact_source: str | None = None
     contact_state: str | None = None
+    measurement_policy: str | None = None
+    contact_state_probabilities: dict[str, float] | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
+    dominant_uncertainty_source: str | None = None
     physics_confidence: float | None = None
     calibration_confidence: float | None = None
     contact_confidence: float | None = None

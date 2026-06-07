@@ -88,8 +88,11 @@ class Track:
     plane_id: str | None = None
     contact_source: str | None = None
     contact_state: str | None = None
+    measurement_policy: str | None = None
+    contact_state_probabilities: dict[str, float] | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
+    dominant_uncertainty_source: str | None = None
     physics_confidence: float | None = None
     calibration_confidence: float | None = None
     contact_confidence: float | None = None
@@ -194,8 +197,11 @@ class Track:
         plane_id: str | None = None,
         contact_source: str | None = None,
         contact_state: str | None = None,
+        measurement_policy: str | None = None,
+        contact_state_probabilities: dict[str, float] | None = None,
         world_position_covariance: list[list[float]] | None = None,
         speed_geometry_diagnostics: dict[str, object] | None = None,
+        dominant_uncertainty_source: str | None = None,
         physics_confidence: float | None = None,
         calibration_confidence: float | None = None,
         contact_confidence: float | None = None,
@@ -282,8 +288,11 @@ class Track:
             plane_id=plane_id,
             contact_source=contact_source,
             contact_state=contact_state,
+            measurement_policy=measurement_policy,
+            contact_state_probabilities=contact_state_probabilities,
             world_position_covariance=world_position_covariance,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
+            dominant_uncertainty_source=dominant_uncertainty_source,
             physics_confidence=physics_confidence,
             calibration_confidence=calibration_confidence,
             contact_confidence=contact_confidence,

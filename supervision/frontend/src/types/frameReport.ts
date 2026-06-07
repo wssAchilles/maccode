@@ -68,8 +68,11 @@ export interface Track {
   plane_id?: string | null;
   contact_source?: string | null;
   contact_state?: string | null;
+  measurement_policy?: string | null;
+  contact_state_probabilities?: Record<string, number> | null;
   world_position_covariance?: number[][] | null;
   speed_geometry_diagnostics?: Record<string, unknown> | null;
+  dominant_uncertainty_source?: string | null;
   physics_confidence?: number | null;
   calibration_confidence?: number | null;
   contact_confidence?: number | null;
@@ -191,6 +194,10 @@ export interface CalibrationDiagnostics {
   homography_coordinate_space?: string;
   undistorted_metric_profile?: boolean;
   coordinate_space_warning?: string | null;
+  coordinate_space_contract?: Record<string, unknown>;
+  distortion_diagnostics?: Record<string, unknown>;
+  rectification_applied?: boolean;
+  coordinate_space_gate_reason?: string | null;
   runtime_homography_source?: string;
   calibration_candidates?: Array<Record<string, unknown>>;
   selected_calibration_candidate_id?: string | null;

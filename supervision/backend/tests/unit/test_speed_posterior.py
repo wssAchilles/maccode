@@ -131,3 +131,18 @@ def test_joint_speed_posterior_reports_sources() -> None:
         "position_covariance",
         "timestamp_uncertainty",
     }
+
+
+def test_joint_posterior_reports_physics_v2_fields() -> None:
+    posterior = SpeedPosteriorAnalyzer().analyze(
+        _record(),
+        _homography(),
+        timestamp_uncertainty_sec=0.02,
+        random_seed=23,
+    ).to_dict()
+
+    assert posterior["speed_p05_p50_p95_kmh"] is not None
+    assert posterior["position_mean_xy"] == [0.0, 0.0]
+    assert "Sigma_H" in posterior["uncertainty_components"]
+    assert posterior["dominant_uncertainty_source"] is not None
+    assert posterior["posterior_reliability_label"] in {"high", "medium", "low"}
