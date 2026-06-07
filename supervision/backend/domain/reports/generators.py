@@ -219,6 +219,15 @@ class ReportGenerator:
                     record.pedestrian_periodic_calibration_consistency
                 ),
                 near_far_speed_drift_metrics=record.near_far_speed_drift_metrics,
+                contact_episodes=record.contact_episodes,
+                speed_body_kmh=record.speed_body_kmh,
+                speed_periodic_kmh=record.speed_periodic_kmh,
+                support_zero_velocity_residual_mps=(
+                    record.support_zero_velocity_residual_mps
+                ),
+                body_periodic_speed_gap_kmh=record.body_periodic_speed_gap_kmh,
+                near_far_speed_drift_score=record.near_far_speed_drift_score,
+                geometry_status=record.geometry_status,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

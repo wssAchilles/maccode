@@ -86,6 +86,13 @@ export interface Track {
   foot_skate_risk?: number | null;
   pedestrian_periodic_calibration_consistency?: number | null;
   near_far_speed_drift_metrics?: Record<string, number | null> | null;
+  contact_episodes?: Array<Record<string, unknown>> | null;
+  speed_body_kmh?: number | null;
+  speed_periodic_kmh?: number | null;
+  support_zero_velocity_residual_mps?: number | null;
+  body_periodic_speed_gap_kmh?: number | null;
+  near_far_speed_drift_score?: number | null;
+  geometry_status?: string | null;
 }
 
 export interface ZoneStats {
@@ -208,6 +215,10 @@ export interface CalibrationDiagnostics {
   rectification_applied?: boolean;
   coordinate_space_gate_reason?: string | null;
   metric_plane_speed_acceptance?: Record<string, unknown>;
+  pinhole_geometry_profile?: Record<string, unknown> | null;
+  homography_decomposition_residual?: number | null;
+  local_jacobian_speed_amplification_p95?: number | null;
+  intrinsics_consistency_status?: string | null;
   runtime_homography_source?: string;
   calibration_candidates?: Array<Record<string, unknown>>;
   selected_calibration_candidate_id?: string | null;

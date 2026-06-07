@@ -150,7 +150,7 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
     )
     assert (
         report["active_tracks"][0]["joint_physics_posterior"]["model_reference"]
-        == "joint_physics_posterior_v3"
+        == "joint_physics_posterior_v4"
     )
     assert "primary_risk_source" in report["active_tracks"][0]["joint_physics_posterior"]
     assert "speed_p05_p50_p95_kmh" in report["active_tracks"][0]["joint_physics_posterior"]
@@ -161,6 +161,18 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
     assert report["active_tracks"][0]["contact_phase_probabilities"] is not None
     assert report["active_tracks"][0]["foot_skate_risk"] is not None
     assert report["active_tracks"][0]["near_far_speed_drift_metrics"] is not None
+    assert "speed_body_kmh" in report["active_tracks"][0]
+    assert "speed_periodic_kmh" in report["active_tracks"][0]
+    assert "support_zero_velocity_residual_mps" in report["active_tracks"][0]
+    assert "near_far_speed_drift_score" in report["active_tracks"][0]
+    assert "geometry_status" in report["active_tracks"][0]
+    assert report["active_tracks"][0]["joint_physics_posterior"]["geometry_status"] in {
+        "accepted",
+        "weak_scale",
+        "periodic_inconsistent",
+        "foot_skate_invalid",
+        None,
+    }
     assert report["active_tracks"][0]["contact_state"] == "unknown"
     assert report["active_tracks"][0]["measurement_policy"] is not None
     assert (

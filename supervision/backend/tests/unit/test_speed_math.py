@@ -10,6 +10,7 @@ from domain.calibration.pedestrian_candidate import (
     PedestrianTrackSample,
 )
 from domain.calibration.service import CalibrationService
+from domain.speed.contact_episode import ContactEpisodeBuffer
 from domain.speed.estimator import SpeedEstimator
 from domain.speed.filters import max_speed_filter, min_displacement_filter
 from domain.speed.geometry_diagnostics import TrackGeometryDiagnosticBuilder
@@ -238,6 +239,13 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
                         "contact_phase_probabilities": {"stance": 0.8},
                         "foot_skate_risk": 0.7 if index == 3 else 0.1,
                         "pedestrian_periodic_calibration_consistency": 0.75,
+                        "speed_periodic_kmh": 5.2,
+                        "body_periodic_speed_gap_kmh": abs(speed - 5.2),
+                        "support_zero_velocity_residual_mps": 0.2,
+                        "near_far_speed_drift_score": 0.1,
+                        "geometry_status": "foot_skate_invalid"
+                        if index == 3
+                        else "accepted",
                         "speed_geometry_diagnostics": {
                             "bbox_height_px": height,
                             "raw_bbox_foot": [20.0, 10.0 + height],
@@ -245,6 +253,10 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
                             "contact_covariance_px": [[1.0, 0.0], [0.0, 2.0]],
                             "plane_id": "sidewalk",
                             "plane_status": "selected",
+                            "current_contact_episode_id": index,
+                            "current_contact_episode_phase": "stance",
+                            "support_velocity_mps": 0.2,
+                            "local_jacobian_speed_amplification_p95": 0.1,
                         },
                     }
                 ],
@@ -257,11 +269,49 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
     assert diagnostic.rows[0]["body_ground_projection"] == [1.0, 0.0]
     assert diagnostic.rows[0]["support_contact_anchor"] == [1.2, 0.0]
     assert diagnostic.rows[0]["contact_phase_probabilities"] == {"stance": 0.8}
+    assert diagnostic.rows[0]["geometry_status"] == "accepted"
+    assert diagnostic.rows[0]["speed_periodic_kmh"] == pytest.approx(5.2)
     assert diagnostic.metrics["sample_count"] == 4
     assert diagnostic.metrics["speed_cv"] is not None
     assert diagnostic.metrics["foot_skate_risk_p95"] is not None
+    assert diagnostic.metrics["golden_acceptance"]["model_reference"] == (
+        "pedestrian_golden_acceptance_v4"
+    )
     assert "foot_skate_or_geometry_risk" in diagnostic.metrics["root_cause_verdicts"]
+    assert "foot_skate_invalid" in diagnostic.metrics["root_cause_verdicts"]
     assert diagnostic.metrics["perspective_coupled_speed_drift"] is True
+
+
+def test_contact_episode_buffer_builds_periodic_speed_and_flags_foot_skate() -> None:
+    buffer = ContactEpisodeBuffer()
+    phases = [
+        (0.0, 0.0, "touchdown", 0.05),
+        (0.2, 0.0, "stance", 0.05),
+        (0.4, 0.0, "swing", 0.05),
+        (1.0, 1.4, "touchdown", 0.05),
+        (1.2, 1.4, "stance", 0.05),
+        (1.4, 1.4, "swing", 0.05),
+        (2.0, 2.8, "touchdown", 0.05),
+        (2.2, 3.0, "stance", 0.75),
+    ]
+    result = None
+    for timestamp, support_x, phase, foot_skate in phases:
+        result = buffer.update(
+            tracker_id=13,
+            timestamp_sec=timestamp,
+            body_world=(timestamp * 1.4, 0.0),
+            support_world=(support_x, 0.0),
+            contact_phase_probabilities={phase: 0.9},
+            contact_confidence=0.9,
+            foot_skate_risk=foot_skate,
+            speed_body_kmh=5.0,
+            near_far_metrics={"speed_local_scale_correlation": 0.1},
+        )
+
+    assert result is not None
+    assert result.contact_episodes
+    assert result.speed_periodic_kmh == pytest.approx(5.04, abs=0.4)
+    assert result.geometry_status == "foot_skate_invalid"
 
 
 def test_track_geometry_diagnostics_flags_wrong_plane_for_pedestrian() -> None:

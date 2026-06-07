@@ -19,6 +19,7 @@ from domain.calibration.candidate_evaluation import (
 )
 from domain.calibration.models import CalibrationPoint, HomographyResult
 from domain.calibration.monte_carlo import CalibrationMonteCarloAnalyzer
+from domain.calibration.pinhole_geometry import PinholeGeometryAuditor
 from domain.calibration.sensitivity import (
     CalibrationSensitivityAnalyzer,
     CalibrationSensitivityReport,
@@ -29,6 +30,7 @@ from domain.crowd_density.service import CrowdDensityService
 from domain.detection.models import Detections
 from domain.motion.router import MotionRouter
 from domain.reports.generators import ReportGenerator
+from domain.speed.contact_episode import ContactEpisodeBuffer
 from domain.speed.contact_fusion import ContactPointFusion, ContactPointObservation
 from domain.speed.contact_state import PedestrianContactStateEstimator
 from domain.speed.estimator import SpeedEstimator
@@ -205,6 +207,13 @@ class SupervisionVideoProcessor:
             default_validation_segments=self._validation_segments_from_context(),
             default_homography=self.calibration,
         )
+        self.pinhole_geometry_audit = PinholeGeometryAuditor().audit(
+            self.calibration,
+            self.metric_plane_set.planes,
+            self.calibration_context,
+            frame_width=frame_width,
+            frame_height=frame_height,
+        )
         self.camera_geometry_profile = CameraGeometryProfile.from_context(
             self.calibration_context,
             frame_width=frame_width,
@@ -217,6 +226,7 @@ class SupervisionVideoProcessor:
                 "validation_max_error_px": self.validation_max_error_px,
                 "condition_number": self.calibration.condition_number,
             },
+            pinhole_geometry_profile=self.pinhole_geometry_audit.to_diagnostics(),
         )
         self.plane_transformers = {
             plane.plane_id: ViewTransformer(plane.homography.homography_matrix)
@@ -226,6 +236,7 @@ class SupervisionVideoProcessor:
         self.trajectory_reconstructor = TrajectoryReconstructor(self.motion_router)
         self.ground_contact_corrector = GroundContactCorrector()
         self.contact_point_fusion = ContactPointFusion()
+        self.contact_episode_buffer = ContactEpisodeBuffer()
         self.pedestrian_contact_state = PedestrianContactStateEstimator()
         self.tracking_integrity_monitor = TrackingIntegrityMonitor()
         self.pose_ground_contact = (
@@ -444,6 +455,12 @@ class SupervisionVideoProcessor:
         coordinate_space_gate_reason = self.coordinate_contract.gate_reason
         if coordinate_space_gate_reason is not None:
             error_sources.append(coordinate_space_gate_reason)
+        pinhole_diagnostics = self.pinhole_geometry_audit.to_diagnostics()
+        if (
+            pinhole_diagnostics.get("intrinsics_consistency_status")
+            == "intrinsics_inconsistent_across_planes"
+        ):
+            error_sources.append("intrinsics_inconsistent_across_planes")
         diagnostics = {
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
@@ -492,6 +509,16 @@ class SupervisionVideoProcessor:
             "undistorted_metric_profile": undistorted_metric_profile,
             "coordinate_space_warning": coordinate_space_warning,
             "camera_geometry_profile": self.camera_geometry_profile.to_diagnostics(),
+            "pinhole_geometry_profile": pinhole_diagnostics,
+            "homography_decomposition_residual": pinhole_diagnostics.get(
+                "homography_decomposition_residual",
+            ),
+            "local_jacobian_speed_amplification_p95": pinhole_diagnostics.get(
+                "local_jacobian_speed_amplification_p95",
+            ),
+            "intrinsics_consistency_status": pinhole_diagnostics.get(
+                "intrinsics_consistency_status",
+            ),
             "coordinate_space_contract": self.coordinate_contract.to_diagnostics(),
             "distortion_diagnostics": self.coordinate_contract.distortion_diagnostics(),
             "rectification_applied": self.coordinate_contract.rectification_applied,
@@ -611,7 +638,7 @@ class SupervisionVideoProcessor:
             return None
         posterior = dict(posterior)
         posterior["speed_posterior_model_reference"] = posterior.get("model_reference")
-        posterior["model_reference"] = "joint_physics_posterior_v3"
+        posterior["model_reference"] = "joint_physics_posterior_v4"
         posterior["primary_risk_source"] = self._primary_physics_risk_source(record)
         posterior["confidence_factors"] = {
             "calibration": record.calibration_confidence,
@@ -626,6 +653,21 @@ class SupervisionVideoProcessor:
         )
         components = posterior.get("uncertainty_components")
         if isinstance(components, dict):
+            components = dict(components)
+            if record.foot_skate_risk is not None:
+                components["Sigma_contact_episode"] = float(record.foot_skate_risk) * max(
+                    float(record.speed_kmh or 1.0),
+                    1.0,
+                ) * 0.15
+            if record.near_far_speed_drift_score is not None:
+                components["Sigma_jacobian_drift"] = float(
+                    record.near_far_speed_drift_score,
+                ) * max(float(record.speed_kmh or 1.0), 1.0) * 0.2
+            if record.body_periodic_speed_gap_kmh is not None:
+                components["Sigma_periodic_inconsistency"] = float(
+                    record.body_periodic_speed_gap_kmh,
+                ) * 0.25
+            posterior["uncertainty_components"] = components
             total = sum(
                 max(float(value), 0.0)
                 for value in components.values()
@@ -645,6 +687,13 @@ class SupervisionVideoProcessor:
         posterior["body_ground_projection"] = record.body_ground_projection
         posterior["support_contact_anchor"] = record.support_contact_anchor
         posterior["foot_skate_risk"] = record.foot_skate_risk
+        posterior["speed_body_kmh"] = record.speed_body_kmh
+        posterior["speed_periodic_kmh"] = record.speed_periodic_kmh
+        posterior["support_zero_velocity_residual_mps"] = (
+            record.support_zero_velocity_residual_mps
+        )
+        posterior["near_far_speed_drift_score"] = record.near_far_speed_drift_score
+        posterior["geometry_status"] = record.geometry_status
         return posterior
 
     def _posterior_dominant_source(self, record: SpeedRecord | None) -> str | None:
@@ -1412,6 +1461,44 @@ class SupervisionVideoProcessor:
                     and latest_record.height_consistency_score < 0.55
                 ):
                     self._bbox_height_consistency_fail_count += 1
+            semantic_near_far_metrics = self._near_far_speed_drift_metrics(latest_record)
+            contact_episode = self.contact_episode_buffer.update(
+                tracker_id=track.tracker_id,
+                timestamp_sec=timestamp_sec,
+                body_world=tuple(
+                    cast(list[float], semantic_observation["body_ground_projection"]),
+                ),
+                support_world=tuple(
+                    cast(list[float], semantic_observation["support_contact_anchor"]),
+                ),
+                contact_phase_probabilities=contact_point.contact_phase_probabilities,
+                contact_confidence=contact_point.confidence,
+                foot_skate_risk=float(semantic_observation.get("foot_skate_risk") or 0.0),
+                speed_body_kmh=latest_record.speed_kmh if latest_record is not None else None,
+                near_far_metrics=semantic_near_far_metrics,
+            )
+            speed_geometry_diagnostics.update(
+                {
+                    "contact_episodes": contact_episode.contact_episodes,
+                    "current_contact_episode_id": contact_episode.current_episode_id,
+                    "current_contact_episode_phase": contact_episode.current_episode_phase,
+                    "support_velocity_mps": contact_episode.support_velocity_mps,
+                    "support_zero_velocity_residual_mps": (
+                        contact_episode.support_zero_velocity_residual_mps
+                    ),
+                    "speed_periodic_kmh": contact_episode.speed_periodic_kmh,
+                    "body_periodic_speed_gap_kmh": (
+                        contact_episode.body_periodic_speed_gap_kmh
+                    ),
+                    "near_far_speed_drift_score": (
+                        contact_episode.near_far_speed_drift_score
+                    ),
+                    "geometry_status": contact_episode.geometry_status,
+                    "local_jacobian_speed_amplification_p95": (
+                        self.pinhole_geometry_audit.local_jacobian_speed_amplification_p95
+                    ),
+                }
+            )
             quality_label = (
                 "weak_scale"
                 if (
@@ -1424,7 +1511,6 @@ class SupervisionVideoProcessor:
                 if latest_record is not None
                 else None
             )
-            semantic_near_far_metrics = self._near_far_speed_drift_metrics(latest_record)
             enriched_record = (
                 replace(
                     latest_record,
@@ -1448,10 +1534,31 @@ class SupervisionVideoProcessor:
                         ),
                     ),
                     near_far_speed_drift_metrics=semantic_near_far_metrics,
+                    contact_episodes=contact_episode.contact_episodes,
+                    speed_body_kmh=latest_record.speed_kmh,
+                    speed_periodic_kmh=contact_episode.speed_periodic_kmh,
+                    support_zero_velocity_residual_mps=(
+                        contact_episode.support_zero_velocity_residual_mps
+                    ),
+                    body_periodic_speed_gap_kmh=(
+                        contact_episode.body_periodic_speed_gap_kmh
+                    ),
+                    near_far_speed_drift_score=(
+                        contact_episode.near_far_speed_drift_score
+                    ),
+                    geometry_status=contact_episode.geometry_status,
                 )
                 if latest_record is not None
                 else None
             )
+            geometry_status_fields = self._geometry_status_record_fields(
+                contact_episode.geometry_status,
+                latest_record,
+            )
+            record_quality_fields = (
+                {"quality_label": quality_label} if quality_label is not None else {}
+            )
+            record_quality_fields.update(geometry_status_fields)
             self.speed_estimator.annotate_record(
                 track.tracker_id,
                 bev_risk_level=bev_risk.risk_level,
@@ -1477,7 +1584,7 @@ class SupervisionVideoProcessor:
                 id_switch_risk=integrity.id_switch_risk,
                 speed_frozen=False,
                 integrity_rejection_reason=integrity.rejection_reason,
-                **({"quality_label": quality_label} if quality_label is not None else {}),
+                **record_quality_fields,
                 scale_confidence_label=self.scale_confidence_label,
                 weak_calibration_reason=self.weak_calibration_reason,
                 calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
@@ -1514,6 +1621,15 @@ class SupervisionVideoProcessor:
                     ),
                 ),
                 near_far_speed_drift_metrics=semantic_near_far_metrics,
+                contact_episodes=contact_episode.contact_episodes,
+                speed_body_kmh=latest_record.speed_kmh if latest_record is not None else None,
+                speed_periodic_kmh=contact_episode.speed_periodic_kmh,
+                support_zero_velocity_residual_mps=(
+                    contact_episode.support_zero_velocity_residual_mps
+                ),
+                body_periodic_speed_gap_kmh=contact_episode.body_periodic_speed_gap_kmh,
+                near_far_speed_drift_score=contact_episode.near_far_speed_drift_score,
+                geometry_status=contact_episode.geometry_status,
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
@@ -1689,6 +1805,33 @@ class SupervisionVideoProcessor:
             "speed_cv": record.speed_cv,
             "max_speed_jump_kmh": record.max_speed_jump_kmh,
         }
+
+    @staticmethod
+    def _geometry_status_record_fields(
+        geometry_status: str,
+        record: SpeedRecord | None,
+    ) -> dict[str, object]:
+        if geometry_status == "foot_skate_invalid":
+            return {
+                "speed_kmh": None,
+                "physics_valid": False,
+                "quality_label": "geometry_invalid",
+                "rejection_reason": "foot_skate_invalid",
+                "geometry_rejection_reason": "foot_skate_invalid",
+                "physics_confidence": min(float(record.physics_confidence or 0.0), 0.25)
+                if record is not None
+                else 0.0,
+                "confidence_rejection_reason": "foot_skate_invalid",
+            }
+        if geometry_status in {"periodic_inconsistent", "weak_scale"}:
+            return {
+                "quality_label": "weak_scale",
+                "physics_confidence": min(float(record.physics_confidence or 0.5), 0.39)
+                if record is not None
+                else 0.39,
+                "confidence_rejection_reason": geometry_status,
+            }
+        return {}
 
     @staticmethod
     def _fused_contact_state(

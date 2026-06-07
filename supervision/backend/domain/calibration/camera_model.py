@@ -183,6 +183,7 @@ class CameraGeometryProfile:
     coordinate_contract: CoordinateSpaceContract
     metric_planes: list[dict[str, object]]
     validation_metrics: dict[str, object]
+    pinhole_geometry_profile: dict[str, object] | None = None
 
     @classmethod
     def from_context(
@@ -194,6 +195,7 @@ class CameraGeometryProfile:
         coordinate_contract: CoordinateSpaceContract,
         metric_planes: list[dict[str, object]],
         validation_metrics: dict[str, object],
+        pinhole_geometry_profile: dict[str, object] | None = None,
     ) -> CameraGeometryProfile:
         profile_id = context.get("camera_geometry_profile_id") or context.get(
             "camera_profile_id",
@@ -204,6 +206,7 @@ class CameraGeometryProfile:
             coordinate_contract=coordinate_contract,
             metric_planes=metric_planes,
             validation_metrics=validation_metrics,
+            pinhole_geometry_profile=pinhole_geometry_profile,
         )
 
     @property
@@ -236,6 +239,7 @@ class CameraGeometryProfile:
                 if plane.get("plane_id") is not None
             ],
             "validation_metrics": dict(self.validation_metrics),
+            "pinhole_geometry_profile": self.pinhole_geometry_profile,
             "model_reference": "camera_geometry_profile_v1",
         }
 

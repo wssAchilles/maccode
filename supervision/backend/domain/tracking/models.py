@@ -106,6 +106,13 @@ class Track:
     foot_skate_risk: float | None = None
     pedestrian_periodic_calibration_consistency: float | None = None
     near_far_speed_drift_metrics: dict[str, float | None] | None = None
+    contact_episodes: list[dict[str, object]] | None = None
+    speed_body_kmh: float | None = None
+    speed_periodic_kmh: float | None = None
+    support_zero_velocity_residual_mps: float | None = None
+    body_periodic_speed_gap_kmh: float | None = None
+    near_far_speed_drift_score: float | None = None
+    geometry_status: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -221,6 +228,13 @@ class Track:
         foot_skate_risk: float | None = None,
         pedestrian_periodic_calibration_consistency: float | None = None,
         near_far_speed_drift_metrics: dict[str, float | None] | None = None,
+        contact_episodes: list[dict[str, object]] | None = None,
+        speed_body_kmh: float | None = None,
+        speed_periodic_kmh: float | None = None,
+        support_zero_velocity_residual_mps: float | None = None,
+        body_periodic_speed_gap_kmh: float | None = None,
+        near_far_speed_drift_score: float | None = None,
+        geometry_status: str | None = None,
     ) -> Track:
         return replace(
             self,
@@ -320,4 +334,11 @@ class Track:
                 pedestrian_periodic_calibration_consistency
             ),
             near_far_speed_drift_metrics=near_far_speed_drift_metrics,
+            contact_episodes=contact_episodes,
+            speed_body_kmh=speed_body_kmh,
+            speed_periodic_kmh=speed_periodic_kmh,
+            support_zero_velocity_residual_mps=support_zero_velocity_residual_mps,
+            body_periodic_speed_gap_kmh=body_periodic_speed_gap_kmh,
+            near_far_speed_drift_score=near_far_speed_drift_score,
+            geometry_status=geometry_status,
         )

@@ -37,6 +37,16 @@ class TrackGeometryDiagnostic:
             "support_contact_anchor",
             "foot_skate_risk",
             "pedestrian_periodic_calibration_consistency",
+            "contact_episodes",
+            "current_contact_episode_id",
+            "current_contact_episode_phase",
+            "support_velocity_mps",
+            "support_zero_velocity_residual_mps",
+            "speed_periodic_kmh",
+            "body_periodic_speed_gap_kmh",
+            "near_far_speed_drift_score",
+            "geometry_status",
+            "local_jacobian_speed_amplification_p95",
             "plane_id",
             "plane_kind",
             "plane_status",
@@ -152,6 +162,34 @@ class TrackGeometryDiagnosticBuilder:
                         "pedestrian_periodic_calibration_consistency",
                     )
                     or diagnostics.get("pedestrian_periodic_calibration_consistency"),
+                    "contact_episodes": track.get("contact_episodes")
+                    or diagnostics.get("contact_episodes"),
+                    "current_contact_episode_id": diagnostics.get(
+                        "current_contact_episode_id",
+                    ),
+                    "current_contact_episode_phase": diagnostics.get(
+                        "current_contact_episode_phase",
+                    ),
+                    "support_velocity_mps": diagnostics.get("support_velocity_mps"),
+                    "support_zero_velocity_residual_mps": track.get(
+                        "support_zero_velocity_residual_mps",
+                    )
+                    or diagnostics.get("support_zero_velocity_residual_mps"),
+                    "speed_periodic_kmh": track.get("speed_periodic_kmh")
+                    or diagnostics.get("speed_periodic_kmh"),
+                    "body_periodic_speed_gap_kmh": track.get(
+                        "body_periodic_speed_gap_kmh",
+                    )
+                    or diagnostics.get("body_periodic_speed_gap_kmh"),
+                    "near_far_speed_drift_score": track.get(
+                        "near_far_speed_drift_score",
+                    )
+                    or diagnostics.get("near_far_speed_drift_score"),
+                    "geometry_status": track.get("geometry_status")
+                    or diagnostics.get("geometry_status"),
+                    "local_jacobian_speed_amplification_p95": diagnostics.get(
+                        "local_jacobian_speed_amplification_p95",
+                    ),
                     "plane_id": track.get("plane_id") or diagnostics.get("plane_id"),
                     "plane_kind": diagnostics.get("plane_kind"),
                     "plane_status": diagnostics.get("plane_status"),
@@ -262,6 +300,18 @@ class TrackGeometryDiagnosticBuilder:
                     for row in rows
                 ),
             ),
+            "support_zero_velocity_residual_p95_mps": _percentile(
+                _numbers(row.get("support_zero_velocity_residual_mps") for row in rows),
+                95.0,
+            ),
+            "periodic_body_speed_gap_mean_kmh": _mean_or_none(
+                _numbers(row.get("body_periodic_speed_gap_kmh") for row in rows),
+            ),
+            "near_far_speed_drift_score_p95": _percentile(
+                _numbers(row.get("near_far_speed_drift_score") for row in rows),
+                95.0,
+            ),
+            "golden_acceptance": _golden_acceptance(rows, speeds, scales, inverse_heights),
             "perspective_coupled_speed_drift": _perspective_coupled(
                 speeds,
                 scales,
@@ -436,12 +486,65 @@ def _root_cause_verdicts(
         verdicts.append("coordinate_space_mismatch")
     if _perspective_coupled(speeds, scales, inverse_heights):
         verdicts.append("perspective_coupled_speed_drift")
+    if any(str(row.get("geometry_status") or "") == "periodic_inconsistent" for row in rows):
+        verdicts.append("periodic_inconsistent")
+    if any(str(row.get("geometry_status") or "") == "weak_scale" for row in rows):
+        verdicts.append("near_far_scale_drift")
+    if any(
+        str(row.get("geometry_status") or "") == "foot_skate_invalid"
+        for row in rows
+    ):
+        verdicts.append("foot_skate_invalid")
     if any(
         str(row.get("pedestrian_metric_rejection_reason") or "") == "intrinsics_unverified"
         for row in rows
     ):
         verdicts.append("intrinsics_or_distortion_likely")
     return verdicts
+
+
+def _golden_acceptance(
+    rows: list[dict[str, object]],
+    speeds: list[float],
+    scales: list[float],
+    inverse_heights: list[float],
+) -> dict[str, object]:
+    speed_cv = _coefficient_of_variation(speeds)
+    scale_corr = _correlation(speeds, scales)
+    height_corr = _correlation(speeds[: len(inverse_heights)], inverse_heights)
+    foot_skate_p95 = _percentile(_numbers(row.get("foot_skate_risk") for row in rows), 95.0)
+    periodic_mean = _mean_or_none(
+        _numbers(row.get("pedestrian_periodic_calibration_consistency") for row in rows),
+    )
+    drift_p95 = _percentile(
+        _numbers(row.get("near_far_speed_drift_score") for row in rows),
+        95.0,
+    )
+    checks = {
+        "speed_cv_lt_0_25": speed_cv is not None and speed_cv < 0.25,
+        "speed_local_scale_corr_lt_0_4": (
+            scale_corr is not None and abs(scale_corr) < 0.4
+        ),
+        "speed_inverse_height_corr_lt_0_4": (
+            height_corr is not None and abs(height_corr) < 0.4
+        ),
+        "foot_skate_p95_lt_0_35": foot_skate_p95 is not None and foot_skate_p95 < 0.35,
+        "periodic_consistency_mean_gt_0_6": (
+            periodic_mean is not None and periodic_mean > 0.6
+        ),
+        "near_far_drift_score_lt_0_4": drift_p95 is not None and drift_p95 < 0.4,
+    }
+    return {
+        "passed": all(checks.values()),
+        "checks": checks,
+        "speed_cv": speed_cv,
+        "speed_local_scale_correlation": scale_corr,
+        "speed_inverse_height_correlation": height_corr,
+        "foot_skate_risk_p95": foot_skate_p95,
+        "pedestrian_periodic_calibration_consistency_mean": periodic_mean,
+        "near_far_speed_drift_score_p95": drift_p95,
+        "model_reference": "pedestrian_golden_acceptance_v4",
+    }
 
 
 def _is_pedestrian(row: dict[str, object]) -> bool:

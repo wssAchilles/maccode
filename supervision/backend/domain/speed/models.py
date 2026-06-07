@@ -100,6 +100,13 @@ class SpeedRecord:
     foot_skate_risk: float | None = None
     pedestrian_periodic_calibration_consistency: float | None = None
     near_far_speed_drift_metrics: dict[str, float | None] | None = None
+    contact_episodes: list[dict[str, object]] | None = None
+    speed_body_kmh: float | None = None
+    speed_periodic_kmh: float | None = None
+    support_zero_velocity_residual_mps: float | None = None
+    body_periodic_speed_gap_kmh: float | None = None
+    near_far_speed_drift_score: float | None = None
+    geometry_status: str | None = None
 
 
 @dataclass

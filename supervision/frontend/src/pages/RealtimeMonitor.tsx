@@ -169,6 +169,10 @@ function formatDriftMetric(track: Track | null | undefined, key: string) {
   return finiteNumber(value) ? value.toFixed(2) : "N/A";
 }
 
+function formatScalar(value: number | null | undefined, suffix = "") {
+  return finiteNumber(value) ? `${value.toFixed(2)}${suffix}` : "N/A";
+}
+
 function trackGeometryLabel(track: Track | null | undefined) {
   if (!track) {
     return "N/A";
@@ -793,6 +797,36 @@ export function RealtimeMonitor({
                   <strong>{formatPercent(selectedTrack?.foot_skate_risk)}</strong>
                 </div>
                 <div>
+                  <span>几何状态</span>
+                  <strong>{selectedTrack?.geometry_status ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>Body 速度</span>
+                  <strong>{formatSpeed(selectedTrack?.speed_body_kmh ?? null)}</strong>
+                </div>
+                <div>
+                  <span>步态周期速度</span>
+                  <strong>{formatSpeed(selectedTrack?.speed_periodic_kmh ?? null)}</strong>
+                </div>
+                <div>
+                  <span>支撑脚零速残差</span>
+                  <strong>
+                    {formatScalar(selectedTrack?.support_zero_velocity_residual_mps, " m/s")}
+                  </strong>
+                </div>
+                <div>
+                  <span>Body/周期差值</span>
+                  <strong>{formatSpeed(selectedTrack?.body_periodic_speed_gap_kmh ?? null)}</strong>
+                </div>
+                <div>
+                  <span>近远漂移分数</span>
+                  <strong>{formatScalar(selectedTrack?.near_far_speed_drift_score)}</strong>
+                </div>
+                <div>
+                  <span>接触 Episode</span>
+                  <strong>{formatCount(selectedTrack?.contact_episodes?.length)}</strong>
+                </div>
+                <div>
                   <span>H 坐标系</span>
                   <strong>{calibrationDiagnostics?.homography_coordinate_space ?? "N/A"}</strong>
                 </div>
@@ -810,6 +844,24 @@ export function RealtimeMonitor({
                     {calibrationDiagnostics?.undistorted_metric_profile
                       ? "undistorted metric"
                       : calibrationDiagnostics?.coordinate_space_warning ?? "raw/unchecked"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Pinhole 一致性</span>
+                  <strong>{calibrationDiagnostics?.intrinsics_consistency_status ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>H 分解残差</span>
+                  <strong>
+                    {formatScalar(calibrationDiagnostics?.homography_decomposition_residual)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Jacobian p95</span>
+                  <strong>
+                    {formatScalar(
+                      calibrationDiagnostics?.local_jacobian_speed_amplification_p95
+                    )}
                   </strong>
                 </div>
               </div>

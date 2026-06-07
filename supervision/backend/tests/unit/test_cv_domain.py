@@ -261,6 +261,12 @@ def test_calibration_diagnostics_do_not_mark_raw_homography_as_undistorted() -> 
     assert diagnostics["metric_plane_speed_acceptance"]["model_reference"] == (
         "metric_plane_speed_acceptance_v1"
     )
+    assert diagnostics["pinhole_geometry_profile"]["model_reference"] == (
+        "pinhole_geometry_audit_v1"
+    )
+    assert diagnostics["homography_decomposition_residual"] is not None
+    assert diagnostics["local_jacobian_speed_amplification_p95"] is not None
+    assert diagnostics["intrinsics_consistency_status"] == "single_plane"
 
 
 def test_coordinate_contract_rejects_undistorted_h_without_intrinsics() -> None:
