@@ -80,6 +80,12 @@ export interface Track {
   occlusion_confidence?: number | null;
   dynamics_confidence?: number | null;
   confidence_rejection_reason?: string | null;
+  body_ground_projection?: [number, number] | number[] | null;
+  support_contact_anchor?: [number, number] | number[] | null;
+  contact_phase_probabilities?: Record<string, number> | null;
+  foot_skate_risk?: number | null;
+  pedestrian_periodic_calibration_consistency?: number | null;
+  near_far_speed_drift_metrics?: Record<string, number | null> | null;
 }
 
 export interface ZoneStats {
@@ -140,6 +146,7 @@ export interface CalibrationDiagnostics {
   homography_model: string;
   calibration_source?: string;
   camera_profile_id?: string | null;
+  camera_geometry_profile_id?: string | null;
   camera_profile_display_name?: string | null;
   camera_profile_role?: string | null;
   profile_reuse_note?: string | null;
@@ -192,12 +199,15 @@ export interface CalibrationDiagnostics {
   intrinsics_verified?: boolean;
   undistortion_applied?: boolean;
   homography_coordinate_space?: string;
+  point_coordinate_space?: string | null;
   undistorted_metric_profile?: boolean;
   coordinate_space_warning?: string | null;
+  camera_geometry_profile?: Record<string, unknown>;
   coordinate_space_contract?: Record<string, unknown>;
   distortion_diagnostics?: Record<string, unknown>;
   rectification_applied?: boolean;
   coordinate_space_gate_reason?: string | null;
+  metric_plane_speed_acceptance?: Record<string, unknown>;
   runtime_homography_source?: string;
   calibration_candidates?: Array<Record<string, unknown>>;
   selected_calibration_candidate_id?: string | null;

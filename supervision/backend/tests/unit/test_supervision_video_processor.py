@@ -150,10 +150,17 @@ def test_supervision_video_processor_generates_math_enriched_frame_report() -> N
     )
     assert (
         report["active_tracks"][0]["joint_physics_posterior"]["model_reference"]
-        == "joint_physics_posterior_v2"
+        == "joint_physics_posterior_v3"
     )
     assert "primary_risk_source" in report["active_tracks"][0]["joint_physics_posterior"]
     assert "speed_p05_p50_p95_kmh" in report["active_tracks"][0]["joint_physics_posterior"]
+    assert "uncertainty_component_ratios" in report["active_tracks"][0]["joint_physics_posterior"]
+    assert "near_far_speed_drift_metrics" in report["active_tracks"][0]["joint_physics_posterior"]
+    assert report["active_tracks"][0]["body_ground_projection"] is not None
+    assert report["active_tracks"][0]["support_contact_anchor"] is not None
+    assert report["active_tracks"][0]["contact_phase_probabilities"] is not None
+    assert report["active_tracks"][0]["foot_skate_risk"] is not None
+    assert report["active_tracks"][0]["near_far_speed_drift_metrics"] is not None
     assert report["active_tracks"][0]["contact_state"] == "unknown"
     assert report["active_tracks"][0]["measurement_policy"] is not None
     assert (

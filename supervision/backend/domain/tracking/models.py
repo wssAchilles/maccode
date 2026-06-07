@@ -100,6 +100,12 @@ class Track:
     occlusion_confidence: float | None = None
     dynamics_confidence: float | None = None
     confidence_rejection_reason: str | None = None
+    body_ground_projection: list[float] | None = None
+    support_contact_anchor: list[float] | None = None
+    contact_phase_probabilities: dict[str, float] | None = None
+    foot_skate_risk: float | None = None
+    pedestrian_periodic_calibration_consistency: float | None = None
+    near_far_speed_drift_metrics: dict[str, float | None] | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -209,6 +215,12 @@ class Track:
         occlusion_confidence: float | None = None,
         dynamics_confidence: float | None = None,
         confidence_rejection_reason: str | None = None,
+        body_ground_projection: list[float] | None = None,
+        support_contact_anchor: list[float] | None = None,
+        contact_phase_probabilities: dict[str, float] | None = None,
+        foot_skate_risk: float | None = None,
+        pedestrian_periodic_calibration_consistency: float | None = None,
+        near_far_speed_drift_metrics: dict[str, float | None] | None = None,
     ) -> Track:
         return replace(
             self,
@@ -300,4 +312,12 @@ class Track:
             occlusion_confidence=occlusion_confidence,
             dynamics_confidence=dynamics_confidence,
             confidence_rejection_reason=confidence_rejection_reason,
+            body_ground_projection=body_ground_projection,
+            support_contact_anchor=support_contact_anchor,
+            contact_phase_probabilities=contact_phase_probabilities,
+            foot_skate_risk=foot_skate_risk,
+            pedestrian_periodic_calibration_consistency=(
+                pedestrian_periodic_calibration_consistency
+            ),
+            near_far_speed_drift_metrics=near_far_speed_drift_metrics,
         )

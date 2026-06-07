@@ -211,6 +211,14 @@ class ReportGenerator:
                 occlusion_confidence=record.occlusion_confidence,
                 dynamics_confidence=record.dynamics_confidence,
                 confidence_rejection_reason=record.confidence_rejection_reason,
+                body_ground_projection=record.body_ground_projection,
+                support_contact_anchor=record.support_contact_anchor,
+                contact_phase_probabilities=record.contact_phase_probabilities,
+                foot_skate_risk=record.foot_skate_risk,
+                pedestrian_periodic_calibration_consistency=(
+                    record.pedestrian_periodic_calibration_consistency
+                ),
+                near_far_speed_drift_metrics=record.near_far_speed_drift_metrics,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

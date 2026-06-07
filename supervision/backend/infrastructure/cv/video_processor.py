@@ -10,6 +10,7 @@ import numpy as np
 from domain.calibration.bev_confidence import BEVConfidenceMap, BEVConfidenceMapBuilder
 from domain.calibration.camera_model import (
     RAW_DISTORTED_PIXEL,
+    CameraGeometryProfile,
     CoordinateSpaceContract,
 )
 from domain.calibration.candidate_evaluation import (
@@ -204,6 +205,19 @@ class SupervisionVideoProcessor:
             default_validation_segments=self._validation_segments_from_context(),
             default_homography=self.calibration,
         )
+        self.camera_geometry_profile = CameraGeometryProfile.from_context(
+            self.calibration_context,
+            frame_width=frame_width,
+            frame_height=frame_height,
+            coordinate_contract=self.coordinate_contract,
+            metric_planes=self.metric_plane_set.to_diagnostics(),
+            validation_metrics={
+                "pixel_to_world_rmse_m": self.calibration.pixel_to_world_rmse_m,
+                "world_to_pixel_rmse_px": self.calibration.world_to_pixel_rmse_px,
+                "validation_max_error_px": self.validation_max_error_px,
+                "condition_number": self.calibration.condition_number,
+            },
+        )
         self.plane_transformers = {
             plane.plane_id: ViewTransformer(plane.homography.homography_matrix)
             for plane in self.metric_plane_set.planes
@@ -267,6 +281,10 @@ class SupervisionVideoProcessor:
         self._previous_track_boxes: dict[int, list[float]] = {}
         self._previous_contact_points: dict[int, tuple[float, float]] = {}
         self._previous_track_metadata: dict[int, Track] = {}
+        self._previous_support_world_positions: dict[
+            int,
+            tuple[tuple[float, float], float],
+        ] = {}
         self._last_reliable_signal_state = "unknown"
         self._integrity_results: dict[int, TrackingIntegrityResult] = {}
         self._tracking_diagnostics: dict[str, object] = {}
@@ -438,6 +456,7 @@ class SupervisionVideoProcessor:
                 for plane in self.metric_plane_set.planes
             },
             "camera_profile_id": self.calibration_context.get("camera_profile_id"),
+            "camera_geometry_profile_id": self.camera_geometry_profile.profile_id,
             "camera_profile_display_name": self.calibration_context.get(
                 "camera_profile_display_name",
             ),
@@ -469,12 +488,22 @@ class SupervisionVideoProcessor:
             "intrinsics_verified": intrinsics_verified,
             "undistortion_applied": undistortion_applied,
             "homography_coordinate_space": homography_coordinate_space,
+            "point_coordinate_space": self.camera_geometry_profile.point_coordinate_space,
             "undistorted_metric_profile": undistorted_metric_profile,
             "coordinate_space_warning": coordinate_space_warning,
+            "camera_geometry_profile": self.camera_geometry_profile.to_diagnostics(),
             "coordinate_space_contract": self.coordinate_contract.to_diagnostics(),
             "distortion_diagnostics": self.coordinate_contract.distortion_diagnostics(),
             "rectification_applied": self.coordinate_contract.rectification_applied,
             "coordinate_space_gate_reason": coordinate_space_gate_reason,
+            "metric_plane_speed_acceptance": {
+                "admitted": self.metric_speed_admitted,
+                "gate_reason": self.metric_speed_gate_reason,
+                "trusted_plane_count": sum(
+                    1 for plane in self.metric_plane_set.planes if plane.trusted
+                ),
+                "model_reference": "metric_plane_speed_acceptance_v1",
+            },
             "camera_intrinsics_prior": self.calibration_context.get(
                 "camera_intrinsics_prior",
                 {},
@@ -582,7 +611,7 @@ class SupervisionVideoProcessor:
             return None
         posterior = dict(posterior)
         posterior["speed_posterior_model_reference"] = posterior.get("model_reference")
-        posterior["model_reference"] = "joint_physics_posterior_v2"
+        posterior["model_reference"] = "joint_physics_posterior_v3"
         posterior["primary_risk_source"] = self._primary_physics_risk_source(record)
         posterior["confidence_factors"] = {
             "calibration": record.calibration_confidence,
@@ -595,6 +624,27 @@ class SupervisionVideoProcessor:
             posterior.get("dominant_uncertainty_source")
             or posterior["primary_risk_source"]
         )
+        components = posterior.get("uncertainty_components")
+        if isinstance(components, dict):
+            total = sum(
+                max(float(value), 0.0)
+                for value in components.values()
+                if isinstance(value, int | float)
+            )
+            posterior["uncertainty_component_ratios"] = {
+                str(name): (
+                    max(float(value), 0.0) / total
+                    if total > 0.0 and isinstance(value, int | float)
+                    else 0.0
+                )
+                for name, value in components.items()
+            }
+        posterior["near_far_speed_drift_metrics"] = self._near_far_speed_drift_metrics(
+            record,
+        )
+        posterior["body_ground_projection"] = record.body_ground_projection
+        posterior["support_contact_anchor"] = record.support_contact_anchor
+        posterior["foot_skate_risk"] = record.foot_skate_risk
         return posterior
 
     def _posterior_dominant_source(self, record: SpeedRecord | None) -> str | None:
@@ -919,6 +969,7 @@ class SupervisionVideoProcessor:
                 contact_state=contact_state.contact_state,
                 measurement_policy=contact_state.measurement_policy,
                 contact_state_probabilities=contact_state.state_probabilities,
+                contact_phase_probabilities=contact_state.contact_phase_probabilities,
                 confidence=max(
                     0.05,
                     min(
@@ -1059,6 +1110,23 @@ class SupervisionVideoProcessor:
             bev_risk = bev_map.assess(contact_point.pixel)
             self._bev_checked_count += 1
             world_position = active_transformer.transform_point(*contact_point.pixel)
+            semantic_observation = self._semantic_observation_fields(
+                track,
+                contact_point,
+                active_transformer,
+                timestamp_sec,
+            )
+            observation_pixel = (
+                tuple(cast(list[float], semantic_observation["body_pixel"]))
+                if track.class_id == 0 and semantic_observation.get("body_pixel") is not None
+                else contact_point.pixel
+            )
+            world_position = (
+                tuple(cast(list[float], semantic_observation["body_ground_projection"]))
+                if track.class_id == 0
+                and semantic_observation.get("body_ground_projection") is not None
+                else world_position
+            )
             speed_geometry_diagnostics = self._speed_geometry_diagnostics(
                 track,
                 contact_point,
@@ -1067,6 +1135,7 @@ class SupervisionVideoProcessor:
                 plane_status=plane_selection.status,
                 plane_reason=plane_selection.reason,
             )
+            speed_geometry_diagnostics.update(semantic_observation)
             pedestrian_admission = assess_pedestrian_metric_admission(
                 class_id=track.class_id,
                 plane_selection=plane_selection,
@@ -1304,7 +1373,7 @@ class SupervisionVideoProcessor:
                     auxiliary_confidence *= 0.35
             self.speed_estimator.update(
                 track.tracker_id,
-                contact_point.pixel,
+                observation_pixel,
                 timestamp_sec,
                 motion_profile=profile,
                 detection_confidence=min(1.0, track.confidence * measurement_confidence),
@@ -1355,6 +1424,34 @@ class SupervisionVideoProcessor:
                 if latest_record is not None
                 else None
             )
+            semantic_near_far_metrics = self._near_far_speed_drift_metrics(latest_record)
+            enriched_record = (
+                replace(
+                    latest_record,
+                    body_ground_projection=cast(
+                        list[float] | None,
+                        semantic_observation.get("body_ground_projection"),
+                    ),
+                    support_contact_anchor=cast(
+                        list[float] | None,
+                        semantic_observation.get("support_contact_anchor"),
+                    ),
+                    contact_phase_probabilities=contact_point.contact_phase_probabilities,
+                    foot_skate_risk=cast(
+                        float | None,
+                        semantic_observation.get("foot_skate_risk"),
+                    ),
+                    pedestrian_periodic_calibration_consistency=cast(
+                        float | None,
+                        semantic_observation.get(
+                            "pedestrian_periodic_calibration_consistency",
+                        ),
+                    ),
+                    near_far_speed_drift_metrics=semantic_near_far_metrics,
+                )
+                if latest_record is not None
+                else None
+            )
             self.speed_estimator.annotate_record(
                 track.tracker_id,
                 bev_risk_level=bev_risk.risk_level,
@@ -1389,12 +1486,34 @@ class SupervisionVideoProcessor:
                 calibration_speed_posterior=self._calibration_speed_posterior(
                     latest_record,
                 ),
-                joint_speed_posterior=self._joint_speed_posterior(latest_record),
-                joint_physics_posterior=self._joint_physics_posterior(latest_record),
+                joint_speed_posterior=self._joint_speed_posterior(enriched_record),
+                joint_physics_posterior=self._joint_physics_posterior(enriched_record),
                 contact_state=contact_point.contact_state,
                 measurement_policy=contact_point.measurement_policy,
                 contact_state_probabilities=contact_point.contact_state_probabilities,
-                dominant_uncertainty_source=self._posterior_dominant_source(latest_record),
+                contact_phase_probabilities=contact_point.contact_phase_probabilities,
+                dominant_uncertainty_source=self._posterior_dominant_source(
+                    enriched_record,
+                ),
+                body_ground_projection=cast(
+                    list[float] | None,
+                    semantic_observation.get("body_ground_projection"),
+                ),
+                support_contact_anchor=cast(
+                    list[float] | None,
+                    semantic_observation.get("support_contact_anchor"),
+                ),
+                foot_skate_risk=cast(
+                    float | None,
+                    semantic_observation.get("foot_skate_risk"),
+                ),
+                pedestrian_periodic_calibration_consistency=cast(
+                    float | None,
+                    semantic_observation.get(
+                        "pedestrian_periodic_calibration_consistency",
+                    ),
+                ),
+                near_far_speed_drift_metrics=semantic_near_far_metrics,
             )
         for tracker_id in list(self._latest_contact_points):
             if tracker_id not in active_ids:
@@ -1465,6 +1584,111 @@ class SupervisionVideoProcessor:
                 flow_contact_point,
             ),
         )
+
+    def _semantic_observation_fields(
+        self,
+        track: Track,
+        contact_point: GroundContactPoint,
+        transformer: ViewTransformer,
+        timestamp_sec: float,
+    ) -> dict[str, object]:
+        support_world = transformer.transform_point(*contact_point.pixel)
+        body_pixel = self._body_projection_pixel(track, fallback=contact_point.pixel)
+        body_world = transformer.transform_point(*body_pixel)
+        foot_skate_risk = self._foot_skate_risk(
+            tracker_id=track.tracker_id,
+            support_world=support_world,
+            timestamp_sec=timestamp_sec,
+            contact_phase_probabilities=contact_point.contact_phase_probabilities,
+        )
+        consistency = self._pedestrian_periodic_consistency(
+            track,
+            contact_point,
+            foot_skate_risk,
+        )
+        return {
+            "body_pixel": [float(body_pixel[0]), float(body_pixel[1])],
+            "body_ground_projection": [float(body_world[0]), float(body_world[1])],
+            "support_contact_anchor": [float(support_world[0]), float(support_world[1])],
+            "contact_phase_probabilities": contact_point.contact_phase_probabilities,
+            "foot_skate_risk": foot_skate_risk,
+            "pedestrian_periodic_calibration_consistency": consistency,
+            "observation_semantics": (
+                "body_ground_projection_for_velocity;"
+                "support_contact_anchor_for_contact_constraints"
+            ),
+            "model_reference": "pedestrian_body_support_observation_v1",
+        }
+
+    def _body_projection_pixel(
+        self,
+        track: Track,
+        *,
+        fallback: tuple[float, float],
+    ) -> tuple[float, float]:
+        x1, _y1, x2, y2 = track.xyxy
+        raw_pixel = (float((x1 + x2) / 2.0), float(y2))
+        result = self.coordinate_contract.transform_pixel(
+            raw_pixel,
+            input_space=RAW_DISTORTED_PIXEL,
+        )
+        if result.pixel is None:
+            return fallback
+        return result.pixel
+
+    def _foot_skate_risk(
+        self,
+        *,
+        tracker_id: int,
+        support_world: tuple[float, float],
+        timestamp_sec: float,
+        contact_phase_probabilities: dict[str, float] | None,
+    ) -> float:
+        phase = contact_phase_probabilities or {}
+        contact_prob = max(
+            float(phase.get("stance", 0.0)),
+            float(phase.get("double_support", 0.0)),
+            float(phase.get("touchdown", 0.0)),
+        )
+        previous = self._previous_support_world_positions.get(tracker_id)
+        self._previous_support_world_positions[tracker_id] = (support_world, timestamp_sec)
+        if previous is None or contact_prob < 0.7:
+            return 0.0
+        previous_world, previous_timestamp = previous
+        delta_t = max(timestamp_sec - previous_timestamp, 1e-3)
+        velocity_mps = (
+            (support_world[0] - previous_world[0]) ** 2
+            + (support_world[1] - previous_world[1]) ** 2
+        ) ** 0.5 / delta_t
+        return float(max(0.0, min(1.0, (velocity_mps - 0.15) / 0.45)))
+
+    @staticmethod
+    def _pedestrian_periodic_consistency(
+        track: Track,
+        contact_point: GroundContactPoint,
+        foot_skate_risk: float,
+    ) -> float | None:
+        if track.class_id != 0:
+            return None
+        source_bonus = 0.15 if "pose" in (contact_point.measurement_source or "") else 0.0
+        confidence = max(0.0, min(1.0, contact_point.confidence + source_bonus))
+        innovation_penalty = min(float(contact_point.innovation_score or 0.0) / 16.0, 1.0)
+        consistency = confidence * (1.0 - foot_skate_risk) - 0.25 * innovation_penalty
+        return float(max(0.0, min(1.0, consistency)))
+
+    @staticmethod
+    def _near_far_speed_drift_metrics(
+        record: SpeedRecord | None,
+    ) -> dict[str, float | None] | None:
+        if record is None:
+            return None
+        return {
+            "speed_local_scale_correlation": record.speed_scale_correlation,
+            "speed_inverse_height_correlation": record.speed_inverse_height_correlation,
+            "far_near_speed_ratio": record.far_near_speed_ratio,
+            "speed_cv": record.speed_cv,
+            "max_speed_jump_kmh": record.max_speed_jump_kmh,
+        }
 
     @staticmethod
     def _fused_contact_state(

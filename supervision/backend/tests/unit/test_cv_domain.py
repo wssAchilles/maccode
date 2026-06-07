@@ -251,6 +251,16 @@ def test_calibration_diagnostics_do_not_mark_raw_homography_as_undistorted() -> 
         diagnostics["coordinate_space_warning"]
         == "intrinsics_present_but_homography_raw_frame"
     )
+    assert diagnostics["camera_geometry_profile"]["model_reference"] == (
+        "camera_geometry_profile_v1"
+    )
+    assert diagnostics["camera_geometry_profile"]["homography_coordinate_space"] == (
+        "raw_distorted_pixel"
+    )
+    assert diagnostics["point_coordinate_space"] == "raw_distorted_pixel"
+    assert diagnostics["metric_plane_speed_acceptance"]["model_reference"] == (
+        "metric_plane_speed_acceptance_v1"
+    )
 
 
 def test_coordinate_contract_rejects_undistorted_h_without_intrinsics() -> None:
@@ -324,6 +334,7 @@ def test_pedestrian_contact_state_rejects_bicycle_polluted_bbox() -> None:
 
     assert result.contact_state == "bicycle_push"
     assert result.measurement_policy == "reject"
+    assert result.contact_phase_probabilities["unknown"] == pytest.approx(1.0)
 
 
 def test_video_processor_rejects_bev_inconsistent_observation() -> None:

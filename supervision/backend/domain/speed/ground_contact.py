@@ -21,6 +21,11 @@ class GroundContactPoint:
     contact_state: str | None = None
     measurement_policy: str | None = None
     contact_state_probabilities: dict[str, float] | None = None
+    body_ground_projection: tuple[float, float] | None = None
+    support_contact_anchor: tuple[float, float] | None = None
+    contact_phase_probabilities: dict[str, float] | None = None
+    foot_skate_risk: float | None = None
+    pedestrian_periodic_calibration_consistency: float | None = None
 
 
 @dataclass

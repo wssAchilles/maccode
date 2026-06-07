@@ -31,7 +31,12 @@ class TrackGeometryDiagnostic:
             "contact_state",
             "measurement_policy",
             "contact_state_probabilities",
+            "contact_phase_probabilities",
             "contact_covariance_px",
+            "body_ground_projection",
+            "support_contact_anchor",
+            "foot_skate_risk",
+            "pedestrian_periodic_calibration_consistency",
             "plane_id",
             "plane_kind",
             "plane_status",
@@ -50,6 +55,7 @@ class TrackGeometryDiagnostic:
             "filtered_speed_kmh",
             "posterior_speed_p05_p50_p95_kmh",
             "dominant_uncertainty_source",
+            "near_far_speed_drift_metrics",
             "physics_valid",
             "rejection_reason",
         ]
@@ -130,8 +136,22 @@ class TrackGeometryDiagnosticBuilder:
                         "contact_state_probabilities",
                     )
                     or diagnostics.get("contact_state_probabilities"),
+                    "contact_phase_probabilities": track.get(
+                        "contact_phase_probabilities",
+                    )
+                    or diagnostics.get("contact_phase_probabilities"),
                     "contact_covariance_px": track.get("contact_pixel_covariance")
                     or diagnostics.get("contact_covariance_px"),
+                    "body_ground_projection": track.get("body_ground_projection")
+                    or diagnostics.get("body_ground_projection"),
+                    "support_contact_anchor": track.get("support_contact_anchor")
+                    or diagnostics.get("support_contact_anchor"),
+                    "foot_skate_risk": track.get("foot_skate_risk")
+                    or diagnostics.get("foot_skate_risk"),
+                    "pedestrian_periodic_calibration_consistency": track.get(
+                        "pedestrian_periodic_calibration_consistency",
+                    )
+                    or diagnostics.get("pedestrian_periodic_calibration_consistency"),
                     "plane_id": track.get("plane_id") or diagnostics.get("plane_id"),
                     "plane_kind": diagnostics.get("plane_kind"),
                     "plane_status": diagnostics.get("plane_status"),
@@ -169,6 +189,16 @@ class TrackGeometryDiagnosticBuilder:
                     or (
                         (track.get("joint_physics_posterior") or {}).get(
                             "dominant_uncertainty_source",
+                        )
+                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        else None
+                    ),
+                    "near_far_speed_drift_metrics": track.get(
+                        "near_far_speed_drift_metrics",
+                    )
+                    or (
+                        (track.get("joint_physics_posterior") or {}).get(
+                            "near_far_speed_drift_metrics",
                         )
                         if isinstance(track.get("joint_physics_posterior"), dict)
                         else None
@@ -222,6 +252,16 @@ class TrackGeometryDiagnosticBuilder:
             ),
             "world_path_residual_m": _world_path_residual(rows),
             "footpoint_jitter_px": _point_jitter(fused_points),
+            "foot_skate_risk_p95": _percentile(
+                _numbers(row.get("foot_skate_risk") for row in rows),
+                95.0,
+            ),
+            "pedestrian_periodic_calibration_consistency_mean": _mean_or_none(
+                _numbers(
+                    row.get("pedestrian_periodic_calibration_consistency")
+                    for row in rows
+                ),
+            ),
             "perspective_coupled_speed_drift": _perspective_coupled(
                 speeds,
                 scales,
@@ -292,6 +332,25 @@ def _coefficient_of_variation(values: list[float]) -> float | None:
     return float(pstdev(values) / abs(value_mean))
 
 
+def _mean_or_none(values: list[float]) -> float | None:
+    return float(mean(values)) if values else None
+
+
+def _percentile(values: list[float], percentile: float) -> float | None:
+    if not values:
+        return None
+    if len(values) == 1:
+        return float(values[0])
+    ordered = sorted(values)
+    index = (len(ordered) - 1) * max(0.0, min(100.0, percentile)) / 100.0
+    lower = int(math.floor(index))
+    upper = int(math.ceil(index))
+    if lower == upper:
+        return float(ordered[lower])
+    fraction = index - lower
+    return float(ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction)
+
+
 def _world_path_residual(rows: list[dict[str, object]]) -> float | None:
     points = [
         (float(row["world_x"]), float(row["world_y"]))
@@ -359,6 +418,11 @@ def _root_cause_verdicts(
         verdicts.append("wrong_plane_likely")
     if any(_truthy(row.get("bbox_contact_contaminated")) for row in rows):
         verdicts.append("bbox_contact_contaminated")
+    if any(
+        (risk is not None and risk >= 0.6)
+        for risk in (_optional_float(row.get("foot_skate_risk")) for row in rows)
+    ):
+        verdicts.append("foot_skate_or_geometry_risk")
     if any(
         str(row.get("measurement_policy") or "") in {"reject", "predict_only"}
         for row in rows

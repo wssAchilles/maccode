@@ -148,6 +148,27 @@ function formatTrackBox(track: Track | null | undefined) {
   return `bbox ${x1.toFixed(0)},${y1.toFixed(0)}-${x2.toFixed(0)},${y2.toFixed(0)}`;
 }
 
+function formatPoint2(value: number[] | [number, number] | null | undefined) {
+  if (!Array.isArray(value) || value.length < 2) {
+    return "N/A";
+  }
+  const [x, y] = value;
+  return finiteNumber(x) && finiteNumber(y) ? `${x.toFixed(2)}, ${y.toFixed(2)} m` : "N/A";
+}
+
+function dominantContactPhase(track: Track | null | undefined) {
+  const phases = track?.contact_phase_probabilities;
+  if (!phases) {
+    return "N/A";
+  }
+  return Object.entries(phases).sort((left, right) => right[1] - left[1])[0]?.[0] ?? "N/A";
+}
+
+function formatDriftMetric(track: Track | null | undefined, key: string) {
+  const value = track?.near_far_speed_drift_metrics?.[key];
+  return finiteNumber(value) ? value.toFixed(2) : "N/A";
+}
+
 function trackGeometryLabel(track: Track | null | undefined) {
   if (!track) {
     return "N/A";
@@ -752,12 +773,32 @@ export function RealtimeMonitor({
                   <strong>{selectedTrack?.contact_state ?? "N/A"}</strong>
                 </div>
                 <div>
+                  <span>接触相位</span>
+                  <strong>{dominantContactPhase(selectedTrack)}</strong>
+                </div>
+                <div>
                   <span>测量策略</span>
                   <strong>{selectedTrack?.measurement_policy ?? "N/A"}</strong>
                 </div>
                 <div>
+                  <span>速度主观测</span>
+                  <strong>{formatPoint2(selectedTrack?.body_ground_projection)}</strong>
+                </div>
+                <div>
+                  <span>支撑脚锚点</span>
+                  <strong>{formatPoint2(selectedTrack?.support_contact_anchor)}</strong>
+                </div>
+                <div>
+                  <span>脚滑/几何风险</span>
+                  <strong>{formatPercent(selectedTrack?.foot_skate_risk)}</strong>
+                </div>
+                <div>
                   <span>H 坐标系</span>
                   <strong>{calibrationDiagnostics?.homography_coordinate_space ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>点坐标系</span>
+                  <strong>{calibrationDiagnostics?.point_coordinate_space ?? "N/A"}</strong>
                 </div>
                 <div>
                   <span>坐标 Gate</span>
@@ -814,6 +855,14 @@ export function RealtimeMonitor({
                 <div>
                   <span>主不确定性</span>
                   <strong>{selectedTrack?.dominant_uncertainty_source ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>速度-尺度 corr</span>
+                  <strong>{formatDriftMetric(selectedTrack, "speed_local_scale_correlation")}</strong>
+                </div>
+                <div>
+                  <span>速度-高度 corr</span>
+                  <strong>{formatDriftMetric(selectedTrack, "speed_inverse_height_correlation")}</strong>
                 </div>
               </div>
             </section>

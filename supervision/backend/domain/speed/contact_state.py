@@ -23,6 +23,7 @@ class ContactStateResult:
     contact_state: str
     measurement_policy: str
     state_probabilities: dict[str, float]
+    contact_phase_probabilities: dict[str, float]
     measurement_confidence_multiplier: float
     pixel_sigma_multiplier: float
     diagnostics: dict[str, object]
@@ -55,6 +56,7 @@ class PedestrianContactStateEstimator:
                 contact_state=contact_point.contact_state or "unknown",
                 measurement_policy="update",
                 state_probabilities={"unknown": 1.0},
+                contact_phase_probabilities={"unknown": 1.0},
                 measurement_confidence_multiplier=1.0,
                 pixel_sigma_multiplier=1.0,
                 diagnostics={"person_bicycle_overlap": person_bicycle_overlap},
@@ -92,11 +94,13 @@ class PedestrianContactStateEstimator:
         policy = self._measurement_policy(state)
         confidence_multiplier, sigma_multiplier = self._policy_weights(policy)
         probabilities = self._probabilities(state)
+        phase_probabilities = self._phase_probabilities(state, probabilities)
         self._states[tracker_id] = _TrackContactMemory(state, timestamp_sec)
         return ContactStateResult(
             contact_state=state,
             measurement_policy=policy,
             state_probabilities=probabilities,
+            contact_phase_probabilities=phase_probabilities,
             measurement_confidence_multiplier=confidence_multiplier,
             pixel_sigma_multiplier=sigma_multiplier,
             diagnostics={
@@ -169,3 +173,27 @@ class PedestrianContactStateEstimator:
         else:
             probabilities["unknown"] = 1.0
         return probabilities
+
+    @staticmethod
+    def _phase_probabilities(
+        state: str,
+        contact_probabilities: dict[str, float],
+    ) -> dict[str, float]:
+        stance = max(
+            float(contact_probabilities.get("left_stance", 0.0)),
+            float(contact_probabilities.get("right_stance", 0.0)),
+        )
+        double_support = float(contact_probabilities.get("double_support", 0.0))
+        swing = float(contact_probabilities.get("swing", 0.0))
+        touchdown = 0.8 if state == "transition_touchdown" else 0.0
+        toeoff = 0.8 if state == "transition_toeoff" else 0.0
+        unknown = float(contact_probabilities.get("unknown", 0.0))
+        total = max(stance + double_support + swing + touchdown + toeoff + unknown, 1e-9)
+        return {
+            "stance": stance / total,
+            "double_support": double_support / total,
+            "swing": swing / total,
+            "touchdown": touchdown / total,
+            "toeoff": toeoff / total,
+            "unknown": unknown / total,
+        }

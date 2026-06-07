@@ -233,6 +233,11 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
                         "speed_kmh": speed,
                         "physics_valid": True,
                         "local_scale_factor": scale,
+                        "body_ground_projection": [float(index), 0.0],
+                        "support_contact_anchor": [float(index) + 0.2, 0.0],
+                        "contact_phase_probabilities": {"stance": 0.8},
+                        "foot_skate_risk": 0.7 if index == 3 else 0.1,
+                        "pedestrian_periodic_calibration_consistency": 0.75,
                         "speed_geometry_diagnostics": {
                             "bbox_height_px": height,
                             "raw_bbox_foot": [20.0, 10.0 + height],
@@ -249,8 +254,13 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
     diagnostic = TrackGeometryDiagnosticBuilder().build(reports, tracker_id=13)
 
     assert diagnostic.rows[0]["plane_id"] == "sidewalk"
+    assert diagnostic.rows[0]["body_ground_projection"] == [1.0, 0.0]
+    assert diagnostic.rows[0]["support_contact_anchor"] == [1.2, 0.0]
+    assert diagnostic.rows[0]["contact_phase_probabilities"] == {"stance": 0.8}
     assert diagnostic.metrics["sample_count"] == 4
     assert diagnostic.metrics["speed_cv"] is not None
+    assert diagnostic.metrics["foot_skate_risk_p95"] is not None
+    assert "foot_skate_or_geometry_risk" in diagnostic.metrics["root_cause_verdicts"]
     assert diagnostic.metrics["perspective_coupled_speed_drift"] is True
 
 

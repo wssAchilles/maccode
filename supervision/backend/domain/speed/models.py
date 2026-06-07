@@ -94,6 +94,12 @@ class SpeedRecord:
     occlusion_confidence: float | None = None
     dynamics_confidence: float | None = None
     confidence_rejection_reason: str | None = None
+    body_ground_projection: list[float] | None = None
+    support_contact_anchor: list[float] | None = None
+    contact_phase_probabilities: dict[str, float] | None = None
+    foot_skate_risk: float | None = None
+    pedestrian_periodic_calibration_consistency: float | None = None
+    near_far_speed_drift_metrics: dict[str, float | None] | None = None
 
 
 @dataclass
