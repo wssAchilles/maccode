@@ -28,6 +28,7 @@ from domain.speed.perspective_guard import (
     PerspectiveGuardSample,
     PerspectiveSpeedInflationDetector,
 )
+from domain.speed.physics_confidence import PhysicsConfidenceModel
 from domain.speed.smoothing import median_smoothing
 from domain.speed.uncertainty import estimate_speed_uncertainty
 from domain.speed.view_transformer import LocalPositionUncertainty, ViewTransformer
@@ -72,6 +73,7 @@ class SpeedEstimator:
         self._perspective_guard = PerspectiveSpeedInflationDetector()
         self._pedestrian_geometry_samples: dict[int, list[PedestrianGeometrySample]] = {}
         self._pedestrian_scale_drift = PedestrianScaleDriftAnalyzer()
+        self._physics_confidence_model = PhysicsConfidenceModel()
 
     def update(
         self,
@@ -542,6 +544,8 @@ class SpeedEstimator:
             measurement_confidence=bounded_measurement_confidence,
             local_scale_factor=local_uncertainty.local_scale_factor,
             position_sigma_m=local_uncertainty.position_sigma_m,
+            calibration_rmse_m=self.position_rmse_m,
+            scale_uncertainty_factor=0.04,
             track_age_frames=track_age,
             min_track_age_frames=motion_profile.min_track_age_frames,
             uncertainty_cap_kmh=uncertainty_cap,
@@ -676,6 +680,16 @@ class SpeedEstimator:
             contact_source=measurement_source,
             world_position_covariance=position_covariance,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
+            **self._physics_confidence_fields(
+                position_rmse_m=uncertainty.position_rmse_m,
+                local_scale_factor=local_uncertainty.local_scale_factor,
+                measurement_confidence=bounded_measurement_confidence,
+                contact_source=measurement_source,
+                speed_uncertainty_kmh=uncertainty.speed_uncertainty_kmh,
+                acceleration_mps2=acceleration_mps2,
+                innovation_nis=innovation_nis,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
+            ),
         )
         return smoothed_speed
 
@@ -766,6 +780,13 @@ class SpeedEstimator:
             rejection_reason=None,
             track_age_frames=len(history.positions),
             window_residual_m=None,
+            **self._physics_confidence_fields(
+                position_rmse_m=uncertainty.position_rmse_m,
+                measurement_confidence=1.0,
+                contact_source="legacy_center",
+                speed_uncertainty_kmh=uncertainty.speed_uncertainty_kmh,
+                acceleration_mps2=acceleration_mps2,
+            ),
         )
         return smoothed_speed
 
@@ -861,6 +882,20 @@ class SpeedEstimator:
             plane_id=plane_id,
             contact_source=measurement_source,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
+            **self._physics_confidence_fields(
+                position_rmse_m=self.position_rmse_m,
+                local_scale_factor=None,
+                measurement_confidence=measurement_confidence,
+                contact_source=measurement_source,
+                speed_frozen=bool(keep_previous),
+                quality_label=quality_label,
+                speed_uncertainty_kmh=(
+                    previous.speed_uncertainty_kmh
+                    if keep_previous and previous is not None
+                    else None
+                ),
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
+            ),
         )
         self._latest_records[tracker_id] = record
         return record
@@ -972,7 +1007,73 @@ class SpeedEstimator:
             rejection_reason=rejection_reason,
             track_age_frames=len(history.positions) if history is not None else 0,
             window_residual_m=window_residual_m,
+            **self._physics_confidence_fields(
+                position_rmse_m=position_rmse_m,
+                local_scale_factor=local_scale_factor,
+                measurement_confidence=measurement_confidence,
+                contact_source=contact_source or measurement_source,
+                quality_label=quality_label,
+                speed_uncertainty_kmh=speed_uncertainty_kmh,
+                innovation_nis=innovation_nis,
+                speed_geometry_diagnostics=speed_geometry_diagnostics,
+            ),
         )
+
+    def _physics_confidence_fields(
+        self,
+        *,
+        position_rmse_m: float | None = None,
+        local_scale_factor: float | None = None,
+        measurement_confidence: float | None = None,
+        contact_source: str | None = None,
+        contact_fusion_confidence: float | None = None,
+        id_switch_risk: float | None = None,
+        tracking_integrity_state: str | None = None,
+        speed_frozen: bool = False,
+        quality_label: str | None = None,
+        speed_uncertainty_kmh: float | None = None,
+        speed_cv: float | None = None,
+        max_speed_jump_kmh: float | None = None,
+        acceleration_mps2: float | None = None,
+        innovation_nis: float | None = None,
+        speed_geometry_diagnostics: dict[str, object] | None = None,
+    ) -> dict[str, float | str | None]:
+        confidence = self._physics_confidence_model.score(
+            calibration_rmse_m=position_rmse_m,
+            validation_error_px=self._diagnostic_float(
+                speed_geometry_diagnostics,
+                "validation_max_error_px",
+            ),
+            condition_number=self._diagnostic_float(
+                speed_geometry_diagnostics,
+                "condition_number",
+            ),
+            local_scale_factor=local_scale_factor,
+            measurement_confidence=measurement_confidence,
+            contact_source=contact_source,
+            contact_fusion_confidence=contact_fusion_confidence,
+            id_switch_risk=id_switch_risk,
+            tracking_integrity_state=tracking_integrity_state,
+            speed_frozen=speed_frozen,
+            quality_label=quality_label,
+            speed_uncertainty_kmh=speed_uncertainty_kmh,
+            speed_cv=speed_cv,
+            max_speed_jump_kmh=max_speed_jump_kmh,
+            acceleration_mps2=acceleration_mps2,
+            innovation_nis=innovation_nis,
+            speed_geometry_diagnostics=speed_geometry_diagnostics,
+        )
+        return confidence.to_record_fields()
+
+    @staticmethod
+    def _diagnostic_float(
+        diagnostics: dict[str, object] | None,
+        key: str,
+    ) -> float | None:
+        if not diagnostics:
+            return None
+        value = diagnostics.get(key)
+        return float(value) if isinstance(value, int | float) else None
 
     @staticmethod
     def _hard_speed_rejection_reason(motion_profile: MotionProfile) -> str:

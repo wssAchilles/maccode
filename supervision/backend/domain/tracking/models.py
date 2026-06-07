@@ -88,6 +88,13 @@ class Track:
     contact_source: str | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
+    physics_confidence: float | None = None
+    calibration_confidence: float | None = None
+    contact_confidence: float | None = None
+    tracking_confidence: float | None = None
+    occlusion_confidence: float | None = None
+    dynamics_confidence: float | None = None
+    confidence_rejection_reason: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -185,6 +192,13 @@ class Track:
         contact_source: str | None = None,
         world_position_covariance: list[list[float]] | None = None,
         speed_geometry_diagnostics: dict[str, object] | None = None,
+        physics_confidence: float | None = None,
+        calibration_confidence: float | None = None,
+        contact_confidence: float | None = None,
+        tracking_confidence: float | None = None,
+        occlusion_confidence: float | None = None,
+        dynamics_confidence: float | None = None,
+        confidence_rejection_reason: str | None = None,
     ) -> Track:
         return replace(
             self,
@@ -264,4 +278,11 @@ class Track:
             contact_source=contact_source,
             world_position_covariance=world_position_covariance,
             speed_geometry_diagnostics=speed_geometry_diagnostics,
+            physics_confidence=physics_confidence,
+            calibration_confidence=calibration_confidence,
+            contact_confidence=contact_confidence,
+            tracking_confidence=tracking_confidence,
+            occlusion_confidence=occlusion_confidence,
+            dynamics_confidence=dynamics_confidence,
+            confidence_rejection_reason=confidence_rejection_reason,
         )

@@ -50,3 +50,23 @@ def test_measurement_confidence_and_local_scale_increase_uncertainty() -> None:
     assert weak_far_observation.speed_uncertainty_kmh > baseline.speed_uncertainty_kmh
     assert weak_far_observation.speed_confidence < baseline.speed_confidence
     assert weak_far_observation.position_rmse_m > baseline.position_rmse_m
+
+
+def test_calibration_and_scale_uncertainty_increase_speed_uncertainty() -> None:
+    baseline = estimate_speed_uncertainty(
+        displacement_m=4.0,
+        delta_t_sec=1.0,
+        position_rmse_m=0.1,
+        local_scale_factor=1.0,
+    )
+    weak_geometry = estimate_speed_uncertainty(
+        displacement_m=4.0,
+        delta_t_sec=1.0,
+        position_rmse_m=0.1,
+        local_scale_factor=4.0,
+        calibration_rmse_m=0.8,
+        scale_uncertainty_factor=0.05,
+    )
+
+    assert weak_geometry.speed_uncertainty_kmh > baseline.speed_uncertainty_kmh
+    assert weak_geometry.speed_confidence < baseline.speed_confidence

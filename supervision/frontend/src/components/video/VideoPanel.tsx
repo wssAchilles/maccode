@@ -144,11 +144,8 @@ export function VideoPanel({
   const canvasRef = useHomographyCanvas(homographyGrid);
   const showHomographyGrid = Boolean(videoUrl && homographyGrid?.calibration_trusted);
   const drawableTracks = tracks.filter(hasPixelBox);
-  const overlayTracks =
-    renderedByBackend && selectedTrackId !== null && selectedTrackId !== undefined
-      ? drawableTracks.filter((track) => track.tracker_id === selectedTrackId)
-      : drawableTracks;
-  const showClientTrackOverlay = Boolean(videoUrl) && overlayTracks.length > 0;
+  const overlayTracks = renderedByBackend ? [] : drawableTracks;
+  const showClientTrackOverlay = !renderedByBackend && Boolean(videoUrl) && overlayTracks.length > 0;
   useAnimeScope(
     surfaceRef,
     () => {
@@ -230,12 +227,19 @@ export function VideoPanel({
           width={viewBox.width}
         />
       )}
+      {renderedByBackend && selectedTrackId !== null && selectedTrackId !== undefined && (
+        <div className="selected-backend-track-badge">
+          <span>当前选择</span>
+          <strong>{`#${selectedTrackId}`}</strong>
+          <small>以视频内嵌绿色框为准</small>
+        </div>
+      )}
       {showClientTrackOverlay && (
         <>
           <svg
             aria-label="traffic perception overlay"
             className="video-overlay"
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid meet"
             viewBox={`0 0 ${viewBox.width} ${viewBox.height}`}
           >
             {overlayTracks.map((track) => {
@@ -245,7 +249,10 @@ export function VideoPanel({
               const labelX = x1;
               const labelY = Math.max(18, y1 - 10);
               return (
-                <g className={`track-overlay ${tone}${isSelected ? " selected" : ""}`} key={track.tracker_id}>
+                <g
+                  className={`track-overlay ${tone}${isSelected ? " selected" : ""}`}
+                  key={track.tracker_id}
+                >
                   <polyline
                     className="track-trail"
                     points={trailPoints(track, [x1, y1, x2, y2])}

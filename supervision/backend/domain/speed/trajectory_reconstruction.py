@@ -20,6 +20,13 @@ class TrajectoryPoint:
     world_x: float
     world_y: float
     raw_speed_kmh: float | None
+    speed_confidence: float | None = None
+    speed_uncertainty_kmh: float | None = None
+    position_rmse_m: float | None = None
+    calibration_confidence: float | None = None
+    contact_confidence: float | None = None
+    tracking_confidence: float | None = None
+    occlusion_confidence: float | None = None
     reconstructed: bool = False
 
 
@@ -128,6 +135,37 @@ class TrajectoryReconstructor:
                             if track.get("speed_kmh") is not None
                             else None
                         ),
+                        speed_confidence=(
+                            float(track["speed_confidence"])
+                            if track.get("speed_confidence") is not None
+                            else None
+                        ),
+                        speed_uncertainty_kmh=(
+                            float(track["speed_uncertainty_kmh"])
+                            if track.get("speed_uncertainty_kmh") is not None
+                            else None
+                        ),
+                        position_rmse_m=(
+                            float(track["position_rmse_m"])
+                            if track.get("position_rmse_m") is not None
+                            else None
+                        ),
+                        calibration_confidence=TrajectoryReconstructor._optional_track_float(
+                            track,
+                            "calibration_confidence",
+                        ),
+                        contact_confidence=TrajectoryReconstructor._optional_track_float(
+                            track,
+                            "contact_confidence",
+                        ),
+                        tracking_confidence=TrajectoryReconstructor._optional_track_float(
+                            track,
+                            "tracking_confidence",
+                        ),
+                        occlusion_confidence=TrajectoryReconstructor._optional_track_float(
+                            track,
+                            "occlusion_confidence",
+                        ),
                         reconstructed=bool(track.get("reconstructed", False)),
                     )
                 )
@@ -162,6 +200,41 @@ class TrajectoryReconstructor:
                         world_x=left.world_x + (right.world_x - left.world_x) * ratio,
                         world_y=left.world_y + (right.world_y - left.world_y) * ratio,
                         raw_speed_kmh=None,
+                        speed_confidence=TrajectoryReconstructor._interpolate_optional(
+                            left.speed_confidence,
+                            right.speed_confidence,
+                            ratio,
+                        ),
+                        speed_uncertainty_kmh=TrajectoryReconstructor._interpolate_optional(
+                            left.speed_uncertainty_kmh,
+                            right.speed_uncertainty_kmh,
+                            ratio,
+                        ),
+                        position_rmse_m=TrajectoryReconstructor._interpolate_optional(
+                            left.position_rmse_m,
+                            right.position_rmse_m,
+                            ratio,
+                        ),
+                        calibration_confidence=TrajectoryReconstructor._interpolate_optional(
+                            left.calibration_confidence,
+                            right.calibration_confidence,
+                            ratio,
+                        ),
+                        contact_confidence=TrajectoryReconstructor._interpolate_optional(
+                            left.contact_confidence,
+                            right.contact_confidence,
+                            ratio,
+                        ),
+                        tracking_confidence=TrajectoryReconstructor._interpolate_optional(
+                            left.tracking_confidence,
+                            right.tracking_confidence,
+                            ratio,
+                        ),
+                        occlusion_confidence=TrajectoryReconstructor._interpolate_optional(
+                            left.occlusion_confidence,
+                            right.occlusion_confidence,
+                            ratio,
+                        ),
                         reconstructed=True,
                     )
                 )
@@ -571,6 +644,25 @@ class TrajectoryReconstructor:
             values.append(float(value))
 
     @staticmethod
+    def _interpolate_optional(
+        left: float | None,
+        right: float | None,
+        ratio: float,
+    ) -> float | None:
+        if left is None and right is None:
+            return None
+        if left is None:
+            return right
+        if right is None:
+            return left
+        return float(left + (right - left) * ratio)
+
+    @staticmethod
+    def _optional_track_float(track: dict[str, Any], key: str) -> float | None:
+        value = track.get(key)
+        return float(value) if isinstance(value, int | float) else None
+
+    @staticmethod
     def _p95(values: list[float]) -> float | None:
         if not values:
             return None
@@ -607,18 +699,57 @@ class TrajectoryReconstructor:
             if metrics.stability_label != "unstable_observation"
             else "low_confidence"
         )
+        speed_confidence = TrajectoryReconstructor._reconstructed_speed_confidence(
+            point,
+            metrics,
+        )
+        speed_uncertainty_kmh = TrajectoryReconstructor._reconstructed_uncertainty(
+            point,
+            speed_kmh,
+            metrics,
+        )
+        speed_interval = [
+            float(max(0.0, speed_kmh - speed_uncertainty_kmh)),
+            float(speed_kmh + speed_uncertainty_kmh),
+        ]
+        calibration_confidence = point.calibration_confidence or 0.85
+        contact_confidence = point.contact_confidence or 0.72
+        tracking_confidence = point.tracking_confidence or 0.85
+        occlusion_confidence = point.occlusion_confidence or 0.9
+        dynamics_confidence = float(max(0.05, metrics.speed_stability_score))
+        physics_confidence = max(
+            0.0,
+            min(
+                1.0,
+                speed_confidence
+                * calibration_confidence
+                * contact_confidence
+                * tracking_confidence
+                * occlusion_confidence
+                * max(0.2, dynamics_confidence),
+            ),
+        )
         return {
             "report_index": float(point.report_index),
             "raw_speed_kmh": point.raw_speed_kmh,
             "speed_kmh": float(speed_kmh),
+            "speed_uncertainty_kmh": speed_uncertainty_kmh,
+            "speed_confidence": speed_confidence,
+            "speed_confidence_interval_kmh": speed_interval,
+            "position_rmse_m": point.position_rmse_m,
             "ground_x_m": float(world_x),
             "ground_y_m": float(world_y),
             "velocity_x_mps": float(velocity[0]),
             "velocity_y_mps": float(velocity[1]),
             "heading_deg": float(heading) if heading is not None else None,
             "acceleration_mps2": acceleration,
-            "physics_valid": True,
+            "physics_valid": physics_confidence >= 0.2,
             "quality_label": quality_label,
+            "rejection_reason": (
+                "unstable_observation"
+                if metrics.stability_label == "unstable_observation"
+                else None
+            ),
             "speed_stability_score": metrics.speed_stability_score,
             "speed_cv": metrics.speed_cv,
             "max_speed_jump_kmh": metrics.max_speed_jump_kmh,
@@ -627,7 +758,51 @@ class TrajectoryReconstructor:
             "jerk_p95_mps3": metrics.jerk_p95_mps3,
             "stability_label": metrics.stability_label,
             "reconstructed": point.reconstructed,
+            "physics_confidence": float(physics_confidence),
+            "calibration_confidence": float(calibration_confidence),
+            "contact_confidence": float(contact_confidence),
+            "tracking_confidence": float(tracking_confidence),
+            "occlusion_confidence": float(occlusion_confidence),
+            "dynamics_confidence": dynamics_confidence,
+            "confidence_rejection_reason": (
+                "dynamics_confidence"
+                if physics_confidence < 0.4
+                else None
+            ),
         }
+
+    @staticmethod
+    def _reconstructed_speed_confidence(
+        point: TrajectoryPoint,
+        metrics: SpeedStabilityMetrics,
+    ) -> float:
+        base = point.speed_confidence if point.speed_confidence is not None else 0.72
+        base = max(0.05, min(1.0, float(base)))
+        stability = max(0.05, min(1.0, metrics.speed_stability_score))
+        confidence = min(base, 0.35 + stability * 0.65)
+        if metrics.stability_label == "unstable_observation":
+            confidence *= 0.62
+        if point.reconstructed:
+            confidence *= 0.72
+        return float(max(0.05, min(1.0, confidence)))
+
+    @staticmethod
+    def _reconstructed_uncertainty(
+        point: TrajectoryPoint,
+        speed_kmh: float,
+        metrics: SpeedStabilityMetrics,
+    ) -> float:
+        if point.speed_uncertainty_kmh is not None:
+            base = float(point.speed_uncertainty_kmh)
+        else:
+            cv_term = (metrics.speed_cv or 0.0) * max(abs(speed_kmh), 1.0)
+            jump_term = (metrics.max_speed_jump_kmh or 0.0) * 0.25
+            base = max(0.5, cv_term, jump_term)
+        if metrics.stability_label == "unstable_observation":
+            base *= 1.45
+        if point.reconstructed:
+            base += 1.0
+        return float(max(0.1, base))
 
     @staticmethod
     def _empty_reconstruction(

@@ -199,6 +199,13 @@ class ReportGenerator:
                 contact_source=record.contact_source,
                 world_position_covariance=record.world_position_covariance,
                 speed_geometry_diagnostics=record.speed_geometry_diagnostics,
+                physics_confidence=record.physics_confidence,
+                calibration_confidence=record.calibration_confidence,
+                contact_confidence=record.contact_confidence,
+                tracking_confidence=record.tracking_confidence,
+                occlusion_confidence=record.occlusion_confidence,
+                dynamics_confidence=record.dynamics_confidence,
+                confidence_rejection_reason=record.confidence_rejection_reason,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

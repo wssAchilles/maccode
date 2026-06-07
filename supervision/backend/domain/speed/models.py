@@ -82,6 +82,13 @@ class SpeedRecord:
     contact_source: str | None = None
     world_position_covariance: list[list[float]] | None = None
     speed_geometry_diagnostics: dict[str, object] | None = None
+    physics_confidence: float | None = None
+    calibration_confidence: float | None = None
+    contact_confidence: float | None = None
+    tracking_confidence: float | None = None
+    occlusion_confidence: float | None = None
+    dynamics_confidence: float | None = None
+    confidence_rejection_reason: str | None = None
 
 
 @dataclass

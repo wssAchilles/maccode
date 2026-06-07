@@ -90,6 +90,10 @@ def test_reconstruction_rewrites_frame_reports_with_stability_fields() -> None:
     assert track["raw_speed_kmh"] == 35.0
     assert track["speed_stability_score"] is not None
     assert track["speed_cv"] is not None
+    assert track["speed_confidence"] is not None
+    assert track["speed_uncertainty_kmh"] is not None
+    assert track["speed_confidence_interval_kmh"] is not None
+    assert track["physics_confidence"] is not None
     assert track["stability_label"] in {"stable", "variable"}
 
 
@@ -127,6 +131,8 @@ def test_reconstruction_marks_missing_short_gap_as_reconstructed() -> None:
     ]
     assert len(gap_tracks) == 2
     assert all(track["reconstructed"] is True for track in gap_tracks)
+    assert all(track["speed_confidence"] is not None for track in gap_tracks)
+    assert all(track["speed_uncertainty_kmh"] is not None for track in gap_tracks)
     assert updated[-1]["trajectory_diagnostics"]["reconstructed_ratio"] > 0.0
     assert updated[-1]["trajectory_diagnostics"]["track_fragmentation_count"] >= 1
     assert "low_confidence_ratio" in updated[-1]["trajectory_diagnostics"]

@@ -67,6 +67,13 @@ export interface Track {
   contact_source?: string | null;
   world_position_covariance?: number[][] | null;
   speed_geometry_diagnostics?: Record<string, unknown> | null;
+  physics_confidence?: number | null;
+  calibration_confidence?: number | null;
+  contact_confidence?: number | null;
+  tracking_confidence?: number | null;
+  occlusion_confidence?: number | null;
+  dynamics_confidence?: number | null;
+  confidence_rejection_reason?: string | null;
 }
 
 export interface ZoneStats {

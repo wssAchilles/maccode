@@ -21,6 +21,8 @@ def estimate_speed_uncertainty(
     measurement_confidence: float = 1.0,
     local_scale_factor: float = 1.0,
     position_sigma_m: float | None = None,
+    calibration_rmse_m: float | None = None,
+    scale_uncertainty_factor: float = 0.0,
     track_age_frames: int | None = None,
     min_track_age_frames: int | None = None,
     uncertainty_cap_kmh: float | None = None,
@@ -41,6 +43,10 @@ def estimate_speed_uncertainty(
         raise ValueError("local_scale_factor must be positive")
     if position_sigma_m is not None and position_sigma_m < 0:
         raise ValueError("position_sigma_m must not be negative")
+    if calibration_rmse_m is not None and calibration_rmse_m < 0:
+        raise ValueError("calibration_rmse_m must not be negative")
+    if scale_uncertainty_factor < 0:
+        raise ValueError("scale_uncertainty_factor must not be negative")
 
     denominator = max(displacement_m, 1e-6)
     bounded_measurement_confidence = max(0.05, min(1.0, measurement_confidence))
@@ -48,7 +54,17 @@ def estimate_speed_uncertainty(
         position_rmse_m * local_scale_factor
     )
     scaled_rmse_m = scaled_rmse_m / bounded_measurement_confidence**0.5
-    effective_position_error_m = (scaled_rmse_m**2 + residual_m**2) ** 0.5
+    calibration_error_m = calibration_rmse_m or 0.0
+    scale_error_m = denominator * scale_uncertainty_factor * max(
+        local_scale_factor - 1.0,
+        0.0,
+    )
+    effective_position_error_m = (
+        scaled_rmse_m**2
+        + residual_m**2
+        + calibration_error_m**2
+        + scale_error_m**2
+    ) ** 0.5
     relative_distance_error = effective_position_error_m / denominator
     relative_time_error = timestamp_uncertainty_sec / delta_t_sec
     nominal_speed_kmh = displacement_m / delta_t_sec * 3.6

@@ -140,6 +140,28 @@ function formatTrafficDensity(value: number | null | undefined) {
   return finiteNumber(value) ? `${value.toFixed(1)} veh/km` : "N/A";
 }
 
+function formatTrackBox(track: Track | null | undefined) {
+  if (!track?.xyxy) {
+    return "bbox N/A";
+  }
+  const [x1, y1, x2, y2] = track.xyxy;
+  return `bbox ${x1.toFixed(0)},${y1.toFixed(0)}-${x2.toFixed(0)},${y2.toFixed(0)}`;
+}
+
+function trackGeometryLabel(track: Track | null | undefined) {
+  if (!track) {
+    return "N/A";
+  }
+  const plane = track.plane_id ? `plane ${track.plane_id}` : "plane N/A";
+  const contact = track.contact_source ? `contact ${track.contact_source}` : "contact N/A";
+  return `${formatTrackBox(track)} · ${plane} · ${contact}`;
+}
+
+function trackOptionLabel(track: Track) {
+  const state = track.physics_valid ? "physics valid" : track.quality_label;
+  return `#${track.tracker_id} / ${track.class_name} / ${state} / ${formatTrackBox(track)}`;
+}
+
 function reportForPlayback(
   history: FrameReport[],
   fallbackReport: FrameReport | null,
@@ -202,6 +224,7 @@ export function RealtimeMonitor({
   const selectedTrackIdentity = selectedTrack
     ? `#${selectedTrack.tracker_id} / ${selectedTrack.class_name}`
     : "未锁定目标";
+  const selectedTrackGeometry = trackGeometryLabel(selectedTrack);
   const avgSpeed = dashboardSpeed(activeReport);
   const avgConfidence = averageTrackField(activeReport, "speed_confidence");
   const speedInterval = dashboardSpeedInterval(activeReport, leadTrack);
@@ -618,7 +641,7 @@ export function RealtimeMonitor({
                   >
                     {(activeReport?.active_tracks ?? []).map((track) => (
                       <option key={track.tracker_id} value={track.tracker_id}>
-                        {`#${track.tracker_id} / ${track.class_name} / ${track.physics_valid ? "physics valid" : track.quality_label}`}
+                        {trackOptionLabel(track)}
                       </option>
                     ))}
                   </select>
@@ -626,6 +649,15 @@ export function RealtimeMonitor({
                 <div>
                   <span>画面对应</span>
                   <strong>{selectedTrackIdentity}</strong>
+                  <small>
+                    {selectedTrack ? `视频内嵌绿色标签 #${selectedTrack.tracker_id}` : "视频标签 N/A"}
+                  </small>
+                  <small>{selectedTrackGeometry}</small>
+                  <small>
+                    {activeReport
+                      ? `frame ${activeReport.frame_index} · t=${formatSeconds(activeReport.timestamp_sec)}`
+                      : "frame N/A"}
+                  </small>
                 </div>
               </div>
               <div className="physics-grid">
@@ -670,11 +702,15 @@ export function RealtimeMonitor({
                   <strong>{formatSpeedInterval(selectedTrack?.speed_confidence_interval_kmh)}</strong>
                 </div>
                 <div>
-                  <span>速度置信度</span>
+                  <span>物理总置信度</span>
+                  <strong>{formatPercent(selectedTrack?.physics_confidence)}</strong>
+                </div>
+                <div>
+                  <span>速度估计置信度</span>
                   <strong>{formatPercent(selectedTrack?.speed_confidence)}</strong>
                 </div>
                 <div>
-                  <span>稳定度评分</span>
+                  <span>速度时序稳定性</span>
                   <strong>{formatPercent(selectedTrack?.speed_stability_score)}</strong>
                 </div>
                 <div>
@@ -692,6 +728,38 @@ export function RealtimeMonitor({
                 <div>
                   <span>物理有效性</span>
                   <strong>{selectedTrack ? (selectedTrack.physics_valid ? "valid" : selectedTrack.quality_label) : "N/A"}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="geek-section">
+              <div className="panel-heading compact-heading">
+                <h3>置信度分解</h3>
+              </div>
+              <div className="physics-grid">
+                <div>
+                  <span>标定置信度</span>
+                  <strong>{formatPercent(selectedTrack?.calibration_confidence)}</strong>
+                </div>
+                <div>
+                  <span>脚点置信度</span>
+                  <strong>{formatPercent(selectedTrack?.contact_confidence)}</strong>
+                </div>
+                <div>
+                  <span>跟踪置信度</span>
+                  <strong>{formatPercent(selectedTrack?.tracking_confidence)}</strong>
+                </div>
+                <div>
+                  <span>遮挡置信度</span>
+                  <strong>{formatPercent(selectedTrack?.occlusion_confidence)}</strong>
+                </div>
+                <div>
+                  <span>动力学置信度</span>
+                  <strong>{formatPercent(selectedTrack?.dynamics_confidence)}</strong>
+                </div>
+                <div>
+                  <span>主要风险因子</span>
+                  <strong>{selectedTrack?.confidence_rejection_reason ?? "N/A"}</strong>
                 </div>
               </div>
             </section>
