@@ -27,6 +27,15 @@ class JobProgressCard extends StatelessWidget {
     final tone = _JobTone.fromStatus(job.status);
     final latestEvent = job.latestEvent;
     final currentStep = job.currentStep;
+    if (compact) {
+      return _CompactJobProgressRow(
+        job: job,
+        tone: tone,
+        latestEvent: latestEvent,
+        onOpenDetails: onOpenDetails,
+      );
+    }
+
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -207,6 +216,98 @@ class JobProgressCard extends StatelessWidget {
       return '时间未知';
     }
     return DateFormat('MM-dd HH:mm').format(value.toLocal());
+  }
+}
+
+class _CompactJobProgressRow extends StatelessWidget {
+  const _CompactJobProgressRow({
+    required this.job,
+    required this.tone,
+    required this.latestEvent,
+    this.onOpenDetails,
+  });
+
+  final JobRecord job;
+  final _JobTone tone;
+  final JobEvent? latestEvent;
+  final VoidCallback? onOpenDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
+        border: Border.all(color: tone.foreground.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: tone.foreground,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  buildJobPrimaryText(job),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.labelLarge,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  latestEvent == null
+                      ? job.displayTitle
+                      : '${_JobPhaseChip.phaseLabel(latestEvent!.phase)} · ${buildJobEventMessage(job, latestEvent!)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 120,
+            child: LinearProgressIndicator(
+              value: (job.progress.clamp(0, 100)) / 100,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(AppDecorations.radiusFull),
+              backgroundColor: AppColors.surface,
+              color: tone.foreground,
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 42,
+            child: Text(
+              '${job.progress}%',
+              textAlign: TextAlign.end,
+              style: AppTextStyles.labelMedium,
+            ),
+          ),
+          if (onOpenDetails != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: onOpenDetails,
+              tooltip: '查看运行详情',
+              icon: const Icon(Icons.travel_explore_rounded),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:front/models/optimization_result.dart';
 import 'package:front/widgets/modeling/modeling_health_section.dart';
+import 'package:front/widgets/modeling/modeling_results_section.dart';
 import 'package:front/widgets/modeling/optimization_insights_section.dart';
 
 ModelInfo _buildModelInfo() {
@@ -113,6 +114,44 @@ OptimizationData _buildOptimizationDataWithoutDiagnostics() {
       'discharging_hours': [18, 19],
       'charging_count': 3,
       'discharging_count': 2,
+    },
+  });
+}
+
+OptimizationResponse _buildOptimizationResponseWithExplainability() {
+  return OptimizationResponse.fromJson({
+    'success': true,
+    'model_info': {
+      'model_type': 'random_forest',
+      'status': 'active',
+      'training_samples': 8760,
+    },
+    'optimization': {
+      'status': 'Optimal',
+      'chart_data': [],
+      'summary': {
+        'total_cost_without_battery': 1000,
+        'total_cost_with_battery': 800,
+        'savings': 200,
+        'savings_percent': 20,
+        'total_load': 5000,
+        'total_charged': 800,
+        'total_discharged': 700,
+        'peak_load': 350,
+        'min_load': 120,
+        'avg_load': 210,
+      },
+      'strategy': {
+        'charging_hours': [1, 2, 3],
+        'discharging_hours': [18, 19],
+        'charging_count': 3,
+        'discharging_count': 2,
+      },
+    },
+    'model_explainability': {
+      'feature_importance': {'Lag_1h': 0.287, 'Load_Change_1h': 0.187},
+      'feature_descriptions': {'Lag_1h': '上一小时负载', 'Load_Change_1h': '负载变化'},
+      'interpretation': 'Lag_1h 是影响负载预测的最重要因素。',
     },
   });
 }
@@ -269,4 +308,38 @@ void main() {
     expect(find.text('总计节省'), findsOneWidget);
     expect(find.textContaining('vs 上次'), findsOneWidget);
   });
+
+  testWidgets(
+    'ModelingResultsSection only toggles explainability from arrow button',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ModelingResultsSection(
+                isLoading: false,
+                errorMessage: null,
+                result: _buildOptimizationResponseWithExplainability(),
+                previousResult: null,
+                onDismissError: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.ensureVisible(find.text('AI 预测解释'));
+      expect(find.text('特征重要性分析'), findsOneWidget);
+
+      await tester.tap(find.text('AI 预测解释'));
+      await tester.pumpAndSettle();
+      expect(find.text('特征重要性分析'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('model-explainability-toggle')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('特征重要性分析'), findsNothing);
+    },
+  );
 }

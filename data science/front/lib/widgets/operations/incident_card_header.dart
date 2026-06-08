@@ -20,6 +20,7 @@ class IncidentCardHeader extends StatelessWidget {
     this.cardLabel,
     this.incidentLabel,
     this.summary,
+    this.contextMode = WorkspaceContextMode.compact,
   });
 
   final Color accent;
@@ -33,6 +34,7 @@ class IncidentCardHeader extends StatelessWidget {
   final String? cardLabel;
   final String? incidentLabel;
   final String? summary;
+  final WorkspaceContextMode contextMode;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +88,7 @@ class IncidentCardHeader extends StatelessWidget {
           const SizedBox(height: 12),
           WorkspaceContextBanner(
             accent: accent,
+            mode: contextMode,
             workspaceLabel: workspaceLabel,
             cardLabel: cardLabel,
             incidentLabel: incidentLabel,

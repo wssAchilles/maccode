@@ -416,45 +416,85 @@ class _HistoryAuditScreenState extends State<HistoryAuditScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () =>
-                                  _applyFilters(type: null, status: 'failed'),
-                              icon: const Icon(Icons.error_outline_rounded),
-                              label: const Text('仅看失败'),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(
+                              AppDecorations.radiusMd,
                             ),
-                            FilledButton.tonalIcon(
-                              onPressed: () =>
-                                  _applyFilters(type: null, status: 'running'),
-                              icon: const Icon(Icons.autorenew_rounded),
-                              label: const Text('仅看运行中'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () =>
-                                  _applyFilters(type: null, status: null),
-                              icon: const Icon(Icons.filter_alt_off_rounded),
-                              label: const Text('清空筛选'),
-                            ),
-                            for (final type in const [
-                              ('analysis', '分析'),
-                              ('ml_train', '训练'),
-                              ('rag_ingest', 'RAG'),
-                              ('optimization', '优化'),
-                            ])
-                              ChoiceChip(
-                                label: Text(type.$2),
-                                selected: _selectedType == type.$1,
-                                onSelected: (_) => _applyFilters(
-                                  type: _selectedType == type.$1
-                                      ? null
-                                      : type.$1,
-                                  status: _selectedStatus,
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Text('状态', style: AppTextStyles.labelMedium),
+                              const SizedBox(width: 10),
+                              SegmentedButton<String>(
+                                showSelectedIcon: false,
+                                segments: const [
+                                  ButtonSegment(
+                                    value: 'all',
+                                    label: Text('全部'),
+                                  ),
+                                  ButtonSegment(
+                                    value: 'failed',
+                                    label: Text('失败'),
+                                  ),
+                                  ButtonSegment(
+                                    value: 'running',
+                                    label: Text('运行中'),
+                                  ),
+                                ],
+                                selected: {_selectedStatus ?? 'all'},
+                                onSelectionChanged: (selection) {
+                                  final value = selection.first;
+                                  _applyFilters(
+                                    type: _selectedType,
+                                    status: value == 'all' ? null : value,
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 18),
+                              Text('类型', style: AppTextStyles.labelMedium),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SegmentedButton<String>(
+                                  showSelectedIcon: false,
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: 'all',
+                                      label: Text('全部'),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'analysis',
+                                      label: Text('分析'),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'ml_train',
+                                      label: Text('训练'),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'rag_ingest',
+                                      label: Text('RAG'),
+                                    ),
+                                    ButtonSegment(
+                                      value: 'optimization',
+                                      label: Text('优化'),
+                                    ),
+                                  ],
+                                  selected: {_selectedType ?? 'all'},
+                                  onSelectionChanged: (selection) {
+                                    final value = selection.first;
+                                    _applyFilters(
+                                      type: value == 'all' ? null : value,
+                                      status: _selectedStatus,
+                                    );
+                                  },
                                 ),
                               ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         LayoutBuilder(

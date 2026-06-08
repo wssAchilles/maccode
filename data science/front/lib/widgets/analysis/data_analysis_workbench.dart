@@ -396,31 +396,6 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
           ),
           if (chain != null) ...[
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                WorkspaceStatusChip(
-                  label: workspaceLabel!,
-                  icon: Icons.account_tree_rounded,
-                  foreground: AppColors.primary,
-                  background: AppColors.infoLight,
-                ),
-                WorkspaceStatusChip(
-                  label: cardLabel!,
-                  icon: Icons.dashboard_customize_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-                WorkspaceStatusChip(
-                  label: incidentLabel!,
-                  icon: Icons.priority_high_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: AppColors.primary,
               workspaceLabel: workspaceLabel,
@@ -432,93 +407,78 @@ class DataAnalysisWorkflowActionsCard extends StatelessWidget {
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('Storage Path', style: AppTextStyles.labelMedium),
-                const SizedBox(height: 8),
-                SelectableText(
-                  hasStoragePath ? storagePath! : '当前分析未生成可复用的存储路径',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: hasStoragePath
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
+                Icon(
+                  hasStoragePath
+                      ? Icons.folder_rounded
+                      : Icons.folder_off_rounded,
+                  size: 18,
+                  color: hasStoragePath
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    hasStoragePath ? storagePath! : '当前分析未生成可复用的存储路径',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: hasStoragePath
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 920;
-              final cards = [
-                WorkspaceDigestCard(
-                  title: 'Schema Digest',
-                  value: schemaDigest,
-                  icon: Icons.schema_rounded,
-                  accent: AppColors.primary,
-                  onCopy: onCopySchemaDigest,
-                ),
-                WorkspaceDigestCard(
-                  title: '治理摘要',
-                  value: governanceDigest,
-                  icon: Icons.health_and_safety_rounded,
-                  accent: AppColors.cta,
-                  onCopy: onCopyGovernanceDigest,
-                ),
-                WorkspaceDigestCard(
-                  title: 'Asset Passport',
-                  value: assetPassport,
-                  icon: Icons.badge_rounded,
-                  accent: AppColors.success,
-                  onCopy: onCopyAssetPassport,
-                ),
-                WorkspaceDigestCard(
-                  title: 'Compare Digest',
-                  value: compareDigest,
-                  icon: Icons.compare_arrows_rounded,
-                  accent: AppColors.warning,
-                  onCopy: onCopyCompareDigest,
-                ),
-                WorkspaceDigestCard(
-                  title: '协作摘要',
-                  value: collaborationBrief,
-                  icon: Icons.group_work_rounded,
-                  accent: AppColors.primary,
-                  onCopy: onCopyCollaborationBrief,
-                ),
-              ];
-
-              if (stacked) {
-                return Column(
-                  children: [
-                    for (var i = 0; i < cards.length; i++) ...[
-                      cards[i],
-                      if (i < cards.length - 1) const SizedBox(height: 12),
-                    ],
-                  ],
-                );
-              }
-
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: cards
-                    .map(
-                      (card) => SizedBox(
-                        width: (constraints.maxWidth - 24) / 2,
-                        child: card,
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
+          WorkspaceDigestList(
+            items: [
+              WorkspaceDigestListItem(
+                title: 'Schema Digest',
+                value: schemaDigest,
+                icon: Icons.schema_rounded,
+                accent: AppColors.primary,
+                onCopy: onCopySchemaDigest,
+              ),
+              WorkspaceDigestListItem(
+                title: '治理摘要',
+                value: governanceDigest,
+                icon: Icons.health_and_safety_rounded,
+                accent: AppColors.cta,
+                onCopy: onCopyGovernanceDigest,
+              ),
+              WorkspaceDigestListItem(
+                title: 'Asset Passport',
+                value: assetPassport,
+                icon: Icons.badge_rounded,
+                accent: AppColors.success,
+                onCopy: onCopyAssetPassport,
+              ),
+              WorkspaceDigestListItem(
+                title: 'Compare Digest',
+                value: compareDigest,
+                icon: Icons.compare_arrows_rounded,
+                accent: AppColors.warning,
+                onCopy: onCopyCompareDigest,
+              ),
+              WorkspaceDigestListItem(
+                title: '协作摘要',
+                value: collaborationBrief,
+                icon: Icons.group_work_rounded,
+                accent: AppColors.primary,
+                onCopy: onCopyCollaborationBrief,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           _WorkflowHandoffBoard(

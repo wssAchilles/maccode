@@ -460,74 +460,44 @@ class _CompactLedgerRow extends StatelessWidget {
         const SizedBox(height: 10),
         _MatrixFocusBand(chain: chain, replayCount: replayCount, accent: tone),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: '当前焦点',
-                value:
-                    '${chain.dispositionTargetLabel} · ${buildChainWorkspaceSummary(chain)}',
-                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.focus,
-                accent: tone,
-              ),
+        _MatrixFactTable(
+          rows: [
+            _MatrixFactRowData(
+              label: '当前焦点',
+              value:
+                  '${chain.dispositionTargetLabel} · ${buildChainWorkspaceSummary(chain)}',
+              highlighted: _matrixHighlight(chain) == _MatrixFocusArea.focus,
             ),
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: 'SLA',
-                value:
-                    '${chain.escalationStateLabel} · ${chain.isOverdue ? '超时 ${chain.overdueMinutes}m' : '已运行 ${chain.elapsedMinutes}m'}',
-                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.sla,
-                accent: tone,
-              ),
-            ),
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: '回放',
-                value: '$replayCount 条可回放 · ${chain.actionLabel}',
-                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.replay,
-                accent: tone,
-              ),
-            ),
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: 'Active Job',
-                value: _matrixJobSummary(chain),
-                highlighted: _matrixHighlight(chain) == _MatrixFocusArea.job,
-                accent: tone,
-              ),
-            ),
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: 'Failure / Lineage',
-                value: _matrixFailureOrLineage(chain),
-                highlighted:
-                    _matrixHighlight(chain) == _MatrixFocusArea.failure,
-                accent: tone,
-              ),
-            ),
-            SizedBox(
-              width: 190,
-              child: _MatrixFactCard(
-                label: 'Target',
-                value:
-                    '${chain.workspaceTargetLabel} / ${chain.cardTargetLabel} / ${chain.incidentTargetLabel}',
-                accent: tone,
-              ),
-            ),
-            _LedgerFact(label: 'Owner', value: chain.ownerLabel),
-            _LedgerFact(
+            _MatrixFactRowData(
               label: 'SLA',
-              value: '${chain.slaMinutes}min / ${chain.escalationStateLabel}',
+              value:
+                  '${chain.escalationStateLabel} · ${chain.isOverdue ? '超时 ${chain.overdueMinutes}m' : '已运行 ${chain.elapsedMinutes}m'}',
+              highlighted: _matrixHighlight(chain) == _MatrixFocusArea.sla,
             ),
-            _LedgerFact(label: 'Lineage', value: chain.lineageSummary),
+            _MatrixFactRowData(
+              label: '回放',
+              value: '$replayCount 条可回放 · ${chain.actionLabel}',
+              highlighted: _matrixHighlight(chain) == _MatrixFocusArea.replay,
+            ),
+            _MatrixFactRowData(
+              label: 'Active Job',
+              value: _matrixJobSummary(chain),
+              highlighted: _matrixHighlight(chain) == _MatrixFocusArea.job,
+            ),
+            _MatrixFactRowData(
+              label: 'Failure / Lineage',
+              value: _matrixFailureOrLineage(chain),
+              highlighted: _matrixHighlight(chain) == _MatrixFocusArea.failure,
+            ),
+            _MatrixFactRowData(label: 'Owner', value: chain.ownerLabel),
+            _MatrixFactRowData(
+              label: 'Target',
+              value:
+                  '${chain.workspaceTargetLabel} / ${chain.cardTargetLabel} / ${chain.incidentTargetLabel}',
+            ),
+            _MatrixFactRowData(label: 'Lineage', value: chain.lineageSummary),
           ],
+          accent: tone,
         ),
       ],
     );
@@ -660,47 +630,81 @@ class _MatrixFocusBand extends StatelessWidget {
   }
 }
 
-class _MatrixFactCard extends StatelessWidget {
-  const _MatrixFactCard({
+class _MatrixFactRowData {
+  const _MatrixFactRowData({
     required this.label,
     required this.value,
-    required this.accent,
     this.highlighted = false,
   });
 
   final String label;
   final String value;
-  final Color accent;
   final bool highlighted;
+}
+
+class _MatrixFactTable extends StatelessWidget {
+  const _MatrixFactTable({required this.rows, required this.accent});
+
+  final List<_MatrixFactRowData> rows;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: highlighted
-            ? Color.alphaBlend(
-                accent.withValues(alpha: 0.08),
-                AppColors.surface,
-              )
-            : AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppDecorations.radiusMd),
-        border: Border.all(
-          color: accent.withValues(alpha: highlighted ? 0.22 : 0.1),
-          width: highlighted ? 1.3 : 1,
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.1)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: highlighted ? accent : AppColors.textSecondary,
+          for (var index = 0; index < rows.length; index++) ...[
+            _MatrixFactRow(row: rows[index], accent: accent),
+            if (index < rows.length - 1)
+              const Divider(height: 1, color: AppColors.border),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MatrixFactRow extends StatelessWidget {
+  const _MatrixFactRow({required this.row, required this.accent});
+
+  final _MatrixFactRowData row;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 128,
+            child: Text(
+              row.label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: row.highlighted ? accent : AppColors.textSecondary,
+                fontWeight: row.highlighted ? FontWeight.w700 : null,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(value, style: AppTextStyles.bodySmall),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              row.value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: row.highlighted
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -724,31 +728,6 @@ class _LedgerTag extends StatelessWidget {
       child: Text(
         label,
         style: AppTextStyles.labelMedium.copyWith(color: color),
-      ),
-    );
-  }
-}
-
-class _LedgerFact extends StatelessWidget {
-  const _LedgerFact({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-        children: [
-          TextSpan(text: '$label: '),
-          TextSpan(
-            text: value,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
       ),
     );
   }

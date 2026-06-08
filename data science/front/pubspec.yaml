@@ -102,6 +102,10 @@ flutter:
           weight: 500
         - asset: assets/fonts/DMSans-SemiBold.ttf
           weight: 600
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.ttf
+          weight: 400
     - family: FiraCode
       fonts:
         - asset: assets/fonts/FiraCode-Regular.ttf

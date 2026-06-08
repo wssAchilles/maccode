@@ -21,6 +21,7 @@ class WorkspaceActionLane extends StatelessWidget {
     this.cardLabel,
     this.incidentLabel,
     this.summary,
+    this.contextMode = WorkspaceContextMode.compact,
   });
 
   final String title;
@@ -35,6 +36,7 @@ class WorkspaceActionLane extends StatelessWidget {
   final String? cardLabel;
   final String? incidentLabel;
   final String? summary;
+  final WorkspaceContextMode contextMode;
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +97,7 @@ class WorkspaceActionLane extends StatelessWidget {
             const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: accent,
+              mode: contextMode,
               workspaceLabel: workspaceLabel,
               cardLabel: effectiveCardLabel,
               incidentLabel: effectiveIncidentLabel,
@@ -134,26 +137,39 @@ class WorkspaceInlineActionBar extends StatelessWidget {
     this.recommendedActionKey,
     this.spacing = 8,
     this.runSpacing = 8,
+    this.visibleActionCount = 2,
   });
 
   final List<WorkspaceActionLaneAction> actions;
   final String? recommendedActionKey;
   final double spacing;
   final double runSpacing;
+  final int visibleActionCount;
 
   @override
   Widget build(BuildContext context) {
+    final prioritized = _prioritizedActions(actions, recommendedActionKey);
+    final visibleCount = visibleActionCount.clamp(1, prioritized.length);
+    final visibleActions = prioritized
+        .take(visibleCount)
+        .toList(growable: false);
+    final overflowActions = prioritized
+        .skip(visibleCount)
+        .toList(growable: false);
+
     return Wrap(
       spacing: spacing,
       runSpacing: runSpacing,
-      children: _prioritizedActions(actions, recommendedActionKey)
-          .map(
-            (action) => action.build(
-              context,
-              recommended: action.semanticKey == recommendedActionKey,
-            ),
-          )
-          .toList(growable: false),
+      children: [
+        ...visibleActions.map(
+          (action) => action.build(
+            context,
+            recommended: action.semanticKey == recommendedActionKey,
+          ),
+        ),
+        if (overflowActions.isNotEmpty)
+          _WorkspaceActionOverflowMenu(actions: overflowActions),
+      ],
     );
   }
 }
@@ -251,6 +267,8 @@ class WorkspaceActionLaneAction {
 
 enum WorkspaceActionLaneTone { primary, tonal, outline }
 
+enum WorkspaceContextMode { none, compact, full }
+
 List<WorkspaceActionLaneAction> _prioritizedActions(
   List<WorkspaceActionLaneAction> actions,
   String? recommendedActionKey,
@@ -288,6 +306,7 @@ class WorkspaceContextBanner extends StatelessWidget {
   const WorkspaceContextBanner({
     super.key,
     required this.accent,
+    this.mode = WorkspaceContextMode.compact,
     this.workspaceLabel,
     this.cardLabel,
     this.incidentLabel,
@@ -295,6 +314,7 @@ class WorkspaceContextBanner extends StatelessWidget {
   });
 
   final Color accent;
+  final WorkspaceContextMode mode;
   final String? workspaceLabel;
   final String? cardLabel;
   final String? incidentLabel;
@@ -302,6 +322,9 @@ class WorkspaceContextBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (mode == WorkspaceContextMode.none) {
+      return const SizedBox.shrink();
+    }
     final effectiveCardLabel = buildDutyContextCardValue(cardLabel);
     final effectiveIncidentLabel = buildDutyContextIncidentValue(incidentLabel);
     final effectiveSummary = sanitizeWorkspaceSummaryText(
@@ -320,6 +343,34 @@ class WorkspaceContextBanner extends StatelessWidget {
     if (!hasSignal) {
       return const SizedBox.shrink();
     }
+    final chips = <Widget>[
+      if ((workspaceLabel ?? '').isNotEmpty)
+        WorkspaceStatusChip(
+          label: workspaceLabel!,
+          icon: Icons.account_tree_rounded,
+          foreground: accent,
+          background: accent.withValues(alpha: 0.12),
+        ),
+      if ((effectiveCardLabel ?? '').isNotEmpty)
+        WorkspaceStatusChip(
+          label: effectiveCardLabel!,
+          icon: Icons.dashboard_customize_rounded,
+          foreground: AppColors.textPrimary,
+          background: AppColors.surfaceVariant,
+        ),
+      if ((effectiveIncidentLabel ?? '').isNotEmpty)
+        WorkspaceStatusChip(
+          label: mode == WorkspaceContextMode.full
+              ? '当前关注 · $effectiveIncidentLabel'
+              : effectiveIncidentLabel!,
+          icon: Icons.priority_high_rounded,
+          foreground: accent,
+          background: accent.withValues(alpha: 0.12),
+        ),
+    ];
+    final visibleChips = mode == WorkspaceContextMode.compact
+        ? chips.take(2).toList(growable: false)
+        : chips;
 
     return Container(
       width: double.infinity,
@@ -332,37 +383,15 @@ class WorkspaceContextBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if ((workspaceLabel ?? '').isNotEmpty)
-                WorkspaceStatusChip(
-                  label: workspaceLabel!,
-                  icon: Icons.account_tree_rounded,
-                  foreground: accent,
-                  background: accent.withValues(alpha: 0.12),
-                ),
-              if ((effectiveCardLabel ?? '').isNotEmpty)
-                WorkspaceStatusChip(
-                  label: effectiveCardLabel!,
-                  icon: Icons.dashboard_customize_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-              if ((effectiveIncidentLabel ?? '').isNotEmpty)
-                WorkspaceStatusChip(
-                  label: '当前关注 · $effectiveIncidentLabel',
-                  icon: Icons.priority_high_rounded,
-                  foreground: accent,
-                  background: accent.withValues(alpha: 0.12),
-                ),
-            ],
-          ),
+          Wrap(spacing: 8, runSpacing: 8, children: visibleChips),
           if ((effectiveSummary ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
               effectiveSummary!,
+              maxLines: mode == WorkspaceContextMode.compact ? 1 : null,
+              overflow: mode == WorkspaceContextMode.compact
+                  ? TextOverflow.ellipsis
+                  : TextOverflow.visible,
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -370,6 +399,42 @@ class WorkspaceContextBanner extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _WorkspaceActionOverflowMenu extends StatelessWidget {
+  const _WorkspaceActionOverflowMenu({required this.actions});
+
+  final List<WorkspaceActionLaneAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      menuChildren: actions
+          .map(
+            (action) => MenuItemButton(
+              leadingIcon: action.isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(action.icon),
+              onPressed: action.onTap,
+              child: Text(action.label),
+            ),
+          )
+          .toList(growable: false),
+      builder: (context, controller, child) {
+        return OutlinedButton.icon(
+          onPressed: () {
+            controller.isOpen ? controller.close() : controller.open();
+          },
+          icon: const Icon(Icons.more_horiz_rounded),
+          label: const Text('更多'),
+        );
+      },
     );
   }
 }

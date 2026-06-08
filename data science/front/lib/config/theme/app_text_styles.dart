@@ -8,7 +8,7 @@ class AppTextStyles {
   static const String _codeFamily = 'FiraCode';
 
   static const List<String> _cjkFallbacks = [
-    'Noto Sans SC',
+    'NotoSansSC',
     'PingFang SC',
     'Hiragino Sans GB',
     'Microsoft YaHei',

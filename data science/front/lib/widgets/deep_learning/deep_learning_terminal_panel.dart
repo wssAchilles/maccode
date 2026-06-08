@@ -18,55 +18,58 @@ class DeepLearningTerminalPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLogs = logs.trim().isNotEmpty;
     return AnimatedGlassCard(
       padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.05),
-              border: const Border(
-                bottom: BorderSide(color: AppColors.glassBorder),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.terminal_rounded,
-                  size: 20,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 8),
-                Text('实时日志', style: AppTextStyles.labelLarge),
-                const Spacer(),
-                if (isTraining)
-                  const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: isTraining,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: EdgeInsets.zero,
+          leading: const Icon(
+            Icons.terminal_rounded,
+            size: 20,
+            color: AppColors.textSecondary,
+          ),
+          title: Text('实时日志', style: AppTextStyles.labelLarge),
+          subtitle: Text(
+            isTraining
+                ? '训练运行中，展开查看最新事件。'
+                : hasLogs
+                ? '日志已收起，展开查看训练事件。'
+                : '等待训练任务。',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodySmall,
+          ),
+          trailing: isTraining
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.expand_more_rounded),
+          children: [
+            Container(
+              key: const ValueKey('deep-learning-terminal'),
+              height: 260,
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: const Color(0xFF1E293B),
+              child: SingleChildScrollView(
+                reverse: true,
+                child: Text(
+                  hasLogs ? logs : '等待训练任务...',
+                  style: AppTextStyles.codeFont.copyWith(
+                    color: const Color(0xFF34D399),
+                    fontSize: 13,
                   ),
-              ],
-            ),
-          ),
-          Container(
-            key: const ValueKey('deep-learning-terminal'),
-            height: 400,
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E293B),
-            child: SingleChildScrollView(
-              reverse: true,
-              child: Text(
-                logs.isEmpty ? '等待训练任务...' : logs,
-                style: AppTextStyles.codeFont.copyWith(
-                  color: const Color(0xFF34D399),
-                  fontSize: 13,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

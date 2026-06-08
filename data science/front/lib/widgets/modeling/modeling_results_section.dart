@@ -139,38 +139,80 @@ class _ExplainabilityExpansionCardState
 
   @override
   Widget build(BuildContext context) {
-    return ExpansionTile(
+    return Material(
       key: const PageStorageKey<String>(_storageKey),
-      initiallyExpanded: _isExpanded,
-      maintainState: true,
-      onExpansionChanged: _handleExpansionChanged,
-      tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      collapsedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      backgroundColor: Colors.white,
-      collapsedBackgroundColor: Colors.white,
-      leading: Icon(Icons.psychology, color: Colors.purple[600]),
-      title: const Text(
-        'AI 预测解释',
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-      ),
-      subtitle: Text(
-        '了解哪些因素影响了负载预测',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: FeatureImportanceChart(
-            key: const PageStorageKey<String>('feature-importance-chart'),
-            featureImportance: widget.modelExplainability.featureImportance,
-            featureDescriptions: widget.modelExplainability.featureDescriptions,
-            interpretation: widget.modelExplainability.interpretation,
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            key: const ValueKey('model-explainability-header'),
+            color: Colors.grey[200],
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            child: Row(
+              children: [
+                Icon(Icons.psychology, color: Colors.purple[600]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'AI 预测解释',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '了解哪些因素影响了负载预测',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('model-explainability-toggle'),
+                  tooltip: _isExpanded ? '收起 AI 预测解释' : '展开 AI 预测解释',
+                  onPressed: () => _handleExpansionChanged(!_isExpanded),
+                  icon: AnimatedRotation(
+                    turns: _isExpanded ? 0 : 0.5,
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    child: const Icon(Icons.keyboard_arrow_up_rounded),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            child: _isExpanded
+                ? Padding(
+                    key: const ValueKey('model-explainability-body'),
+                    padding: const EdgeInsets.all(16),
+                    child: FeatureImportanceChart(
+                      key: const PageStorageKey<String>(
+                        'feature-importance-chart',
+                      ),
+                      featureImportance:
+                          widget.modelExplainability.featureImportance,
+                      featureDescriptions:
+                          widget.modelExplainability.featureDescriptions,
+                      interpretation: widget.modelExplainability.interpretation,
+                    ),
+                  )
+                : const SizedBox.shrink(
+                    key: ValueKey('model-explainability-collapsed-body'),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

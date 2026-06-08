@@ -843,31 +843,6 @@ class _ModelingScreenState extends State<ModelingScreen> {
           ),
           if (chain != null) ...[
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                WorkspaceStatusChip(
-                  label: chain.workspaceTargetLabel,
-                  icon: Icons.account_tree_rounded,
-                  foreground: AppColors.warning,
-                  background: AppColors.warningLight,
-                ),
-                WorkspaceStatusChip(
-                  label: chain.cardTargetLabel,
-                  icon: Icons.dashboard_customize_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-                WorkspaceStatusChip(
-                  label: chain.incidentTargetLabel,
-                  icon: Icons.priority_high_rounded,
-                  foreground: AppColors.textPrimary,
-                  background: AppColors.surfaceVariant,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             WorkspaceContextBanner(
               accent: AppColors.warning,
               workspaceLabel:
@@ -884,96 +859,69 @@ class _ModelingScreenState extends State<ModelingScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 1100;
-              final cards = [
-                WorkspaceDigestCard(
-                  title: 'Scenario Digest',
-                  value: scenarioDigest,
-                  icon: Icons.tune_rounded,
-                  accent: AppColors.primary,
-                  highlighted: _operationsDigestFocus(
-                    chain,
-                    'scenario',
-                    _activeLaunchContext,
-                  ),
-                  highlightLabel: '当前链路焦点',
+          WorkspaceDigestList(
+            items: [
+              WorkspaceDigestListItem(
+                title: 'Scenario Digest',
+                value: scenarioDigest,
+                icon: Icons.tune_rounded,
+                accent: AppColors.primary,
+                highlighted: _operationsDigestFocus(
+                  chain,
+                  'scenario',
+                  _activeLaunchContext,
                 ),
-                WorkspaceDigestCard(
-                  title: '策略摘要',
-                  value: strategyDigest,
-                  icon: Icons.route_rounded,
-                  accent: AppColors.cta,
-                  highlighted: _operationsDigestFocus(
-                    chain,
-                    'strategy',
-                    _activeLaunchContext,
-                  ),
-                  highlightLabel: '当前链路焦点',
+                highlightLabel: '当前链路焦点',
+              ),
+              WorkspaceDigestListItem(
+                title: '策略摘要',
+                value: strategyDigest,
+                icon: Icons.route_rounded,
+                accent: AppColors.cta,
+                highlighted: _operationsDigestFocus(
+                  chain,
+                  'strategy',
+                  _activeLaunchContext,
                 ),
-                WorkspaceDigestCard(
-                  title: '结果对比',
-                  value: comparisonDigest,
-                  icon: Icons.compare_arrows_rounded,
-                  accent: AppColors.success,
-                  highlighted: _operationsDigestFocus(
-                    chain,
-                    'comparison',
-                    _activeLaunchContext,
-                  ),
-                  highlightLabel: '当前链路焦点',
+                highlightLabel: '当前链路焦点',
+              ),
+              WorkspaceDigestListItem(
+                title: '结果对比',
+                value: comparisonDigest,
+                icon: Icons.compare_arrows_rounded,
+                accent: AppColors.success,
+                highlighted: _operationsDigestFocus(
+                  chain,
+                  'comparison',
+                  _activeLaunchContext,
                 ),
-                WorkspaceDigestCard(
-                  title: 'Result Snapshot',
-                  value: snapshotDigest,
-                  icon: Icons.inventory_2_rounded,
-                  accent: AppColors.warning,
-                  highlighted: _operationsDigestFocus(
-                    chain,
-                    'snapshot',
-                    _activeLaunchContext,
-                  ),
-                  highlightLabel: '当前链路焦点',
+                highlightLabel: '当前链路焦点',
+              ),
+              WorkspaceDigestListItem(
+                title: 'Result Snapshot',
+                value: snapshotDigest,
+                icon: Icons.inventory_2_rounded,
+                accent: AppColors.warning,
+                highlighted: _operationsDigestFocus(
+                  chain,
+                  'snapshot',
+                  _activeLaunchContext,
                 ),
-                WorkspaceDigestCard(
-                  title: '运维摘要',
-                  value: operationsDigest,
-                  icon: Icons.monitor_heart_rounded,
-                  accent: AppColors.primary,
-                  highlighted: _operationsDigestFocus(
-                    chain,
-                    'operations',
-                    _activeLaunchContext,
-                  ),
-                  highlightLabel: '当前链路焦点',
+                highlightLabel: '当前链路焦点',
+              ),
+              WorkspaceDigestListItem(
+                title: '运维摘要',
+                value: operationsDigest,
+                icon: Icons.monitor_heart_rounded,
+                accent: AppColors.primary,
+                highlighted: _operationsDigestFocus(
+                  chain,
+                  'operations',
+                  _activeLaunchContext,
                 ),
-              ];
-
-              if (stacked) {
-                return Column(
-                  children: [
-                    for (var i = 0; i < cards.length; i++) ...[
-                      cards[i],
-                      if (i < cards.length - 1) const SizedBox(height: 12),
-                    ],
-                  ],
-                );
-              }
-
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: cards
-                    .map(
-                      (card) => SizedBox(
-                        width: (constraints.maxWidth - 12) / 2,
-                        child: card,
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
+                highlightLabel: '当前链路焦点',
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           WorkspaceActionDeck(
