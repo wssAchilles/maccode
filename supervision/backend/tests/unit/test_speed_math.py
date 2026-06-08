@@ -4,6 +4,7 @@ import math
 
 import numpy as np
 import pytest
+from domain.calibration.metric_geometry_posterior import MetricGeometryPosteriorBuilder
 from domain.calibration.models import CalibrationPoint
 from domain.calibration.pedestrian_candidate import (
     PedestrianCalibrationCandidateBuilder,
@@ -128,6 +129,44 @@ def test_metric_plane_set_selects_trusted_plane_and_rejects_ambiguous_edges() ->
     assert plane_set.select((75, 25)).plane.plane_id == "sidewalk"
     assert plane_set.select((55, 25)).reason == "plane_transition_geometry_invalid"
     assert plane_set.select((95, 25)).reason == "plane_unresolved"
+
+
+def test_metric_geometry_posterior_flags_wide_homography_uncertainty() -> None:
+    service = CalibrationService()
+    plane_set = service.build_metric_plane_set(
+        metric_planes=[
+            {
+                "plane_id": "sidewalk",
+                "plane_kind": "sidewalk",
+                "trusted": True,
+                "pixel_polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
+                "world_polygon": [[0, 0], [10, 0], [10, 10], [0, 10]],
+                "control_points": [
+                    {"pixel_x": 0, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 0, "world_x": 10, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 100, "world_x": 10, "world_y": 10},
+                    {"pixel_x": 0, "pixel_y": 100, "world_x": 0, "world_y": 10},
+                ],
+            }
+        ],
+    )
+    posterior = MetricGeometryPosteriorBuilder().build(
+        plane_set.planes,
+        frame_width=100,
+        frame_height=100,
+    )
+
+    plane = posterior.plane("sidewalk")
+
+    assert plane is not None
+    assert plane.homography_samples
+    assert plane.homography_sample_std_m is not None
+    assert plane.gate_reason in {
+        None,
+        "homography_posterior_too_wide",
+        "jacobian_amplification_high",
+    }
+    assert posterior.to_diagnostics()["model_reference"] == "metric_geometry_posterior_v5"
 
 
 def test_single_plane_legacy_calibration_can_fallback_to_default_road_plane() -> None:
@@ -278,7 +317,7 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
         "pedestrian_golden_acceptance_v4"
     )
     assert "foot_skate_or_geometry_risk" in diagnostic.metrics["root_cause_verdicts"]
-    assert "foot_skate_invalid" in diagnostic.metrics["root_cause_verdicts"]
+    assert "foot_skate_or_wrong_geometry" in diagnostic.metrics["root_cause_verdicts"]
     assert diagnostic.metrics["perspective_coupled_speed_drift"] is True
 
 
@@ -292,7 +331,10 @@ def test_contact_episode_buffer_builds_periodic_speed_and_flags_foot_skate() -> 
         (1.2, 1.4, "stance", 0.05),
         (1.4, 1.4, "swing", 0.05),
         (2.0, 2.8, "touchdown", 0.05),
-        (2.2, 3.0, "stance", 0.75),
+        (2.2, 2.8, "stance", 0.05),
+        (2.4, 2.8, "swing", 0.05),
+        (3.0, 4.2, "touchdown", 0.05),
+        (3.2, 4.4, "stance", 0.75),
     ]
     result = None
     for timestamp, support_x, phase, foot_skate in phases:
@@ -311,7 +353,10 @@ def test_contact_episode_buffer_builds_periodic_speed_and_flags_foot_skate() -> 
     assert result is not None
     assert result.contact_episodes
     assert result.speed_periodic_kmh == pytest.approx(5.04, abs=0.4)
-    assert result.geometry_status == "foot_skate_invalid"
+    assert result.support_zero_velocity_p95_mps is not None
+    assert result.episode_stride_length_m is not None
+    assert result.episode_stride_time_sec is not None
+    assert result.geometry_status == "foot_skate_or_wrong_geometry"
 
 
 def test_track_geometry_diagnostics_flags_wrong_plane_for_pedestrian() -> None:

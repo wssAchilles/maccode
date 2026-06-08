@@ -93,6 +93,12 @@ export interface Track {
   body_periodic_speed_gap_kmh?: number | null;
   near_far_speed_drift_score?: number | null;
   geometry_status?: string | null;
+  identity_posterior?: Record<string, unknown> | null;
+  body_periodic_consistency?: number | null;
+  stride_consistency_score?: number | null;
+  support_zero_velocity_p95_mps?: number | null;
+  metric_geometry_gate_reason?: string | null;
+  joint_physics_posterior_v5?: Record<string, unknown> | null;
 }
 
 export interface ZoneStats {
@@ -216,6 +222,10 @@ export interface CalibrationDiagnostics {
   coordinate_space_gate_reason?: string | null;
   metric_plane_speed_acceptance?: Record<string, unknown>;
   pinhole_geometry_profile?: Record<string, unknown> | null;
+  metric_geometry_posterior?: Record<string, unknown> | null;
+  scale_anchor_summary?: Record<string, unknown> | null;
+  jacobian_amplification_map_summary?: Record<string, unknown> | null;
+  homography_posterior_gate_reason?: string | null;
   homography_decomposition_residual?: number | null;
   local_jacobian_speed_amplification_p95?: number | null;
   intrinsics_consistency_status?: string | null;

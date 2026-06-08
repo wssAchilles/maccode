@@ -113,6 +113,12 @@ class Track:
     body_periodic_speed_gap_kmh: float | None = None
     near_far_speed_drift_score: float | None = None
     geometry_status: str | None = None
+    identity_posterior: dict[str, object] | None = None
+    body_periodic_consistency: float | None = None
+    stride_consistency_score: float | None = None
+    support_zero_velocity_p95_mps: float | None = None
+    metric_geometry_gate_reason: str | None = None
+    joint_physics_posterior_v5: dict[str, object] | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -235,6 +241,12 @@ class Track:
         body_periodic_speed_gap_kmh: float | None = None,
         near_far_speed_drift_score: float | None = None,
         geometry_status: str | None = None,
+        identity_posterior: dict[str, object] | None = None,
+        body_periodic_consistency: float | None = None,
+        stride_consistency_score: float | None = None,
+        support_zero_velocity_p95_mps: float | None = None,
+        metric_geometry_gate_reason: str | None = None,
+        joint_physics_posterior_v5: dict[str, object] | None = None,
     ) -> Track:
         return replace(
             self,
@@ -341,4 +353,10 @@ class Track:
             body_periodic_speed_gap_kmh=body_periodic_speed_gap_kmh,
             near_far_speed_drift_score=near_far_speed_drift_score,
             geometry_status=geometry_status,
+            identity_posterior=identity_posterior,
+            body_periodic_consistency=body_periodic_consistency,
+            stride_consistency_score=stride_consistency_score,
+            support_zero_velocity_p95_mps=support_zero_velocity_p95_mps,
+            metric_geometry_gate_reason=metric_geometry_gate_reason,
+            joint_physics_posterior_v5=joint_physics_posterior_v5,
         )

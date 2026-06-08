@@ -189,6 +189,11 @@ def main() -> None:
     parser.add_argument("--analysis-json", required=True, type=Path)
     parser.add_argument("--tracker-id", required=True, type=int)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument(
+        "--strict-track-geometry",
+        action="store_true",
+        help="Exit 1 when the track-level golden acceptance hard gate fails.",
+    )
     args = parser.parse_args()
 
     payload = load_payload(args.analysis_json)
@@ -211,6 +216,13 @@ def main() -> None:
         args.output_dir / f"{prefix}_posterior_interval.png",
     )
     write_plane_grid_overlay(payload, reports, args.output_dir / "plane_grid_overlay.png")
+    golden = diagnostic.metrics.get("golden_acceptance")
+    if (
+        args.strict_track_geometry
+        and isinstance(golden, dict)
+        and not bool(golden.get("passed"))
+    ):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

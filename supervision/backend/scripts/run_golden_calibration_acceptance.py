@@ -9,6 +9,10 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from domain.speed.geometry_diagnostics import (
+    TrackGeometryDiagnosticBuilder,
+    reports_from_analysis_payload,
+)
 from shared.configs.settings import Settings
 
 from scripts.analyze_real_videos import (
@@ -145,6 +149,8 @@ def run_pipeline(
     confidence: float = 0.35,
     model_path: str | None = None,
     device: str = "auto",
+    tracker_id: int | None = None,
+    strict_track_geometry: bool = False,
 ) -> dict[str, Any]:
     if run_analysis:
         analysis_summary = run_real_analysis(
@@ -184,6 +190,15 @@ def run_pipeline(
         )
     audit = audit_acceptance_table(acceptance, project_root=project_root)
     write_audit_outputs(audit, audit_output_dir)
+    track_geometry = _track_geometry_acceptance(
+        analysis_output_dir=analysis_summary.parent,
+        clips=clips,
+        tracker_id=tracker_id,
+    )
+    if strict_track_geometry and track_geometry and not all(
+        item["passed"] for item in track_geometry
+    ):
+        raise SystemExit(1)
     return {
         "qa": {
             "clip_count": qa_summary["clip_count"],
@@ -207,7 +222,41 @@ def run_pipeline(
             "all_defense_ready": audit["all_defense_ready"],
             "output_dir": str(audit_output_dir),
         },
+        "track_geometry": track_geometry,
     }
+
+
+def _track_geometry_acceptance(
+    *,
+    analysis_output_dir: Path,
+    clips: list[str],
+    tracker_id: int | None,
+) -> list[dict[str, Any]]:
+    if tracker_id is None:
+        return []
+    rows: list[dict[str, Any]] = []
+    for clip in clips:
+        analysis_path = analysis_output_dir / f"{Path(clip).stem}.json"
+        if not analysis_path.exists():
+            rows.append({"clip": clip, "passed": False, "reason": "analysis_json_missing"})
+            continue
+        payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+        diagnostic = TrackGeometryDiagnosticBuilder().build(
+            reports_from_analysis_payload(payload),
+            tracker_id=tracker_id,
+        )
+        golden = diagnostic.metrics.get("golden_acceptance")
+        passed = bool(golden.get("passed")) if isinstance(golden, dict) else False
+        rows.append(
+            {
+                "clip": clip,
+                "tracker_id": tracker_id,
+                "passed": passed,
+                "root_cause_verdicts": diagnostic.metrics.get("root_cause_verdicts", []),
+                "golden_acceptance": golden,
+            },
+        )
+    return rows
 
 
 def parse_args() -> argparse.Namespace:
@@ -253,6 +302,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=0.35)
     parser.add_argument("--model", default=None)
     parser.add_argument("--device", default="auto")
+    parser.add_argument("--tracker-id", type=int, default=None)
+    parser.add_argument(
+        "--strict-track-geometry",
+        action="store_true",
+        help="Exit 1 unless the selected tracker passes golden track geometry gates.",
+    )
     parser.add_argument(
         "--strict",
         action="store_true",
@@ -282,6 +337,8 @@ def main() -> None:
         confidence=args.confidence,
         model_path=args.model,
         device=args.device,
+        tracker_id=args.tracker_id,
+        strict_track_geometry=args.strict_track_geometry,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if args.strict and not result["audit"]["all_defense_ready"]:

@@ -46,6 +46,13 @@ class TrackGeometryDiagnostic:
             "body_periodic_speed_gap_kmh",
             "near_far_speed_drift_score",
             "geometry_status",
+            "homography_sample_std_m",
+            "scale_anchor_uncertainty_m",
+            "jacobian_amplification",
+            "identity_switch_probability",
+            "episode_stride_length_m",
+            "episode_stride_time_sec",
+            "golden_acceptance_verdict",
             "local_jacobian_speed_amplification_p95",
             "plane_id",
             "plane_kind",
@@ -187,6 +194,20 @@ class TrackGeometryDiagnosticBuilder:
                     or diagnostics.get("near_far_speed_drift_score"),
                     "geometry_status": track.get("geometry_status")
                     or diagnostics.get("geometry_status"),
+                    "homography_sample_std_m": diagnostics.get("homography_sample_std_m"),
+                    "scale_anchor_uncertainty_m": diagnostics.get(
+                        "scale_anchor_uncertainty_m",
+                    ),
+                    "jacobian_amplification": diagnostics.get("jacobian_amplification"),
+                    "identity_switch_probability": (
+                        (track.get("identity_posterior") or {}).get(
+                            "id_switch_probability",
+                        )
+                        if isinstance(track.get("identity_posterior"), dict)
+                        else None
+                    ),
+                    "episode_stride_length_m": diagnostics.get("episode_stride_length_m"),
+                    "episode_stride_time_sec": diagnostics.get("episode_stride_time_sec"),
                     "local_jacobian_speed_amplification_p95": diagnostics.get(
                         "local_jacobian_speed_amplification_p95",
                     ),
@@ -245,10 +266,15 @@ class TrackGeometryDiagnosticBuilder:
                     "rejection_reason": track.get("rejection_reason"),
                 }
             )
+        metrics = self._metrics(rows)
+        golden = metrics.get("golden_acceptance")
+        if isinstance(golden, dict):
+            for row in rows:
+                row["golden_acceptance_verdict"] = golden.get("passed")
         return TrackGeometryDiagnostic(
             tracker_id=tracker_id,
             rows=rows,
-            metrics=self._metrics(rows),
+            metrics=metrics,
         )
 
     @staticmethod
@@ -486,15 +512,38 @@ def _root_cause_verdicts(
         verdicts.append("coordinate_space_mismatch")
     if _perspective_coupled(speeds, scales, inverse_heights):
         verdicts.append("perspective_coupled_speed_drift")
-    if any(str(row.get("geometry_status") or "") == "periodic_inconsistent" for row in rows):
-        verdicts.append("periodic_inconsistent")
+    if any(
+        str(row.get("geometry_status") or "")
+        in {"periodic_inconsistent", "body_periodic_inconsistent"}
+        for row in rows
+    ):
+        verdicts.append("body_periodic_inconsistent")
     if any(str(row.get("geometry_status") or "") == "weak_scale" for row in rows):
         verdicts.append("near_far_scale_drift")
     if any(
-        str(row.get("geometry_status") or "") == "foot_skate_invalid"
+        str(row.get("geometry_status") or "")
+        in {"foot_skate_invalid", "foot_skate_or_wrong_geometry"}
         for row in rows
     ):
-        verdicts.append("foot_skate_invalid")
+        verdicts.append("foot_skate_or_wrong_geometry")
+    if any(
+        _optional_float(row.get("identity_switch_probability")) is not None
+        and _optional_float(row.get("identity_switch_probability")) >= 0.5
+        for row in rows
+    ):
+        verdicts.append("identity_switch_risk")
+    if any(
+        str(row.get("pedestrian_metric_rejection_reason") or "")
+        == "homography_posterior_too_wide"
+        for row in rows
+    ):
+        verdicts.append("homography_posterior_too_wide")
+    if any(
+        str(row.get("pedestrian_metric_rejection_reason") or "")
+        == "jacobian_amplification_high"
+        for row in rows
+    ):
+        verdicts.append("jacobian_amplification_high")
     if any(
         str(row.get("pedestrian_metric_rejection_reason") or "") == "intrinsics_unverified"
         for row in rows
@@ -522,17 +571,17 @@ def _golden_acceptance(
     )
     checks = {
         "speed_cv_lt_0_25": speed_cv is not None and speed_cv < 0.25,
-        "speed_local_scale_corr_lt_0_4": (
-            scale_corr is not None and abs(scale_corr) < 0.4
+        "speed_local_scale_corr_lt_0_35": (
+            scale_corr is not None and abs(scale_corr) < 0.35
         ),
-        "speed_inverse_height_corr_lt_0_4": (
-            height_corr is not None and abs(height_corr) < 0.4
+        "speed_inverse_height_corr_lt_0_35": (
+            height_corr is not None and abs(height_corr) < 0.35
         ),
         "foot_skate_p95_lt_0_35": foot_skate_p95 is not None and foot_skate_p95 < 0.35,
         "periodic_consistency_mean_gt_0_6": (
             periodic_mean is not None and periodic_mean > 0.6
         ),
-        "near_far_drift_score_lt_0_4": drift_p95 is not None and drift_p95 < 0.4,
+        "near_far_drift_score_lt_0_35": drift_p95 is not None and drift_p95 < 0.35,
     }
     return {
         "passed": all(checks.values()),

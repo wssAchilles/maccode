@@ -17,6 +17,7 @@ from domain.calibration.candidate_evaluation import (
     CalibrationCandidateEvaluation,
     CalibrationCandidateEvaluator,
 )
+from domain.calibration.metric_geometry_posterior import MetricGeometryPosteriorBuilder
 from domain.calibration.models import CalibrationPoint, HomographyResult
 from domain.calibration.monte_carlo import CalibrationMonteCarloAnalyzer
 from domain.calibration.pinhole_geometry import PinholeGeometryAuditor
@@ -211,6 +212,11 @@ class SupervisionVideoProcessor:
             self.calibration,
             self.metric_plane_set.planes,
             self.calibration_context,
+            frame_width=frame_width,
+            frame_height=frame_height,
+        )
+        self.metric_geometry_posterior = MetricGeometryPosteriorBuilder().build(
+            self.metric_plane_set.planes,
             frame_width=frame_width,
             frame_height=frame_height,
         )
@@ -510,6 +516,18 @@ class SupervisionVideoProcessor:
             "coordinate_space_warning": coordinate_space_warning,
             "camera_geometry_profile": self.camera_geometry_profile.to_diagnostics(),
             "pinhole_geometry_profile": pinhole_diagnostics,
+            "metric_geometry_posterior": (
+                self.metric_geometry_posterior.to_diagnostics()
+            ),
+            "scale_anchor_summary": (
+                self.metric_geometry_posterior.scale_anchor_summary
+            ),
+            "jacobian_amplification_map_summary": (
+                self.metric_geometry_posterior.jacobian_amplification_map_summary
+            ),
+            "homography_posterior_gate_reason": (
+                self.metric_geometry_posterior.homography_posterior_gate_reason
+            ),
             "homography_decomposition_residual": pinhole_diagnostics.get(
                 "homography_decomposition_residual",
             ),
@@ -638,7 +656,7 @@ class SupervisionVideoProcessor:
             return None
         posterior = dict(posterior)
         posterior["speed_posterior_model_reference"] = posterior.get("model_reference")
-        posterior["model_reference"] = "joint_physics_posterior_v4"
+        posterior["model_reference"] = "joint_physics_posterior_v5"
         posterior["primary_risk_source"] = self._primary_physics_risk_source(record)
         posterior["confidence_factors"] = {
             "calibration": record.calibration_confidence,
@@ -667,6 +685,16 @@ class SupervisionVideoProcessor:
                 components["Sigma_periodic_inconsistency"] = float(
                     record.body_periodic_speed_gap_kmh,
                 ) * 0.25
+            if record.id_switch_risk is not None:
+                components["Sigma_identity"] = float(record.id_switch_risk) * max(
+                    float(record.speed_kmh or 1.0),
+                    1.0,
+                ) * 0.3
+            if record.metric_geometry_gate_reason is not None:
+                components["Sigma_metric_geometry"] = max(
+                    float(record.speed_kmh or 1.0),
+                    1.0,
+                ) * 0.4
             posterior["uncertainty_components"] = components
             total = sum(
                 max(float(value), 0.0)
@@ -694,6 +722,11 @@ class SupervisionVideoProcessor:
         )
         posterior["near_far_speed_drift_score"] = record.near_far_speed_drift_score
         posterior["geometry_status"] = record.geometry_status
+        posterior["identity_posterior"] = record.identity_posterior
+        posterior["body_periodic_consistency"] = record.body_periodic_consistency
+        posterior["stride_consistency_score"] = record.stride_consistency_score
+        posterior["support_zero_velocity_p95_mps"] = record.support_zero_velocity_p95_mps
+        posterior["metric_geometry_gate_reason"] = record.metric_geometry_gate_reason
         return posterior
 
     def _posterior_dominant_source(self, record: SpeedRecord | None) -> str | None:
@@ -713,6 +746,10 @@ class SupervisionVideoProcessor:
         )
         if explicit_reason:
             return explicit_reason
+        if record.id_switch_risk is not None and record.id_switch_risk >= 0.5:
+            return "tracking_identity_risk"
+        if record.metric_geometry_gate_reason is not None:
+            return record.metric_geometry_gate_reason
         factors = {
             "calibration": record.calibration_confidence,
             "contact": record.contact_confidence,
@@ -1185,6 +1222,29 @@ class SupervisionVideoProcessor:
                 plane_reason=plane_selection.reason,
             )
             speed_geometry_diagnostics.update(semantic_observation)
+            plane_geometry_posterior = self.metric_geometry_posterior.plane(
+                selected_plane.plane_id,
+            )
+            if plane_geometry_posterior is not None:
+                speed_geometry_diagnostics.update(
+                    {
+                        "metric_geometry_posterior": (
+                            plane_geometry_posterior.to_diagnostics()
+                        ),
+                        "homography_sample_std_m": (
+                            plane_geometry_posterior.homography_sample_std_m
+                        ),
+                        "scale_anchor_uncertainty_m": (
+                            plane_geometry_posterior.scale_anchor_uncertainty_m
+                        ),
+                        "jacobian_amplification": (
+                            plane_geometry_posterior.jacobian_amplification_p95
+                        ),
+                        "metric_geometry_gate_reason": (
+                            plane_geometry_posterior.gate_reason
+                        ),
+                    }
+                )
             pedestrian_admission = assess_pedestrian_metric_admission(
                 class_id=track.class_id,
                 plane_selection=plane_selection,
@@ -1202,6 +1262,25 @@ class SupervisionVideoProcessor:
                     ),
                 }
             )
+            if (
+                pedestrian_admission.admitted
+                and track.class_id == 0
+                and plane_geometry_posterior is not None
+                and plane_geometry_posterior.gate_reason is not None
+            ):
+                pedestrian_admission = replace(
+                    pedestrian_admission,
+                    admitted=False,
+                    reason=plane_geometry_posterior.gate_reason,
+                )
+                speed_geometry_diagnostics.update(
+                    {
+                        "pedestrian_metric_admitted": False,
+                        "pedestrian_metric_rejection_reason": (
+                            plane_geometry_posterior.gate_reason
+                        ),
+                    }
+                )
             if not pedestrian_admission.admitted:
                 self.speed_estimator.suppress_measurement(
                     tracker_id=track.tracker_id,
@@ -1238,6 +1317,11 @@ class SupervisionVideoProcessor:
                     contact_state=contact_point.contact_state,
                     measurement_policy=contact_point.measurement_policy,
                     contact_state_probabilities=contact_point.contact_state_probabilities,
+                    metric_geometry_gate_reason=(
+                        plane_geometry_posterior.gate_reason
+                        if plane_geometry_posterior is not None
+                        else None
+                    ),
                 )
                 continue
             integrity = self.tracking_integrity_monitor.assess(
@@ -1248,6 +1332,7 @@ class SupervisionVideoProcessor:
                 active_track_ids=active_ids,
             )
             self._integrity_results[track.tracker_id] = integrity
+            identity_posterior = self._identity_posterior(track, integrity)
             if integrity.id_switch_risk >= 0.75:
                 self._integrity_event_count += 1
             if integrity.reset_speed_history:
@@ -1255,10 +1340,21 @@ class SupervisionVideoProcessor:
             if integrity.speed_frozen:
                 self._speed_frozen_count += 1
                 frozen_record = self.speed_estimator.get_record(track.tracker_id)
+                frozen_record_enriched = (
+                    replace(
+                        frozen_record,
+                        id_switch_risk=integrity.id_switch_risk,
+                        identity_posterior=identity_posterior,
+                        integrity_rejection_reason=integrity.rejection_reason,
+                    )
+                    if frozen_record is not None
+                    else None
+                )
                 self.speed_estimator.annotate_record(
                     track.tracker_id,
                     tracking_integrity_state=integrity.state,
                     id_switch_risk=integrity.id_switch_risk,
+                    identity_posterior=identity_posterior,
                     speed_frozen=True,
                     integrity_rejection_reason=integrity.rejection_reason,
                     bev_risk_level=bev_risk.risk_level,
@@ -1284,9 +1380,18 @@ class SupervisionVideoProcessor:
                     calibration_speed_posterior=self._calibration_speed_posterior(
                         frozen_record,
                     ),
-                    joint_speed_posterior=self._joint_speed_posterior(frozen_record),
-                    joint_physics_posterior=self._joint_physics_posterior(frozen_record),
-                    dominant_uncertainty_source=self._posterior_dominant_source(frozen_record),
+                    joint_speed_posterior=self._joint_speed_posterior(
+                        frozen_record_enriched,
+                    ),
+                    joint_physics_posterior=self._joint_physics_posterior(
+                        frozen_record_enriched,
+                    ),
+                    joint_physics_posterior_v5=self._joint_physics_posterior(
+                        frozen_record_enriched,
+                    ),
+                    dominant_uncertainty_source=self._posterior_dominant_source(
+                        frozen_record_enriched,
+                    ),
                 )
                 continue
 
@@ -1490,6 +1595,15 @@ class SupervisionVideoProcessor:
                     "body_periodic_speed_gap_kmh": (
                         contact_episode.body_periodic_speed_gap_kmh
                     ),
+                    "body_periodic_consistency": (
+                        contact_episode.body_periodic_consistency
+                    ),
+                    "stride_consistency_score": contact_episode.stride_consistency_score,
+                    "support_zero_velocity_p95_mps": (
+                        contact_episode.support_zero_velocity_p95_mps
+                    ),
+                    "episode_stride_length_m": contact_episode.episode_stride_length_m,
+                    "episode_stride_time_sec": contact_episode.episode_stride_time_sec,
                     "near_far_speed_drift_score": (
                         contact_episode.near_far_speed_drift_score
                     ),
@@ -1535,6 +1649,7 @@ class SupervisionVideoProcessor:
                     ),
                     near_far_speed_drift_metrics=semantic_near_far_metrics,
                     contact_episodes=contact_episode.contact_episodes,
+                    id_switch_risk=integrity.id_switch_risk,
                     speed_body_kmh=latest_record.speed_kmh,
                     speed_periodic_kmh=contact_episode.speed_periodic_kmh,
                     support_zero_velocity_residual_mps=(
@@ -1545,6 +1660,17 @@ class SupervisionVideoProcessor:
                     ),
                     near_far_speed_drift_score=(
                         contact_episode.near_far_speed_drift_score
+                    ),
+                    identity_posterior=identity_posterior,
+                    body_periodic_consistency=contact_episode.body_periodic_consistency,
+                    stride_consistency_score=contact_episode.stride_consistency_score,
+                    support_zero_velocity_p95_mps=(
+                        contact_episode.support_zero_velocity_p95_mps
+                    ),
+                    metric_geometry_gate_reason=(
+                        plane_geometry_posterior.gate_reason
+                        if plane_geometry_posterior is not None
+                        else None
                     ),
                     geometry_status=contact_episode.geometry_status,
                 )
@@ -1582,6 +1708,7 @@ class SupervisionVideoProcessor:
                 ),
                 tracking_integrity_state=integrity.state,
                 id_switch_risk=integrity.id_switch_risk,
+                identity_posterior=identity_posterior,
                 speed_frozen=False,
                 integrity_rejection_reason=integrity.rejection_reason,
                 **record_quality_fields,
@@ -1595,6 +1722,7 @@ class SupervisionVideoProcessor:
                 ),
                 joint_speed_posterior=self._joint_speed_posterior(enriched_record),
                 joint_physics_posterior=self._joint_physics_posterior(enriched_record),
+                joint_physics_posterior_v5=self._joint_physics_posterior(enriched_record),
                 contact_state=contact_point.contact_state,
                 measurement_policy=contact_point.measurement_policy,
                 contact_state_probabilities=contact_point.contact_state_probabilities,
@@ -1629,6 +1757,16 @@ class SupervisionVideoProcessor:
                 ),
                 body_periodic_speed_gap_kmh=contact_episode.body_periodic_speed_gap_kmh,
                 near_far_speed_drift_score=contact_episode.near_far_speed_drift_score,
+                body_periodic_consistency=contact_episode.body_periodic_consistency,
+                stride_consistency_score=contact_episode.stride_consistency_score,
+                support_zero_velocity_p95_mps=(
+                    contact_episode.support_zero_velocity_p95_mps
+                ),
+                metric_geometry_gate_reason=(
+                    plane_geometry_posterior.gate_reason
+                    if plane_geometry_posterior is not None
+                    else None
+                ),
                 geometry_status=contact_episode.geometry_status,
             )
         for tracker_id in list(self._latest_contact_points):
@@ -1807,23 +1945,56 @@ class SupervisionVideoProcessor:
         }
 
     @staticmethod
+    def _identity_posterior(
+        track: Track,
+        integrity: TrackingIntegrityResult,
+    ) -> dict[str, object]:
+        association_quality = (
+            float(track.association_quality)
+            if track.association_quality is not None
+            else 1.0
+        )
+        low_score_penalty = 0.2 if track.low_score_recovered else 0.0
+        relink_penalty = 0.35 if track.tracklet_relinked else 0.0
+        id_switch_probability = max(
+            float(integrity.id_switch_risk),
+            1.0 - max(0.0, min(1.0, association_quality)),
+            low_score_penalty,
+            relink_penalty,
+        )
+        return {
+            "id_switch_probability": float(max(0.0, min(1.0, id_switch_probability))),
+            "occlusion_gap_frames": None,
+            "association_margin": track.association_score,
+            "low_score_recovery_ratio": 1.0 if track.low_score_recovered else 0.0,
+            "appearance_consistency_score": None,
+            "tracking_integrity_state": integrity.state,
+            "rejection_reason": integrity.rejection_reason,
+            "model_reference": "tracking_identity_posterior_v5",
+        }
+
+    @staticmethod
     def _geometry_status_record_fields(
         geometry_status: str,
         record: SpeedRecord | None,
     ) -> dict[str, object]:
-        if geometry_status == "foot_skate_invalid":
+        if geometry_status in {"foot_skate_invalid", "foot_skate_or_wrong_geometry"}:
             return {
                 "speed_kmh": None,
                 "physics_valid": False,
                 "quality_label": "geometry_invalid",
-                "rejection_reason": "foot_skate_invalid",
-                "geometry_rejection_reason": "foot_skate_invalid",
+                "rejection_reason": geometry_status,
+                "geometry_rejection_reason": geometry_status,
                 "physics_confidence": min(float(record.physics_confidence or 0.0), 0.25)
                 if record is not None
                 else 0.0,
-                "confidence_rejection_reason": "foot_skate_invalid",
+                "confidence_rejection_reason": geometry_status,
             }
-        if geometry_status in {"periodic_inconsistent", "weak_scale"}:
+        if geometry_status in {
+            "periodic_inconsistent",
+            "body_periodic_inconsistent",
+            "weak_scale",
+        }:
             return {
                 "quality_label": "weak_scale",
                 "physics_confidence": min(float(record.physics_confidence or 0.5), 0.39)

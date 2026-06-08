@@ -173,6 +173,11 @@ function formatScalar(value: number | null | undefined, suffix = "") {
   return finiteNumber(value) ? `${value.toFixed(2)}${suffix}` : "N/A";
 }
 
+function identitySwitchProbability(track: Track | null | undefined) {
+  const value = track?.identity_posterior?.id_switch_probability;
+  return typeof value === "number" ? value : null;
+}
+
 function trackGeometryLabel(track: Track | null | undefined) {
   if (!track) {
     return "N/A";
@@ -821,6 +826,26 @@ export function RealtimeMonitor({
                 <div>
                   <span>近远漂移分数</span>
                   <strong>{formatScalar(selectedTrack?.near_far_speed_drift_score)}</strong>
+                </div>
+                <div>
+                  <span>Body/周期一致性</span>
+                  <strong>{formatPercent(selectedTrack?.body_periodic_consistency)}</strong>
+                </div>
+                <div>
+                  <span>步幅一致性</span>
+                  <strong>{formatPercent(selectedTrack?.stride_consistency_score)}</strong>
+                </div>
+                <div>
+                  <span>支撑脚 p95 残差</span>
+                  <strong>{formatScalar(selectedTrack?.support_zero_velocity_p95_mps, " m/s")}</strong>
+                </div>
+                <div>
+                  <span>ID 切换概率</span>
+                  <strong>{formatPercent(identitySwitchProbability(selectedTrack))}</strong>
+                </div>
+                <div>
+                  <span>度量几何 Gate</span>
+                  <strong>{selectedTrack?.metric_geometry_gate_reason ?? "pass"}</strong>
                 </div>
                 <div>
                   <span>接触 Episode</span>

@@ -228,6 +228,12 @@ class ReportGenerator:
                 body_periodic_speed_gap_kmh=record.body_periodic_speed_gap_kmh,
                 near_far_speed_drift_score=record.near_far_speed_drift_score,
                 geometry_status=record.geometry_status,
+                identity_posterior=record.identity_posterior,
+                body_periodic_consistency=record.body_periodic_consistency,
+                stride_consistency_score=record.stride_consistency_score,
+                support_zero_velocity_p95_mps=record.support_zero_velocity_p95_mps,
+                metric_geometry_gate_reason=record.metric_geometry_gate_reason,
+                joint_physics_posterior_v5=record.joint_physics_posterior_v5,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

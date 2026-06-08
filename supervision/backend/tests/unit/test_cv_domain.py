@@ -10,6 +10,7 @@ from domain.reports.generators import ReportGenerator
 from domain.speed.contact_state import PedestrianContactStateEstimator
 from domain.speed.ground_contact import GroundContactPoint
 from domain.speed.models import SpeedRecord
+from domain.tracking.integrity import TrackingIntegrityResult
 from domain.tracking.models import Track
 from domain.tracking.service import TrackingService
 from domain.zones.models import ZoneConfig
@@ -371,6 +372,32 @@ def test_video_processor_rejects_bev_inconsistent_observation() -> None:
         world_position=(80.0, 0.0),
         timestamp_sec=2.0,
     ) is False
+
+
+def test_identity_posterior_promotes_tracking_integrity_risk() -> None:
+    track = Track(
+        tracker_id=13,
+        class_id=0,
+        class_name="person",
+        confidence=0.8,
+        xyxy=[0.0, 0.0, 10.0, 30.0],
+        first_seen_frame=1,
+        last_seen_frame=2,
+        low_score_recovered=True,
+        association_quality=0.4,
+    )
+    integrity = TrackingIntegrityResult(
+        state="suspected_id_switch",
+        id_switch_risk=0.8,
+        speed_frozen=True,
+        rejection_reason="bev_prediction_jump",
+    )
+
+    posterior = SupervisionVideoProcessor._identity_posterior(track, integrity)
+
+    assert posterior["model_reference"] == "tracking_identity_posterior_v5"
+    assert posterior["id_switch_probability"] == pytest.approx(0.8)
+    assert posterior["low_score_recovery_ratio"] == pytest.approx(1.0)
 
 
 def test_video_processor_predicts_one_frame_gap_from_flow(

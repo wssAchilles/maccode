@@ -107,6 +107,12 @@ class SpeedRecord:
     body_periodic_speed_gap_kmh: float | None = None
     near_far_speed_drift_score: float | None = None
     geometry_status: str | None = None
+    identity_posterior: dict[str, object] | None = None
+    body_periodic_consistency: float | None = None
+    stride_consistency_score: float | None = None
+    support_zero_velocity_p95_mps: float | None = None
+    metric_geometry_gate_reason: str | None = None
+    joint_physics_posterior_v5: dict[str, object] | None = None
 
 
 @dataclass
