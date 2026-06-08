@@ -41,6 +41,7 @@ from domain.speed.nis_diagnostics import NISDiagnosticsAnalyzer
 from domain.speed.pedestrian_admission import assess_pedestrian_metric_admission
 from domain.speed.posterior import SpeedPosteriorAnalyzer
 from domain.speed.trajectory_reconstruction import TrajectoryReconstructor
+from domain.speed.vehicle_diagnostics import annotate_vehicle_speed_reports, source_commit
 from domain.speed.view_transformer import ViewTransformer
 from domain.tracking.integrity import TrackingIntegrityMonitor, TrackingIntegrityResult
 from domain.tracking.models import Track
@@ -414,9 +415,17 @@ class SupervisionVideoProcessor:
                     frame.image,
                     frame.timestamp_sec,
                 )
-            if latest_report is not None and self.trajectory_reconstruction_enabled:
-                self.frame_reports = self.trajectory_reconstructor.reconstruct_reports(
+            if latest_report is not None:
+                reconstruction_applied = False
+                if self.trajectory_reconstruction_enabled:
+                    self.frame_reports = self.trajectory_reconstructor.reconstruct_reports(
+                        self.frame_reports,
+                    )
+                    reconstruction_applied = True
+                self.frame_reports = annotate_vehicle_speed_reports(
                     self.frame_reports,
+                    reconstruction_applied=reconstruction_applied,
+                    source_commit_value=source_commit(Path(__file__).resolve().parents[3]),
                 )
                 latest_report = self.frame_reports[-1]
             if self._renderer is not None:

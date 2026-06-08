@@ -33,6 +33,7 @@ class ProcessingTask:
     calibration_source: str | None = None
     processed_video_path: str | None = None
     processed_video_url: str | None = None
+    speed_audit_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -102,6 +103,7 @@ class DemoRuntime:
             calibration_source=analysis_meta.get("calibration_source"),
             processed_video_path=analysis_meta.get("processed_video_path"),
             processed_video_url=analysis_meta.get("processed_video_url"),
+            speed_audit_path=analysis_meta.get("speed_audit_path"),
         )
         self._tasks[task.task_id] = task
         return task
@@ -205,6 +207,7 @@ class DemoRuntime:
                     "analysis_clip": analysis["clip"],
                     "calibration_source": analysis["calibration"]["source"],
                     "processed_video_path": analysis["processed_video"]["path"],
+                    "speed_audit_path": analysis["processed_video"].get("speed_audit_path"),
                     "processed_video_url": self._processed_video_url(
                         analysis["processed_video"]["path"],
                     ),

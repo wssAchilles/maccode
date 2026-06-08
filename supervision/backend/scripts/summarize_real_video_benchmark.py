@@ -338,6 +338,10 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "avg_physical_quantity_score": (
             mean(row["physical_quantity_score"] for row in rows) if rows else None
         ),
+        "vehicle_speed_aggregate": payload.get("summary", {}).get(
+            "vehicle_speed_aggregate",
+            {},
+        ),
         "rows": rows,
     }
 
@@ -358,16 +362,43 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"- Quality pass/warn/fail: {summary['quality_counts']}",
         f"- Average physical quantity score: {_fmt(summary.get('avg_physical_quantity_score'))}",
         "",
-        "## Scene Rows",
-        "",
-        "| Clip | Profile | Calib | Tracks | Speed tracks | Mean speed band | "
-        "Avg confidence | Avg uncertainty | Physics | People | Lights | "
-        "Congestion | Risk | FPS | Quality |",
-        (
-            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: "
-            "| ---: | --- | --- | ---: | --- |"
-        ),
     ]
+    vehicle_aggregate = summary.get("vehicle_speed_aggregate") or {}
+    if vehicle_aggregate:
+        lines.extend(
+            [
+                "## Vehicle Speed Aggregate",
+                "",
+                f"- Vehicle samples: {vehicle_aggregate.get('vehicle_track_samples', 0)}",
+                (
+                    "- Displayable vehicle samples: "
+                    f"{vehicle_aggregate.get('displayable_vehicle_track_samples', 0)}"
+                ),
+                (
+                    "- Vehicle display coverage: "
+                    f"{_fmt(vehicle_aggregate.get('vehicle_display_coverage'))}"
+                ),
+                (
+                    "- Dense-city acceptance: "
+                    f"{vehicle_aggregate.get('passes_dense_city_acceptance')}"
+                ),
+                f"- N/A by reason: {vehicle_aggregate.get('na_by_reason', {})}",
+                "",
+            ],
+        )
+    lines.extend(
+        [
+            "## Scene Rows",
+            "",
+            "| Clip | Profile | Calib | Tracks | Speed tracks | Mean speed band | "
+            "Avg confidence | Avg uncertainty | Physics | People | Lights | "
+            "Congestion | Risk | FPS | Quality |",
+            (
+                "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: "
+                "| ---: | --- | --- | ---: | --- |"
+            ),
+        ],
+    )
     for row in summary["rows"]:
         band = row["mean_speed_band_kmh"]
         speed_band = (

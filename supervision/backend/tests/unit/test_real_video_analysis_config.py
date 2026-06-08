@@ -19,6 +19,7 @@ from scripts.analyze_real_videos import (
     load_calibration_presets,
     profile_reuse_note,
     select_clips,
+    summarize,
 )
 
 
@@ -109,6 +110,37 @@ video_calibrations:
     assert video_preset.position_rmse_floor_m == 0.6
     assert video_preset.calibration_scale_uncertainty_pct == 3.5
     assert video_preset.notes == "surveyed YAML control points"
+
+
+def test_summarize_includes_vehicle_speed_aggregate() -> None:
+    summary = summarize(
+        [
+            {
+                "status": "ok",
+                "final_report": {
+                    "active_tracks": [
+                        {
+                            "speed_kmh": 40.0,
+                            "physics_valid": True,
+                            "speed_confidence": 0.8,
+                        },
+                    ],
+                },
+                "vehicle_speed_audit": {
+                    "clip": "063_dense_city.mp4",
+                    "vehicle_track_samples": 100,
+                    "displayable_vehicle_track_samples": 100,
+                    "vehicle_display_coverage": 1.0,
+                    "max_speed_by_class": {"car": 50.0},
+                },
+            },
+        ],
+    )
+
+    aggregate = summary["vehicle_speed_aggregate"]
+    assert aggregate["vehicle_track_samples"] == 100
+    assert aggregate["vehicle_display_coverage"] == 1.0
+    assert aggregate["passes_dense_city_acceptance"] is True
 
 
 def test_calibration_yaml_schema_version_tracks_v2_contract() -> None:

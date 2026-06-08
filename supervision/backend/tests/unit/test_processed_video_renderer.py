@@ -57,3 +57,38 @@ def test_renderer_omits_speed_text_for_static_infrastructure() -> None:
 
     assert label == "#3 traffic light"
     assert "N/A" not in label
+
+
+def test_renderer_hides_invalid_vehicle_speed_instead_of_na_stable() -> None:
+    track = {
+        "tracker_id": 63,
+        "class_id": 2,
+        "class_name": "car",
+        "speed_kmh": None,
+        "physics_valid": False,
+        "quality_label": "stable",
+        "vehicle_speed_display_state": "rejected_hidden",
+        "speed_display_hidden": True,
+    }
+
+    label = ProcessedVideoRenderer._track_label(track, 63)
+
+    assert label == "#63 car"
+    assert "N/A" not in label
+    assert "stable" not in label
+
+
+def test_renderer_prints_frozen_vehicle_speed_as_metric_speed() -> None:
+    track = {
+        "tracker_id": 64,
+        "class_id": 2,
+        "class_name": "car",
+        "speed_kmh": 42.25,
+        "physics_valid": True,
+        "speed_source": "frozen_last_valid",
+        "vehicle_speed_display_state": "frozen_last_valid",
+    }
+
+    label = ProcessedVideoRenderer._track_label(track, 64)
+
+    assert label == "#64 car 42.2 km/h"

@@ -38,6 +38,12 @@ from domain.calibration.vehicle_3d import (
     Vehicle3DPrior,
 )
 from domain.detection.service import DetectionService
+from domain.speed.vehicle_diagnostics import (
+    build_vehicle_speed_aggregate,
+    processed_video_needs_regeneration,
+    source_commit,
+    write_vehicle_speed_audit,
+)
 from domain.zones.models import ZoneConfig
 from infrastructure.cv.auto_calibration_extractor import FrameGeometryExtractor
 from infrastructure.cv.supervision_adapter import SupervisionRuntimeAdapter
@@ -955,16 +961,21 @@ def analyze_clip(
         if camera_profile is not None
         else confidence,
     )
+    rendered_video_path = (
+        processed_output_dir / f"{path.stem}_processed.mp4"
+        if processed_output_dir is not None
+        else None
+    )
+    commit = source_commit(Path(__file__).resolve().parents[2])
+    regenerated_due_to_stale_audit = processed_video_needs_regeneration(
+        rendered_video_path,
+        source_commit_value=commit,
+    )
     detector = DetectionService(
         model_path=model_path,
         device=device,
         confidence_threshold=confidence,
         allowed_class_ids=SEMANTIC_TRAFFIC_CLASS_IDS,
-    )
-    rendered_video_path = (
-        processed_output_dir / f"{path.stem}_processed.mp4"
-        if processed_output_dir is not None
-        else None
     )
     if processed_output_dir is not None:
         processed_output_dir.mkdir(parents=True, exist_ok=True)
@@ -1058,6 +1069,19 @@ def analyze_clip(
         min(max_frames, available_frames) if max_frames is not None else available_frames
     )
     sensitivity = build_sensitivity_report(report, scale_uncertainty_pct)
+    diagnostics_dir = (
+        processed_output_dir.parent / "vehicle_speed_diagnostics"
+        if processed_output_dir is not None
+        else None
+    )
+    vehicle_speed_audit = write_vehicle_speed_audit(
+        processor.frame_reports,
+        clip=path.name,
+        processed_video_path=rendered_video_path,
+        diagnostics_dir=diagnostics_dir,
+        source_commit_value=commit,
+        regenerated_due_to_stale_audit=regenerated_due_to_stale_audit,
+    )
     return {
         "clip": path.name,
         "metadata": metadata,
@@ -1106,7 +1130,9 @@ def analyze_clip(
         "processed_video": {
             "path": str(rendered_video_path) if rendered_video_path is not None else None,
             "filename": rendered_video_path.name if rendered_video_path is not None else None,
+            "speed_audit_path": vehicle_speed_audit.get("speed_audit_path"),
         },
+        "vehicle_speed_audit": vehicle_speed_audit,
         "sensitivity": sensitivity,
         "final_report": report
         | {
@@ -1228,6 +1254,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
         "failed_clips": len(results) - len(successful),
         "avg_speed_kmh": sum(speeds) / len(speeds) if speeds else None,
         "avg_speed_confidence": sum(confidences) / len(confidences) if confidences else None,
+        "vehicle_speed_aggregate": build_vehicle_speed_aggregate(successful),
         "mps_available": torch.backends.mps.is_available(),
         "mps_built": torch.backends.mps.is_built(),
     }

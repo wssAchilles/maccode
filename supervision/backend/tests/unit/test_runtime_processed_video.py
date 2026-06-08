@@ -23,7 +23,11 @@ def test_runtime_exposes_processed_mp4_url_for_real_video(
             "clip": "demo.mp4",
             "device": "cpu",
             "calibration": {"source": "video_manual_preset"},
-            "processed_video": {"path": str(processed_path), "filename": processed_path.name},
+            "processed_video": {
+                "path": str(processed_path),
+                "filename": processed_path.name,
+                "speed_audit_path": str(processed_path.with_name("demo_speed_audit.json")),
+            },
             "final_report": report,
             "frame_reports": [report],
         }
@@ -39,6 +43,7 @@ def test_runtime_exposes_processed_mp4_url_for_real_video(
     assert payload["processed_video_url"].startswith(
         "http://127.0.0.1:8000/media/processed_videos/demo_processed.mp4?v="
     )
+    assert payload["speed_audit_path"].endswith("demo_speed_audit.json")
 
 
 def test_runtime_real_video_analysis_uses_full_video_settings(

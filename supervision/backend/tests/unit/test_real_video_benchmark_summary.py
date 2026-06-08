@@ -55,7 +55,17 @@ def test_physical_quantity_coverage_audits_micro_macro_and_environment() -> None
 
 def test_benchmark_summary_renders_physical_quantity_matrix() -> None:
     payload = {
-        "summary": {"mps_available": False, "mps_built": True},
+        "summary": {
+            "mps_available": False,
+            "mps_built": True,
+            "vehicle_speed_aggregate": {
+                "vehicle_track_samples": 100,
+                "displayable_vehicle_track_samples": 99,
+                "vehicle_display_coverage": 0.99,
+                "passes_dense_city_acceptance": False,
+                "na_by_reason": {"warming_up_hidden": 1},
+            },
+        },
         "results": [
             {
                 "status": "ok",
@@ -116,12 +126,15 @@ def test_benchmark_summary_renders_physical_quantity_matrix() -> None:
 
     assert summary["quality_counts"] == {"pass": 1, "warn": 0, "fail": 0}
     assert summary["avg_physical_quantity_score"] == 1.0
+    assert summary["vehicle_speed_aggregate"]["vehicle_track_samples"] == 100
     assert summary["rows"][0]["physical_quantity_score"] == 1.0
     assert summary["rows"][0]["contact_outlier_ratio"] == 0.25
     assert summary["rows"][0]["optical_flow_low_inlier_ratio"] == 0.5
     assert summary["rows"][0]["weak_scale_track_count"] == 1
     assert summary["rows"][0]["weak_scale_mode"] is True
     assert "## Physical Quantity Coverage" in markdown
+    assert "## Vehicle Speed Aggregate" in markdown
+    assert "Vehicle display coverage" in markdown
     assert "Weak-scale tracks" in markdown
     assert "| clip.mp4 | yes | yes | yes | yes | yes | yes | yes |" in markdown
 

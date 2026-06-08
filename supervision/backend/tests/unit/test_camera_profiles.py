@@ -59,6 +59,23 @@ def test_pedestrian_profile_covers_same_camera_training_family_033_to_042() -> N
     ).profile_id == "pedestrian_high_view_camera"
 
 
+def test_dense_city_profile_covers_vehicle_regression_family_053_to_065() -> None:
+    profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
+
+    for clip_id in range(53, 66):
+        offset_sec = (clip_id - 53) * 30
+        clip_name = (
+            f"{clip_id:03d}_dense_city_traffic_4k_elevated_{offset_sec:04d}s_30s.mp4"
+        )
+
+        assert _match(clip_name, profiles).profile_id == "dense_city_4k_camera"
+
+    assert _match(
+        "063_dense_city_traffic_4k_elevated_0300s_30s.mp4",
+        profiles,
+    ).profile_id == "dense_city_4k_camera"
+
+
 def test_camera_profile_has_auto_calibration_candidates() -> None:
     profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
     profile = profiles["jackson_hole_signal_camera"]
