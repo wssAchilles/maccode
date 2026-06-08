@@ -11,6 +11,7 @@ if __package__ in {None, ""}:
 
 from domain.speed.pedestrian_training import (
     PEDESTRIAN_OUTPUT_DIR,
+    build_speed_jump_baseline_comparison,
     build_training_manifest,
     filter_manifest_to_existing_clips,
     generate_pseudo_labels,
@@ -61,6 +62,10 @@ def main() -> None:
     summary["skipped_source_missing_clips"] = [
         item.clip_name for item in skipped_source_missing
     ]
+    summary["speed_jump_baseline_comparison"] = build_speed_jump_baseline_comparison(
+        payloads,
+        manifest,
+    )
     summary["outputs"] = {name: str(path) for name, path in paths.items()}
     summary_path.write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))

@@ -5,6 +5,7 @@ import pickle
 import pytest
 from domain.speed.pedestrian_training import (
     build_benchmark_summary,
+    build_speed_jump_baseline_comparison,
     build_training_manifest,
     filter_manifest_to_existing_clips,
     generate_pseudo_labels,
@@ -87,9 +88,39 @@ def test_benchmark_summary_reports_clip_and_aggregate_metrics() -> None:
         "botsort_reid_offline",
     }
     assert summary["model_evaluation"]["speed_validity_model"]["coverage_policy"]
+    contact_baseline = summary["model_evaluation"]["contact_quality_model"]["baseline"]
+    assert contact_baseline["calibration_improved"] is True
+    assert contact_baseline["validation_accuracy_gain"] is not None
+    assert summary["manual_audit_proxy"]["train"]["source"] == (
+        "speed_quality_uncertain_or_rejected_or_id_switch_risk"
+    )
     assert summary["offline_world_motion_reference"]["fallback"] == (
         "existing_geometry_contact_pipeline"
     )
+
+
+def test_speed_jump_baseline_comparison_reports_validation_gate() -> None:
+    payloads = {
+        "040_pedestrian_crowd_high_view_0210s_30s.mp4": {
+            "frame_reports": [
+                {
+                    "model_comparison_benchmark": {
+                        "baseline": {"speed_jump_p95_kmh": 2.0},
+                        "optimized": {"speed_jump_p95_kmh": 1.5},
+                        "gates": {"speed_jump_p95_not_increased": True},
+                    },
+                },
+            ],
+        },
+    }
+
+    comparison = build_speed_jump_baseline_comparison(payloads, build_training_manifest())
+
+    validation = comparison["aggregate"]["validation"]
+    assert validation["reports"] == 1
+    assert validation["speed_jump_p95_not_increased"] is True
+    assert validation["baseline_speed_jump_p95_kmh"] == 2.0
+    assert validation["optimized_speed_jump_p95_kmh"] == 1.5
 
 
 def test_write_training_outputs_writes_plan_parquet_artifact(tmp_path) -> None:

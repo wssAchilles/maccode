@@ -265,6 +265,10 @@ def build_benchmark_summary(rows: list[PseudoLabelRow]) -> dict[str, Any]:
         },
         "tracker_variants": build_tracker_variant_benchmarks(rows),
         "model_evaluation": evaluate_quality_models(rows),
+        "manual_audit_proxy": {
+            split: _manual_audit_proxy(split_rows)
+            for split, split_rows in sorted(by_split.items())
+        },
         "heavy_model_policy": (
             "WHAM/GLAMR/SLAHMR references are offline-only audit signals and are "
             "not loaded in the realtime FastAPI path."
@@ -302,20 +306,36 @@ def evaluate_quality_models(rows: list[PseudoLabelRow]) -> dict[str, Any]:
         }
     contact_model = train_contact_quality_model(train_rows)
     speed_model = train_speed_validity_model(train_rows)
+    contact_train_metrics = _binary_model_metrics(
+        contact_model,
+        train_rows,
+        positive_field="contact_quality_label",
+        positive_value="stance",
+    )
+    contact_validation_metrics = _binary_model_metrics(
+        contact_model,
+        validation_rows,
+        positive_field="contact_quality_label",
+        positive_value="stance",
+    )
+    contact_baseline_train = _contact_score_baseline_metrics(train_rows)
+    contact_baseline_validation = _contact_score_baseline_metrics(validation_rows)
     return {
         "contact_quality_model": {
-            "train": _binary_model_metrics(
-                contact_model,
-                train_rows,
-                positive_field="contact_quality_label",
-                positive_value="stance",
-            ),
-            "validation": _binary_model_metrics(
-                contact_model,
-                validation_rows,
-                positive_field="contact_quality_label",
-                positive_value="stance",
-            ),
+            "train": contact_train_metrics,
+            "validation": contact_validation_metrics,
+            "baseline": {
+                "train": contact_baseline_train,
+                "validation": contact_baseline_validation,
+                "validation_accuracy_gain": _metric_gain(
+                    contact_validation_metrics.get("accuracy"),
+                    contact_baseline_validation.get("accuracy"),
+                ),
+                "calibration_improved": _metric_not_lower(
+                    contact_validation_metrics.get("accuracy"),
+                    contact_baseline_validation.get("accuracy"),
+                ),
+            },
         },
         "speed_validity_model": {
             "train": _binary_model_metrics(
@@ -345,6 +365,37 @@ def offline_world_motion_reference_status() -> dict[str, object]:
         "fallback": "existing_geometry_contact_pipeline",
         "models": ["WHAM", "GLAMR", "SLAHMR"],
         "realtime_path": "not_loaded",
+    }
+
+
+def build_speed_jump_baseline_comparison(
+    payloads: dict[str, dict[str, Any]],
+    manifest: list[PedestrianClipManifestItem] | None = None,
+) -> dict[str, Any]:
+    split_by_clip = {item.clip_name: item.split for item in manifest or build_training_manifest()}
+    by_split: dict[str, list[dict[str, Any]]] = {}
+    by_clip: dict[str, list[dict[str, Any]]] = {}
+    for clip, payload in payloads.items():
+        frame_reports = payload.get("frame_reports")
+        if not isinstance(frame_reports, list):
+            continue
+        comparisons = [
+            report.get("model_comparison_benchmark")
+            for report in frame_reports
+            if isinstance(report, dict)
+            and isinstance(report.get("model_comparison_benchmark"), dict)
+        ]
+        by_clip[clip] = comparisons
+        by_split.setdefault(split_by_clip.get(clip, "unknown"), []).extend(comparisons)
+    return {
+        "by_clip": {
+            clip: _summarize_model_comparisons(comparisons)
+            for clip, comparisons in sorted(by_clip.items())
+        },
+        "aggregate": {
+            split: _summarize_model_comparisons(comparisons)
+            for split, comparisons in sorted(by_split.items())
+        },
     }
 
 
@@ -491,6 +542,69 @@ def _binary_model_metrics(
         "accuracy": correct / len(rows),
         "positive_mean_score": mean(positives) if positives else None,
         "negative_mean_score": mean(negatives) if negatives else None,
+    }
+
+
+def _contact_score_baseline_metrics(rows: list[PseudoLabelRow]) -> dict[str, float | int | None]:
+    if not rows:
+        return {
+            "rows": 0,
+            "accuracy": None,
+            "threshold": 0.72,
+        }
+    threshold = 0.72
+    correct = sum(
+        (row.contact_quality_score >= threshold) == (row.contact_quality_label == "stance")
+        for row in rows
+    )
+    return {
+        "rows": len(rows),
+        "accuracy": correct / len(rows),
+        "threshold": threshold,
+    }
+
+
+def _metric_gain(model_value: object, baseline_value: object) -> float | None:
+    model = _optional_float(model_value)
+    baseline = _optional_float(baseline_value)
+    if model is None or baseline is None:
+        return None
+    return float(model - baseline)
+
+
+def _metric_not_lower(model_value: object, baseline_value: object) -> bool | None:
+    gain = _metric_gain(model_value, baseline_value)
+    return None if gain is None else bool(gain >= -1e-9)
+
+
+def _summarize_model_comparisons(comparisons: list[dict[str, Any]]) -> dict[str, Any]:
+    speed_gates = [
+        comparison.get("gates", {}).get("speed_jump_p95_not_increased")
+        for comparison in comparisons
+        if isinstance(comparison.get("gates"), dict)
+        and comparison.get("gates", {}).get("speed_jump_p95_not_increased") is not None
+    ]
+    baseline_jumps = [
+        value
+        for comparison in comparisons
+        if isinstance(comparison.get("baseline"), dict)
+        for value in [_optional_float(comparison["baseline"].get("speed_jump_p95_kmh"))]
+        if value is not None
+    ]
+    optimized_jumps = [
+        value
+        for comparison in comparisons
+        if isinstance(comparison.get("optimized"), dict)
+        for value in [_optional_float(comparison["optimized"].get("speed_jump_p95_kmh"))]
+        if value is not None
+    ]
+    return {
+        "reports": len(comparisons),
+        "speed_jump_p95_not_increased": all(bool(gate) for gate in speed_gates)
+        if speed_gates
+        else None,
+        "baseline_speed_jump_p95_kmh": _percentile(baseline_jumps, 95.0),
+        "optimized_speed_jump_p95_kmh": _percentile(optimized_jumps, 95.0),
     }
 
 
@@ -803,6 +917,22 @@ def _summarize_rows(rows: list[PseudoLabelRow]) -> dict[str, Any]:
         "speed_quality_counts": _counts(row.speed_quality_label for row in rows),
         "contact_quality_counts": _counts(row.contact_quality_label for row in rows),
         "id_continuity_counts": _counts(row.id_continuity_label for row in rows),
+    }
+
+
+def _manual_audit_proxy(rows: list[PseudoLabelRow]) -> dict[str, Any]:
+    candidates = [
+        row
+        for row in rows
+        if row.speed_quality_label in {"uncertain", "rejected"}
+        or row.id_continuity_label == "switch_risk"
+    ]
+    return {
+        "rows": len(rows),
+        "obvious_error_candidate_count": len(candidates),
+        "obvious_error_candidate_ratio": len(candidates) / len(rows) if rows else 0.0,
+        "acceptance_max_ratio": 0.02,
+        "source": "speed_quality_uncertain_or_rejected_or_id_switch_risk",
     }
 
 

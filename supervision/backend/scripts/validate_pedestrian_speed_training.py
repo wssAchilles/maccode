@@ -82,6 +82,33 @@ def validate_summary(
                     failures.append(
                         f"{clip_name} coverage {coverage} below {clip_033_coverage_min:.3f}",
                     )
+    speed_jump_comparison = payload.get("speed_jump_baseline_comparison")
+    if isinstance(speed_jump_comparison, dict):
+        aggregate_comparison = speed_jump_comparison.get("aggregate")
+        if isinstance(aggregate_comparison, dict):
+            validation_comparison = aggregate_comparison.get("validation")
+            if isinstance(validation_comparison, dict):
+                gate = validation_comparison.get("speed_jump_p95_not_increased")
+                if gate is not True:
+                    failures.append("validation speed jump p95 increased above baseline")
+    model_evaluation = payload.get("model_evaluation")
+    if isinstance(model_evaluation, dict):
+        contact_model = model_evaluation.get("contact_quality_model")
+        if isinstance(contact_model, dict):
+            baseline = contact_model.get("baseline")
+            if isinstance(baseline, dict) and baseline.get("calibration_improved") is False:
+                failures.append("contact quality model did not improve validation calibration")
+    manual_audit_proxy = payload.get("manual_audit_proxy")
+    if isinstance(manual_audit_proxy, dict):
+        for split, split_proxy in manual_audit_proxy.items():
+            if not isinstance(split_proxy, dict):
+                continue
+            ratio = _optional_float(split_proxy.get("obvious_error_candidate_ratio"))
+            maximum = _optional_float(split_proxy.get("acceptance_max_ratio")) or 0.02
+            if ratio is not None and ratio > maximum:
+                failures.append(
+                    f"{split} obvious error candidate ratio {ratio:.4f} exceeds {maximum:.4f}",
+                )
     return failures
 
 
