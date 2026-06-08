@@ -253,7 +253,7 @@ def test_reconstructed_pedestrian_speed_is_capped_to_display_range() -> None:
     assert result["confidence_rejection_reason"] is None
 
 
-def test_stable_reconstructed_vehicle_speed_keeps_low_physics_confidence_invalid() -> None:
+def test_stable_reconstructed_vehicle_speed_with_low_physics_confidence_is_displayable() -> None:
     reconstructor = TrajectoryReconstructor()
     reports = []
     for frame_index in range(60):
@@ -288,8 +288,126 @@ def test_stable_reconstructed_vehicle_speed_keeps_low_physics_confidence_invalid
 
     assert track["quality_label"] == "stable"
     assert track["physics_confidence"] < 0.2
-    assert track["physics_valid"] is False
-    assert track["confidence_rejection_reason"] == "dynamics_confidence"
+    assert track["physics_valid"] is True
+    assert track["confidence_rejection_reason"] is None
+    assert track["speed_source"] == "fixed_lag_rts_refined"
+    assert track["speed_validity_score"] > 0.0
+
+
+def test_reconstructed_vehicle_speed_above_hard_profile_limit_stays_invalid() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=12,
+            timestamp_sec=0.48,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=190.0,
+            speed_confidence=0.72,
+            speed_uncertainty_kmh=4.0,
+            calibration_confidence=0.9,
+            contact_confidence=0.8,
+            tracking_confidence=0.9,
+            occlusion_confidence=0.9,
+        ),
+        2,
+        1.0,
+        2.0,
+        velocity=np.array([52.8, 0.0]),
+        speed_kmh=190.0,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.95,
+            speed_cv=0.02,
+            max_speed_jump_kmh=1.0,
+            speed_jump_p95_kmh=1.0,
+            acceleration_p95_mps2=1.0,
+            jerk_p95_mps3=1.0,
+            stability_label="stable",
+        ),
+    )
+
+    assert result["speed_kmh"] == pytest.approx(190.0)
+    assert result["physics_valid"] is False
+    assert result["rejection_reason"] == "class_speed_limit"
+    assert result["confidence_rejection_reason"] is None
+
+
+def test_stable_vehicle_rts_posterior_recovers_low_realtime_confidence() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=42,
+            timestamp_sec=1.68,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=None,
+            speed_confidence=0.05,
+            speed_uncertainty_kmh=42.0,
+            calibration_confidence=0.55,
+            contact_confidence=0.612,
+            tracking_confidence=1.0,
+            occlusion_confidence=1.0,
+            reconstructed=True,
+        ),
+        2,
+        1.0,
+        2.0,
+        velocity=np.array([8.3333, 0.0]),
+        speed_kmh=30.0,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.96,
+            speed_cv=0.04,
+            max_speed_jump_kmh=2.0,
+            speed_jump_p95_kmh=1.5,
+            acceleration_p95_mps2=1.0,
+            jerk_p95_mps3=1.0,
+            stability_label="stable",
+        ),
+    )
+
+    assert result["speed_confidence"] > 0.45
+    assert result["speed_uncertainty_kmh"] < 5.0
+    assert result["physics_valid"] is True
+    assert result["speed_source"] == "fixed_lag_rts_backfill"
+
+
+def test_low_speed_vehicle_crawl_uses_absolute_jitter_gate() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=9,
+            timestamp_sec=0.36,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=None,
+            speed_confidence=0.05,
+            speed_uncertainty_kmh=60.9,
+            calibration_confidence=0.55,
+            contact_confidence=0.612,
+            tracking_confidence=1.0,
+            occlusion_confidence=1.0,
+            reconstructed=True,
+        ),
+        2,
+        1.0,
+        2.0,
+        velocity=np.array([0.7, 0.0]),
+        speed_kmh=2.52,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.43,
+            speed_cv=0.5,
+            max_speed_jump_kmh=0.1,
+            speed_jump_p95_kmh=0.1,
+            acceleration_p95_mps2=0.8,
+            jerk_p95_mps3=1.0,
+            stability_label="unstable_observation",
+        ),
+    )
+
+    assert result["speed_uncertainty_kmh"] < 4.0
+    assert result["physics_valid"] is True
+    assert result["quality_label"] == "variable"
+    assert result["rejection_reason"] is None
 
 
 def test_short_two_frame_pedestrian_track_gets_bootstrap_speed() -> None:

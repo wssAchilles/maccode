@@ -712,11 +712,14 @@ class TrajectoryReconstructor:
         speed_confidence = TrajectoryReconstructor._reconstructed_speed_confidence(
             point,
             metrics,
+            class_id,
+            display_speed_kmh,
         )
         speed_uncertainty_kmh = TrajectoryReconstructor._reconstructed_uncertainty(
             point,
             display_speed_kmh,
             metrics,
+            class_id,
         )
         speed_interval = [
             float(max(0.0, display_speed_kmh - speed_uncertainty_kmh)),
@@ -752,6 +755,12 @@ class TrajectoryReconstructor:
             if physics_valid and initial_quality_label == "low_confidence"
             else initial_quality_label
         )
+        rejection_reason = TrajectoryReconstructor._reconstructed_rejection_reason(
+            class_id,
+            display_speed_kmh,
+            physics_valid,
+            metrics.stability_label,
+        )
         return {
             "report_index": float(point.report_index),
             "raw_speed_kmh": point.raw_speed_kmh,
@@ -768,12 +777,7 @@ class TrajectoryReconstructor:
             "acceleration_mps2": acceleration,
             "physics_valid": physics_valid,
             "quality_label": quality_label,
-            "rejection_reason": (
-                "unstable_observation"
-                if not physics_valid
-                and metrics.stability_label == "unstable_observation"
-                else None
-            ),
+            "rejection_reason": rejection_reason,
             "speed_stability_score": metrics.speed_stability_score,
             "speed_cv": metrics.speed_cv,
             "max_speed_jump_kmh": metrics.max_speed_jump_kmh,
@@ -790,9 +794,24 @@ class TrajectoryReconstructor:
             "dynamics_confidence": dynamics_confidence,
             "confidence_rejection_reason": (
                 "dynamics_confidence"
-                if not physics_valid and physics_confidence < 0.4
+                if (
+                    not physics_valid
+                    and rejection_reason is None
+                    and physics_confidence < 0.4
+                )
                 else None
             ),
+            "speed_source": "fixed_lag_rts_backfill"
+            if point.reconstructed or point.raw_speed_kmh is None
+            else "fixed_lag_rts_refined",
+            "speed_validity_score": TrajectoryReconstructor._speed_validity_score(
+                speed_confidence,
+                speed_uncertainty_kmh,
+                display_speed_kmh,
+                physics_confidence,
+                physics_valid,
+            ),
+            "fixed_lag_backfilled": bool(point.reconstructed or point.raw_speed_kmh is None),
         }
 
     @staticmethod
@@ -805,10 +824,22 @@ class TrajectoryReconstructor:
         speed_kmh: float,
         physics_confidence: float,
     ) -> bool:
+        profile = MotionRouter().route_class(class_id)
+        hard_max_speed = profile.hard_max_speed_kmh or profile.max_speed_kmh
+        if not profile.should_estimate_speed:
+            return False
+        if speed_kmh < 0.0 or speed_kmh > hard_max_speed:
+            return False
         if physics_confidence >= 0.2:
             return True
         if class_id != 0:
-            return False
+            return TrajectoryReconstructor._vehicle_reconstructed_physics_valid(
+                quality_label=quality_label,
+                speed_confidence=speed_confidence,
+                speed_uncertainty_kmh=speed_uncertainty_kmh,
+                speed_kmh=speed_kmh,
+                max_speed_kmh=profile.max_speed_kmh,
+            )
         if 0.0 <= speed_kmh <= 18.0:
             return bool(
                 speed_confidence >= 0.18
@@ -835,6 +866,71 @@ class TrajectoryReconstructor:
                 and 0.2 <= speed_kmh <= 18.0
             )
         return False
+
+    @staticmethod
+    def _reconstructed_rejection_reason(
+        class_id: int,
+        speed_kmh: float,
+        physics_valid: bool,
+        stability_label: str,
+    ) -> str | None:
+        if physics_valid:
+            return None
+        profile = MotionRouter().route_class(class_id)
+        hard_max_speed = profile.hard_max_speed_kmh or profile.max_speed_kmh
+        if speed_kmh > hard_max_speed:
+            return "class_speed_limit"
+        if stability_label == "unstable_observation":
+            return "unstable_observation"
+        return None
+
+    @staticmethod
+    def _vehicle_reconstructed_physics_valid(
+        *,
+        quality_label: str,
+        speed_confidence: float,
+        speed_uncertainty_kmh: float,
+        speed_kmh: float,
+        max_speed_kmh: float,
+    ) -> bool:
+        relative_uncertainty = speed_uncertainty_kmh / max(abs(speed_kmh), 1.0)
+        uncertainty_cap = max(10.0, max_speed_kmh * 0.35)
+        if quality_label == "stable":
+            return bool(
+                speed_confidence >= 0.24
+                and speed_uncertainty_kmh <= uncertainty_cap
+                and (
+                    relative_uncertainty <= 0.65
+                    or speed_uncertainty_kmh <= 8.0
+                )
+            )
+        if quality_label == "low_confidence":
+            return bool(
+                speed_confidence >= 0.20
+                and speed_uncertainty_kmh <= min(uncertainty_cap, 18.0)
+                and (
+                    relative_uncertainty <= 0.85
+                    or speed_uncertainty_kmh <= 10.0
+                )
+            )
+        return False
+
+    @staticmethod
+    def _speed_validity_score(
+        speed_confidence: float,
+        speed_uncertainty_kmh: float,
+        speed_kmh: float,
+        physics_confidence: float,
+        physics_valid: bool,
+    ) -> float:
+        uncertainty_penalty = min(
+            0.75,
+            speed_uncertainty_kmh / max(abs(speed_kmh), 12.0),
+        )
+        score = max(speed_confidence, physics_confidence) * (1.0 - uncertainty_penalty)
+        if not physics_valid:
+            score *= 0.35
+        return float(max(0.0, min(1.0, score)))
 
     @staticmethod
     def _display_speed_kmh(class_id: int, speed_kmh: float) -> float:
@@ -913,10 +1009,23 @@ class TrajectoryReconstructor:
     def _reconstructed_speed_confidence(
         point: TrajectoryPoint,
         metrics: SpeedStabilityMetrics,
+        class_id: int,
+        speed_kmh: float,
     ) -> float:
         base = point.speed_confidence if point.speed_confidence is not None else 0.72
         base = max(0.05, min(1.0, float(base)))
         stability = max(0.05, min(1.0, metrics.speed_stability_score))
+        if (
+            class_id in MotionRouter.VEHICLE_CLASS_IDS
+            and (
+                metrics.stability_label != "unstable_observation"
+                or TrajectoryReconstructor._vehicle_low_speed_crawl(
+                    speed_kmh=speed_kmh,
+                    metrics=metrics,
+                )
+            )
+        ):
+            base = max(base, min(0.72, 0.30 + stability * 0.42))
         confidence = min(base, 0.35 + stability * 0.65)
         if metrics.stability_label == "unstable_observation":
             confidence *= 0.62
@@ -929,18 +1038,53 @@ class TrajectoryReconstructor:
         point: TrajectoryPoint,
         speed_kmh: float,
         metrics: SpeedStabilityMetrics,
+        class_id: int,
     ) -> float:
+        cv_term = (metrics.speed_cv or 0.0) * max(abs(speed_kmh), 1.0)
+        jump_term = (metrics.max_speed_jump_kmh or 0.0) * 0.25
         if point.speed_uncertainty_kmh is not None:
             base = float(point.speed_uncertainty_kmh)
         else:
-            cv_term = (metrics.speed_cv or 0.0) * max(abs(speed_kmh), 1.0)
-            jump_term = (metrics.max_speed_jump_kmh or 0.0) * 0.25
             base = max(0.5, cv_term, jump_term)
-        if metrics.stability_label == "unstable_observation":
+        if (
+            class_id in MotionRouter.VEHICLE_CLASS_IDS
+            and (
+                metrics.stability_label != "unstable_observation"
+                or TrajectoryReconstructor._vehicle_low_speed_crawl(
+                    speed_kmh=speed_kmh,
+                    metrics=metrics,
+                )
+            )
+        ):
+            rts_posterior = max(2.0, cv_term, jump_term, abs(speed_kmh) * 0.08)
+            base = min(base, rts_posterior)
+        if (
+            metrics.stability_label == "unstable_observation"
+            and not (
+                class_id in MotionRouter.VEHICLE_CLASS_IDS
+                and TrajectoryReconstructor._vehicle_low_speed_crawl(
+                    speed_kmh=speed_kmh,
+                    metrics=metrics,
+                )
+            )
+        ):
             base *= 1.45
         if point.reconstructed:
             base += 1.0
         return float(max(0.1, base))
+
+    @staticmethod
+    def _vehicle_low_speed_crawl(
+        *,
+        speed_kmh: float | None,
+        metrics: SpeedStabilityMetrics,
+    ) -> bool:
+        speed_gate = speed_kmh is None or speed_kmh <= 12.0
+        return bool(
+            speed_gate
+            and (metrics.max_speed_jump_kmh or 0.0) <= 3.0
+            and (metrics.acceleration_p95_mps2 or 0.0) <= 2.5
+        )
 
     @staticmethod
     def _empty_reconstruction(

@@ -42,3 +42,18 @@ def test_renderer_does_not_print_invalid_frozen_speed_as_metric_speed() -> None:
     assert "15.5 km/h" not in label
     assert "N/A" in label
     assert "geometry_invalid" in label
+
+
+def test_renderer_omits_speed_text_for_static_infrastructure() -> None:
+    track = {
+        "tracker_id": 3,
+        "class_id": 9,
+        "class_name": "traffic light",
+        "speed_kmh": None,
+        "physics_valid": False,
+    }
+
+    label = ProcessedVideoRenderer._track_label(track, 3)
+
+    assert label == "#3 traffic light"
+    assert "N/A" not in label

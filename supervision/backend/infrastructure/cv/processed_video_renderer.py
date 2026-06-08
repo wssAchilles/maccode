@@ -7,6 +7,8 @@ import numpy as np
 
 
 class ProcessedVideoRenderer:
+    STATIC_INFRASTRUCTURE_CLASS_IDS = {9, 10, 11}
+
     def __init__(
         self,
         output_path: Path,
@@ -128,6 +130,8 @@ class ProcessedVideoRenderer:
     @staticmethod
     def _track_label(track: dict[str, Any], tracker_id: int) -> str:
         class_name = str(track.get("class_name", "object"))
+        if int(track.get("class_id", -1)) in ProcessedVideoRenderer.STATIC_INFRASTRUCTURE_CLASS_IDS:
+            return f"#{tracker_id} {class_name}"
         speed = track.get("speed_kmh")
         physics_valid = bool(track.get("physics_valid", True))
         if speed is None or not physics_valid:
