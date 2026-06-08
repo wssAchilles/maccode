@@ -41,6 +41,10 @@ class PseudoLabelRow:
     bbox_width_px: float
     bbox_height_px: float
     detection_confidence: float
+    pose_ankle_visibility: float | None
+    pose_foot_visibility: float | None
+    bbox_overlap_ratio: float
+    occlusion_score: float
     speed_kmh: float | None
     speed_uncertainty_kmh: float | None
     speed_confidence: float | None
@@ -177,6 +181,10 @@ def generate_pseudo_labels(
                     bbox_width_px=_bbox_width(track),
                     bbox_height_px=_bbox_height(track),
                     detection_confidence=float(track.get("confidence") or 0.0),
+                    pose_ankle_visibility=_pose_ankle_visibility(track),
+                    pose_foot_visibility=_pose_foot_visibility(track),
+                    bbox_overlap_ratio=_bbox_overlap_ratio(track, active_tracks),
+                    occlusion_score=_occlusion_score(track),
                     speed_kmh=speed_kmh,
                     speed_uncertainty_kmh=_optional_float(track.get("speed_uncertainty_kmh")),
                     speed_confidence=_optional_float(track.get("speed_confidence")),
@@ -213,6 +221,10 @@ def train_contact_quality_model(rows: list[PseudoLabelRow]) -> LinearQualityMode
         "bbox_width_px",
         "bbox_height_px",
         "detection_confidence",
+        "pose_ankle_visibility",
+        "pose_foot_visibility",
+        "bbox_overlap_ratio",
+        "occlusion_score",
         "optical_flow_inlier_ratio",
         "contact_fusion_confidence",
         "measurement_confidence",
@@ -524,6 +536,132 @@ def _bbox_height(track: dict[str, Any]) -> float:
     if isinstance(xyxy, list) and len(xyxy) >= 4:
         return max(0.0, float(xyxy[3]) - float(xyxy[1]))
     return 0.0
+
+
+def _bbox_overlap_ratio(track: dict[str, Any], active_tracks: list[Any]) -> float:
+    box = _xyxy(track)
+    if box is None:
+        return 0.0
+    area = _box_area(box)
+    if area <= 0.0:
+        return 0.0
+    max_overlap = 0.0
+    tracker_id = int(track.get("tracker_id") or -1)
+    for other in active_tracks:
+        if not _is_person_track(other):
+            continue
+        if int(other.get("tracker_id") or -1) == tracker_id:
+            continue
+        other_box = _xyxy(other)
+        if other_box is None:
+            continue
+        intersection = _box_intersection_area(box, other_box)
+        other_area = _box_area(other_box)
+        denominator = max(min(area, other_area), 1e-6)
+        max_overlap = max(max_overlap, intersection / denominator)
+    return float(max(0.0, min(1.0, max_overlap)))
+
+
+def _xyxy(track: dict[str, Any]) -> tuple[float, float, float, float] | None:
+    xyxy = track.get("xyxy")
+    if isinstance(xyxy, list | tuple) and len(xyxy) >= 4:
+        return (float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3]))
+    return None
+
+
+def _box_area(box: tuple[float, float, float, float]) -> float:
+    return max(0.0, box[2] - box[0]) * max(0.0, box[3] - box[1])
+
+
+def _box_intersection_area(
+    left: tuple[float, float, float, float],
+    right: tuple[float, float, float, float],
+) -> float:
+    x0 = max(left[0], right[0])
+    y0 = max(left[1], right[1])
+    x1 = min(left[2], right[2])
+    y1 = min(left[3], right[3])
+    return max(0.0, x1 - x0) * max(0.0, y1 - y0)
+
+
+def _occlusion_score(track: dict[str, Any]) -> float:
+    confidence = _optional_float(track.get("occlusion_confidence"))
+    if confidence is None:
+        return 0.0
+    return float(max(0.0, min(1.0, 1.0 - confidence)))
+
+
+def _pose_ankle_visibility(track: dict[str, Any]) -> float | None:
+    return _pose_visibility(track, ("left_ankle", "right_ankle"), (15, 16))
+
+
+def _pose_foot_visibility(track: dict[str, Any]) -> float | None:
+    return _pose_visibility(
+        track,
+        ("left_foot", "right_foot", "left_heel", "right_heel", "left_toe", "right_toe"),
+        (15, 16, 17, 18, 19, 20),
+    )
+
+
+def _pose_visibility(
+    track: dict[str, Any],
+    names: tuple[str, ...],
+    indices: tuple[int, ...],
+) -> float | None:
+    keyed = _visibility_from_named_keypoints(track.get("pose_keypoints"), names)
+    if keyed is not None:
+        return keyed
+    keyed = _visibility_from_named_keypoints(track.get("keypoints"), names)
+    if keyed is not None:
+        return keyed
+    indexed = _visibility_from_indexed_keypoints(track.get("pose_keypoints"), indices)
+    if indexed is not None:
+        return indexed
+    return _visibility_from_indexed_keypoints(track.get("keypoints"), indices)
+
+
+def _visibility_from_named_keypoints(value: object, names: tuple[str, ...]) -> float | None:
+    if not isinstance(value, dict):
+        return None
+    scores: list[float] = []
+    for name in names:
+        keypoint = value.get(name)
+        if isinstance(keypoint, dict):
+            score = _optional_float(
+                keypoint.get("visibility")
+                if keypoint.get("visibility") is not None
+                else keypoint.get("confidence"),
+            )
+        elif isinstance(keypoint, list | tuple) and len(keypoint) >= 3:
+            score = _optional_float(keypoint[2])
+        else:
+            score = _optional_float(keypoint)
+        if score is not None:
+            scores.append(max(0.0, min(1.0, score)))
+    return mean(scores) if scores else None
+
+
+def _visibility_from_indexed_keypoints(value: object, indices: tuple[int, ...]) -> float | None:
+    if not isinstance(value, list | tuple):
+        return None
+    scores: list[float] = []
+    for index in indices:
+        if index >= len(value):
+            continue
+        keypoint = value[index]
+        if isinstance(keypoint, dict):
+            score = _optional_float(
+                keypoint.get("visibility")
+                if keypoint.get("visibility") is not None
+                else keypoint.get("confidence"),
+            )
+        elif isinstance(keypoint, list | tuple) and len(keypoint) >= 3:
+            score = _optional_float(keypoint[2])
+        else:
+            score = _optional_float(keypoint)
+        if score is not None:
+            scores.append(max(0.0, min(1.0, score)))
+    return mean(scores) if scores else None
 
 
 def _contact_quality_score(track: dict[str, Any]) -> float:

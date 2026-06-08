@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pickle
 
+import pytest
 from domain.speed.pedestrian_training import (
     build_benchmark_summary,
     build_training_manifest,
@@ -43,12 +44,21 @@ def test_generate_pseudo_labels_contains_contact_speed_and_identity_labels() -> 
     assert {row.id_continuity_label for row in rows} >= {"fragmented", "switch_risk"}
     assert all(row.clip.startswith(("033_", "040_")) for row in rows)
     assert any(row.speed_source == "fixed_lag_rts_backfill" for row in rows)
+    assert any(row.pose_ankle_visibility == pytest.approx(0.85) for row in rows)
+    assert any(row.pose_foot_visibility == pytest.approx(0.6) for row in rows)
+    assert any(row.bbox_overlap_ratio > 0.0 for row in rows)
+    assert any(row.occlusion_score == 0.25 for row in rows)
 
 
 def test_quality_models_score_clean_rows_higher_than_rejected_rows() -> None:
     rows = generate_pseudo_labels(_payloads(), build_training_manifest())
     contact_model = train_contact_quality_model(rows)
     speed_model = train_speed_validity_model(rows)
+
+    assert "pose_ankle_visibility" in contact_model.feature_names
+    assert "pose_foot_visibility" in contact_model.feature_names
+    assert "bbox_overlap_ratio" in contact_model.feature_names
+    assert "occlusion_score" in contact_model.feature_names
 
     clean = next(row for row in rows if row.speed_quality_label == "valid")
     rejected = next(row for row in rows if row.speed_quality_label == "rejected")
@@ -82,12 +92,13 @@ def test_benchmark_summary_reports_clip_and_aggregate_metrics() -> None:
     )
 
 
-def test_write_training_outputs_uses_jsonl_without_pyarrow(tmp_path) -> None:
+def test_write_training_outputs_writes_plan_parquet_artifact(tmp_path) -> None:
     rows = generate_pseudo_labels(_payloads(), build_training_manifest())
     paths = write_training_outputs(rows, tmp_path, build_training_manifest())
 
     assert paths["manifest"].name == "train_manifest.json"
-    assert paths["pseudo_label_format"] in {"jsonl", "parquet"}
+    assert paths["pseudo_labels"].name == "pseudo_labels.parquet"
+    assert paths["pseudo_label_format"] == "parquet"
     assert paths["manual_audit_samples"].exists()
     assert paths["benchmark_summary"].exists()
 
@@ -105,7 +116,12 @@ def _payloads() -> dict[str, dict[str, object]]:
                     1,
                     [
                         _track(7, speed=4.8, contact_state="double_support"),
-                        _track(8, speed=None, measurement_policy="reject"),
+                        _track(
+                            8,
+                            speed=None,
+                            measurement_policy="reject",
+                            xyxy=[30.0, 40.0, 60.0, 130.0],
+                        ),
                     ],
                 ),
                 _report(
@@ -163,18 +179,26 @@ def _track(
     reconstructed: bool = False,
     id_switch_risk: float | None = None,
     association_rejection_reason: str | None = None,
+    xyxy: list[float] | None = None,
 ) -> dict[str, object]:
     return {
         "tracker_id": tracker_id,
         "class_id": 0,
         "class_name": "person",
         "confidence": 0.8,
-        "xyxy": [10.0, 20.0, 50.0, 140.0],
+        "xyxy": xyxy or [10.0, 20.0, 50.0, 140.0],
+        "pose_keypoints": {
+            "left_ankle": {"confidence": 0.9},
+            "right_ankle": {"confidence": 0.8},
+            "left_foot": {"confidence": 0.7},
+            "right_foot": {"confidence": 0.5},
+        },
         "speed_kmh": speed,
         "speed_uncertainty_kmh": 1.0 if speed is not None else None,
         "speed_confidence": 0.75 if physics_valid else 0.2,
         "physics_valid": physics_valid,
         "track_age_frames": 12,
+        "occlusion_confidence": 0.75,
         "acceleration_mps2": 0.1,
         "measurement_policy": measurement_policy,
         "measurement_confidence": 0.8 if measurement_policy == "update" else 0.1,
