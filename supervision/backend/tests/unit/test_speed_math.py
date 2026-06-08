@@ -169,6 +169,75 @@ def test_metric_geometry_posterior_flags_wide_homography_uncertainty() -> None:
     assert posterior.to_diagnostics()["model_reference"] == "metric_geometry_posterior_v5"
 
 
+def test_metric_geometry_posterior_evaluates_point_level_gate() -> None:
+    service = CalibrationService()
+    plane_set = service.build_metric_plane_set(
+        metric_planes=[
+            {
+                "plane_id": "corridor",
+                "plane_kind": "person_corridor",
+                "trusted": True,
+                "pixel_polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
+                "world_polygon": [[0, 0], [10, 0], [10, 10], [0, 10]],
+                "control_points": [
+                    {"pixel_x": 0, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 0, "world_x": 10, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 100, "world_x": 10, "world_y": 10},
+                    {"pixel_x": 0, "pixel_y": 100, "world_x": 0, "world_y": 10},
+                ],
+            }
+        ],
+    )
+
+    posterior = MetricGeometryPosteriorBuilder().build(
+        plane_set.planes,
+        frame_width=200,
+        frame_height=200,
+    )
+
+    inside = posterior.evaluate_point("corridor", (50.0, 50.0))
+    outside = posterior.evaluate_point("corridor", (150.0, 50.0))
+
+    assert inside is not None
+    assert inside.extrapolation_risk == "inside_metric_plane"
+    assert inside.gate_reason is None
+    assert inside.to_diagnostics()["model_reference"] == "point_metric_geometry_posterior_v6"
+    assert outside is not None
+    assert outside.gate_reason == "outside_metric_plane_support"
+
+
+def test_metric_geometry_posterior_rejects_untrusted_scale_anchor() -> None:
+    service = CalibrationService()
+    plane_set = service.build_metric_plane_set(
+        metric_planes=[
+            {
+                "plane_id": "corridor",
+                "plane_kind": "person_corridor",
+                "trusted": True,
+                "pixel_polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
+                "world_polygon": [[0, 0], [10, 0], [10, 10], [0, 10]],
+                "control_points": [
+                    {"pixel_x": 0, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 0, "world_x": 10, "world_y": 0},
+                    {"pixel_x": 100, "pixel_y": 100, "world_x": 10, "world_y": 10},
+                    {"pixel_x": 0, "pixel_y": 100, "world_x": 0, "world_y": 10},
+                ],
+                "validation_segments": [{"length_error_m": 1.2}],
+            }
+        ],
+    )
+
+    posterior = MetricGeometryPosteriorBuilder().build(
+        plane_set.planes,
+        frame_width=100,
+        frame_height=100,
+    )
+
+    plane = posterior.plane("corridor")
+    assert plane is not None
+    assert plane.gate_reason == "scale_anchor_untrusted"
+
+
 def test_single_plane_legacy_calibration_can_fallback_to_default_road_plane() -> None:
     service = CalibrationService()
     homography = service.compute_homography(square_points())
@@ -314,7 +383,7 @@ def test_track_geometry_diagnostics_exports_perspective_coupled_drift() -> None:
     assert diagnostic.metrics["speed_cv"] is not None
     assert diagnostic.metrics["foot_skate_risk_p95"] is not None
     assert diagnostic.metrics["golden_acceptance"]["model_reference"] == (
-        "pedestrian_golden_acceptance_v4"
+        "pedestrian_golden_acceptance_v6"
     )
     assert "foot_skate_or_geometry_risk" in diagnostic.metrics["root_cause_verdicts"]
     assert "foot_skate_or_wrong_geometry" in diagnostic.metrics["root_cause_verdicts"]

@@ -234,6 +234,11 @@ class ReportGenerator:
                 support_zero_velocity_p95_mps=record.support_zero_velocity_p95_mps,
                 metric_geometry_gate_reason=record.metric_geometry_gate_reason,
                 joint_physics_posterior_v5=record.joint_physics_posterior_v5,
+                point_homography_std_m=record.point_homography_std_m,
+                point_jacobian_amplification=record.point_jacobian_amplification,
+                point_extrapolation_risk=record.point_extrapolation_risk,
+                point_metric_gate_reason=record.point_metric_gate_reason,
+                real_speed_acceptance_status=record.real_speed_acceptance_status,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])

@@ -119,6 +119,11 @@ class Track:
     support_zero_velocity_p95_mps: float | None = None
     metric_geometry_gate_reason: str | None = None
     joint_physics_posterior_v5: dict[str, object] | None = None
+    point_homography_std_m: float | None = None
+    point_jacobian_amplification: float | None = None
+    point_extrapolation_risk: str | None = None
+    point_metric_gate_reason: str | None = None
+    real_speed_acceptance_status: str | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -247,6 +252,11 @@ class Track:
         support_zero_velocity_p95_mps: float | None = None,
         metric_geometry_gate_reason: str | None = None,
         joint_physics_posterior_v5: dict[str, object] | None = None,
+        point_homography_std_m: float | None = None,
+        point_jacobian_amplification: float | None = None,
+        point_extrapolation_risk: str | None = None,
+        point_metric_gate_reason: str | None = None,
+        real_speed_acceptance_status: str | None = None,
     ) -> Track:
         return replace(
             self,
@@ -359,4 +369,9 @@ class Track:
             support_zero_velocity_p95_mps=support_zero_velocity_p95_mps,
             metric_geometry_gate_reason=metric_geometry_gate_reason,
             joint_physics_posterior_v5=joint_physics_posterior_v5,
+            point_homography_std_m=point_homography_std_m,
+            point_jacobian_amplification=point_jacobian_amplification,
+            point_extrapolation_risk=point_extrapolation_risk,
+            point_metric_gate_reason=point_metric_gate_reason,
+            real_speed_acceptance_status=real_speed_acceptance_status,
         )

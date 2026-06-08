@@ -436,6 +436,72 @@ def test_metric_plane_selection_is_propagated_to_track_report() -> None:
     assert track["contact_source"] is not None
     assert track["world_position_covariance"] is not None
     assert track["speed_geometry_diagnostics"]["plane_status"] == "selected"
+    assert report["calibration_diagnostics"]["trusted_person_plane"] is True
+    assert (
+        report["calibration_diagnostics"]["point_geometry_posterior_summary"][
+            "checked_count"
+        ]
+        >= 1
+    )
+    assert track["point_extrapolation_risk"] == "inside_metric_plane"
+    assert track["real_speed_acceptance_status"] in {"accepted", "pending"}
+
+
+def test_pedestrian_point_geometry_gate_blocks_high_jacobian_metric_speed() -> None:
+    calibration = CalibrationService().compute_homography(
+        [
+            CalibrationPoint(0, 0, 0, 0),
+            CalibrationPoint(100, 0, 50, 0),
+            CalibrationPoint(100, 100, 50, 50),
+            CalibrationPoint(0, 100, 0, 50),
+        ]
+    )
+    detector = SequenceDetector(
+        {1: [Detection([60.0, 10.0, 72.0, 42.0], 0.9, 0, "person")]}
+    )
+
+    report = SupervisionVideoProcessor(
+        detector=detector,
+        adapter=FakeAdapter(),
+        calibration=calibration,
+        zone=ZoneConfig("analysis_line", [0, 50], [100, 50]),
+        fps=24.0,
+        frame_width=100,
+        frame_height=100,
+        calibration_context={
+            "calibration_source": "video_manual_preset",
+            "calibration_trusted": False,
+            "metric_planes": [
+                {
+                    "plane_id": "person_corridor",
+                    "plane_kind": "person_corridor",
+                    "trusted": True,
+                    "pixel_polygon": [[50, 0], [100, 0], [100, 100], [50, 100]],
+                    "world_polygon": [[0, 0], [25, 0], [25, 50], [0, 50]],
+                    "control_points": [
+                        {"pixel_x": 50, "pixel_y": 0, "world_x": 0, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 0, "world_x": 25, "world_y": 0},
+                        {"pixel_x": 100, "pixel_y": 100, "world_x": 25, "world_y": 50},
+                        {"pixel_x": 50, "pixel_y": 100, "world_x": 0, "world_y": 50},
+                    ],
+                }
+            ],
+        },
+    ).process_frames([VideoFrame(np.zeros((100, 100, 3), dtype=np.uint8), 1, 0.0)])
+
+    track = report["active_tracks"][0]
+
+    assert track["speed_kmh"] is None
+    assert track["physics_valid"] is False
+    assert track["rejection_reason"] == "jacobian_amplification_high"
+    assert track["point_metric_gate_reason"] == "jacobian_amplification_high"
+    assert track["real_speed_acceptance_status"] == "rejected"
+    assert (
+        report["calibration_diagnostics"]["point_geometry_posterior_summary"][
+            "gate_counts"
+        ]["jacobian_amplification_high"]
+        == 1
+    )
 
 
 def test_pedestrian_default_road_plane_does_not_output_metric_speed() -> None:

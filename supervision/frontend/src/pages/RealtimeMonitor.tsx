@@ -848,6 +848,22 @@ export function RealtimeMonitor({
                   <strong>{selectedTrack?.metric_geometry_gate_reason ?? "pass"}</strong>
                 </div>
                 <div>
+                  <span>真实速度验收</span>
+                  <strong>{selectedTrack?.real_speed_acceptance_status ?? "N/A"}</strong>
+                </div>
+                <div>
+                  <span>点级几何 Gate</span>
+                  <strong>{selectedTrack?.point_metric_gate_reason ?? "pass"}</strong>
+                </div>
+                <div>
+                  <span>点级 H std</span>
+                  <strong>{formatScalar(selectedTrack?.point_homography_std_m, " m")}</strong>
+                </div>
+                <div>
+                  <span>点级 Jacobian</span>
+                  <strong>{formatScalar(selectedTrack?.point_jacobian_amplification)}</strong>
+                </div>
+                <div>
                   <span>接触 Episode</span>
                   <strong>{formatCount(selectedTrack?.contact_episodes?.length)}</strong>
                 </div>

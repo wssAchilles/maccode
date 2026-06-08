@@ -99,6 +99,11 @@ export interface Track {
   support_zero_velocity_p95_mps?: number | null;
   metric_geometry_gate_reason?: string | null;
   joint_physics_posterior_v5?: Record<string, unknown> | null;
+  point_homography_std_m?: number | null;
+  point_jacobian_amplification?: number | null;
+  point_extrapolation_risk?: string | null;
+  point_metric_gate_reason?: string | null;
+  real_speed_acceptance_status?: string | null;
 }
 
 export interface ZoneStats {
@@ -226,6 +231,10 @@ export interface CalibrationDiagnostics {
   scale_anchor_summary?: Record<string, unknown> | null;
   jacobian_amplification_map_summary?: Record<string, unknown> | null;
   homography_posterior_gate_reason?: string | null;
+  trusted_person_plane?: boolean;
+  person_plane_validation_summary?: Record<string, unknown> | null;
+  point_geometry_posterior_summary?: Record<string, unknown> | null;
+  track_golden_acceptance_verdict?: Record<string, unknown> | string | boolean | null;
   homography_decomposition_residual?: number | null;
   local_jacobian_speed_amplification_p95?: number | null;
   intrinsics_consistency_status?: string | null;

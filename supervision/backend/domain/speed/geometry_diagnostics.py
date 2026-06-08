@@ -49,6 +49,11 @@ class TrackGeometryDiagnostic:
             "homography_sample_std_m",
             "scale_anchor_uncertainty_m",
             "jacobian_amplification",
+            "point_homography_std_m",
+            "point_jacobian_amplification",
+            "point_extrapolation_risk",
+            "point_metric_gate_reason",
+            "real_speed_acceptance_status",
             "identity_switch_probability",
             "episode_stride_length_m",
             "episode_stride_time_sec",
@@ -199,6 +204,20 @@ class TrackGeometryDiagnosticBuilder:
                         "scale_anchor_uncertainty_m",
                     ),
                     "jacobian_amplification": diagnostics.get("jacobian_amplification"),
+                    "point_homography_std_m": track.get("point_homography_std_m")
+                    or diagnostics.get("point_homography_std_m"),
+                    "point_jacobian_amplification": track.get(
+                        "point_jacobian_amplification",
+                    )
+                    or diagnostics.get("point_jacobian_amplification"),
+                    "point_extrapolation_risk": track.get("point_extrapolation_risk")
+                    or diagnostics.get("point_extrapolation_risk"),
+                    "point_metric_gate_reason": track.get("point_metric_gate_reason")
+                    or diagnostics.get("point_metric_gate_reason"),
+                    "real_speed_acceptance_status": track.get(
+                        "real_speed_acceptance_status",
+                    )
+                    or diagnostics.get("real_speed_acceptance_status"),
                     "identity_switch_probability": (
                         (track.get("identity_posterior") or {}).get(
                             "id_switch_probability",
@@ -236,30 +255,54 @@ class TrackGeometryDiagnosticBuilder:
                     "instantaneous_speed_kmh": instantaneous_speed,
                     "filtered_speed_kmh": track.get("speed_kmh"),
                     "posterior_speed_p05_p50_p95_kmh": (
-                        (track.get("joint_physics_posterior") or {}).get(
+                        (
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior")
+                            or {}
+                        ).get(
                             "speed_p05_p50_p95_kmh",
                         )
-                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        if isinstance(
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior"),
+                            dict,
+                        )
                         else None
                     ),
                     "dominant_uncertainty_source": track.get(
                         "dominant_uncertainty_source",
                     )
                     or (
-                        (track.get("joint_physics_posterior") or {}).get(
+                        (
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior")
+                            or {}
+                        ).get(
                             "dominant_uncertainty_source",
                         )
-                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        if isinstance(
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior"),
+                            dict,
+                        )
                         else None
                     ),
                     "near_far_speed_drift_metrics": track.get(
                         "near_far_speed_drift_metrics",
                     )
                     or (
-                        (track.get("joint_physics_posterior") or {}).get(
+                        (
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior")
+                            or {}
+                        ).get(
                             "near_far_speed_drift_metrics",
                         )
-                        if isinstance(track.get("joint_physics_posterior"), dict)
+                        if isinstance(
+                            track.get("joint_physics_posterior_v5")
+                            or track.get("joint_physics_posterior"),
+                            dict,
+                        )
                         else None
                     ),
                     "physics_valid": track.get("physics_valid"),
@@ -545,6 +588,17 @@ def _root_cause_verdicts(
     ):
         verdicts.append("jacobian_amplification_high")
     if any(
+        str(row.get("point_metric_gate_reason") or "") == "outside_metric_plane_support"
+        for row in rows
+    ):
+        verdicts.append("outside_metric_plane_support")
+    if any(
+        str(row.get("point_metric_gate_reason") or "")
+        == "jacobian_amplification_high"
+        for row in rows
+    ):
+        verdicts.append("jacobian_amplification_high")
+    if any(
         str(row.get("pedestrian_metric_rejection_reason") or "") == "intrinsics_unverified"
         for row in rows
     ):
@@ -592,7 +646,7 @@ def _golden_acceptance(
         "foot_skate_risk_p95": foot_skate_p95,
         "pedestrian_periodic_calibration_consistency_mean": periodic_mean,
         "near_far_speed_drift_score_p95": drift_p95,
-        "model_reference": "pedestrian_golden_acceptance_v4",
+        "model_reference": "pedestrian_golden_acceptance_v6",
     }
 
 

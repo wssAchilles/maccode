@@ -113,6 +113,11 @@ class SpeedRecord:
     support_zero_velocity_p95_mps: float | None = None
     metric_geometry_gate_reason: str | None = None
     joint_physics_posterior_v5: dict[str, object] | None = None
+    point_homography_std_m: float | None = None
+    point_jacobian_amplification: float | None = None
+    point_extrapolation_risk: str | None = None
+    point_metric_gate_reason: str | None = None
+    real_speed_acceptance_status: str | None = None
 
 
 @dataclass

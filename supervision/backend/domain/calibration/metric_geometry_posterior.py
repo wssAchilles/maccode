@@ -13,6 +13,27 @@ PEDESTRIAN_PLANE_KINDS = {"sidewalk", "curb", "plaza", "person_corridor"}
 
 
 @dataclass(frozen=True)
+class PointGeometryPosterior:
+    plane_id: str
+    pixel: tuple[float, float]
+    homography_std_m: float | None
+    jacobian_amplification: float | None
+    extrapolation_risk: str
+    gate_reason: str | None
+
+    def to_diagnostics(self) -> dict[str, object]:
+        return {
+            "plane_id": self.plane_id,
+            "pixel": [float(self.pixel[0]), float(self.pixel[1])],
+            "point_homography_std_m": self.homography_std_m,
+            "point_jacobian_amplification": self.jacobian_amplification,
+            "point_extrapolation_risk": self.extrapolation_risk,
+            "point_metric_gate_reason": self.gate_reason,
+            "model_reference": "point_metric_geometry_posterior_v6",
+        }
+
+
+@dataclass(frozen=True)
 class PlaneGeometryPosterior:
     plane_id: str
     plane_kind: str
@@ -46,6 +67,7 @@ class PlaneGeometryPosterior:
 @dataclass(frozen=True)
 class MetricGeometryPosterior:
     planes: dict[str, PlaneGeometryPosterior]
+    source_planes: dict[str, MetricPlaneCalibration]
     homography_posterior_gate_reason: str | None
     scale_anchor_summary: dict[str, object]
     jacobian_amplification_map_summary: dict[str, object]
@@ -55,6 +77,55 @@ class MetricGeometryPosterior:
         if plane_id is None:
             return None
         return self.planes.get(plane_id)
+
+    def evaluate_point(
+        self,
+        plane_id: str | None,
+        pixel: tuple[float, float],
+    ) -> PointGeometryPosterior | None:
+        plane_posterior = self.plane(plane_id)
+        plane = self.source_planes.get(plane_id or "")
+        if plane_posterior is None or plane is None:
+            return None
+        sample_std = _point_sample_world_std(pixel, plane_posterior.homography_samples)
+        amplification = _point_jacobian_amplification(plane, pixel)
+        extrapolation_risk = (
+            "inside_metric_plane"
+            if plane.contains_pixel(pixel)
+            else "outside_metric_plane_support"
+        )
+        gate_reason = self._point_gate_reason(
+            plane_posterior,
+            homography_std_m=sample_std,
+            jacobian_amplification=amplification,
+            extrapolation_risk=extrapolation_risk,
+        )
+        return PointGeometryPosterior(
+            plane_id=plane.plane_id,
+            pixel=pixel,
+            homography_std_m=sample_std,
+            jacobian_amplification=amplification,
+            extrapolation_risk=extrapolation_risk,
+            gate_reason=gate_reason,
+        )
+
+    @staticmethod
+    def _point_gate_reason(
+        plane_posterior: PlaneGeometryPosterior,
+        *,
+        homography_std_m: float | None,
+        jacobian_amplification: float | None,
+        extrapolation_risk: str,
+    ) -> str | None:
+        if plane_posterior.gate_reason is not None:
+            return plane_posterior.gate_reason
+        if extrapolation_risk == "outside_metric_plane_support":
+            return "outside_metric_plane_support"
+        if homography_std_m is not None and homography_std_m > 0.75:
+            return "homography_posterior_too_wide"
+        if jacobian_amplification is not None and jacobian_amplification > 0.35:
+            return "jacobian_amplification_high"
+        return None
 
     def to_diagnostics(self) -> dict[str, object]:
         return {
@@ -104,6 +175,7 @@ class MetricGeometryPosteriorBuilder:
         ]
         return MetricGeometryPosterior(
             planes=plane_posteriors,
+            source_planes={plane.plane_id: plane for plane in planes},
             homography_posterior_gate_reason=gate_reasons[0] if gate_reasons else None,
             scale_anchor_summary={
                 "plane_count": len(plane_posteriors),
@@ -273,8 +345,37 @@ class MetricGeometryPosteriorBuilder:
             return "metric_plane_not_trusted"
         if scale_anchor_uncertainty_m is None:
             return "scale_anchor_missing"
+        if scale_anchor_uncertainty_m > 0.75:
+            return "scale_anchor_untrusted"
         if homography_sample_std_m is not None and homography_sample_std_m > 0.75:
             return "homography_posterior_too_wide"
         if jacobian_amplification_p95 is not None and jacobian_amplification_p95 > 0.35:
             return "jacobian_amplification_high"
         return None
+
+
+def _point_sample_world_std(
+    pixel: tuple[float, float],
+    homography_samples: list[list[list[float]]],
+) -> float | None:
+    if len(homography_samples) < 2:
+        return None
+    worlds: list[tuple[float, float]] = []
+    for matrix in homography_samples:
+        worlds.append(ViewTransformer(np.asarray(matrix, dtype=float)).transform_point(*pixel))
+    mean_x = sum(point[0] for point in worlds) / len(worlds)
+    mean_y = sum(point[1] for point in worlds) / len(worlds)
+    residuals = [math.dist(point, (mean_x, mean_y)) for point in worlds]
+    return float(np.percentile(residuals, 95))
+
+
+def _point_jacobian_amplification(
+    plane: MetricPlaneCalibration,
+    pixel: tuple[float, float],
+) -> float | None:
+    transformer = ViewTransformer(plane.homography.homography_matrix)
+    try:
+        singular_values = np.linalg.svd(transformer.local_jacobian(*pixel), compute_uv=False)
+    except ValueError:
+        return None
+    return float(max(singular_values))

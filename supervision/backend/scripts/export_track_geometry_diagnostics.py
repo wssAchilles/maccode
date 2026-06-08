@@ -131,6 +131,32 @@ def write_posterior_interval_plot(diagnostic: TrackGeometryDiagnostic, path: Pat
     plt.close(fig)
 
 
+def write_jacobian_risk_plot(diagnostic: TrackGeometryDiagnostic, path: Path) -> None:
+    import matplotlib.pyplot as plt
+
+    rows = [
+        row
+        for row in diagnostic.rows
+        if row.get("timestamp_sec") is not None
+        and row.get("point_jacobian_amplification") is not None
+    ]
+    if not rows:
+        return
+    timestamps = [float(row["timestamp_sec"]) for row in rows]
+    amplification = [float(row["point_jacobian_amplification"]) for row in rows]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, axis = plt.subplots(figsize=(8, 4))
+    axis.plot(timestamps, amplification, marker="o", linewidth=1.5)
+    axis.axhline(0.35, color="tab:red", linestyle="--", linewidth=1.0)
+    axis.set_xlabel("time (s)")
+    axis.set_ylabel("point Jacobian amplification")
+    axis.set_title(f"track {diagnostic.tracker_id} Jacobian risk")
+    axis.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def write_plane_grid_overlay(
     payload: dict[str, Any],
     reports: list[dict[str, Any]],
@@ -215,8 +241,53 @@ def main() -> None:
         diagnostic,
         args.output_dir / f"{prefix}_posterior_interval.png",
     )
+    write_jacobian_risk_plot(
+        diagnostic,
+        args.output_dir / f"{prefix}_jacobian_risk.png",
+    )
     write_plane_grid_overlay(payload, reports, args.output_dir / "plane_grid_overlay.png")
     golden = diagnostic.metrics.get("golden_acceptance")
+    (args.output_dir / f"{prefix}_acceptance.json").write_text(
+        json.dumps(
+            {
+                "tracker_id": args.tracker_id,
+                "golden_acceptance": golden,
+                "root_cause_verdicts": diagnostic.metrics.get(
+                    "root_cause_verdicts",
+                    [],
+                ),
+                "point_geometry_summary": {
+                    "point_metric_gate_reasons": sorted(
+                        {
+                            str(row.get("point_metric_gate_reason"))
+                            for row in diagnostic.rows
+                            if row.get("point_metric_gate_reason")
+                        },
+                    ),
+                    "max_point_jacobian_amplification": max(
+                        [
+                            float(row["point_jacobian_amplification"])
+                            for row in diagnostic.rows
+                            if row.get("point_jacobian_amplification") is not None
+                        ],
+                        default=None,
+                    ),
+                    "max_point_homography_std_m": max(
+                        [
+                            float(row["point_homography_std_m"])
+                            for row in diagnostic.rows
+                            if row.get("point_homography_std_m") is not None
+                        ],
+                        default=None,
+                    ),
+                },
+                "model_reference": "track_golden_acceptance_v6",
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     if (
         args.strict_track_geometry
         and isinstance(golden, dict)

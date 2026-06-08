@@ -321,6 +321,11 @@ class SupervisionVideoProcessor:
         self._pedestrian_speed_suppressed_count = 0
         self._pose_geometry_used_count = 0
         self._bbox_height_consistency_fail_count = 0
+        self._point_geometry_checked_count = 0
+        self._point_geometry_rejected_count = 0
+        self._point_geometry_gate_counts: dict[str, int] = {}
+        self._point_geometry_max_homography_std_m: float | None = None
+        self._point_geometry_max_jacobian_amplification: float | None = None
         self.rendered_video_path = rendered_video_path
         self._renderer = (
             ProcessedVideoRenderer(
@@ -467,6 +472,28 @@ class SupervisionVideoProcessor:
             == "intrinsics_inconsistent_across_planes"
         ):
             error_sources.append("intrinsics_inconsistent_across_planes")
+        trusted_person_planes = [
+            plane
+            for plane in self.metric_plane_set.planes
+            if plane.trusted
+            and plane.explicit_metric_plane
+            and plane.plane_kind in {"sidewalk", "curb", "plaza", "person_corridor"}
+        ]
+        person_plane_validation_summary = {
+            "trusted_person_plane_count": len(trusted_person_planes),
+            "trusted_person_plane_ids": [plane.plane_id for plane in trusted_person_planes],
+            "min_control_point_count": (
+                min(len(plane.control_points) for plane in trusted_person_planes)
+                if trusted_person_planes
+                else 0
+            ),
+            "min_validation_segment_count": (
+                min(len(plane.validation_segments) for plane in trusted_person_planes)
+                if trusted_person_planes
+                else 0
+            ),
+            "model_reference": "person_corridor_metric_plane_acceptance_v1",
+        }
         diagnostics = {
             "homography_model": "RANSAC planar homography, pixel(u,v) -> ground(X,Y)",
             "calibration_source": self.calibration_source,
@@ -527,6 +554,23 @@ class SupervisionVideoProcessor:
             ),
             "homography_posterior_gate_reason": (
                 self.metric_geometry_posterior.homography_posterior_gate_reason
+            ),
+            "trusted_person_plane": bool(trusted_person_planes),
+            "person_plane_validation_summary": person_plane_validation_summary,
+            "point_geometry_posterior_summary": {
+                "checked_count": self._point_geometry_checked_count,
+                "rejected_count": self._point_geometry_rejected_count,
+                "gate_counts": dict(sorted(self._point_geometry_gate_counts.items())),
+                "max_point_homography_std_m": (
+                    self._point_geometry_max_homography_std_m
+                ),
+                "max_point_jacobian_amplification": (
+                    self._point_geometry_max_jacobian_amplification
+                ),
+                "model_reference": "point_metric_geometry_posterior_summary_v6",
+            },
+            "track_golden_acceptance_verdict": self.calibration_context.get(
+                "track_golden_acceptance_verdict",
             ),
             "homography_decomposition_residual": pinhole_diagnostics.get(
                 "homography_decomposition_residual",
@@ -620,6 +664,32 @@ class SupervisionVideoProcessor:
         margin = max(0.0, speed_kmh * sensitivity)
         return [float(max(0.0, speed_kmh - margin)), float(speed_kmh + margin)]
 
+    def _record_point_geometry_posterior(
+        self,
+        diagnostics: dict[str, object] | None,
+    ) -> None:
+        if not diagnostics:
+            return
+        self._point_geometry_checked_count += 1
+        gate_reason = diagnostics.get("point_metric_gate_reason")
+        if isinstance(gate_reason, str) and gate_reason:
+            self._point_geometry_rejected_count += 1
+            self._point_geometry_gate_counts[gate_reason] = (
+                self._point_geometry_gate_counts.get(gate_reason, 0) + 1
+            )
+        homography_std = diagnostics.get("point_homography_std_m")
+        if isinstance(homography_std, int | float):
+            self._point_geometry_max_homography_std_m = max(
+                float(homography_std),
+                self._point_geometry_max_homography_std_m or 0.0,
+            )
+        amplification = diagnostics.get("point_jacobian_amplification")
+        if isinstance(amplification, int | float):
+            self._point_geometry_max_jacobian_amplification = max(
+                float(amplification),
+                self._point_geometry_max_jacobian_amplification or 0.0,
+            )
+
     def _calibration_speed_posterior(
         self,
         record: SpeedRecord | None,
@@ -695,6 +765,11 @@ class SupervisionVideoProcessor:
                     float(record.speed_kmh or 1.0),
                     1.0,
                 ) * 0.4
+            if record.point_metric_gate_reason is not None:
+                components["Sigma_point_metric_geometry"] = max(
+                    float(record.speed_kmh or 1.0),
+                    1.0,
+                ) * 0.5
             posterior["uncertainty_components"] = components
             total = sum(
                 max(float(value), 0.0)
@@ -727,6 +802,11 @@ class SupervisionVideoProcessor:
         posterior["stride_consistency_score"] = record.stride_consistency_score
         posterior["support_zero_velocity_p95_mps"] = record.support_zero_velocity_p95_mps
         posterior["metric_geometry_gate_reason"] = record.metric_geometry_gate_reason
+        posterior["point_homography_std_m"] = record.point_homography_std_m
+        posterior["point_jacobian_amplification"] = record.point_jacobian_amplification
+        posterior["point_extrapolation_risk"] = record.point_extrapolation_risk
+        posterior["point_metric_gate_reason"] = record.point_metric_gate_reason
+        posterior["real_speed_acceptance_status"] = record.real_speed_acceptance_status
         return posterior
 
     def _posterior_dominant_source(self, record: SpeedRecord | None) -> str | None:
@@ -748,6 +828,8 @@ class SupervisionVideoProcessor:
             return explicit_reason
         if record.id_switch_risk is not None and record.id_switch_risk >= 0.5:
             return "tracking_identity_risk"
+        if record.point_metric_gate_reason is not None:
+            return record.point_metric_gate_reason
         if record.metric_geometry_gate_reason is not None:
             return record.metric_geometry_gate_reason
         factors = {
@@ -1245,6 +1327,18 @@ class SupervisionVideoProcessor:
                         ),
                     }
                 )
+            point_geometry_posterior = self.metric_geometry_posterior.evaluate_point(
+                selected_plane.plane_id,
+                observation_pixel,
+            )
+            point_geometry_diagnostics = (
+                point_geometry_posterior.to_diagnostics()
+                if point_geometry_posterior is not None
+                else None
+            )
+            if point_geometry_diagnostics is not None:
+                speed_geometry_diagnostics.update(point_geometry_diagnostics)
+                self._record_point_geometry_posterior(point_geometry_diagnostics)
             pedestrian_admission = assess_pedestrian_metric_admission(
                 class_id=track.class_id,
                 plane_selection=plane_selection,
@@ -1278,6 +1372,25 @@ class SupervisionVideoProcessor:
                         "pedestrian_metric_admitted": False,
                         "pedestrian_metric_rejection_reason": (
                             plane_geometry_posterior.gate_reason
+                        ),
+                    }
+                )
+            if (
+                pedestrian_admission.admitted
+                and track.class_id == 0
+                and point_geometry_posterior is not None
+                and point_geometry_posterior.gate_reason is not None
+            ):
+                pedestrian_admission = replace(
+                    pedestrian_admission,
+                    admitted=False,
+                    reason=point_geometry_posterior.gate_reason,
+                )
+                speed_geometry_diagnostics.update(
+                    {
+                        "pedestrian_metric_admitted": False,
+                        "pedestrian_metric_rejection_reason": (
+                            point_geometry_posterior.gate_reason
                         ),
                     }
                 )
@@ -1318,10 +1431,33 @@ class SupervisionVideoProcessor:
                     measurement_policy=contact_point.measurement_policy,
                     contact_state_probabilities=contact_point.contact_state_probabilities,
                     metric_geometry_gate_reason=(
-                        plane_geometry_posterior.gate_reason
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else plane_geometry_posterior.gate_reason
                         if plane_geometry_posterior is not None
                         else None
                     ),
+                    point_homography_std_m=(
+                        point_geometry_posterior.homography_std_m
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_jacobian_amplification=(
+                        point_geometry_posterior.jacobian_amplification
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_extrapolation_risk=(
+                        point_geometry_posterior.extrapolation_risk
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_metric_gate_reason=(
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    real_speed_acceptance_status="rejected",
                 )
                 continue
             integrity = self.tracking_integrity_monitor.assess(
@@ -1374,6 +1510,34 @@ class SupervisionVideoProcessor:
                     measurement_policy=contact_point.measurement_policy,
                     contact_state_probabilities=contact_point.contact_state_probabilities,
                     speed_geometry_diagnostics=speed_geometry_diagnostics,
+                    metric_geometry_gate_reason=(
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else plane_geometry_posterior.gate_reason
+                        if plane_geometry_posterior is not None
+                        else None
+                    ),
+                    point_homography_std_m=(
+                        point_geometry_posterior.homography_std_m
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_jacobian_amplification=(
+                        point_geometry_posterior.jacobian_amplification
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_extrapolation_risk=(
+                        point_geometry_posterior.extrapolation_risk
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_metric_gate_reason=(
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    real_speed_acceptance_status="frozen",
                     calibration_uncertainty_band_kmh=self._calibration_uncertainty_band(
                         frozen_record.speed_kmh if frozen_record is not None else None,
                     ),
@@ -1668,9 +1832,36 @@ class SupervisionVideoProcessor:
                         contact_episode.support_zero_velocity_p95_mps
                     ),
                     metric_geometry_gate_reason=(
-                        plane_geometry_posterior.gate_reason
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else plane_geometry_posterior.gate_reason
                         if plane_geometry_posterior is not None
                         else None
+                    ),
+                    point_homography_std_m=(
+                        point_geometry_posterior.homography_std_m
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_jacobian_amplification=(
+                        point_geometry_posterior.jacobian_amplification
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_extrapolation_risk=(
+                        point_geometry_posterior.extrapolation_risk
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    point_metric_gate_reason=(
+                        point_geometry_posterior.gate_reason
+                        if point_geometry_posterior is not None
+                        else None
+                    ),
+                    real_speed_acceptance_status=(
+                        "accepted"
+                        if latest_record.physics_valid and latest_record.speed_kmh is not None
+                        else "pending"
                     ),
                     geometry_status=contact_episode.geometry_status,
                 )
@@ -1763,9 +1954,38 @@ class SupervisionVideoProcessor:
                     contact_episode.support_zero_velocity_p95_mps
                 ),
                 metric_geometry_gate_reason=(
-                    plane_geometry_posterior.gate_reason
+                    point_geometry_posterior.gate_reason
+                    if point_geometry_posterior is not None
+                    else plane_geometry_posterior.gate_reason
                     if plane_geometry_posterior is not None
                     else None
+                ),
+                point_homography_std_m=(
+                    point_geometry_posterior.homography_std_m
+                    if point_geometry_posterior is not None
+                    else None
+                ),
+                point_jacobian_amplification=(
+                    point_geometry_posterior.jacobian_amplification
+                    if point_geometry_posterior is not None
+                    else None
+                ),
+                point_extrapolation_risk=(
+                    point_geometry_posterior.extrapolation_risk
+                    if point_geometry_posterior is not None
+                    else None
+                ),
+                point_metric_gate_reason=(
+                    point_geometry_posterior.gate_reason
+                    if point_geometry_posterior is not None
+                    else None
+                ),
+                real_speed_acceptance_status=(
+                    "accepted"
+                    if latest_record is not None
+                    and latest_record.physics_valid
+                    and latest_record.speed_kmh is not None
+                    else "pending"
                 ),
                 geometry_status=contact_episode.geometry_status,
             )
