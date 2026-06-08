@@ -101,6 +101,7 @@ class TrajectoryReconstructor:
         return [
             self._point_result(
                 point,
+                class_id,
                 xs[index],
                 ys[index],
                 velocities[index],
@@ -682,6 +683,7 @@ class TrajectoryReconstructor:
     @staticmethod
     def _point_result(
         point: TrajectoryPoint,
+        class_id: int,
         world_x: float,
         world_y: float,
         velocity: np.ndarray,
@@ -694,7 +696,7 @@ class TrajectoryReconstructor:
             heading = (
                 math.degrees(math.atan2(float(velocity[1]), float(velocity[0]))) + 360.0
             ) % 360.0
-        quality_label = (
+        initial_quality_label = (
             "stable"
             if metrics.stability_label != "unstable_observation"
             else "low_confidence"
@@ -729,6 +731,19 @@ class TrajectoryReconstructor:
                 * max(0.2, dynamics_confidence),
             ),
         )
+        physics_valid = TrajectoryReconstructor._reconstructed_physics_valid(
+            class_id=class_id,
+            quality_label=initial_quality_label,
+            speed_confidence=speed_confidence,
+            speed_uncertainty_kmh=speed_uncertainty_kmh,
+            speed_kmh=speed_kmh,
+            physics_confidence=physics_confidence,
+        )
+        quality_label = (
+            "variable"
+            if physics_valid and initial_quality_label == "low_confidence"
+            else initial_quality_label
+        )
         return {
             "report_index": float(point.report_index),
             "raw_speed_kmh": point.raw_speed_kmh,
@@ -743,11 +758,12 @@ class TrajectoryReconstructor:
             "velocity_y_mps": float(velocity[1]),
             "heading_deg": float(heading) if heading is not None else None,
             "acceleration_mps2": acceleration,
-            "physics_valid": physics_confidence >= 0.2,
+            "physics_valid": physics_valid,
             "quality_label": quality_label,
             "rejection_reason": (
                 "unstable_observation"
-                if metrics.stability_label == "unstable_observation"
+                if not physics_valid
+                and metrics.stability_label == "unstable_observation"
                 else None
             ),
             "speed_stability_score": metrics.speed_stability_score,
@@ -766,10 +782,35 @@ class TrajectoryReconstructor:
             "dynamics_confidence": dynamics_confidence,
             "confidence_rejection_reason": (
                 "dynamics_confidence"
-                if physics_confidence < 0.4
+                if not physics_valid and physics_confidence < 0.4
                 else None
             ),
         }
+
+    @staticmethod
+    def _reconstructed_physics_valid(
+        *,
+        class_id: int,
+        quality_label: str,
+        speed_confidence: float,
+        speed_uncertainty_kmh: float,
+        speed_kmh: float,
+        physics_confidence: float,
+    ) -> bool:
+        if physics_confidence >= 0.2:
+            return True
+        if class_id != 0:
+            return False
+        relative_uncertainty = speed_uncertainty_kmh / max(abs(speed_kmh), 1.0)
+        if quality_label == "stable":
+            return bool(speed_confidence >= 0.35 and relative_uncertainty <= 0.75)
+        if quality_label == "low_confidence":
+            return bool(
+                speed_confidence >= 0.32
+                and relative_uncertainty <= 0.65
+                and 0.2 <= speed_kmh <= 18.0
+            )
+        return False
 
     @staticmethod
     def _reconstructed_speed_confidence(

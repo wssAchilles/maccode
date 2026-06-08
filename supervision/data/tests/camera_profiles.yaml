@@ -461,6 +461,109 @@ camera_profiles:
       - 0.0
     - - 560.0
       - 0.0
+    metric_planes:
+    - plane_id: pedestrian_corridor
+      plane_kind: person_corridor
+      trusted: true
+      pixel_polygon:
+      - - 0.0
+        - 1048.0
+      - - 1060.0
+        - 1070.0
+      - - 1540.0
+        - 0.0
+      - - 560.0
+        - 0.0
+      world_polygon:
+      - - 0.0
+        - 0.0
+      - - 12.0
+        - 0.0
+      - - 12.0
+        - 45.0
+      - - 0.0
+        - 45.0
+      control_points:
+      - pixel_x: 0.0
+        pixel_y: 1048.0
+        world_x: 0.0
+        world_y: 0.0
+      - pixel_x: 1060.0
+        pixel_y: 1070.0
+        world_x: 12.0
+        world_y: 0.0
+      - pixel_x: 1540.0
+        pixel_y: -0.0
+        world_x: 12.0
+        world_y: 45.0
+      - pixel_x: 560.0
+        pixel_y: 0.0
+        world_x: 0.0
+        world_y: 45.0
+      - pixel_x: 330.97
+        pixel_y: 916.86
+        world_x: 3.0
+        world_y: 5.4
+      - pixel_x: 855.8
+        pixel_y: 926.33
+        world_x: 9.0
+        world_y: 5.4
+      - pixel_x: 1134.27
+        pixel_y: 488.0
+        world_x: 9.84
+        world_y: 23.4
+      - pixel_x: 483.51
+        pixel_y: 481.85
+        world_x: 2.16
+        world_y: 23.4
+      - pixel_x: 789.88
+        pixel_y: 176.56
+        world_x: 3.96
+        world_y: 36.9
+      - pixel_x: 1127.65
+        pixel_y: 177.72
+        world_x: 8.04
+        world_y: 36.9
+      validation_segments:
+      - name: left_pavement_band_depth
+        pixel_start:
+        - 110.0
+        - 900.0
+        pixel_end:
+        - 520.0
+        - 140.0
+        world_start:
+        - 0.36
+        - 5.91
+        world_end:
+        - 0.43
+        - 38.52
+      - name: right_pavement_band_depth
+        pixel_start:
+        - 1038.0
+        - 910.0
+        pixel_end:
+        - 1510.0
+        - 100.0
+        world_start:
+        - 10.95
+        - 6.17
+        world_end:
+        - 12.18
+        - 40.44
+      - name: mid_corridor_width
+        pixel_start:
+        - 300.0
+        - 640.0
+        pixel_end:
+        - 1160.0
+        - 650.0
+        world_start:
+        - 0.97
+        - 16.63
+        world_end:
+        - 10.99
+        - 16.67
     scale_prior:
       kind: traffic_standard_or_survey
       description: 'Scale anchored by pedestrian-street corridor priors: a broad retail

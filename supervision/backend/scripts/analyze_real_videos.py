@@ -537,6 +537,17 @@ def match_camera_profile(
     return None
 
 
+def runtime_metric_planes(
+    video_preset: VideoCalibrationPreset | None,
+    camera_profile: CameraProfilePreset | None,
+) -> list[dict[str, Any]]:
+    if video_preset is not None and video_preset.metric_planes:
+        return video_preset.metric_planes
+    if camera_profile is not None:
+        return camera_profile.metric_planes
+    return []
+
+
 def profile_for_clip(
     path: Path,
     scene_profiles: dict[str, SceneProfile] | None = None,
@@ -860,13 +871,7 @@ def analyze_clip(
         if camera_profile is not None
         else []
     )
-    metric_planes = (
-        video_preset.metric_planes
-        if video_preset is not None
-        else camera_profile.metric_planes
-        if camera_profile is not None
-        else []
-    )
+    metric_planes = runtime_metric_planes(video_preset, camera_profile)
     independent_validation_segment_count = validation_independent_segment_count(
         calibration_points,
         validation_segments,

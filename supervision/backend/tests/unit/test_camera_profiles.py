@@ -3,10 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from domain.auto_calibration.service import AutoCalibrationService
+from domain.calibration.models import CalibrationPoint
 from scripts.analyze_real_videos import (
     CameraProfilePreset,
+    VideoCalibrationPreset,
     load_camera_profiles,
     match_camera_profile,
+    runtime_metric_planes,
 )
 
 
@@ -53,6 +56,43 @@ def test_camera_profile_has_auto_calibration_candidates() -> None:
     assert profile.camera_mount_prior["height_m"] > 0
     assert profile.vehicle_3d_priors["car"]["length_m"] == 4.5
     assert profile.vehicle_3d_observations
+
+
+def test_pedestrian_camera_profile_declares_person_metric_plane() -> None:
+    profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
+    profile = profiles["pedestrian_high_view_camera"]
+
+    assert profile.metric_planes
+    plane = profile.metric_planes[0]
+    assert plane["plane_id"] == "pedestrian_corridor"
+    assert plane["plane_kind"] == "person_corridor"
+    assert plane["trusted"] is True
+    assert len(plane["control_points"]) >= 4
+    assert plane["pixel_polygon"]
+    assert plane["world_polygon"]
+
+
+def test_empty_video_metric_planes_fall_back_to_camera_profile() -> None:
+    profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
+    profile = profiles["pedestrian_high_view_camera"]
+    video_preset = VideoCalibrationPreset(
+        clip="042_pedestrian_crowd_high_view_0270s_30s.mp4",
+        points=[
+            CalibrationPoint(0.0, 1048.0, 0.0, 0.0),
+            CalibrationPoint(1060.0, 1070.0, 12.0, 0.0),
+            CalibrationPoint(1540.0, 0.0, 12.0, 45.0),
+            CalibrationPoint(560.0, 0.0, 0.0, 45.0),
+        ],
+        position_rmse_floor_m=1.2,
+        calibration_scale_uncertainty_pct=10.0,
+        calibration_trusted=True,
+        road_plane_polygon_world=[(0.0, 0.0), (12.0, 0.0), (12.0, 45.0), (0.0, 45.0)],
+        validation_segments=[],
+        notes="test",
+        metric_planes=[],
+    )
+
+    assert runtime_metric_planes(video_preset, profile) == profile.metric_planes
 
 
 def test_auto_calibration_candidates_fallback_to_manual_profile() -> None:
