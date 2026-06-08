@@ -124,6 +124,11 @@ class Track:
     point_extrapolation_risk: str | None = None
     point_metric_gate_reason: str | None = None
     real_speed_acceptance_status: str | None = None
+    speed_source: str | None = None
+    contact_quality_score: float | None = None
+    contact_covariance_multiplier: float | None = None
+    speed_validity_score: float | None = None
+    fixed_lag_backfilled: bool = False
 
     @property
     def center(self) -> tuple[float, float]:
@@ -257,6 +262,11 @@ class Track:
         point_extrapolation_risk: str | None = None,
         point_metric_gate_reason: str | None = None,
         real_speed_acceptance_status: str | None = None,
+        speed_source: str | None = None,
+        contact_quality_score: float | None = None,
+        contact_covariance_multiplier: float | None = None,
+        speed_validity_score: float | None = None,
+        fixed_lag_backfilled: bool = False,
     ) -> Track:
         return replace(
             self,
@@ -374,4 +384,9 @@ class Track:
             point_extrapolation_risk=point_extrapolation_risk,
             point_metric_gate_reason=point_metric_gate_reason,
             real_speed_acceptance_status=real_speed_acceptance_status,
+            speed_source=speed_source,
+            contact_quality_score=contact_quality_score,
+            contact_covariance_multiplier=contact_covariance_multiplier,
+            speed_validity_score=speed_validity_score,
+            fixed_lag_backfilled=fixed_lag_backfilled,
         )

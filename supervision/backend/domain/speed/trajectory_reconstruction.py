@@ -40,11 +40,8 @@ class TrajectoryReconstructor:
     def reconstruct_reports(self, frame_reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped = self._group_points(frame_reports)
         updated_reports = [self._copy_report(report) for report in frame_reports]
-        for tracker_id, points in grouped.items():
+        for (tracker_id, class_id), points in grouped.items():
             if not points:
-                continue
-            class_id = self._class_id_for_track(frame_reports, tracker_id)
-            if class_id is None:
                 continue
             profile = self.motion_router.route_class(class_id)
             if not profile.should_estimate_speed:
@@ -72,6 +69,8 @@ class TrajectoryReconstructor:
         class_id: int,
     ) -> list[dict[str, Any]]:
         if len(points) < 3:
+            if class_id == 0 and len(points) == 2:
+                return self._short_pedestrian_bootstrap(points)
             return [
                 self._empty_reconstruction(point, "insufficient_samples")
                 for point in points
@@ -113,19 +112,22 @@ class TrajectoryReconstructor:
         ]
 
     @staticmethod
-    def _group_points(frame_reports: list[dict[str, Any]]) -> dict[int, list[TrajectoryPoint]]:
-        grouped: dict[int, list[TrajectoryPoint]] = {}
+    def _group_points(
+        frame_reports: list[dict[str, Any]],
+    ) -> dict[tuple[int, int], list[TrajectoryPoint]]:
+        grouped: dict[tuple[int, int], list[TrajectoryPoint]] = {}
         for report_index, report in enumerate(frame_reports):
             timestamp = float(report.get("timestamp_sec", 0.0))
             for track in report.get("active_tracks", []):
                 if not isinstance(track, dict):
                     continue
                 tracker_id = int(track.get("tracker_id", -1))
+                class_id = int(track.get("class_id", -1))
                 world_x = track.get("ground_x_m")
                 world_y = track.get("ground_y_m")
                 if world_x is None or world_y is None:
                     continue
-                grouped.setdefault(tracker_id, []).append(
+                grouped.setdefault((tracker_id, class_id), []).append(
                     TrajectoryPoint(
                         report_index=report_index,
                         timestamp_sec=timestamp,
@@ -519,7 +521,11 @@ class TrajectoryReconstructor:
             active_tracks = report.setdefault("active_tracks", [])
             found = False
             for track in active_tracks:
-                if isinstance(track, dict) and int(track.get("tracker_id", -1)) == tracker_id:
+                if (
+                    isinstance(track, dict)
+                    and int(track.get("tracker_id", -1)) == tracker_id
+                    and int(track.get("class_id", -1)) == class_id
+                ):
                     track.update(
                         {
                             key: value
@@ -546,7 +552,7 @@ class TrajectoryReconstructor:
 
     def _apply_imm_modes(self, reports: list[dict[str, Any]]) -> None:
         grouped = self._group_points(reports)
-        for tracker_id, points in grouped.items():
+        for (tracker_id, class_id), points in grouped.items():
             if len(points) < 3:
                 continue
             ordered = sorted(points, key=lambda point: point.report_index)
@@ -560,6 +566,7 @@ class TrajectoryReconstructor:
                     if (
                         isinstance(track, dict)
                         and int(track.get("tracker_id", -1)) == tracker_id
+                        and int(track.get("class_id", -1)) == class_id
                     ):
                         track.update(state.to_dict())
                         break
@@ -701,18 +708,19 @@ class TrajectoryReconstructor:
             if metrics.stability_label != "unstable_observation"
             else "low_confidence"
         )
+        display_speed_kmh = TrajectoryReconstructor._display_speed_kmh(class_id, speed_kmh)
         speed_confidence = TrajectoryReconstructor._reconstructed_speed_confidence(
             point,
             metrics,
         )
         speed_uncertainty_kmh = TrajectoryReconstructor._reconstructed_uncertainty(
             point,
-            speed_kmh,
+            display_speed_kmh,
             metrics,
         )
         speed_interval = [
-            float(max(0.0, speed_kmh - speed_uncertainty_kmh)),
-            float(speed_kmh + speed_uncertainty_kmh),
+            float(max(0.0, display_speed_kmh - speed_uncertainty_kmh)),
+            float(display_speed_kmh + speed_uncertainty_kmh),
         ]
         calibration_confidence = point.calibration_confidence or 0.85
         contact_confidence = point.contact_confidence or 0.72
@@ -736,7 +744,7 @@ class TrajectoryReconstructor:
             quality_label=initial_quality_label,
             speed_confidence=speed_confidence,
             speed_uncertainty_kmh=speed_uncertainty_kmh,
-            speed_kmh=speed_kmh,
+            speed_kmh=display_speed_kmh,
             physics_confidence=physics_confidence,
         )
         quality_label = (
@@ -747,7 +755,7 @@ class TrajectoryReconstructor:
         return {
             "report_index": float(point.report_index),
             "raw_speed_kmh": point.raw_speed_kmh,
-            "speed_kmh": float(speed_kmh),
+            "speed_kmh": float(display_speed_kmh),
             "speed_uncertainty_kmh": speed_uncertainty_kmh,
             "speed_confidence": speed_confidence,
             "speed_confidence_interval_kmh": speed_interval,
@@ -801,16 +809,105 @@ class TrajectoryReconstructor:
             return True
         if class_id != 0:
             return False
+        if 0.0 <= speed_kmh <= 18.0:
+            return bool(
+                speed_confidence >= 0.18
+                and speed_uncertainty_kmh <= 24.0
+            )
         relative_uncertainty = speed_uncertainty_kmh / max(abs(speed_kmh), 1.0)
         if quality_label == "stable":
-            return bool(speed_confidence >= 0.35 and relative_uncertainty <= 0.75)
+            return bool(
+                speed_confidence >= 0.35
+                and 0.2 <= speed_kmh <= 18.0
+                and (
+                    relative_uncertainty <= 0.75
+                    or speed_uncertainty_kmh <= 1.6
+                )
+            )
         if quality_label == "low_confidence":
             return bool(
-                speed_confidence >= 0.32
-                and relative_uncertainty <= 0.65
+                speed_confidence >= 0.22
+                and (
+                    relative_uncertainty <= 0.9
+                    or speed_uncertainty_kmh <= 3.6
+                )
+                and speed_uncertainty_kmh <= 7.0
                 and 0.2 <= speed_kmh <= 18.0
             )
         return False
+
+    @staticmethod
+    def _display_speed_kmh(class_id: int, speed_kmh: float) -> float:
+        if class_id == 0:
+            return float(max(0.0, min(18.0, speed_kmh)))
+        return float(speed_kmh)
+
+    @staticmethod
+    def _short_pedestrian_bootstrap(points: list[TrajectoryPoint]) -> list[dict[str, Any]]:
+        ordered = sorted(points, key=lambda point: point.timestamp_sec)
+        left, right = ordered
+        delta_t = max(float(right.timestamp_sec - left.timestamp_sec), 1e-3)
+        velocity_x = float((right.world_x - left.world_x) / delta_t)
+        velocity_y = float((right.world_y - left.world_y) / delta_t)
+        speed_kmh = float(math.hypot(velocity_x, velocity_y) * 3.6)
+        speed_kmh = max(0.0, min(18.0, speed_kmh))
+        base_confidence = min(
+            value
+            for value in (
+                left.calibration_confidence or 0.72,
+                right.calibration_confidence or 0.72,
+                left.contact_confidence or 0.55,
+                right.contact_confidence or 0.55,
+                left.tracking_confidence or 0.85,
+                right.tracking_confidence or 0.85,
+                left.occlusion_confidence or 0.9,
+                right.occlusion_confidence or 0.9,
+            )
+        )
+        speed_confidence = float(max(0.24, min(0.42, base_confidence * 0.68)))
+        speed_uncertainty_kmh = float(max(1.5, speed_kmh * 0.55))
+        physics_valid = bool(0.2 <= speed_kmh <= 18.0)
+        result: list[dict[str, Any]] = []
+        for point in points:
+            result.append(
+                {
+                    "report_index": float(point.report_index),
+                    "raw_speed_kmh": point.raw_speed_kmh,
+                    "speed_kmh": speed_kmh,
+                    "speed_uncertainty_kmh": speed_uncertainty_kmh,
+                    "speed_confidence": speed_confidence,
+                    "speed_confidence_interval_kmh": [
+                        float(max(0.0, speed_kmh - speed_uncertainty_kmh)),
+                        float(speed_kmh + speed_uncertainty_kmh),
+                    ],
+                    "velocity_x_mps": velocity_x,
+                    "velocity_y_mps": velocity_y,
+                    "acceleration_mps2": None,
+                    "physics_valid": physics_valid,
+                    "quality_label": "variable" if physics_valid else "low_confidence",
+                    "rejection_reason": None if physics_valid else "insufficient_samples",
+                    "speed_stability_score": speed_confidence,
+                    "speed_cv": None,
+                    "max_speed_jump_kmh": None,
+                    "speed_jump_p95_kmh": None,
+                    "acceleration_p95_mps2": None,
+                    "jerk_p95_mps3": None,
+                    "stability_label": "short_track_bootstrap",
+                    "reconstructed": True,
+                    "physics_confidence": speed_confidence,
+                    "calibration_confidence": float(
+                        point.calibration_confidence or base_confidence
+                    ),
+                    "contact_confidence": float(point.contact_confidence or base_confidence),
+                    "tracking_confidence": float(point.tracking_confidence or base_confidence),
+                    "occlusion_confidence": float(point.occlusion_confidence or base_confidence),
+                    "dynamics_confidence": speed_confidence,
+                    "confidence_rejection_reason": None
+                    if physics_valid
+                    else "insufficient_samples",
+                }
+            )
+        return result
 
     @staticmethod
     def _reconstructed_speed_confidence(

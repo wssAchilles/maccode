@@ -177,6 +177,82 @@ def test_variable_reconstructed_pedestrian_speed_with_bounded_uncertainty_is_dis
     assert result["confidence_rejection_reason"] is None
 
 
+def test_pedestrian_speed_with_wide_rts_uncertainty_remains_displayable() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=24,
+            timestamp_sec=0.96,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=9.6,
+            speed_confidence=0.33,
+            speed_uncertainty_kmh=12.9,
+            calibration_confidence=0.65,
+            contact_confidence=0.324,
+            tracking_confidence=1.0,
+            occlusion_confidence=1.0,
+        ),
+        0,
+        1.0,
+        2.0,
+        velocity=np.array([2.6667, 0.0]),
+        speed_kmh=9.6,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.27,
+            speed_cv=0.92,
+            max_speed_jump_kmh=1.7,
+            speed_jump_p95_kmh=1.7,
+            acceleration_p95_mps2=4.0,
+            jerk_p95_mps3=5.0,
+            stability_label="unstable_observation",
+        ),
+    )
+
+    assert result["physics_confidence"] < 0.2
+    assert result["physics_valid"] is True
+    assert result["quality_label"] == "variable"
+    assert result["speed_uncertainty_kmh"] == pytest.approx(18.705)
+    assert result["confidence_rejection_reason"] is None
+
+
+def test_reconstructed_pedestrian_speed_is_capped_to_display_range() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=31,
+            timestamp_sec=1.24,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=24.0,
+            speed_confidence=0.72,
+            speed_uncertainty_kmh=6.0,
+            calibration_confidence=0.65,
+            contact_confidence=0.52,
+            tracking_confidence=1.0,
+            occlusion_confidence=1.0,
+        ),
+        0,
+        1.0,
+        2.0,
+        velocity=np.array([6.6667, 0.0]),
+        speed_kmh=24.0,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.42,
+            speed_cv=0.2,
+            max_speed_jump_kmh=2.0,
+            speed_jump_p95_kmh=2.0,
+            acceleration_p95_mps2=4.0,
+            jerk_p95_mps3=5.0,
+            stability_label="stable",
+        ),
+    )
+
+    assert result["speed_kmh"] == 18.0
+    assert result["physics_valid"] is True
+    assert result["confidence_rejection_reason"] is None
+
+
 def test_stable_reconstructed_vehicle_speed_keeps_low_physics_confidence_invalid() -> None:
     reconstructor = TrajectoryReconstructor()
     reports = []
@@ -214,6 +290,124 @@ def test_stable_reconstructed_vehicle_speed_keeps_low_physics_confidence_invalid
     assert track["physics_confidence"] < 0.2
     assert track["physics_valid"] is False
     assert track["confidence_rejection_reason"] == "dynamics_confidence"
+
+
+def test_short_two_frame_pedestrian_track_gets_bootstrap_speed() -> None:
+    reconstructor = TrajectoryReconstructor()
+    reports = []
+    for frame_index in (18, 19):
+        timestamp = frame_index / 25.0
+        reports.append(
+            {
+                "frame_index": frame_index,
+                "timestamp_sec": timestamp,
+                "active_tracks": [
+                    {
+                        "tracker_id": 17,
+                        "class_id": 0,
+                        "class_name": "person",
+                        "speed_kmh": None,
+                        "physics_valid": False,
+                        "quality_label": "geometry_invalid",
+                        "rejection_reason": "far_field_perspective_rejected",
+                        "ground_x_m": 6.5 + (frame_index - 18) * 0.015,
+                        "ground_y_m": 39.4,
+                        "calibration_confidence": 0.72,
+                        "contact_confidence": 0.55,
+                        "tracking_confidence": 1.0,
+                        "occlusion_confidence": 1.0,
+                    }
+                ],
+            }
+        )
+
+    updated = reconstructor.reconstruct_reports(reports)
+
+    for report in updated:
+        track = report["active_tracks"][0]
+        assert track["speed_kmh"] is not None
+        assert track["physics_valid"] is True
+        assert track["quality_label"] == "variable"
+        assert track["stability_label"] == "short_track_bootstrap"
+        assert track["reconstructed"] is True
+        assert track["rejection_reason"] is None
+
+
+def test_low_speed_stable_pedestrian_allows_absolute_uncertainty_gate() -> None:
+    result = TrajectoryReconstructor._point_result(
+        TrajectoryPoint(
+            report_index=716,
+            timestamp_sec=28.64,
+            world_x=1.0,
+            world_y=2.0,
+            raw_speed_kmh=0.66,
+            speed_confidence=0.72,
+            speed_uncertainty_kmh=0.5,
+            calibration_confidence=0.716667,
+            contact_confidence=0.414894,
+            tracking_confidence=1.0,
+            occlusion_confidence=1.0,
+            reconstructed=True,
+        ),
+        0,
+        1.0,
+        2.0,
+        velocity=np.array([0.1833, 0.0]),
+        speed_kmh=0.66,
+        acceleration=None,
+        metrics=SpeedStabilityMetrics(
+            speed_stability_score=0.99,
+            speed_cv=0.0,
+            max_speed_jump_kmh=0.0,
+            speed_jump_p95_kmh=0.0,
+            acceleration_p95_mps2=0.0,
+            jerk_p95_mps3=0.0,
+            stability_label="stable",
+        ),
+    )
+
+    assert result["physics_valid"] is True
+    assert result["quality_label"] == "stable"
+    assert result["confidence_rejection_reason"] is None
+
+
+def test_reconstruction_keeps_reused_tracker_id_classes_separate() -> None:
+    reconstructor = TrajectoryReconstructor()
+    reports = []
+    for frame_index in range(12):
+        timestamp = frame_index / 25.0
+        class_id = 1 if frame_index < 8 else 0
+        reports.append(
+            {
+                "frame_index": frame_index,
+                "timestamp_sec": timestamp,
+                "active_tracks": [
+                    {
+                        "tracker_id": 20,
+                        "class_id": class_id,
+                        "class_name": "bicycle" if class_id == 1 else "person",
+                        "speed_kmh": 1.8,
+                        "speed_confidence": 0.72,
+                        "speed_uncertainty_kmh": 0.5,
+                        "physics_valid": class_id == 1,
+                        "quality_label": "stable",
+                        "ground_x_m": 13.0 + 0.012 * frame_index,
+                        "ground_y_m": 39.0 + 0.016 * frame_index,
+                        "calibration_confidence": 0.716667,
+                        "contact_confidence": 0.20433 if class_id == 0 else 0.72,
+                        "tracking_confidence": 1.0,
+                        "occlusion_confidence": 1.0,
+                    }
+                ],
+            }
+        )
+
+    updated = reconstructor.reconstruct_reports(reports)
+    person_track = updated[-1]["active_tracks"][0]
+
+    assert person_track["class_id"] == 0
+    assert person_track["physics_valid"] is True
+    assert person_track["confidence_rejection_reason"] is None
 
 
 def test_reconstruction_marks_missing_short_gap_as_reconstructed() -> None:

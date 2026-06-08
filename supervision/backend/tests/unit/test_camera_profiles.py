@@ -42,6 +42,23 @@ def test_camera_profiles_match_fixed_camera_clip_families() -> None:
     )
 
 
+def test_pedestrian_profile_covers_same_camera_training_family_033_to_042() -> None:
+    profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
+
+    for clip_id in range(33, 43):
+        offset_sec = (clip_id - 33) * 30
+        clip_name = (
+            f"{clip_id:03d}_pedestrian_crowd_high_view_{offset_sec:04d}s_30s.mp4"
+        )
+
+        assert _match(clip_name, profiles).profile_id == "pedestrian_high_view_camera"
+
+    assert _match(
+        "041_pedestrian_crowd_high_view_0240s_30s.mp4",
+        profiles,
+    ).profile_id == "pedestrian_high_view_camera"
+
+
 def test_camera_profile_has_auto_calibration_candidates() -> None:
     profiles = load_camera_profiles(Path("data/tests/camera_profiles.yaml"))
     profile = profiles["jackson_hole_signal_camera"]

@@ -239,6 +239,20 @@ class ReportGenerator:
                 point_extrapolation_risk=record.point_extrapolation_risk,
                 point_metric_gate_reason=record.point_metric_gate_reason,
                 real_speed_acceptance_status=record.real_speed_acceptance_status,
+                speed_source=record.speed_source
+                or ReportGenerator._speed_source(record),
+                contact_quality_score=record.contact_quality_score
+                if record.contact_quality_score is not None
+                else ReportGenerator._contact_quality_score(record),
+                contact_covariance_multiplier=(
+                    record.contact_covariance_multiplier
+                    if record.contact_covariance_multiplier is not None
+                    else ReportGenerator._contact_covariance_multiplier(record)
+                ),
+                speed_validity_score=record.speed_validity_score
+                if record.speed_validity_score is not None
+                else ReportGenerator._speed_validity_score(record),
+                fixed_lag_backfilled=record.fixed_lag_backfilled or record.reconstructed,
             )
         if track.tracker_id in speeds:
             return track.with_speed(speeds[track.tracker_id])
@@ -255,3 +269,57 @@ class ReportGenerator:
         lower = max(0.0, record.speed_kmh - record.speed_uncertainty_kmh)
         upper = record.speed_kmh + record.speed_uncertainty_kmh
         return [float(lower), float(upper)]
+
+    @staticmethod
+    def _speed_source(record: SpeedRecord) -> str | None:
+        if record.speed_kmh is None:
+            return None
+        if record.reconstructed:
+            return "fixed_lag_rts_backfill"
+        if record.speed_periodic_kmh is not None and record.speed_body_kmh is not None:
+            return "body_contact_periodic_fusion"
+        if record.imm_speed_kmh is not None:
+            return "imm_world_velocity"
+        return record.measurement_source or record.contact_source or "world_velocity"
+
+    @staticmethod
+    def _contact_quality_score(record: SpeedRecord) -> float | None:
+        candidates = [
+            record.contact_fusion_confidence,
+            record.contact_confidence,
+            record.measurement_confidence,
+            record.optical_flow_inlier_ratio,
+        ]
+        numeric = [float(value) for value in candidates if isinstance(value, int | float)]
+        if not numeric:
+            return None
+        penalty = 0.0
+        if record.measurement_policy in {"reject", "predict_only"}:
+            penalty += 0.35
+        if record.contact_outlier_source:
+            penalty += 0.25
+        if record.foot_skate_risk is not None:
+            penalty += min(0.25, max(0.0, float(record.foot_skate_risk)) * 0.25)
+        return max(0.0, min(1.0, sum(numeric) / len(numeric) - penalty))
+
+    @staticmethod
+    def _contact_covariance_multiplier(record: SpeedRecord) -> float | None:
+        quality = ReportGenerator._contact_quality_score(record)
+        if quality is None:
+            return None
+        return float(max(0.75, min(4.0, 1.0 + (1.0 - quality) * 3.0)))
+
+    @staticmethod
+    def _speed_validity_score(record: SpeedRecord) -> float:
+        if record.speed_kmh is None:
+            return 0.0
+        score = float(record.speed_confidence or record.physics_confidence or 0.55)
+        if not record.physics_valid:
+            score *= 0.35
+        if record.speed_uncertainty_kmh is not None:
+            score *= max(0.2, 1.0 - min(float(record.speed_uncertainty_kmh), 12.0) / 18.0)
+        if record.speed_jump_p95_kmh is not None:
+            score *= max(0.2, 1.0 - min(float(record.speed_jump_p95_kmh), 12.0) / 16.0)
+        if record.id_switch_risk is not None:
+            score *= max(0.15, 1.0 - float(record.id_switch_risk))
+        return max(0.0, min(1.0, score))

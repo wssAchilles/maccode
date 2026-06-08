@@ -118,6 +118,11 @@ class SpeedRecord:
     point_extrapolation_risk: str | None = None
     point_metric_gate_reason: str | None = None
     real_speed_acceptance_status: str | None = None
+    speed_source: str | None = None
+    contact_quality_score: float | None = None
+    contact_covariance_multiplier: float | None = None
+    speed_validity_score: float | None = None
+    fixed_lag_backfilled: bool = False
 
 
 @dataclass
