@@ -11,6 +11,9 @@ import yaml
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from domain.speed.vehicle_diagnostics import build_vehicle_speed_aggregate  # noqa: E402
+from shared.configs.settings import Settings  # noqa: E402
+
 from scripts.analyze_real_videos import (  # noqa: E402
     CalibrationPresetCatalog,
     analyze_clip,
@@ -23,7 +26,6 @@ from scripts.summarize_real_video_benchmark import (  # noqa: E402
     build_benchmark_summary,
     render_markdown,
 )
-from shared.configs.settings import Settings  # noqa: E402
 
 
 def load_regression_set(path: Path, set_name: str | None) -> dict[str, Any]:
@@ -56,6 +58,24 @@ def selected_clip_names(regression_clips: list[str], requested: list[str] | None
             + ", ".join(unknown),
         )
     return requested
+
+
+def build_regression_summary(
+    results: list[dict[str, Any]],
+    regression_set: dict[str, Any],
+) -> dict[str, Any]:
+    summary = summarize(results)
+    summary["vehicle_speed_aggregate"] = build_vehicle_speed_aggregate(
+        results,
+        dense_city_acceptance_min_coverage=float(
+            regression_set.get("aggregate_min_coverage", 0.993),
+        ),
+        clip_acceptance_min_coverage=float(
+            regression_set.get("clip_min_coverage", 0.995),
+        ),
+        car_hard_max_kmh=float(regression_set.get("max_car_speed_kmh", 160.0)),
+    )
+    return summary
 
 
 def run_regression(args: argparse.Namespace) -> dict[str, Any]:
@@ -94,6 +114,7 @@ def run_regression(args: argparse.Namespace) -> dict[str, Any]:
                 max_frames=max_frames,
                 presets=presets,
                 processed_output_dir=output_dir / "processed_videos",
+                speed_ground_truth_dir=Path(args.speed_ground_truth_dir),
             )
             result["status"] = "ok"
         except Exception as exc:  # noqa: BLE001
@@ -107,7 +128,7 @@ def run_regression(args: argparse.Namespace) -> dict[str, Any]:
     summary_payload = {
         "regression_set": regression_set,
         "missing_clips": missing,
-        "summary": summarize(results),
+        "summary": build_regression_summary(results, regression_set),
         "results": results,
     }
     (output_dir / "summary.json").write_text(
@@ -141,6 +162,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=0.35)
     parser.add_argument("--model", default=None)
     parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--speed-ground-truth-dir",
+        default="data/tests/speed_ground_truth",
+        help="Optional CSV directory for vehicle speed GT metrics.",
+    )
     parser.add_argument(
         "--clips",
         nargs="*",

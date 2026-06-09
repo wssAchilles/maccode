@@ -53,6 +53,9 @@ from shared.configs.settings import Settings
 SEMANTIC_TRAFFIC_CLASS_IDS = {0, 1, 2, 3, 5, 7, 9, 10, 11}
 VALIDATION_ERROR_TRUST_MAX_PX = 15.0
 MIN_INDEPENDENT_VALIDATION_SEGMENTS = 2
+DEFAULT_SPEED_GROUND_TRUTH_DIR = Path(__file__).resolve().parents[2] / (
+    "data/tests/speed_ground_truth"
+)
 
 
 @dataclass(frozen=True)
@@ -753,6 +756,7 @@ def analyze_clip(
     max_frames: int | None,
     presets: CalibrationPresetCatalog,
     processed_output_dir: Path | None = None,
+    speed_ground_truth_dir: Path | None = None,
 ) -> dict[str, Any]:
     if frame_stride <= 0:
         raise ValueError("frame_stride must be positive")
@@ -1081,6 +1085,9 @@ def analyze_clip(
         diagnostics_dir=diagnostics_dir,
         source_commit_value=commit,
         regenerated_due_to_stale_audit=regenerated_due_to_stale_audit,
+        speed_ground_truth_dir=speed_ground_truth_dir
+        if speed_ground_truth_dir is not None
+        else DEFAULT_SPEED_GROUND_TRUTH_DIR,
     )
     return {
         "clip": path.name,
@@ -1316,6 +1323,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=0.35)
     parser.add_argument("--model", default=None)
     parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--speed-ground-truth-dir",
+        type=Path,
+        default=DEFAULT_SPEED_GROUND_TRUTH_DIR,
+        help="Optional CSV directory for clip-level vehicle speed GT metrics.",
+    )
     return parser.parse_args()
 
 
@@ -1354,6 +1367,7 @@ def main() -> None:
                 max_frames=max_frames,
                 presets=presets,
                 processed_output_dir=output_dir / "processed_videos",
+                speed_ground_truth_dir=args.speed_ground_truth_dir,
             )
             result["status"] = "ok"
         except Exception as exc:  # noqa: BLE001

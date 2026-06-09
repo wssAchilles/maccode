@@ -49,9 +49,33 @@ export interface Track {
   contact_fusion_weights?: Record<string, number> | null;
   contact_pixel_covariance?: [[number, number], [number, number]] | number[][] | null;
   contact_fusion_confidence?: number | null;
+  contact_point_source?: string | null;
+  contact_point_uncertainty_px?: number | null;
+  contact_point_uncertainty_m?: number | null;
+  bbox_center_fallback?: boolean;
+  bbox_center_fallback_count?: number | null;
+  contact_point_quality_score?: number | null;
+  contact_point_dominant_error_source?: string | null;
+  contact_covariance_multiplier?: number | null;
   tracking_integrity_state?: string | null;
   id_switch_risk?: number | null;
+  id_switch_risk_original?: number | null;
+  id_switch_risk_posterior?: number | null;
+  id_switch_risk_downgraded?: boolean;
+  id_switch_risk_downgrade_reason?: string | null;
   speed_frozen?: boolean;
+  speed_source?: string | null;
+  speed_display_hidden?: boolean;
+  speed_validity_score?: number | null;
+  vehicle_speed_display_state?:
+    | "measured"
+    | "fixed_lag_refined"
+    | "warming_up_hidden"
+    | "frozen_last_valid"
+    | "rejected_hidden"
+    | string;
+  fixed_lag_backfilled?: boolean;
+  speed_uncertainty_recalibrated?: boolean;
   integrity_rejection_reason?: string | null;
   speed_confidence_calibrated?: number | null;
   confidence_calibration_bin?: string | null;
@@ -64,6 +88,8 @@ export interface Track {
   tracklet_relinked?: boolean;
   tracklet_parent_id?: number | null;
   association_score?: number | null;
+  recovery_score?: number | null;
+  tracklet_relink_reason?: string | null;
   association_rejection_reason?: string | null;
   plane_id?: string | null;
   contact_source?: string | null;
@@ -113,6 +139,9 @@ export interface ZoneStats {
 }
 
 export interface FrameReport {
+  report_schema_version?: string | null;
+  reconstruction_applied?: boolean;
+  source_commit?: string | null;
   frame_index: number;
   timestamp_sec: number;
   fps: number;

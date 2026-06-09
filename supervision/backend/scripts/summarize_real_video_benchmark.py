@@ -10,6 +10,8 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from domain.speed.vehicle_diagnostics import build_vehicle_speed_aggregate  # noqa: E402
+
 
 def _fmt(value: object, suffix: str = "") -> str:
     if value is None:
@@ -338,12 +340,30 @@ def build_benchmark_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "avg_physical_quantity_score": (
             mean(row["physical_quantity_score"] for row in rows) if rows else None
         ),
-        "vehicle_speed_aggregate": payload.get("summary", {}).get(
-            "vehicle_speed_aggregate",
-            {},
-        ),
+        "vehicle_speed_aggregate": _vehicle_speed_aggregate(payload, results),
         "rows": rows,
     }
+
+
+def _vehicle_speed_aggregate(
+    payload: dict[str, Any],
+    results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if any(isinstance(result.get("vehicle_speed_audit"), dict) for result in results):
+        regression_set = payload.get("regression_set")
+        regression_set = regression_set if isinstance(regression_set, dict) else {}
+        return build_vehicle_speed_aggregate(
+            results,
+            dense_city_acceptance_min_coverage=float(
+                regression_set.get("aggregate_min_coverage", 0.993),
+            ),
+            clip_acceptance_min_coverage=float(
+                regression_set.get("clip_min_coverage", 0.995),
+            ),
+            car_hard_max_kmh=float(regression_set.get("max_car_speed_kmh", 160.0)),
+        )
+    aggregate = payload.get("summary", {}).get("vehicle_speed_aggregate")
+    return aggregate if isinstance(aggregate, dict) else {}
 
 
 def render_markdown(summary: dict[str, Any]) -> str:
@@ -379,13 +399,120 @@ def render_markdown(summary: dict[str, Any]) -> str:
                     f"{_fmt(vehicle_aggregate.get('vehicle_display_coverage'))}"
                 ),
                 (
+                    "- Safe vehicle display coverage: "
+                    f"{_fmt(vehicle_aggregate.get('safe_vehicle_display_coverage'))}"
+                ),
+                (
+                    "- Coverage used for acceptance: "
+                    f"{_fmt(vehicle_aggregate.get('coverage_used_for_acceptance'))}"
+                ),
+                (
                     "- Dense-city acceptance: "
                     f"{vehicle_aggregate.get('passes_dense_city_acceptance')}"
                 ),
+                (
+                    "- Displayed low-confidence ratio: "
+                    f"{_fmt(vehicle_aggregate.get('displayed_low_confidence_ratio'))}"
+                ),
+                (
+                    "- Displayed high-uncertainty ratio: "
+                    f"{_fmt(vehicle_aggregate.get('displayed_high_uncertainty_ratio'))}"
+                ),
+                (
+                    "- Hard-rejected displayed count: "
+                    f"{vehicle_aggregate.get('hard_rejected_display_count', 0)}"
+                ),
+                (
+                    "- Displayed ID-switch risk count: "
+                    f"{vehicle_aggregate.get('displayed_id_switch_risk_count', 0)}"
+                ),
+                (
+                    "- Hidden ID-switch risk count: "
+                    f"{vehicle_aggregate.get('hidden_id_switch_risk_count', 0)}"
+                ),
+                (
+                    "- Unresolved warm-up hidden count: "
+                    f"{vehicle_aggregate.get('unresolved_warmup_hidden_count', 0)}"
+                ),
+                (
+                    "- Max consecutive frozen frames: "
+                    f"{vehicle_aggregate.get('max_consecutive_frozen_frames', 0)}"
+                ),
+                f"- Fixed-lag ratio: {_fmt(vehicle_aggregate.get('fixed_lag_ratio'))}",
+                (
+                    "- RTS uncertainty recalibrated count: "
+                    f"{vehicle_aggregate.get('speed_uncertainty_recalibrated_count', 0)}"
+                ),
+                f"- Frozen ratio: {_fmt(vehicle_aggregate.get('frozen_ratio'))}",
+                (
+                    "- 3D scale sanity available clips: "
+                    f"{vehicle_aggregate.get('vehicle_3d_scale_sanity_available_count', 0)}"
+                ),
+                (
+                    "- 3D calibration region quality: "
+                    f"{vehicle_aggregate.get('vehicle_3d_calibration_region_quality_counts', {})}"
+                ),
+                (
+                    "- 3D review clips: "
+                    f"{vehicle_aggregate.get('vehicle_3d_review_clip_count', 0)}"
+                ),
+                (
+                    "- 3D homography uncertainty multiplier p95: "
+                    f"{_fmt(vehicle_aggregate.get('vehicle_3d_homography_uncertainty_multiplier_p95'))}"
+                ),
+                (
+                    "- Acceleration p95: "
+                    f"{_fmt(vehicle_aggregate.get('acceleration_p95_mps2'), ' m/s2')}"
+                ),
+                (
+                    "- Jerk p95: "
+                    f"{_fmt(vehicle_aggregate.get('jerk_p95_mps3'), ' m/s3')}"
+                ),
                 f"- N/A by reason: {vehicle_aggregate.get('na_by_reason', {})}",
+                (
+                    "- Hidden ID-switch by source: "
+                    f"{vehicle_aggregate.get('hidden_id_switch_risk_by_speed_source', {})}"
+                ),
                 "",
             ],
         )
+        clip_rows = vehicle_aggregate.get("clip_rows")
+        if isinstance(clip_rows, list) and clip_rows:
+            lines.extend(
+                [
+                    "### Vehicle Speed Clip Gates",
+                    "",
+                    "| Clip | Gate coverage | Pass | Low conf | High uncertainty | "
+                    "Hard rejected | ID switch risk | Frozen max | 3D QA | Max car |",
+                    "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |",
+                ],
+            )
+            for row in clip_rows:
+                max_speed_by_class = row.get("max_speed_by_class")
+                max_car = (
+                    max_speed_by_class.get("car")
+                    if isinstance(max_speed_by_class, dict)
+                    else None
+                )
+                lines.append(
+                    "| "
+                    + " | ".join(
+                        [
+                            str(row.get("clip")),
+                            _fmt(row.get("coverage_used_for_acceptance")),
+                            str(row.get("passes_vehicle_speed_acceptance")),
+                            _fmt(row.get("displayed_low_confidence_ratio")),
+                            _fmt(row.get("displayed_high_uncertainty_ratio")),
+                            str(row.get("hard_rejected_display_count", 0)),
+                            str(row.get("displayed_id_switch_risk_count", 0)),
+                            str(row.get("max_consecutive_frozen_frames", 0)),
+                            str(row.get("vehicle_3d_calibration_region_quality")),
+                            _fmt(max_car, " km/h"),
+                        ],
+                    )
+                    + " |",
+                )
+            lines.append("")
     lines.extend(
         [
             "## Scene Rows",
