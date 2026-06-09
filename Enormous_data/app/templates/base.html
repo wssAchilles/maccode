@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>电商行为大数据分析看板</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <nav class="topbar">
+      <a href="/">首页</a>
+      <a href="/overview">数据概览</a>
+      <a href="/charts">图表分析</a>
+      <a href="/table">数据明细</a>
+    </nav>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

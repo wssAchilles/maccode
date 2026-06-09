@@ -1,0 +1,105 @@
+% !TeX root = ./thuthesis-example.tex
+
+\chapter{附录：核心命令与目录说明}
+
+\section{PocketBase 启动}
+
+\begin{lstlisting}[style=codexcode]
+docker compose up -d pocketbase
+\end{lstlisting}
+
+PocketBase 后台地址为 \texttt{http://localhost:8090/\_/}。应用端在鸿蒙模拟器中默认通过 \texttt{http://10.0.2.2:8090} 访问宿主机服务。
+
+如果需要查看服务状态，可以使用：
+
+\begin{lstlisting}[style=codexcode]
+docker compose ps
+docker compose logs -f pocketbase
+\end{lstlisting}
+
+如果需要停止服务，可以使用：
+
+\begin{lstlisting}[style=codexcode]
+docker compose down
+\end{lstlisting}
+
+注意不要随意删除 Docker volume。系统数据库保存在 \texttt{kindergarten-pocketbase-data} 中，如果删除 volume，需要重新执行迁移脚本导入数据。
+
+\section{数据迁移}
+
+\begin{lstlisting}[style=codexcode]
+flutter pub get
+dart run tool/setup_pocketbase.dart
+\end{lstlisting}
+
+迁移完成后应检查 PocketBase 后台中的 collection 和记录数量。应用账号密码统一设置为 \texttt{12345678}，便于课程验收切换不同用户角色。若迁移脚本重新执行，应确认旧 collection 是否会被覆盖，避免重复数据影响测试结果。
+
+\section{模拟器与真机地址}
+
+模拟器和真机访问后端的地址不同，常见配置如下：
+
+\begin{table}[htbp]
+\centering
+\caption{后端地址配置}
+\label{tab:backend-url-config}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{运行环境} & \textbf{PocketBase 地址} \\
+\midrule
+Mac 浏览器 & \texttt{http://127.0.0.1:8090} 或 \texttt{http://localhost:8090} \\
+鸿蒙模拟器 & \texttt{http://10.0.2.2:8090} \\
+鸿蒙真机 & \texttt{http://Mac局域网IP:8090} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+真机调试时，可以通过如下命令指定后端地址：
+
+\begin{lstlisting}[style=codexcode]
+flutter run -d <device-id> \
+  --dart-define=POCKETBASE_URL=http://192.168.x.x:8090
+\end{lstlisting}
+
+\section{HarmonyOS HAP 构建}
+
+\begin{lstlisting}[style=codexcode]
+/Users/achilles/development/flutter_flutter_3_22_ohos/bin/flutter \
+  build hap --debug --no-codesign --target-platform ohos-arm64
+\end{lstlisting}
+
+构建前如果 DevEco 工具链不在环境变量中，需要先设置 \texttt{HOS\_SDK\_HOME}、\texttt{OHOS\_SDK\_HOME}、\texttt{TOOL\_HOME} 和 \texttt{JAVA\_HOME}。这些变量用于让 Flutter for OpenHarmony 找到 HarmonyOS SDK、ohpm、hvigor 和 JBR。
+
+\section{常见问题处理}
+
+\begin{table}[htbp]
+\centering
+\caption{常见问题与处理方式}
+\label{tab:faq}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{现象} & \textbf{处理方式} \\
+\midrule
+登录提示连接失败 & 确认 PocketBase 已启动；模拟器使用 \texttt{10.0.2.2}，真机使用 Mac 局域网 IP。 \\
+图书列表偶发为空 & 检查后端日志和网络地址；服务层已保留上次成功数据，避免瞬时失败覆盖页面。 \\
+图片一直加载 & 检查 \texttt{pb\_public/covers} 是否存在图片，以及数据库路径是否为 \texttt{/covers/...}。 \\
+HAP 构建失败 & 检查 Flutter for OpenHarmony SDK、DevEco SDK、ohpm 和 hvigor 路径。 \\
+页面出现溢出 & 检查卡片宽度、按钮宽度、长文本换行和底部安全区域。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{主要源码目录}
+
+\begin{itemize}
+    \item \texttt{lib/screens}：Flutter 页面，包括登录、图书、学生、借阅、仪表盘和个人中心。
+    \item \texttt{lib/services}：业务服务层，封装 PocketBase 数据访问和业务校验。
+    \item \texttt{lib/models}：图书、学生、分类、借阅记录和用户资料模型。
+    \item \texttt{ohos}：Flutter for OpenHarmony 生成的 HarmonyOS 工程。
+    \item \texttt{pocketbase}：PocketBase 静态资源、hooks 和本地维护目录。
+\end{itemize}
+
+\section{验收建议}
+
+人工验收时建议按以下顺序操作：首先启动 Docker PocketBase 服务并确认后台可打开；其次使用管理员账号登录，查看仪表盘、图书、学生和全部借阅记录；然后使用普通教师账号登录，验证图书查询、借阅和个人中心；最后切换到图书详情和逾期页面，检查库存、数量和逾期天数是否一致。
+
+如果验收设备是真机，需要保证手机和 Mac 在同一网络下，并且 Mac 防火墙没有阻止 \texttt{8090} 端口访问。真机无法访问时，可以先在同一 Wi-Fi 下用手机浏览器打开 \texttt{http://Mac局域网IP:8090/api/health} 进行排查。

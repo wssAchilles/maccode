@@ -1,0 +1,184 @@
+% !TeX root = ../thuthesis-example.tex
+
+\chapter{系统总体设计}
+
+\section{总体架构}
+
+系统采用“鸿蒙移动端 + Flutter 业务界面 + PocketBase 本地后端 + Docker 持久化”的轻量级前后端分离架构。移动端负责页面渲染、交互状态、表单校验和业务服务编排；PocketBase 负责身份认证、REST API、数据存储和静态资源；Docker Compose 负责本地后端启动、端口暴露和数据卷管理\cite{pocketbase_collections,pocketbase_authentication,docker_compose_overview}。
+
+图\ref{fig:system-architecture}为使用 chat-gpt-image-2 生成的总体架构图。图中从左到右体现了 HarmonyOS 设备侧、Flutter/Dart 业务层、PocketBase REST API 和 Docker 持久化层之间的关系。
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{system-architecture-chatgpt-image-2.png}
+    \caption{系统总体架构图}
+    \label{fig:system-architecture}
+\end{figure}
+
+系统运行时，鸿蒙端通过 \texttt{BackendConfig} 获取 PocketBase 地址。模拟器访问宿主机 PocketBase 时使用 \texttt{http://10.0.2.2:8090}，真机验收时可通过 \texttt{--dart-define=POCKETBASE\_URL=http://Mac局域网IP:8090} 指向同一后端服务。
+
+从职责划分看，移动端并不直接操作数据库文件，而是通过 PocketBase SDK 发起 REST 请求；PocketBase 负责鉴权、数据校验和 SQLite 持久化；Docker 只负责运行环境隔离、端口映射和数据卷保存。这样的拆分使每一层都可以单独验证：前端可通过 Flutter 测试验证模型与服务逻辑，后端可通过 PocketBase 管理后台检查 collection 和记录，鸿蒙工程可通过 HAP 构建验证平台适配是否成功。
+
+本项目没有采用“所有逻辑都放在页面组件中”的方式，而是在 Flutter 端保留模型、服务和页面三层结构。页面层负责展示、输入和跳转；服务层负责调用 PocketBase、组合查询结果、处理异常和维护缓存；模型层负责类型转换和字段映射。该结构对于跨平台迁移尤其重要，因为 OpenHarmony 适配主要发生在外层工程与插件能力上，业务层保持 Dart 实现可以显著降低迁移风险。
+
+\section{技术栈设计}
+
+系统主要技术栈如表\ref{tab:tech-stack}所示。选型原则是尽量复用原 Flutter 前端，减少鸿蒙迁移时的页面重写成本，同时将高风险的云端 SDK 依赖替换为跨平台 HTTP/REST 访问方式。
+
+\begin{table}[htbp]
+\centering
+\caption{系统技术栈}
+\label{tab:tech-stack}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{层次} & \textbf{技术选型与作用} \\
+\midrule
+移动端框架 & Flutter / Dart，保留原页面、模型和业务服务组织方式。 \\
+鸿蒙适配 & Flutter for OpenHarmony 3.22，生成 \texttt{ohos/} 工程并接入 ArkTS EntryAbility\cite{openharmony_package_structure_stage,openharmony_module_config}。 \\
+开发工具 & DevEco Studio 6.0.2、HarmonyOS SDK API 22、ohpm、hvigor\cite{openharmony_hap_package}。 \\
+后端服务 & PocketBase，提供 auth collection、base collection、REST API 和静态文件服务\cite{pocketbase_collections,pocketbase_authentication}。 \\
+部署方式 & Docker Compose，本地启动 PocketBase 并暴露 \texttt{8090} 端口\cite{docker_compose_overview}。 \\
+数据持久化 & Docker named volume \texttt{kindergarten-pocketbase-data} 保存 \texttt{/pb\_data}\cite{docker_compose_volumes}。 \\
+前端依赖 & \texttt{pocketbase}、\texttt{shared\_preferences}、\texttt{cached\_network\_image}、\texttt{intl} 等。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+技术选型中最关键的取舍是数据库后端。Supabase 功能完整，但课程验收时需要远程服务、项目密钥和网络连通性；PocketBase 则可以通过单个容器提供认证、表结构、数据和静态资源，启动成本更低。由于 Flutter for OpenHarmony 对部分移动端插件和原生 SDK 的支持仍需要逐项验证，本项目选择用 HTTP/REST 边界隔离平台差异，把平台相关问题控制在网络地址、权限和构建配置范围内。
+
+\section{功能模块划分}
+
+系统按照幼儿园图书业务边界划分为登录鉴权、仪表盘、图书管理、分类管理、借阅归还、学生管理、管理员查询和个人中心等模块。图\ref{fig:module-function-map}展示了各模块之间的功能关系。
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{module-function-map-chatgpt-image-2.png}
+    \caption{系统功能模块图}
+    \label{fig:module-function-map}
+\end{figure}
+
+各模块之间通过服务层进行协作。例如，图书列表页面调用 \texttt{BookService} 读取图书与分类，借阅页面调用 \texttt{BorrowService} 先校验库存再创建借阅记录，仪表盘页面调用 \texttt{DashboardService} 汇总图书、学生和借阅记录。这样的分层使页面组件只关注界面状态，数据访问和业务规则集中在服务层。
+
+表\ref{tab:module-responsibility}进一步说明各模块的输入、输出和依赖关系。该表也可作为后续测试设计的依据，因为每个模块都对应一组可验证的用户行为。
+
+\begin{table}[htbp]
+\centering
+\caption{功能模块职责划分}
+\label{tab:module-responsibility}
+\begin{tabularx}{0.95\textwidth}{l>{\raggedright\arraybackslash}p{0.24\textwidth}X}
+\toprule
+\textbf{模块} & \textbf{主要输入} & \textbf{主要输出与依赖} \\
+\midrule
+登录鉴权 & 邮箱、密码、注册资料 & 登录 token、用户角色、个人资料，依赖 \texttt{profiles}。 \\
+仪表盘 & 图书、学生、借阅记录 & 统计卡片、热门图书、本月借阅数据，依赖 \texttt{DashboardService}。 \\
+图书管理 & 搜索词、分类、图书表单 & 图书列表、详情、编辑结果，依赖 \texttt{books} 和 \texttt{categories}。 \\
+借阅归还 & 图书、借阅对象、数量、日期 & 借阅记录、库存变化、逾期状态，依赖 \texttt{BorrowService}。 \\
+学生管理 & 学生姓名、班级 & 学生列表、学生详情、个人借阅历史。 \\
+管理员查询 & 搜索词、状态筛选 & 全部借阅、未归还、逾期记录。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{数据模型设计}
+
+PocketBase 迁移后保留原 Supabase 的主要列表及字段，核心 collection 如表\ref{tab:data-model}所示。PocketBase 将 collection 分为 base collection 和 auth collection，本项目正是利用 auth collection 承载用户登录资料\cite{pocketbase_collections,pocketbase_authentication}。
+
+\begin{table}[htbp]
+\centering
+\caption{PocketBase 核心 Collection 字段}
+\label{tab:data-model}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{Collection} & \textbf{字段说明} \\
+\midrule
+\texttt{profiles} & auth collection。业务字段为 \texttt{source\_id}、\texttt{full\_name}、\texttt{updated\_at}、\texttt{role}，系统字段提供邮箱和密码认证。 \\
+\texttt{categories} & \texttt{name}、\texttt{created\_at}，用于图书分类筛选。 \\
+\texttt{students} & \texttt{created\_at}、\texttt{full\_name}、\texttt{class\_name}，用于学生借阅对象管理。 \\
+\texttt{books} & \texttt{created\_at}、\texttt{title}、\texttt{author}、\texttt{location}、\texttt{cover\_image\_url}、\texttt{status}、\texttt{last\_updated\_by}、\texttt{total\_quantity}、\texttt{available\_quantity}、\texttt{category\_id}。 \\
+\texttt{borrow\_records} & \texttt{created\_at}、\texttt{book\_id}、\texttt{student\_id}、\texttt{profile\_id}、\texttt{borrow\_date}、\texttt{due\_date}、\texttt{return\_date}、\texttt{borrowed\_by\_user\_id}、\texttt{quantity}。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+PocketBase 的 record \texttt{id} 是系统字段，不能创建自定义数字 \texttt{id} 字段。因此迁移时将 Supabase 的数字主键保存为 15 位补零 record id，例如源库 \texttt{6} 映射为 \texttt{000000000000006}。Flutter 端通过 \texttt{pb\_mapper.dart} 将 PocketBase id 还原为业务模型中的整数 id。对于 \texttt{profiles}，完整 Supabase UUID 保存在 \texttt{source\_id}，PocketBase record id 使用 UUID 去横线后的兼容短 id。
+
+\subsection{字段映射原则}
+
+字段迁移遵循三条原则。第一，原 Supabase 中已经存在的业务字段必须保留，不为了新数据库重新命名或重新设计语义；第二，PocketBase 的系统字段不与业务字段冲突，例如 record \texttt{id} 由 PocketBase 管理，原数字 id 通过可逆规则映射；第三，空值必须保留为空值，不能把空分类、空归还日期或空学生关系错误写成 \texttt{0} 或空字符串。
+
+在数据类型上，\texttt{created\_at}、\texttt{borrow\_date}、\texttt{due\_date} 和 \texttt{return\_date} 统一按时间字段或可空时间字段处理；\texttt{total\_quantity}、\texttt{available\_quantity} 和 \texttt{quantity} 按数字处理；\texttt{category\_id}、\texttt{student\_id}、\texttt{profile\_id} 等关系字段由于源库存在 nullable 情况，在 PocketBase 侧使用兼容类型保存，再由 Flutter mapper 转换为模型中的可空整数或字符串。这样的处理避免了迁移后“数据能导入但页面解释错误”的问题。
+
+\subsection{数据一致性约束}
+
+图书库存一致性是系统最重要的业务约束。对于每一本图书，应满足：
+
+\begin{lstlisting}[style=codexcode]
+available_quantity = total_quantity - sum(unreturned borrow_records.quantity)
+\end{lstlisting}
+
+其中未归还记录指 \texttt{return\_date} 为空的借阅记录。系统页面展示的“已借出”数量由 \texttt{total\_quantity - available\_quantity} 得到，个人中心和图书详情展示的借阅数量则来自 \texttt{borrow\_records.quantity}。此前调试中出现“图书详情显示借出 6 本，但个人中心只看到 3 本”的疑问，本质上是图书维度统计全部未归还记录，而个人中心只统计当前登录用户的记录，两者口径不同。设计文档中明确统计口径后，可以避免把正常的多用户借阅误认为数据异常。
+
+\section{借阅业务流程}
+
+借阅与归还是系统中最容易出现数据不一致的业务。系统设计时将库存校验、记录写入和库存扣减作为一个顺序业务链处理，并在失败时回滚库存变化。图\ref{fig:borrow-workflow}展示了借阅与归还流程。
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{borrow-workflow-chatgpt-image-2.png}
+    \caption{图书借阅与归还业务流程图}
+    \label{fig:borrow-workflow}
+\end{figure}
+
+借阅流程首先读取图书当前可借数量，若输入数量大于可借库存则直接提示错误；校验通过后创建 \texttt{borrow\_records}，再扣减 \texttt{books.available\_quantity}。归还流程通过写入 \texttt{return\_date} 标记记录已归还，并按借阅数量恢复可借库存。仪表盘、图书详情和个人中心均基于这些字段实时计算当前在借、逾期和历史记录。
+
+\section{接口调用时序}
+
+图\ref{fig:auth-borrow-sequence}为登录、查询和借阅的端到端时序图。该图体现了鸿蒙 Flutter UI、Dart 服务层、PocketBase SDK、REST API 和 Docker volume 存储之间的调用关系。
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{auth-borrow-sequence-chatgpt-image-2.png}
+    \caption{登录与借阅接口调用时序图}
+    \label{fig:auth-borrow-sequence}
+\end{figure}
+
+登录阶段调用 \texttt{profiles.authWithPassword}，成功后将 token 与用户角色交给 \texttt{AuthService} 管理。图书页进入时并行读取图书和分类数据；借阅提交时通过服务层完成库存校验、借阅记录创建和图书库存更新。为了避免模拟器中反复刷新导致的服务压力，列表类数据的轮询间隔统一收敛到 30 秒，并保留上一次成功结果作为短暂网络异常时的降级显示。
+
+接口设计上，系统尽量避免在页面层拼接复杂查询。页面只表达用户意图，例如“加载图书列表”“加载某学生的借阅记录”“归还某条记录”；具体的 PocketBase collection 名称、排序字段、过滤条件和异常处理由服务层负责。这样做的好处是当 PocketBase 对非法字段排序返回 \texttt{400} 时，只需要修正服务层查询，不需要逐个修改页面组件。
+
+\begin{table}[htbp]
+\centering
+\caption{主要接口调用设计}
+\label{tab:api-design}
+\begin{tabularx}{0.95\textwidth}{lXX}
+\toprule
+\textbf{服务方法} & \textbf{PocketBase 资源} & \textbf{说明} \\
+\midrule
+\texttt{login} & \texttt{profiles/auth-}\newline\texttt{with-password} & 使用邮箱密码登录，并读取角色字段。 \\
+\texttt{getBooks} & \texttt{books/records} & 分页读取图书，按创建时间或标题排序。 \\
+\texttt{getCategories} & \texttt{categories/records} & 读取分类，用于筛选按钮和图书编辑。 \\
+\texttt{borrowBook} & \texttt{borrow\_records/records}、\texttt{books/records} & 创建借阅记录并扣减库存。 \\
+\texttt{returnBook} & \texttt{borrow\_records/records}、\texttt{books/records} & 写入归还日期并恢复库存。 \\
+\texttt{getDashboardStats} & 多个 collection & 聚合图书、学生、借阅记录并生成统计值。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{数据库迁移与性能优化设计}
+
+本项目早期使用 Supabase，但在鸿蒙迁移过程中需要同时考虑平台 SDK 适配、本地验收可复现性和网络稳定性。PocketBase 的优势在于部署简单、提供标准 REST API、内置 auth collection 和静态文件服务，能够用 Docker 在本机快速启动，适合课程项目验收\cite{supabase_auth_docs,pocketbase_collections,docker_compose_overview}。
+
+图\ref{fig:database-migration-performance}展示了数据库迁移与性能稳定性优化的整体思路。
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{database-migration-performance-chatgpt-image-2.png}
+    \caption{数据库迁移与性能稳定性优化图}
+    \label{fig:database-migration-performance}
+\end{figure}
+
+迁移脚本 \texttt{tool/setup\_pocketbase.dart} 从 Supabase 备份文件读取 \texttt{auth.users} 和 public schema 中的 5 个业务表，创建 PocketBase collections 后导入数据。迁移后的记录数量为：\texttt{profiles} 3 条、\texttt{categories} 4 条、\texttt{students} 4 条、\texttt{books} 6 条、\texttt{borrow\_records} 8 条。系统没有为了新数据库重新设计字段，而是围绕 PocketBase 的 id、auth 和 nullable 字段限制做最小适配。
+
+性能优化主要包含四点：第一，将 \texttt{/pb\_data} 放入 Docker named volume，避免 macOS Docker bind mount 直接承载 SQLite 高频读写；第二，封面图片放入 \texttt{pb\_public/covers}，由 PocketBase 静态目录直接提供；第三，修复 \texttt{AuthGate} 重复触发 \texttt{authRefresh} 的问题，减少无意义认证请求；第四，服务层保留上一次成功数据，避免瞬时请求失败时把页面误渲染成“暂无图书”。该设计与 Docker 对 named volume 的推荐用途以及 SQLite WAL/文件锁机制有关\cite{docker_compose_volumes,sqlite_wal}。
+
+迁移后的性能提升主要体现在三个方面。第一，服务启动路径缩短，验收时只需要启动本机 Docker 容器，不再依赖远程 Supabase 项目的网络和访问密钥；第二，数据库与图片资源位于同一个本地服务中，图书列表无需跨多个域名加载封面；第三，读写异常更容易定位，开发者可以直接查看 PocketBase 日志、collection 记录和 Docker volume 状态。对于课程项目而言，这种“可复现、可观察、可恢复”的工程属性比单纯追求云端能力更重要。

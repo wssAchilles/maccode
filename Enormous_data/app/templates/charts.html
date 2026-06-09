@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>图表分析</h1>
+  <div class="dashboard-grid">
+    <div class="panel embedded">
+      <h2>每日销售额</h2>
+      <div class="chart" id="daily-sales-line"></div>
+    </div>
+    <div class="panel embedded">
+      <h2>品牌销售额排行</h2>
+      <div class="chart" id="brand-bar"></div>
+    </div>
+    <div class="panel embedded wide">
+      <h2>行为分布</h2>
+      <div class="chart" id="event-type-bar"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/dashboard/charts-page.js') }}"></script>
+{% endblock %}

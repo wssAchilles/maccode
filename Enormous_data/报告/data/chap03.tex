@@ -1,0 +1,199 @@
+% !TeX root = ../thuthesis-example.tex
+
+\chapter{系统具体实现}
+
+\section{鸿蒙工程适配实现}
+
+本项目采用 Flutter for OpenHarmony 3.22 生成鸿蒙工程。Flutter 本身采用 Dart 编写 UI 框架并通过自身渲染管线跨平台输出界面，适合在保留原前端的前提下迁移到新平台\cite{flutter_architecture_overview}。生成命令如下：
+
+\begin{lstlisting}[style=codexcode]
+/Users/achilles/development/flutter_flutter_3_22_ohos/bin/flutter \
+  create --platforms ohos --project-name kindergarten_library --no-pub .
+\end{lstlisting}
+
+生成后的 \texttt{ohos/} 工程可以由 DevEco Studio 打开，主要配置文件如下。OpenHarmony Stage 模型中，HAP 结构与 \texttt{module.json5} 配置共同决定模块类型、入口 Ability 和权限声明\cite{openharmony_package_structure_stage,openharmony_module_config,openharmony_hap_package}：
+
+\begin{itemize}
+    \item \texttt{ohos/build-profile.json5}：配置 HarmonyOS 产品、签名信息、兼容 SDK 版本和目标 SDK 版本。
+    \item \texttt{ohos/entry/src/main/module.json5}：声明入口模块、设备类型、EntryAbility 和网络访问权限。
+    \item \texttt{Index.ets}：通过 \texttt{@ohos/flutter\_ohos} 嵌入 \texttt{FlutterPage}，使原 Flutter 页面在鸿蒙 Stage 模型下启动。
+\end{itemize}
+
+该适配方案的关键优点是：页面层、模型层和服务层基本保持 Dart 实现，鸿蒙工程主要承担应用壳、权限、构建配置和 Flutter 容器职责。这比完全改写为 ArkTS 页面更适合本课程项目的时间范围，也更容易保持原有业务逻辑正确性。
+
+\subsection{鸿蒙工程目录说明}
+
+生成 \texttt{ohos/} 后，项目不再只是一个普通 Flutter 工程，而是同时包含鸿蒙原生工程结构。顶层 \texttt{build-profile.json5} 描述产品、模块和签名信息；\texttt{entry} 模块是应用入口；\texttt{hvigorfile.ts} 与 \texttt{oh-package.json5} 参与鸿蒙侧构建；\texttt{oh\_modules} 和 \texttt{.hvigor} 保存 OpenHarmony 依赖和构建缓存。DevEco Studio 能够打开该目录，是因为目录结构已经满足 OpenHarmony Stage 工程的基本要求。
+
+入口文件 \texttt{Index.ets} 的职责相对清晰：它不重新实现登录页、图书页或仪表盘，而是创建 Flutter 容器并加载 Dart 侧应用。这一设计体现了 Flutter for OpenHarmony 的迁移价值。课程项目要求体现鸿蒙开发过程，因此本文不仅保留了 Flutter 前端，也在工程中配置了 HarmonyOS SDK、HAP 构建、网络权限、EntryAbility 和 DevEco Studio 可识别的模块结构。
+
+\subsection{权限与网络配置}
+
+移动端访问 PocketBase 必须具备网络权限。系统在 \texttt{module.json5} 中声明 \texttt{ohos.permission.INTERNET}，否则即使 PocketBase 服务正常启动，鸿蒙端也无法发起 HTTP 请求。配置文件同时声明入口 Ability、设备类型和模块信息，使应用能在手机模拟器上安装和启动。
+
+网络地址根据运行环境区分。桌面浏览器访问 PocketBase 使用 \texttt{localhost:8090}；鸿蒙模拟器中的 \texttt{127.0.0.1} 指向模拟器自身，因此必须使用 \texttt{10.0.2.2:8090} 访问 Mac 宿主机；真机验收时则需要把 Mac 和手机连接到同一局域网，再使用 Mac 的局域网 IP。该差异通过 \texttt{--dart-define} 暴露为配置项，避免在源码中反复修改地址。
+
+\section{后端连接与鉴权实现}
+
+Flutter 端使用 \texttt{lib/config/backend\_config.dart} 管理 PocketBase 地址。默认值为 \texttt{http://10.0.2.2:8090}，用于鸿蒙模拟器访问 Mac 宿主机；真机环境可以通过 \texttt{POCKETBASE\_URL} 编译参数切换为局域网地址。封面图片如果是相对路径，例如 \texttt{/covers/book\_001.png}，会通过 \texttt{resolveFileUrl} 转换为完整 URL。
+
+PocketBase 客户端初始化位于服务层的 \texttt{pocketbase\_client.dart}。系统优先使用 \texttt{shared\_preferences} 持久化 auth token；考虑到 OpenHarmony 插件适配可能不完整，当遇到 \texttt{MissingPluginException} 时回退为内存 auth store，保证应用至少能够在当前运行会话内完成登录和数据访问。该部分使用 PocketBase Dart SDK 与 auth collection 的邮箱密码认证能力\cite{pocketbase_dart_sdk,pocketbase_authentication}。
+
+\texttt{AuthService} 封装登录、注册、刷新当前用户和资料更新逻辑。登录时调用 \texttt{profiles} auth collection 的邮箱密码认证接口，成功后读取 \texttt{role} 决定用户权限。为了避免之前出现的重复刷新问题，应用入口 \texttt{AuthGate} 不再在每次 build 后无条件触发登录态更新，而是让 auth 状态流驱动页面切换。
+
+\subsection{服务层异常处理}
+
+服务层异常处理分为三类。第一类是连接异常，例如 PocketBase 未启动、模拟器地址错误或真机无法访问 Mac，此时页面显示明确的失败提示，并保留上一次成功数据。第二类是业务异常，例如库存不足、必填字段为空或归还已经完成的记录，此时服务层返回可读错误信息。第三类是后端查询异常，例如字段名写错、排序字段不存在或过滤条件不兼容，此时服务层需要修正查询表达式，而不是让页面长期显示空态。
+
+为了减少偶发空列表，\texttt{BookService}、\texttt{DashboardService} 和借阅记录相关服务采用“成功结果缓存”策略。每次请求成功后更新缓存；如果下一次请求失败且缓存存在，页面继续展示旧数据并提示刷新失败。这一策略并不会伪造数据，只是避免把网络瞬时失败解释为业务数据不存在。对于移动端应用，这比简单地在异常时返回空数组更符合用户预期。
+
+\subsection{角色路由实现}
+
+登录成功后，系统根据 \texttt{profiles.role} 判断当前用户是普通教师还是管理员。普通教师进入后可以使用图书查询、借阅、归还和个人中心；管理员可以进入分类、学生、全部借阅记录和逾期查询等管理页面。页面上的入口按钮和底部导航会根据角色展示不同功能，减少普通教师误进入管理功能的可能。
+
+这种角色控制主要在前端完成，适合课程项目演示和验收。若系统进一步用于真实生产场景，还需要在 PocketBase 规则中增加 collection 级别的访问控制，例如限制普通教师只能更新自己的 \texttt{profiles}，只能读取必要的学生信息，不能删除分类或学生记录。本文在展望部分也将其列为后续改进方向。
+
+\section{仪表盘模块}
+
+仪表盘是管理员和教师了解图书馆当前状态的入口，如图\ref{fig:dashboard}所示。页面显示图书总数、学生总数、当前在借、逾期未还、本月借阅次数、热门图书和借阅之星。
+
+\begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{图书仪表盘.png}
+        \caption{图书馆仪表盘}
+        \label{fig:dashboard}
+    \end{subfigure}
+    \hspace{0.08\textwidth}
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{图书总览.png}
+        \caption{图书总览与分类筛选}
+        \label{fig:book-list}
+    \end{subfigure}
+    \caption{仪表盘与图书总览页面}
+\end{figure}
+
+\texttt{DashboardService} 会读取图书、学生和借阅记录，并在前端计算统计值。为了减少请求次数，当前实现会复用已经读取的借阅记录计算当前在借和逾期数量，而不是为每个统计卡片重新发起请求。热门图书根据借阅记录中的图书 id 和数量聚合得到，借阅之星根据借阅人信息聚合得到。
+
+仪表盘的数据计算口径如下：图书总数来自 \texttt{books} 记录数量；学生总数来自 \texttt{students} 记录数量；当前在借来自 \texttt{return\_date} 为空的借阅记录数量或数量合计；逾期未还来自未归还记录中 \texttt{due\_date} 早于当前日期的记录；本月借阅次数按 \texttt{borrow\_date} 所在月份过滤；热门图书按 \texttt{book\_id} 聚合 \texttt{quantity} 后排序。
+
+由于这些统计值来自多个 collection，如果每个卡片都单独请求后端，页面会产生过多请求并增加模拟器环境下的不稳定性。因此实现时将统计计算集中在一个服务方法内完成，页面一次加载后统一刷新。该方式也方便测试，因为可以通过固定的图书、学生和借阅记录推导出预期统计结果。
+
+\section{图书管理模块}
+
+图书管理页面是系统使用频率最高的页面，如图\ref{fig:book-list}所示。用户可以通过搜索框按书名、作者或位置检索，也可以通过分类按钮筛选图书。每张图书卡片展示封面区域、书名、作者、库存和可借状态。
+
+\texttt{BookService} 负责图书的增删改查。读取图书列表时会同时读取分类集合，并在本地为图书补充分类名称。若分类映射短暂失败，页面不会把全部图书隐藏，而是优先展示上一次成功加载的数据。这样的处理可以避免后端瞬时抖动时出现“暂无图书”的误判。
+
+图书编辑页面如图\ref{fig:book-edit}所示。编辑内容包括标题、作者、位置、分类、库存、封面路径和状态等。系统在保存前对必填字段和库存数字进行校验，保存后刷新图书列表与详情页。
+
+图书卡片在鸿蒙模拟器上曾出现过图片长期加载、按钮被遮挡和库存标签溢出等问题。修复时从三个方面处理：第一，封面区域设置固定高度，图片加载失败时显示占位而不是撑开卡片；第二，库存标签、可借状态和按钮采用紧凑布局，避免窄屏下横向越界；第三，搜索框和分类按钮放在独立滚动区域，分类较多时允许横向滑动。这样可以保证图书页在不同屏幕宽度下仍保持稳定布局。
+
+\section{分类管理模块}
+
+分类管理页面如图\ref{fig:category}所示，用于维护图书分类集合。分类数据来自 \texttt{categories} collection，图书表中的 \texttt{category\_id} 与分类 id 对应。页面提供分类查看、添加、编辑和删除能力，图书列表顶部的分类筛选按钮也直接来自该集合。
+
+\begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{编辑图书信息.png}
+        \caption{编辑图书信息}
+        \label{fig:book-edit}
+    \end{subfigure}
+    \hspace{0.08\textwidth}
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{图书分类管理.png}
+        \caption{图书分类管理}
+        \label{fig:category}
+    \end{subfigure}
+    \caption{图书信息维护与分类管理页面}
+\end{figure}
+
+由于 PocketBase 的 json 字段可以保存 nullable 数字，迁移时 \texttt{books.category\_id} 使用 json 类型，避免空分类被错误转换为 \texttt{0}。Flutter 模型读取时通过统一 mapper 将 json、number 或字符串形式转换为可空整数。
+
+分类删除需要考虑图书引用关系。当前课程项目中分类数量较少，删除分类前主要通过界面提醒避免误操作；如果后续用于真实场景，应在服务层检查是否仍有图书引用该分类，或者把对应图书的 \texttt{category\_id} 置空。这样可以防止分类删除后图书列表出现无法解析的分类名称。
+
+\section{借阅与归还模块}
+
+借阅模块支持两种对象：学生借阅和教师/管理员借阅。借阅时需要选择图书、借阅对象、借阅数量和归还期限。系统根据 \texttt{available\_quantity} 判断是否允许借阅，并通过 \texttt{quantity} 字段记录一次借阅的本数。
+
+图\ref{fig:borrow-query}展示了按图书查看借阅人员的页面。该页面用于回答“某本书目前由谁借阅、借了几本、是否逾期”等问题。
+
+管理员可以查看全部借阅记录，如图\ref{fig:admin-records}所示。记录页面支持按图书名称、学生姓名或经办老师搜索，并提供全部、已归还、未归还、逾期等筛选条件。此前出现过 PocketBase 对非法排序或字段过滤返回 \texttt{400} 的问题，修复时将查询字段与排序字段严格限制在实际存在的 collection 字段上。
+
+逾期未还页面如图\ref{fig:overdue}所示。系统以 \texttt{return\_date} 是否为空判断是否仍在借，以 \texttt{due\_date} 与当前日期比较判断是否逾期。页面会显示逾期天数、图书、借阅人、班级或角色、借阅日期和应还日期。
+
+借阅记录的显示需要同时解析图书、学生和用户资料。对于学生借阅，页面优先显示学生姓名和班级；对于教师借阅，页面显示教师姓名和角色。此前页面中出现过“null - 未分配班级”的情况，根因是教师借阅没有学生班级字段，而页面统一按学生展示方式拼接文本。修复后页面按 \texttt{student\_id} 和 \texttt{profile\_id} 区分借阅对象，避免把教师借阅误显示为学生班级缺失。
+
+借阅数量也需要保持统一口径。一次借阅可以包含多本同名图书，因此 \texttt{quantity} 不应被忽略。图书详情中的“已借出”表示所有未归还记录的数量总和；个人中心的“我的借阅”只展示当前登录用户的记录；管理员记录页展示全局记录。三个页面统计对象不同，但都基于同一张 \texttt{borrow\_records} 表计算。
+
+\begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.27\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{图书借阅人员查询.png}
+        \caption{图书借阅人员查询}
+        \label{fig:borrow-query}
+    \end{subfigure}
+    \hspace{0.03\textwidth}
+    \begin{subfigure}[t]{0.27\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{管理员借阅记录查询.png}
+        \caption{管理员借阅记录查询}
+        \label{fig:admin-records}
+    \end{subfigure}
+    \hspace{0.03\textwidth}
+    \begin{subfigure}[t]{0.27\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{逾期未还查询.png}
+        \caption{逾期未还图书查询}
+        \label{fig:overdue}
+    \end{subfigure}
+    \caption{借阅记录、管理员记录与逾期查询页面}
+\end{figure}
+
+\section{学生管理模块}
+
+学生管理模块用于维护幼儿园学生信息，如图\ref{fig:student-list}所示。学生记录包括姓名和班级，数据存储在 \texttt{students} collection 中。管理员可以新增、编辑或删除学生，借阅页面可选择学生作为借阅对象。
+
+学生详情页如图\ref{fig:student-profile}所示，页面展示学生基础信息、当前借阅和历史借阅。对于学生借阅，\texttt{borrow\_records.student\_id} 存储学生 id；对于教师/管理员借阅，\texttt{profile\_id} 存储用户 id。两者二选一，保持了原 Supabase 业务语义。
+
+学生模块与图书模块的关系不是简单的主从关系。学生可以借阅多本图书，同一本图书也可以被不同学生或教师借阅，二者通过借阅记录关联。因此学生详情页并不把图书数据冗余存入学生记录，而是按 \texttt{student\_id} 查询借阅记录，再根据 \texttt{book\_id} 补充图书名称和作者。这样的设计能减少数据冗余，也能保证图书标题修改后历史记录页面仍显示最新图书信息。
+
+\begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{学生管理.png}
+        \caption{学生管理列表}
+        \label{fig:student-list}
+    \end{subfigure}
+    \hspace{0.08\textwidth}
+    \begin{subfigure}[t]{0.28\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{学生个人借阅查询.png}
+        \caption{学生个人借阅查询}
+        \label{fig:student-profile}
+    \end{subfigure}
+    \caption{学生列表与学生借阅详情页面}
+\end{figure}
+
+\section{图片加载实现}
+
+原 Supabase 数据中封面地址为远程 URL。迁移到 PocketBase 后，封面路径统一改为 \texttt{/covers/book\_*.png}，图片文件放在 \texttt{pocketbase/pb\_public/covers}。PocketBase 会将 collection 文件和静态资源作为后端资源暴露，因此前端只需要把相对路径拼接到 PocketBase base URL 即可\cite{pocketbase_collections,pocketbase_dart_sdk}。
+
+在鸿蒙模拟器中，\texttt{127.0.0.1} 指向模拟器自身，不是 Mac 宿主机。因此图片加载和 API 请求都必须使用 \texttt{10.0.2.2} 或真机可访问的局域网 IP。此前图片一直显示加载圆环，根因就是 URL 指向或静态目录不可达，而不是 Flutter 图片组件本身无法渲染。
+
+图片加载链路可以拆分为四个环节：数据库字段保存相对路径、PocketBase 静态目录存在对应文件、前端根据 base URL 拼接完整地址、图片组件发起网络请求并渲染。任一环节错误都会表现为封面空白或持续加载。最终方案选择相对路径而不是写死完整 URL，是为了同时兼容模拟器和真机；只要 base URL 切换正确，数据库中的封面路径无需再次迁移。
+
+\section{界面适配与交互实现}
+
+鸿蒙课程项目不仅要求功能可运行，也要求界面在模拟器和真机上具备基本可用性。本项目页面主要面向手机竖屏设计，因此采用底部导航、卡片列表、横向分类筛选和表单弹窗等移动端常见交互。仪表盘使用统计卡片快速展示概况，图书页使用双列卡片提高浏览效率，学生和借阅记录页面则更偏向列表式展示，便于查看文本信息。
+
+界面适配中最容易出问题的是窄屏横向空间。借阅详情页中的“借阅数量”标签、还书按钮和日期文字曾出现溢出提示。修复时将长文本放入可伸缩区域，按钮设置最小宽度和固定高度，并避免在同一行同时放置过多信息。对于必须展示的数字标签，例如“\(\times 6\)”借阅数量，使用独立的小标签承载，不再让其挤压标题和日期。
+
+交互反馈方面，系统在登录失败、库存不足、网络异常、保存成功和归还成功等关键节点提供提示。提示内容尽量面向业务含义，而不是直接暴露底层异常。例如连接失败时提示检查 PocketBase 服务和地址配置；字段错误时提示表单输入；后台返回 \texttt{400} 或 \texttt{500} 时在调试阶段显示完整信息，方便定位 collection 字段或服务状态问题。

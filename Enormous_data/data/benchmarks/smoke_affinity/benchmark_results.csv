@@ -1,0 +1,5 @@
+duration_seconds,engine,error_message,input_path,input_rows,limit_rows,load_seconds,output_rows,profile,spark_partitions,success,task_name,timestamp
+0.1585,spark,,data/sample/ecommerce_events.csv,987,,2.2809,4,affinity,4,True,event_type_count,2026-06-09T03:32:34.496898+00:00
+0.1285,spark,,data/sample/ecommerce_events.csv,987,,2.2809,31,affinity,4,True,daily_events,2026-06-09T03:32:34.625882+00:00
+0.13,spark,,data/sample/ecommerce_events.csv,987,,2.2809,7,affinity,4,True,top_categories,2026-06-09T03:32:34.756218+00:00
+3.2551,spark,,data/sample/ecommerce_events.csv,987,,2.2809,0,affinity,4,True,affinity_pipeline,2026-06-09T03:32:38.011454+00:00

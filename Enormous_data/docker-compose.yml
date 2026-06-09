@@ -1,0 +1,241 @@
+x-hadoop-arm64: &hadoop-arm64
+  image: enormous-data-hadoop-arm64:slim-hadoop
+  build:
+    context: ./docker/hadoop-arm64
+  platform: linux/arm64
+  profiles:
+    - yarn-lab
+  environment: &hadoop-env
+    HADOOP_HOME: /opt/hadoop
+    HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+    YARN_CONF_DIR: /opt/hadoop/etc/hadoop
+    JAVA_HOME: /usr/lib/jvm/java-8-openjdk-arm64
+    HDFS_NAMENODE_USER: root
+    HDFS_DATANODE_USER: root
+    HDFS_SECONDARYNAMENODE_USER: root
+    YARN_RESOURCEMANAGER_USER: root
+    YARN_NODEMANAGER_USER: root
+    PYSPARK_PYTHON: /usr/local/bin/python3.11
+  volumes:
+    - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+    - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+  networks:
+    - yarn-lab-net
+
+services:
+  yarn-namenode:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-namenode
+    hostname: yarn-namenode
+    command: /opt/yarn_lab_role.sh namenode
+    ports:
+      - "${YARN_HDFS_UI_PORT:-19870}:9870"
+      - "${YARN_HDFS_RPC_PORT:-19000}:9000"
+    volumes:
+      - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+      - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+      - hadoop_yarn_namenode:/hadoop/dfs/name
+    networks:
+      yarn-lab-net:
+        aliases:
+          - namenode
+
+  yarn-datanode-1:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-datanode-1
+    hostname: yarn-datanode-1
+    command: /opt/yarn_lab_role.sh datanode
+    depends_on:
+      - yarn-namenode
+    volumes:
+      - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+      - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+      - hadoop_yarn_datanode_1:/hadoop/dfs/data
+
+  yarn-datanode-2:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-datanode-2
+    hostname: yarn-datanode-2
+    command: /opt/yarn_lab_role.sh datanode
+    depends_on:
+      - yarn-namenode
+    volumes:
+      - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+      - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+      - hadoop_yarn_datanode_2:/hadoop/dfs/data
+
+  secondarynamenode:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-secondarynamenode
+    hostname: secondarynamenode
+    command: /opt/yarn_lab_role.sh secondarynamenode
+    depends_on:
+      - yarn-namenode
+
+  resourcemanager:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-resourcemanager
+    hostname: resourcemanager
+    command: /opt/yarn_lab_role.sh resourcemanager
+    ports:
+      - "${YARN_RM_UI_PORT:-18088}:8088"
+    depends_on:
+      - yarn-namenode
+      - yarn-datanode-1
+      - yarn-datanode-2
+
+  nodemanager-1:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-nodemanager-1
+    hostname: nodemanager-1
+    command: /opt/yarn_lab_role.sh nodemanager
+    depends_on:
+      - resourcemanager
+
+  nodemanager-2:
+    <<: *hadoop-arm64
+    container_name: enormous-data-yarn-nodemanager-2
+    hostname: nodemanager-2
+    command: /opt/yarn_lab_role.sh nodemanager
+    depends_on:
+      - resourcemanager
+
+  spark-client:
+    build: .
+    profiles:
+      - yarn-lab
+    working_dir: /app
+    command: tail -f /dev/null
+    environment:
+      SPARK_CONFIG_PATH: /app/configs/yarn-client.yaml
+      SPARK_DRIVER_HOST: spark-client
+      HADOOP_CONF_DIR: /app/configs/hadoop
+      YARN_CONF_DIR: /app/configs/hadoop
+      SPARK_HISTORY_URL: http://spark-history-server:18080
+      GRB_LICENSE_FILE: /opt/gurobi/gurobi.lic
+      PYSPARK_PYTHON: /usr/local/bin/python3.11
+      PYSPARK_DRIVER_PYTHON: /usr/local/bin/python
+    volumes:
+      - .:/app
+      - ${GUROBI_LICENSE_FILE:-/dev/null}:/opt/gurobi/gurobi.lic:ro
+    depends_on:
+      - resourcemanager
+      - nodemanager-1
+      - nodemanager-2
+    networks:
+      - yarn-lab-net
+
+  spark-history-server:
+    build: .
+    profiles:
+      - yarn-lab
+    working_dir: /app
+    command: >
+      sh -c '
+        until spark-class org.apache.hadoop.fs.FsShell -mkdir -p /spark-history; do
+          echo "waiting for HDFS /spark-history";
+          sleep 3;
+        done;
+        mkdir -p /tmp/spark-history-store;
+        exec spark-class org.apache.spark.deploy.history.HistoryServer
+      '
+    environment:
+      HADOOP_CONF_DIR: /app/configs/hadoop
+      YARN_CONF_DIR: /app/configs/hadoop
+      SPARK_DAEMON_MEMORY: "${SPARK_HISTORY_DAEMON_MEMORY:-3g}"
+      SPARK_HISTORY_OPTS: >-
+        -Dspark.history.fs.logDirectory=hdfs:///spark-history
+        -Dspark.history.retainedApplications=10
+        -Dspark.history.ui.maxApplications=20
+        -Dspark.history.fs.update.interval=15s
+        -Dspark.history.fs.numReplayThreads=1
+        -Dspark.history.store.path=/tmp/spark-history-store
+        -Dspark.history.store.maxDiskUsage=2g
+        -Dspark.history.store.serializer=PROTOBUF
+    ports:
+      - "${SPARK_HISTORY_UI_PORT:-28080}:18080"
+    volumes:
+      - .:/app:ro
+    depends_on:
+      - yarn-namenode
+    networks:
+      - yarn-lab-net
+
+  web-yarn:
+    build: .
+    profiles:
+      - yarn-lab
+    command: python run.py
+    ports:
+      - "${YARN_WEB_PORT:-5050}:5000"
+    environment:
+      SPARK_CONFIG_PATH: /app/configs/yarn-client.yaml
+      SPARK_SUBMIT_SCRIPT: /app/scripts/submit_yarn_client.sh
+      SPARK_DRIVER_HOST: web-yarn
+      HADOOP_CONF_DIR: /app/configs/hadoop
+      YARN_CONF_DIR: /app/configs/hadoop
+      SPARK_HISTORY_URL: http://spark-history-server:18080
+      GRB_LICENSE_FILE: /opt/gurobi/gurobi.lic
+      PYSPARK_PYTHON: /usr/local/bin/python3.11
+      PYSPARK_DRIVER_PYTHON: /usr/local/bin/python
+    volumes:
+      - .:/app
+      - ${GUROBI_LICENSE_FILE:-/dev/null}:/opt/gurobi/gurobi.lic:ro
+    depends_on:
+      - resourcemanager
+      - nodemanager-1
+      - nodemanager-2
+    networks:
+      - yarn-lab-net
+
+  spark-job:
+    build: .
+    profiles:
+      - local-lab
+    command: python -m spark_jobs.main --config configs/local.yaml
+    environment:
+      GRB_LICENSE_FILE: /opt/gurobi/gurobi.lic
+    volumes:
+      - .:/app
+      - ${GUROBI_LICENSE_FILE:-/dev/null}:/opt/gurobi/gurobi.lic:ro
+    networks:
+      - default
+      - hadoop-net
+
+  web:
+    build: .
+    profiles:
+      - local-lab
+    command: python run.py
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - spark-job
+    networks:
+      - default
+
+  frontend:
+    image: node:22-alpine
+    profiles:
+      - local-lab
+    working_dir: /app/frontend
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+
+volumes:
+  hadoop_yarn_namenode:
+  hadoop_yarn_datanode_1:
+  hadoop_yarn_datanode_2:
+
+networks:
+  hadoop-net:
+    external: true
+  yarn-lab-net:
+    driver: bridge

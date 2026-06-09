@@ -1,0 +1,24 @@
+% !TeX root = ../thuthesis-example.tex
+
+% 中英文摘要和关键字
+\begin{abstract}
+本文围绕“移动应用开发技术”课程大作业，设计并实现了一套面向幼儿园图书流转场景的鸿蒙移动端图书管理系统。系统以 Flutter 前端为基础，通过 Flutter for OpenHarmony 生成 HarmonyOS 工程，并在 ArkTS 入口页中嵌入 Flutter 渲染页面，使原有移动端界面和业务流程可以在 DevEco Studio、HarmonyOS 模拟器以及后续真机环境中运行。应用支持教师和管理员两类角色，覆盖邮箱登录、图书检索、分类筛选、图书新增与编辑、库存维护、教师/学生借阅、归还登记、逾期查询、学生管理、个人中心和图书馆仪表盘等功能。
+
+在后端设计上，系统将原先依赖的 Supabase 数据服务迁移为 PocketBase + Docker 本地化部署方案。迁移过程严格保留原 Supabase 中 \texttt{books}、\texttt{categories}、\texttt{students}、\texttt{profiles} 和 \texttt{borrow\_records} 等列表字段及已有数据内容，仅在 PocketBase 身份认证约束需要时为 \texttt{profiles} 保存 \texttt{source\_id} 映射字段。系统使用 Docker Compose 启动 PocketBase，并将 \texttt{/pb\_data} 挂载到 Docker named volume \texttt{kindergarten-pocketbase-data}，避免 macOS Docker bind mount 对 SQLite 直接读写带来的偶发 I/O 抖动。同时，前端服务层加入登录状态收敛、轮询间隔控制和上一次成功数据缓存，解决了模拟器环境下偶发空列表、重复鉴权和图片路径解析不稳定等问题。
+
+经过功能验证与构建验证，系统能够完成本地 PocketBase 数据访问、鸿蒙模拟器调试和 HAP 构建，形成了从数据迁移、后端部署、Flutter 适配到 HarmonyOS 应用打包的完整工程闭环。本文重点说明系统需求、总体架构、鸿蒙适配、数据库迁移、核心功能实现、测试结果与后续优化方向。
+  \thusetup{
+    keywords = {HarmonyOS, Flutter for OpenHarmony, PocketBase, Docker, 图书管理, 数据迁移},
+  }
+\end{abstract}
+
+\begin{abstract*}
+This report presents the design and implementation of a HarmonyOS-oriented kindergarten library management system for a mobile application development course project. The system keeps the existing Flutter frontend as much as possible, generates an OpenHarmony project through Flutter for OpenHarmony, and embeds the Flutter page in the ArkTS entry ability. It supports two application roles, teacher and administrator, and provides email login, book search, category filtering, book creation and editing, inventory management, teacher/student borrowing, returning, overdue lookup, student management, personal center, and dashboard statistics.
+
+On the backend side, the original Supabase-based data service is migrated to a local PocketBase service deployed with Docker. The migration keeps the original Supabase tables, fields, and data for \texttt{books}, \texttt{categories}, \texttt{students}, \texttt{profiles}, and \texttt{borrow\_records}. Only the \texttt{source\_id} mapping field is added to the PocketBase authentication collection to satisfy identity constraints. Docker Compose runs PocketBase locally, while \texttt{/pb\_data} is stored in the Docker named volume \texttt{kindergarten-pocketbase-data}, reducing direct SQLite I/O pressure on the macOS Docker bind mount layer. In the Flutter service layer, auth refresh convergence, polling interval control, and last-successful-data caching are introduced to avoid occasional empty lists, repeated authentication refreshes, and unstable image URL resolution in the emulator environment.
+
+The implemented system has been verified through local PocketBase access, HarmonyOS emulator debugging, and HAP build validation. It forms a complete engineering workflow covering database migration, backend deployment, Flutter adaptation, and HarmonyOS application packaging. This report focuses on the requirements, architecture, HarmonyOS adaptation, database migration, module implementation, testing, and future improvements.
+  \thusetup{
+    keywords* = {HarmonyOS, Flutter for OpenHarmony, PocketBase, Docker, Library Management, Data Migration},
+  }
+\end{abstract*}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="section-head">
+    <h1>数据明细</h1>
+    <div class="filters">
+      <select id="event-type-filter">
+        <option value="">全部行为</option>
+        <option value="view">view</option>
+        <option value="cart">cart</option>
+        <option value="remove_from_cart">remove_from_cart</option>
+        <option value="purchase">purchase</option>
+      </select>
+      <button class="button" id="apply-filter" type="button">查询</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>行为</th>
+          <th>商品</th>
+          <th>类目</th>
+          <th>品牌</th>
+          <th>价格</th>
+          <th>用户</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  <div class="pager">
+    <button class="button secondary" id="prev-page" type="button">上一页</button>
+    <span id="page-info"></span>
+    <button class="button secondary" id="next-page" type="button">下一页</button>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/dashboard/table-page.js') }}"></script>
+{% endblock %}

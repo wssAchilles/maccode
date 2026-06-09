@@ -1,0 +1,16 @@
+app:
+  name: ecommerce-behavior-dashboard-kaggle
+
+spark:
+  master: local[*]
+  shuffle_partitions: 8
+  timezone: Asia/Shanghai
+
+data:
+  input_path: data/raw/kaggle/ecommerce_behavior/*.csv
+  input_format: csv
+  delimiter: ","
+  output_dir: data/cache
+  processed_dir: data/processed/ecommerce_behavior
+  limit: 100000
+  top_n: 20

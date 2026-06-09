@@ -1,0 +1,213 @@
+% !TeX root = ../thuthesis-example.tex
+
+\chapter{测试与运行验证}
+
+\section{测试环境}
+
+项目主要在 macOS + DevEco Studio 环境下完成开发和验证。测试环境如表\ref{tab:test-env}所示。
+
+\begin{table}[htbp]
+\centering
+\caption{测试与构建环境}
+\label{tab:test-env}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{项目} & \textbf{配置} \\
+\midrule
+移动端 SDK & Flutter for OpenHarmony 3.22，Dart 3.4。 \\
+鸿蒙工具链 & DevEco Studio 6.0.2，HarmonyOS SDK API 22，ohpm 6.0.1，hvigor。 \\
+后端服务 & Docker Compose + PocketBase，端口 \texttt{8090}。 \\
+数据库持久化 & Docker named volume \texttt{kindergarten-pocketbase-data}。 \\
+调试设备 & HarmonyOS 模拟器 nova 15 Pro \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+测试环境设计遵循“本地后端可控、移动端真实构建、虚拟机人工验收”的原则。后端通过 Docker 在 Mac 上运行，数据库和静态资源都由 PocketBase 提供；移动端先通过 CLI 构建 HAP，证明鸿蒙工程结构、SDK 配置和依赖解析正确；最终运行效果再交由鸿蒙模拟器或真机进行人工验收。这样的流程可以把构建问题、网络问题和界面问题分开排查。
+
+在调试过程中，浏览器访问、Flutter 调试和鸿蒙模拟器访问使用的是不同网络视角。浏览器访问 \texttt{localhost} 表示 Mac 本机；Flutter 桌面或普通命令行也可以访问 \texttt{localhost}；鸿蒙模拟器则需要使用 \texttt{10.0.2.2}。因此测试时必须同时检查 PocketBase 是否启动、端口是否映射、移动端 base URL 是否正确、图片静态目录是否存在。
+
+\section{数据迁移验证}
+
+迁移脚本读取如下 Supabase 备份文件，导入结果如表\ref{tab:migration-count}所示。
+
+\begin{lstlisting}[style=codexcode]
+supabase_restore_work/db_cluster-16-09-2025@15-17-22.backup
+\end{lstlisting}
+
+\begin{table}[htbp]
+\centering
+\caption{迁移记录数量}
+\label{tab:migration-count}
+\begin{tabular}{l|r}
+\hline
+\textbf{来源数据} & \textbf{迁移数量} \\
+\hline
+\texttt{auth.users} & 3 \\
+\texttt{public.profiles} & 3 \\
+\texttt{public.categories} & 4 \\
+\texttt{public.students} & 4 \\
+\texttt{public.books} & 6 \\
+\texttt{public.borrow\_records} & 8 \\
+\hline
+\end{tabular}
+\end{table}
+
+迁移后系统登录账号如表\ref{tab:accounts}所示。三个应用用户密码统一为 \texttt{12345678}，便于课程验收时快速登录不同角色。
+
+\begin{table}[htbp]
+\centering
+\caption{应用登录账号}
+\label{tab:accounts}
+\begin{tabularx}{0.95\textwidth}{l l l l}
+\toprule
+\textbf{邮箱} & \textbf{密码} & \textbf{姓名} & \textbf{性质} \\
+\midrule
+\texttt{1424408591@qq.com} & \texttt{12345678} & 奕晨司 & 普通教师 \\
+\texttt{2633638634@qq.com} & \texttt{12345678} & 小明 & 普通教师 \\
+\texttt{903398655@qq.com} & \texttt{12345678} & 开心逗逗儿 & 管理员 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+PocketBase 后台超级用户为 \texttt{admin@example.com / admin123456}，仅用于访问 PocketBase 管理后台，不作为应用内教师账号使用。
+
+数据迁移验证不只检查记录数量，还要检查字段语义是否正确。图书记录需要确认标题、作者、位置、封面路径、总库存和可借库存一致；借阅记录需要确认借阅日期、应还日期、归还日期、借阅人和数量一致；用户记录需要确认邮箱、姓名和角色一致。尤其是 \texttt{return\_date}、\texttt{student\_id}、\texttt{profile\_id} 这类可空字段，如果迁移时被错误填充，会直接影响逾期判断和个人中心显示。
+
+\begin{table}[htbp]
+\centering
+\caption{迁移字段核验要点}
+\label{tab:migration-field-check}
+\begin{tabularx}{0.95\textwidth}{lX}
+\toprule
+\textbf{Collection} & \textbf{核验要点} \\
+\midrule
+\texttt{profiles} & 邮箱可登录，姓名显示正确，\texttt{role} 能区分教师和管理员。 \\
+\texttt{books} & 标题、作者、位置、分类、封面路径、总数量和可借数量与源库一致。 \\
+\texttt{borrow\_records} & 未归还记录的 \texttt{return\_date} 保持为空，数量字段参与库存计算。 \\
+\texttt{students} & 学生姓名和班级能在学生详情、借阅选择和管理员记录中显示。 \\
+\texttt{categories} & 分类名称能在图书筛选按钮和图书编辑页面中复用。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{功能测试}
+
+系统围绕主要业务路径进行了功能测试，结果如表\ref{tab:function-test}所示。
+
+\begin{table}[htbp]
+\centering
+\caption{核心功能测试结果}
+\label{tab:function-test}
+\begin{tabularx}{0.95\textwidth}{lXl}
+\toprule
+\textbf{模块} & \textbf{测试内容} & \textbf{结果} \\
+\midrule
+登录鉴权 & 使用教师和管理员账号登录，校验角色与页面跳转。 & 通过 \\
+仪表盘 & 查看图书总数、学生总数、在借数量、逾期数量和热门图书。 & 通过 \\
+图书管理 & 搜索、分类筛选、新增、编辑、库存展示和封面加载。 & 通过 \\
+分类管理 & 添加、修改、删除分类，并在图书筛选中同步展示。 & 通过 \\
+借阅归还 & 教师/学生借阅、数量校验、还书、逾期计算和库存恢复。 & 通过 \\
+借阅记录 & 管理员查看全部记录、未归还记录和逾期记录。 & 通过 \\
+学生管理 & 学生列表、学生详情、班级信息和个人借阅历史。 & 通过 \\
+鸿蒙界面 & 修复图书卡片、借阅数量、按钮等小屏幕溢出问题。 & 通过 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+除了表\ref{tab:function-test}中的主流程测试，还对边界情况进行了检查。移动端业务系统常见的问题并不总是出现在“正常点击”路径上，而是出现在空数据、错误地址、重复刷新、数量边界和页面回退等场景中。表\ref{tab:edge-test}列出了本项目重点验证的边界用例。
+
+\begin{table}[htbp]
+\centering
+\caption{边界情况测试}
+\label{tab:edge-test}
+\begin{tabularx}{0.95\textwidth}{lXl}
+\toprule
+\textbf{类别} & \textbf{测试内容} & \textbf{结果} \\
+\midrule
+网络地址 & 将后端地址错误配置为 \texttt{127.0.0.1}，确认模拟器连接失败并给出提示。 & 通过 \\
+库存边界 & 借阅数量大于可借库存，系统阻止提交。 & 通过 \\
+空分类 & 图书分类为空或分类读取失败时，图书仍能显示基础信息。 & 通过 \\
+图片失败 & 封面文件不存在或地址不可达时，页面显示占位，不影响列表滚动。 & 通过 \\
+重复刷新 & 多次切换底部导航和返回页面，列表不会频繁变成空态。 & 通过 \\
+角色权限 & 教师账号不展示管理员查询入口，管理员账号可进入管理页面。 & 通过 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{界面适配测试}
+
+界面测试重点关注手机竖屏下的元素溢出、点击区域和滚动体验。由于鸿蒙模拟器的状态栏、导航栏和侧边控制条会占用视觉空间，页面实际可用宽度比桌面预览更紧张。图书卡片、个人中心借阅卡片和管理员记录卡片都进行了窄屏检查。
+
+主要调整包括：将并列文本改为可换行布局；将还书按钮和数量标签设置为固定尺寸；将长标题、日期和班级信息放入弹性区域；将分类筛选放入横向滚动容器；对底部导航预留安全区域。调整后，页面在模拟器中不再出现 Flutter 的红色 overflow 提示，关键按钮也不会被数量标签或日期文本遮挡。
+
+\section{后端运行验证}
+
+PocketBase 服务验证包含三个层次。第一，Docker 层确认容器正在运行并暴露 \texttt{8090} 端口；第二，PocketBase 层确认管理后台可以打开、collection 存在且记录数量正确；第三，移动端层确认模拟器可以通过 \texttt{10.0.2.2:8090} 登录并读取图书。三层都通过后，才能说明后端不仅“启动了”，而且“能被鸿蒙端使用”。
+
+常用检查命令如下：
+
+\begin{lstlisting}[style=codexcode]
+docker compose ps
+curl http://127.0.0.1:8090/api/health
+curl http://127.0.0.1:8090/covers/book_001.png
+\end{lstlisting}
+
+其中图片检查用于验证静态资源目录是否正确挂载。若 API 正常但图片不显示，通常应优先检查 \texttt{pb\_public/covers} 是否存在文件、数据库中的 \texttt{cover\_image\_url} 是否为相对路径，以及前端是否把相对路径拼接到了正确的 base URL。
+
+\section{构建验证}
+
+本项目已通过 Flutter 分析、单元测试和 HarmonyOS HAP 构建验证。常用命令如下：
+
+\begin{lstlisting}[style=codexcode]
+flutter analyze --no-fatal-infos
+flutter test --no-pub
+\end{lstlisting}
+
+鸿蒙构建前需要显式设置 DevEco 工具链环境变量，并使用 Flutter for OpenHarmony SDK 执行 HAP 构建。HAP 是 OpenHarmony 应用模块的构建产物，包含代码、资源、三方库和应用配置文件\cite{openharmony_hap_package}：
+
+\begin{lstlisting}[style=codexcode]
+export HOS_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export OHOS_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony
+export OHOS_BASE_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony
+export TOOL_HOME=/Applications/DevEco-Studio.app/Contents
+export JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr/Contents/Home
+export PATH=/Users/achilles/development/flutter_flutter_3_22_ohos/bin:$TOOL_HOME/tools/ohpm/bin:$TOOL_HOME/tools/hvigor/bin:$TOOL_HOME/tools/node/bin:$JAVA_HOME/bin:$PATH
+
+/Users/achilles/development/flutter_flutter_3_22_ohos/bin/flutter \
+  build hap --debug --no-codesign --target-platform ohos-arm64
+\end{lstlisting}
+
+构建产物位于：
+
+\begin{lstlisting}[style=codexcode]
+ohos/entry/build/default/outputs/default/entry-default-unsigned.hap
+\end{lstlisting}
+
+HAP 构建验证的意义在于确认项目已经从普通 Flutter 应用转化为可被 HarmonyOS 工具链识别的应用模块。若 \texttt{ohos/} 工程缺失、\texttt{module.json5} 配置错误、SDK 路径错误或 ohpm 依赖未解析，构建阶段就会失败。通过 CLI 构建后，即使暂不使用虚拟机自动安装，也可以说明鸿蒙工程适配已经具备可验收基础。
+
+构建过程中还需要注意签名问题。课程调试阶段可以使用 \texttt{--no-codesign} 生成未签名 HAP，用于证明编译链路可通；正式真机安装时需要按照 DevEco Studio 的签名配置生成可安装包。本文以课程开发验证为目标，因此采用 debug + no-codesign 的方式完成命令行验证。
+
+\section{稳定性问题分析}
+
+项目调试过程中出现过两类典型问题。第一类是模拟器无法连接后端，表现为 \texttt{Connection refused} 或状态码为 \texttt{0}。原因是模拟器内的 \texttt{127.0.0.1} 指向设备自身，而 PocketBase 实际运行在 Mac 宿主机。修复方式是默认使用 \texttt{10.0.2.2:8090}，真机再切换为 Mac 局域网 IP。
+
+第二类是偶发空列表或统计数据异常。排查后发现不是业务数据丢失，而是重复鉴权刷新、过密轮询、Docker bind mount 上的 SQLite I/O 抖动和瞬时请求失败叠加导致。SQLite WAL 会在数据库文件旁维护额外日志文件并涉及检查点写回，因此将数据库文件放在 Docker 管理的 volume 中更符合本项目的稳定性目标\cite{sqlite_wal,docker_compose_volumes}。修复后系统采取了以下策略：
+
+\begin{itemize}
+    \item \texttt{AuthGate} 不再在每次 build 后重复触发 \texttt{authRefresh}。
+    \item 列表轮询间隔收敛到 30 秒，减少高频请求。
+    \item \texttt{BookService} 和 \texttt{DashboardService} 保留上一次成功数据，瞬时失败时不立即显示空态。
+    \item PocketBase 的 \texttt{/pb\_data} 使用 Docker named volume，不再直接放在 macOS bind mount 上。
+\end{itemize}
+
+这些优化使系统更适合鸿蒙模拟器和真机环境下的连续操作，也让课程验收时的后端部署更容易复现。
+
+\section{问题定位复盘}
+
+项目调试过程中的问题具有明显的跨平台迁移特征。白屏问题通常不是页面没有写，而是入口 Ability、Flutter 容器或资源加载链路未完全启动；登录连接失败不是账号错误，而是模拟器访问宿主机地址错误；图片不显示不是图片组件失效，而是静态路径和 base URL 不匹配；偶发空列表也不是数据库数据丢失，而是请求失败后页面错误地使用空数组覆盖了原有数据。
+
+通过这些问题可以总结出一条有效的定位顺序：先看后端是否启动，再看地址是否能从当前设备访问，再看接口返回字段是否符合模型，再看页面是否正确处理加载态和错误态。该顺序比直接修改 UI 更可靠，也符合移动端前后端分离系统的调试规律。
+
+对于数据库稳定性问题，最终方案没有简单地增加重试次数，而是同时减少不必要请求、调整 Docker volume、修正服务层缓存和明确查询字段。这样处理后，系统在模拟器连续切换页面时更稳定，也能避免“偶发查不到数据”影响人工验收。

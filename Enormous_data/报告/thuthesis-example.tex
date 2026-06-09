@@ -1,0 +1,77 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = en_US
+
+\documentclass[fontset=mac]{thuthesis}
+ 
+\input{thusetup}
+\begin{document}
+\begin{titlepage}
+\newgeometry{top=2.5cm,right=2.1cm,bottom=2.1cm,left=2.1cm}
+\thispagestyle{empty}
+\centering
+\vspace*{1.6cm}
+\includegraphics[width=9.7cm]{cover/czu-wordmark-cover.png}\par
+\vspace{0.42cm}
+{\fontspec{Times New Roman}\fontsize{16pt}{22pt}\selectfont
+CHANGZHOU\hspace{0.7cm}INSTITUTE\hspace{0.7cm}OF\hspace{0.7cm}TECHNOLOGY\par}
+\vspace{1.55cm}
+{\songti\bfseries\fontsize{24pt}{32pt}\selectfont 课 程 大 作 业 说 明 书\par}
+\vspace{1.92cm}
+
+\begin{minipage}{10.0cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\coverfield[6.8cm]{课程名：}{大数据与云计算}\par
+\vspace{1.05cm}
+\coverfield[6.8cm]{题\hspace{1em}目：}{图书管理系统}\par
+\vspace{1.68cm}
+\coverfield[6.8cm]{二级学院：}{计算机信息工程学院}\par
+\vspace{0.36cm}
+\coverfield[6.8cm]{专\hspace{2em}业：}{软件工程}\par
+\vspace{0.36cm}
+\coverfield[6.8cm]{班\hspace{2em}级：}{23 软 件 一}\par
+\vspace{0.36cm}
+{\songti\bfseries\fontsize{15pt}{22pt}\selectfont 学号姓名：}%
+\hspace{0.25cm}\coverstudentvalue{23030327\hspace{0.6cm}许子祺}\par
+\vspace{0.36cm}
+\makebox[2.7cm][l]{}\coverstudentvalue{23030315\hspace{0.6cm}莫文涛}\par
+\vspace{0.36cm}
+\makebox[2.7cm][l]{}\coverstudentvalue{23030316\hspace{0.6cm}钱季清}\par
+\vspace{0.36cm}
+\makebox[2.7cm][l]{}\coverstudentvalue{23250123\hspace{0.6cm}王奕泽}\par
+\vspace{0.36cm}
+\coverfield[6.8cm]{指导教师：}{李亦飞}\par
+\end{minipage}
+
+\vfill
+{\songti\fontsize{15pt}{22pt}\selectfont 2026 年 6 月\par}
+\vspace*{0.48cm}
+\restoregeometry
+\end{titlepage}
+
+
+\frontmatter
+\input{data/abstract}
+
+% 目录
+\tableofcontents
+
+% 插图和附表清单
+% \listoffiguresandtables  % 插图和附表清单
+
+% 正文部分
+\mainmatter
+\input{data/chap01}
+\input{data/chap02}
+\input{data/chap03}
+\input{data/chap04}
+\input{data/chap05}
+% 参考文献
+\bibliography{ref/refs}  % 参考文献使用 BibTeX 编译
+% \printbibliography       % 参考文献使用 BibLaTeX 编译
+
+% 附录
+\appendix
+\input{data/appendix}
+
+\end{document}

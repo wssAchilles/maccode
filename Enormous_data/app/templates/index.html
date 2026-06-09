@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>电商行为大数据分析看板</h1>
+  <p>基于 Spark 清洗聚合、Flask API 转发、ECharts 前端展示。</p>
+  <div class="hero-grid">
+    <div>
+      <strong>数据源</strong>
+      <span>Kaggle 电商行为数据字段结构</span>
+    </div>
+    <div>
+      <strong>计算层</strong>
+      <span>PySpark 清洗、去重、聚合、缓存</span>
+    </div>
+    <div>
+      <strong>展示层</strong>
+      <span>Flask API + ECharts 可视化</span>
+    </div>
+  </div>
+  <div class="actions">
+    <a class="button" href="/overview">查看数据概览</a>
+    <a class="button secondary" href="/charts">查看图表分析</a>
+  </div>
+</section>
+{% endblock %}

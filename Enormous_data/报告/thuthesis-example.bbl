@@ -1,0 +1,86 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[{Flutter Team}(2026)]{flutter_architecture_overview}
+{Flutter Team}.
+\newblock Flutter architectural overview\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://docs.flutter.dev/resources/architectural-overview}.
+
+\bibitem[{Supabase}(2026)]{supabase_flutter_quickstart}
+{Supabase}.
+\newblock Use supabase with flutter\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://supabase.com/docs/guides/getting-started/quickstarts/flutter}.
+
+\bibitem[{PocketBase}(2026)]{pocketbase_collections}
+{PocketBase}.
+\newblock Introduction - collections\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://pocketbase.io/docs/collections/}.
+
+\bibitem[{Docker Inc.}(2026)]{docker_compose_overview}
+{Docker Inc.}
+\newblock Docker compose documentation\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://docs.docker.com/compose/}.
+
+\bibitem[{OpenHarmony Project}(2026)]{openharmony_package_structure_stage}
+{OpenHarmony Project}.
+\newblock Application package structure in stage model\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://gitee.com/openharmony/docs/blob/master/en/application-dev/quick-start/application-package-structure-stage.md}.
+
+\bibitem[{OpenHarmony Project}(2026)]{openharmony_module_config}
+{OpenHarmony Project}.
+\newblock Module configuration file\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://gitee.com/openharmony/docs/blob/master/zh-cn/application-dev/quick-start/module-configuration-file.md}.
+
+\bibitem[{PocketBase}(2026)]{pocketbase_authentication}
+{PocketBase}.
+\newblock Introduction - authentication\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://pocketbase.io/docs/authentication/}.
+
+\bibitem[{OpenHarmony Project}(2026)]{openharmony_hap_package}
+{OpenHarmony Project}.
+\newblock Hap package\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://gitee.com/openharmony/docs/blob/master/en/application-dev/quick-start/hap-package.md}.
+
+\bibitem[{Docker Inc.}(2026)]{docker_compose_volumes}
+{Docker Inc.}
+\newblock Define and manage volumes in docker compose\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://docs.docker.com/reference/compose-file/volumes/}.
+
+\bibitem[{Supabase}(2026)]{supabase_auth_docs}
+{Supabase}.
+\newblock Supabase auth\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://supabase.com/docs/guides/auth}.
+
+\bibitem[{SQLite}(2026)]{sqlite_wal}
+{SQLite}.
+\newblock Write-ahead logging\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://www.sqlite.org/wal.html}.
+
+\bibitem[{PocketBase}(2026)]{pocketbase_dart_sdk}
+{PocketBase}.
+\newblock Pocketbase dart sdk\allowbreak[EB/OL].
+\newblock 2026.
+\newblock \url{https://github.com/pocketbase/dart-sdk}.
+
+\end{thebibliography}

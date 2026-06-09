@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="section-head">
+    <h1>数据概览</h1>
+    <button class="button" id="refresh-button" type="button">刷新计算</button>
+  </div>
+  <div class="metric-grid" id="summary-cards">
+    <div class="loading">加载中...</div>
+  </div>
+</section>
+<section class="dashboard-grid">
+  <div class="panel">
+    <h2>行为类型占比</h2>
+    <div class="chart" id="event-pie"></div>
+  </div>
+  <div class="panel">
+    <h2>每日事件趋势</h2>
+    <div class="chart" id="daily-events-line"></div>
+  </div>
+  <div class="panel wide">
+    <h2>一级类目排行</h2>
+    <div class="chart" id="category-bar"></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/dashboard/overview.js') }}"></script>
+{% endblock %}

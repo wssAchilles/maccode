@@ -1,0 +1,19 @@
+{
+  "collected_at": "2026-06-09T09:36:00.631044+00:00",
+  "spark_application_id": "application_1780991452919_0004",
+  "spark_application_name": "ecommerce-behavior-dashboard-yarn-client",
+  "spark_application_status": "SUCCEEDED",
+  "job_count": 785,
+  "failed_job_count": 0,
+  "stage_attempt_count": 989,
+  "task_count": 3017,
+  "failed_task_count": 0,
+  "retried_task_count": 0,
+  "shuffle_read_bytes": 11110751,
+  "shuffle_write_bytes": 9887386,
+  "memory_spill_bytes": 0,
+  "disk_spill_bytes": 0,
+  "executor_count": 1,
+  "executor_peak_memory_mb": 0.0,
+  "driver_peak_memory_mb": 0.0
+}

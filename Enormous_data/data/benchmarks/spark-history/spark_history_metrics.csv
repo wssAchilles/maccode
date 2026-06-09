@@ -1,0 +1,2 @@
+collected_at,disk_spill_bytes,driver_peak_memory_mb,executor_count,executor_peak_memory_mb,failed_job_count,failed_task_count,job_count,memory_spill_bytes,retried_task_count,shuffle_read_bytes,shuffle_write_bytes,spark_application_id,spark_application_name,spark_application_status,stage_attempt_count,task_count
+2026-06-09T08:52:31.337937+00:00,0,0.0,1,0.0,0,0,727,0,0,9026652,8924887,application_1780989669876_0004,ecommerce-behavior-dashboard-yarn-client,SUCCEEDED,954,4232
