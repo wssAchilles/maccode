@@ -1,4 +1,4 @@
-import { BellRing, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
+import { BellRing, RotateCcw, ShieldCheck } from 'lucide-react';
 import {
   useRecommendationAlerts,
   useRecommendationItems,
@@ -27,6 +27,16 @@ function freshness(minutes?: number | null) {
   return days >= 1 ? `${days.toFixed(1)} days` : `${minutes.toFixed(0)} minutes`;
 }
 
+function riskTone(value: 'success' | 'warning' | 'danger') {
+  return value;
+}
+
+function statusTone(status: string) {
+  if (status === 'passed') return 'success';
+  if (status.includes('degraded') || status.includes('review')) return 'warning';
+  return 'danger';
+}
+
 export function RecommendationsPage() {
   const summary = useRecommendationSummary();
   const items = useRecommendationItems(50);
@@ -34,7 +44,13 @@ export function RecommendationsPage() {
   const alerts = useRecommendationAlerts();
   const hasError = summary.isError || items.isError || quality.isError || alerts.isError;
   const status = summary.data?.quality_status ?? 'pending';
-  const statusTone = status === 'passed' ? 'succeeded' : status.includes('degraded') ? 'queued' : 'failed';
+  const alertRows = alerts.data ?? [];
+  const fallbackTone = riskTone((summary.data?.fallback_rate ?? 0) > 0.4 ? 'danger' : (summary.data?.fallback_rate ?? 0) > 0.2 ? 'warning' : 'success');
+  const confidenceTone = riskTone((summary.data?.avg_confidence ?? 0) < 0.1 ? 'danger' : (summary.data?.avg_confidence ?? 0) < 0.3 ? 'warning' : 'success');
+  const freshnessTone = riskTone((summary.data?.freshness_lag_minutes ?? 0) > 10080 ? 'danger' : (summary.data?.freshness_lag_minutes ?? 0) > 1440 ? 'warning' : 'success');
+  const hasBlockingRisk = [fallbackTone, confidenceTone, freshnessTone].includes('danger') || alertRows.length > 0;
+  const canPromote = status === 'passed' && !hasBlockingRisk;
+  const publishStatus = canPromote ? status : 'needs review';
 
   return (
     <>
@@ -46,35 +62,33 @@ export function RecommendationsPage() {
 
       {hasError ? <div className="error-banner">推荐缓存尚未生成，请先运行 Spark 刷新任务。</div> : null}
 
-      <section className="ops-command-band">
-        <div>
-          <span className={`status-pill tone-${statusTone}`}>{status}</span>
-          <h2>{summary.data?.contract_version ?? 'nearline-recommendation/v1'}</h2>
-          <p>{summary.data?.run_id ?? 'waiting for recommendation snapshot'}</p>
-        </div>
-        <Sparkles size={22} />
-      </section>
-
-      <section className="metrics-strip">
-        <article className="metric-card tone-success">
-          <span>覆盖率</span>
-          <strong>{percent(summary.data?.coverage_rate)}</strong>
+      <section className="recommendation-triage-grid" aria-label="推荐发布风险摘要">
+        <article className={`triage-card tone-${canPromote ? statusTone(status) : 'warning'}`}>
+          <span>发布状态</span>
+          <strong>{publishStatus}</strong>
+          <small>{summary.data?.contract_version ?? 'nearline-recommendation/v1'} · quality {status}</small>
+          <p>{canPromote ? '门禁通过，可以发布当前快照。' : '存在发布风险，先处理风险原因。'}</p>
+        </article>
+        <article className="triage-card tone-danger">
+          <span>风险原因</span>
+          <div className="risk-list">
+            <RiskRow label="fallback" value={percent(summary.data?.fallback_rate)} tone={fallbackTone} />
+            <RiskRow label="confidence" value={percent(summary.data?.avg_confidence)} tone={confidenceTone} />
+            <RiskRow label="freshness" value={freshness(summary.data?.freshness_lag_minutes)} tone={freshnessTone} />
+            {alertRows.length ? alertRows.map((alert) => <RiskRow key={alert.alert_code} label={alert.metric} value={alert.message} tone={alert.severity === 'critical' ? 'danger' : 'warning'} />) : null}
+          </div>
+        </article>
+        <article className={`triage-card tone-${summary.data?.rollback_ready ? 'warning' : 'danger'}`}>
+          <span>回滚动作</span>
+          <strong>{summary.data?.rollback_ready ? 'rollback ready' : 'no snapshot'}</strong>
+          <small>promotion gate {canPromote ? 'clear' : 'blocked'}</small>
+          <p>{summary.data?.previous_snapshot_path ?? '缺少上一版快照时，不应自动发布失败结果。'}</p>
+        </article>
+        <article className="triage-card tone-success">
+          <span>快照证据</span>
+          <strong>{number(summary.data?.recommendation_count)}</strong>
           <small>{number(summary.data?.covered_sessions)} covered sessions</small>
-        </article>
-        <article className="metric-card">
-          <span>个性化占比</span>
-          <strong>{percent(summary.data?.personalized_rate)}</strong>
-          <small>{number(summary.data?.recommendation_count)} recommendations</small>
-        </article>
-        <article className="metric-card tone-warning">
-          <span>降级占比</span>
-          <strong>{percent(summary.data?.fallback_rate)}</strong>
-          <small>{summary.data?.rollback_ready ? 'rollback ready' : 'no previous snapshot'}</small>
-        </article>
-        <article className="metric-card">
-          <span>平均置信度</span>
-          <strong>{percent(summary.data?.avg_confidence)}</strong>
-          <small>{freshness(summary.data?.freshness_lag_minutes)} freshness lag</small>
+          <p>{summary.data?.active_snapshot_path ?? '等待 active snapshot'}</p>
         </article>
       </section>
 
@@ -175,5 +189,14 @@ export function RecommendationsPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function RiskRow({ label, tone, value }: { label: string; tone: 'success' | 'warning' | 'danger'; value: string }) {
+  return (
+    <div className={`risk-row tone-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }

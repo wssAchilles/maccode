@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import {
   GridComponent,
@@ -28,10 +28,12 @@ type ChartPanelProps = {
   title: string;
   subtitle: string;
   option: DashboardChartOption;
+  summary?: string;
 };
 
-export function ChartPanel({ title, subtitle, option }: ChartPanelProps) {
+export function ChartPanel({ title, subtitle, option, summary }: ChartPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const summaryId = useId();
 
   useEffect(() => {
     if (!ref.current) return;
@@ -53,7 +55,19 @@ export function ChartPanel({ title, subtitle, option }: ChartPanelProps) {
           <p>{subtitle}</p>
         </div>
       </div>
-      <div ref={ref} className="chart-canvas" />
+      <div
+        ref={ref}
+        aria-describedby={summary ? summaryId : undefined}
+        aria-label={`${title}：${summary ?? subtitle}`}
+        className="chart-canvas"
+        role="img"
+        tabIndex={0}
+      />
+      {summary ? (
+        <p className="chart-summary" id={summaryId}>
+          {summary}
+        </p>
+      ) : null}
     </section>
   );
 }

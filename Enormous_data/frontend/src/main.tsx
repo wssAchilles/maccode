@@ -7,13 +7,15 @@ import App from './App';
 import { queryClient } from './app/queryClient';
 import './styles/global.css';
 
+const enableQueryDevtools = import.meta.env.DEV && import.meta.env.VITE_QUERY_DEVTOOLS === 'true';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {enableQueryDevtools ? <ReactQueryDevtools initialIsOpen={false} /> : null}
     </QueryClientProvider>
   </StrictMode>,
 );

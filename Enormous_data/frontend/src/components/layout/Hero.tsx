@@ -2,13 +2,19 @@ import { useEffect, useRef } from 'react';
 import { animate, stagger } from 'animejs';
 import { FileDown, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useRefreshJob } from '../../api/hooks';
+import { useJob, useRefreshJob, useSummary } from '../../api/hooks';
+import { compactDate, formatNumber } from '../../lib/format';
 import { DataGridMotion } from '../DataGridMotion';
 
 export function Hero() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const refresh = useRefreshJob();
+  const summary = useSummary();
+  const job = useJob();
+  const latestRun = job.data?.run_id ?? job.data?.job_id ?? '暂无运行';
+  const finishedAt = compactDate(job.data?.finished_at ?? job.data?.started_at);
+  const qualityStatus = job.data?.quality_status ?? (job.data?.status === 'succeeded' ? 'passed' : 'pending');
 
   useEffect(() => {
     if (!heroRef.current) return;
@@ -34,7 +40,25 @@ export function Hero() {
       <div className="hero-copy">
         <span className="eyebrow">Kaggle ecommerce behavior dataset</span>
         <h1>电商用户行为大数据分析工作台</h1>
-        <p>React 前端独立运行，Flask 提供 API，Spark 负责离线清洗聚合。看板聚焦行为转化、销售趋势、数据质量和作业运行状态。</p>
+        <p>把 Spark 作业、质量门禁和核心行为指标收在一个桌面工作台里，先判断数据是否可信，再进入转化、推荐和明细追踪。</p>
+        <dl className="hero-insights" aria-label="数据运行摘要">
+          <div>
+            <dt>最近运行</dt>
+            <dd>{latestRun.slice(0, 18)}</dd>
+          </div>
+          <div>
+            <dt>刷新时间</dt>
+            <dd>{finishedAt}</dd>
+          </div>
+          <div>
+            <dt>有效事件</dt>
+            <dd>{formatNumber(summary.data?.cleaned_rows)}</dd>
+          </div>
+          <div>
+            <dt>质量状态</dt>
+            <dd>{qualityStatus}</dd>
+          </div>
+        </dl>
       </div>
       <div className="hero-actions">
         <button className="primary-action" onClick={() => refresh.mutate()} disabled={refresh.isPending} type="button">

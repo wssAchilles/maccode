@@ -1,22 +1,56 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { animate, stagger } from 'animejs';
 import { Search, X } from 'lucide-react';
-import { navItems } from './navigation';
+import { navGroups, navItems, type NavItem } from './navigation';
+
+const RECENT_ROUTES_KEY = 'enormous-data-recent-routes';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function readRecentRoutes() {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(window.localStorage.getItem(RECENT_ROUTES_KEY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+
+function storeRecentRoute(to: string) {
+  const next = [to, ...readRecentRoutes().filter((route) => route !== to)].slice(0, 5);
+  window.localStorage.setItem(RECENT_ROUTES_KEY, JSON.stringify(next));
+  return next;
+}
+
+function Highlight({ query, text }: { query: string; text: string }) {
+  const normalized = query.trim();
+  if (!normalized) return <>{text}</>;
+  const index = text.toLowerCase().indexOf(normalized.toLowerCase());
+  if (index < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark>{text.slice(index, index + normalized.length)}</mark>
+      {text.slice(index + normalized.length)}
+    </>
+  );
+}
+
 export function CommandPalette() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [recentRoutes, setRecentRoutes] = useState(readRecentRoutes);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const wasOpenRef = useRef(false);
+  const currentPath = location.pathname;
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -24,6 +58,32 @@ export function CommandPalette() {
     }
     return navItems.filter((item) => `${item.label} ${item.detail} ${item.group} ${item.to}`.toLowerCase().includes(normalized));
   }, [query]);
+  const recentItems = useMemo(
+    () => recentRoutes.map((route) => navItems.find((item) => item.to === route)).filter((item): item is NavItem => Boolean(item)),
+    [recentRoutes],
+  );
+  const optionItems = useMemo(() => {
+    if (query.trim()) return filtered;
+    const recentPaths = new Set(recentItems.map((item) => item.to));
+    return [...recentItems, ...navItems.filter((item) => !recentPaths.has(item.to))];
+  }, [filtered, query, recentItems]);
+  const sections = useMemo(() => {
+    if (query.trim()) {
+      return navGroups
+        .map((group) => ({ group, items: filtered.filter((item) => item.group === group) }))
+        .filter((section) => section.items.length);
+    }
+    const recentPaths = new Set(recentItems.map((item) => item.to));
+    return [
+      ...(recentItems.length ? [{ group: '最近访问', items: recentItems }] : []),
+      ...navGroups.map((group) => ({
+        group,
+        items: navItems.filter((item) => item.group === group && !recentPaths.has(item.to)),
+      })),
+    ].filter((section) => section.items.length);
+  }, [filtered, query, recentItems]);
+  const optionIndexByRoute = useMemo(() => new Map(optionItems.map((item, index) => [item.to, index])), [optionItems]);
+  const activeOption = optionItems[activeIndex];
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -67,6 +127,7 @@ export function CommandPalette() {
   }, [query]);
 
   function go(to: string) {
+    setRecentRoutes(storeRecentRoute(to));
     navigate(to);
     setOpen(false);
   }
@@ -95,15 +156,15 @@ export function CommandPalette() {
   function onSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((index) => (filtered.length ? (index + 1) % filtered.length : 0));
+      setActiveIndex((index) => (optionItems.length ? (index + 1) % optionItems.length : 0));
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((index) => (filtered.length ? (index - 1 + filtered.length) % filtered.length : 0));
+      setActiveIndex((index) => (optionItems.length ? (index - 1 + optionItems.length) % optionItems.length : 0));
     }
-    if (event.key === 'Enter' && filtered[activeIndex]) {
+    if (event.key === 'Enter' && activeOption) {
       event.preventDefault();
-      go(filtered[activeIndex].to);
+      go(activeOption.to);
     }
   }
 
@@ -140,34 +201,43 @@ export function CommandPalette() {
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={onSearchKeyDown}
                 placeholder="搜索页面、指标或工作流"
-                aria-activedescendant={filtered[activeIndex] ? `command-option-${filtered[activeIndex].to}` : undefined}
+                aria-activedescendant={activeOption ? `command-option-${activeOption.to}` : undefined}
                 aria-controls="command-list"
                 aria-autocomplete="list"
+                aria-expanded={open}
+                aria-haspopup="listbox"
                 aria-label="搜索页面、指标或工作流"
+                role="combobox"
               />
             </label>
             <div className="command-list" id="command-list" role="listbox">
-              {filtered.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    aria-selected={index === activeIndex}
-                    className="command-option"
-                    id={`command-option-${item.to}`}
-                    key={item.to}
-                    role="option"
-                    type="button"
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => go(item.to)}
-                  >
-                    <Icon size={18} />
-                    <span>
-                      <strong>{item.label}</strong>
-                      <small>{item.group} · {item.detail}</small>
-                    </span>
-                  </button>
-                );
-              })}
+              {sections.map((section) => (
+                <div className="command-section" key={section.group}>
+                  <span className="command-section-label">{section.group}</span>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const index = optionIndexByRoute.get(item.to) ?? 0;
+                    return (
+                      <div
+                        aria-current={item.to === currentPath ? 'page' : undefined}
+                        aria-selected={index === activeIndex}
+                        className="command-option"
+                        id={`command-option-${item.to}`}
+                        key={item.to}
+                        role="option"
+                        onClick={() => go(item.to)}
+                        onMouseEnter={() => setActiveIndex(index)}
+                      >
+                        <Icon size={18} />
+                        <span>
+                          <strong><Highlight query={query} text={item.label} /></strong>
+                          <small>{item.group} · <Highlight query={query} text={item.detail} /></small>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
               {filtered.length === 0 ? <div className="command-empty">没有匹配结果</div> : null}
             </div>
             <div className="command-footer" aria-hidden="true">

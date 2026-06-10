@@ -2,6 +2,7 @@ import { GitCompareArrows } from 'lucide-react';
 import { useConversionDaily, useConversionFunnel, useProductConversion } from '../api/hooks';
 import { ChartPanel } from '../components/ChartPanel';
 import { barOption, lineOption } from '../lib/chartOptions';
+import type { DailyConversion, FunnelStep } from '../types/api';
 
 function percent(value?: number) {
   return typeof value === 'number' ? `${(value * 100).toFixed(2)}%` : 'pending';
@@ -23,6 +24,16 @@ export function ConversionPage() {
   const hasError = funnel.isError || daily.isError || products.isError;
   const funnelRows = (funnel.data?.steps ?? []).map((step) => ({ name: step.step, value: step.sessions }));
   const dailyRateRows = (daily.data ?? []).map((row) => ({ date: row.date, value: Number((row.view_to_purchase_rate * 100).toFixed(3)) }));
+  const weakestStep = (funnel.data?.steps ?? [])
+    .filter((step) => step.step !== 'view')
+    .reduce<FunnelStep | null>(
+      (lowest, step) => (!lowest || step.rate_from_previous < lowest.rate_from_previous ? step : lowest),
+      null,
+    );
+  const peakDailyRate = daily.data?.reduce<DailyConversion | null>(
+    (best, row) => (!best || row.view_to_purchase_rate > best.view_to_purchase_rate ? row : best),
+    null,
+  );
 
   return (
     <>
@@ -58,8 +69,18 @@ export function ConversionPage() {
       </section>
 
       <section className="content-grid">
-        <ChartPanel title="会话漏斗" subtitle="正向路径 session 数" option={barOption(funnelRows, 'Sessions', '#39d0c8')} />
-        <ChartPanel title="每日购买转化率" subtitle="view-to-purchase rate %" option={lineOption(dailyRateRows, '转化率', '#f59e0b')} />
+        <ChartPanel
+          title="会话漏斗"
+          subtitle="正向路径 session 数"
+          option={barOption(funnelRows, 'Sessions', '#39d0c8')}
+          summary={weakestStep ? `${weakestStep.step} 是当前最弱转化节点，前序转化率为 ${percent(weakestStep.rate_from_previous)}。` : '等待会话漏斗数据。'}
+        />
+        <ChartPanel
+          title="每日购买转化率"
+          subtitle="view-to-purchase rate %"
+          option={lineOption(dailyRateRows, '转化率', '#f59e0b')}
+          summary={peakDailyRate ? `${peakDailyRate.date} 的购买转化率最高，为 ${percent(peakDailyRate.view_to_purchase_rate)}。` : '等待每日转化率数据。'}
+        />
       </section>
 
       <section className="data-panel conversion-products-panel">

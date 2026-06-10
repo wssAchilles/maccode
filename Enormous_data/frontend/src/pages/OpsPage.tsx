@@ -77,6 +77,8 @@ export function OpsPage() {
   const sparkHistoryStatus =
     quality.data?.spark_history_metrics_status ?? lineage.data?.spark_history_metrics_status ?? latest?.spark_history_metrics_status ?? 'not_configured';
   const checks = qualityReport?.gate?.checks ?? [];
+  const checksPassed = checks.filter((check) => check.passed).length;
+  const failureStage = quality.data?.failure_stage ?? latest?.failure_stage ?? 'none';
   const isActive = activeStatuses.has(latest?.status ?? '');
   const benchmarkRows = evidence.data?.benchmark_runs ?? [];
   const hdfsEvidence = evidence.data?.hdfs_inputs ?? [];
@@ -105,58 +107,78 @@ export function OpsPage() {
         </button>
       </section>
 
-      <section className="ops-kpi-grid">
-        <article className="metric-card tone-success">
+      <section className="ops-triage-grid" aria-label="作业首屏判断">
+        <article className={`triage-card tone-${statusLabel(latest?.status) === 'succeeded' ? 'success' : activeStatuses.has(latest?.status ?? '') ? 'running' : 'warning'}`}>
+          <span>最新运行</span>
+          <strong>{statusLabel(latest?.status)}</strong>
+          <small>{latest?.elapsed_seconds ? `${latest.elapsed_seconds}s` : '等待耗时'}</small>
+          <p>{sparkAppId ?? 'waiting for application id'}</p>
+        </article>
+        <article className={`triage-card tone-${failureStage === 'none' ? 'success' : 'danger'}`}>
+          <span>失败阶段</span>
+          <strong>{failureStage}</strong>
+          <small>{sparkHistoryStatus}</small>
+          <p>{latest?.error ?? '当前没有失败阶段。'}</p>
+        </article>
+        <article className={`triage-card tone-${qualityTone(quality.data?.quality_status ?? latest?.quality_status)}`}>
           <span>质量门禁</span>
           <strong>{quality.data?.quality_status ?? latest?.quality_status ?? 'pending'}</strong>
-          <small>{checks.length ? `${checks.filter((check) => check.passed).length}/${checks.length} checks passed` : '等待 Spark manifest'}</small>
+          <small>{checks.length ? `${checksPassed}/${checks.length} checks passed` : '等待 Spark manifest'}</small>
+          <p>{qualityReport?.gate?.status ?? 'not evaluated'}</p>
         </article>
-        <article className="metric-card">
-          <span>输入文件</span>
-          <strong>{safeNumber(inputSnapshot?.file_count)}</strong>
-          <small>{inputSnapshot?.storage_mode ?? latest?.storage_mode ?? 'unknown storage'}</small>
-        </article>
-        <article className="metric-card">
-          <span>清洗行数</span>
-          <strong>{safeNumber(qualityReport?.metrics?.cleaned_rows)}</strong>
-          <small>removed ratio {qualityReport?.metrics?.removed_ratio ?? 'pending'}</small>
-        </article>
-        <article className="metric-card">
-          <span>配置指纹</span>
-          <strong>{shortHash(lineage.data?.config_hash ?? latest?.config_hash)}</strong>
-          <small>{lineage.data?.contract_version ?? latest?.contract_version ?? 'contract pending'}</small>
-        </article>
-        <article className="metric-card">
-          <span>Spark 状态</span>
-          <strong>{sparkStatus ?? 'pending'}</strong>
-          <small>{sparkAppId ?? 'waiting for application id'}</small>
-        </article>
-        <article className="metric-card">
-          <span>History 指标</span>
-          <strong>{sparkHistoryStatus}</strong>
-          <small>spill {safeNumber(metricNumber(sparkHistory?.memory_spill_bytes))}, failed {safeNumber(metricNumber(sparkHistory?.failed_task_count))}</small>
-        </article>
-        <article className="metric-card">
-          <span>实验对照组</span>
+        <article className="triage-card tone-success">
+          <span>运行证据</span>
           <strong>{safeNumber((benchmarkSummary?.one_pct_run_count ?? 0) + (benchmarkSummary?.five_pct_run_count ?? 0))}</strong>
-          <small>1% {benchmarkSummary?.one_pct_run_count ?? 0} 组，5% {benchmarkSummary?.five_pct_run_count ?? 0} 组</small>
-        </article>
-        <article className="metric-card tone-success">
-          <span>AQE/算法加速</span>
-          <strong>{benchmarkSummary?.yarn_only_to_algorithm_speedup ? `${benchmarkSummary.yarn_only_to_algorithm_speedup}x` : 'pending'}</strong>
-          <small>相对 YARN-only CSV</small>
-        </article>
-        <article className="metric-card tone-success">
-          <span>History 采集</span>
-          <strong>{safeNumber(historySummary?.collected_run_count)}</strong>
-          <small>failed {safeNumber(historySummary?.failed_task_count)}, retried {safeNumber(historySummary?.retried_task_count)}</small>
-        </article>
-        <article className="metric-card">
-          <span>模块基准</span>
-          <strong>{safeNumber(moduleRows.length)}</strong>
-          <small>典型 20 万行样本</small>
+          <small>benchmark groups</small>
+          <p>{benchmarkSummary?.interpretation ?? '等待 benchmark 汇总数据'}</p>
         </article>
       </section>
+
+      <details className="ops-detail-disclosure">
+        <summary>查看完整运行指标</summary>
+        <section className="ops-kpi-grid">
+          <article className="metric-card">
+            <span>输入文件</span>
+            <strong>{safeNumber(inputSnapshot?.file_count)}</strong>
+            <small>{inputSnapshot?.storage_mode ?? latest?.storage_mode ?? 'unknown storage'}</small>
+          </article>
+          <article className="metric-card">
+            <span>清洗行数</span>
+            <strong>{safeNumber(qualityReport?.metrics?.cleaned_rows)}</strong>
+            <small>removed ratio {qualityReport?.metrics?.removed_ratio ?? 'pending'}</small>
+          </article>
+          <article className="metric-card">
+            <span>配置指纹</span>
+            <strong>{shortHash(lineage.data?.config_hash ?? latest?.config_hash)}</strong>
+            <small>{lineage.data?.contract_version ?? latest?.contract_version ?? 'contract pending'}</small>
+          </article>
+          <article className="metric-card">
+            <span>Spark 状态</span>
+            <strong>{sparkStatus ?? 'pending'}</strong>
+            <small>{sparkAppId ?? 'waiting for application id'}</small>
+          </article>
+          <article className="metric-card">
+            <span>History 指标</span>
+            <strong>{sparkHistoryStatus}</strong>
+            <small>spill {safeNumber(metricNumber(sparkHistory?.memory_spill_bytes))}, failed {safeNumber(metricNumber(sparkHistory?.failed_task_count))}</small>
+          </article>
+          <article className="metric-card tone-success">
+            <span>AQE/算法加速</span>
+            <strong>{benchmarkSummary?.yarn_only_to_algorithm_speedup ? `${benchmarkSummary.yarn_only_to_algorithm_speedup}x` : 'pending'}</strong>
+            <small>相对 YARN-only CSV</small>
+          </article>
+          <article className="metric-card tone-success">
+            <span>History 采集</span>
+            <strong>{safeNumber(historySummary?.collected_run_count)}</strong>
+            <small>failed {safeNumber(historySummary?.failed_task_count)}, retried {safeNumber(historySummary?.retried_task_count)}</small>
+          </article>
+          <article className="metric-card">
+            <span>模块基准</span>
+            <strong>{safeNumber(moduleRows.length)}</strong>
+            <small>典型 20 万行样本</small>
+          </article>
+        </section>
+      </details>
 
       <section className="ops-grid">
         <article className="data-panel ops-card">

@@ -9,7 +9,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Siren,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -17,13 +16,26 @@ import { useJob } from '../../api/hooks';
 import { CommandPalette } from './CommandPalette';
 import { navGroups, navItems } from './navigation';
 
-const shortcutItems = navItems.filter((item) => ['/anomalies', '/lifecycle', '/experiments', '/ops'].includes(item.to));
-
 function getStoredCollapsed() {
   if (typeof window === 'undefined') {
     return false;
   }
   return window.localStorage.getItem('enormous-data-sidebar') === 'collapsed';
+}
+
+function normalizeStatus(status?: string | null) {
+  if (!status) return 'ready';
+  if (status === 'success') return 'succeeded';
+  return status;
+}
+
+function statusTone(status?: string | null) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'succeeded') return 'succeeded';
+  if (normalized === 'failed' || normalized === 'rejected') return 'failed';
+  if (normalized === 'running') return 'running';
+  if (normalized === 'queued') return 'queued';
+  return 'ready';
 }
 
 export function AppShell() {
@@ -37,6 +49,9 @@ export function AppShell() {
     () => navItems.find((item) => (item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to))) ?? navItems[0],
     [location.pathname],
   );
+  const CurrentPageIcon = currentPage.icon;
+  const jobStatus = normalizeStatus(job.data?.status);
+  const latestRun = job.data?.run_id ?? job.data?.job_id;
 
   useEffect(() => {
     window.localStorage.setItem('enormous-data-sidebar', collapsed ? 'collapsed' : 'expanded');
@@ -110,7 +125,10 @@ export function AppShell() {
         </button>
         <div className="sidebar-foot">
           <span>Flask API</span>
-          <strong><Circle size={9} fill="currentColor" />{job.data?.status ?? 'ready'}</strong>
+          <strong className={`sidebar-status tone-${statusTone(job.data?.status)}`}>
+            <Circle size={9} fill="currentColor" />
+            {jobStatus}
+          </strong>
         </div>
       </aside>
       <div className="app-main" ref={appMainRef}>
@@ -121,16 +139,14 @@ export function AppShell() {
             <strong>{currentPage.label}</strong>
           </div>
           <div className="topbar-actions" aria-label="常用工作流">
-            {shortcutItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink className="workflow-chip" key={item.to} to={item.to}>
-                  <Icon size={15} />
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
-            <span className="status-pill tone-running"><BellDot size={14} /> {job.data?.status ?? 'ready'}</span>
+            <span className="workflow-chip context-chip">
+              <CurrentPageIcon size={15} />
+              <span>{currentPage.detail}</span>
+            </span>
+            {latestRun ? <span className="workflow-chip run-chip">最近运行 {latestRun.slice(0, 12)}</span> : null}
+            <span className={`status-pill tone-${statusTone(job.data?.status)}`}>
+              <BellDot size={14} /> {jobStatus}
+            </span>
           </div>
         </header>
         <main className="workspace" id="main-workspace" ref={workspaceRef} tabIndex={-1}>
