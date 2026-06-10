@@ -1,213 +1,319 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{测试与运行验证}
+\chapter{系统设计与实现（实现步骤截图、环境安装、代码实现）}
 
-\section{测试环境}
+\section{总体架构}
 
-项目主要在 macOS + DevEco Studio 环境下完成开发和验证。测试环境如表\ref{tab:test-env}所示。
+系统采用“数据层、计算层、服务层、展示层”四层结构。数据层包括本地 Kaggle 原始 CSV、本地 1\%/5\% 样本、HDFS CSV 输入和 HDFS Parquet 清洗层；计算层包括 Spark SQL pipeline、AQE、推荐/关联/异常等算法模块和 Spark History event log；服务层包括 Flask API、SQLite 作业记录、run manifest 与 benchmark evidence 服务；展示层包括 React 前端业务页面、质量页和 Ops 页。
+
+图\ref{fig:yarn-architecture}展示了 Docker YARN 实验集群拓扑。该拓扑保留了 Hadoop 课程设计所需的 NameNode、DataNode、ResourceManager、NodeManager 和 Spark History Server，同时增加 spark-client 作为提交入口。前端与后端按 \texttt{start-dev.sh} 启动：Flask 后端为 \texttt{5051}，Vite 前端为 \texttt{5173}；HDFS UI、YARN UI 和 Spark History UI 分别映射到 \texttt{19870}、\texttt{18088} 和 \texttt{28080}，避免与已有 \texttt{master} 容器冲突。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{yarn_lab_architecture.png}
+    \caption{Docker ARM64 Hadoop YARN 实验集群拓扑（由 chat-gpt-image-2 生成）}
+    \label{fig:yarn-architecture}
+\end{figure}
+
+\section{环境安装与启动步骤}
+
+\subsection{ARM64 Hadoop 镜像构建}
+
+本项目避免使用 amd64 Hadoop 镜像，也避免把整个 \texttt{master} 容器 commit 成大镜像。最终方案是自建精简 ARM64 Hadoop 镜像，只包含运行 Hadoop 所需的 Java、Hadoop 文件、配置和启动脚本。核心思路如下：
+
+\begin{lstlisting}[style=codexcode]
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y \
+    openjdk-8-jdk-headless bash ssh rsync procps curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY hadoop /opt/hadoop
+
+ENV HADOOP_HOME=/opt/hadoop
+ENV HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+ENV PATH=/opt/hadoop/bin:/opt/hadoop/sbin:$PATH
+\end{lstlisting}
+
+与 \texttt{docker commit master} 相比，该方法不会复制 HDFS 数据目录、日志、Hive、HBase 和临时文件，因此镜像体积更可控，也符合 ARM Mac 的架构约束。
+
+\subsection{Docker Compose 启动}
+
+集群通过 \texttt{yarn-lab} profile 启动。常用命令如下：
+
+\begin{lstlisting}[style=codexcode]
+docker compose --profile yarn-lab up -d
+docker compose --profile yarn-lab ps
+docker compose --profile yarn-lab config --quiet
+OPEN_BROWSER=0 ./start-dev.sh
+\end{lstlisting}
+
+端口规划如表\ref{tab:ports}所示。Hadoop UI 端口均为偏移端口，原因是用户原有 \texttt{master} 容器已经占用 Hadoop 默认 UI 端口；前后端访问地址则以 \texttt{start-dev.sh} 为准。
 
 \begin{table}[htbp]
 \centering
-\caption{测试与构建环境}
-\label{tab:test-env}
-\begin{tabularx}{0.95\textwidth}{lX}
+\caption{实验环境端口规划}
+\label{tab:ports}
+\begin{tabularx}{0.92\textwidth}{l l X}
 \toprule
-\textbf{项目} & \textbf{配置} \\
+\textbf{服务} & \textbf{宿主机端口} & \textbf{说明} \\
 \midrule
-移动端 SDK & Flutter for OpenHarmony 3.22，Dart 3.4。 \\
-鸿蒙工具链 & DevEco Studio 6.0.2，HarmonyOS SDK API 22，ohpm 6.0.1，hvigor。 \\
-后端服务 & Docker Compose + PocketBase，端口 \texttt{8090}。 \\
-数据库持久化 & Docker named volume \texttt{kindergarten-pocketbase-data}。 \\
-调试设备 & HarmonyOS 模拟器 nova 15 Pro \\
+Flask API & \texttt{5051} & \texttt{start-dev.sh} 启动的后端接口，前端通过该地址访问 \texttt{/api/v1}。 \\
+Vite 前端 & \texttt{5173} & \texttt{start-dev.sh} 启动的正确前端访问地址，用于打开 \texttt{/ops}。 \\
+NameNode UI & \texttt{19870} & 查看 HDFS 文件、block 和 DataNode 状态。 \\
+ResourceManager UI & \texttt{18088} & 查看 YARN application、队列和运行状态。 \\
+Spark History Server & \texttt{28080} & 查看 Spark event log 和 stage/job 信息。 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-测试环境设计遵循“本地后端可控、移动端真实构建、虚拟机人工验收”的原则。后端通过 Docker 在 Mac 上运行，数据库和静态资源都由 PocketBase 提供；移动端先通过 CLI 构建 HAP，证明鸿蒙工程结构、SDK 配置和依赖解析正确；最终运行效果再交由鸿蒙模拟器或真机进行人工验收。这样的流程可以把构建问题、网络问题和界面问题分开排查。
+\subsection{HDFS 目录准备}
 
-在调试过程中，浏览器访问、Flutter 调试和鸿蒙模拟器访问使用的是不同网络视角。浏览器访问 \texttt{localhost} 表示 Mac 本机；Flutter 桌面或普通命令行也可以访问 \texttt{localhost}；鸿蒙模拟器则需要使用 \texttt{10.0.2.2}。因此测试时必须同时检查 PocketBase 是否启动、端口是否映射、移动端 base URL 是否正确、图片静态目录是否存在。
-
-\section{数据迁移验证}
-
-迁移脚本读取如下 Supabase 备份文件，导入结果如表\ref{tab:migration-count}所示。
+启动后需要创建实验目录，并上传样本数据。正式样本来自真实 Oct/Nov 原始 CSV 的用户级采样，不再使用 87.4KB smoke 文件作为论文结论依据。
 
 \begin{lstlisting}[style=codexcode]
-supabase_restore_work/db_cluster-16-09-2025@15-17-22.backup
+docker exec enormous-data-yarn-namenode hdfs dfs -mkdir -p /user/course
+docker exec enormous-data-yarn-namenode hdfs dfs -mkdir -p /spark-history
+docker exec enormous-data-yarn-namenode hdfs dfs -put -f \
+  /data/sample/ecommerce_user_sample_1pct.csv \
+  /user/course/ecommerce_behavior_user_sample_1pct/
+docker exec enormous-data-yarn-namenode hdfs dfs -put -f \
+  /data/sample/ecommerce_user_sample_5pct.csv \
+  /user/course/ecommerce_behavior_user_sample_5pct/
 \end{lstlisting}
 
-\begin{table}[htbp]
-\centering
-\caption{迁移记录数量}
-\label{tab:migration-count}
-\begin{tabular}{l|r}
-\hline
-\textbf{来源数据} & \textbf{迁移数量} \\
-\hline
-\texttt{auth.users} & 3 \\
-\texttt{public.profiles} & 3 \\
-\texttt{public.categories} & 4 \\
-\texttt{public.students} & 4 \\
-\texttt{public.books} & 6 \\
-\texttt{public.borrow\_records} & 8 \\
-\hline
-\end{tabular}
-\end{table}
+清理后的 HDFS 关键路径包括 1\%/5\% CSV 输入、YARN-only/AQE/algorithm/Parquet 的处理输出，以及 6 个最终 Spark History event log。旧的 \texttt{application\_178098*} 和 \texttt{application\_1780991452919\_0001} 到 \texttt{0005} 大日志已经清理，避免继续触发 Spark 3.5.5 History Server 的 JSON 长字符串限制。
 
-迁移后系统登录账号如表\ref{tab:accounts}所示。三个应用用户密码统一为 \texttt{12345678}，便于课程验收时快速登录不同角色。
+\section{Spark 提交链路实现}
 
-\begin{table}[htbp]
-\centering
-\caption{应用登录账号}
-\label{tab:accounts}
-\begin{tabularx}{0.95\textwidth}{l l l l}
-\toprule
-\textbf{邮箱} & \textbf{密码} & \textbf{姓名} & \textbf{性质} \\
-\midrule
-\texttt{1424408591@qq.com} & \texttt{12345678} & 奕晨司 & 普通教师 \\
-\texttt{2633638634@qq.com} & \texttt{12345678} & 小明 & 普通教师 \\
-\texttt{903398655@qq.com} & \texttt{12345678} & 开心逗逗儿 & 管理员 \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\subsection{YARN client 配置}
 
-PocketBase 后台超级用户为 \texttt{admin@example.com / admin123456}，仅用于访问 PocketBase 管理后台，不作为应用内教师账号使用。
-
-数据迁移验证不只检查记录数量，还要检查字段语义是否正确。图书记录需要确认标题、作者、位置、封面路径、总库存和可借库存一致；借阅记录需要确认借阅日期、应还日期、归还日期、借阅人和数量一致；用户记录需要确认邮箱、姓名和角色一致。尤其是 \texttt{return\_date}、\texttt{student\_id}、\texttt{profile\_id} 这类可空字段，如果迁移时被错误填充，会直接影响逾期判断和个人中心显示。
-
-\begin{table}[htbp]
-\centering
-\caption{迁移字段核验要点}
-\label{tab:migration-field-check}
-\begin{tabularx}{0.95\textwidth}{lX}
-\toprule
-\textbf{Collection} & \textbf{核验要点} \\
-\midrule
-\texttt{profiles} & 邮箱可登录，姓名显示正确，\texttt{role} 能区分教师和管理员。 \\
-\texttt{books} & 标题、作者、位置、分类、封面路径、总数量和可借数量与源库一致。 \\
-\texttt{borrow\_records} & 未归还记录的 \texttt{return\_date} 保持为空，数量字段参与库存计算。 \\
-\texttt{students} & 学生姓名和班级能在学生详情、借阅选择和管理员记录中显示。 \\
-\texttt{categories} & 分类名称能在图书筛选按钮和图书编辑页面中复用。 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{功能测试}
-
-系统围绕主要业务路径进行了功能测试，结果如表\ref{tab:function-test}所示。
-
-\begin{table}[htbp]
-\centering
-\caption{核心功能测试结果}
-\label{tab:function-test}
-\begin{tabularx}{0.95\textwidth}{lXl}
-\toprule
-\textbf{模块} & \textbf{测试内容} & \textbf{结果} \\
-\midrule
-登录鉴权 & 使用教师和管理员账号登录，校验角色与页面跳转。 & 通过 \\
-仪表盘 & 查看图书总数、学生总数、在借数量、逾期数量和热门图书。 & 通过 \\
-图书管理 & 搜索、分类筛选、新增、编辑、库存展示和封面加载。 & 通过 \\
-分类管理 & 添加、修改、删除分类，并在图书筛选中同步展示。 & 通过 \\
-借阅归还 & 教师/学生借阅、数量校验、还书、逾期计算和库存恢复。 & 通过 \\
-借阅记录 & 管理员查看全部记录、未归还记录和逾期记录。 & 通过 \\
-学生管理 & 学生列表、学生详情、班级信息和个人借阅历史。 & 通过 \\
-鸿蒙界面 & 修复图书卡片、借阅数量、按钮等小屏幕溢出问题。 & 通过 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-除了表\ref{tab:function-test}中的主流程测试，还对边界情况进行了检查。移动端业务系统常见的问题并不总是出现在“正常点击”路径上，而是出现在空数据、错误地址、重复刷新、数量边界和页面回退等场景中。表\ref{tab:edge-test}列出了本项目重点验证的边界用例。
-
-\begin{table}[htbp]
-\centering
-\caption{边界情况测试}
-\label{tab:edge-test}
-\begin{tabularx}{0.95\textwidth}{lXl}
-\toprule
-\textbf{类别} & \textbf{测试内容} & \textbf{结果} \\
-\midrule
-网络地址 & 将后端地址错误配置为 \texttt{127.0.0.1}，确认模拟器连接失败并给出提示。 & 通过 \\
-库存边界 & 借阅数量大于可借库存，系统阻止提交。 & 通过 \\
-空分类 & 图书分类为空或分类读取失败时，图书仍能显示基础信息。 & 通过 \\
-图片失败 & 封面文件不存在或地址不可达时，页面显示占位，不影响列表滚动。 & 通过 \\
-重复刷新 & 多次切换底部导航和返回页面，列表不会频繁变成空态。 & 通过 \\
-角色权限 & 教师账号不展示管理员查询入口，管理员账号可进入管理页面。 & 通过 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{界面适配测试}
-
-界面测试重点关注手机竖屏下的元素溢出、点击区域和滚动体验。由于鸿蒙模拟器的状态栏、导航栏和侧边控制条会占用视觉空间，页面实际可用宽度比桌面预览更紧张。图书卡片、个人中心借阅卡片和管理员记录卡片都进行了窄屏检查。
-
-主要调整包括：将并列文本改为可换行布局；将还书按钮和数量标签设置为固定尺寸；将长标题、日期和班级信息放入弹性区域；将分类筛选放入横向滚动容器；对底部导航预留安全区域。调整后，页面在模拟器中不再出现 Flutter 的红色 overflow 提示，关键按钮也不会被数量标签或日期文本遮挡。
-
-\section{后端运行验证}
-
-PocketBase 服务验证包含三个层次。第一，Docker 层确认容器正在运行并暴露 \texttt{8090} 端口；第二，PocketBase 层确认管理后台可以打开、collection 存在且记录数量正确；第三，移动端层确认模拟器可以通过 \texttt{10.0.2.2:8090} 登录并读取图书。三层都通过后，才能说明后端不仅“启动了”，而且“能被鸿蒙端使用”。
-
-常用检查命令如下：
+第一阶段采用 YARN client mode。这样 driver 运行在 spark-client 容器，Flask 仍可读取本地 \texttt{data/cache}，前端也能继续使用原有缓存文件。核心配置包括：
 
 \begin{lstlisting}[style=codexcode]
-docker compose ps
-curl http://127.0.0.1:8090/api/health
-curl http://127.0.0.1:8090/covers/book_001.png
+spark:
+  master: yarn
+  deployMode: client
+  appName: ecommerce-yarn-lab
+  config:
+    spark.sql.adaptive.enabled: true
+    spark.sql.adaptive.skewJoin.enabled: true
+    spark.sql.shuffle.partitions: 64
+    spark.sql.maxPlanStringLength: 8192
+    spark.eventLog.enabled: true
+    spark.eventLog.dir: hdfs:///spark-history
 \end{lstlisting}
 
-其中图片检查用于验证静态资源目录是否正确挂载。若 API 正常但图片不显示，通常应优先检查 \texttt{pb\_public/covers} 是否存在文件、数据库中的 \texttt{cover\_image\_url} 是否为相对路径，以及前端是否把相对路径拼接到了正确的 base URL。
+\texttt{spark.sql.maxPlanStringLength} 是本次修复的重要配置\cite{spark_configuration}。旧 5\% event log 在 Spark History Server 的 \texttt{/stages} API 上会触发 JSON 长字符串限制，限制 plan string 后重新运行的最终 event log 体积明显降低，便于长期保留。
 
-\section{构建验证}
+\subsection{提交脚本}
 
-本项目已通过 Flutter 分析、单元测试和 HarmonyOS HAP 构建验证。常用命令如下：
+提交前先将 \texttt{spark\_jobs} 打包为 zip，再通过 \texttt{spark-submit} 提交到 YARN：
 
 \begin{lstlisting}[style=codexcode]
-flutter analyze --no-fatal-infos
-flutter test --no-pub
+python scripts/package_spark_jobs.py
+spark-submit \
+  --master yarn \
+  --deploy-mode client \
+  --py-files build/spark_jobs.zip \
+  spark_jobs/main.py \
+  --config configs/yarn-client.yaml
 \end{lstlisting}
 
-鸿蒙构建前需要显式设置 DevEco 工具链环境变量，并使用 Flutter for OpenHarmony SDK 执行 HAP 构建。HAP 是 OpenHarmony 应用模块的构建产物，包含代码、资源、三方库和应用配置文件\cite{openharmony_hap_package}：
+Flask 的 refresh 不再直接执行 \texttt{python -m spark\_jobs.main}，而是调用 submit runner。运行完成后，\texttt{SparkPipelineRunner} 从 stdout 中解析 \texttt{Spark run manifest} 路径，读取 manifest 并写入 SQLite 作业表。为了避免后端消息过长，runner 只保留 stdout/stderr tail，完整日志写入 \texttt{data/cache/run\_logs}。
+
+\subsection{YARN cluster mode 入口}
+
+在第一阶段，系统默认使用 YARN client mode，因为 Flask 与 React 仍读取 spark-client 容器中的 \texttt{data/cache}。同时项目新增了 \texttt{configs/yarn-cluster.yaml} 与 \texttt{scripts/submit\_yarn\_cluster.sh}，作为第二阶段 cluster mode 入口。cluster mode 会把 driver 交给 NodeManager 运行，并通过 \texttt{--files} 分发配置文件，通过 \texttt{spark.yarn.appMasterEnv.PYSPARK\_PYTHON} 和 \texttt{spark.executorEnv.PYSPARK\_PYTHON} 固定 Python 3.11，避免 driver 与 executor Python 小版本不一致。由于 cluster mode 下本地 JSON cache 不再天然落在 Flask 可读目录，后续若要把 cluster mode 设为默认刷新路径，需要继续实现 HDFS 输出读取或缓存同步。
+
+\section{核心算法与内存优化实现}
+
+\subsection{禁止 full collect}
+
+早期推荐模块会把 \texttt{recommendation\_features.collect()} 的完整结果带回 driver，再生成大 JSON。这在小样本下能运行，但数据量扩大后会直接增加 driver OOM 风险。优化后，summary、coverage、fallback、duplicate 和 confidence 等质量指标全部使用 Spark 聚合完成；前端展示只收集 preview limit 行数；完整明细写入 Parquet。
 
 \begin{lstlisting}[style=codexcode]
-export HOS_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
-export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
-export OHOS_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony
-export OHOS_BASE_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony
-export TOOL_HOME=/Applications/DevEco-Studio.app/Contents
-export JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr/Contents/Home
-export PATH=/Users/achilles/development/flutter_flutter_3_22_ohos/bin:$TOOL_HOME/tools/ohpm/bin:$TOOL_HOME/tools/hvigor/bin:$TOOL_HOME/tools/node/bin:$JAVA_HOME/bin:$PATH
+preview_rows = (
+    recommendation_features
+    .orderBy(F.desc("score"))
+    .limit(preview_limit)
+    .collect()
+)
 
-/Users/achilles/development/flutter_flutter_3_22_ohos/bin/flutter \
-  build hap --debug --no-codesign --target-platform ohos-arm64
+quality = recommendation_features.agg(
+    F.count("*").alias("candidate_rows"),
+    F.avg("confidence").alias("avg_confidence"),
+    F.sum(F.col("is_fallback").cast("int")).alias("fallback_rows"),
+)
 \end{lstlisting}
 
-构建产物位于：
+\subsection{WindowExec 警告优化}
+
+Spark 日志中曾出现大量 \texttt{WindowExec: No Partition Defined} 警告。这类警告表示窗口函数没有分区键，Spark 会把数据移动到单分区处理，小样本时只是警告，全量时会变成瓶颈。优化后，ranking 逻辑统一通过 helper 添加全局 rank 或业务分区 rank，避免模块中散落无分区 \texttt{Window.orderBy()}。
+
+\subsection{关联分析组合膨胀控制}
+
+商品关联图谱最容易产生二次级组合膨胀。若某个 session 中商品数过多，直接两两配对会产生 $O(n^2)$ 行。系统加入 \texttt{top\_nodes}、\texttt{max\_pair\_products\_per\_session} 和 pair explosion 指标。质量报告记录 \texttt{eligible\_session\_count}、\texttt{pair\_base\_rows} 和 \texttt{pair\_rows\_per\_input\_row}，用于判断数据规模增长是否仍受控。
+
+\subsection{Parquet 清洗层}
+
+CSV 原始层只作为输入层。清洗后的事件表写入 HDFS Parquet，并按日期字段分区。Parquet 输入对照组直接读取清洗目录，跳过 CSV schema 解析和清洗阶段的部分开销。图\ref{fig:pipeline-flow}展示了从原始 CSV 到前端 Ops 证据的处理流程。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{pipeline_optimization_flow.png}
+    \caption{Spark 数据处理与优化流程（由 chat-gpt-image-2 生成）}
+    \label{fig:pipeline-flow}
+\end{figure}
+
+\section{前端 Ops 页实现}
+
+前端新增 \texttt{/api/v1/ops/evidence} 接口调用。后端 \texttt{BenchmarkEvidenceService} 读取正式 benchmark 目录，只返回精简字段：样本、对照组、耗时、吞吐、YARN app id、质量状态、driver 峰值内存和结果路径。前端 Ops 页新增两块内容：第一块是 benchmark 表，用于展示 1\% 五组和 5\% 两组实验；第二块是 HDFS 输入与数据清理策略，用于证明正式输入、Parquet 层和保留的 Spark History app id。
+
+该设计解决了两个答辩痛点。第一，用户不需要在终端手动翻 \texttt{data/benchmarks}；第二，前端不会读取 Spark stderr 长文本，因此不会把 History Server JSON 限制问题转移到浏览器。核心接口返回结构如下：
 
 \begin{lstlisting}[style=codexcode]
-ohos/entry/build/default/outputs/default/entry-default-unsigned.hap
+{
+  "benchmark_runs": [
+    {
+      "sample": "1pct",
+      "variant": "yarn_only_csv",
+      "elapsed_seconds": 964.889,
+      "rows_per_second": 1143.869,
+      "spark_application_id": "application_1780991452919_0016",
+      "quality_status": "passed"
+    }
+  ],
+  "hdfs_inputs": [...],
+  "cleanup_policy": {...}
+}
 \end{lstlisting}
 
-HAP 构建验证的意义在于确认项目已经从普通 Flutter 应用转化为可被 HarmonyOS 工具链识别的应用模块。若 \texttt{ohos/} 工程缺失、\texttt{module.json5} 配置错误、SDK 路径错误或 ohpm 依赖未解析，构建阶段就会失败。通过 CLI 构建后，即使暂不使用虚拟机自动安装，也可以说明鸿蒙工程适配已经具备可验收基础。
+图\ref{fig:ops-evidence-panel}展示了前端 Ops 页的证据集成方式。后端将 benchmark 结果、HDFS 输入快照、Spark History app id 和清理策略统一封装成轻量 JSON，前端只负责读取和展示这些证据，不直接解析 Spark 长日志。
 
-构建过程中还需要注意签名问题。课程调试阶段可以使用 \texttt{--no-codesign} 生成未签名 HAP，用于证明编译链路可通；正式真机安装时需要按照 DevEco Studio 的签名配置生成可安装包。本文以课程开发验证为目标，因此采用 debug + no-codesign 的方式完成命令行验证。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{ops_evidence_panel.png}
+    \caption{前端 Ops 证据面板集成示意图（由 chat-gpt-image-2 生成）}
+    \label{fig:ops-evidence-panel}
+\end{figure}
 
-\section{稳定性问题分析}
+\section{旧数据清理实现}
 
-项目调试过程中出现过两类典型问题。第一类是模拟器无法连接后端，表现为 \texttt{Connection refused} 或状态码为 \texttt{0}。原因是模拟器内的 \texttt{127.0.0.1} 指向设备自身，而 PocketBase 实际运行在 Mac 宿主机。修复方式是默认使用 \texttt{10.0.2.2:8090}，真机再切换为 Mac 局域网 IP。
-
-第二类是偶发空列表或统计数据异常。排查后发现不是业务数据丢失，而是重复鉴权刷新、过密轮询、Docker bind mount 上的 SQLite I/O 抖动和瞬时请求失败叠加导致。SQLite WAL 会在数据库文件旁维护额外日志文件并涉及检查点写回，因此将数据库文件放在 Docker 管理的 volume 中更符合本项目的稳定性目标\cite{sqlite_wal,docker_compose_volumes}。修复后系统采取了以下策略：
+清理工作遵循“只删生成物，不删原始数据”的原则。保留的数据包括：
 
 \begin{itemize}
-    \item \texttt{AuthGate} 不再在每次 build 后重复触发 \texttt{authRefresh}。
-    \item 列表轮询间隔收敛到 30 秒，减少高频请求。
-    \item \texttt{BookService} 和 \texttt{DashboardService} 保留上一次成功数据，瞬时失败时不立即显示空态。
-    \item PocketBase 的 \texttt{/pb\_data} 使用 Docker named volume，不再直接放在 macOS bind mount 上。
+    \item \texttt{data/raw/kaggle/ecommerce\_behavior/2019-Oct.csv}，约 5.3GB。
+    \item \texttt{data/raw/kaggle/ecommerce\_behavior/2019-Nov.csv}，约 8.4GB。
+    \item \texttt{data/sample/ecommerce\_user\_sample\_1pct.csv}，约 141.5MB。
+    \item \texttt{data/sample/ecommerce\_user\_sample\_5pct.csv}，约 694.3MB。
+    \item 三个正式 benchmark 目录：1\% fixed baseline、1\% YARN matrix、5\% YARN matrix。
+    \item 最终 Spark History event log：\texttt{application\_1780991452919\_0016} 到 \texttt{0021}。
 \end{itemize}
 
-这些优化使系统更适合鸿蒙模拟器和真机环境下的连续操作，也让课程验收时的后端部署更容易复现。
+删除的数据包括早期 smoke、retry、history recheck benchmark 目录，旧 \texttt{/user/course/ecommerce\_behavior\_processed} 小输出，以及旧的大 Spark History 日志。清理后本地 benchmark 目录收敛到约 292KB，HDFS \texttt{/spark-history} 只保留 6 个最终 event log，约 87MB。存储快照如图\ref{fig:storage-cleanup}所示。
 
-\section{问题定位复盘}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{storage_cleanup_snapshot.png}
+    \caption{旧数据清理后的存储治理示意图（由 chat-gpt-image-2 生成，精确容量见正文说明）}
+    \label{fig:storage-cleanup}
+\end{figure}
 
-项目调试过程中的问题具有明显的跨平台迁移特征。白屏问题通常不是页面没有写，而是入口 Ability、Flutter 容器或资源加载链路未完全启动；登录连接失败不是账号错误，而是模拟器访问宿主机地址错误；图片不显示不是图片组件失效，而是静态路径和 base URL 不匹配；偶发空列表也不是数据库数据丢失，而是请求失败后页面错误地使用空数组覆盖了原有数据。
+\section{实验结果}
 
-通过这些问题可以总结出一条有效的定位顺序：先看后端是否启动，再看地址是否能从当前设备访问，再看接口返回字段是否符合模型，再看页面是否正确处理加载态和错误态。该顺序比直接修改 UI 更可靠，也符合移动端前后端分离系统的调试规律。
+\subsection{Benchmark 对照表}
 
-对于数据库稳定性问题，最终方案没有简单地增加重试次数，而是同时减少不必要请求、调整 Docker volume、修正服务层缓存和明确查询字段。这样处理后，系统在模拟器连续切换页面时更稳定，也能避免“偶发查不到数据”影响人工验收。
+图\ref{fig:experiment-matrix}展示了本课题的实验对照矩阵。正式实验结果如表\ref{tab:benchmark-results}所示。1\% 样本包含五组对照，5\% 样本包含算法优化 CSV 与 Parquet 两组压力验证。所有 YARN application 均为 \texttt{SUCCEEDED}。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{experiment_matrix_methodology.png}
+    \caption{YARN + Spark 实验对照矩阵（由 chat-gpt-image-2 生成，精确数值见表\ref{tab:benchmark-results}）}
+    \label{fig:experiment-matrix}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{1\% 与 5\% benchmark 实验结果}
+\label{tab:benchmark-results}
+\scriptsize
+\begin{tabularx}{0.98\textwidth}{l l r r r X}
+\toprule
+\textbf{样本} & \textbf{对照组} & \textbf{耗时(s)} & \textbf{输入行} & \textbf{输出行} & \textbf{Application ID} \\
+\midrule
+1\% & Baseline local CSV & 198.843 & 1,104,709 & 1,103,488 & \texttt{local-1781015058333} \\
+1\% & YARN-only CSV & 964.889 & 1,104,709 & 1,103,488 & \texttt{application\_1780991452919\_0016} \\
+1\% & YARN + AQE CSV & 538.657 & 1,104,709 & 1,103,488 & \texttt{application\_1780991452919\_0017} \\
+1\% & YARN + algorithm CSV & 535.804 & 1,104,709 & 1,103,488 & \texttt{application\_1780991452919\_0018} \\
+1\% & YARN + Parquet & 573.183 & 1,103,488 & 1,103,488 & \texttt{application\_1780991452919\_0019} \\
+5\% & YARN + algorithm CSV & 1875.099 & 5,412,207 & 5,405,748 & \texttt{application\_1780991452919\_0020} \\
+5\% & YARN + Parquet & 1828.329 & 5,405,748 & 5,405,748 & \texttt{application\_1780991452919\_0021} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Spark History 指标}
+
+旧 Spark History Server 的 \texttt{/stages} API 在部分应用上会返回 500。为避免指标缺失，系统新增 \texttt{scripts/collect\_eventlog\_metrics.py}，直接解析 HDFS 中的 rolling event log \texttt{.zstd} 文件，汇总 task、shuffle 和 spill 指标。表\ref{tab:history-results}给出 6 个正式 YARN 应用的补采集结果。
+
+\begin{table}[htbp]
+\centering
+\caption{Spark event log 指标补采集结果}
+\label{tab:history-results}
+\scriptsize
+\begin{tabularx}{0.98\textwidth}{l r r r r r}
+\toprule
+\textbf{Application ID} & \textbf{Tasks} & \textbf{Failed} & \textbf{Retried} & \textbf{Shuffle Read} & \textbf{Memory Spill} \\
+\midrule
+\texttt{application\_1780991452919\_0016} & 6,290 & 0 & 0 & 9.4GB & 2.1GB \\
+\texttt{application\_1780991452919\_0017} & 4,526 & 0 & 0 & 9.4GB & 728.0MB \\
+\texttt{application\_1780991452919\_0018} & 4,526 & 0 & 0 & 9.4GB & 728.0MB \\
+\texttt{application\_1780991452919\_0019} & 5,057 & 0 & 0 & 9.4GB & 792.5MB \\
+\texttt{application\_1780991452919\_0020} & 5,149 & 0 & 0 & 44.9GB & 89.6GB \\
+\texttt{application\_1780991452919\_0021} & 5,815 & 0 & 0 & 44.9GB & 89.4GB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+从表中可以看到，正式 YARN 作业均没有 failed task 和 retried task。5\% 样本的 spill 显著高于 1\% 样本，说明本机 Docker 资源已经进入更明显的磁盘/内存交换区间；这也支持本文“不盲目承诺全量无条件通过，而用典型部分数据证明优化有效”的结论。
+
+\subsection{典型模块 Benchmark}
+
+根据课程实验目标与本机资源约束，后续不再启动全量 Oct+Nov 长任务，而是使用 1\% 样本中的 200,000 行典型数据补跑模块级 benchmark。该数据规模足以覆盖关联、推荐、异常和实验分流的核心计算路径，同时避免全量运行对 Docker Desktop 内存与磁盘造成不必要压力。结果如表\ref{tab:module-results}所示。
+
+\begin{table}[htbp]
+\centering
+\caption{典型部分数据模块 benchmark 结果}
+\label{tab:module-results}
+\scriptsize
+\begin{tabularx}{0.92\textwidth}{l l r r r}
+\toprule
+\textbf{模块} & \textbf{任务} & \textbf{输入行} & \textbf{输出行} & \textbf{耗时(s)} \\
+\midrule
+Affinity & \texttt{affinity\_pipeline} & 199,895 & 80 & 3.852 \\
+Recommendation & \texttt{recommendation\_pipeline} & 199,895 & 1,000 & 1.740 \\
+Anomaly & \texttt{anomaly\_pipeline} & 199,895 & 644 & 7.865 \\
+Experimentation & \texttt{experimentation\_pipeline} & 199,895 & 21,716 & 8.703 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{结果分析}
+
+图\ref{fig:benchmark-evidence}以生成式信息图方式概括了 benchmark 证据，精确数值以表\ref{tab:benchmark-results}为准。1\% 样本中，YARN-only CSV 用时 964.889s，明显慢于 local baseline 和后续优化组。这说明 YARN 本身提供资源调度和容错框架，但不能自动减少 CSV 扫描、shuffle、driver collect 和算法组合膨胀。启用 AQE 后耗时降至 538.657s，相对 YARN-only 约有 1.79 倍改善；加入算法限流后耗时为 535.804s，相对 YARN-only 约有 1.80 倍改善。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{benchmark_evidence_summary.png}
+    \caption{Benchmark 证据概览（由 chat-gpt-image-2 生成，精确数值见表\ref{tab:benchmark-results}）}
+    \label{fig:benchmark-evidence}
+\end{figure}
+
+5\% 样本中，YARN + algorithm CSV 用时 1875.099s，YARN + Parquet 用时 1828.329s。两组都成功完成，说明 driver collect 收敛和算法上界对稳定性有效。Parquet 组在 5\% 样本中略快，说明列式输入在更大样本上开始体现优势；但由于本机 Docker 资源有限、YARN 调度开销和重复 pipeline 模块仍然存在，Parquet 收益并非线性放大。
+
+\subsection{实验结论}
+
+从实验结果可以得到三点结论。第一，仅将 Spark 提交到 YARN 不会自动解决性能和内存问题，YARN-only 组反而因为调度、容器和 HDFS 访问开销表现最慢。第二，AQE 和算法层限流是关键优化，能显著降低不必要 shuffle、单分区窗口和 driver 端大收集风险。第三，Parquet 输入是后续扩展到更大数据规模的必要基础，但需要与分区、列裁剪和模块级缓存一起使用。
+
+因此，本课题最终结论应表述为：在本机 ARM64 Docker Hadoop YARN 环境中，系统已经显著降低 OOM 风险，并通过 1\%/5\% pipeline benchmark、event log 指标和 20 万行典型模块 benchmark 给出证据。按本次实验取舍，不再强行运行全量 Oct+Nov；全量处理可作为后续资源边界扩展，在更高 Docker 内存、更多 executor 或云端集群环境中继续验证。
