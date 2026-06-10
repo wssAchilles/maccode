@@ -48,6 +48,7 @@ class SparkPipelineRunner:
             result = subprocess.run(
                 command,
                 cwd=self.project_root,
+                env=self._env(),
                 text=True,
                 stdout=stdout_handle,
                 stderr=stderr_handle,
@@ -78,6 +79,13 @@ class SparkPipelineRunner:
         if run_id:
             command.extend(["--run-id", run_id])
         return command
+
+    @staticmethod
+    def _env() -> dict[str, str]:
+        env = os.environ.copy()
+        env.setdefault("PYSPARK_PYTHON", sys.executable)
+        env.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+        return env
 
     def _load_manifest(self, stdout: str) -> tuple[str | None, dict[str, Any] | None]:
         manifest_path = self._find_manifest_path(stdout)

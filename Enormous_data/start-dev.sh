@@ -67,8 +67,26 @@ require_free_port() {
   local port="$1"
   local label="$2"
 
-  if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-    fail "${label} port ${port} is already in use."
+  if ! command -v lsof >/dev/null 2>&1; then
+    return
+  fi
+
+  local pids
+  pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+
+  if [[ -z "$pids" ]]; then
+    return
+  fi
+
+  log "${label} port ${port} is occupied, killing: ${pids}"
+  for pid in $pids; do
+    terminate_process_tree "$pid"
+  done
+
+  sleep 1
+
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    fail "${label} port ${port} could not be freed."
   fi
 }
 

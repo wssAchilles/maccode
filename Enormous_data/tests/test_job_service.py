@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import sys
 from pathlib import Path
 
 import pytest
@@ -219,9 +220,10 @@ def test_pipeline_runner_uses_submit_script(monkeypatch, tmp_path):
     class Completed:
         returncode = 0
 
-    def fake_run(command, cwd, text, stdout, stderr, check):
+    def fake_run(command, cwd, env, text, stdout, stderr, check):
         calls["command"] = command
         calls["cwd"] = cwd
+        calls["env"] = env
         calls["text"] = text
         calls["stdout"] = stdout
         calls["stderr"] = stderr
@@ -240,3 +242,5 @@ def test_pipeline_runner_uses_submit_script(monkeypatch, tmp_path):
     assert Path(result.stdout_path).exists()
     assert calls["command"] == ["/app/scripts/submit_yarn_client.sh", "configs/yarn-client.yaml", "run-yarn"]
     assert calls["cwd"] == tmp_path
+    assert calls["env"]["PYSPARK_PYTHON"] == sys.executable
+    assert calls["env"]["PYSPARK_DRIVER_PYTHON"] == sys.executable

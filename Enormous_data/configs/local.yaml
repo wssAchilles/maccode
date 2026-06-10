@@ -2,12 +2,24 @@ app:
   name: ecommerce-behavior-dashboard
 
 spark:
-  master: local[*]
-  shuffle_partitions: 4
+  master: local[4]
+  shuffle_partitions: 8
   timezone: Asia/Shanghai
+  configs:
+    spark.driver.memory: 6g
+    spark.driver.maxResultSize: 512m
+    spark.default.parallelism: 8
+    spark.sql.adaptive.enabled: true
+    spark.sql.adaptive.coalescePartitions.enabled: true
+    spark.sql.adaptive.skewJoin.enabled: true
+    spark.sql.files.maxPartitionBytes: 67108864
+    spark.sql.inMemoryColumnarStorage.batchSize: 1000
+    spark.pyspark.python: /Users/achilles/Documents/code/Enormous_data/.venv/bin/python
+    spark.pyspark.driver.python: /Users/achilles/Documents/code/Enormous_data/.venv/bin/python
+    spark.python.worker.reuse: false
 
 data:
-  input_path: data/sample/ecommerce_events.csv
+  input_path: data/sample/ecommerce_user_sample_1pct.csv
   input_format: csv
   delimiter: ","
   output_dir: data/cache
