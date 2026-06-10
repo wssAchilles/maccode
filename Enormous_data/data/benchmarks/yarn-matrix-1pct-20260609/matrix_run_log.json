@@ -1,0 +1,52 @@
+[
+  {
+    "variant": "baseline_local_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-20260609/configs/baseline_local_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-20260609/baseline_local_csv",
+    "started_at": "2026-06-09T12:25:49.969615+00:00",
+    "finished_at": "2026-06-09T12:25:53.628819+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-20260609/baseline_local_csv\n",
+    "stderr": ""
+  },
+  {
+    "variant": "yarn_only_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-20260609/configs/yarn_only_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_only_csv",
+    "started_at": "2026-06-09T12:25:53.631509+00:00",
+    "finished_at": "2026-06-09T12:43:06.715410+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_only_csv\n",
+    "stderr": ""
+  },
+  {
+    "variant": "yarn_aqe_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-20260609/configs/yarn_aqe_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_aqe_csv",
+    "started_at": "2026-06-09T12:43:06.722720+00:00",
+    "finished_at": "2026-06-09T12:53:12.510005+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_aqe_csv\n",
+    "stderr": ""
+  },
+  {
+    "variant": "yarn_algorithm_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-20260609/configs/yarn_algorithm_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_algorithm_csv",
+    "started_at": "2026-06-09T12:53:12.513042+00:00",
+    "finished_at": "2026-06-09T13:03:15.243331+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_algorithm_csv\n",
+    "stderr": ""
+  },
+  {
+    "variant": "yarn_parquet",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-20260609/configs/yarn_parquet.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_parquet",
+    "started_at": "2026-06-09T13:03:15.246024+00:00",
+    "finished_at": "2026-06-09T13:13:55.219329+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-20260609/yarn_parquet\n",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "variant": "baseline_local_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-1pct-baseline-fixed-20260609/configs/baseline_local_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-1pct-baseline-fixed-20260609/baseline_local_csv",
+    "started_at": "2026-06-09T14:24:16.513918+00:00",
+    "finished_at": "2026-06-09T14:35:01.643138+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-1pct-baseline-fixed-20260609/baseline_local_csv\n",
+    "stderr": "",
+    "stdout_log_path": "/app/data/benchmarks/yarn-matrix-1pct-baseline-fixed-20260609/logs/baseline_local_csv.stdout.log",
+    "stderr_log_path": "/app/data/benchmarks/yarn-matrix-1pct-baseline-fixed-20260609/logs/baseline_local_csv.stderr.log"
+  }
+]

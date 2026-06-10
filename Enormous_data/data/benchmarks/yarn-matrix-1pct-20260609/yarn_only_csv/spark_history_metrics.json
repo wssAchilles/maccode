@@ -1,0 +1,22 @@
+{
+  "collected_at": "2026-06-09T17:20:22.532507+00:00",
+  "collector": "eventlog",
+  "spark_application_id": "application_1780991452919_0016",
+  "spark_application_name": "ecommerce-yarn-only-1pct",
+  "spark_application_status": "SUCCEEDED",
+  "job_count": 819,
+  "failed_job_count": 0,
+  "stage_attempt_count": 840,
+  "task_count": 6290,
+  "failed_task_count": 0,
+  "retried_task_count": 0,
+  "shuffle_read_bytes": 10129504231,
+  "shuffle_write_bytes": 8439825201,
+  "memory_spill_bytes": 2265972736,
+  "disk_spill_bytes": 166560467,
+  "executor_count": 1,
+  "executor_peak_memory_mb": 244.2,
+  "driver_peak_memory_mb": 494.4,
+  "event_log_file_count": 7,
+  "event_log_compressed_bytes": 15398882
+}

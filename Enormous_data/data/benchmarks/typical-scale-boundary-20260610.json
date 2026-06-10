@@ -1,0 +1,30 @@
+{
+  "policy": "typical_partial_only",
+  "full_oct_nov_status": "not_run_by_request",
+  "reason": "The experiment intentionally uses representative partial data instead of running the full Oct+Nov dataset.",
+  "raw_dataset": {
+    "oct_path": "data/raw/kaggle/ecommerce_behavior/2019-Oct.csv",
+    "nov_path": "data/raw/kaggle/ecommerce_behavior/2019-Nov.csv",
+    "oct_size_label": "5.3 GB",
+    "nov_size_label": "8.4 GB"
+  },
+  "formal_pipeline_samples": [
+    {
+      "sample": "1pct",
+      "rows": 1104709,
+      "purpose": "five-way comparison: local baseline, YARN-only, YARN + AQE, YARN + algorithm, YARN + Parquet"
+    },
+    {
+      "sample": "5pct",
+      "rows": 5412207,
+      "purpose": "larger representative stress test for algorithm guards and Parquet layout"
+    }
+  ],
+  "module_benchmark_sample": {
+    "input_path": "data/sample/ecommerce_user_sample_1pct.csv",
+    "limit_rows": 200000,
+    "cleaned_rows": 199895,
+    "profiles": ["affinity", "recommendation", "anomaly", "experimentation"]
+  },
+  "conclusion": "This is sufficient for reproducible course-report evidence while avoiding unnecessary full-dataset runtime and local Docker resource pressure."
+}

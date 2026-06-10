@@ -1,0 +1,22 @@
+[
+  {
+    "variant": "yarn_algorithm_csv",
+    "config_path": "/app/data/benchmarks/yarn-matrix-5pct-20260609/configs/yarn_algorithm_csv.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-5pct-20260609/yarn_algorithm_csv",
+    "started_at": "2026-06-09T13:15:12.556214+00:00",
+    "finished_at": "2026-06-09T13:47:35.256898+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-5pct-20260609/yarn_algorithm_csv\n",
+    "stderr": ""
+  },
+  {
+    "variant": "yarn_parquet",
+    "config_path": "/app/data/benchmarks/yarn-matrix-5pct-20260609/configs/yarn_parquet.yaml",
+    "output_dir": "/app/data/benchmarks/yarn-matrix-5pct-20260609/yarn_parquet",
+    "started_at": "2026-06-09T13:47:35.259875+00:00",
+    "finished_at": "2026-06-09T14:19:12.897409+00:00",
+    "returncode": 0,
+    "stdout": "Wrote 1 benchmark rows to /app/data/benchmarks/yarn-matrix-5pct-20260609/yarn_parquet\n",
+    "stderr": ""
+  }
+]

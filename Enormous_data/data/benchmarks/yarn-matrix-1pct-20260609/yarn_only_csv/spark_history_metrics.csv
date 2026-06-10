@@ -1,0 +1,2 @@
+collected_at,collector,disk_spill_bytes,driver_peak_memory_mb,event_log_compressed_bytes,event_log_file_count,executor_count,executor_peak_memory_mb,failed_job_count,failed_task_count,job_count,memory_spill_bytes,retried_task_count,shuffle_read_bytes,shuffle_write_bytes,spark_application_id,spark_application_name,spark_application_status,stage_attempt_count,task_count
+2026-06-09T17:20:22.532507+00:00,eventlog,166560467,494.4,15398882,7,1,244.2,0,0,819,2265972736,0,10129504231,8439825201,application_1780991452919_0016,ecommerce-yarn-only-1pct,SUCCEEDED,840,6290

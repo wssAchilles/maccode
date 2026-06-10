@@ -1,0 +1,74 @@
+[
+  {
+    "result_path": "data/benchmarks/yarn-matrix-1pct-20260609/yarn_only_csv/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0016",
+    "collector": "eventlog",
+    "task_count": 6290,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 10129504231,
+    "shuffle_write_bytes": 8439825201,
+    "memory_spill_bytes": 2265972736,
+    "disk_spill_bytes": 166560467
+  },
+  {
+    "result_path": "data/benchmarks/yarn-matrix-1pct-20260609/yarn_aqe_csv/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0017",
+    "collector": "eventlog",
+    "task_count": 4526,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 10123506537,
+    "shuffle_write_bytes": 8433092892,
+    "memory_spill_bytes": 763363328,
+    "disk_spill_bytes": 55345105
+  },
+  {
+    "result_path": "data/benchmarks/yarn-matrix-1pct-20260609/yarn_algorithm_csv/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0018",
+    "collector": "eventlog",
+    "task_count": 4526,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 10123506537,
+    "shuffle_write_bytes": 8433092892,
+    "memory_spill_bytes": 763363328,
+    "disk_spill_bytes": 55345105
+  },
+  {
+    "result_path": "data/benchmarks/yarn-matrix-1pct-20260609/yarn_parquet/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0019",
+    "collector": "eventlog",
+    "task_count": 5057,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 10114391037,
+    "shuffle_write_bytes": 8438988331,
+    "memory_spill_bytes": 830996480,
+    "disk_spill_bytes": 55405183
+  },
+  {
+    "result_path": "data/benchmarks/yarn-matrix-5pct-20260609/yarn_algorithm_csv/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0020",
+    "collector": "eventlog",
+    "task_count": 5149,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 48200775837,
+    "shuffle_write_bytes": 39926806691,
+    "memory_spill_bytes": 96155382426,
+    "disk_spill_bytes": 15869233414
+  },
+  {
+    "result_path": "data/benchmarks/yarn-matrix-5pct-20260609/yarn_parquet/benchmark_results.json",
+    "spark_application_id": "application_1780991452919_0021",
+    "collector": "eventlog",
+    "task_count": 5815,
+    "failed_task_count": 0,
+    "retried_task_count": 0,
+    "shuffle_read_bytes": 48233776670,
+    "shuffle_write_bytes": 39907546967,
+    "memory_spill_bytes": 95961585207,
+    "disk_spill_bytes": 15659974064
+  }
+]

@@ -1,0 +1,2 @@
+collected_at,collector,disk_spill_bytes,driver_peak_memory_mb,event_log_compressed_bytes,event_log_file_count,executor_count,executor_peak_memory_mb,failed_job_count,failed_task_count,job_count,memory_spill_bytes,retried_task_count,shuffle_read_bytes,shuffle_write_bytes,spark_application_id,spark_application_name,spark_application_status,stage_attempt_count,task_count
+2026-06-09T17:20:59.847389+00:00,eventlog,15659974064,494.4,15466549,7,1,459.35,0,0,816,95961585207,0,48233776670,39907546967,application_1780991452919_0021,ecommerce-yarn-parquet-5pct,SUCCEEDED,832,5815

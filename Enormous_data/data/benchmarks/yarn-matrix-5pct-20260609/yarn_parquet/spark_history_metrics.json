@@ -1,0 +1,22 @@
+{
+  "collected_at": "2026-06-09T17:20:59.847389+00:00",
+  "collector": "eventlog",
+  "spark_application_id": "application_1780991452919_0021",
+  "spark_application_name": "ecommerce-yarn-parquet-5pct",
+  "spark_application_status": "SUCCEEDED",
+  "job_count": 816,
+  "failed_job_count": 0,
+  "stage_attempt_count": 832,
+  "task_count": 5815,
+  "failed_task_count": 0,
+  "retried_task_count": 0,
+  "shuffle_read_bytes": 48233776670,
+  "shuffle_write_bytes": 39907546967,
+  "memory_spill_bytes": 95961585207,
+  "disk_spill_bytes": 15659974064,
+  "executor_count": 1,
+  "executor_peak_memory_mb": 459.35,
+  "driver_peak_memory_mb": 494.4,
+  "event_log_file_count": 7,
+  "event_log_compressed_bytes": 15466549
+}
