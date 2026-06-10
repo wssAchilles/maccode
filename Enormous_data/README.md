@@ -49,7 +49,7 @@ python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python scripts/generate_sample_data.py --rows 10000
 .venv/bin/python -m spark_jobs.main --config configs/local.yaml
-.venv/bin/flask --app run:app run --host 0.0.0.0 --port 5050
+.venv/bin/flask --app run:app run --host 0.0.0.0 --port 5051
 ```
 
 另开终端启动 React 前端：
@@ -66,7 +66,7 @@ npm run dev
 http://127.0.0.1:5173/
 ```
 
-`frontend/vite.config.ts` 已将 `/api` 代理到 Flask 后端 `http://127.0.0.1:5050`。前端默认 API base 是 `/api/v1`，也可以通过 `VITE_API_BASE_URL` 覆盖。旧 Jinja 页面仍可访问，但主前端已经迁移为 `frontend/` 下的 React 应用。
+`frontend/vite.config.ts` 已将 `/api` 代理到 Flask 后端 `http://127.0.0.1:5051`。前端默认 API base 是 `/api/v1`，也可以通过 `VITE_API_BASE_URL` 覆盖。旧 Jinja 页面仍可访问，但主前端已经迁移为 `frontend/` 下的 React 应用。
 
 ## Docker
 
@@ -116,9 +116,7 @@ docker compose --profile yarn-lab exec spark-client /app/scripts/init_yarn_lab.s
 真实数据建议先生成用户级样本，再上传到 HDFS 做 1%/5% 梯度实验：
 
 ```bash
-.venv/bin/python scripts/create_user_sample.py --input 'data/raw/kaggle/ecommerce_behavior/*.csv' --output data/sample/ecommerce_user_sample_1pct.csv --percent 1
-.venv/bin/python scripts/create_user_sample.py --input 'data/raw/kaggle/ecommerce_behavior/*.csv' --output data/sample/ecommerce_user_sample_5pct.csv --percent 5
-docker compose --profile yarn-lab exec spark-client /app/scripts/init_yarn_lab.sh /app/data/sample/ecommerce_user_sample_1pct.csv
+PERCENTS="1 5" ./scripts/prepare_yarn_samples.sh
 ```
 
 将 CSV 放入 HDFS 后提交 Spark 作业：
@@ -149,17 +147,46 @@ Forecasting 模块只把 `top_entities + site` 的有界历史带入 driver 侧�
 
 ```bash
 .venv/bin/python scripts/benchmark.py --config configs/yarn-client.yaml --engines spark --profile pipeline --history-url http://127.0.0.1:28080
-.venv/bin/python scripts/benchmark.py --config configs/yarn-client.yaml --engines spark --profile affinity --history-url http://127.0.0.1:28080
-.venv/bin/python scripts/benchmark.py --config configs/yarn-client.yaml --engines spark --profile recommendation --history-url http://127.0.0.1:28080
-.venv/bin/python scripts/benchmark.py --config configs/yarn-client.yaml --engines spark --profile anomaly --history-url http://127.0.0.1:28080
-.venv/bin/python scripts/benchmark.py --config configs/yarn-client.yaml --engines spark --profile experimentation --history-url http://127.0.0.1:28080
 ```
+
+模块级 benchmark 采用 1% 样本中的 200,000 行典型数据，不跑全量 Oct+Nov：
+
+```bash
+for profile in affinity recommendation anomaly experimentation; do
+  PYSPARK_PYTHON="$PWD/.venv/bin/python" \
+  PYSPARK_DRIVER_PYTHON="$PWD/.venv/bin/python" \
+  .venv/bin/python scripts/benchmark.py \
+    --config configs/typical-module-benchmark.yaml \
+    --engines spark \
+    --profile "$profile" \
+    --output-dir "data/benchmarks/module-typical-20260610/$profile"
+done
+```
+
+完整对比矩阵建议在 `spark-client` 容器内运行，避免宿主机 Hadoop/YARN 环境差异：
+
+```bash
+docker compose --profile yarn-lab exec spark-client python /app/scripts/run_yarn_experiment_matrix.py --sample-label 1pct
+docker compose --profile yarn-lab exec spark-client python /app/scripts/run_yarn_experiment_matrix.py --sample-label 5pct
+```
+
+矩阵会生成 `baseline_local_csv`、`yarn_only_csv`、`yarn_aqe_csv`、`yarn_algorithm_csv`、`yarn_parquet` 五组配置和结果。`yarn_parquet` 读取前一组优化 YARN 作业写出的 HDFS Parquet `events` 目录，用于对比 CSV 扫描与列式输入。
 
 作业成功后，可从 Spark History Server 采集 shuffle、spill、失败 task 和 executor 内存指标：
 
 ```bash
 .venv/bin/python scripts/collect_spark_history_metrics.py --history-url http://127.0.0.1:28080 --app-id <application_id> --output-dir data/benchmarks/yarn-smoke
 ```
+
+当前 Spark 3.5.5 History Server 在解析超长 event log 字符串时可能触发 Jackson `StreamReadConstraints` 的 20,000,000 字符默认上限，表现为应用列表可见但 `/stages` API 返回 500。`configs/yarn-client.yaml` 已将 `spark.sql.maxPlanStringLength` 限制为 `8192`，用于降低后续实验 event log 过大的风险；已经生成的旧 event log 不会被 retroactive 修复。
+
+如果 History Server API 仍返回 500，使用 event log 解析脚本绕过 UI API，直接从 HDFS rolling event log 中补采集指标：
+
+```bash
+.venv/bin/python scripts/backfill_benchmark_history_metrics.py --force
+```
+
+该命令会在正式 YARN benchmark 目录下写入 `spark_history_metrics.json/csv`，并生成 `data/benchmarks/spark-history-eventlog-backfill.json` 汇总文件。前端 Ops 页和质量页会优先读取这些 event log 指标。
 
 采集脚本默认只读取 application、stages、executors API，不读取 `/jobs` API。对较大的 event log，`/jobs` 端点可能在 History Server 侧膨胀成很大的 JVM 对象并触发 Java heap OOM；论文实验需要的 shuffle、spill、失败/重试 task 和 executor 内存指标来自 stages/executors，默认路径更稳。如果确认 event log 很小且需要 job 级计数，可额外加 `--include-jobs`。
 
@@ -168,6 +195,14 @@ Forecasting 模块只把 `top_entities + site` 的有界历史带入 driver 侧�
 `web-yarn` 默认设置 `SPARK_HISTORY_URL=http://spark-history-server:18080`。通过 Flask `/api/v1/refresh` 触发的 YARN 作业会在 manifest 生成后 best-effort 采集 History 指标，并把 `spark_application_id`、`spark_application_status`、`spark_history_metrics_status` 和 `spark_history_metrics` 写入 Job API；采集失败只标记 `unavailable`，不会覆盖已成功的 Spark 作业状态。
 
 `spark-history-server` 默认设置 `SPARK_DAEMON_MEMORY=${SPARK_HISTORY_DAEMON_MEMORY:-3g}`，并启用 History disk store、较小 application retention 和单线程 replay，避免在本机 Docker 环境一次性把多个大 UI 状态压进 JVM heap。`yarn-client.yaml` 默认使用 `spark.sql.ui.explainMode: simple`、event log 压缩/rolling 和 UI retention，避免大 SQL plan 或过多 UI 状态写入 event log 后导致 History API 解析失败。
+
+YARN cluster mode 已提供第二阶段入口：
+
+```bash
+docker compose --profile yarn-lab exec spark-client /app/scripts/submit_yarn_cluster.sh /app/configs/yarn-cluster.yaml cluster-smoke
+```
+
+当前 Flask refresh 默认仍使用 client mode，因为 Flask/React 读取本地 `data/cache`。cluster mode 会把 driver 交给 NodeManager，后续若设为默认路径，需要把 JSON cache 改为 HDFS 输出读取或同步回 Flask 可读目录。
 
 ## API
 

@@ -370,6 +370,10 @@ export function useJobQuality(jobId?: string) {
   });
 }
 
+export function useOpsEvidence() {
+  return useQuery({ queryKey: queryKeys.opsEvidence, queryFn: api.opsEvidence });
+}
+
 export function useTable(params: { page: number; size: number; event_type?: string }) {
   return useQuery({
     queryKey: queryKeys.table(params),

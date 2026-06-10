@@ -261,7 +261,9 @@ def run_pipeline_benchmark(config_path: str | Path, profile: str, history_url: s
             limit_rows=config["data"].get("limit"),
             extra={
                 "success": result.succeeded,
-                "error_message": result.stderr,
+                "error_message": result.stderr if not result.succeeded else "",
+                "stdout_log_path": result.stdout_path or "",
+                "stderr_log_path": result.stderr_path or "",
                 "manifest_path": result.manifest_path or "",
                 "quality_status": manifest.get("quality_status", ""),
                 "spark_application_id": manifest.get("spark_application_id", ""),

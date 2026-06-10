@@ -1,0 +1,101 @@
+app:
+  name: ecommerce-typical-module-benchmark
+
+spark:
+  master: local[*]
+  shuffle_partitions: 8
+  timezone: Asia/Shanghai
+  configs:
+    spark.sql.shuffle.partitions: 8
+    spark.default.parallelism: 8
+    spark.sql.adaptive.enabled: true
+    spark.sql.adaptive.coalescePartitions.enabled: true
+    spark.sql.adaptive.skewJoin.enabled: true
+    spark.sql.files.maxPartitionBytes: 134217728
+    spark.driver.maxResultSize: 256m
+    spark.pyspark.python: /Users/achilles/Documents/code/Enormous_data/.venv/bin/python
+    spark.pyspark.driver.python: /Users/achilles/Documents/code/Enormous_data/.venv/bin/python
+    spark.python.worker.reuse: false
+
+data:
+  input_path: data/sample/ecommerce_user_sample_1pct.csv
+  input_format: csv
+  delimiter: ","
+  output_dir: data/cache
+  processed_dir: data/processed/typical-module-benchmark
+  limit: 200000
+  top_n: 20
+
+quality:
+  thresholds:
+    max_removed_ratio: 0.25
+    max_invalid_price_rows: 20
+    min_cleaned_rows: 1
+    max_ordering_anomaly_ratio: 0.1
+    max_purchase_missing_price_ratio: 0.01
+    min_session_fact_rows: 1
+
+feature_mart:
+  preview_limit: 80
+  max_freshness_lag_hours: 88333
+  late_arrival_days: 7
+  max_duplicate_event_key_rate: 0.01
+  max_quarantined_rate: 0.05
+
+affinity:
+  preview_limit: 80
+  top_nodes: 80
+  max_edges: 120
+  min_support: 2
+  max_pair_products_per_session: 12
+  min_eligible_sessions: 5
+
+anomaly:
+  preview_limit: 80
+  max_alerts: 80
+  max_product_entities: 0
+  min_baseline_points: 3
+  warning_z: 3.5
+  critical_z: 6.0
+  min_volume: 20
+
+lifecycle:
+  preview_limit: 80
+  high_value_revenue: 500
+  loyal_purchase_days: 2
+  active_days: 3
+  at_risk_recency_days: 14
+  champion_min_revenue: 1000
+  champion_min_purchase_days: 2
+
+experimentation:
+  preview_limit: 80
+  treatment_split: 0.5
+  min_treatment_users: 10
+  min_control_users: 10
+  max_segment_imbalance: 0.45
+  min_assignment_users: 20
+
+optimization:
+  candidate_limit: 60
+  plan_limit: 20
+  total_budget: 3000
+  slot_count: 6
+  category_cap: 8
+  brand_cap: 4
+  min_views: 5
+  min_confidence: 0.01
+  risk_lambda: 0.25
+  time_limit_seconds: 5
+  mip_gap: 0.03
+
+recommendation:
+  top_k: 5
+  session_sample_limit: 200
+  candidate_pool: 60
+  preview_limit: 200
+  min_confidence: 0.01
+  min_coverage_rate: 0.6
+  max_fallback_rate: 0.9
+  min_avg_confidence: 0.01
+  max_freshness_lag_minutes: 5300000

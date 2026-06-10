@@ -1,5 +1,5 @@
 import { Activity, Database, FileJson } from 'lucide-react';
-import { useJob, useJobLineage, useJobQuality, useSummary, useTopBrands } from '../api/hooks';
+import { useJob, useJobLineage, useJobQuality, useOpsEvidence, useSummary, useTopBrands } from '../api/hooks';
 import { ChartPanel } from '../components/ChartPanel';
 import { MetricCard } from '../components/MetricCard';
 import { barOption } from '../lib/chartOptions';
@@ -15,9 +15,22 @@ function metricNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
+function seconds(value?: number | null) {
+  return typeof value === 'number' ? `${value.toFixed(1)}s` : 'pending';
+}
+
+function bytes(value?: number | null) {
+  if (typeof value !== 'number') return 'pending';
+  if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(1)} GB`;
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${value} B`;
+}
+
 export function QualityPage() {
   const summary = useSummary();
   const brands = useTopBrands();
+  const evidence = useOpsEvidence();
   const job = useJob();
   const currentJobId = job.data?.job_id;
   const lineage = useJobLineage(currentJobId);
@@ -61,11 +74,93 @@ export function QualityPage() {
         />
         <MetricCard
           label="History 指标"
-          value={historyStatus}
-          detail={`spill ${formatNumber(metricNumber(sparkHistory?.memory_spill_bytes))} / failed tasks ${formatNumber(metricNumber(sparkHistory?.failed_task_count))}`}
+          value={evidence.data?.history_summary?.collected_run_count ? `${evidence.data.history_summary.collected_run_count} runs` : historyStatus}
+          detail={`failed ${formatNumber(evidence.data?.history_summary?.failed_task_count ?? metricNumber(sparkHistory?.failed_task_count))} / spill ${bytes(evidence.data?.history_summary?.memory_spill_bytes ?? metricNumber(sparkHistory?.memory_spill_bytes))}`}
           tone={statusTone(historyStatus === 'collected' ? 'passed' : historyStatus)}
         />
         <ChartPanel title="品牌销售额排行" subtitle="按 purchase 销售额聚合" option={barOption(brands.data ?? [], '销售额', '#a78bfa')} />
+      </section>
+
+      <section className="data-panel jobs-panel">
+        <div className="panel-title">
+          <div>
+            <h2>实验质量证据</h2>
+            <p>{evidence.data?.benchmark_summary.interpretation ?? '等待 benchmark 汇总数据'}</p>
+          </div>
+          <Activity size={20} />
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>样本</th>
+                <th>对照组</th>
+                <th>耗时</th>
+                <th>任务</th>
+                <th>失败任务</th>
+                <th>Memory spill</th>
+                <th>质量</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(evidence.data?.benchmark_runs ?? []).map((row) => (
+                <tr key={`${row.sample}-${row.variant}`}>
+                  <td>{row.sample}</td>
+                  <td>{row.variant}</td>
+                  <td>{seconds(row.elapsed_seconds)}</td>
+                  <td>{formatNumber(metricNumber(row.task_count))}</td>
+                  <td>{formatNumber(metricNumber(row.failed_task_count))}</td>
+                  <td>{bytes(row.memory_spill_bytes)}</td>
+                  <td><span className={`status-pill tone-${statusTone(row.quality_status)}`}>{row.quality_status ?? row.status}</span></td>
+                </tr>
+              ))}
+              {evidence.data?.benchmark_runs.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>暂无实验质量证据</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="data-panel jobs-panel">
+        <div className="panel-title">
+          <div>
+            <h2>典型模块质量</h2>
+            <p>{evidence.data?.scale_boundary?.conclusion ?? '使用部分典型数据验证模块级输出规模。'}</p>
+          </div>
+          <Database size={20} />
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>模块</th>
+                <th>输入行</th>
+                <th>输出行</th>
+                <th>耗时</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(evidence.data?.module_benchmark_runs ?? []).map((row) => (
+                <tr key={`${row.profile}-${row.task_name}`}>
+                  <td>{row.profile}</td>
+                  <td>{formatNumber(metricNumber(row.input_rows))}</td>
+                  <td>{formatNumber(metricNumber(row.output_rows))}</td>
+                  <td>{seconds(row.elapsed_seconds ?? row.duration_seconds)}</td>
+                  <td><span className={`status-pill tone-${row.success ? 'success' : 'danger'}`}>{row.success ? 'passed' : 'failed'}</span></td>
+                </tr>
+              ))}
+              {evidence.data?.module_benchmark_runs?.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>暂无模块质量证据</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="ops-grid">

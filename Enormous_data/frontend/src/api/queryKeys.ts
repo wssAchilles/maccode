@@ -92,5 +92,6 @@ export const queryKeys = {
   jobDetail: (jobId: string) => ['jobs', jobId] as const,
   jobLineage: (jobId: string) => ['jobs', jobId, 'lineage'] as const,
   jobQuality: (jobId: string) => ['jobs', jobId, 'quality'] as const,
+  opsEvidence: ['ops-evidence'] as const,
   table: (params: { page: number; size: number; event_type?: string }) => ['table', params] as const,
 };

@@ -17,7 +17,7 @@ def _bool_env(name: str, default: bool) -> bool:
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=5051,
         debug=_bool_env("FLASK_DEBUG", bool(app.config.get("DEBUG", False))),
         use_reloader=_bool_env("FLASK_USE_RELOADER", False),
     )

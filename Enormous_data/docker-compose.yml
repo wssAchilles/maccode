@@ -89,6 +89,11 @@ services:
     container_name: enormous-data-yarn-nodemanager-1
     hostname: nodemanager-1
     command: /opt/yarn_lab_role.sh nodemanager
+    volumes:
+      - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+      - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+      - hadoop_yarn_nm1_local:/hadoop/yarn/local
+      - hadoop_yarn_nm1_logs:/hadoop/yarn/logs
     depends_on:
       - resourcemanager
 
@@ -97,6 +102,11 @@ services:
     container_name: enormous-data-yarn-nodemanager-2
     hostname: nodemanager-2
     command: /opt/yarn_lab_role.sh nodemanager
+    volumes:
+      - ./configs/hadoop:/opt/hadoop/etc/hadoop:ro
+      - ./scripts/yarn_lab_role.sh:/opt/yarn_lab_role.sh:ro
+      - hadoop_yarn_nm2_local:/hadoop/yarn/local
+      - hadoop_yarn_nm2_logs:/hadoop/yarn/logs
     depends_on:
       - resourcemanager
 
@@ -152,6 +162,7 @@ services:
         -Dspark.history.store.path=/tmp/spark-history-store
         -Dspark.history.store.maxDiskUsage=2g
         -Dspark.history.store.serializer=PROTOBUF
+        -Dspark.history.server.jsonStreamReadConstraints.maxStringLength=${SPARK_HISTORY_JSON_MAX_STRING_LENGTH:-100000000}
     ports:
       - "${SPARK_HISTORY_UI_PORT:-28080}:18080"
     volumes:
@@ -167,7 +178,7 @@ services:
       - yarn-lab
     command: python run.py
     ports:
-      - "${YARN_WEB_PORT:-5050}:5000"
+      - "${YARN_WEB_PORT:-5050}:5051"
     environment:
       SPARK_CONFIG_PATH: /app/configs/yarn-client.yaml
       SPARK_SUBMIT_SCRIPT: /app/scripts/submit_yarn_client.sh
@@ -233,6 +244,10 @@ volumes:
   hadoop_yarn_namenode:
   hadoop_yarn_datanode_1:
   hadoop_yarn_datanode_2:
+  hadoop_yarn_nm1_local:
+  hadoop_yarn_nm1_logs:
+  hadoop_yarn_nm2_local:
+  hadoop_yarn_nm2_logs:
 
 networks:
   hadoop-net:

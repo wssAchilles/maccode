@@ -25,6 +25,9 @@ def read_events(
     if fmt == "json":
         return spark.read.schema(ECOMMERCE_EVENT_SCHEMA).json(input_path)
 
+    if fmt == "parquet":
+        return spark.read.parquet(input_path)
+
     if fmt == "txt":
         return (
             spark.read.option("header", True)

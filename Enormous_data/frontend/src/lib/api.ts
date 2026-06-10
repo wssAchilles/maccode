@@ -66,6 +66,7 @@ import type {
   OptimizationPlanItem,
   OptimizationQuality,
   OptimizationSummary,
+  OpsEvidence,
   PortfolioBrandMix,
   PortfolioCategoryMix,
   PortfolioOpportunity,
@@ -212,6 +213,7 @@ export const api = {
   jobDetail: (jobId: string) => request<JobStatus>(`/jobs/${jobId}`),
   jobLineage: (jobId: string) => request<JobLineage>(`/jobs/${jobId}/lineage`),
   jobQuality: (jobId: string) => request<JobQuality>(`/jobs/${jobId}/quality`),
+  opsEvidence: () => request<OpsEvidence>('/ops/evidence'),
   refresh: () => request<{ status: string; job_id: string }>('/refresh', { method: 'POST' }),
   table: (params: { page: number; size: number; event_type?: string }) =>
     request<TableResult>(withQuery('/table', params)),

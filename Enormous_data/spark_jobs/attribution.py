@@ -7,6 +7,8 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
+from spark_jobs.ranking import with_global_rank
+
 
 ATTRIBUTION_CONTRACT_VERSION = "revenue-attribution/v1"
 
@@ -227,9 +229,8 @@ def build_entity_attribution(touchpoints: DataFrame, enriched: DataFrame, config
         .unionByName(direct_projection(enriched, "brand", "brand"))
         .unionByName(direct_projection(enriched, "category", "category_level1"))
     )
-    ranked = Window.orderBy(F.desc("time_decay_assisted_revenue"), F.desc("linear_assisted_revenue"), F.desc("touch_sessions"))
     min_purchase_rows = float(config["min_purchase_rows"])
-    return (
+    scored = (
         touch_agg.join(direct, ["entity_type", "entity_id", "entity_label"], "left")
         .fillna({"direct_purchase_sessions": 0, "direct_revenue": 0.0})
         .withColumn("assist_to_direct_ratio", _safe_divide(F.col("time_decay_assisted_revenue"), F.col("direct_revenue")))
@@ -247,8 +248,14 @@ def build_entity_attribution(touchpoints: DataFrame, enriched: DataFrame, config
                 None,
             ),
         )
-        .withColumn("rank", F.row_number().over(ranked))
         .withColumn("contract_version", F.lit(ATTRIBUTION_CONTRACT_VERSION))
+    )
+    ranked = with_global_rank(
+        scored,
+        [F.desc("time_decay_assisted_revenue"), F.desc("linear_assisted_revenue"), F.desc("touch_sessions")],
+    )
+    return (
+        ranked
         .select(
             "contract_version",
             "rank",

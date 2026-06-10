@@ -27,6 +27,7 @@ spark:
     spark.sql.adaptive.localShuffleReader.enabled: true
     spark.sql.adaptive.coalescePartitions.initialPartitionNum: 8
     spark.sql.ui.explainMode: simple
+    spark.sql.maxPlanStringLength: 8192
     spark.serializer: org.apache.spark.serializer.JavaSerializer
     spark.memory.fraction: 0.4
     spark.python.worker.reuse: true

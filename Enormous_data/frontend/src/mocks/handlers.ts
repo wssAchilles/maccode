@@ -69,6 +69,7 @@ import {
   optimizationPlanFixture,
   optimizationQualityFixture,
   optimizationSummaryFixture,
+  opsEvidenceFixture,
   portfolioBrandsFixture,
   portfolioCategoriesFixture,
   portfolioOpportunitiesFixture,
@@ -418,6 +419,7 @@ export const handlers = [
   http.get('/api/v1/jobs/:jobId', () => HttpResponse.json(envelope(jobFixture))),
   http.get('/api/v1/jobs/:jobId/lineage', () => HttpResponse.json(envelope(jobLineageFixture))),
   http.get('/api/v1/jobs/:jobId/quality', () => HttpResponse.json(envelope(jobQualityFixture))),
+  http.get('/api/v1/ops/evidence', () => HttpResponse.json(envelope(opsEvidenceFixture))),
   http.get('/api/v1/table', ({ request }) => {
     const url = new URL(request.url);
     const eventType = url.searchParams.get('event_type');

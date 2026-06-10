@@ -1274,3 +1274,101 @@ export type JobQuality = {
   quality_report?: QualityReport | null;
   failure_stage?: string | null;
 };
+
+export type BenchmarkRun = {
+  sample: string;
+  variant: string;
+  status: string;
+  spark_application_id?: string | null;
+  spark_application_status?: string | null;
+  input_path?: string | null;
+  input_rows?: number | null;
+  output_rows?: number | null;
+  elapsed_seconds?: number | null;
+  rows_per_second?: number | null;
+  quality_status?: string | null;
+  driver_peak_memory_mb?: number | null;
+  spark_history_metrics_status?: string | null;
+  history_metrics?: SparkHistoryMetrics | null;
+  task_count?: number | null;
+  failed_task_count?: number | null;
+  retried_task_count?: number | null;
+  shuffle_read_bytes?: number | null;
+  shuffle_write_bytes?: number | null;
+  memory_spill_bytes?: number | null;
+  disk_spill_bytes?: number | null;
+  result_path: string;
+};
+
+export type ModuleBenchmarkRun = {
+  profile?: string | null;
+  task_name?: string | null;
+  input_rows?: number | null;
+  output_rows?: number | null;
+  elapsed_seconds?: number | null;
+  duration_seconds?: number | null;
+  success?: boolean;
+  spark_application_id?: string | null;
+  driver_peak_memory_mb?: number | null;
+  result_path: string;
+};
+
+export type EvidencePath = {
+  sample?: string;
+  name?: string;
+  path: string;
+  role?: string;
+  size_bytes?: number;
+  size_label?: string;
+};
+
+export type OpsEvidence = {
+  benchmark_runs: BenchmarkRun[];
+  module_benchmark_runs?: ModuleBenchmarkRun[];
+  benchmark_summary: {
+    one_pct_run_count?: number;
+    five_pct_run_count?: number;
+    fastest_1pct_variant?: string | null;
+    yarn_only_to_aqe_speedup?: number | null;
+    yarn_only_to_algorithm_speedup?: number | null;
+    five_pct_algorithm_elapsed_seconds?: number | null;
+    five_pct_parquet_elapsed_seconds?: number | null;
+    interpretation?: string;
+    [key: string]: string | number | null | undefined;
+  };
+  history_summary?: {
+    collected_run_count?: number;
+    failed_task_count?: number;
+    retried_task_count?: number;
+    shuffle_read_bytes?: number;
+    shuffle_write_bytes?: number;
+    memory_spill_bytes?: number;
+    disk_spill_bytes?: number;
+    collector?: string;
+    [key: string]: string | number | undefined;
+  };
+  scale_boundary?: {
+    policy?: string;
+    full_oct_nov_status?: string;
+    reason?: string;
+    conclusion?: string;
+    [key: string]: unknown;
+  };
+  cluster_mode?: {
+    status?: string;
+    deploy_mode?: string;
+    config_path?: string;
+    submit_script?: string;
+    default_refresh_mode?: string;
+    reason?: string;
+    [key: string]: string | undefined;
+  };
+  hdfs_inputs: EvidencePath[];
+  local_samples: EvidencePath[];
+  cleanup_policy: {
+    raw_data_preserved?: boolean;
+    kept_benchmark_dirs?: string[];
+    kept_spark_history_app_ids?: string[];
+    [key: string]: string | boolean | string[] | undefined;
+  };
+};

@@ -7,6 +7,7 @@ from app.jobs.repository import JobRepository
 from app.jobs.service import JobService
 from app.responses import api_ok
 from app.pipeline.runner import SparkPipelineRunner
+from app.services.benchmark_evidence import BenchmarkEvidenceService
 from app.services.metric_cache import MetricCache
 from app.services.spark_runner import SparkRunner
 
@@ -33,6 +34,10 @@ def job_service() -> JobService:
         config_path=current_app.config["SPARK_CONFIG_PATH"],
         cache_dir=current_app.config["METRIC_CACHE_DIR"],
     )
+
+
+def benchmark_evidence() -> BenchmarkEvidenceService:
+    return BenchmarkEvidenceService(current_app.config["PROJECT_ROOT"])
 
 
 @api_bp.get("/health")
@@ -495,6 +500,11 @@ def attribution_assists():
 @api_bp.get("/attribution/quality")
 def attribution_quality():
     return api_ok(cache().load_metric("attribution_quality"))
+
+
+@api_bp.get("/ops/evidence")
+def ops_evidence():
+    return api_ok(benchmark_evidence().load())
 
 
 @api_bp.get("/optimization/summary")

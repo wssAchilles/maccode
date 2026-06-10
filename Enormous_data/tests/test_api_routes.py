@@ -1255,6 +1255,7 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "/api/v1/attribution/quality" in paths
     assert "/api/v1/jobs/{job_id}/lineage" in paths
     assert "/api/v1/jobs/{job_id}/quality" in paths
+    assert "/api/v1/ops/evidence" in paths
     assert "/api/v1/optimization/summary" in paths
     assert "/api/v1/optimization/plan" in paths
     assert "/api/v1/optimization/candidates" in paths
@@ -1352,6 +1353,7 @@ def test_openapi_exposes_response_schemas(tmp_path):
     assert "/api/v1/attribution/assists" in spec["paths"]
     assert "/api/v1/jobs/{job_id}/lineage" in spec["paths"]
     assert "/api/v1/jobs/{job_id}/quality" in spec["paths"]
+    assert "/api/v1/ops/evidence" in spec["paths"]
     assert "/api/v1/optimization/summary" in spec["paths"]
     assert "/api/v1/optimization/quality" in spec["paths"]
     assert "/api/v1/recommendations/summary" in spec["paths"]
@@ -1452,6 +1454,7 @@ def test_openapi_exposes_response_schemas(tmp_path):
         "/api/v1/feature-mart/categories?limit=1",
         "/api/v1/feature-mart/users?limit=1",
         "/api/v1/job",
+        "/api/v1/ops/evidence",
         "/api/v1/table?page=1&size=2",
     ],
 )
@@ -1487,6 +1490,30 @@ def test_legacy_api_still_works_with_deprecation_header(tmp_path):
     assert response.get_json()["data"] == {"cleaned_rows": 10}
 
 
+def test_ops_page_serves_react_dist_entry(tmp_path):
+    dist = tmp_path / "frontend" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text("<main>react ops app</main>", encoding="utf-8")
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    raw_path = tmp_path / "events.csv"
+    raw_path.write_text("event_type,brand\n", encoding="utf-8")
+    app = create_app()
+    app.config.update(
+        TESTING=True,
+        PROJECT_ROOT=tmp_path,
+        METRIC_CACHE_DIR=cache_dir,
+        RAW_DATA_PATH=raw_path,
+        JOB_DB_PATH=tmp_path / "platform.db",
+    )
+    client = app.test_client()
+
+    response = client.get("/ops")
+
+    assert response.status_code == 200
+    assert b"react ops app" in response.data
+
+
 def test_table_api_filters_and_paginates(tmp_path):
     client, _, _ = make_client(tmp_path)
 
@@ -1499,6 +1526,76 @@ def test_table_api_filters_and_paginates(tmp_path):
     assert data["total"] == 2
     assert len(data["rows"]) == 1
     assert data["rows"][0]["event_type"] == "purchase"
+
+
+def test_ops_evidence_reads_compact_benchmark_results(tmp_path):
+    result_path = (
+        tmp_path
+        / "data"
+        / "benchmarks"
+        / "yarn-matrix-1pct-20260609"
+        / "yarn_only_csv"
+        / "benchmark_results.json"
+    )
+    result_path.parent.mkdir(parents=True)
+    write_json(
+        result_path,
+        [
+            {
+                "success": True,
+                "input_path": "hdfs:///user/course/ecommerce_behavior_user_sample_1pct/*.csv",
+                "input_rows": 100,
+                "output_rows": 96,
+                "elapsed_seconds": 12.0,
+                "spark_application_id": "application_test_0016",
+                "spark_application_status": "SUCCEEDED",
+                "quality_status": "passed",
+                "driver_peak_memory_mb": 120.5,
+                "spark_history_metrics_status": "unavailable",
+                "error_message": "long stderr should not be returned",
+            }
+        ],
+    )
+    write_json(
+        result_path.parent / "spark_history_metrics.json",
+        {
+            "collector": "eventlog",
+            "spark_application_id": "application_test_0016",
+            "spark_application_status": "SUCCEEDED",
+            "task_count": 12,
+            "failed_task_count": 0,
+            "retried_task_count": 0,
+            "shuffle_read_bytes": 1024,
+            "shuffle_write_bytes": 512,
+            "memory_spill_bytes": 256,
+            "disk_spill_bytes": 0,
+        },
+    )
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    raw_path = tmp_path / "events.csv"
+    raw_path.write_text("event_type,brand\n", encoding="utf-8")
+    app = create_app()
+    app.config.update(
+        TESTING=True,
+        PROJECT_ROOT=tmp_path,
+        METRIC_CACHE_DIR=cache_dir,
+        RAW_DATA_PATH=raw_path,
+        JOB_DB_PATH=tmp_path / "platform.db",
+    )
+    client = app.test_client()
+
+    response = client.get("/api/v1/ops/evidence")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["benchmark_runs"][0]["spark_application_id"] == "application_test_0016"
+    assert data["benchmark_runs"][0]["rows_per_second"] == 8.0
+    assert data["benchmark_runs"][0]["spark_history_metrics_status"] == "collected"
+    assert data["benchmark_runs"][0]["task_count"] == 12
+    assert data["history_summary"]["collected_run_count"] == 1
+    assert "error_message" not in data["benchmark_runs"][0]
+    assert data["cleanup_policy"]["raw_data_preserved"] is True
 
 
 def test_table_api_validates_page(tmp_path):

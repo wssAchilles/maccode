@@ -1,20 +1,20 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '../render';
 import { QualityPage } from '../../pages/QualityPage';
+import { renderWithProviders } from '../render';
 
 vi.mock('../../components/ChartPanel', () => ({
-  ChartPanel: ({ title }: { title: string }) => <div role="img" aria-label={title} />,
+  ChartPanel: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
 describe('QualityPage', () => {
-  it('renders Spark, HDFS, and History evidence from the latest job manifest', async () => {
+  it('renders benchmark history and module quality evidence', async () => {
     renderWithProviders(<QualityPage />);
 
     expect(await screen.findByText('数据质量与清洗结果')).toBeInTheDocument();
-    expect((await screen.findAllByText('SUCCEEDED')).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText('application_1780989669876_0004')).length).toBeGreaterThan(0);
-    expect(await screen.findByText('hdfs://master:9000/user/course/ecommerce_behavior/2019-Oct.csv')).toBeInTheDocument();
-    expect(await screen.findByText('Shuffle read')).toBeInTheDocument();
+    expect(await screen.findByText('实验质量证据')).toBeInTheDocument();
+    expect(await screen.findByText('yarn_only_csv')).toBeInTheDocument();
+    expect(await screen.findByText('典型模块质量')).toBeInTheDocument();
+    expect(await screen.findByText('recommendation')).toBeInTheDocument();
   });
 });

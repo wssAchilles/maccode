@@ -1451,6 +1451,18 @@ API_SCHEMAS: dict[str, Any] = {
             "rows": {"type": "array", "items": {"$ref": "#/components/schemas/JobStatus"}},
         },
     },
+    "OpsEvidence": {
+        "type": "object",
+        "required": ["benchmark_runs", "benchmark_summary", "hdfs_inputs", "local_samples", "cleanup_policy"],
+        "properties": {
+            "benchmark_runs": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "benchmark_summary": {"type": "object", "additionalProperties": True},
+            "hdfs_inputs": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "local_samples": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "cleanup_policy": {"type": "object", "additionalProperties": True},
+        },
+        "additionalProperties": True,
+    },
     "HealthStatus": {
         "type": "object",
         "required": ["status"],
@@ -1820,6 +1832,7 @@ ENDPOINTS: list[dict[str, Any]] = [
     {"method": "GET", "path": "/api/v1/jobs/{job_id}", "response_schema": "ApiEnvelope<JobStatus>"},
     {"method": "GET", "path": "/api/v1/jobs/{job_id}/lineage", "response_schema": "ApiEnvelope<JobLineage>"},
     {"method": "GET", "path": "/api/v1/jobs/{job_id}/quality", "response_schema": "ApiEnvelope<JobQuality>"},
+    {"method": "GET", "path": "/api/v1/ops/evidence", "response_schema": "ApiEnvelope<OpsEvidence>"},
     {"method": "POST", "path": "/api/v1/refresh", "response_schema": "ApiEnvelope<{status:string,job_id:string}>", "status": 202},
 ]
 
@@ -1900,6 +1913,7 @@ def build_openapi() -> dict[str, Any]:
     array_feature_mart_product = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartProduct"}}
     array_feature_mart_category = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartCategory"}}
     array_feature_mart_user = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartUser"}}
+    ops_evidence = {"$ref": "#/components/schemas/OpsEvidence"}
     return {
         "openapi": "3.1.0",
         "info": {
@@ -2056,6 +2070,7 @@ def build_openapi() -> dict[str, Any]:
             "/api/v1/jobs/{job_id}/quality": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/JobQuality"})
             ),
+            "/api/v1/ops/evidence": _get_response(envelope_schema(ops_evidence)),
             "/api/v1/table": _get_response(envelope_schema({"$ref": "#/components/schemas/TableResult"})),
             "/api/v1/refresh": _post_response(
                 envelope_schema(

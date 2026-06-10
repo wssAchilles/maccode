@@ -4,8 +4,9 @@ from typing import Any
 
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
-from pyspark.sql import Window
 from pyspark.sql import functions as F
+
+from spark_jobs.ranking import with_global_rank
 
 
 PORTFOLIO_CONTRACT_VERSION = "portfolio-intelligence/v1"
@@ -107,11 +108,16 @@ def aggregate_mix(df: DataFrame, group_cols: list[str]) -> DataFrame:
         .withColumn("view_to_purchase_rate", F.round(F.col("purchases") / F.when(F.col("views") == 0, None).otherwise(F.col("views")), 6))
         .withColumn("cart_to_purchase_rate", F.round(F.col("purchases") / F.when(F.col("carts") == 0, None).otherwise(F.col("carts")), 6))
     )
-    totals = Window.partitionBy()
+    totals = grouped.agg(
+        F.sum("revenue").alias("_total_revenue"),
+        F.sum("purchases").alias("_total_purchases"),
+    )
     return (
-        grouped.withColumn("revenue_share", F.round(F.col("revenue") / F.when(F.sum("revenue").over(totals) == 0, None).otherwise(F.sum("revenue").over(totals)), 6))
-        .withColumn("purchase_share", F.round(F.col("purchases") / F.when(F.sum("purchases").over(totals) == 0, None).otherwise(F.sum("purchases").over(totals)), 6))
+        grouped.crossJoin(totals)
+        .withColumn("revenue_share", F.round(F.col("revenue") / F.when(F.col("_total_revenue") == 0, None).otherwise(F.col("_total_revenue")), 6))
+        .withColumn("purchase_share", F.round(F.col("purchases") / F.when(F.col("_total_purchases") == 0, None).otherwise(F.col("_total_purchases")), 6))
         .withColumn("contract_version", F.lit(PORTFOLIO_CONTRACT_VERSION))
+        .drop("_total_revenue", "_total_purchases")
     )
 
 
@@ -180,14 +186,25 @@ def build_product_concentration(enriched: DataFrame, config: dict[str, Any]) -> 
         .agg(F.count("*").alias("purchases"), F.round(F.sum("price"), 2).alias("revenue"))
         .filter(F.col("revenue") > 0)
     )
-    totals = Window.partitionBy()
-    ranked = Window.orderBy(F.desc("revenue"), F.desc("purchases"))
-    return (
-        product.withColumn("revenue_share", F.round(F.col("revenue") / F.sum("revenue").over(totals), 6))
-        .withColumn("purchase_share", F.round(F.col("purchases") / F.sum("purchases").over(totals), 6))
+    totals = product.agg(
+        F.sum("revenue").alias("_total_revenue"),
+        F.sum("purchases").alias("_total_purchases"),
+    )
+    scored = (
+        product.crossJoin(totals)
+        .withColumn("revenue_share", F.round(F.col("revenue") / F.when(F.col("_total_revenue") == 0, None).otherwise(F.col("_total_revenue")), 6))
+        .withColumn("purchase_share", F.round(F.col("purchases") / F.when(F.col("_total_purchases") == 0, None).otherwise(F.col("_total_purchases")), 6))
         .withColumn("hhi_contribution", F.round(F.col("revenue_share") * F.col("revenue_share"), 8))
-        .withColumn("rank", F.row_number().over(ranked))
         .withColumn("contract_version", F.lit(PORTFOLIO_CONTRACT_VERSION))
+        .drop("_total_revenue", "_total_purchases")
+    )
+    ranked = with_global_rank(
+        scored,
+        [F.desc("revenue"), F.desc("purchases")],
+        limit=int(config["top_products"]),
+    )
+    return (
+        ranked
         .select(
             "contract_version",
             "rank",
@@ -201,7 +218,6 @@ def build_product_concentration(enriched: DataFrame, config: dict[str, Any]) -> 
             "hhi_contribution",
         )
         .orderBy("rank")
-        .limit(int(config["top_products"]))
     )
 
 

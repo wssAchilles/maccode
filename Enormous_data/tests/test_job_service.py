@@ -218,15 +218,15 @@ def test_pipeline_runner_uses_submit_script(monkeypatch, tmp_path):
 
     class Completed:
         returncode = 0
-        stdout = "Spark job finished"
-        stderr = ""
 
-    def fake_run(command, cwd, text, capture_output, check):
+    def fake_run(command, cwd, text, stdout, stderr, check):
         calls["command"] = command
         calls["cwd"] = cwd
         calls["text"] = text
-        calls["capture_output"] = capture_output
+        calls["stdout"] = stdout
+        calls["stderr"] = stderr
         calls["check"] = check
+        stdout.write("Spark job finished\n")
         return Completed()
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -235,5 +235,8 @@ def test_pipeline_runner_uses_submit_script(monkeypatch, tmp_path):
     result = runner.run("configs/yarn-client.yaml", run_id="run-yarn")
 
     assert result.succeeded
+    assert result.stdout == "Spark job finished"
+    assert result.stdout_path
+    assert Path(result.stdout_path).exists()
     assert calls["command"] == ["/app/scripts/submit_yarn_client.sh", "configs/yarn-client.yaml", "run-yarn"]
     assert calls["cwd"] == tmp_path

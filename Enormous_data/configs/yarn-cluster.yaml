@@ -1,0 +1,95 @@
+app:
+  name: ecommerce-behavior-dashboard-yarn-cluster
+
+spark:
+  master: yarn
+  deploy_mode: cluster
+  shuffle_partitions: 8
+  timezone: Asia/Shanghai
+  configs:
+    spark.submit.deployMode: cluster
+    spark.driver.memory: 1536m
+    spark.driver.memoryOverhead: 512m
+    spark.driver.maxResultSize: 256m
+    spark.executor.instances: 1
+    spark.executor.cores: 1
+    spark.executor.memory: 1g
+    spark.executor.memoryOverhead: 1536m
+    spark.executor.pyspark.memory: 384m
+    spark.pyspark.python: /usr/local/bin/python3.11
+    spark.pyspark.driver.python: /usr/local/bin/python3.11
+    spark.yarn.appMasterEnv.PYSPARK_PYTHON: /usr/local/bin/python3.11
+    spark.executorEnv.PYSPARK_PYTHON: /usr/local/bin/python3.11
+    spark.sql.shuffle.partitions: 8
+    spark.default.parallelism: 8
+    spark.sql.adaptive.enabled: true
+    spark.sql.adaptive.coalescePartitions.enabled: true
+    spark.sql.adaptive.skewJoin.enabled: true
+    spark.sql.adaptive.localShuffleReader.enabled: true
+    spark.sql.ui.explainMode: simple
+    spark.sql.maxPlanStringLength: 8192
+    spark.memory.fraction: 0.4
+    spark.python.worker.reuse: true
+    spark.eventLog.enabled: true
+    spark.eventLog.dir: hdfs:///spark-history
+    spark.eventLog.compress: true
+    spark.eventLog.rolling.enabled: true
+    spark.eventLog.rolling.maxFileSize: 64m
+    spark.ui.retainedJobs: 120
+    spark.ui.retainedStages: 240
+    spark.ui.retainedTasks: 2000
+    spark.sql.ui.retainedExecutions: 120
+    spark.ui.timelineEnabled: false
+
+data:
+  input_path: hdfs:///user/course/ecommerce_behavior_user_sample_1pct/*.csv
+  input_format: csv
+  delimiter: ","
+  output_dir: data/cache-cluster
+  processed_dir: hdfs:///user/course/ecommerce_behavior_processed_cluster
+  limit:
+  top_n: 20
+
+storage:
+  mode: hdfs
+  fallback_to_local: false
+
+quality:
+  thresholds:
+    max_removed_ratio: 0.25
+    max_invalid_price_rows: 20
+    min_cleaned_rows: 1
+    max_ordering_anomaly_ratio: 0.1
+    max_purchase_missing_price_ratio: 0.01
+    min_session_fact_rows: 1
+
+feature_mart:
+  preview_limit: 100
+
+affinity:
+  preview_limit: 120
+  top_nodes: 120
+  max_edges: 200
+  min_support: 3
+  max_pair_products_per_session: 15
+  min_eligible_sessions: 10
+
+anomaly:
+  preview_limit: 100
+  max_alerts: 100
+  max_product_entities: 0
+  min_baseline_points: 3
+  warning_z: 3.5
+  critical_z: 6.0
+  min_volume: 20
+
+recommendation:
+  top_k: 5
+  session_sample_limit: 500
+  candidate_pool: 80
+  preview_limit: 1000
+  min_confidence: 0.02
+  min_coverage_rate: 0.75
+  max_fallback_rate: 0.8
+  min_avg_confidence: 0.03
+  max_freshness_lag_minutes: 5300000

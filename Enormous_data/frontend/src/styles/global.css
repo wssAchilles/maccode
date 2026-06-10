@@ -1011,6 +1011,56 @@ tbody tr:hover {
   overflow-wrap: anywhere;
 }
 
+.evidence-path-list {
+  display: grid;
+  gap: 10px;
+}
+
+.evidence-path-list div {
+  display: grid;
+  grid-template-columns: minmax(56px, 0.25fr) minmax(72px, 0.35fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 6px;
+}
+
+.evidence-path-list strong,
+.evidence-path-list span {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.evidence-path-list span {
+  color: var(--muted);
+}
+
+.evidence-path-list p {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.cleanup-policy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cleanup-policy span {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  background: rgba(40, 215, 194, 0.08);
+  border: 1px solid rgba(40, 215, 194, 0.16);
+  border-radius: 999px;
+}
+
 .partition-strip {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));

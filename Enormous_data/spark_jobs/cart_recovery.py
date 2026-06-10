@@ -4,8 +4,9 @@ from typing import Any
 
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
-from pyspark.sql import Window
 from pyspark.sql import functions as F
+
+from spark_jobs.ranking import with_global_rank
 
 
 CART_RECOVERY_CONTRACT_VERSION = "cart-recovery-intelligence/v1"
@@ -176,10 +177,13 @@ def build_product_segments(facts: DataFrame, config: dict[str, Any]) -> DataFram
         .withColumn("priority_score", F.round(F.col("abandoned_value") * F.coalesce(F.col("abandonment_rate"), F.lit(0)), 4))
         .withColumn("contract_version", F.lit(CART_RECOVERY_CONTRACT_VERSION))
     )
-    ranked = Window.orderBy(F.desc("priority_score"), F.desc("abandoned_sessions"), F.desc("cart_product_sessions"))
+    ranked = with_global_rank(
+        grouped,
+        [F.desc("priority_score"), F.desc("abandoned_sessions"), F.desc("cart_product_sessions")],
+        limit=int(config["preview_limit"]),
+    )
     return (
-        grouped.withColumn("rank", F.row_number().over(ranked))
-        .select(
+        ranked.select(
             "contract_version",
             "rank",
             "product_id",
@@ -199,7 +203,6 @@ def build_product_segments(facts: DataFrame, config: dict[str, Any]) -> DataFram
             "priority_score",
         )
         .orderBy("rank")
-        .limit(int(config["preview_limit"]))
     )
 
 

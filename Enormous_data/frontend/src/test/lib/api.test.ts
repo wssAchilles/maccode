@@ -46,6 +46,9 @@ describe('api client', () => {
     await expect(api.jobQuality('job-1')).resolves.toMatchObject({
       quality_status: 'passed',
     });
+    await expect(api.opsEvidence()).resolves.toMatchObject({
+      benchmark_summary: { yarn_only_to_algorithm_speedup: 1.801 },
+    });
   });
 
   it('reads conversion intelligence endpoints', async () => {

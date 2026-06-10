@@ -137,12 +137,11 @@ def build_target_sessions(cleaned_df: DataFrame, session_limit: int) -> DataFram
         .filter(F.col("user_session") != "unknown")
     )
     preference_window = Window.partitionBy("user_session").orderBy(F.desc("events"), F.desc("latest_event_ts"), F.asc("category_level1"))
-    recent_window = Window.orderBy(F.desc("latest_event_ts"), F.asc("user_session"))
     return (
         category_events.withColumn("preference_rank", F.row_number().over(preference_window))
         .filter(F.col("preference_rank") == 1)
-        .withColumn("session_rank", F.row_number().over(recent_window))
-        .filter(F.col("session_rank") <= session_limit)
+        .orderBy(F.desc("latest_event_ts"), F.asc("user_session"))
+        .limit(session_limit)
         .select("user_session", "user_id", "category_level1", "latest_event_ts")
     )
 
@@ -231,10 +230,9 @@ def build_fallback_products(product_features: DataFrame, optimization_plan: list
             .withColumn("optimization_boost", F.coalesce(F.col("optimization_boost"), F.lit(0)))
             .withColumn("product_score", F.col("product_score") + F.col("optimization_boost") * F.lit(0.04))
         )
-    fallback_window = Window.orderBy(F.desc("product_score"), F.desc("confidence"), F.asc("product_id"))
     return (
-        base.withColumn("fallback_rank", F.row_number().over(fallback_window))
-        .filter(F.col("fallback_rank") <= 40)
+        base.orderBy(F.desc("product_score"), F.desc("confidence"), F.asc("product_id"))
+        .limit(40)
         .select(
             "product_id",
             "brand",
