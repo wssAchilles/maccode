@@ -45,7 +45,6 @@ ENV PATH=/opt/hadoop/bin:/opt/hadoop/sbin:$PATH
 docker compose --profile yarn-lab up -d
 docker compose --profile yarn-lab ps
 docker compose --profile yarn-lab config --quiet
-OPEN_BROWSER=0 ./start-dev.sh
 \end{lstlisting}
 
 端口规划如表\ref{tab:ports}所示。Hadoop UI 端口均为偏移端口，原因是用户原有 \texttt{master} 容器已经占用 Hadoop 默认 UI 端口；前后端访问地址则以 \texttt{start-dev.sh} 为准。
@@ -60,6 +59,7 @@ OPEN_BROWSER=0 ./start-dev.sh
 \midrule
 Flask API & \texttt{5051} & \texttt{start-dev.sh} 启动的后端接口，前端通过该地址访问 \texttt{/api/v1}。 \\
 Vite 前端 & \texttt{5173} & \texttt{start-dev.sh} 启动的正确前端访问地址，用于打开 \texttt{/ops}。 \\
+YARN Flask API & \texttt{5050} & \texttt{web-yarn} 容器的宿主机端口映射，内部仍监听 \texttt{5051}。 \\
 NameNode UI & \texttt{19870} & 查看 HDFS 文件、block 和 DataNode 状态。 \\
 ResourceManager UI & \texttt{18088} & 查看 YARN application、队列和运行状态。 \\
 Spark History Server & \texttt{28080} & 查看 Spark event log 和 stage/job 信息。 \\
@@ -67,20 +67,32 @@ Spark History Server & \texttt{28080} & 查看 Spark event log 和 stage/job 信
 \end{tabularx}
 \end{table}
 
+本项目保留两套演示入口。答辩现场如果重点展示前端页面和业务分析结果，推荐使用本地开发模式，因为它复用宿主机 Python 虚拟环境和 Vite，启动更快，端口也与前端代理一致：
+
+\begin{lstlisting}[style=codexcode]
+.venv/bin/python -m spark_jobs.main --config configs/local.yaml
+./start-dev.sh
+\end{lstlisting}
+
+如果需要展示 Hadoop/YARN 技术栈，则启动 \texttt{yarn-lab}，再打开 HDFS、YARN 和 Spark History UI。该模式下 \texttt{web-yarn} 的宿主机 API 地址为 \texttt{http://127.0.0.1:5050/api/v1}，前端可以通过新增的 \texttt{start-yarn-dev.sh} 指向该地址：
+
+\begin{lstlisting}[style=codexcode]
+./start-yarn-dev.sh
+\end{lstlisting}
+
+两套模式的区别不在前端页面，而在数据刷新方式。local 模式使用 \texttt{configs/local.yaml}，Spark 直接读取本地 \texttt{data/sample/ecommerce\_user\_sample\_1pct.csv} 并写入 \texttt{data/cache}；YARN 模式使用 \texttt{configs/yarn-client.yaml}，Spark 从 \texttt{hdfs:///user/course/ecommerce\_behavior\_user\_sample\_1pct/*.csv} 读取输入，并在 ResourceManager 中生成 YARN application。无论哪种模式，前端最终读取的都是 Flask API 返回的 JSON 指标，因此页面展示逻辑保持一致。
+
 \subsection{HDFS 目录准备}
 
 启动后需要创建实验目录，并上传样本数据。正式样本来自真实 Oct/Nov 原始 CSV 的用户级采样，不再使用 87.4KB smoke 文件作为论文结论依据。
 
 \begin{lstlisting}[style=codexcode]
-docker exec enormous-data-yarn-namenode hdfs dfs -mkdir -p /user/course
-docker exec enormous-data-yarn-namenode hdfs dfs -mkdir -p /spark-history
-docker exec enormous-data-yarn-namenode hdfs dfs -put -f \
-  /data/sample/ecommerce_user_sample_1pct.csv \
-  /user/course/ecommerce_behavior_user_sample_1pct/
-docker exec enormous-data-yarn-namenode hdfs dfs -put -f \
-  /data/sample/ecommerce_user_sample_5pct.csv \
-  /user/course/ecommerce_behavior_user_sample_5pct/
+docker compose --profile yarn-lab exec spark-client \
+  /app/scripts/init_yarn_lab.sh
+PERCENTS="1 5" ./scripts/prepare_yarn_samples.sh
 \end{lstlisting}
+
+\texttt{init\_yarn\_lab.sh} 的作用是等待 HDFS 可用、创建 \texttt{/user/course} 与 \texttt{/spark-history}，并按参数上传样本文件。正式实验中，\texttt{prepare\_yarn\_samples.sh} 会从本地用户级样本准备 1\% 和 5\% 输入，再上传到 HDFS 对应目录。这样 HDFS 中的数据来源可以追溯到本地样本文件和原始 Kaggle CSV，而不是手工复制的不明来源文件。
 
 清理后的 HDFS 关键路径包括 1\%/5\% CSV 输入、YARN-only/AQE/algorithm/Parquet 的处理输出，以及 6 个最终 Spark History event log。旧的 \texttt{application\_178098*} 和 \texttt{application\_1780991452919\_0001} 到 \texttt{0005} 大日志已经清理，避免继续触发 Spark 3.5.5 History Server 的 JSON 长字符串限制。
 
@@ -111,16 +123,13 @@ spark:
 提交前先将 \texttt{spark\_jobs} 打包为 zip，再通过 \texttt{spark-submit} 提交到 YARN：
 
 \begin{lstlisting}[style=codexcode]
-python scripts/package_spark_jobs.py
-spark-submit \
-  --master yarn \
-  --deploy-mode client \
-  --py-files build/spark_jobs.zip \
-  spark_jobs/main.py \
-  --config configs/yarn-client.yaml
+docker compose --profile yarn-lab exec spark-client \
+  /app/scripts/submit_yarn_client.sh /app/configs/yarn-client.yaml yarn-demo
 \end{lstlisting}
 
-Flask 的 refresh 不再直接执行 \texttt{python -m spark\_jobs.main}，而是调用 submit runner。运行完成后，\texttt{SparkPipelineRunner} 从 stdout 中解析 \texttt{Spark run manifest} 路径，读取 manifest 并写入 SQLite 作业表。为了避免后端消息过长，runner 只保留 stdout/stderr tail，完整日志写入 \texttt{data/cache/run\_logs}。
+脚本内部会设置 Hadoop 配置目录、Spark driver host、Python 3.11 解释器路径和 event log 参数，然后调用 \texttt{spark-submit --master yarn --deploy-mode client}。如果用户从前端点击“刷新 Spark”，Flask 的 \texttt{/api/v1/refresh} 会创建 SQLite 作业记录，再由 \texttt{SparkPipelineRunner} 调用 \texttt{SPARK\_SUBMIT\_SCRIPT} 指定的提交脚本。运行完成后，\texttt{SparkPipelineRunner} 从 stdout 中解析 \texttt{Spark run manifest} 路径，读取 manifest 并写入 SQLite 作业表。为了避免后端消息过长，runner 只保留 stdout/stderr tail，完整日志写入 \texttt{data/cache/run\_logs}。
+
+需要理解的是，前端展示的业务指标并不是在每次页面刷新时实时计算。Spark 作业成功后会覆盖 \texttt{data/cache/*.json}；如果当前 YARN 任务仍处于 \texttt{running}，页面仍会显示最近一次成功缓存中的业务指标，同时 Ops 页显示当前任务的 running 状态。这种“旧结果可用、新任务后台刷新”的模式能够保证答辩页面稳定，不会因为 Spark 长任务未完成而空白。
 
 \subsection{YARN cluster mode 入口}
 
@@ -165,6 +174,328 @@ CSV 原始层只作为输入层。清洗后的事件表写入 HDFS Parquet，并
     \caption{Spark 数据处理与优化流程（由 chat-gpt-image-2 生成）}
     \label{fig:pipeline-flow}
 \end{figure}
+
+\section{核心业务模块数据计算方法}
+
+本系统的计算入口是 \texttt{spark\_jobs/main.py} 中的 \texttt{run\_job}。一次运行会先读取原始事件表，再生成清洗事件表 \texttt{cleaned\_df}、会话事实表 \texttt{session\_facts} 和特征集市表，随后各业务模块复用这些中间结果。这样做的原因是：事件清洗、去重、日期转换和基础聚合只做一次；转化、推荐、异常、生命周期等模块使用统一口径，避免同一个指标在不同页面出现不一致。
+
+\subsection{基础清洗与元数据口径}
+
+原始数据读取时使用固定 schema，而不是依赖 Spark 自动推断。CSV、JSON、TXT 与 Parquet 入口最终都映射为同一组字段：\texttt{event\_time}、\texttt{event\_type}、\texttt{product\_id}、\texttt{category\_id}、\texttt{category\_code}、\texttt{brand}、\texttt{price}、\texttt{user\_id} 和 \texttt{user\_session}。清洗阶段完成四件事：
+
+\begin{enumerate}
+    \item 将 \texttt{event\_time} 转为 \texttt{event\_timestamp}，同时派生 \texttt{event\_date} 与 \texttt{event\_hour}。
+    \item 将空品牌、空类目和空会话统一填充为 \texttt{unknown}，把 \texttt{category\_code} 拆出一级、二级类目。
+    \item 过滤非法事件类型、空时间、空商品、空用户以及价格小于 0 或大于 100000 的异常行。
+    \item 按 \texttt{event\_time + event\_type + product\_id + user\_id + user\_session} 去重。
+\end{enumerate}
+
+质量报告中的 \texttt{raw\_rows} 为原始行数，\texttt{cleaned\_rows} 为清洗后行数，\texttt{removed\_rows = raw\_rows - cleaned\_rows}，\texttt{removed\_ratio = removed\_rows / raw\_rows}。重复行、异常价格行、缺失品牌行、缺失必要主键行分别由 Spark filter 或 dropDuplicates 统计。该口径对应前端质量页和 Ops 页的基础数据质量指标。
+
+\begin{sparkcode}{清洗阶段核心代码口径}
+cleaned = (
+    normalized
+    .filter(F.col("event_type").isin(EVENT_TYPES))
+    .filter(F.col("event_timestamp").isNotNull())
+    .filter(F.col("product_id").isNotNull())
+    .filter(F.col("user_id").isNotNull())
+    .filter(F.col("price").isNull() | ((F.col("price") >= 0) & (F.col("price") <= 100000)))
+    .dropDuplicates(["event_time", "event_type", "product_id", "user_id", "user_session"])
+)
+
+quality = {
+    "raw_rows": raw_df.count(),
+    "cleaned_rows": cleaned.count(),
+    "duplicate_rows": raw_df.count() - raw_df.dropDuplicates(event_key_cols).count(),
+}
+\end{sparkcode}
+
+\subsection{模块计算总览}
+
+表\ref{tab:module-calculation-overview}汇总了每个页面模块的数据来源、主要计算方法和输出指标。所有 preview 类 JSON 都只保留前端展示需要的有界行数；完整明细或大中间结果保留为 Spark DataFrame 或 Parquet，避免 driver 端收集全量明细。
+
+{\small
+\begin{longtable}{@{}p{0.11\textwidth} p{0.15\textwidth} p{0.40\textwidth} p{0.20\textwidth}@{}}
+\caption{业务模块计算口径总览}
+\label{tab:module-calculation-overview}\\
+\toprule
+\textbf{模块} & \textbf{输入表} & \textbf{计算方法} & \textbf{输出指标} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{模块} & \textbf{输入表} & \textbf{计算方法} & \textbf{输出指标} \\
+\midrule
+\endhead
+基础看板 & \texttt{cleaned\_df}、quality & 按事件类型、日期、类目、品牌聚合；购买事件金额求和；用户和会话去重计数。 & 总行数、有效行数、销售额、用户数、会话数、行为分布、日趋势、排行。 \\
+转化分析 & \texttt{session\_facts}、\texttt{cleaned\_df} & 以会话为单位寻找首次浏览、首次加购、首次购买时间，要求时间顺序合法；再统计 view→cart→purchase 漏斗。 & 会话漏斗、日转化、商品转化率、平均下单延迟、客单价。 \\
+行为路径 & \texttt{cleaned\_df} & 按 \texttt{user\_session} 收集并排序事件序列，截取前 N 个事件形成 path signature；相邻事件数组 zip 后 explode 为转移边。 & 高频路径、事件转移、退出事件、购买路径、路径转化率。 \\
+特征集市 & \texttt{raw\_df}、\texttt{cleaned\_df} & 生成 SHA-256 event key 去重；按日-商品、日-用户、日-类目三种粒度聚合行为、金额和偏好。 & 商品/用户/类目日特征、重复率、隔离率、分区数、新鲜度。 \\
+需求预测 & \texttt{cleaned\_df} & 先生成全站和类目日需求序列，再选择 GMV 最高的 top entities；用滚动窗口均值和近周期变化率生成未来 7 日预测。 & 预测序列、实体预测摘要、回测 WAPE、风险预警。 \\
+关联图谱 & \texttt{cleaned\_df} & 将会话内商品行为压缩为 product-session 表；只保留 top 商品，并限制单 session 商品数；两两配对后计算 support、confidence、lift、Jaccard。 & 节点、边、社群、交叉销售机会、组合膨胀质量指标。 \\
+Cohort 留存 & 购买事件 & 找到用户首次购买月份作为 cohort；按购买月份计算 period index；统计活跃、复购、收入和累计收入曲线。 & 留存矩阵、复购间隔、价值曲线、cohort 风险分群。 \\
+商品组合 & \texttt{cleaned\_df} & 按类目、品牌、价格带聚合浏览/加购/购买/收入；计算收入占比、购买占比和商品 HHI 贡献。 & 类目结构、品牌结构、价格带、商品集中度、组合机会。 \\
+购物车挽回 & \texttt{cleaned\_df} & 以会话-商品为粒度提取加购、移除、购买；购买晚于加购则视为 recovered，否则 abandoned。 & 类目挽回率、商品放弃率、放弃金额、挽回队列。 \\
+收入归因 & \texttt{cleaned\_df} & 每次购买向前关联同会话触点；计算 first-touch、last-touch、linear 和 time-decay 四种收入 credit。 & 归因模型汇总、商品/品牌/类目贡献、路径模式、助攻机会。 \\
+运营优化 & \texttt{cleaned\_df}、全局转化率 & 构造商品候选，使用 Wilson 下界与贝叶斯收缩得到置信购买率；在预算、坑位、类目和品牌约束下求最大化收益计划。 & 候选商品、优化计划、目标值、求解状态、质量状态。 \\
+推荐 & \texttt{cleaned\_df}、优化计划 & 计算商品转化特征与商品分；提取目标会话偏好类目；同类目个性化候选优先，兜底商品补齐，按 score 排 top-k。 & 推荐列表、覆盖率、fallback 率、平均置信度、质量告警。 \\
+异常检测 & feature mart & 将类目和 top 商品日指标拉平成监控信号；用 median 与 MAD 计算 robust z-score，并按阈值分级。 & 异常告警、时间线、监控规则、雷达状态。 \\
+生命周期 & 日用户特征、日类目特征 & 按用户聚合活跃天数、收入、购买天数、最近活跃时间和偏好类目；用 RFM 与行为规则分层。 & 用户生命周期分布、风险队列、类目偏好、行动建议。 \\
+实验分流 & 生命周期用户、推荐特征、优化计划 & 构造实验目录；对 eligible 用户按 hash(user, experiment) 稳定分桶；统计 treatment/control 平衡性和预期增量 GMV。 & 实验目录、分流明细、分层准备度、guardrail。 \\
+Ops 证据 & run manifest、SQLite、benchmark 文件 & 汇总运行状态、input snapshot、artifact row counts、Spark application id、History 指标和 benchmark 对照结果。 & 作业状态、质量门禁、HDFS 输入、实验结果、清理策略。 \\
+\bottomrule
+\end{longtable}
+}
+
+\subsection{基础看板与排行模块}
+
+基础看板是所有可视化页面的入口。其核心指标来自 \texttt{spark\_jobs/aggregations.py}。行为分布按 \texttt{event\_type} 分组计数；每日事件趋势按 \texttt{event\_date} 或单日场景下的 10 分钟桶分组计数；每日销售额只统计 \texttt{event\_type = purchase} 的价格求和；类目排行按一级类目事件数排序；品牌排行只统计购买事件的订单数和销售额。
+
+关键公式如下：
+\[
+    \mathrm{total\_sales} = \sum_{\mathrm{event\_type}=\mathrm{purchase}} \mathrm{price}
+\]
+\[
+    \mathrm{view\_to\_purchase\_rate} = \frac{\mathrm{purchase\_count}}{\mathrm{view\_count}}
+\]
+
+该模块的特点是直接、稳定、可解释，适合作为答辩时验证 Spark 读取与前端图表是否正常的第一组证据。
+
+\subsection{转化分析模块}
+
+转化分析不直接按事件行计算，而是先把事件压缩成会话事实表。每个 \texttt{user\_session} 只保留首次浏览、首次加购、首次购买时间，以及是否发生浏览、加购、购买。这样可以排除“购买时间早于浏览时间”这类顺序异常，避免把错误路径计入漏斗。合法路径定义如下：
+
+\[
+    \mathrm{valid\_cart\_path}=1 \Longleftrightarrow
+    t_{\mathrm{view}} \ne \varnothing \land t_{\mathrm{cart}} \ne \varnothing \land t_{\mathrm{cart}} \ge t_{\mathrm{view}}
+\]
+\[
+    \mathrm{valid\_cart\_purchase\_path}=1 \Longleftrightarrow
+    t_{\mathrm{view}} \le t_{\mathrm{cart}} \le t_{\mathrm{purchase}}
+\]
+
+\begin{sparkcode}{会话事实表与转化漏斗口径}
+session_facts = (
+    df.groupBy("user_session")
+    .agg(
+        F.min(F.when(F.col("event_type") == "view", F.col("event_timestamp"))).alias("first_view_ts"),
+        F.min(F.when(F.col("event_type") == "cart", F.col("event_timestamp"))).alias("first_cart_ts"),
+        F.min(F.when(F.col("event_type") == "purchase", F.col("event_timestamp"))).alias("first_purchase_ts"),
+        F.sum(F.when(F.col("event_type") == "purchase", F.coalesce(F.col("price"), F.lit(0))).otherwise(0)).alias("session_revenue"),
+    )
+    .withColumn("valid_cart_path", F.col("first_cart_ts") >= F.col("first_view_ts"))
+    .withColumn("valid_cart_purchase_path", F.col("first_purchase_ts") >= F.col("first_cart_ts"))
+)
+
+view_to_cart_rate = cart_sessions / view_sessions
+cart_to_purchase_rate = purchase_sessions / cart_sessions
+\end{sparkcode}
+
+商品转化模块进一步把粒度降到 \texttt{product\_id + user\_session}，分别统计商品的浏览会话、加购会话、购买会话、销售额和转化率。这样前端可以展示“流量高但购买弱”的商品，也可以为后续运营优化模块提供候选基础。
+
+\subsection{行为路径模块}
+
+行为路径模块关注用户在一个会话中的行为顺序。实现上先对每个会话收集事件结构体，按事件时间排序，再把事件类型数组转为 \texttt{view → cart → purchase} 这样的路径签名。路径统计按签名聚合会话数、加购会话、购买会话、收入、平均步数和平均时长。转移统计则使用相邻事件数组：
+
+\begin{sparkcode}{行为路径与转移边生成}
+session_paths = (
+    cleaned_df.groupBy("user_session")
+    .agg(F.sort_array(F.collect_list(event_struct)).alias("event_structs"))
+    .withColumn("events", F.expr("transform(event_structs, x -> x.event_type)"))
+    .withColumn("path_signature", F.concat_ws(" -> ", F.expr("slice(events, 1, 8)")))
+)
+
+transitions = (
+    session_paths
+    .select(F.expr("arrays_zip(slice(events, 1, size(events)-1), slice(events, 2, size(events)-1))").alias("pairs"))
+    .select(F.explode("pairs").alias("pair"))
+    .groupBy(F.col("pair.0").alias("from_event"), F.col("pair.1").alias("to_event"))
+    .count()
+)
+\end{sparkcode}
+
+路径模块输出的 \texttt{exit\_share} 是某个最后事件会话数除以总会话数，\texttt{conversion\_rate} 是该路径或转移关联的购买会话数除以会话数。该口径用于定位“用户在哪一步退出”和“哪些路径更容易购买”。
+
+\subsection{特征集市模块}
+
+特征集市是后续异常、生命周期、实验模块的公共输入。它首先对清洗事件生成 \texttt{event\_key}，其值为事件时间、事件类型、商品、用户、会话和价格拼接后的 SHA-256。随后按三种粒度聚合：
+
+\begin{itemize}
+    \item \textbf{日商品特征}：\texttt{dt + product\_id + brand + category\_level1}，统计 views、carts、purchases、unique users、unique sessions、revenue、avg price 与三种转化率。
+    \item \textbf{日用户特征}：\texttt{dt + user\_id}，统计 sessions、views、carts、purchases、revenue、active minutes、触达商品数、触达类目数和偏好类目。
+    \item \textbf{日类目特征}：\texttt{dt + category\_level1}，统计 views、carts、purchases、unique users、revenue、avg price 与 conversion rate。
+\end{itemize}
+
+质量指标中 \texttt{duplicate\_event\_key\_rate = duplicate\_event\_keys / event\_rows}，\texttt{quarantined\_rate = quarantined\_rows / raw\_rows}。新鲜度指标用当前生成时间减去最大事件时间得到 \texttt{freshness\_lag\_hours}，并用最近 N 天窗口识别 late arrival。
+
+\subsection{预测模块}
+
+需求预测模块使用轻量的 rolling baseline，而不是在 driver 端训练复杂模型。Spark 先按全站和一级类目聚合每日需求：
+
+\[
+    \mathrm{gmv}_{d,e} = \sum_{\mathrm{date}=d,\mathrm{entity}=e,\mathrm{purchase}} \mathrm{price}
+\]
+
+系统只选择全站和 GMV 最高的 top 类目进入 driver，且通过 \texttt{max\_driver\_history\_rows} 限制历史行数。预测时对最近训练窗口求 GMV 与购买数均值，再与上一周期均值比较，得到受限变化率：
+
+\[
+    \mathrm{change\_rate} =
+    \frac{\overline{\mathrm{gmv}}_{\mathrm{recent}}-\overline{\mathrm{gmv}}_{\mathrm{previous}}}
+    {\overline{\mathrm{gmv}}_{\mathrm{previous}}}
+\]
+
+未来第 $i$ 天的预测值为：
+\[
+    \widehat{\mathrm{gmv}}_{i} =
+    \max(0, \overline{\mathrm{gmv}}_{\mathrm{recent}} \times (1 + \mathrm{clip}(\mathrm{change\_rate}, -0.25, 0.25) \times i / h))
+\]
+
+若历史天数不足，则使用 \texttt{sparse\_baseline\_fallback} 并扩大预测区间。回测模块计算 WAPE，风险模块根据未来 GMV 相对近期均值的下降比例输出 high/medium 风险。
+
+\subsection{关联图谱模块}
+
+关联图谱以会话内共同出现商品为基础。第一步把事件压缩为 product-session 表：同一会话同一商品只保留是否浏览、是否加购、是否购买、行为次数和收入。第二步选出收入、购买和浏览靠前的 top 商品，避免所有商品两两组合。第三步过滤商品数过多的 session，因为单个 session 有 $n$ 个商品时会产生 $n(n-1)/2$ 条候选边。第四步自连接生成商品对，并分别计算 co-view、co-cart、co-purchase 三类关系。
+
+边指标口径如下：
+\[
+    \mathrm{support}(A,B)=|\{s: A \in s \land B \in s\}|
+\]
+\[
+    \mathrm{confidence}(A \rightarrow B)=\frac{\mathrm{support}(A,B)}{\mathrm{sessions}(A)}
+\]
+\[
+    \mathrm{lift}(A,B)=\frac{\mathrm{support}(A,B)\times \mathrm{total\_sessions}}
+    {\mathrm{sessions}(A)\times \mathrm{sessions}(B)}
+\]
+
+\texttt{affinity\_quality} 记录 \texttt{eligible\_session\_count}、\texttt{pair\_base\_rows} 和 \texttt{pair\_rows\_per\_input\_row}。如果这些指标异常升高，说明组合膨胀风险变大，需要收紧 \texttt{top\_nodes} 或 \texttt{max\_pair\_products\_per\_session}。
+
+\subsection{Cohort 留存模块}
+
+Cohort 模块只使用购买事件。系统先找到每个用户的首次购买日期，并将首次购买月份作为 cohort；然后把用户每个月的购买聚合为 purchase cycle，计算当前购买月份与 cohort 月份之间的 \texttt{period\_index}。留存矩阵中的核心指标为：
+
+\[
+    \mathrm{retention\_rate}_{c,p}=
+    \frac{\mathrm{active\_users}_{c,p}}{\mathrm{cohort\_users}_{c}}
+\]
+\[
+    \mathrm{repurchase\_rate}_{c,p}=
+    \frac{\mathrm{repurchase\_users}_{c,p}}{\mathrm{cohort\_users}_{c}}
+\]
+
+价值曲线在留存矩阵上做窗口累计，得到 \texttt{cumulative\_revenue}；复购间隔根据用户相邻购买周期差值分桶；cohort segment 按首次类目、复购率和收入识别高风险 cohort，并给出再营销建议。
+
+\subsection{商品组合与购物车挽回模块}
+
+商品组合模块先对事件补齐一级类目、品牌和价格带。价格带划分为 \texttt{budget}、\texttt{mass}、\texttt{premium}、\texttt{luxury} 和 \texttt{unknown}。类目、品牌、价格带分别聚合 views、carts、purchases、revenue、avg price 和转化率，并计算收入占比与购买占比。商品集中度使用收入份额平方作为 HHI 贡献：
+
+\[
+    \mathrm{hhi\_contribution}_{i} = \mathrm{revenue\_share}_{i}^{2}
+\]
+
+购物车挽回模块把粒度设为 \texttt{user\_session + product\_id}。若商品在同一会话中出现加购事件，则进入购物车事实表；若后续存在购买且购买时间不早于首次加购，则 \texttt{recovered=1}；否则 \texttt{abandoned=1}。放弃金额计算为 \texttt{cart\_value}，其中 \texttt{cart\_value = unit\_price × cart\_events}。队列优先级为：
+
+\[
+    \mathrm{priority\_score} = \mathrm{abandoned\_value} \times \mathrm{abandonment\_rate}
+\]
+
+如果移除率较高，推荐动作是检查商品摩擦；如果放弃率超过阈值，推荐动作是挽回提醒或优惠。
+
+\subsection{收入归因模块}
+
+归因模块先把每次购买生成唯一 \texttt{purchase\_id}，再把同一会话中购买之前的 \texttt{view}、\texttt{cart} 和 \texttt{remove\_from\_cart} 事件作为触点。每个触点同时计算四种 credit：
+
+\begin{itemize}
+    \item \textbf{First-touch}：第一个触点获得全部购买收入。
+    \item \textbf{Last-touch}：最后一个触点获得全部购买收入。
+    \item \textbf{Linear}：所有触点均分购买收入。
+    \item \textbf{Time-decay}：越接近购买的触点权重越高，权重为 \(\mathrm{base}^{\mathrm{reverse\_position}-1}\)。
+\end{itemize}
+
+\begin{sparkcode}{收入归因 credit 计算}
+weighted = (
+    joined
+    .withColumn("touch_count", F.count("*").over(by_purchase))
+    .withColumn("position_before_purchase", F.row_number().over(asc))
+    .withColumn("reverse_position_before_purchase", F.row_number().over(desc))
+    .withColumn("linear_credit", F.col("purchase_revenue") / F.col("touch_count"))
+    .withColumn("first_touch_credit", F.when(F.col("position_before_purchase") == 1, F.col("purchase_revenue")).otherwise(0.0))
+    .withColumn("last_touch_credit", F.when(F.col("reverse_position_before_purchase") == 1, F.col("purchase_revenue")).otherwise(0.0))
+    .withColumn("time_decay_weight", F.pow(F.lit(decay_base), F.col("reverse_position_before_purchase") - 1))
+    .withColumn("time_decay_credit", F.col("purchase_revenue") * F.col("time_decay_weight") / F.sum("time_decay_weight").over(by_purchase))
+)
+\end{sparkcode}
+
+之后系统分别按商品、品牌和类目聚合 credit，得到实体贡献；再统计高频路径和助攻机会。归因质量指标关注购买是否能找到触点，即 \texttt{attribution\_coverage\_rate}。
+
+\subsection{运营优化与推荐模块}
+
+运营优化模块的候选来自商品级转化统计。系统先计算 views、carts、purchases、funnel purchases、revenue、avg price、revenue per view 等指标。为了避免小样本商品因为少量购买被高估，购买率使用两层稳健化：一层是带先验权重的收缩购买率，另一层是 Wilson lower bound。候选置信度为：
+
+\[
+    \mathrm{confidence} =
+    \min(1,\sqrt{\mathrm{views}/500}) \times
+    (0.5 + 0.5 \times \min(1,\mathrm{wilson}/\mathrm{global\_purchase\_rate}))
+\]
+
+优化目标是在总预算、运营位数量、类目上限和品牌上限约束下，选择“商品-动作”组合，使风险调整后的增量 GMV 最大。若本地没有 Gurobi 或求解失败，系统降级为贪心排序，仍输出可解释计划和 \texttt{degraded\_greedy} 状态。
+
+推荐模块复用商品转化特征与优化计划。商品分数由购买转化率、加购率和每浏览收入组成：
+\[
+\begin{aligned}
+    \mathrm{product\_score}
+    &=0.55 \times \mathrm{view\_to\_purchase}
+      +0.25 \times \mathrm{view\_to\_cart} \\
+    &\quad +0.20 \times \min(\mathrm{revenue\_per\_view}/500,1)
+\end{aligned}
+\]
+
+目标会话按最近事件和偏好类目抽样。推荐时优先从用户偏好类目中选择未看过的高分商品；如果数量不足，再从优化计划或全局高分商品中兜底。最终按 \texttt{score} 和 \texttt{confidence} 排序，每个会话保留 top-k。质量报告统计覆盖会话数、fallback 率、平均置信度、重复推荐率和无效商品率。
+
+\begin{sparkcode}{推荐商品分与会话 top-k 计算}
+product_features = (
+    cleaned_df.groupBy("product_id", "brand", "category_level1")
+    .agg(
+        views.alias("views"),
+        carts.alias("carts"),
+        purchases.alias("purchases"),
+        revenue.alias("revenue"),
+    )
+    .withColumn("view_to_cart_rate", F.col("carts") / F.col("views"))
+    .withColumn("view_to_purchase_rate", F.col("purchases") / F.col("views"))
+    .withColumn("revenue_per_view", F.col("revenue") / F.col("views"))
+    .withColumn("product_score", F.col("view_to_purchase_rate") * 0.55
+        + F.col("view_to_cart_rate") * 0.25
+        + F.least(F.col("revenue_per_view") / 500.0, F.lit(1.0)) * 0.20)
+)
+
+rank_window = Window.partitionBy("user_session").orderBy(F.desc("score"), F.desc("confidence"))
+recommendations = candidates.withColumn("rank", F.row_number().over(rank_window)).filter(F.col("rank") <= top_k)
+\end{sparkcode}
+
+\subsection{异常检测与生命周期模块}
+
+异常检测模块复用特征集市中的日类目和日商品特征。每条监控信号由 \texttt{dt + entity\_type + entity\_id + metric} 组成，指标包括 views、purchases、revenue、conversion rate 等。系统使用中位数和 MAD，而不是均值和标准差，原因是电商数据常有促销尖峰和长尾商品，MAD 对极端值更稳健。robust z-score 计算为：
+
+\[
+    z_{\mathrm{robust}} =
+    \frac{|x-\mathrm{median}(x)|}{1.4826 \times \mathrm{MAD}(x)}
+\]
+
+若历史点数不足，状态为 \texttt{watch}；若 z-score 超过 warning 或 critical 阈值，则生成对应告警；若当前值为 0 且基线量级高于最小流量阈值，也视为 critical。
+
+生命周期模块以日用户特征为输入，按用户聚合活跃天数、会话数、浏览数、加购数、购买数、收入、购买天数、最近活跃日期和偏好类目。分层规则是确定性的 RFM + engagement：高收入且多购买天数为 \texttt{champion}；达到高价值阈值为 \texttt{high\_value}；有多日购买为 \texttt{loyal}；有购买为 \texttt{buyer}；只有加购为 \texttt{cart\_intent}；只有浏览为 \texttt{browser}。风险带则由最近活跃天数和购买证据决定：超过 \texttt{at\_risk\_recency\_days} 为 \texttt{at\_risk}，无购买但有加购为 \texttt{convert\_intent}。
+
+\subsection{实验分流与 Ops 证据模块}
+
+实验分流模块不直接在线投放，而是生成课程设计所需的可解释实验准备数据。实验目录包含生命周期再激活、推荐个性化和商品运营位三类实验。用户是否 eligible 由生命周期分层决定；进入实验后通过 \texttt{hash(user\_id, experiment\_key)} 生成稳定桶，桶值小于 treatment split 的用户进入 treatment，否则进入 control。这样同一份数据重复运行时，用户分组保持稳定。
+
+实验 guardrail 检查包括 treatment/control 用户数、分组不平衡率、推荐覆盖率和优化计划是否存在。预期增量 GMV 不是实际因果效果，而是用于课程系统演示的计划值：
+\[
+    \mathrm{expected\_incremental\_gmv} =
+    \mathrm{expected\_uplift\_rate} \times \max(\mathrm{avg\_order\_value}, 50)
+\]
+
+Ops 证据模块读取 run manifest、SQLite job 表、Spark History 指标和 benchmark 结果。它不重新计算业务指标，而是把一次运行的输入、输出、质量、耗时、application id 和存储清理策略串起来，形成答辩时可追溯的“证据链”。因此，业务页面回答“数据是什么”，Ops 页面回答“数据从哪里来、怎么算完、运行是否成功”。
 
 \section{前端 Ops 页实现}
 

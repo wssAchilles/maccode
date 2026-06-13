@@ -28,6 +28,125 @@ export type DateValue = {
   value: number;
 };
 
+export type DashboardSliceFilters = {
+  event_type?: string;
+  category_level1?: string;
+  brand?: string;
+};
+
+export type DashboardSliceEvidence = {
+  source_dataset: string;
+  filtered_row_count: number;
+  total_row_count: number;
+  coverage_rate: number;
+  query_ms: number;
+  run_id: string;
+  contract_version: string;
+  dataset_version: string;
+  generated_at: string;
+  refreshed_at?: string;
+  spark_duration?: number | null;
+  cache_mode?: string;
+  cache_hit?: boolean;
+  fallback_reason?: string | null;
+  cube_path?: string | null;
+  cube_paths?: Record<string, string> | null;
+  cube_row_count?: number | null;
+  semantic_version?: string | null;
+  metric_grain?: string | null;
+  metric_definitions?: MetricDefinition[];
+  filters: DashboardSliceFilters;
+};
+
+export type MetricDefinition = {
+  contract_version?: string;
+  run_id?: string;
+  metric_name: string;
+  chinese_name?: string;
+  grain?: string;
+  source?: string;
+  refresh_frequency?: string;
+  aggregation?: string;
+  formula?: string;
+  quality_assertions?: string[];
+};
+
+export type DashboardSlice = {
+  summary: {
+    event_count: number;
+    purchase_count: number;
+    total_sales: number;
+    unique_users: number;
+    unique_sessions: number;
+    avg_order_value: number;
+  };
+  event_type_count: NamedValue[];
+  daily_events: DateValue[];
+  daily_sales: DateValue[];
+  top_categories: NamedValue[];
+  evidence: DashboardSliceEvidence;
+};
+
+export type ControlledQueryIntent = {
+  metric: string;
+  metric_label: string;
+  dimension: string;
+  dimension_label: string;
+  aggregation: string;
+  chart_type: string;
+  limit: number;
+  time_grain?: string | null;
+  event_type_filter?: string | null;
+  event_type_filter_label?: string | null;
+};
+
+export type ControlledQueryRow = {
+  name: string;
+  raw_name?: string | number | null;
+  value: number;
+  share: number;
+};
+
+export type ControlledQueryChart = {
+  type: 'line' | 'bar' | 'horizontal_bar' | 'empty' | string;
+  title: string;
+  x_field: string;
+  y_field: string;
+  series_name: string;
+  dimension_label: string;
+  metric_label: string;
+};
+
+export type ControlledQueryEvidence = {
+  source_dataset: string;
+  run_id: string;
+  contract_version: string;
+  dataset_version: string;
+  generated_at?: string | null;
+  query_ms: number;
+  row_count: number;
+  execution_engine: string;
+  cache_mode?: string | null;
+  cache_hit?: boolean | null;
+  semantic_version?: string | null;
+  metric_grain?: string | null;
+};
+
+export type ControlledQueryResult = {
+  contract_version: string;
+  query: string;
+  status: 'matched' | 'unsupported' | string;
+  matched: boolean;
+  message: string;
+  confidence: number;
+  intent: ControlledQueryIntent | null;
+  chart: ControlledQueryChart;
+  rows: ControlledQueryRow[];
+  suggestions: string[];
+  insight: string;
+  evidence: ControlledQueryEvidence;
+};
+
 export type FunnelStep = {
   step: string;
   sessions: number;
@@ -197,7 +316,34 @@ export type ForecastingBacktestPoint = {
   forecast: number;
   absolute_error: number;
   error: number;
+  horizon?: number;
   model_name: string;
+};
+
+export type ForecastingEvaluationMetric = {
+  group?: string;
+  window_days?: number;
+  rows: number;
+  actual_sum?: number;
+  forecast_sum?: number;
+  wape: number | null;
+  bias: number | null;
+  mae?: number | null;
+};
+
+export type ForecastingEvaluation = {
+  contract_version: string;
+  run_id: string;
+  windows: number[];
+  model_metrics: ForecastingEvaluationMetric[];
+  horizon_metrics: ForecastingEvaluationMetric[];
+  window_metrics: ForecastingEvaluationMetric[];
+  error_distribution: {
+    max_absolute_error: number;
+    avg_absolute_error: number;
+    backtest_rows: number;
+  };
+  quality_gates: QualityCheck[];
 };
 
 export type ForecastingRisk = {
@@ -320,6 +466,25 @@ export type AffinityOpportunity = {
   support: number;
   risk_level: string;
   action: string;
+};
+
+export type AffinityCentrality = {
+  contract_version: string;
+  entity_id: string;
+  entity_label: string;
+  brand: string;
+  category_level1: string;
+  community_id: string;
+  degree: number;
+  weighted_degree: number;
+  normalized_weighted_degree: number;
+  pagerank_score: number;
+  centrality_score: number;
+  community_size: number;
+  community_revenue: number;
+  revenue: number;
+  views: number;
+  purchases: number;
 };
 
 export type AffinityQuality = {
@@ -815,6 +980,30 @@ export type RecommendationItem = {
   fallback_used: boolean;
 };
 
+export type RecommendationCandidate = {
+  candidate_id: string;
+  user_session: string;
+  user_id: string;
+  product_id: string;
+  brand: string;
+  category_level1: string;
+  rank: number;
+  candidate_source: string;
+  recall_stage: string;
+  candidate_stage: string;
+  score: number;
+  ranker_score: number;
+  source_score: number;
+  conversion_score: number;
+  freshness_score: number;
+  affinity_score: number;
+  confidence: number;
+  ranker_model: string;
+  calibration_bucket: string;
+  reason_codes: string[];
+  fallback_used: boolean;
+};
+
 export type RecommendationQuality = {
   contract_version: string;
   recommendation_count: number;
@@ -829,6 +1018,47 @@ export type RecommendationQuality = {
   invalid_product_rate: number;
   passed: boolean;
   checks: QualityCheck[];
+};
+
+export type RecommendationEvaluationMetric = {
+  model_name: string;
+  status: string;
+  caveat?: string;
+  evaluated_sessions?: number;
+  predicted_items?: number;
+  hit_count?: number;
+  precision_at_k: number | null;
+  recall_at_k: number | null;
+  ndcg_at_k: number | null;
+  catalog_coverage: number;
+  fallback_rate: number;
+};
+
+export type RecommendationTopKCell = {
+  model_name: string;
+  user_session: string;
+  rank: number;
+  product_id: string;
+  hit: boolean;
+  source: string;
+  score: number;
+};
+
+export type RecommendationEvaluation = {
+  contract_version: string;
+  run_id: string;
+  top_k: number;
+  split: {
+    strategy: string;
+    train_rows: number;
+    holdout_rows: number;
+    evaluated_sessions: number;
+  };
+  behavior_weights: Record<string, number>;
+  model_metrics: RecommendationEvaluationMetric[];
+  source_mix: Array<{ source: string; recommendations: number; share: number }>;
+  topk_matrix: RecommendationTopKCell[];
+  quality_gates: QualityCheck[];
 };
 
 export type RecommendationAlert = {
@@ -859,6 +1089,68 @@ export type AnomalyAlert = {
   direction: string;
   message: string;
   recommended_action: string;
+  incident_id?: string | null;
+  baseline_mode?: string | null;
+};
+
+export type AnomalyIncident = {
+  contract_version: string;
+  incident_id: string;
+  run_id: string;
+  dt: string | null;
+  severity: string;
+  entity_type: string;
+  entity_id: string;
+  entity_label: string;
+  metric: string;
+  alert_count: number;
+  max_robust_z: number;
+  impact_value: number;
+  root_cause_contributions: Array<{
+    dimension: string;
+    value: string;
+    metric: string;
+    contribution: number;
+    contribution_share: number;
+    direction: string;
+  }>;
+  recommended_action: string;
+};
+
+export type AnomalyRootCause = {
+  contract_version: string;
+  incident_id: string;
+  dt: string | null;
+  severity: string;
+  dimension: string;
+  value: string;
+  metric: string;
+  contribution: number;
+  contribution_share: number;
+  direction: string;
+};
+
+export type AnomalyEvaluation = {
+  contract_version: string;
+  run_id: string;
+  baseline: {
+    seasonal_signal_count: number;
+    seasonal_coverage_rate: number;
+    min_seasonal_points: number;
+    min_baseline_points: number;
+  };
+  incidents: {
+    incident_count: number;
+    critical_incidents: number;
+    warning_incidents: number;
+  };
+  alert_budget: {
+    anomaly_signal_count: number;
+    signal_count: number;
+    anomaly_rate: number;
+    max_alerts: number;
+  };
+  quality_gates: QualityCheck[];
 };
 
 export type AnomalySummary = {
@@ -1011,8 +1303,10 @@ export type ExperimentAssignment = {
   carts: number;
   purchases: number;
   revenue: number;
+  expected_uplift_rate?: number;
   expected_incremental_purchase_prob: number;
   expected_incremental_gmv: number;
+  uplift_score?: number;
   policy: string;
   primary_metric: string;
 };
@@ -1041,6 +1335,66 @@ export type ExperimentGuardrails = {
     imbalance: number;
   }>;
   recommended_action: string;
+};
+
+export type ExperimentResult = {
+  contract_version: string;
+  run_id: string;
+  experiment_key: string;
+  name: string;
+  primary_metric: string;
+  measurement_status: string;
+  oec_metric: string;
+  treatment_users: number;
+  control_users: number;
+  expected_treatment_ratio: number;
+  observed_treatment_ratio: number;
+  srm_chi_square: number;
+  srm_p_value: number;
+  srm_status: string;
+  control_mean: number;
+  treatment_mean: number;
+  absolute_lift: number;
+  relative_lift: number | null;
+  standard_error: number | null;
+  ci_low: number | null;
+  ci_high: number | null;
+  p_value: number | null;
+  decision: string;
+  variant_rows: Array<{
+    variant: string;
+    users: number;
+    conversions: number;
+    conversion_rate: number;
+    purchases: number;
+    views: number;
+    carts: number;
+    revenue: number;
+    expected_incremental_gmv: number;
+    avg_uplift_score: number;
+  }>;
+  causal_caveat: string;
+};
+
+export type ExperimentUplift = {
+  contract_version: string;
+  run_id: string;
+  measurement_status: string;
+  causal_valid: boolean;
+  causal_caveat: string;
+  summary: Array<{ experiment_key: string; auuc: number; qini_auc: number; decile_count: number }>;
+  deciles: Array<{
+    experiment_key: string;
+    decile: number;
+    treatment_users: number;
+    control_users: number;
+    treatment_conversion_rate: number;
+    control_conversion_rate: number;
+    uplift: number;
+    cumulative_gain: number;
+    avg_uplift_score: number;
+  }>;
+  quality_gates: QualityCheck[];
 };
 
 export type FeatureMartSummary = {
@@ -1105,6 +1459,36 @@ export type FeatureMartPartitionReport = {
   partitions: Array<{ dt: string; rows: number; status: string }>;
 };
 
+export type FeatureMartFeature = {
+  contract_version: string;
+  run_id: string;
+  feature_name: string;
+  chinese_name: string;
+  grain: string;
+  source: string;
+  refresh_frequency: string;
+  quality_assertions: string[];
+  owner: string;
+};
+
+export type FeatureMartReadiness = {
+  contract_version: string;
+  run_id: string;
+  status: string;
+  ready_features: number;
+  total_features: number;
+  checks: QualityCheck[];
+  features: Array<{
+    feature_name: string;
+    chinese_name: string;
+    grain: string;
+    status: string;
+    failed_rules: string[];
+    source: string;
+  }>;
+  lineage: Array<{ from: string; to: string; relation: string }>;
+};
+
 export type FeatureMartProduct = {
   dt: string;
   product_id: string;
@@ -1154,16 +1538,19 @@ export type TableRow = {
   product_id: string;
   category_id: string;
   category_code: string;
+  category_level1: string;
   brand: string;
   price: string;
   user_id: string;
   user_session: string;
+  source_dataset: string;
 };
 
 export type TableResult = {
   page: number;
   size: number;
   total: number;
+  source_dataset: string;
   rows: TableRow[];
 };
 
@@ -1215,6 +1602,52 @@ export type SparkHistoryMetrics = {
   [key: string]: string | number | null | undefined;
 };
 
+export type JobGovernanceStage = {
+  stage: string;
+  status: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  duration_seconds?: number | null;
+};
+
+export type JobGovernanceArtifact = {
+  artifact_id: string;
+  artifact_type: string;
+  path: string;
+  exists: boolean;
+  status: string;
+  updated_at?: string | null;
+  age_minutes?: number | null;
+  size_bytes?: number | null;
+  freshness_sla_minutes?: number;
+  freshness_warning_minutes?: number;
+};
+
+export type JobGovernance = {
+  contract_version: string;
+  run_id: string;
+  status: string;
+  active_stage: string;
+  completion_ratio: number;
+  freshness_sla_minutes: number;
+  freshness_warning_minutes: number;
+  stage_counts: Record<string, number>;
+  artifact_counts: Record<string, number>;
+  stages: JobGovernanceStage[];
+  artifacts: JobGovernanceArtifact[];
+  spark_summary: SparkHistoryMetrics & {
+    application_id?: string | null;
+    application_status?: string | null;
+    history_metrics_status?: string | null;
+  };
+  quality_summary: {
+    status?: string | null;
+    check_count?: number;
+    passed_check_count?: number;
+    failure_stage?: string | null;
+  };
+};
+
 export type JobStatus = {
   job_id?: string;
   job_type?: string;
@@ -1241,6 +1674,7 @@ export type JobStatus = {
   quality_report?: QualityReport | null;
   output_artifacts?: OutputArtifacts | null;
   failure_stage?: string | null;
+  governance?: JobGovernance;
 };
 
 export type JobList = {
@@ -1260,6 +1694,7 @@ export type JobLineage = {
   spark_history_metrics?: SparkHistoryMetrics | null;
   input_snapshot?: InputSnapshot | null;
   output_artifacts?: OutputArtifacts | null;
+  governance?: JobGovernance;
 };
 
 export type JobQuality = {
@@ -1273,6 +1708,7 @@ export type JobQuality = {
   quality_status?: 'passed' | 'failed' | 'needs_review' | 'not_evaluated' | null;
   quality_report?: QualityReport | null;
   failure_stage?: string | null;
+  governance?: JobGovernance;
 };
 
 export type BenchmarkRun = {
@@ -1371,4 +1807,47 @@ export type OpsEvidence = {
     kept_spark_history_app_ids?: string[];
     [key: string]: string | boolean | string[] | undefined;
   };
+};
+
+export type OptimizationImpactTone = 'success' | 'warning' | 'danger' | 'running';
+
+export type OptimizationImpactCard = {
+  id: string;
+  title: string;
+  status: string;
+  tone: OptimizationImpactTone;
+  metric: string;
+  detail: string;
+  action: string;
+};
+
+export type OptimizationFrontendSection = {
+  id: string;
+  page: string;
+  route: string;
+  tone: OptimizationImpactTone;
+  status: string;
+  visible_result: string;
+  source_cards: string;
+};
+
+export type OptimizationImpact = {
+  generated_at: string;
+  overall_status: string;
+  overall_tone: OptimizationImpactTone;
+  headline: string;
+  summary: {
+    success_count?: number;
+    warning_count?: number;
+    danger_count?: number;
+    visible_page_count?: number;
+    evidence_count?: number;
+    primary_action?: string;
+    [key: string]: string | number | undefined;
+  };
+  data_layers: OptimizationImpactCard[];
+  quality_gates: OptimizationImpactCard[];
+  model_cards: OptimizationImpactCard[];
+  performance_cards: OptimizationImpactCard[];
+  frontend_sections: OptimizationFrontendSection[];
 };

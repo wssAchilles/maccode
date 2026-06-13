@@ -86,6 +86,11 @@ def test_experimentation_outputs_assign_holdouts_and_guardrails(spark):
     assert metrics["experiment_summary"]["assigned_users"] == 12
     assert metrics["experiment_summary"]["expected_incremental_gmv"] > 0
     assert metrics["experiment_guardrails"]["status"] == "passed"
+    assert metrics["experiment_results"]
+    assert metrics["experiment_results"][0]["measurement_status"] == "offline_history_replay"
+    assert "srm_p_value" in metrics["experiment_results"][0]
+    assert metrics["experiment_uplift"]["causal_valid"] is False
+    assert metrics["experiment_uplift"]["deciles"]
     assert any(row["experiment_key"] == "lifecycle_reactivation" for row in metrics["experiment_assignments"])
     assert any(row["variant"] == "treatment" for row in metrics["experiment_assignments"])
     assert any(row["variant"] == "control" for row in metrics["experiment_assignments"])
@@ -134,3 +139,5 @@ def test_experimentation_preview_limit_keeps_summary_statistics(spark):
     assert len(metrics["experiment_segments"]) <= 2
     assert frames["experiment_assignments"].count() == metrics["experiment_summary"]["assignment_rows"]
     assert metrics["experiment_summary"]["assignment_rows"] > len(metrics["experiment_assignments"])
+    assert metrics["experiment_results"]
+    assert metrics["experiment_uplift"]["measurement_status"] == "offline_history_replay"

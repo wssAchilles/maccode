@@ -88,7 +88,7 @@ test.beforeEach(async ({ page }) => {
 test('dashboard renders summary cards and charts', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: '电商用户行为大数据分析工作台' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '电商行为分析驾驶舱' })).toBeVisible();
   await expect(page.getByText('有效事件')).toBeVisible();
   await expect(page.getByText('行为类型分布')).toBeVisible();
   await expect(page.locator('canvas')).toHaveCount(4);

@@ -95,6 +95,27 @@ COMMUNITY_SCHEMA = T.StructType(
     ]
 )
 
+CENTRALITY_SCHEMA = T.StructType(
+    [
+        T.StructField("contract_version", T.StringType()),
+        T.StructField("entity_id", T.StringType()),
+        T.StructField("entity_label", T.StringType()),
+        T.StructField("brand", T.StringType()),
+        T.StructField("category_level1", T.StringType()),
+        T.StructField("community_id", T.StringType()),
+        T.StructField("degree", T.LongType()),
+        T.StructField("weighted_degree", T.DoubleType()),
+        T.StructField("normalized_weighted_degree", T.DoubleType()),
+        T.StructField("pagerank_score", T.DoubleType()),
+        T.StructField("centrality_score", T.DoubleType()),
+        T.StructField("community_size", T.LongType()),
+        T.StructField("community_revenue", T.DoubleType()),
+        T.StructField("revenue", T.DoubleType()),
+        T.StructField("views", T.LongType()),
+        T.StructField("purchases", T.LongType()),
+    ]
+)
+
 
 def affinity_config(config: dict[str, Any] | None) -> dict[str, Any]:
     return {**DEFAULT_CONFIG, **(config or {})}
@@ -127,6 +148,7 @@ def build_affinity_outputs(
     node_rows = enrich_nodes_with_degrees([_row_to_dict(row.asDict()) for row in node_base.collect()], edge_rows)
     opportunity_rows = build_opportunities(edge_rows, int(config["preview_limit"]))
     community_rows = build_communities(node_rows, edge_rows)
+    centrality_rows = build_centrality(node_rows, edge_rows, community_rows)
     quality = build_quality(pair_product_sessions, eligible_sessions, pair_base, cleaned_df.count(), edge_rows, config)
     summary = build_summary(node_rows, edge_rows, opportunity_rows, community_rows, quality, config, run_id, input_snapshot)
 
@@ -136,6 +158,7 @@ def build_affinity_outputs(
         "edges": _create_frame(spark, edge_rows, EDGE_SCHEMA),
         "opportunities": _create_frame(spark, opportunity_rows, OPPORTUNITY_SCHEMA),
         "communities": _create_frame(spark, community_rows, COMMUNITY_SCHEMA),
+        "centrality": _create_frame(spark, centrality_rows, CENTRALITY_SCHEMA),
         "session_pairs": pair_base,
     }
     preview_limit = int(config["preview_limit"])
@@ -145,6 +168,7 @@ def build_affinity_outputs(
         "affinity_edges": edge_rows[:preview_limit],
         "affinity_communities": community_rows[:preview_limit],
         "affinity_opportunities": opportunity_rows[:preview_limit],
+        "affinity_centrality": centrality_rows[:preview_limit],
         "affinity_quality": quality,
     }
     product_sessions.unpersist()
@@ -406,6 +430,85 @@ def build_communities(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) 
     for category, row in by_category.items():
         row["edge_count"] = edge_count.get(category, 0)
     return sorted(by_category.values(), key=lambda row: (-row["edge_count"], -row["revenue"], row["community_id"]))
+
+
+def build_centrality(
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    communities: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    pagerank = _approximate_pagerank(nodes, edges)
+    max_weighted_degree = max((float(node.get("weighted_degree") or 0) for node in nodes), default=0.0)
+    community_lookup = {
+        row["community_id"]: {
+            "community_size": int(row.get("node_count") or 0),
+            "community_revenue": float(row.get("revenue") or 0),
+        }
+        for row in communities
+    }
+    rows = []
+    for node in nodes:
+        normalized_weighted_degree = (
+            round(float(node.get("weighted_degree") or 0) / max_weighted_degree, 6) if max_weighted_degree else 0.0
+        )
+        pagerank_score = pagerank.get(node["entity_id"], 0.0)
+        centrality_score = round(normalized_weighted_degree * 0.55 + pagerank_score * 0.45, 6)
+        community = community_lookup.get(node.get("community_id"), {"community_size": 0, "community_revenue": 0.0})
+        rows.append(
+            {
+                "contract_version": AFFINITY_CONTRACT_VERSION,
+                "entity_id": node["entity_id"],
+                "entity_label": node["entity_label"],
+                "brand": node.get("brand") or "unknown",
+                "category_level1": node.get("category_level1") or "unknown",
+                "community_id": node.get("community_id") or "unknown",
+                "degree": int(node.get("degree") or 0),
+                "weighted_degree": round(float(node.get("weighted_degree") or 0), 6),
+                "normalized_weighted_degree": normalized_weighted_degree,
+                "pagerank_score": pagerank_score,
+                "centrality_score": centrality_score,
+                "community_size": int(community["community_size"]),
+                "community_revenue": round(float(community["community_revenue"]), 2),
+                "revenue": round(float(node.get("revenue") or 0), 2),
+                "views": int(node.get("views") or 0),
+                "purchases": int(node.get("purchases") or 0),
+            }
+        )
+    return sorted(rows, key=lambda row: (-row["centrality_score"], -row["weighted_degree"], row["entity_id"]))
+
+
+def _approximate_pagerank(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], iterations: int = 12) -> dict[str, float]:
+    node_ids = {str(node["entity_id"]) for node in nodes}
+    if not node_ids:
+        return {}
+    graph: dict[str, list[tuple[str, float]]] = {node_id: [] for node_id in node_ids}
+    for edge in edges:
+        source = str(edge.get("source_id"))
+        target = str(edge.get("target_id"))
+        if source not in node_ids or target not in node_ids:
+            continue
+        weight = max(float(edge.get("lift") or 0), 0.0) * max(float(edge.get("support") or 1), 1.0)
+        weight = weight or 1.0
+        graph[source].append((target, weight))
+        graph[target].append((source, weight))
+    node_count = len(node_ids)
+    damping = 0.85
+    ranks = {node_id: 1.0 / node_count for node_id in node_ids}
+    for _ in range(iterations):
+        next_ranks = {node_id: (1.0 - damping) / node_count for node_id in node_ids}
+        dangling_rank = sum(ranks[node_id] for node_id, neighbors in graph.items() if not neighbors)
+        if dangling_rank:
+            for node_id in node_ids:
+                next_ranks[node_id] += damping * dangling_rank / node_count
+        for source, neighbors in graph.items():
+            if not neighbors:
+                continue
+            total_weight = sum(weight for _, weight in neighbors) or 1.0
+            for target, weight in neighbors:
+                next_ranks[target] += damping * ranks[source] * weight / total_weight
+        ranks = next_ranks
+    max_rank = max(ranks.values(), default=0.0)
+    return {node_id: round(rank / max_rank, 6) if max_rank else 0.0 for node_id, rank in ranks.items()}
 
 
 def build_quality(

@@ -4,6 +4,7 @@ from typing import Any
 
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
+from pyspark.sql import Window
 from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
@@ -18,6 +19,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "warning_z": 3.5,
     "critical_z": 6.0,
     "min_volume": 20,
+    "min_seasonal_points": 3,
 }
 
 
@@ -37,6 +39,8 @@ def build_anomaly_outputs(
     signals = build_daily_signals(daily_category, daily_product, int(config["max_product_entities"])).persist(StorageLevel.MEMORY_AND_DISK)
     scored = score_daily_signals(signals, config, run_id).persist(StorageLevel.MEMORY_AND_DISK)
     alerts = build_alert_preview(scored, int(config["max_alerts"]))
+    incidents = build_incidents(alerts)
+    root_cause = build_root_cause(incidents)
     timeline = build_timeline(scored, int(config["preview_limit"]))
     rules = build_rules_report(config)
     summary = build_anomaly_summary(run_id, scored, alerts, feature_mart_quality, feature_mart_freshness)
@@ -65,6 +69,9 @@ def build_anomaly_outputs(
     metrics = {
         "anomaly_summary": summary,
         "anomaly_alerts": all_alerts,
+        "anomaly_incidents": incidents,
+        "anomaly_root_cause": root_cause,
+        "anomaly_evaluation": build_anomaly_evaluation(scored, incidents, config, run_id),
         "anomaly_timeline": timeline,
         "anomaly_rules": rules,
     }
@@ -91,6 +98,8 @@ ALERT_SCHEMA = StructType(
         StructField("direction", StringType(), False),
         StructField("message", StringType(), False),
         StructField("recommended_action", StringType(), False),
+        StructField("incident_id", StringType(), True),
+        StructField("baseline_mode", StringType(), True),
     ]
 )
 
@@ -132,39 +141,72 @@ def build_daily_signals(daily_category: DataFrame, daily_product: DataFrame, max
 
 
 def score_daily_signals(signals: DataFrame, config: dict[str, Any], run_id: str) -> DataFrame:
-    baseline = signals.groupBy("entity_type", "entity_id", "metric").agg(
-        F.expr("percentile_approx(value, 0.5)").alias("baseline_median"),
-        F.count("*").alias("baseline_points"),
+    signals = signals.withColumn("_dt_order", F.to_date("dt")).withColumn("_weekday", F.dayofweek(F.col("_dt_order")))
+    global_history = (
+        Window.partitionBy("entity_type", "entity_id", "metric")
+        .orderBy("_dt_order", "dt")
+        .rowsBetween(Window.unboundedPreceding, -1)
     )
-    with_baseline = signals.join(baseline, on=["entity_type", "entity_id", "metric"], how="left")
-    deviations = with_baseline.withColumn("absolute_deviation", F.abs(F.col("value") - F.col("baseline_median")))
-    mad = deviations.groupBy("entity_type", "entity_id", "metric").agg(
-        F.expr("percentile_approx(absolute_deviation, 0.5)").alias("baseline_mad")
+    seasonal_history = (
+        Window.partitionBy("entity_type", "entity_id", "metric", "_weekday")
+        .orderBy("_dt_order", "dt")
+        .rowsBetween(Window.unboundedPreceding, -1)
+    )
+    with_baseline = (
+        signals.withColumn("baseline_median", F.expr("percentile_approx(value, 0.5)").over(global_history))
+        .withColumn("baseline_points", F.count("*").over(global_history))
+        .withColumn("seasonal_median", F.expr("percentile_approx(value, 0.5)").over(seasonal_history))
+        .withColumn("seasonal_points", F.count("*").over(seasonal_history))
+        .withColumn(
+            "baseline_mode",
+            F.when(F.col("seasonal_points") >= int(config["min_seasonal_points"]), F.lit("weekday_median_mad")).otherwise(
+                F.lit("global_median_mad")
+            ),
+        )
+        .withColumn(
+            "effective_baseline_median",
+            F.when(F.col("baseline_mode") == "weekday_median_mad", F.col("seasonal_median")).otherwise(F.col("baseline_median")),
+        )
+        .withColumn(
+            "effective_baseline_points",
+            F.when(F.col("baseline_mode") == "weekday_median_mad", F.col("seasonal_points")).otherwise(F.col("baseline_points")),
+        )
+    )
+    deviations = (
+        with_baseline.withColumn("global_absolute_deviation", F.abs(F.col("value") - F.col("baseline_median")))
+        .withColumn("seasonal_absolute_deviation", F.abs(F.col("value") - F.col("seasonal_median")))
+        .withColumn("global_mad", F.expr("percentile_approx(global_absolute_deviation, 0.5)").over(global_history))
+        .withColumn("seasonal_mad", F.expr("percentile_approx(seasonal_absolute_deviation, 0.5)").over(seasonal_history))
+        .withColumn(
+            "effective_baseline_mad",
+            F.when(F.col("baseline_mode") == "weekday_median_mad", F.col("seasonal_mad")).otherwise(F.col("global_mad")),
+        )
     )
     scored = (
-        deviations.join(mad, on=["entity_type", "entity_id", "metric"], how="left")
-        .withColumn("delta", F.round(F.col("value") - F.col("baseline_median"), 6))
-        .withColumn("delta_rate", F.round(F.col("delta") / F.when(F.col("baseline_median") == 0, None).otherwise(F.col("baseline_median")), 6))
+        deviations
+        .withColumn("delta", F.round(F.col("value") - F.col("effective_baseline_median"), 6))
+        .withColumn("delta_rate", F.round(F.col("delta") / F.when(F.col("effective_baseline_median") == 0, None).otherwise(F.col("effective_baseline_median")), 6))
         .withColumn(
             "robust_z",
             F.round(
-                F.abs(F.col("value") - F.col("baseline_median"))
-                / F.when(F.col("baseline_mad") == 0, None).otherwise(F.col("baseline_mad") * F.lit(1.4826)),
+                F.abs(F.col("value") - F.col("effective_baseline_median"))
+                / F.when(F.col("effective_baseline_mad") == 0, None).otherwise(F.col("effective_baseline_mad") * F.lit(1.4826)),
                 6,
             ),
         )
         .withColumn("direction", F.when(F.col("delta") < 0, F.lit("drop")).when(F.col("delta") > 0, F.lit("spike")).otherwise(F.lit("flat")))
         .withColumn(
             "severity",
-            F.when(F.col("baseline_points") < int(config["min_baseline_points"]), F.lit("watch"))
+            F.when(F.col("effective_baseline_points") < int(config["min_baseline_points"]), F.lit("watch"))
             .when(F.col("robust_z") >= float(config["critical_z"]), F.lit("critical"))
             .when(F.col("robust_z") >= float(config["warning_z"]), F.lit("warning"))
-            .when((F.col("value") == 0) & (F.col("baseline_median") >= float(config["min_volume"])), F.lit("critical"))
+            .when((F.col("value") == 0) & (F.col("effective_baseline_median") >= float(config["min_volume"])), F.lit("critical"))
             .otherwise(F.lit("normal")),
         )
         .withColumn("is_anomaly", F.col("severity").isin("critical", "warning"))
         .withColumn("source_run_id", F.lit(run_id))
         .withColumn("contract_version", F.lit(ANOMALY_CONTRACT_VERSION))
+        .withColumn("incident_id", F.concat_ws(":", F.lit("incident"), F.col("dt"), F.col("entity_type"), F.col("entity_id"), F.col("metric")))
     )
     return scored.select(
         "dt",
@@ -173,9 +215,9 @@ def score_daily_signals(signals: DataFrame, config: dict[str, Any], run_id: str)
         "entity_label",
         "metric",
         "value",
-        "baseline_median",
-        "baseline_mad",
-        "baseline_points",
+        F.col("effective_baseline_median").alias("baseline_median"),
+        F.col("effective_baseline_mad").alias("baseline_mad"),
+        F.col("effective_baseline_points").alias("baseline_points"),
         "delta",
         "delta_rate",
         "robust_z",
@@ -184,6 +226,8 @@ def score_daily_signals(signals: DataFrame, config: dict[str, Any], run_id: str)
         "is_anomaly",
         "source_run_id",
         "contract_version",
+        "incident_id",
+        "baseline_mode",
     )
 
 
@@ -283,7 +327,7 @@ def build_quality_alerts(
 def build_rules_report(config: dict[str, Any]) -> dict[str, Any]:
     return {
         "contract_version": ANOMALY_CONTRACT_VERSION,
-        "baseline": "median + median absolute deviation across current feature mart window",
+        "baseline": "trailing weekday seasonal median + MAD when enough same-weekday points exist, otherwise trailing global median + MAD",
         "rules": [
             {
                 "name": "critical_robust_z",
@@ -301,9 +345,128 @@ def build_rules_report(config: dict[str, Any]) -> dict[str, Any]:
                 "threshold": int(config["min_baseline_points"]),
             },
             {
+                "name": "weekday_seasonal_baseline",
+                "description": "same weekday baseline is used when seasonal points reach threshold",
+                "threshold": int(config["min_seasonal_points"]),
+            },
+            {
                 "name": "zero_after_volume",
                 "description": "metric collapses to zero after a non-trivial baseline",
                 "threshold": float(config["min_volume"]),
+            },
+        ],
+    }
+
+
+def build_incidents(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    incidents: dict[str, dict[str, Any]] = {}
+    for alert in alerts:
+        incident_id = alert.get("incident_id") or f"incident:{alert.get('dt')}:{alert.get('entity_type')}:{alert.get('entity_id')}:{alert.get('metric')}"
+        incident = incidents.setdefault(
+            incident_id,
+            {
+                "contract_version": ANOMALY_CONTRACT_VERSION,
+                "incident_id": incident_id,
+                "run_id": alert["run_id"],
+                "dt": alert["dt"],
+                "severity": alert["severity"],
+                "entity_type": alert["entity_type"],
+                "entity_id": alert["entity_id"],
+                "entity_label": alert["entity_label"],
+                "metric": alert["metric"],
+                "alert_count": 0,
+                "max_robust_z": 0.0,
+                "impact_value": 0.0,
+                "root_cause_contributions": [],
+                "recommended_action": alert["recommended_action"],
+            },
+        )
+        incident["alert_count"] += 1
+        incident["severity"] = _higher_severity(incident["severity"], alert["severity"])
+        incident["max_robust_z"] = max(float(incident["max_robust_z"] or 0), float(alert.get("robust_z") or 0))
+        impact = abs(float(alert.get("delta") or 0))
+        incident["impact_value"] = round(float(incident["impact_value"] or 0) + impact, 6)
+        incident["root_cause_contributions"].append(
+            {
+                "dimension": alert["entity_type"],
+                "value": alert["entity_label"],
+                "metric": alert["metric"],
+                "contribution": round(impact, 6),
+                "direction": alert["direction"],
+            }
+        )
+    for incident in incidents.values():
+        total = float(incident["impact_value"] or 0)
+        for contribution in incident["root_cause_contributions"]:
+            contribution["contribution_share"] = round(float(contribution["contribution"]) / total, 6) if total else 0.0
+    return sorted(incidents.values(), key=lambda row: _incident_sort_key(row))
+
+
+def build_root_cause(incidents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for incident in incidents:
+        for contribution in incident.get("root_cause_contributions", []):
+            rows.append(
+                {
+                    "contract_version": ANOMALY_CONTRACT_VERSION,
+                    "incident_id": incident["incident_id"],
+                    "dt": incident["dt"],
+                    "severity": incident["severity"],
+                    "dimension": contribution["dimension"],
+                    "value": contribution["value"],
+                    "metric": contribution["metric"],
+                    "contribution": contribution["contribution"],
+                    "contribution_share": contribution["contribution_share"],
+                    "direction": contribution["direction"],
+                }
+            )
+    return sorted(rows, key=lambda row: (-float(row["contribution"]), row["incident_id"]))
+
+
+def build_anomaly_evaluation(scored: DataFrame, incidents: list[dict[str, Any]], config: dict[str, Any], run_id: str) -> dict[str, Any]:
+    row = scored.agg(
+        F.count("*").alias("signal_count"),
+        F.sum(F.when(F.col("baseline_mode") == "weekday_median_mad", 1).otherwise(0)).alias("seasonal_signal_count"),
+        F.sum(F.when(F.col("is_anomaly"), 1).otherwise(0)).alias("anomaly_signal_count"),
+        F.countDistinct("dt").alias("monitored_days"),
+    ).first()
+    signal_count = int(row["signal_count"] or 0)
+    seasonal_signal_count = int(row["seasonal_signal_count"] or 0)
+    anomaly_signal_count = int(row["anomaly_signal_count"] or 0)
+    return {
+        "contract_version": ANOMALY_CONTRACT_VERSION,
+        "run_id": run_id,
+        "baseline": {
+            "seasonal_signal_count": seasonal_signal_count,
+            "seasonal_coverage_rate": round(seasonal_signal_count / signal_count, 6) if signal_count else 0.0,
+            "min_seasonal_points": int(config["min_seasonal_points"]),
+            "min_baseline_points": int(config["min_baseline_points"]),
+        },
+        "incidents": {
+            "incident_count": len(incidents),
+            "critical_incidents": sum(1 for row in incidents if row["severity"] == "critical"),
+            "warning_incidents": sum(1 for row in incidents if row["severity"] == "warning"),
+        },
+        "alert_budget": {
+            "anomaly_signal_count": anomaly_signal_count,
+            "signal_count": signal_count,
+            "anomaly_rate": round(anomaly_signal_count / signal_count, 6) if signal_count else 0.0,
+            "max_alerts": int(config["max_alerts"]),
+        },
+        "quality_gates": [
+            {
+                "name": "baseline_points_available",
+                "actual": int(row["monitored_days"] or 0),
+                "operator": ">=",
+                "expected": int(config["min_baseline_points"]),
+                "passed": int(row["monitored_days"] or 0) >= int(config["min_baseline_points"]),
+            },
+            {
+                "name": "incident_budget",
+                "actual": len(incidents),
+                "operator": "<=",
+                "expected": int(config["max_alerts"]),
+                "passed": len(incidents) <= int(config["max_alerts"]),
             },
         ],
     }
@@ -358,6 +521,8 @@ def _alert_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "direction": direction,
         "message": f"{entity_type} {row['entity_label']} {metric} {direction} detected on {row['dt']}",
         "recommended_action": _recommended_action(metric, direction, severity),
+        "incident_id": row.get("incident_id"),
+        "baseline_mode": row.get("baseline_mode") or "global_median_mad",
     }
 
 
@@ -380,6 +545,8 @@ def _control_alert(run_id: str, severity: str, code: str, message: str, action: 
         "direction": "control",
         "message": message,
         "recommended_action": action,
+        "incident_id": f"incident:control:{code}",
+        "baseline_mode": "control_gate",
     }
 
 
@@ -413,3 +580,13 @@ def _json_safe(row: dict[str, Any]) -> dict[str, Any]:
 
 def _json_value(value: Any) -> Any:
     return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+def _higher_severity(left: str, right: str) -> str:
+    rank = {"critical": 0, "warning": 1, "watch": 2, "normal": 3}
+    return left if rank.get(left, 4) <= rank.get(right, 4) else right
+
+
+def _incident_sort_key(incident: dict[str, Any]) -> tuple[int, float]:
+    severity_rank = {"critical": 0, "warning": 1, "watch": 2}.get(incident["severity"], 3)
+    return (severity_rank, -float(incident.get("impact_value") or 0))

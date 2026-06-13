@@ -9,13 +9,13 @@ export function RankingsPage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Ranking insight</span>
+        <span className="eyebrow">排行洞察</span>
         <h1>品类与品牌排行洞察</h1>
-        <p>用于观察业务集中度，后续可扩展为 drill-down 到表格明细。</p>
+        <p>用于观察业务集中度，后续可扩展为下钻到表格明细。</p>
       </section>
       <section className="content-grid">
-        <ChartPanel title="类目排行" subtitle="一级类目事件量 TopN" option={barOption(categories.data ?? [], '事件量', '#7cdaff')} />
-        <ChartPanel title="品牌销售额排行" subtitle="purchase 销售额 TopN" option={barOption(brands.data ?? [], '销售额', '#a78bfa')} />
+        <ChartPanel title="类目排行" subtitle="一级类目事件量前 N" option={barOption(categories.data ?? [], '事件量', '#7cdaff')} />
+        <ChartPanel title="品牌销售额排行" subtitle="购买销售额前 N" option={barOption(brands.data ?? [], '销售额', '#a78bfa')} />
       </section>
     </>
   );

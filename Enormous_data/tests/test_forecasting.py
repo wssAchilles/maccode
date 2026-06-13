@@ -74,6 +74,8 @@ def test_forecasting_backtest_generates_error_rows_when_history_exists(spark):
     )
 
     assert metrics["forecasting_backtest"]
+    assert metrics["forecasting_evaluation"]["model_metrics"]
+    assert any(row["group"].startswith("h") for row in metrics["forecasting_evaluation"]["horizon_metrics"])
     assert metrics["forecasting_quality"]["metrics"]["site_wape"] is not None
     assert metrics["forecasting_summary"]["history_days"] == 3
 

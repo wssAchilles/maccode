@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
+import { ChartFilterProvider } from '../context/ChartFilterContext';
 import { AffinityPage } from '../pages/AffinityPage';
 import { AnomalyPage } from '../pages/AnomalyPage';
 import { AttributionPage } from '../pages/AttributionPage';
@@ -17,6 +18,7 @@ import { OpsPage } from '../pages/OpsPage';
 import { OptimizationPage } from '../pages/OptimizationPage';
 import { PortfolioPage } from '../pages/PortfolioPage';
 import { QualityPage } from '../pages/QualityPage';
+import { ControlledQueryPage } from '../pages/ControlledQueryPage';
 import { RankingsPage } from '../pages/RankingsPage';
 import { RecommendationsPage } from '../pages/RecommendationsPage';
 import { TablePage } from '../pages/TablePage';
@@ -29,6 +31,7 @@ export const appRoutes = [
   { path: '/attribution', element: <AttributionPage /> },
   { path: '/journey', element: <JourneyPage /> },
   { path: '/optimization', element: <OptimizationPage /> },
+  { path: '/query', element: <ControlledQueryPage /> },
   { path: '/recommendations', element: <RecommendationsPage /> },
   { path: '/anomalies', element: <AnomalyPage /> },
   { path: '/lifecycle', element: <LifecyclePage /> },
@@ -46,6 +49,7 @@ export const appRoutes = [
 
 export function AppRoutes() {
   return (
+    <ChartFilterProvider>
     <Routes>
       <Route element={<AppShell />}>
         {appRoutes.map((route) =>
@@ -57,5 +61,6 @@ export function AppRoutes() {
         )}
       </Route>
     </Routes>
+    </ChartFilterProvider>
   );
 }

@@ -13,8 +13,10 @@ import {
   X,
 } from 'lucide-react';
 import { useJob } from '../../api/hooks';
+import { LocalizedStatusPill } from '../LocalizedStatusPill';
 import { CommandPalette } from './CommandPalette';
 import { navGroups, navItems } from './navigation';
+import { statusLabel } from '../../i18n/displayText';
 
 function getStoredCollapsed() {
   if (typeof window === 'undefined') {
@@ -88,8 +90,8 @@ export function AppShell() {
           <div className="brand-mark">
             <Sparkles size={22} />
             <div className="brand-copy">
-              <strong>Enormous Data</strong>
-              <span>Spark Commerce Lab</span>
+              <strong>电商数据驾驶舱</strong>
+              <span>Spark 计算实验室</span>
             </div>
           </div>
           <button className="sidebar-close" type="button" aria-label="关闭导航" onClick={() => setMobileOpen(false)}>
@@ -124,10 +126,10 @@ export function AppShell() {
           <span>{collapsed ? '展开' : '收起导航'}</span>
         </button>
         <div className="sidebar-foot">
-          <span>Flask API</span>
+          <span>Flask 接口</span>
           <strong className={`sidebar-status tone-${statusTone(job.data?.status)}`}>
             <Circle size={9} fill="currentColor" />
-            {jobStatus}
+            {statusLabel(jobStatus)}
           </strong>
         </div>
       </aside>
@@ -144,9 +146,7 @@ export function AppShell() {
               <span>{currentPage.detail}</span>
             </span>
             {latestRun ? <span className="workflow-chip run-chip">最近运行 {latestRun.slice(0, 12)}</span> : null}
-            <span className={`status-pill tone-${statusTone(job.data?.status)}`}>
-              <BellDot size={14} /> {jobStatus}
-            </span>
+            <LocalizedStatusPill icon={<BellDot size={14} />} status={jobStatus} tone={statusTone(job.data?.status)} />
           </div>
         </header>
         <main className="workspace" id="main-workspace" ref={workspaceRef} tabIndex={-1}>

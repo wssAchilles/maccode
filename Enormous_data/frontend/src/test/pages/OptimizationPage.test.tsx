@@ -8,8 +8,8 @@ describe('OptimizationPage', () => {
     renderWithProviders(<OptimizationPage />);
 
     expect(await screen.findByText('促销预算与推荐位优化')).toBeInTheDocument();
-    expect(await screen.findByText('optimal')).toBeInTheDocument();
-    expect(await screen.findAllByText('feature_slot')).toHaveLength(2);
+    expect(await screen.findByText('最优')).toBeInTheDocument();
+    expect(await screen.findAllByText('推荐位加权')).toHaveLength(2);
     expect(await screen.findByText('1004856')).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import type {
   AffinityCommunity,
+  AffinityCentrality,
   AffinityEdge,
   AffinityNode,
   AffinityOpportunity,
@@ -7,6 +8,9 @@ import type {
   AffinitySummary,
   ApiEnvelope,
   AnomalyAlert,
+  AnomalyEvaluation,
+  AnomalyIncident,
+  AnomalyRootCause,
   AnomalyRules,
   AnomalySummary,
   AnomalyTimelinePoint,
@@ -27,22 +31,29 @@ import type {
   CohortSegment,
   CohortSummary,
   CohortValueCurve,
+  ControlledQueryResult,
   DailyConversion,
+  DashboardSlice,
   DateValue,
   ExperimentAssignment,
   ExperimentCatalogItem,
   ExperimentGuardrails,
+  ExperimentResult,
   ExperimentSegment,
   ExperimentSummary,
+  ExperimentUplift,
   FeatureMartCategory,
+  FeatureMartFeature,
   FeatureMartFreshness,
   FeatureMartPartitionReport,
   FeatureMartProduct,
   FeatureMartQuality,
+  FeatureMartReadiness,
   FeatureMartSummary,
   FeatureMartUser,
   ForecastingBacktestPoint,
   ForecastingEntity,
+  ForecastingEvaluation,
   ForecastingQuality,
   ForecastingRisk,
   ForecastingSeriesPoint,
@@ -63,6 +74,7 @@ import type {
   LifecycleUser,
   NamedValue,
   OptimizationCandidate,
+  OptimizationImpact,
   OptimizationPlanItem,
   OptimizationQuality,
   OptimizationSummary,
@@ -76,6 +88,8 @@ import type {
   PortfolioSummary,
   ProductConversion,
   RecommendationAlert,
+  RecommendationCandidate,
+  RecommendationEvaluation,
   RecommendationItem,
   RecommendationQuality,
   RecommendationSummary,
@@ -122,9 +136,122 @@ export const dailySalesFixture: DateValue[] = [
 ];
 
 export const rankingFixture: NamedValue[] = [
-  { name: 'electronics.smartphone', value: 300, orders: 40 },
-  { name: 'apparel.shoes', value: 220, orders: 30 },
+  { name: 'electronics', value: 300, orders: 40 },
+  { name: 'apparel', value: 220, orders: 30 },
 ];
+
+export const dashboardSliceFixture: DashboardSlice = {
+  summary: {
+    event_count: 80,
+    purchase_count: 80,
+    total_sales: 40000,
+    unique_users: 72,
+    unique_sessions: 78,
+    avg_order_value: 500,
+  },
+  event_type_count: [{ name: 'purchase', value: 80 }],
+  daily_events: [
+    { date: '2020-01-01', value: 30 },
+    { date: '2020-01-02', value: 50 },
+  ],
+  daily_sales: [
+    { date: '2020-01-01', value: 12000 },
+    { date: '2020-01-02', value: 28000 },
+  ],
+  top_categories: [
+    { name: 'electronics', value: 45 },
+    { name: 'apparel', value: 35 },
+  ],
+  evidence: {
+    source_dataset: 'dashboard_metric_cube',
+    filtered_row_count: 80,
+    total_row_count: 960,
+    coverage_rate: 0.083333,
+    query_ms: 18.4,
+    run_id: 'slice-run-1',
+    contract_version: 'dashboard-metric-cube/v1',
+    dataset_version: 'slice-run-1:dashboard-metric-cube/v1',
+    generated_at: '2026-06-11T08:28:42Z',
+    refreshed_at: '2026-06-11T08:28:42Z',
+    spark_duration: 12.3,
+    cache_mode: 'spark_cube',
+    cache_hit: true,
+    fallback_reason: null,
+    cube_path: 'data/cache/dashboard_cube_total',
+    cube_paths: {
+      total: 'data/cache/dashboard_cube_total',
+      daily: 'data/cache/dashboard_cube_daily',
+    },
+    cube_row_count: 128,
+    semantic_version: 'dashboard-semantic-metrics/v1',
+    metric_grain: '筛选维度汇总 / 日级趋势',
+    metric_definitions: [
+      {
+        metric_name: 'event_count',
+        chinese_name: '事件量',
+        formula: '符合筛选条件的行为事件行数',
+        aggregation: '计数',
+      },
+      {
+        metric_name: 'total_sales',
+        chinese_name: '成交额',
+        formula: '购买事件的价格合计',
+        aggregation: '条件求和',
+      },
+    ],
+    filters: { event_type: 'purchase' },
+  },
+};
+
+export const controlledQueryFixture: ControlledQueryResult = {
+  contract_version: 'controlled-natural-query/v1',
+  query: '按月份统计销售额',
+  status: 'matched',
+  matched: true,
+  message: '已识别为受控查询，结果来自物化指标或缓存数据。',
+  confidence: 0.92,
+  intent: {
+    metric: 'total_sales',
+    metric_label: '成交额',
+    dimension: 'month',
+    dimension_label: '月份',
+    aggregation: 'sum',
+    chart_type: 'line',
+    limit: 12,
+    time_grain: 'month',
+    event_type_filter: null,
+    event_type_filter_label: null,
+  },
+  chart: {
+    type: 'line',
+    title: '按月份统计成交额',
+    x_field: 'name',
+    y_field: 'value',
+    series_name: '成交额',
+    dimension_label: '月份',
+    metric_label: '成交额',
+  },
+  rows: [
+    { name: '2020-01', raw_name: '2020-01', value: 18230.5, share: 0.31305 },
+    { name: '2020-02', raw_name: '2020-02', value: 40000, share: 0.68695 },
+  ],
+  suggestions: ['按月份统计销售额', '按日期统计事件量', '按类目统计购买数', '按品牌统计销售额', '按行为类型统计事件量'],
+  insight: '2020-02 的成交额最高，为 40,000。',
+  evidence: {
+    source_dataset: 'dashboard_metric_cube',
+    run_id: 'query-run-1',
+    contract_version: 'dashboard-metric-cube/v1',
+    dataset_version: 'query-run-1:dashboard-metric-cube/v1',
+    generated_at: '2026-06-11T08:28:42Z',
+    query_ms: 18.4,
+    row_count: 2,
+    execution_engine: 'dashboard_slice_cache',
+    cache_mode: 'spark_cube',
+    cache_hit: true,
+    semantic_version: 'dashboard-semantic/v1',
+    metric_grain: '月级趋势',
+  },
+};
 
 export const conversionFunnelFixture: SessionFunnel = {
   totals: {
@@ -346,6 +473,121 @@ export const optimizationQualityFixture: OptimizationQuality = {
   min_confidence: 0.03,
 };
 
+export const optimizationImpactFixture: OptimizationImpact = {
+  generated_at: '2026-06-10T13:20:00+00:00',
+  overall_status: 'succeeded',
+  overall_tone: 'success',
+  headline: '数据清洗、质量门禁和模型产物已接入核心驾驶舱，前端可直接展示优化收益。',
+  summary: {
+    success_count: 9,
+    warning_count: 1,
+    danger_count: 0,
+    visible_page_count: 4,
+    evidence_count: 12,
+    primary_action: '继续观察召回、推荐和预测模块的转化表现',
+  },
+  data_layers: [
+    {
+      id: 'feature-mart',
+      title: '行为特征层',
+      status: 'passed',
+      tone: 'success',
+      metric: '61/61 partitions',
+      detail: '清洗后的用户、商品和品类特征已按日期分区输出。',
+      action: '前端筛选和模块图表可复用同一套特征口径。',
+    },
+    {
+      id: 'cart-recovery',
+      title: '购物车召回层',
+      status: 'passed',
+      tone: 'success',
+      metric: '120 queue items',
+      detail: '召回队列已按流失价值、放弃率和置信度排序。',
+      action: '优先处理高价值且高置信度的召回对象。',
+    },
+  ],
+  quality_gates: [
+    {
+      id: 'quality-contracts',
+      title: '接口契约',
+      status: 'passed',
+      tone: 'success',
+      metric: 'stable',
+      detail: '核心分析接口保持统一 envelope 和 contract version。',
+      action: '前端可稳定读取模块状态、质量和推荐动作。',
+    },
+    {
+      id: 'forecast-review',
+      title: '预测风险门禁',
+      status: 'needs review',
+      tone: 'warning',
+      metric: '5 high risk',
+      detail: '预测样本历史较短，结果需要作为计划信号而非确定性结论。',
+      action: '在前端保留风险提示，避免误读预测结果。',
+    },
+  ],
+  model_cards: [
+    {
+      id: 'recommendation-ranker',
+      title: '推荐排序',
+      status: 'passed',
+      tone: 'success',
+      metric: 'top-k ready',
+      detail: '推荐项带有来源、置信度、风险和发布建议。',
+      action: '推荐页可按置信度和来源快速判断上线优先级。',
+    },
+    {
+      id: 'forecasting-model',
+      title: '需求预测',
+      status: 'needs review',
+      tone: 'warning',
+      metric: 'sparse fallback',
+      detail: '低历史覆盖实体自动回退到稀疏基线模型。',
+      action: '预测页需要同时展示 GMV 规模和风险结构。',
+    },
+  ],
+  performance_cards: [
+    {
+      id: 'chart-first-reading',
+      title: '图表优先阅读',
+      status: 'ready',
+      tone: 'success',
+      metric: '3 modules',
+      detail: '召回、推荐和预测页面已从表格优先改为图表优先。',
+      action: '让用户先看趋势、结构和 Top 机会，再展开明细表。',
+    },
+  ],
+  frontend_sections: [
+    {
+      id: 'cart-recovery',
+      page: '购物车召回',
+      route: '/cart-recovery',
+      tone: 'success',
+      status: 'ready',
+      visible_result: '召回动作、流失价值、商品和品类机会通过图表呈现。',
+      source_cards: 'cart-recovery, chart-first-reading',
+    },
+    {
+      id: 'recommendations',
+      page: '推荐守护',
+      route: '/recommendations',
+      tone: 'success',
+      status: 'ready',
+      visible_result: '推荐来源、品类覆盖、置信度和风险分布可视化。',
+      source_cards: 'recommendation-ranker, chart-first-reading',
+    },
+    {
+      id: 'forecasting',
+      page: '需求预测',
+      route: '/forecasting',
+      tone: 'warning',
+      status: 'needs review',
+      visible_result: '预测 GMV、风险等级、变化率和误差快照集中展示。',
+      source_cards: 'forecasting-model, forecast-review',
+    },
+  ],
+};
+
 export const recommendationSummaryFixture: RecommendationSummary = {
   contract_version: 'nearline-recommendation/v1',
   run_id: 'recommendation-final',
@@ -401,6 +643,78 @@ export const recommendationItemsFixture: RecommendationItem[] = [
   },
 ];
 
+export const recommendationCandidatesFixture: RecommendationCandidate[] = [
+  {
+    candidate_id: 'sess-100:1004856:personalized_category',
+    user_session: 'sess-100',
+    user_id: '501',
+    product_id: '1004856',
+    brand: 'samsung',
+    category_level1: 'electronics',
+    rank: 1,
+    candidate_source: 'personalized_category',
+    recall_stage: 'category_recall',
+    candidate_stage: 'ranked_topk',
+    score: 0.0944,
+    ranker_score: 1,
+    source_score: 1,
+    conversion_score: 0.0944,
+    freshness_score: 0.82,
+    affinity_score: 0,
+    confidence: 0.82,
+    ranker_model: 'interpretable_rule_ranker_v1',
+    calibration_bucket: 'high',
+    reason_codes: ['category_affinity', 'high_conversion'],
+    fallback_used: false,
+  },
+  {
+    candidate_id: 'sess-100:1004767:optimization_fallback',
+    user_session: 'sess-100',
+    user_id: '501',
+    product_id: '1004767',
+    brand: 'apple',
+    category_level1: 'electronics',
+    rank: 2,
+    candidate_source: 'optimization_fallback',
+    recall_stage: 'popular_fallback',
+    candidate_stage: 'ranked_topk',
+    score: 0.0817,
+    ranker_score: 0.8655,
+    source_score: 0.9512,
+    conversion_score: 0.0817,
+    freshness_score: 0.78,
+    affinity_score: 0,
+    confidence: 0.78,
+    ranker_model: 'interpretable_rule_ranker_v1',
+    calibration_bucket: 'high',
+    reason_codes: ['optimization_or_global_fallback'],
+    fallback_used: true,
+  },
+  {
+    candidate_id: 'sess-100:1004999:graph_neighbor',
+    user_session: 'sess-100',
+    user_id: '501',
+    product_id: '1004999',
+    brand: 'fitbit',
+    category_level1: 'accessories',
+    rank: 3,
+    candidate_source: 'graph_neighbor',
+    recall_stage: 'graph_neighbor_recall',
+    candidate_stage: 'ranked_topk',
+    score: 0.0751,
+    ranker_score: 0.7956,
+    source_score: 0.781,
+    conversion_score: 0.0751,
+    freshness_score: 0.641,
+    affinity_score: 0.614,
+    confidence: 0.641,
+    ranker_model: 'interpretable_rule_ranker_v1',
+    calibration_bucket: 'medium',
+    reason_codes: ['graph_neighbor_recall', 'high_lift'],
+    fallback_used: false,
+  },
+];
+
 export const recommendationQualityFixture: RecommendationQuality = {
   contract_version: 'nearline-recommendation/v1',
   recommendation_count: 1000,
@@ -417,6 +731,59 @@ export const recommendationQualityFixture: RecommendationQuality = {
   checks: [
     { name: 'coverage_rate', actual: 0.8, operator: '>=', expected: 0.75, passed: true },
     { name: 'fallback_rate', actual: 0.28, operator: '<=', expected: 0.8, passed: true },
+  ],
+};
+
+export const recommendationEvaluationFixture: RecommendationEvaluation = {
+  contract_version: 'nearline-recommendation/v1',
+  run_id: 'recommendation-final',
+  top_k: 5,
+  split: {
+    strategy: 'leave_latest_interaction_per_session',
+    train_rows: 8400,
+    holdout_rows: 1200,
+    evaluated_sessions: 1200,
+  },
+  behavior_weights: { view: 1, cart: 3, purchase: 8 },
+  model_metrics: [
+    {
+      model_name: 'rule_recommendation',
+      status: 'evaluated',
+      evaluated_sessions: 1200,
+      predicted_items: 5200,
+      hit_count: 368,
+      precision_at_k: 0.061,
+      recall_at_k: 0.306,
+      ndcg_at_k: 0.214,
+      catalog_coverage: 0.18,
+      fallback_rate: 0.28,
+    },
+    {
+      model_name: 'als_implicit',
+      status: 'evaluated',
+      evaluated_sessions: 1200,
+      predicted_items: 6000,
+      hit_count: 421,
+      precision_at_k: 0.07,
+      recall_at_k: 0.351,
+      ndcg_at_k: 0.249,
+      catalog_coverage: 0.24,
+      fallback_rate: 0,
+    },
+  ],
+  source_mix: [
+    { source: 'personalized_category', recommendations: 720, share: 0.72 },
+    { source: 'optimization_fallback', recommendations: 280, share: 0.28 },
+  ],
+  topk_matrix: [
+    { model_name: 'rule_recommendation', user_session: 'sess-100', rank: 1, product_id: '1004856', hit: true, source: 'personalized_category', score: 0.0944 },
+    { model_name: 'rule_recommendation', user_session: 'sess-100', rank: 2, product_id: '1004767', hit: false, source: 'optimization_fallback', score: 0.0817 },
+    { model_name: 'als_implicit', user_session: 'sess-100', rank: 1, product_id: '1004856', hit: true, source: 'als_implicit', score: 0.881 },
+    { model_name: 'als_implicit', user_session: 'sess-100', rank: 2, product_id: '1005115', hit: false, source: 'als_implicit', score: 0.734 },
+  ],
+  quality_gates: [
+    { name: 'recall_at_k_available', actual: 0.351, operator: '>=', expected: 0, passed: true },
+    { name: 'als_baseline_available', actual: 'evaluated', operator: '==', expected: 'evaluated', passed: true },
   ],
 };
 
@@ -467,6 +834,68 @@ export const anomalyAlertsFixture: AnomalyAlert[] = [
   anomalyAlertFixture,
   { ...anomalyAlertFixture, alert_code: 'product_views_drop', severity: 'warning', entity_type: 'product', entity_id: '1004856', entity_label: 'samsung / electronics', metric: 'views', direction: 'drop' },
 ];
+
+export const anomalyIncidentsFixture: AnomalyIncident[] = [
+  {
+    contract_version: 'ops-anomaly-radar/v1',
+    incident_id: 'incident:2019-11-01:category:electronics:revenue',
+    run_id: 'anomaly-final',
+    dt: '2019-11-01',
+    severity: 'critical',
+    entity_type: 'category',
+    entity_id: 'electronics',
+    entity_label: 'electronics',
+    metric: 'revenue',
+    alert_count: 1,
+    max_robust_z: 12.4,
+    impact_value: 4500,
+    root_cause_contributions: [
+      { dimension: 'category', value: 'electronics', metric: 'revenue', contribution: 4500, contribution_share: 1, direction: 'spike' },
+    ],
+    recommended_action: 'Inspect campaign, bot traffic, price promotion, and downstream capacity before scaling exposure.',
+  },
+];
+
+export const anomalyRootCauseFixture: AnomalyRootCause[] = [
+  {
+    contract_version: 'ops-anomaly-radar/v1',
+    incident_id: 'incident:2019-11-01:category:electronics:revenue',
+    dt: '2019-11-01',
+    severity: 'critical',
+    dimension: 'category',
+    value: 'electronics',
+    metric: 'revenue',
+    contribution: 4500,
+    contribution_share: 1,
+    direction: 'spike',
+  },
+];
+
+export const anomalyEvaluationFixture: AnomalyEvaluation = {
+  contract_version: 'ops-anomaly-radar/v1',
+  run_id: 'anomaly-final',
+  baseline: {
+    seasonal_signal_count: 128,
+    seasonal_coverage_rate: 0.267,
+    min_seasonal_points: 3,
+    min_baseline_points: 3,
+  },
+  incidents: {
+    incident_count: 1,
+    critical_incidents: 1,
+    warning_incidents: 0,
+  },
+  alert_budget: {
+    anomaly_signal_count: 2,
+    signal_count: 480,
+    anomaly_rate: 0.0042,
+    max_alerts: 100,
+  },
+  quality_gates: [
+    { name: 'baseline_points_available', actual: 4, operator: '>=', expected: 3, passed: true },
+    { name: 'incident_budget', actual: 1, operator: '<=', expected: 100, passed: true },
+  ],
+};
 
 export const anomalyTimelineFixture: AnomalyTimelinePoint[] = [
   { dt: '2019-11-01', signal_count: 120, critical_count: 1, warning_count: 1, watch_count: 0, max_robust_z: 12.4 },
@@ -705,6 +1134,91 @@ export const experimentGuardrailsFixture: ExperimentGuardrails = {
   recommended_action: 'Launch only experiments with sufficient treatment/control balance; keep holdout immutable during measurement.',
 };
 
+export const experimentResultsFixture: ExperimentResult[] = [
+  {
+    contract_version: 'growth-experimentation/v1',
+    run_id: 'experiment-final',
+    experiment_key: 'lifecycle_reactivation',
+    name: '生命周期再激活策略',
+    primary_metric: 'purchase_rate',
+    measurement_status: 'offline_history_replay',
+    oec_metric: 'purchase_rate',
+    treatment_users: 91,
+    control_users: 89,
+    expected_treatment_ratio: 0.5,
+    observed_treatment_ratio: 0.505,
+    srm_chi_square: 0.022,
+    srm_p_value: 0.882,
+    srm_status: 'passed',
+    control_mean: 0.079,
+    treatment_mean: 0.101,
+    absolute_lift: 0.022,
+    relative_lift: 0.278,
+    standard_error: 0.043,
+    ci_low: -0.062,
+    ci_high: 0.106,
+    p_value: 0.609,
+    decision: 'not_significant',
+    variant_rows: [
+      { variant: 'treatment', users: 91, conversions: 9, conversion_rate: 0.099, purchases: 9, views: 2700, carts: 320, revenue: 9100, expected_incremental_gmv: 1240.5, avg_uplift_score: 0.052 },
+      { variant: 'control', users: 89, conversions: 7, conversion_rate: 0.079, purchases: 7, views: 2610, carts: 280, revenue: 7600, expected_incremental_gmv: 0, avg_uplift_score: 0.051 },
+    ],
+    causal_caveat: 'offline_history_replay_not_causal',
+  },
+  {
+    contract_version: 'growth-experimentation/v1',
+    run_id: 'experiment-final',
+    experiment_key: 'recommendation_personalization',
+    name: '推荐个性化策略',
+    primary_metric: 'view_to_cart_rate',
+    measurement_status: 'offline_history_replay',
+    oec_metric: 'purchase_rate',
+    treatment_users: 600,
+    control_users: 600,
+    expected_treatment_ratio: 0.5,
+    observed_treatment_ratio: 0.5,
+    srm_chi_square: 0,
+    srm_p_value: 1,
+    srm_status: 'passed',
+    control_mean: 0.142,
+    treatment_mean: 0.157,
+    absolute_lift: 0.015,
+    relative_lift: 0.106,
+    standard_error: 0.021,
+    ci_low: -0.026,
+    ci_high: 0.056,
+    p_value: 0.476,
+    decision: 'not_significant',
+    variant_rows: [
+      { variant: 'treatment', users: 600, conversions: 94, conversion_rate: 0.157, purchases: 112, views: 21000, carts: 3300, revenue: 48200, expected_incremental_gmv: 1840.25, avg_uplift_score: 0.034 },
+      { variant: 'control', users: 600, conversions: 85, conversion_rate: 0.142, purchases: 101, views: 20850, carts: 3020, revenue: 45100, expected_incremental_gmv: 0, avg_uplift_score: 0.033 },
+    ],
+    causal_caveat: 'offline_history_replay_not_causal',
+  },
+];
+
+export const experimentUpliftFixture: ExperimentUplift = {
+  contract_version: 'growth-experimentation/v1',
+  run_id: 'experiment-final',
+  measurement_status: 'offline_history_replay',
+  causal_valid: false,
+  causal_caveat: 'randomized_exposure_and_outcome_required_for_true_uplift',
+  summary: [
+    { experiment_key: 'lifecycle_reactivation', auuc: 1.28, qini_auc: 1.28, decile_count: 5 },
+    { experiment_key: 'recommendation_personalization', auuc: 2.12, qini_auc: 2.12, decile_count: 5 },
+  ],
+  deciles: [
+    { experiment_key: 'lifecycle_reactivation', decile: 1, treatment_users: 20, control_users: 18, treatment_conversion_rate: 0.15, control_conversion_rate: 0.08, uplift: 0.07, cumulative_gain: 1.4, avg_uplift_score: 0.061 },
+    { experiment_key: 'lifecycle_reactivation', decile: 2, treatment_users: 19, control_users: 20, treatment_conversion_rate: 0.11, control_conversion_rate: 0.09, uplift: 0.02, cumulative_gain: 1.78, avg_uplift_score: 0.053 },
+    { experiment_key: 'lifecycle_reactivation', decile: 3, treatment_users: 18, control_users: 18, treatment_conversion_rate: 0.08, control_conversion_rate: 0.08, uplift: 0, cumulative_gain: 1.78, avg_uplift_score: 0.047 },
+    { experiment_key: 'recommendation_personalization', decile: 1, treatment_users: 120, control_users: 118, treatment_conversion_rate: 0.21, control_conversion_rate: 0.16, uplift: 0.05, cumulative_gain: 6, avg_uplift_score: 0.041 },
+    { experiment_key: 'recommendation_personalization', decile: 2, treatment_users: 122, control_users: 120, treatment_conversion_rate: 0.17, control_conversion_rate: 0.15, uplift: 0.02, cumulative_gain: 8.44, avg_uplift_score: 0.036 },
+  ],
+  quality_gates: [
+    { name: 'causal_outcome_available', actual: 'offline_history_replay', operator: '==', expected: 'randomized_experiment_results', passed: false },
+  ],
+};
+
 export const featureMartSummaryFixture: FeatureMartSummary = {
   contract_version: 'behavior-feature-mart/v1',
   run_id: 'feature-mart-final',
@@ -776,6 +1290,54 @@ export const featureMartPartitionsFixture: FeatureMartPartitionReport = {
   partitions: [
     { dt: '2019-10-01', rows: 10240, status: 'written' },
     { dt: '2019-10-02', rows: 11800, status: 'written' },
+  ],
+};
+
+export const featureMartFeaturesFixture: FeatureMartFeature[] = [
+  {
+    contract_version: 'behavior-feature-mart/v1',
+    run_id: 'feature-mart-final',
+    feature_name: 'daily_product_behavior.views',
+    chinese_name: '商品日浏览量',
+    grain: 'dt + product_id',
+    source: 'cleaned_events.event_type=view',
+    refresh_frequency: 'daily',
+    quality_assertions: ['non_negative', 'partition_present', 'event_key_deduped'],
+    owner: 'spark_feature_mart',
+  },
+  {
+    contract_version: 'behavior-feature-mart/v1',
+    run_id: 'feature-mart-final',
+    feature_name: 'daily_category_behavior.conversion_rate',
+    chinese_name: '类目日转化率',
+    grain: 'dt + category_level1',
+    source: 'daily_category_behavior.purchases / views',
+    refresh_frequency: 'daily',
+    quality_assertions: ['between_0_and_1', 'partition_present'],
+    owner: 'spark_feature_mart',
+  },
+];
+
+export const featureMartReadinessFixture: FeatureMartReadiness = {
+  contract_version: 'behavior-feature-mart/v1',
+  run_id: 'feature-mart-final',
+  status: 'ready',
+  ready_features: 2,
+  total_features: 2,
+  checks: [
+    { name: 'quality_status', actual: 'passed', operator: '==', expected: 'passed', passed: true },
+    { name: 'freshness_sla', actual: 'passed', operator: '==', expected: 'passed', passed: true },
+    { name: 'partition_completeness', actual: 61, operator: '>=', expected: 61, passed: true },
+  ],
+  features: [
+    { feature_name: 'daily_product_behavior.views', chinese_name: '商品日浏览量', grain: 'dt + product_id', status: 'ready', failed_rules: [], source: 'cleaned_events.event_type=view' },
+    { feature_name: 'daily_category_behavior.conversion_rate', chinese_name: '类目日转化率', grain: 'dt + category_level1', status: 'ready', failed_rules: [], source: 'daily_category_behavior.purchases / views' },
+  ],
+  lineage: [
+    { from: 'raw_events', to: 'cleaned_events', relation: 'clean_and_validate' },
+    { from: 'cleaned_events', to: 'daily_product_behavior', relation: 'aggregate_daily_product' },
+    { from: 'cleaned_events', to: 'daily_category_behavior', relation: 'aggregate_daily_category' },
+    { from: 'feature_mart', to: 'recommendations_forecasting_anomaly', relation: 'serve_downstream_algorithms' },
   ],
 };
 
@@ -991,6 +1553,7 @@ export const forecastingBacktestFixture: ForecastingBacktestPoint[] = [
     forecast: 401627.6,
     absolute_error: 0,
     error: 0,
+    horizon: 1,
     model_name: 'rolling_baseline_backtest',
   },
 ];
@@ -1022,6 +1585,34 @@ export const forecastingQualityFixture: ForecastingQuality = {
     backtest_rows: 1,
     sparse_history: true,
   },
+};
+
+export const forecastingEvaluationFixture: ForecastingEvaluation = {
+  contract_version: 'demand-forecasting/v1',
+  run_id: 'forecasting-final',
+  windows: [1, 3, 7],
+  model_metrics: [
+    { group: 'weekday_baseline_backtest', rows: 9, actual_sum: 860000, forecast_sum: 832500, wape: 0.091, bias: 0.032, mae: 8700 },
+    { group: 'rolling_baseline_backtest', rows: 4, actual_sum: 380000, forecast_sum: 401000, wape: 0.126, bias: -0.055, mae: 11970 },
+  ],
+  horizon_metrics: [
+    { group: 'h1', rows: 4, actual_sum: 320000, forecast_sum: 305000, wape: 0.071, bias: 0.047, mae: 5700 },
+    { group: 'h2', rows: 4, actual_sum: 300000, forecast_sum: 314000, wape: 0.108, bias: -0.047, mae: 8100 },
+    { group: 'h3', rows: 4, actual_sum: 240000, forecast_sum: 252500, wape: 0.122, bias: -0.052, mae: 9200 },
+  ],
+  window_metrics: [
+    { window_days: 1, rows: 4, actual_sum: 320000, forecast_sum: 305000, wape: 0.071, bias: 0.047, mae: 5700 },
+    { window_days: 3, rows: 12, actual_sum: 860000, forecast_sum: 871500, wape: 0.098, bias: -0.013, mae: 7700 },
+  ],
+  error_distribution: {
+    max_absolute_error: 42000,
+    avg_absolute_error: 7700,
+    backtest_rows: 12,
+  },
+  quality_gates: [
+    { name: 'site_wape', actual: 0.098, operator: '<=', expected: 0.35, passed: true },
+    { name: 'weekday_baseline_available', actual: true, operator: '==', expected: true, passed: true },
+  ],
 };
 
 export const affinityEdgeFixture: AffinityEdge = {
@@ -1131,6 +1722,45 @@ export const affinityCommunitiesFixture: AffinityCommunity[] = [
     revenue: 14200,
     top_entities: ['1004856', '1004767'],
     recommended_action: 'Use community neighbors for category-level cross-sell review.',
+  },
+];
+
+export const affinityCentralityFixture: AffinityCentrality[] = [
+  {
+    contract_version: 'product-affinity-graph/v1',
+    entity_id: '1004856',
+    entity_label: 'product 1004856',
+    brand: 'samsung',
+    category_level1: 'electronics',
+    community_id: 'category:electronics',
+    degree: 3,
+    weighted_degree: 4.8,
+    normalized_weighted_degree: 1,
+    pagerank_score: 0.92,
+    centrality_score: 0.964,
+    community_size: 2,
+    community_revenue: 14200,
+    revenue: 8000,
+    views: 1000,
+    purchases: 80,
+  },
+  {
+    contract_version: 'product-affinity-graph/v1',
+    entity_id: '1004767',
+    entity_label: 'product 1004767',
+    brand: 'apple',
+    category_level1: 'electronics',
+    community_id: 'category:electronics',
+    degree: 3,
+    weighted_degree: 4.2,
+    normalized_weighted_degree: 0.875,
+    pagerank_score: 1,
+    centrality_score: 0.931,
+    community_size: 2,
+    community_revenue: 14200,
+    revenue: 6200,
+    views: 820,
+    purchases: 60,
   },
 ];
 
@@ -1868,6 +2498,93 @@ export const jobFixture: JobStatus = {
     manifest_path: 'data/cache/run_manifest.json',
     run_manifest_path: 'data/cache/runs/run-1/manifest.json',
   },
+  governance: {
+    contract_version: 'job-governance/v1',
+    run_id: 'run-1',
+    status: 'published',
+    active_stage: 'artifact_publish',
+    completion_ratio: 1,
+    freshness_sla_minutes: 1440,
+    freshness_warning_minutes: 720,
+    stage_counts: { succeeded: 5 },
+    artifact_counts: { fresh: 4 },
+    stages: [
+      { stage: 'queued', status: 'succeeded', started_at: '2026-06-08T06:00:00+00:00', finished_at: '2026-06-08T06:00:10+00:00', duration_seconds: 10 },
+      { stage: 'spark_execution', status: 'succeeded', started_at: '2026-06-08T06:00:10+00:00', finished_at: '2026-06-08T06:00:28+00:00', duration_seconds: 18.2 },
+      { stage: 'history_metrics', status: 'succeeded', started_at: '2026-06-08T06:00:28+00:00', finished_at: '2026-06-08T06:00:28+00:00', duration_seconds: null },
+      { stage: 'quality_gate', status: 'succeeded', started_at: '2026-06-08T06:00:28+00:00', finished_at: '2026-06-08T06:00:28+00:00', duration_seconds: null },
+      { stage: 'artifact_publish', status: 'succeeded', started_at: '2026-06-08T06:00:28+00:00', finished_at: '2026-06-08T06:00:28+00:00', duration_seconds: null },
+    ],
+    artifacts: [
+      {
+        artifact_id: 'run_manifest',
+        artifact_type: 'manifest',
+        path: 'data/cache/runs/run-1/manifest.json',
+        exists: true,
+        status: 'fresh',
+        updated_at: '2026-06-08T06:00:28+00:00',
+        age_minutes: 12,
+        size_bytes: 1024,
+        freshness_sla_minutes: 1440,
+        freshness_warning_minutes: 720,
+      },
+      {
+        artifact_id: 'dashboard_cube_summary',
+        artifact_type: 'dashboard_cube',
+        path: 'data/cache/dashboard_cube_summary.json',
+        exists: true,
+        status: 'fresh',
+        updated_at: '2026-06-08T06:00:28+00:00',
+        age_minutes: 12,
+        size_bytes: 905,
+        freshness_sla_minutes: 1440,
+        freshness_warning_minutes: 720,
+      },
+      {
+        artifact_id: 'dashboard_cube_total',
+        artifact_type: 'dashboard_cube',
+        path: 'data/cache/dashboard_cube_total',
+        exists: true,
+        status: 'fresh',
+        updated_at: '2026-06-08T06:00:28+00:00',
+        age_minutes: 12,
+        size_bytes: 4096,
+        freshness_sla_minutes: 1440,
+        freshness_warning_minutes: 720,
+      },
+      {
+        artifact_id: 'recommendation_evaluation',
+        artifact_type: 'algorithm',
+        path: 'data/cache/recommendation_evaluation.json',
+        exists: true,
+        status: 'fresh',
+        updated_at: '2026-06-08T06:00:28+00:00',
+        age_minutes: 12,
+        size_bytes: 2048,
+        freshness_sla_minutes: 1440,
+        freshness_warning_minutes: 720,
+      },
+    ],
+    spark_summary: {
+      application_id: 'application_1780989669876_0004',
+      application_status: 'SUCCEEDED',
+      history_metrics_status: 'collected',
+      failed_task_count: 0,
+      retried_task_count: 0,
+      shuffle_read_bytes: 1048576,
+      shuffle_write_bytes: 524288,
+      memory_spill_bytes: 0,
+      disk_spill_bytes: 0,
+      executor_count: 1,
+      driver_peak_memory_mb: 137.89,
+    },
+    quality_summary: {
+      status: 'passed',
+      check_count: 3,
+      passed_check_count: 3,
+      failure_stage: 'none',
+    },
+  },
 };
 
 export const jobListFixture: JobList = {
@@ -1887,6 +2604,7 @@ export const jobLineageFixture: JobLineage = {
   spark_history_metrics: jobFixture.spark_history_metrics,
   input_snapshot: jobFixture.input_snapshot,
   output_artifacts: jobFixture.output_artifacts,
+  governance: jobFixture.governance,
 };
 
 export const jobQualityFixture: JobQuality = {
@@ -1900,6 +2618,7 @@ export const jobQualityFixture: JobQuality = {
   quality_status: jobFixture.quality_status,
   quality_report: jobFixture.quality_report,
   failure_stage: null,
+  governance: jobFixture.governance,
 };
 
 export const opsEvidenceFixture: OpsEvidence = {
@@ -2087,6 +2806,7 @@ export const tableFixture: TableResult = {
   page: 1,
   size: 10,
   total: 2,
+  source_dataset: 'cleaned_events',
   rows: [
     {
       event_time: '2020-01-01 00:00:00 UTC',
@@ -2094,10 +2814,12 @@ export const tableFixture: TableResult = {
       product_id: '1001',
       category_id: '2001',
       category_code: 'electronics.smartphone',
+      category_level1: 'electronics',
       brand: 'apple',
       price: '999.9',
       user_id: '501',
       user_session: 's-1',
+      source_dataset: 'cleaned_events',
     },
     {
       event_time: '2020-01-01 00:02:00 UTC',
@@ -2105,10 +2827,12 @@ export const tableFixture: TableResult = {
       product_id: '1002',
       category_id: '2002',
       category_code: 'apparel.shoes',
+      category_level1: 'apparel',
       brand: 'nike',
       price: '299.9',
       user_id: '502',
       user_session: 's-2',
+      source_dataset: 'cleaned_events',
     },
   ],
 };

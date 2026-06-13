@@ -3,6 +3,7 @@ import { animate, stagger } from 'animejs';
 import { FileDown, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useJob, useRefreshJob, useSummary } from '../../api/hooks';
+import { statusLabel } from '../../i18n/displayText';
 import { compactDate, formatNumber } from '../../lib/format';
 import { DataGridMotion } from '../DataGridMotion';
 
@@ -38,7 +39,7 @@ export function Hero() {
     <header className="hero" ref={heroRef}>
       <DataGridMotion />
       <div className="hero-copy">
-        <span className="eyebrow">Kaggle ecommerce behavior dataset</span>
+        <span className="eyebrow">Kaggle 公开电商行为数据集</span>
         <h1>电商用户行为大数据分析工作台</h1>
         <p>把 Spark 作业、质量门禁和核心行为指标收在一个桌面工作台里，先判断数据是否可信，再进入转化、推荐和明细追踪。</p>
         <dl className="hero-insights" aria-label="数据运行摘要">
@@ -56,14 +57,14 @@ export function Hero() {
           </div>
           <div>
             <dt>质量状态</dt>
-            <dd>{qualityStatus}</dd>
+            <dd>{statusLabel(qualityStatus)}</dd>
           </div>
         </dl>
       </div>
       <div className="hero-actions">
         <button className="primary-action" onClick={() => refresh.mutate()} disabled={refresh.isPending} type="button">
           <RefreshCw size={18} className={refresh.isPending ? 'spin' : ''} />
-          {refresh.isPending ? '启动中' : '刷新 Spark'}
+          {refresh.isPending ? '启动中' : '刷新 Spark 计算'}
         </button>
         <button className="secondary-action" type="button" onClick={() => navigate('/table')}>
           <FileDown size={18} />

@@ -26,6 +26,8 @@ from spark_jobs.cart_recovery import (
     build_cart_recovery_outputs,
     cart_recovery_config,
 )
+from spark_jobs.dashboard_cube import build_dashboard_cube_outputs
+from spark_jobs.dashboard_semantics import DASHBOARD_CUBE_CONTRACT_VERSION, DASHBOARD_SEMANTIC_VERSION
 from spark_jobs.conversion import (
     CONVERSION_CONTRACT_VERSION,
     build_conversion_metrics,
@@ -69,6 +71,18 @@ from spark_jobs.writers import write_json_atomic, write_metric_files
 
 CONTRACT_VERSION = "pipeline-run-governance/v1"
 MAX_INPUT_FILE_SAMPLES = 20
+TABLE_EVENT_COLUMNS = [
+    "event_time",
+    "event_type",
+    "product_id",
+    "category_id",
+    "category_code",
+    "category_level1",
+    "brand",
+    "price",
+    "user_id",
+    "user_session",
+]
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -191,6 +205,12 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             **build_conversion_metrics(cleaned_df, session_facts, top_n),
             **feature_mart_metrics,
         }
+        dashboard_cube_frames, dashboard_cube_metrics = build_dashboard_cube_outputs(
+            cleaned_df,
+            run_id=run_id,
+            input_snapshot=input_snapshot,
+        )
+        metrics.update(dashboard_cube_metrics)
         affinity_frames, affinity_metrics = build_affinity_outputs(
             cleaned_df,
             affinity_settings,
@@ -311,10 +331,19 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "affinity_pair_base_rows": int(affinity_metrics["affinity_quality"].get("pair_base_rows") or 0),
             "experiment_assignment_rows": int(experiment_metrics["experiment_summary"].get("assignment_rows") or 0),
             "anomaly_signal_count": int(anomaly_metrics["anomaly_summary"].get("signal_count") or 0),
+            "dashboard_cube_rows": int(metrics["dashboard_cube_summary"].get("cube_row_count") or 0),
         }
         processed_base = str(data_config.get("processed_dir", "data/processed/ecommerce_behavior"))
         output_artifacts = {
             "metrics_dir": output_dir,
+            "table_events": str(Path(output_dir) / "table_events"),
+            "dashboard_cube_artifacts": {
+                "summary": str(Path(output_dir) / "dashboard_cube_summary.json"),
+                "semantic_metrics": str(Path(output_dir) / "dashboard_semantic_metrics.json"),
+                "total": str(Path(output_dir) / "dashboard_cube_total"),
+                "daily": str(Path(output_dir) / "dashboard_cube_daily"),
+                "base_dir": _child_path(processed_base, "dashboard_cube"),
+            },
             "processed_dir": data_config.get("processed_dir"),
             "processed_events": _child_path(processed_base, "events"),
             "manifest_path": str(Path(output_dir) / "run_manifest.json"),
@@ -330,6 +359,7 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
                 "series": str(Path(output_dir) / "forecasting_series.json"),
                 "entities": str(Path(output_dir) / "forecasting_entities.json"),
                 "backtest": str(Path(output_dir) / "forecasting_backtest.json"),
+                "evaluation": str(Path(output_dir) / "forecasting_evaluation.json"),
                 "risks": str(Path(output_dir) / "forecasting_risks.json"),
                 "quality": str(Path(output_dir) / "forecasting_quality.json"),
                 "base_dir": _child_path(processed_base, "forecasting"),
@@ -340,6 +370,7 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
                 "edges": str(Path(output_dir) / "affinity_edges.json"),
                 "communities": str(Path(output_dir) / "affinity_communities.json"),
                 "opportunities": str(Path(output_dir) / "affinity_opportunities.json"),
+                "centrality": str(Path(output_dir) / "affinity_centrality.json"),
                 "quality": str(Path(output_dir) / "affinity_quality.json"),
                 "base_dir": _child_path(processed_base, "affinity"),
             },
@@ -397,7 +428,9 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "recommendation_artifacts": {
                 "summary": str(Path(output_dir) / "recommendation_summary.json"),
                 "items": str(Path(output_dir) / "recommendation_items.json"),
+                "candidates": str(Path(output_dir) / "recommendation_candidates.json"),
                 "quality": str(Path(output_dir) / "recommendation_quality.json"),
+                "evaluation": str(Path(output_dir) / "recommendation_evaluation.json"),
                 "alerts": str(Path(output_dir) / "recommendation_alerts.json"),
                 "manifest": str(Path(output_dir) / "recommendation_manifest.json"),
                 "features_parquet": _child_path(processed_base, "recommendation_features"),
@@ -407,6 +440,8 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
                 "freshness": str(Path(output_dir) / "feature_mart_freshness.json"),
                 "quality": str(Path(output_dir) / "feature_mart_quality.json"),
                 "partitions": str(Path(output_dir) / "feature_mart_partitions.json"),
+                "features": str(Path(output_dir) / "feature_mart_features.json"),
+                "readiness": str(Path(output_dir) / "feature_mart_readiness.json"),
                 "products": str(Path(output_dir) / "feature_mart_products.json"),
                 "categories": str(Path(output_dir) / "feature_mart_categories.json"),
                 "users": str(Path(output_dir) / "feature_mart_users.json"),
@@ -415,6 +450,9 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "anomaly_artifacts": {
                 "summary": str(Path(output_dir) / "anomaly_summary.json"),
                 "alerts": str(Path(output_dir) / "anomaly_alerts.json"),
+                "incidents": str(Path(output_dir) / "anomaly_incidents.json"),
+                "root_cause": str(Path(output_dir) / "anomaly_root_cause.json"),
+                "evaluation": str(Path(output_dir) / "anomaly_evaluation.json"),
                 "timeline": str(Path(output_dir) / "anomaly_timeline.json"),
                 "rules": str(Path(output_dir) / "anomaly_rules.json"),
                 "base_dir": _child_path(processed_base, "anomaly"),
@@ -433,6 +471,8 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
                 "assignments": str(Path(output_dir) / "experiment_assignments.json"),
                 "segments": str(Path(output_dir) / "experiment_segments.json"),
                 "guardrails": str(Path(output_dir) / "experiment_guardrails.json"),
+                "results": str(Path(output_dir) / "experiment_results.json"),
+                "uplift": str(Path(output_dir) / "experiment_uplift.json"),
                 "base_dir": _child_path(processed_base, "experimentation"),
             },
         }
@@ -453,6 +493,8 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "experiment_contract_version": EXPERIMENT_CONTRACT_VERSION,
             "optimization_contract_version": OPTIMIZATION_CONTRACT_VERSION,
             "recommendation_contract_version": RECOMMENDATION_CONTRACT_VERSION,
+            "dashboard_cube_contract_version": DASHBOARD_CUBE_CONTRACT_VERSION,
+            "dashboard_semantic_version": DASHBOARD_SEMANTIC_VERSION,
             "elapsed_seconds": elapsed_seconds,
             "cleaned_rows_per_second": cleaned_rows_per_second,
             "spark_application_id": spark_application_id,
@@ -486,6 +528,8 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "lifecycle_contract_version": LIFECYCLE_CONTRACT_VERSION,
             "experiment_contract_version": EXPERIMENT_CONTRACT_VERSION,
             "optimization_contract_version": OPTIMIZATION_CONTRACT_VERSION,
+            "dashboard_cube_contract_version": DASHBOARD_CUBE_CONTRACT_VERSION,
+            "dashboard_semantic_version": DASHBOARD_SEMANTIC_VERSION,
             "status": "succeeded" if quality_gate["status"] != "failed" else "rejected",
             "elapsed_seconds": elapsed_seconds,
             "cleaned_rows_per_second": cleaned_rows_per_second,
@@ -532,6 +576,7 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "experiment_assignment_rows": metrics["experiment_summary"]["assignment_rows"],
             "recommendation_quality_status": metrics["recommendation_summary"]["quality_status"],
             "recommendation_count": metrics["recommendation_summary"]["recommendation_count"],
+            "dashboard_cube_rows": metrics["dashboard_cube_summary"]["cube_row_count"],
             "failure_stage": metrics["job"]["failure_stage"],
         }
 
@@ -544,6 +589,10 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             raise RuntimeError("quality gate failed")
 
         try:
+            table_events = cleaned_df.select(*TABLE_EVENT_COLUMNS)
+            _write_csv(table_events, str(Path(output_dir) / "table_events"))
+            _write_csv(dashboard_cube_frames["dashboard_cube_total"], str(Path(output_dir) / "dashboard_cube_total"))
+            _write_csv(dashboard_cube_frames["dashboard_cube_daily"], str(Path(output_dir) / "dashboard_cube_daily"))
             processed_dir = data_config.get("processed_dir")
             if processed_dir:
                 processed_path = str(processed_dir).rstrip("/")
@@ -554,6 +603,9 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
                 cleaned_events = cleaned_df.withColumn("dt", F.col("event_date").cast("string"))
                 _write_parquet(cleaned_events, _child_path(processed_path, "events"), partition_cols=["dt"])
                 _write_parquet(session_facts, _child_path(processed_path, "session_facts"))
+                dashboard_cube_path = _child_path(processed_path, "dashboard_cube")
+                _write_parquet(dashboard_cube_frames["dashboard_cube_total"], _child_path(dashboard_cube_path, "total"))
+                _write_parquet(dashboard_cube_frames["dashboard_cube_daily"], _child_path(dashboard_cube_path, "daily"), partition_cols=["dt"])
                 forecasting_path = _child_path(processed_path, "forecasting")
                 for name, frame in forecast_frames.items():
                     _write_parquet(frame, _child_path(forecasting_path, name), partition_cols=["dt"])
@@ -630,6 +682,10 @@ def _write_parquet(frame: DataFrame, path: str, partition_cols: list[str] | None
         writer = writer.partitionBy(*available_partitions)
     writer.parquet(path)
     frame.unpersist()
+
+
+def _write_csv(frame: DataFrame, path: str) -> None:
+    frame.write.mode("overwrite").option("header", True).csv(path)
 
 
 def _unpersist_frames(*items: object) -> None:

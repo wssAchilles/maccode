@@ -40,6 +40,8 @@ def build_feature_mart_outputs(
     freshness = build_freshness_report(deduped_events, run_id, config)
     partitions = build_partition_report(deduped_events, run_id)
     summary = build_feature_mart_summary(run_id, input_snapshot, quality, freshness, partitions)
+    feature_dictionary = build_feature_dictionary(run_id)
+    readiness = build_feature_readiness(feature_dictionary, quality, freshness, partitions, run_id)
     previews = build_feature_mart_previews(daily_product, daily_category, daily_user, int(config["preview_limit"]))
 
     frames = {
@@ -54,6 +56,8 @@ def build_feature_mart_outputs(
         "feature_mart_freshness": freshness,
         "feature_mart_quality": quality,
         "feature_mart_partitions": partitions,
+        "feature_mart_features": feature_dictionary,
+        "feature_mart_readiness": readiness,
         "feature_mart_products": previews["products"],
         "feature_mart_categories": previews["categories"],
         "feature_mart_users": previews["users"],
@@ -296,6 +300,176 @@ def build_feature_mart_previews(
         for row in daily_user.orderBy(F.desc("dt"), F.desc("revenue"), F.desc("views")).limit(limit).collect()
     ]
     return {"products": products, "categories": categories, "users": users}
+
+
+def build_feature_dictionary(run_id: str) -> list[dict[str, Any]]:
+    rows = [
+        _feature(
+            run_id,
+            "daily_product_behavior.views",
+            "商品日浏览量",
+            "dt + product_id",
+            "cleaned_events.event_type=view",
+            "daily",
+            ["non_negative", "partition_present", "event_key_deduped"],
+        ),
+        _feature(
+            run_id,
+            "daily_product_behavior.purchases",
+            "商品日购买量",
+            "dt + product_id",
+            "cleaned_events.event_type=purchase",
+            "daily",
+            ["non_negative", "partition_present", "valid_purchase_price"],
+        ),
+        _feature(
+            run_id,
+            "daily_product_behavior.revenue",
+            "商品日成交额",
+            "dt + product_id",
+            "cleaned_events.price for purchase",
+            "daily",
+            ["non_negative", "valid_purchase_price", "quarantine_rate_ok"],
+        ),
+        _feature(
+            run_id,
+            "daily_category_behavior.conversion_rate",
+            "类目日转化率",
+            "dt + category_level1",
+            "daily_category_behavior.purchases / views",
+            "daily",
+            ["between_0_and_1", "partition_present"],
+        ),
+        _feature(
+            run_id,
+            "daily_user_behavior.preferred_category_level1",
+            "用户日偏好类目",
+            "dt + user_id",
+            "max category event count",
+            "daily",
+            ["not_required_for_anonymous", "partition_present"],
+        ),
+        _feature(
+            run_id,
+            "event_quality_audit.duplicate_event_key_rate",
+            "事件键重复率",
+            "run_id",
+            "raw_events + cleaned_events",
+            "per_run",
+            ["duplicate_event_key_rate"],
+        ),
+        _feature(
+            run_id,
+            "late_arrival_audit.freshness_lag_hours",
+            "数据新鲜度延迟",
+            "run_id",
+            "deduped_events.max_event_time",
+            "per_run",
+            ["freshness_sla"],
+        ),
+    ]
+    return rows
+
+
+def build_feature_readiness(
+    feature_dictionary: list[dict[str, Any]],
+    quality: dict[str, Any],
+    freshness: dict[str, Any],
+    partitions: dict[str, Any],
+    run_id: str,
+) -> dict[str, Any]:
+    missing_partitions = len(partitions.get("missing") or [])
+    quality_passed = quality.get("quality_status") == "passed"
+    freshness_passed = freshness.get("sla_status") == "passed"
+    partition_passed = missing_partitions == 0 and int(partitions.get("written") or 0) >= int(partitions.get("expected") or 0)
+    checks = [
+        {
+            "name": "quality_status",
+            "actual": quality.get("quality_status"),
+            "operator": "==",
+            "expected": "passed",
+            "passed": quality_passed,
+        },
+        {
+            "name": "freshness_sla",
+            "actual": freshness.get("sla_status"),
+            "operator": "==",
+            "expected": "passed",
+            "passed": freshness_passed,
+        },
+        {
+            "name": "partition_completeness",
+            "actual": int(partitions.get("written") or 0),
+            "operator": ">=",
+            "expected": int(partitions.get("expected") or 0),
+            "passed": partition_passed,
+        },
+    ]
+    feature_rows = []
+    for feature in feature_dictionary:
+        rules = feature["quality_assertions"]
+        failed_rules = []
+        if "duplicate_event_key_rate" in rules and not _check_passed(quality, "duplicate_event_key_rate"):
+            failed_rules.append("duplicate_event_key_rate")
+        if "quarantine_rate_ok" in rules and not _check_passed(quality, "quarantined_rate"):
+            failed_rules.append("quarantined_rate")
+        if "freshness_sla" in rules and not freshness_passed:
+            failed_rules.append("freshness_sla")
+        if "partition_present" in rules and not partition_passed:
+            failed_rules.append("partition_present")
+        feature_rows.append(
+            {
+                "feature_name": feature["feature_name"],
+                "chinese_name": feature["chinese_name"],
+                "grain": feature["grain"],
+                "status": "ready" if not failed_rules else "needs_attention",
+                "failed_rules": failed_rules,
+                "source": feature["source"],
+            }
+        )
+    ready_count = sum(1 for row in feature_rows if row["status"] == "ready")
+    return {
+        "contract_version": FEATURE_MART_CONTRACT_VERSION,
+        "run_id": run_id,
+        "status": "ready" if all(check["passed"] for check in checks) and ready_count == len(feature_rows) else "needs_attention",
+        "ready_features": ready_count,
+        "total_features": len(feature_rows),
+        "checks": checks,
+        "features": feature_rows,
+        "lineage": [
+            {"from": "raw_events", "to": "cleaned_events", "relation": "clean_and_validate"},
+            {"from": "cleaned_events", "to": "daily_product_behavior", "relation": "aggregate_daily_product"},
+            {"from": "cleaned_events", "to": "daily_category_behavior", "relation": "aggregate_daily_category"},
+            {"from": "cleaned_events", "to": "daily_user_behavior", "relation": "aggregate_daily_user"},
+            {"from": "feature_mart", "to": "recommendations_forecasting_anomaly", "relation": "serve_downstream_algorithms"},
+        ],
+    }
+
+
+def _feature(
+    run_id: str,
+    feature_name: str,
+    chinese_name: str,
+    grain: str,
+    source: str,
+    refresh_frequency: str,
+    quality_assertions: list[str],
+) -> dict[str, Any]:
+    return {
+        "contract_version": FEATURE_MART_CONTRACT_VERSION,
+        "run_id": run_id,
+        "feature_name": feature_name,
+        "chinese_name": chinese_name,
+        "grain": grain,
+        "source": source,
+        "refresh_frequency": refresh_frequency,
+        "quality_assertions": quality_assertions,
+        "owner": "spark_feature_mart",
+    }
+
+
+def _check_passed(quality: dict[str, Any], name: str) -> bool:
+    return any(check.get("name") == name and check.get("passed") for check in quality.get("checks", []))
 
 
 def _safe_divide(numerator: F.Column, denominator: F.Column) -> F.Column:

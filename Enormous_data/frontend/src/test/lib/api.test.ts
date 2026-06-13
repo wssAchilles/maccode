@@ -26,16 +26,131 @@ describe('api client', () => {
     server.use(
       http.get('/api/v1/table', ({ request }) => {
         requestedUrl = request.url;
-        return HttpResponse.json({ code: 0, message: 'ok', data: { page: 2, size: 25, total: 0, rows: [] }, meta: {} });
+        return HttpResponse.json({
+          code: 0,
+          message: 'ok',
+          data: { page: 2, size: 25, total: 0, source_dataset: 'cleaned_events', rows: [] },
+          meta: {},
+        });
       }),
     );
 
-    await api.table({ page: 2, size: 25, event_type: 'purchase' });
+    await api.table({ page: 2, size: 25, event_type: 'purchase', category_level1: 'apparel', brand: 'nike' });
 
     const url = new URL(requestedUrl);
     expect(url.searchParams.get('page')).toBe('2');
     expect(url.searchParams.get('size')).toBe('25');
     expect(url.searchParams.get('event_type')).toBe('purchase');
+    expect(url.searchParams.get('category_level1')).toBe('apparel');
+    expect(url.searchParams.get('brand')).toBe('nike');
+  });
+
+  it('builds dashboard slice query parameters', async () => {
+    let requestedUrl = '';
+    server.use(
+      http.get('/api/v1/dashboard/slice', ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json({
+          code: 0,
+          message: 'ok',
+          data: {
+            summary: {
+              event_count: 1,
+              purchase_count: 1,
+              total_sales: 199.9,
+              unique_users: 1,
+              unique_sessions: 1,
+              avg_order_value: 199.9,
+            },
+            event_type_count: [{ name: 'purchase', value: 1 }],
+            daily_events: [{ date: '2020-01-01', value: 1 }],
+            daily_sales: [{ date: '2020-01-01', value: 199.9 }],
+            top_categories: [{ name: 'apparel', value: 1 }],
+            evidence: {
+              source_dataset: 'cleaned_events',
+              filtered_row_count: 1,
+              total_row_count: 3,
+              coverage_rate: 0.333333,
+              query_ms: 4.2,
+              run_id: 'run-1',
+              contract_version: 'dashboard-slice/v1',
+              dataset_version: 'run-1:dashboard-slice/v1',
+              generated_at: '2026-06-11T08:28:42Z',
+              filters: { event_type: 'purchase', category_level1: 'apparel', brand: 'nike' },
+            },
+          },
+          meta: {},
+        });
+      }),
+    );
+
+    await api.dashboardSlice({ event_type: 'purchase', category_level1: 'apparel', brand: 'nike' });
+
+    const url = new URL(requestedUrl);
+    expect(url.searchParams.get('event_type')).toBe('purchase');
+    expect(url.searchParams.get('category_level1')).toBe('apparel');
+    expect(url.searchParams.get('brand')).toBe('nike');
+  });
+
+  it('posts controlled query text as JSON', async () => {
+    let requestedBody: unknown = null;
+    server.use(
+      http.post('/api/v1/query/controlled', async ({ request }) => {
+        requestedBody = await request.json();
+        return HttpResponse.json({
+          code: 0,
+          message: 'ok',
+          data: {
+            contract_version: 'controlled-natural-query/v1',
+            query: '按月份统计销售额',
+            status: 'matched',
+            matched: true,
+            message: '已识别为受控查询，结果来自物化指标或缓存数据。',
+            confidence: 0.92,
+            intent: {
+              metric: 'total_sales',
+              metric_label: '成交额',
+              dimension: 'month',
+              dimension_label: '月份',
+              aggregation: 'sum',
+              chart_type: 'line',
+              limit: 12,
+              time_grain: 'month',
+              event_type_filter: null,
+              event_type_filter_label: null,
+            },
+            chart: {
+              type: 'line',
+              title: '按月份统计成交额',
+              x_field: 'name',
+              y_field: 'value',
+              series_name: '成交额',
+              dimension_label: '月份',
+              metric_label: '成交额',
+            },
+            rows: [{ name: '2020-01', raw_name: '2020-01', value: 100, share: 1 }],
+            suggestions: ['按月份统计销售额'],
+            insight: '2020-01 的成交额最高，为 100。',
+            evidence: {
+              source_dataset: 'dashboard_metric_cube',
+              run_id: 'query-run-1',
+              contract_version: 'dashboard-metric-cube/v1',
+              dataset_version: 'query-run-1:dashboard-metric-cube/v1',
+              generated_at: '2026-06-11T08:28:42Z',
+              query_ms: 4.2,
+              row_count: 1,
+              execution_engine: 'dashboard_slice_cache',
+            },
+          },
+          meta: {},
+        });
+      }),
+    );
+
+    await expect(api.controlledQuery('按月份统计销售额')).resolves.toMatchObject({
+      chart: { title: '按月份统计成交额' },
+    });
+    expect(requestedBody).toEqual({ query: '按月份统计销售额' });
   });
 
   it('reads pipeline governance endpoints', async () => {

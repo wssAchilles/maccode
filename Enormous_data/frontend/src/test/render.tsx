@@ -12,12 +12,17 @@ export function createTestQueryClient() {
   });
 }
 
-export function renderWithProviders(ui: ReactElement, options?: RenderOptions) {
+type RenderWithProvidersOptions = RenderOptions & {
+  route?: string;
+};
+
+export function renderWithProviders(ui: ReactElement, options?: RenderWithProvidersOptions) {
   const queryClient = createTestQueryClient();
+  const { route = '/', ...renderOptions } = options ?? {};
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
-    options,
+    renderOptions,
   );
 }

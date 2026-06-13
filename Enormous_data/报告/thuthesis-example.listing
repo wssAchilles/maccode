@@ -1,0 +1,18 @@
+product_features = (
+    cleaned_df.groupBy("product_id", "brand", "category_level1")
+    .agg(
+        views.alias("views"),
+        carts.alias("carts"),
+        purchases.alias("purchases"),
+        revenue.alias("revenue"),
+    )
+    .withColumn("view_to_cart_rate", F.col("carts") / F.col("views"))
+    .withColumn("view_to_purchase_rate", F.col("purchases") / F.col("views"))
+    .withColumn("revenue_per_view", F.col("revenue") / F.col("views"))
+    .withColumn("product_score", F.col("view_to_purchase_rate") * 0.55
+        + F.col("view_to_cart_rate") * 0.25
+        + F.least(F.col("revenue_per_view") / 500.0, F.lit(1.0)) * 0.20)
+)
+
+rank_window = Window.partitionBy("user_session").orderBy(F.desc("score"), F.desc("confidence"))
+recommendations = candidates.withColumn("rank", F.row_number().over(rank_window)).filter(F.col("rank") <= top_k)

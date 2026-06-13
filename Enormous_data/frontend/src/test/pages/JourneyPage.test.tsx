@@ -8,11 +8,11 @@ describe('JourneyPage', () => {
     renderWithProviders(<JourneyPage />);
 
     expect(await screen.findByText('用户旅程路径智能')).toBeInTheDocument();
-    expect(await screen.findByText('customer-journey-intelligence/v1')).toBeInTheDocument();
-    expect(await screen.findByText('cart → purchase')).toBeInTheDocument();
-    expect(await screen.findByText('remove_from_cart')).toBeInTheDocument();
+    expect(await screen.findByText('旅程路径契约 v1')).toBeInTheDocument();
+    expect(await screen.findByText('加购 → 购买')).toBeInTheDocument();
+    expect(await screen.findByText('移出购物车')).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: '用户旅程高频路径' })).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: '购买前路径' })).toBeInTheDocument();
-    expect((await screen.findAllByText('view → cart → purchase')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('浏览 → 加购 → 购买')).length).toBeGreaterThan(0);
   });
 });

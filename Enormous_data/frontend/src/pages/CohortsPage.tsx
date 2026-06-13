@@ -8,18 +8,19 @@ import {
   useCohortSummary,
   useCohortValueCurves,
 } from '../api/hooks';
+import { algorithmCopy, displayValue, fieldLabel, label, listLabels, statusLabel } from '../i18n/displayText';
 import type { CohortRetentionCell } from '../types/api';
 
 function money(value?: number | null) {
-  return typeof value === 'number' ? `¥${value.toLocaleString()}` : 'pending';
+  return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
 }
 
 function number(value?: number | null) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 function percent(value?: number | null) {
-  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : 'pending';
+  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '待生成';
 }
 
 function statusTone(status?: string) {
@@ -30,7 +31,7 @@ function statusTone(status?: string) {
 
 function metricLabel(metric: string) {
   if (metric === 'repurchase_rate') return '复购率';
-  if (metric === 'revenue') return 'GMV';
+  if (metric === 'revenue') return '成交额';
   return '留存率';
 }
 
@@ -48,9 +49,9 @@ function qualityWarningCopy(warnings: string[], sparseCohorts: string[]) {
     return '当前没有可用复购间隔，暂不应作为自动化触达规则依据。';
   }
   if (sparseCohorts.length) {
-    return `当前存在 ${sparseCohorts.join(', ')} 稀疏 cohort，结果应用于方向性诊断，避免直接作为自动化触达规则。`;
+    return `当前存在 ${sparseCohorts.join('、')} 稀疏留存分群，结果应用于方向性诊断，避免直接作为自动化触达规则。`;
   }
-  return '当前 cohort 质量门禁需要复核，结果应用于方向性诊断。';
+  return '当前留存分群质量门禁需要复核，结果应用于方向性诊断。';
 }
 
 function matrixRows(rows: CohortRetentionCell[]) {
@@ -81,9 +82,9 @@ export function CohortsPage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Cohort retention & repeat purchase</span>
-        <h1>留存复购与 Cohort 经营分析</h1>
-        <p>按首购 cohort 追踪留存、复购、累计 GMV 和类目风险段，把生命周期运营从单点转化推进到长期价值管理。</p>
+        <span className="eyebrow">留存复购与分群经营</span>
+        <h1>留存复购与分群经营分析</h1>
+        <p>按首购分群追踪留存、复购、累计成交额和类目风险段，把生命周期运营从单点转化推进到长期价值管理。</p>
       </section>
 
       {hasError ? <div className="error-banner">留存复购缓存尚未完整生成，请先运行 Spark 刷新任务。</div> : null}
@@ -94,10 +95,10 @@ export function CohortsPage() {
       <section className="ops-command-band">
         <div>
           <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
-            {summary.data?.quality_status ?? 'pending'}
+            {statusLabel(summary.data?.quality_status)}
           </span>
-          <h2>{summary.data?.contract_version ?? 'cohort-retention/v1'}</h2>
-          <p>{summary.data?.recommended_action ?? '等待 cohort 留存与复购报告'}</p>
+          <h2>分群经营契约 v1</h2>
+          <p>{summary.data?.recommended_action ? algorithmCopy(summary.data.recommended_action) : '等待留存与复购报告'}</p>
         </div>
         <Repeat2 size={22} />
       </section>
@@ -106,28 +107,28 @@ export function CohortsPage() {
         <article className="metric-card tone-success">
           <span>购买用户</span>
           <strong>{number(summary.data?.purchase_user_count)}</strong>
-          <small>{number(summary.data?.user_count)} total users</small>
+          <small>{number(summary.data?.user_count)} 个总用户</small>
         </article>
         <article className="metric-card">
           <span>复购用户</span>
           <strong>{number(summary.data?.repeat_purchase_user_count)}</strong>
-          <small>{percent(summary.data?.repeat_purchase_rate)} repeat rate</small>
+          <small>{percent(summary.data?.repeat_purchase_rate)} 复购率</small>
         </article>
         <article className="metric-card tone-warning">
           <span>二次购买区间</span>
-          <strong>{summary.data?.median_days_to_second_purchase ?? 'pending'}</strong>
-          <small>{money(summary.data?.avg_revenue_per_purchase_user)} ARPPU</small>
+          <strong>{summary.data?.median_days_to_second_purchase ?? '待生成'}</strong>
+          <small>购买用户均收 {money(summary.data?.avg_revenue_per_purchase_user)}</small>
         </article>
         <article className="metric-card tone-danger">
-          <span>高风险 Cohort</span>
+          <span>高风险分群</span>
           <strong>{number(summary.data?.high_risk_cohort_count)}</strong>
-          <small>{money(summary.data?.cohort_revenue)} cohort GMV</small>
+          <small>分群成交额 {money(summary.data?.cohort_revenue)}</small>
         </article>
       </section>
 
-      <section className="toolbar forecast-toolbar" aria-label="Cohort 筛选">
+      <section className="toolbar forecast-toolbar" aria-label="留存分群筛选">
         <label>
-          <span>Cohort</span>
+          <span>留存分群</span>
           <select value={selectedCohort} onChange={(event) => setSelectedCohort(event.target.value)}>
             <option value="">全部</option>
             {allCohorts.map((cohort) => (
@@ -142,7 +143,7 @@ export function CohortsPage() {
           <select value={metric} onChange={(event) => setMetric(event.target.value)}>
             <option value="retention_rate">留存率</option>
             <option value="repurchase_rate">复购率</option>
-            <option value="revenue">GMV</option>
+            <option value="revenue">成交额</option>
           </select>
         </label>
         <label>
@@ -151,7 +152,7 @@ export function CohortsPage() {
             className="text-input"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
-            placeholder="electronics / apparel"
+            placeholder="输入原始类目，如 electronics"
           />
         </label>
       </section>
@@ -160,16 +161,16 @@ export function CohortsPage() {
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
-              <h2>Cohort 留存矩阵</h2>
-              <p>行是首购 cohort，列是首购后第 N 个周期，单元格展示当前选择的 {metricLabel(metric)}。</p>
+              <h2>留存分群矩阵</h2>
+              <p>行是首购分群，列是首购后第 N 个周期，单元格展示当前选择的 {metricLabel(metric)}。</p>
             </div>
             <UsersRound size={20} />
           </div>
           <div className="table-scroll">
-            <table aria-label="Cohort 留存矩阵">
+            <table aria-label="留存分群矩阵">
               <thead>
                 <tr>
-                  <th>Cohort</th>
+                  <th>留存分群</th>
                   <th>用户数</th>
                   {matrix.periods.map((period) => (
                     <th key={period}>P{period}</th>
@@ -188,7 +189,7 @@ export function CohortsPage() {
                         return (
                           <td key={period}>
                             <span className={`status-pill tone-${statusTone(cell?.quality_status)}`}>
-                              {cell ? metricValue(cell, metric) : 'pending'}
+                              {cell ? metricValue(cell, metric) : '待生成'}
                             </span>
                           </td>
                         );
@@ -205,25 +206,25 @@ export function CohortsPage() {
           <div className="panel-title">
             <div>
               <h2>质量门禁</h2>
-              <p>校验 cohort 数量、最小 cohort 用户数和稀疏 cohort 警告。</p>
+              <p>校验分群数量、最小分群用户数和稀疏分群警告。</p>
             </div>
             <ShieldCheck size={20} />
           </div>
           <div className="quality-checks">
             {(quality.data?.checks ?? []).map((check) => (
               <div className={`quality-check tone-${check.passed ? 'success' : 'danger'}`} key={check.name}>
-                <span>{check.name}</span>
+                <span>{fieldLabel(check.name)}</span>
                 <strong>{String(check.actual)} {check.operator} {String(check.expected)}</strong>
               </div>
             ))}
           </div>
           <dl>
-            <dt>History days</dt>
+            <dt>历史天数</dt>
             <dd>{number(quality.data?.history_days)}</dd>
-            <dt>Cohorts</dt>
+            <dt>分群数</dt>
             <dd>{number(quality.data?.cohort_count)}</dd>
-            <dt>Sparse</dt>
-            <dd>{quality.data?.sparse_cohorts.join(', ') || 'none'}</dd>
+            <dt>稀疏分群</dt>
+            <dd>{quality.data?.sparse_cohorts.join('、') || '无'}</dd>
           </dl>
         </article>
       </section>
@@ -243,7 +244,7 @@ export function CohortsPage() {
                 <th>区间</th>
                 <th>用户</th>
                 <th>占比</th>
-                <th>平均 GMV</th>
+                  <th>平均成交额</th>
               </tr>
             </thead>
             <tbody>
@@ -264,19 +265,19 @@ export function CohortsPage() {
         <article className="data-panel jobs-panel">
           <div className="panel-title">
             <div>
-              <h2>Cohort 价值曲线</h2>
-              <p>展示周期 GMV、累计 GMV 和每购买用户收入。</p>
+              <h2>分群价值曲线</h2>
+              <p>展示周期成交额、累计成交额和每购买用户收入。</p>
             </div>
           </div>
           <div className="table-scroll">
-            <table aria-label="Cohort 价值曲线">
+            <table aria-label="分群价值曲线">
               <thead>
                 <tr>
-                  <th>Cohort</th>
-                  <th>Period</th>
-                  <th>GMV</th>
-                  <th>累计 GMV</th>
-                  <th>ARPPU</th>
+                  <th>留存分群</th>
+                  <th>周期</th>
+                  <th>成交额</th>
+                  <th>累计成交额</th>
+                  <th>每购买用户收入</th>
                   <th>购买用户</th>
                 </tr>
               </thead>
@@ -300,14 +301,14 @@ export function CohortsPage() {
           <div className="panel-title">
             <div>
               <h2>类目风险队列</h2>
-              <p>定位低复购或样本稀疏的 cohort × 类目组合，输出运营动作建议。</p>
+              <p>定位低复购或样本稀疏的分群与类目组合，输出运营动作建议。</p>
             </div>
           </div>
           <div className="table-scroll">
-            <table aria-label="Cohort 类目风险队列">
+            <table aria-label="留存分群类目风险队列">
               <thead>
                 <tr>
-                  <th>Segment</th>
+                  <th>分段</th>
                   <th>风险</th>
                   <th>复购率</th>
                 </tr>
@@ -318,13 +319,13 @@ export function CohortsPage() {
                     <td>
                       <strong>{row.cohort}</strong>
                       <br />
-                      <span>{row.category_level1}</span>
+                      <span>{displayValue(row.category_level1)}</span>
                       <br />
                       <small>{money(row.revenue)}</small>
                       <br />
-                      <small>{row.reason_codes.join(', ') || row.recommended_action}</small>
+                      <small>{row.reason_codes.length ? listLabels('reason', row.reason_codes) : algorithmCopy(row.recommended_action)}</small>
                     </td>
-                    <td><span className={`status-pill tone-${statusTone(row.risk_level)}`}>{row.risk_level}</span></td>
+                    <td><span className={`status-pill tone-${statusTone(row.risk_level)}`}>{label('risk', row.risk_level)}</span></td>
                     <td>{percent(row.repeat_purchase_rate)}</td>
                   </tr>
                 ))}

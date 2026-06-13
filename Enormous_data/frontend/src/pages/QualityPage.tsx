@@ -2,6 +2,7 @@ import { Activity, Database, FileJson } from 'lucide-react';
 import { useJob, useJobLineage, useJobQuality, useOpsEvidence, useSummary, useTopBrands } from '../api/hooks';
 import { ChartPanel } from '../components/ChartPanel';
 import { MetricCard } from '../components/MetricCard';
+import { algorithmCopy, benchmarkSampleLabel, benchmarkVariantLabel, moduleLabel, statusLabel } from '../i18n/displayText';
 import { barOption } from '../lib/chartOptions';
 import { formatNumber } from '../lib/format';
 
@@ -16,11 +17,11 @@ function metricNumber(value: unknown): number | undefined {
 }
 
 function seconds(value?: number | null) {
-  return typeof value === 'number' ? `${value.toFixed(1)}s` : 'pending';
+  return typeof value === 'number' ? `${value.toFixed(1)}s` : '待生成';
 }
 
 function bytes(value?: number | null) {
-  if (typeof value !== 'number') return 'pending';
+  if (typeof value !== 'number') return '待生成';
   if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(1)} GB`;
   if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
   if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
@@ -46,46 +47,46 @@ export function QualityPage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Data quality</span>
+        <span className="eyebrow">数据质量</span>
         <h1>数据质量与清洗结果</h1>
         <p>展示缺失值、异常值、重复值处理结果，让 Spark 清洗过程可解释、可验收。</p>
       </section>
       <section className="quality-grid">
         <MetricCard label="剔除行数" value={formatNumber(summary.data?.removed_rows)} detail="无效时间、价格异常或缺关键字段" tone="danger" />
-        <MetricCard label="异常价格" value={formatNumber(summary.data?.invalid_price_rows)} detail="price < 0 或过大" tone="danger" />
-        <MetricCard label="空品牌" value={formatNumber(summary.data?.missing_brand_rows)} detail="统一填充为 unknown" tone="warning" />
+        <MetricCard label="异常价格" value={formatNumber(summary.data?.invalid_price_rows)} detail="价格小于 0 或过大" tone="danger" />
+        <MetricCard label="空品牌" value={formatNumber(summary.data?.missing_brand_rows)} detail="统一填充为未知" tone="warning" />
         <MetricCard label="重复事件" value={formatNumber(summary.data?.duplicate_rows)} detail="按事件关键字段去重" />
         <MetricCard
           label="Spark 状态"
-          value={sparkStatus ?? 'pending'}
-          detail={latest?.spark_application_id ?? '等待 application id'}
+          value={statusLabel(sparkStatus)}
+          detail={latest?.spark_application_id ?? '等待 Spark 应用 ID'}
           tone={statusTone(sparkStatus)}
         />
         <MetricCard
           label="质量门禁"
-          value={quality.data?.quality_status ?? latest?.quality_status ?? 'pending'}
-          detail={`${qualityReport?.gate?.checks?.filter((check) => check.passed).length ?? 0}/${qualityReport?.gate?.checks?.length ?? 0} checks passed`}
+          value={statusLabel(quality.data?.quality_status ?? latest?.quality_status)}
+          detail={`${qualityReport?.gate?.checks?.filter((check) => check.passed).length ?? 0}/${qualityReport?.gate?.checks?.length ?? 0} 项检查通过`}
           tone={statusTone(quality.data?.quality_status ?? latest?.quality_status)}
         />
         <MetricCard
           label="HDFS 文件"
           value={formatNumber(inputSnapshot?.file_count)}
-          detail={inputSnapshot?.storage_mode ?? latest?.storage_mode ?? 'unknown storage'}
+          detail={inputSnapshot?.storage_mode ?? latest?.storage_mode ?? '未知存储'}
         />
         <MetricCard
-          label="History 指标"
-          value={evidence.data?.history_summary?.collected_run_count ? `${evidence.data.history_summary.collected_run_count} runs` : historyStatus}
-          detail={`failed ${formatNumber(evidence.data?.history_summary?.failed_task_count ?? metricNumber(sparkHistory?.failed_task_count))} / spill ${bytes(evidence.data?.history_summary?.memory_spill_bytes ?? metricNumber(sparkHistory?.memory_spill_bytes))}`}
+          label="运行指标"
+          value={evidence.data?.history_summary?.collected_run_count ? `${evidence.data.history_summary.collected_run_count} 次运行` : statusLabel(historyStatus)}
+          detail={`失败 ${formatNumber(evidence.data?.history_summary?.failed_task_count ?? metricNumber(sparkHistory?.failed_task_count))} / 内存溢出 ${bytes(evidence.data?.history_summary?.memory_spill_bytes ?? metricNumber(sparkHistory?.memory_spill_bytes))}`}
           tone={statusTone(historyStatus === 'collected' ? 'passed' : historyStatus)}
         />
-        <ChartPanel title="品牌销售额排行" subtitle="按 purchase 销售额聚合" option={barOption(brands.data ?? [], '销售额', '#a78bfa')} />
+        <ChartPanel title="品牌销售额排行" subtitle="按购买销售额聚合" option={barOption(brands.data ?? [], '销售额', '#a78bfa')} />
       </section>
 
       <section className="data-panel jobs-panel">
         <div className="panel-title">
           <div>
             <h2>实验质量证据</h2>
-            <p>{evidence.data?.benchmark_summary.interpretation ?? '等待 benchmark 汇总数据'}</p>
+            <p>{algorithmCopy(evidence.data?.benchmark_summary.interpretation ?? '等待基准实验汇总数据')}</p>
           </div>
           <Activity size={20} />
         </div>
@@ -98,20 +99,20 @@ export function QualityPage() {
                 <th>耗时</th>
                 <th>任务</th>
                 <th>失败任务</th>
-                <th>Memory spill</th>
+                <th>内存溢出</th>
                 <th>质量</th>
               </tr>
             </thead>
             <tbody>
               {(evidence.data?.benchmark_runs ?? []).map((row) => (
                 <tr key={`${row.sample}-${row.variant}`}>
-                  <td>{row.sample}</td>
-                  <td>{row.variant}</td>
+                  <td>{benchmarkSampleLabel(row.sample)}</td>
+                  <td>{benchmarkVariantLabel(row.variant)}</td>
                   <td>{seconds(row.elapsed_seconds)}</td>
                   <td>{formatNumber(metricNumber(row.task_count))}</td>
                   <td>{formatNumber(metricNumber(row.failed_task_count))}</td>
                   <td>{bytes(row.memory_spill_bytes)}</td>
-                  <td><span className={`status-pill tone-${statusTone(row.quality_status)}`}>{row.quality_status ?? row.status}</span></td>
+                  <td><span className={`status-pill tone-${statusTone(row.quality_status)}`}>{statusLabel(row.quality_status ?? row.status)}</span></td>
                 </tr>
               ))}
               {evidence.data?.benchmark_runs.length === 0 ? (
@@ -128,7 +129,7 @@ export function QualityPage() {
         <div className="panel-title">
           <div>
             <h2>典型模块质量</h2>
-            <p>{evidence.data?.scale_boundary?.conclusion ?? '使用部分典型数据验证模块级输出规模。'}</p>
+            <p>{algorithmCopy(evidence.data?.scale_boundary?.conclusion ?? '使用部分典型数据验证模块级输出规模。')}</p>
           </div>
           <Database size={20} />
         </div>
@@ -146,11 +147,11 @@ export function QualityPage() {
             <tbody>
               {(evidence.data?.module_benchmark_runs ?? []).map((row) => (
                 <tr key={`${row.profile}-${row.task_name}`}>
-                  <td>{row.profile}</td>
+                  <td>{moduleLabel(row.profile)}</td>
                   <td>{formatNumber(metricNumber(row.input_rows))}</td>
                   <td>{formatNumber(metricNumber(row.output_rows))}</td>
                   <td>{seconds(row.elapsed_seconds ?? row.duration_seconds)}</td>
-                  <td><span className={`status-pill tone-${row.success ? 'success' : 'danger'}`}>{row.success ? 'passed' : 'failed'}</span></td>
+                  <td><span className={`status-pill tone-${row.success ? 'success' : 'danger'}`}>{statusLabel(row.success ? 'passed' : 'failed')}</span></td>
                 </tr>
               ))}
               {evidence.data?.module_benchmark_runs?.length === 0 ? (
@@ -167,8 +168,8 @@ export function QualityPage() {
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
-              <h2>YARN / HDFS 快照</h2>
-              <p>{inputSnapshot?.actual_input_path ?? latest?.input_path ?? 'pending'}</p>
+              <h2>集群与 HDFS 快照</h2>
+              <p>{inputSnapshot?.actual_input_path ?? latest?.input_path ?? '待生成'}</p>
             </div>
             <Database size={20} />
           </div>
@@ -186,19 +187,19 @@ export function QualityPage() {
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
-              <h2>Spark History</h2>
-              <p>{quality.data?.spark_history_metrics_error ?? latest?.spark_history_metrics_error ?? 'metrics ready'}</p>
+              <h2>Spark 运行指标</h2>
+              <p>{quality.data?.spark_history_metrics_error ?? latest?.spark_history_metrics_error ?? '指标就绪'}</p>
             </div>
             <Activity size={20} />
           </div>
           <dl>
-            <dt>Shuffle read</dt>
+            <dt>洗牌读取</dt>
             <dd>{formatNumber(metricNumber(sparkHistory?.shuffle_read_bytes))}</dd>
-            <dt>Shuffle write</dt>
+            <dt>洗牌写入</dt>
             <dd>{formatNumber(metricNumber(sparkHistory?.shuffle_write_bytes))}</dd>
-            <dt>Memory spill</dt>
+            <dt>内存溢出</dt>
             <dd>{formatNumber(metricNumber(sparkHistory?.memory_spill_bytes))}</dd>
-            <dt>Retried tasks</dt>
+            <dt>重试任务</dt>
             <dd>{formatNumber(metricNumber(sparkHistory?.retried_task_count))}</dd>
           </dl>
         </article>

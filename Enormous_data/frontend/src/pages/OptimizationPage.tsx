@@ -1,16 +1,17 @@
 import { Boxes, Cpu, ShieldCheck } from 'lucide-react';
 import { useOptimizationPlan, useOptimizationQuality, useOptimizationSummary } from '../api/hooks';
+import { algorithmCopy, displayValue, label, statusLabel } from '../i18n/displayText';
 
 function percent(value?: number | null) {
-  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : 'pending';
+  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '待生成';
 }
 
 function money(value?: number | null) {
-  return typeof value === 'number' ? `¥${value.toLocaleString()}` : 'pending';
+  return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
 }
 
 function number(value?: number | null) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 export function OptimizationPage() {
@@ -23,27 +24,27 @@ export function OptimizationPage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Merchandising optimization</span>
+        <span className="eyebrow">经营优化</span>
         <h1>促销预算与推荐位优化</h1>
-        <p>基于商品转化表现和约束优化生成可解释运营方案；结果用于机会排序，不作为因果 ROI 承诺。</p>
+        <p>基于商品转化表现和约束优化生成可解释运营方案；结果用于机会排序，不作为因果投资回报承诺。</p>
       </section>
 
       {hasError ? <div className="error-banner">优化缓存尚未生成，请先运行 Spark 刷新任务。</div> : null}
 
       <section className="ops-command-band">
         <div>
-          <span className={`status-pill tone-${solverStatus === 'optimal' ? 'succeeded' : 'queued'}`}>{solverStatus}</span>
-          <h2>{summary.data?.contract_version ?? 'merchandising-optimization/v1'}</h2>
-          <p>{summary.data?.causal_caveat ?? '等待优化结果'}</p>
+          <span className={`status-pill tone-${solverStatus === 'optimal' ? 'succeeded' : 'queued'}`}>{statusLabel(solverStatus)}</span>
+          <h2>优化求解契约 v1</h2>
+          <p>{summary.data?.causal_caveat ? algorithmCopy(summary.data.causal_caveat) : '等待优化结果'}</p>
         </div>
         <Cpu size={22} />
       </section>
 
       <section className="metrics-strip">
         <article className="metric-card tone-success">
-          <span>预期增量 GMV</span>
+          <span>预期增量成交额</span>
           <strong>{money(summary.data?.expected_incremental_gmv)}</strong>
-          <small>{number(summary.data?.expected_incremental_purchases)} expected purchases</small>
+          <small>{number(summary.data?.expected_incremental_purchases)} 次预期增量购买</small>
         </article>
         <article className="metric-card">
           <span>预算利用率</span>
@@ -53,12 +54,12 @@ export function OptimizationPage() {
         <article className="metric-card">
           <span>推荐位利用</span>
           <strong>{percent(summary.data?.slot_utilization)}</strong>
-          <small>{number(summary.data?.used_slots)} / {number(summary.data?.slot_count)} slots</small>
+          <small>{number(summary.data?.used_slots)} / {number(summary.data?.slot_count)} 个推荐位</small>
         </article>
         <article className="metric-card tone-warning">
           <span>平均风险分</span>
           <strong>{percent(summary.data?.average_risk_score)}</strong>
-          <small>gap {summary.data?.optimality_gap ?? 'n/a'}</small>
+          <small>最优差距 {summary.data?.optimality_gap ?? '暂无'}</small>
         </article>
       </section>
 
@@ -79,9 +80,9 @@ export function OptimizationPage() {
             <dt>已选商品</dt>
             <dd>{number(quality.data?.selected_count)}</dd>
             <dt>预算约束</dt>
-            <dd>{quality.data?.budget_feasible ? 'feasible' : 'pending'}</dd>
+            <dd>{quality.data?.budget_feasible ? statusLabel('feasible') : statusLabel('pending')}</dd>
             <dt>推荐位约束</dt>
-            <dd>{quality.data?.slot_feasible ? 'feasible' : 'pending'}</dd>
+            <dd>{quality.data?.slot_feasible ? statusLabel('feasible') : statusLabel('pending')}</dd>
           </dl>
         </article>
 
@@ -96,7 +97,7 @@ export function OptimizationPage() {
           <div className="quality-checks">
             {Object.entries(summary.data?.action_allocation ?? {}).map(([name, value]) => (
               <div className="quality-check tone-success" key={name}>
-                <span>{name}</span>
+                <span>{label('action', name)}</span>
                 <strong>{value}</strong>
               </div>
             ))}
@@ -126,7 +127,7 @@ export function OptimizationPage() {
                 <th>类目</th>
                 <th>动作</th>
                 <th>成本</th>
-                <th>预期增量 GMV</th>
+                <th>预期增量成交额</th>
                 <th>置信权重</th>
                 <th>风险</th>
               </tr>
@@ -135,9 +136,9 @@ export function OptimizationPage() {
               {(plan.data ?? []).map((row) => (
                 <tr key={`${row.product_id}-${row.action}`}>
                   <td>{row.product_id}</td>
-                  <td>{row.brand}</td>
-                  <td>{row.category_level1}</td>
-                  <td><span className="event-chip">{row.action}</span></td>
+                  <td>{displayValue(row.brand)}</td>
+                  <td>{displayValue(row.category_level1)}</td>
+                  <td><span className="event-chip">{label('action', row.action)}</span></td>
                   <td>{money(row.cost)}</td>
                   <td>{money(row.expected_incremental_gmv)}</td>
                   <td>{percent(row.confidence_weight)}</td>

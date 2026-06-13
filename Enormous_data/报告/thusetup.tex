@@ -58,6 +58,7 @@
 \definecolor{codecomment}{RGB}{100,116,139}
 \definecolor{codestring}{RGB}{21,128,61}
 \definecolor{codekeyword}{RGB}{37,99,235}
+\definecolor{codeaccent}{RGB}{14,116,144}
 
 \lstdefinestyle{codexcode}{
     language=bash,
@@ -87,6 +88,36 @@
              {$}{{\$}}1
 }
 \lstset{style=codexcode}
+
+% 使用 tcolorbox + listings 构造更适合课程报告阅读的代码卡片。
+% 该方案不依赖 shell-escape，避免 minted 在普通 LaTeX 环境下无法编译。
+\usepackage[most]{tcolorbox}
+\newtcblisting{sparkcode}[2][]{%
+    enhanced,
+    breakable,
+    listing only,
+    title={#2},
+    colback=codebg,
+    colframe=codeaccent,
+    coltitle=white,
+    fonttitle=\bfseries\small,
+    boxed title style={colback=codeaccent, sharp corners},
+    sharp corners,
+    boxrule=0.7pt,
+    left=1mm,
+    right=1mm,
+    top=1mm,
+    bottom=1mm,
+    listing options={
+        style=codexcode,
+        language=Python,
+        frame=none,
+        numbers=left,
+        numberstyle=\tiny\color{codecomment},
+        numbersep=8pt,
+        #1
+    }
+}
 
 % 量和单位
 \usepackage{siunitx}

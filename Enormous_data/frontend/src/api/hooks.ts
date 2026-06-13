@@ -26,6 +26,23 @@ export function useTopBrands() {
   return useQuery({ queryKey: queryKeys.topBrands, queryFn: api.topBrands });
 }
 
+export function useDashboardSlice(params: { event_type?: string; category_level1?: string; brand?: string }) {
+  const enabled = Boolean(params.event_type || params.category_level1 || params.brand);
+  return useQuery({
+    queryKey: queryKeys.dashboardSlice(params),
+    queryFn: () => api.dashboardSlice(params),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useControlledQuery() {
+  return useMutation({
+    mutationKey: queryKeys.controlledQuery,
+    mutationFn: api.controlledQuery,
+  });
+}
+
 export function useConversionFunnel() {
   return useQuery({ queryKey: queryKeys.conversionFunnel, queryFn: api.conversionFunnel });
 }
@@ -88,8 +105,20 @@ export function useRecommendationItems(limit = 50) {
   });
 }
 
+export function useRecommendationCandidates(params: { source?: string; limit?: number } = {}) {
+  return useQuery({
+    queryKey: queryKeys.recommendationCandidates(params),
+    queryFn: () => api.recommendationCandidates(params),
+    retry: false,
+  });
+}
+
 export function useRecommendationQuality() {
   return useQuery({ queryKey: queryKeys.recommendationQuality, queryFn: api.recommendationQuality });
+}
+
+export function useRecommendationEvaluation() {
+  return useQuery({ queryKey: queryKeys.recommendationEvaluation, queryFn: api.recommendationEvaluation, retry: false });
 }
 
 export function useRecommendationAlerts() {
@@ -102,6 +131,23 @@ export function useAnomalySummary() {
 
 export function useAnomalyAlerts(limit = 50) {
   return useQuery({ queryKey: queryKeys.anomalyAlerts(limit), queryFn: () => api.anomalyAlerts(limit) });
+}
+
+export function useAnomalyIncidents(limit = 50) {
+  return useQuery({ queryKey: queryKeys.anomalyIncidents(limit), queryFn: () => api.anomalyIncidents(limit), retry: false });
+}
+
+export function useAnomalyRootCause(params: { incident_id?: string } = {}) {
+  return useQuery({
+    queryKey: queryKeys.anomalyRootCause(params),
+    queryFn: () => api.anomalyRootCause(params),
+    enabled: Boolean(params.incident_id),
+    retry: false,
+  });
+}
+
+export function useAnomalyEvaluation() {
+  return useQuery({ queryKey: queryKeys.anomalyEvaluation, queryFn: api.anomalyEvaluation, retry: false });
 }
 
 export function useAnomalyTimeline() {
@@ -155,6 +201,14 @@ export function useExperimentGuardrails() {
   return useQuery({ queryKey: queryKeys.experimentGuardrails, queryFn: api.experimentGuardrails });
 }
 
+export function useExperimentResults(params: { experiment_key?: string } = {}) {
+  return useQuery({ queryKey: queryKeys.experimentResults(params), queryFn: () => api.experimentResults(params), retry: false });
+}
+
+export function useExperimentUplift(params: { experiment_key?: string } = {}) {
+  return useQuery({ queryKey: queryKeys.experimentUplift(params), queryFn: () => api.experimentUplift(params), retry: false });
+}
+
 export function useFeatureMartSummary() {
   return useQuery({ queryKey: queryKeys.featureMartSummary, queryFn: api.featureMartSummary });
 }
@@ -169,6 +223,14 @@ export function useFeatureMartQuality() {
 
 export function useFeatureMartPartitions() {
   return useQuery({ queryKey: queryKeys.featureMartPartitions, queryFn: api.featureMartPartitions });
+}
+
+export function useFeatureMartFeatures() {
+  return useQuery({ queryKey: queryKeys.featureMartFeatures, queryFn: api.featureMartFeatures, retry: false });
+}
+
+export function useFeatureMartReadiness() {
+  return useQuery({ queryKey: queryKeys.featureMartReadiness, queryFn: api.featureMartReadiness, retry: false });
 }
 
 export function useFeatureMartProducts(limit = 50) {
@@ -197,6 +259,10 @@ export function useForecastingEntities(limit = 50) {
 
 export function useForecastingBacktest(params: { scope?: string; entity?: string } = {}) {
   return useQuery({ queryKey: queryKeys.forecastingBacktest(params), queryFn: () => api.forecastingBacktest(params) });
+}
+
+export function useForecastingEvaluation() {
+  return useQuery({ queryKey: queryKeys.forecastingEvaluation, queryFn: api.forecastingEvaluation, retry: false });
 }
 
 export function useForecastingRisks(params: { severity?: string; limit?: number } = {}) {
@@ -228,6 +294,10 @@ export function useAffinityOpportunities(params: { type?: string; confidence?: n
     queryKey: queryKeys.affinityOpportunities(params),
     queryFn: () => api.affinityOpportunities(params),
   });
+}
+
+export function useAffinityCentrality(params: { community_id?: string; limit?: number } = {}) {
+  return useQuery({ queryKey: queryKeys.affinityCentrality(params), queryFn: () => api.affinityCentrality(params), retry: false });
 }
 
 export function useAffinityQuality() {
@@ -359,6 +429,7 @@ export function useJobLineage(jobId?: string) {
     queryKey: queryKeys.jobLineage(jobId ?? ''),
     queryFn: () => api.jobLineage(jobId ?? ''),
     enabled: Boolean(jobId),
+    refetchInterval: 10_000,
   });
 }
 
@@ -367,6 +438,7 @@ export function useJobQuality(jobId?: string) {
     queryKey: queryKeys.jobQuality(jobId ?? ''),
     queryFn: () => api.jobQuality(jobId ?? ''),
     enabled: Boolean(jobId),
+    refetchInterval: 10_000,
   });
 }
 
@@ -374,7 +446,11 @@ export function useOpsEvidence() {
   return useQuery({ queryKey: queryKeys.opsEvidence, queryFn: api.opsEvidence });
 }
 
-export function useTable(params: { page: number; size: number; event_type?: string }) {
+export function useOptimizationImpact() {
+  return useQuery({ queryKey: queryKeys.optimizationImpact, queryFn: api.optimizationImpact });
+}
+
+export function useTable(params: { page: number; size: number; event_type?: string; category_level1?: string; brand?: string }) {
   return useQuery({
     queryKey: queryKeys.table(params),
     queryFn: () => api.table(params),

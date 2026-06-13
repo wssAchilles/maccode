@@ -14,6 +14,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "forecast_horizon_days": 7,
     "training_window_days": 28,
     "backtest_window_days": 7,
+    "backtest_windows": [1, 3, 7],
     "preview_limit": 100,
     "top_entities": 12,
     "min_history_days": 7,
@@ -59,6 +60,7 @@ def build_forecasting_outputs(
     forecast_rows = build_forecast_rows(complete_daily_rows, config)
     entity_rows = build_entity_rows(complete_daily_rows, forecast_rows, config)
     backtest_rows = build_backtest_rows(complete_daily_rows, config)
+    evaluation = build_backtest_evaluation(backtest_rows, config, run_id)
     quality = build_quality(complete_daily_rows, backtest_rows, config, excluded_dates, driver_history)
     risks = build_risks(entity_rows, config)
     summary = build_summary(complete_daily_rows, forecast_rows, entity_rows, risks, quality, config, run_id, input_snapshot, driver_history)
@@ -76,6 +78,7 @@ def build_forecasting_outputs(
         "forecasting_series": forecast_rows[: int(config["preview_limit"])],
         "forecasting_entities": entity_rows[: int(config["preview_limit"])],
         "forecasting_backtest": backtest_rows[: int(config["preview_limit"])],
+        "forecasting_evaluation": evaluation,
         "forecasting_risks": risks[: int(config["preview_limit"])],
         "forecasting_quality": quality,
     }
@@ -276,15 +279,24 @@ def build_entity_rows(
 
 def build_backtest_rows(daily_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    backtest_window = int(config["backtest_window_days"])
+    backtest_window = max([int(config["backtest_window_days"]), *[int(value) for value in config.get("backtest_windows", [])]])
     for key, entity_rows in select_entities(daily_rows, int(config["top_entities"])).items():
         ordered = sorted(entity_rows, key=lambda row: row["dt"])
         if len(ordered) < 2:
             continue
         holdout = ordered[-min(backtest_window, len(ordered) - 1) :]
         train = ordered[: -len(holdout)]
-        baseline = _mean([float(row.get("gmv") or 0) for row in train]) if train else float(ordered[0].get("gmv") or 0)
-        for row in holdout:
+        rolling_baseline = _mean([float(row.get("gmv") or 0) for row in train]) if train else float(ordered[0].get("gmv") or 0)
+        for offset, row in enumerate(holdout, start=1):
+            row_dt = _parse_date(row["dt"])
+            historical = ordered[: ordered.index(row)]
+            weekday_history = [
+                float(history_row.get("gmv") or 0)
+                for history_row in historical
+                if _parse_date(history_row["dt"]).weekday() == row_dt.weekday()
+            ]
+            baseline = _mean(weekday_history[-4:]) if weekday_history else rolling_baseline
+            model_name = "weekday_baseline_backtest" if weekday_history else "rolling_baseline_backtest"
             actual = float(row.get("gmv") or 0)
             error = actual - baseline
             rows.append(
@@ -299,10 +311,78 @@ def build_backtest_rows(daily_rows: list[dict[str, Any]], config: dict[str, Any]
                     "forecast": round(baseline, 2),
                     "absolute_error": round(abs(error), 2),
                     "error": round(error, 2),
-                    "model_name": "rolling_baseline_backtest",
+                    "horizon": offset,
+                    "model_name": model_name,
                 }
             )
     return rows
+
+
+def build_backtest_evaluation(backtest_rows: list[dict[str, Any]], config: dict[str, Any], run_id: str) -> dict[str, Any]:
+    windows = sorted({int(value) for value in config.get("backtest_windows", []) if int(value) > 0})
+    if not windows:
+        windows = [int(config["backtest_window_days"])]
+    return {
+        "contract_version": FORECAST_CONTRACT_VERSION,
+        "run_id": run_id,
+        "windows": windows,
+        "model_metrics": _aggregate_backtest(backtest_rows, lambda row: str(row["model_name"])),
+        "horizon_metrics": _aggregate_backtest(backtest_rows, lambda row: f"h{int(row.get('horizon') or 1)}"),
+        "window_metrics": [
+            {
+                "window_days": window,
+                **_metric_summary([row for row in backtest_rows if int(row.get("horizon") or 1) <= window]),
+            }
+            for window in windows
+        ],
+        "error_distribution": {
+            "max_absolute_error": max([float(row["absolute_error"]) for row in backtest_rows], default=0.0),
+            "avg_absolute_error": round(_mean([float(row["absolute_error"]) for row in backtest_rows]), 6),
+            "backtest_rows": len(backtest_rows),
+        },
+        "quality_gates": [
+            {
+                "name": "site_wape",
+                "actual": _site_metric(backtest_rows, "wape"),
+                "operator": "<=",
+                "expected": float(config["max_site_wape"]),
+                "passed": (_site_metric(backtest_rows, "wape") or 1.0) <= float(config["max_site_wape"]),
+            },
+            {
+                "name": "weekday_baseline_available",
+                "actual": any(row.get("model_name") == "weekday_baseline_backtest" for row in backtest_rows),
+                "operator": "==",
+                "expected": True,
+                "passed": any(row.get("model_name") == "weekday_baseline_backtest" for row in backtest_rows),
+            },
+        ],
+    }
+
+
+def _aggregate_backtest(backtest_rows: list[dict[str, Any]], key_fn) -> list[dict[str, Any]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for row in backtest_rows:
+        groups.setdefault(key_fn(row), []).append(row)
+    return [{"group": key, **_metric_summary(rows)} for key, rows in sorted(groups.items())]
+
+
+def _metric_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    actual_sum = sum(float(row.get("actual") or 0) for row in rows)
+    absolute_error_sum = sum(float(row.get("absolute_error") or 0) for row in rows)
+    error_sum = sum(float(row.get("error") or 0) for row in rows)
+    return {
+        "rows": len(rows),
+        "actual_sum": round(actual_sum, 2),
+        "forecast_sum": round(sum(float(row.get("forecast") or 0) for row in rows), 2),
+        "wape": round(absolute_error_sum / actual_sum, 6) if actual_sum else None,
+        "bias": round(error_sum / actual_sum, 6) if actual_sum else None,
+        "mae": round(absolute_error_sum / len(rows), 6) if rows else None,
+    }
+
+
+def _site_metric(backtest_rows: list[dict[str, Any]], metric: str) -> float | None:
+    summary = _metric_summary([row for row in backtest_rows if row.get("scope") == "site"])
+    return summary.get(metric)
 
 
 def build_quality(

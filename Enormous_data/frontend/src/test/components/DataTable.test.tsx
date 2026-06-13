@@ -12,10 +12,11 @@ describe('DataTable', () => {
 
     expect(screen.getByText('electronics.smartphone')).toBeInTheDocument();
     expect(screen.getByText('apple')).toBeInTheDocument();
-    expect(screen.getByText('purchase')).toBeInTheDocument();
+    expect(screen.getByText('购买')).toBeInTheDocument();
     expect(screen.getByLabelText('行为明细滚动区域')).toHaveClass('table-scroll');
     expect(screen.getByRole('table', { name: '行为明细' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /时间/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /原始类目/ })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: '查看' })[0]);
     expect(inspect).toHaveBeenCalledWith(tableFixture.rows[0]);

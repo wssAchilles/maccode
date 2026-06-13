@@ -1,19 +1,20 @@
 import { GitCompareArrows } from 'lucide-react';
 import { useConversionDaily, useConversionFunnel, useProductConversion } from '../api/hooks';
 import { ChartPanel } from '../components/ChartPanel';
+import { displayValue } from '../i18n/displayText';
 import { barOption, lineOption } from '../lib/chartOptions';
 import type { DailyConversion, FunnelStep } from '../types/api';
 
 function percent(value?: number) {
-  return typeof value === 'number' ? `${(value * 100).toFixed(2)}%` : 'pending';
+  return typeof value === 'number' ? `${(value * 100).toFixed(2)}%` : '待生成';
 }
 
 function money(value?: number) {
-  return typeof value === 'number' ? `¥${value.toLocaleString()}` : 'pending';
+  return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
 }
 
 function compact(value?: number) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 export function ConversionPage() {
@@ -38,9 +39,9 @@ export function ConversionPage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Conversion intelligence</span>
+        <span className="eyebrow">转化智能分析</span>
         <h1>会话转化智能分析</h1>
-        <p>基于真实 Kaggle 行为数据沉淀 session fact，分析 view、cart、purchase 的断点和商品转化效率。</p>
+        <p>基于真实 Kaggle 行为数据沉淀会话事实表，分析浏览、加购、购买的断点和商品转化效率。</p>
       </section>
 
       {hasError ? <div className="error-banner">转化缓存尚未生成，请先在作业状态页运行 Spark 刷新。</div> : null}
@@ -49,35 +50,35 @@ export function ConversionPage() {
         <article className="metric-card">
           <span>会话数</span>
           <strong>{compact(totals?.sessions)}</strong>
-          <small>session fact rows</small>
+          <small>会话事实表行数</small>
         </article>
         <article className="metric-card tone-success">
-          <span>View to Cart</span>
+          <span>浏览到加购</span>
           <strong>{percent(totals?.view_to_cart_rate)}</strong>
-          <small>{compact(totals?.cart_sessions)} cart sessions</small>
+          <small>{compact(totals?.cart_sessions)} 个加购会话</small>
         </article>
         <article className="metric-card tone-warning">
-          <span>Cart to Purchase</span>
+          <span>加购到购买</span>
           <strong>{percent(totals?.cart_to_purchase_rate)}</strong>
-          <small>{compact(totals?.purchase_sessions)} purchase sessions</small>
+          <small>{compact(totals?.purchase_sessions)} 个购买会话</small>
         </article>
         <article className="metric-card">
           <span>销售额</span>
           <strong>{money(totals?.revenue)}</strong>
-          <small>AOV {money(totals?.avg_order_value)}</small>
+          <small>客单价 {money(totals?.avg_order_value)}</small>
         </article>
       </section>
 
       <section className="content-grid">
         <ChartPanel
           title="会话漏斗"
-          subtitle="正向路径 session 数"
-          option={barOption(funnelRows, 'Sessions', '#39d0c8')}
-          summary={weakestStep ? `${weakestStep.step} 是当前最弱转化节点，前序转化率为 ${percent(weakestStep.rate_from_previous)}。` : '等待会话漏斗数据。'}
+          subtitle="正向路径会话数"
+          option={barOption(funnelRows, '会话数', '#39d0c8', false)}
+          summary={weakestStep ? `${displayValue(weakestStep.step, 'eventType')} 是当前最弱转化节点，前序转化率为 ${percent(weakestStep.rate_from_previous)}。` : '等待会话漏斗数据。'}
         />
         <ChartPanel
           title="每日购买转化率"
-          subtitle="view-to-purchase rate %"
+          subtitle="浏览到购买转化率"
           option={lineOption(dailyRateRows, '转化率', '#f59e0b')}
           summary={peakDailyRate ? `${peakDailyRate.date} 的购买转化率最高，为 ${percent(peakDailyRate.view_to_purchase_rate)}。` : '等待每日转化率数据。'}
         />
@@ -101,8 +102,8 @@ export function ConversionPage() {
                 <th>浏览</th>
                 <th>加购</th>
                 <th>购买</th>
-                <th>View to Cart</th>
-                <th>Cart to Purchase</th>
+                <th>浏览到加购</th>
+                <th>加购到购买</th>
                 <th>销售额</th>
               </tr>
             </thead>

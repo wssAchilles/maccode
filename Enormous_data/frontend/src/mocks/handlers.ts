@@ -1,13 +1,17 @@
 import { http, HttpResponse } from 'msw';
 import {
   affinityCommunitiesFixture,
+  affinityCentralityFixture,
   affinityEdgesFixture,
   affinityNodesFixture,
   affinityOpportunitiesFixture,
   affinityQualityFixture,
   affinitySummaryFixture,
   anomalyAlertsFixture,
+  anomalyEvaluationFixture,
+  anomalyIncidentsFixture,
   anomalyRulesFixture,
+  anomalyRootCauseFixture,
   anomalySummaryFixture,
   anomalyTimelineFixture,
   attributionAssistsFixture,
@@ -29,24 +33,31 @@ import {
   cohortValueCurvesFixture,
   conversionDailyFixture,
   conversionFunnelFixture,
+  controlledQueryFixture,
   dailyEventsFixture,
   dailySalesFixture,
+  dashboardSliceFixture,
   envelope,
   eventDistributionFixture,
   experimentAssignmentsFixture,
   experimentCatalogFixture,
   experimentGuardrailsFixture,
+  experimentResultsFixture,
   experimentSegmentsFixture,
   experimentSummaryFixture,
+  experimentUpliftFixture,
   featureMartCategoriesFixture,
+  featureMartFeaturesFixture,
   featureMartFreshnessFixture,
   featureMartPartitionsFixture,
   featureMartProductsFixture,
   featureMartQualityFixture,
+  featureMartReadinessFixture,
   featureMartSummaryFixture,
   featureMartUsersFixture,
   forecastingBacktestFixture,
   forecastingEntitiesFixture,
+  forecastingEvaluationFixture,
   forecastingQualityFixture,
   forecastingRisksFixture,
   forecastingSeriesFixture,
@@ -66,6 +77,7 @@ import {
   lifecycleSegmentsFixture,
   lifecycleSummaryFixture,
   optimizationCandidatesFixture,
+  optimizationImpactFixture,
   optimizationPlanFixture,
   optimizationQualityFixture,
   optimizationSummaryFixture,
@@ -80,6 +92,8 @@ import {
   productConversionFixture,
   rankingFixture,
   recommendationAlertsFixture,
+  recommendationCandidatesFixture,
+  recommendationEvaluationFixture,
   recommendationItemsFixture,
   recommendationQualityFixture,
   recommendationSummaryFixture,
@@ -94,6 +108,29 @@ export const handlers = [
   http.get('/api/v1/trend/daily-sales', () => HttpResponse.json(envelope(dailySalesFixture))),
   http.get('/api/v1/ranking/categories', () => HttpResponse.json(envelope(rankingFixture))),
   http.get('/api/v1/ranking/brands', () => HttpResponse.json(envelope(rankingFixture))),
+  http.get('/api/v1/dashboard/slice', ({ request }) => {
+    const url = new URL(request.url);
+    const eventType = url.searchParams.get('event_type') ?? undefined;
+    const categoryLevel1 = url.searchParams.get('category_level1') ?? undefined;
+    const brand = url.searchParams.get('brand') ?? undefined;
+    return HttpResponse.json(
+      envelope({
+        ...dashboardSliceFixture,
+        evidence: {
+          ...dashboardSliceFixture.evidence,
+          filters: {
+            ...(eventType ? { event_type: eventType } : {}),
+            ...(categoryLevel1 ? { category_level1: categoryLevel1 } : {}),
+            ...(brand ? { brand } : {}),
+          },
+        },
+      }),
+    );
+  }),
+  http.post('/api/v1/query/controlled', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { query?: string };
+    return HttpResponse.json(envelope({ ...controlledQueryFixture, query: body.query || controlledQueryFixture.query }));
+  }),
   http.get('/api/v1/conversion/funnel', () => HttpResponse.json(envelope(conversionFunnelFixture))),
   http.get('/api/v1/conversion/daily', () => HttpResponse.json(envelope(conversionDailyFixture))),
   http.get('/api/v1/conversion/products', ({ request }) => {
@@ -134,13 +171,25 @@ export const handlers = [
     return HttpResponse.json(envelope(optimizationCandidatesFixture.slice(0, limit)));
   }),
   http.get('/api/v1/optimization/quality', () => HttpResponse.json(envelope(optimizationQualityFixture))),
+  http.get('/api/v1/ops/optimization-impact', () => HttpResponse.json(envelope(optimizationImpactFixture))),
   http.get('/api/v1/recommendations/summary', () => HttpResponse.json(envelope(recommendationSummaryFixture))),
   http.get('/api/v1/recommendations/items', ({ request }) => {
     const url = new URL(request.url);
     const limit = Number(url.searchParams.get('limit') ?? 50);
     return HttpResponse.json(envelope(recommendationItemsFixture.slice(0, limit)));
   }),
+  http.get('/api/v1/recommendations/candidates', ({ request }) => {
+    const url = new URL(request.url);
+    const source = url.searchParams.get('source');
+    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const rows = recommendationCandidatesFixture.filter((row) => {
+      if (!source) return true;
+      return row.candidate_source === source || row.recall_stage === source;
+    });
+    return HttpResponse.json(envelope(rows.slice(0, limit)));
+  }),
   http.get('/api/v1/recommendations/quality', () => HttpResponse.json(envelope(recommendationQualityFixture))),
+  http.get('/api/v1/recommendations/evaluation', () => HttpResponse.json(envelope(recommendationEvaluationFixture))),
   http.get('/api/v1/recommendations/alerts', () => HttpResponse.json(envelope(recommendationAlertsFixture))),
   http.get('/api/v1/anomalies/summary', () => HttpResponse.json(envelope(anomalySummaryFixture))),
   http.get('/api/v1/anomalies/alerts', ({ request }) => {
@@ -148,6 +197,18 @@ export const handlers = [
     const limit = Number(url.searchParams.get('limit') ?? 50);
     return HttpResponse.json(envelope(anomalyAlertsFixture.slice(0, limit)));
   }),
+  http.get('/api/v1/anomalies/incidents', ({ request }) => {
+    const url = new URL(request.url);
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    return HttpResponse.json(envelope(anomalyIncidentsFixture.slice(0, limit)));
+  }),
+  http.get('/api/v1/anomalies/root-cause', ({ request }) => {
+    const url = new URL(request.url);
+    const incidentId = url.searchParams.get('incident_id');
+    const rows = anomalyRootCauseFixture.filter((row) => !incidentId || row.incident_id === incidentId);
+    return HttpResponse.json(envelope(rows));
+  }),
+  http.get('/api/v1/anomalies/evaluation', () => HttpResponse.json(envelope(anomalyEvaluationFixture))),
   http.get('/api/v1/anomalies/timeline', () => HttpResponse.json(envelope(anomalyTimelineFixture))),
   http.get('/api/v1/anomalies/rules', () => HttpResponse.json(envelope(anomalyRulesFixture))),
   http.get('/api/v1/lifecycle/summary', () => HttpResponse.json(envelope(lifecycleSummaryFixture))),
@@ -172,10 +233,30 @@ export const handlers = [
   }),
   http.get('/api/v1/experiments/segments', () => HttpResponse.json(envelope(experimentSegmentsFixture))),
   http.get('/api/v1/experiments/guardrails', () => HttpResponse.json(envelope(experimentGuardrailsFixture))),
+  http.get('/api/v1/experiments/results', ({ request }) => {
+    const url = new URL(request.url);
+    const experimentKey = url.searchParams.get('experiment_key');
+    const rows = experimentResultsFixture.filter((row) => !experimentKey || row.experiment_key === experimentKey);
+    return HttpResponse.json(envelope(rows));
+  }),
+  http.get('/api/v1/experiments/uplift', ({ request }) => {
+    const url = new URL(request.url);
+    const experimentKey = url.searchParams.get('experiment_key');
+    if (!experimentKey) return HttpResponse.json(envelope(experimentUpliftFixture));
+    return HttpResponse.json(
+      envelope({
+        ...experimentUpliftFixture,
+        summary: experimentUpliftFixture.summary.filter((row) => row.experiment_key === experimentKey),
+        deciles: experimentUpliftFixture.deciles.filter((row) => row.experiment_key === experimentKey),
+      }),
+    );
+  }),
   http.get('/api/v1/feature-mart/summary', () => HttpResponse.json(envelope(featureMartSummaryFixture))),
   http.get('/api/v1/feature-mart/freshness', () => HttpResponse.json(envelope(featureMartFreshnessFixture))),
   http.get('/api/v1/feature-mart/quality', () => HttpResponse.json(envelope(featureMartQualityFixture))),
   http.get('/api/v1/feature-mart/partitions', () => HttpResponse.json(envelope(featureMartPartitionsFixture))),
+  http.get('/api/v1/feature-mart/features', () => HttpResponse.json(envelope(featureMartFeaturesFixture))),
+  http.get('/api/v1/feature-mart/readiness', () => HttpResponse.json(envelope(featureMartReadinessFixture))),
   http.get('/api/v1/feature-mart/products', ({ request }) => {
     const url = new URL(request.url);
     const limit = Number(url.searchParams.get('limit') ?? 50);
@@ -221,6 +302,7 @@ export const handlers = [
     });
     return HttpResponse.json(envelope(rows));
   }),
+  http.get('/api/v1/forecasting/evaluation', () => HttpResponse.json(envelope(forecastingEvaluationFixture))),
   http.get('/api/v1/forecasting/risks', ({ request }) => {
     const url = new URL(request.url);
     const severity = url.searchParams.get('severity');
@@ -272,6 +354,13 @@ export const handlers = [
       if (type && row.type !== type) return false;
       return row.confidence >= confidence;
     });
+    return HttpResponse.json(envelope(rows.slice(0, limit)));
+  }),
+  http.get('/api/v1/affinity/centrality', ({ request }) => {
+    const url = new URL(request.url);
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const communityId = url.searchParams.get('community_id');
+    const rows = affinityCentralityFixture.filter((row) => !communityId || row.community_id === communityId);
     return HttpResponse.json(envelope(rows.slice(0, limit)));
   }),
   http.get('/api/v1/affinity/quality', () => HttpResponse.json(envelope(affinityQualityFixture))),
@@ -422,9 +511,34 @@ export const handlers = [
   http.get('/api/v1/ops/evidence', () => HttpResponse.json(envelope(opsEvidenceFixture))),
   http.get('/api/v1/table', ({ request }) => {
     const url = new URL(request.url);
+    const requestedPage = Number(url.searchParams.get('page') ?? tableFixture.page);
+    const requestedSize = Number(url.searchParams.get('size') ?? tableFixture.size);
+    const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : tableFixture.page;
+    const size = Number.isFinite(requestedSize) ? Math.max(1, requestedSize) : tableFixture.size;
     const eventType = url.searchParams.get('event_type');
-    const rows = eventType ? tableFixture.rows.filter((row) => row.event_type === eventType) : tableFixture.rows;
-    return HttpResponse.json(envelope({ ...tableFixture, total: eventType ? rows.length : 12, rows }));
+    const category = url.searchParams.get('category_level1');
+    const brand = url.searchParams.get('brand');
+    const expandedRows = Array.from({ length: 6 }).flatMap((_, copyIndex) =>
+      tableFixture.rows.map((row) => (
+        copyIndex === 0
+          ? row
+          : {
+            ...row,
+            event_time: `2019-12-31 00:0${row.event_type === 'purchase' ? 2 : 0}:${copyIndex}0 UTC`,
+            product_id: `${row.product_id}-${copyIndex}`,
+            category_code: `${row.category_code}.${copyIndex}`,
+            user_session: `${row.user_session}-${copyIndex}`,
+          }
+      )),
+    );
+    const rows = expandedRows.filter((row) => {
+      if (eventType && row.event_type !== eventType) return false;
+      if (category && row.category_level1 !== category) return false;
+      if (brand && row.brand !== brand) return false;
+      return true;
+    });
+    const start = (page - 1) * size;
+    return HttpResponse.json(envelope({ ...tableFixture, page, size, total: rows.length, rows: rows.slice(start, start + size) }));
   }),
   http.post('/api/v1/refresh', () => HttpResponse.json(envelope({ status: 'queued', job_id: 'job-2' }, 'refresh queued'), { status: 202 })),
 ];

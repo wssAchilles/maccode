@@ -23,6 +23,7 @@ REACT_ROUTES = (
     "/ops",
     "/portfolio",
     "/quality",
+    "/query",
     "/rankings",
     "/recommendations",
 )
@@ -56,6 +57,8 @@ def charts():
 
 @page_bp.route("/table")
 def table():
+    if (frontend_dist() / "index.html").exists():
+        return serve_react_index()
     return render_template("table.html")
 
 

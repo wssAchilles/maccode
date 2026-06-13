@@ -35,7 +35,7 @@ def make_client(tmp_path):
     write_json(cache_dir / "event_type_count.json", [{"name": "view", "value": 1}, {"name": "purchase", "value": 2}])
     write_json(cache_dir / "daily_events.json", [{"date": "2020-01-01", "value": 3}])
     write_json(cache_dir / "daily_sales.json", [{"date": "2020-01-01", "value": 499.8}])
-    write_json(cache_dir / "top_categories.json", [{"name": "apparel.shoe", "value": 2}])
+    write_json(cache_dir / "top_categories.json", [{"name": "apparel", "value": 2}])
     write_json(cache_dir / "top_brands.json", [{"name": "nike", "value": 1}])
     write_json(
         cache_dir / "session_funnel.json",
@@ -226,9 +226,23 @@ def make_client(tmp_path):
                 "forecast": 1700.0,
                 "absolute_error": 100.0,
                 "error": 100.0,
+                "horizon": 1,
                 "model_name": "rolling_baseline_backtest",
             }
         ],
+    )
+    write_json(
+        cache_dir / "forecasting_evaluation.json",
+        {
+            "contract_version": "demand-forecasting/v1",
+            "run_id": "forecasting-test",
+            "windows": [1, 3, 7],
+            "model_metrics": [{"group": "rolling_baseline_backtest", "rows": 1, "wape": 0.055556, "bias": 0.055556}],
+            "horizon_metrics": [{"group": "h1", "rows": 1, "wape": 0.055556, "bias": 0.055556}],
+            "window_metrics": [{"window_days": 1, "rows": 1, "wape": 0.055556, "bias": 0.055556}],
+            "error_distribution": {"max_absolute_error": 100.0, "avg_absolute_error": 100.0, "backtest_rows": 1},
+            "quality_gates": [{"name": "site_wape", "actual": 0.055556, "operator": "<=", "expected": 0.35, "passed": True}],
+        },
     )
     write_json(cache_dir / "forecasting_risks.json", [forecasting_risk])
     write_json(
@@ -330,6 +344,29 @@ def make_client(tmp_path):
         ],
     )
     write_json(cache_dir / "affinity_opportunities.json", [affinity_opportunity])
+    write_json(
+        cache_dir / "affinity_centrality.json",
+        [
+            {
+                "contract_version": "product-affinity-graph/v1",
+                "entity_id": "1004856",
+                "entity_label": "product 1004856",
+                "brand": "samsung",
+                "category_level1": "electronics",
+                "community_id": "category:electronics",
+                "degree": 3,
+                "weighted_degree": 4.8,
+                "normalized_weighted_degree": 1.0,
+                "pagerank_score": 0.92,
+                "centrality_score": 0.964,
+                "community_size": 2,
+                "community_revenue": 12000.0,
+                "revenue": 8000.0,
+                "views": 1000,
+                "purchases": 80,
+            }
+        ],
+    )
     write_json(
         cache_dir / "affinity_quality.json",
         {
@@ -858,6 +895,51 @@ def make_client(tmp_path):
             "checks": [],
         },
     )
+    write_json(
+        cache_dir / "recommendation_evaluation.json",
+        {
+            "contract_version": "nearline-recommendation/v1",
+            "run_id": "recommendation-test",
+            "top_k": 5,
+            "split": {"strategy": "leave_latest_interaction_per_session", "train_rows": 12, "holdout_rows": 2, "evaluated_sessions": 2},
+            "behavior_weights": {"view": 1, "cart": 3, "purchase": 8},
+            "model_metrics": [
+                {"model_name": "rule_recommendation", "status": "evaluated", "precision_at_k": 0.1, "recall_at_k": 0.5, "ndcg_at_k": 0.4, "catalog_coverage": 0.2, "fallback_rate": 0.5},
+                {"model_name": "als_implicit", "status": "skipped", "caveat": "insufficient_training_rows", "precision_at_k": None, "recall_at_k": None, "ndcg_at_k": None, "catalog_coverage": 0, "fallback_rate": 0},
+            ],
+            "source_mix": [{"source": "personalized_category", "recommendations": 1, "share": 0.5}],
+            "topk_matrix": [{"model_name": "rule_recommendation", "user_session": "sess-1", "rank": 1, "product_id": "1004856", "hit": True, "source": "personalized_category", "score": 0.8}],
+            "quality_gates": [{"name": "recall_at_k_available", "actual": 0.5, "operator": ">=", "expected": 0, "passed": True}],
+        },
+    )
+    write_json(
+        cache_dir / "recommendation_candidates.json",
+        [
+            {
+                "candidate_id": "s1:1004856:personalized_category",
+                "user_session": "s1",
+                "user_id": "101",
+                "product_id": "1004856",
+                "brand": "samsung",
+                "category_level1": "electronics",
+                "rank": 1,
+                "candidate_source": "personalized_category",
+                "recall_stage": "category_recall",
+                "candidate_stage": "ranked_topk",
+                "score": 0.09,
+                "ranker_score": 1.0,
+                "source_score": 1.0,
+                "conversion_score": 0.09,
+                "freshness_score": 0.82,
+                "affinity_score": 0.0,
+                "confidence": 0.82,
+                "ranker_model": "interpretable_rule_ranker_v1",
+                "calibration_bucket": "high",
+                "reason_codes": ["category_affinity"],
+                "fallback_used": False,
+            }
+        ],
+    )
     write_json(cache_dir / "recommendation_alerts.json", [])
     write_json(
         cache_dir / "feature_mart_summary.json",
@@ -923,6 +1005,35 @@ def make_client(tmp_path):
             "min_dt": "2020-01-01",
             "max_dt": "2020-01-02",
             "partitions": [{"dt": "2020-01-01", "rows": 2, "status": "written"}],
+        },
+    )
+    write_json(
+        cache_dir / "feature_mart_features.json",
+        [
+            {
+                "contract_version": "behavior-feature-mart/v1",
+                "run_id": "feature-test",
+                "feature_name": "daily_product_behavior.views",
+                "chinese_name": "商品日浏览量",
+                "grain": "dt + product_id",
+                "source": "cleaned_events.event_type=view",
+                "refresh_frequency": "daily",
+                "quality_assertions": ["non_negative", "partition_present"],
+                "owner": "spark_feature_mart",
+            }
+        ],
+    )
+    write_json(
+        cache_dir / "feature_mart_readiness.json",
+        {
+            "contract_version": "behavior-feature-mart/v1",
+            "run_id": "feature-test",
+            "status": "ready",
+            "ready_features": 1,
+            "total_features": 1,
+            "checks": [{"name": "quality_status", "actual": "passed", "operator": "==", "expected": "passed", "passed": True}],
+            "features": [{"feature_name": "daily_product_behavior.views", "chinese_name": "商品日浏览量", "grain": "dt + product_id", "status": "ready", "failed_rules": [], "source": "cleaned_events.event_type=view"}],
+            "lineage": [{"from": "raw_events", "to": "cleaned_events", "relation": "clean_and_validate"}],
         },
     )
     write_json(
@@ -998,6 +1109,8 @@ def make_client(tmp_path):
         "direction": "spike",
         "message": "category electronics revenue spike detected on 2020-01-02",
         "recommended_action": "Inspect campaign, bot traffic, price promotion, and downstream capacity before scaling exposure.",
+        "incident_id": "incident:2020-01-02:category:electronics:revenue",
+        "baseline_mode": "weekday_median_mad",
     }
     write_json(
         cache_dir / "anomaly_summary.json",
@@ -1023,6 +1136,38 @@ def make_client(tmp_path):
         },
     )
     write_json(cache_dir / "anomaly_alerts.json", [anomaly_alert, {**anomaly_alert, "alert_code": "product_views_drop", "severity": "warning"}])
+    anomaly_incident = {
+        "contract_version": "ops-anomaly-radar/v1",
+        "incident_id": anomaly_alert["incident_id"],
+        "run_id": "anomaly-test",
+        "dt": "2020-01-02",
+        "severity": "critical",
+        "entity_type": "category",
+        "entity_id": "electronics",
+        "entity_label": "electronics",
+        "metric": "revenue",
+        "alert_count": 1,
+        "max_robust_z": 12.4,
+        "impact_value": 4500.0,
+        "root_cause_contributions": [{"dimension": "category", "value": "electronics", "metric": "revenue", "contribution": 4500.0, "contribution_share": 1.0, "direction": "spike"}],
+        "recommended_action": "Inspect campaign, bot traffic, price promotion, and downstream capacity before scaling exposure.",
+    }
+    write_json(cache_dir / "anomaly_incidents.json", [anomaly_incident])
+    write_json(
+        cache_dir / "anomaly_root_cause.json",
+        [{"contract_version": "ops-anomaly-radar/v1", "incident_id": anomaly_incident["incident_id"], "dt": "2020-01-02", "severity": "critical", "dimension": "category", "value": "electronics", "metric": "revenue", "contribution": 4500.0, "contribution_share": 1.0, "direction": "spike"}],
+    )
+    write_json(
+        cache_dir / "anomaly_evaluation.json",
+        {
+            "contract_version": "ops-anomaly-radar/v1",
+            "run_id": "anomaly-test",
+            "baseline": {"seasonal_signal_count": 12, "seasonal_coverage_rate": 0.25, "min_seasonal_points": 3, "min_baseline_points": 3},
+            "incidents": {"incident_count": 1, "critical_incidents": 1, "warning_incidents": 0},
+            "alert_budget": {"anomaly_signal_count": 2, "signal_count": 48, "anomaly_rate": 0.041667, "max_alerts": 100},
+            "quality_gates": [{"name": "incident_budget", "actual": 1, "operator": "<=", "expected": 100, "passed": True}],
+        },
+    )
     write_json(
         cache_dir / "anomaly_timeline.json",
         [{"dt": "2020-01-02", "signal_count": 40, "critical_count": 1, "warning_count": 1, "watch_count": 0, "max_robust_z": 12.4}],
@@ -1172,6 +1317,63 @@ def make_client(tmp_path):
             "recommended_action": "Launch only experiments with sufficient treatment/control balance.",
         },
     )
+    write_json(
+        cache_dir / "experiment_results.json",
+        [
+            {
+                "contract_version": "growth-experimentation/v1",
+                "run_id": "experiment-test",
+                "experiment_key": "lifecycle_reactivation",
+                "name": "生命周期再激活策略",
+                "primary_metric": "purchase_rate",
+                "measurement_status": "offline_history_replay",
+                "oec_metric": "purchase_rate",
+                "treatment_users": 1,
+                "control_users": 1,
+                "expected_treatment_ratio": 0.5,
+                "observed_treatment_ratio": 0.5,
+                "srm_chi_square": 0.0,
+                "srm_p_value": 1.0,
+                "srm_status": "passed",
+                "control_mean": 1.0,
+                "treatment_mean": 0.0,
+                "absolute_lift": -1.0,
+                "relative_lift": -1.0,
+                "standard_error": None,
+                "ci_low": None,
+                "ci_high": None,
+                "p_value": None,
+                "decision": "not_measurable",
+                "variant_rows": [],
+                "causal_caveat": "offline_history_replay_not_causal",
+            }
+        ],
+    )
+    write_json(
+        cache_dir / "experiment_uplift.json",
+        {
+            "contract_version": "growth-experimentation/v1",
+            "run_id": "experiment-test",
+            "measurement_status": "offline_history_replay",
+            "causal_valid": False,
+            "causal_caveat": "randomized_exposure_and_outcome_required_for_true_uplift",
+            "summary": [{"experiment_key": "lifecycle_reactivation", "auuc": 0.0, "qini_auc": 0.0, "decile_count": 1}],
+            "deciles": [
+                {
+                    "experiment_key": "lifecycle_reactivation",
+                    "decile": 1,
+                    "treatment_users": 1,
+                    "control_users": 1,
+                    "treatment_conversion_rate": 0.0,
+                    "control_conversion_rate": 1.0,
+                    "uplift": -1.0,
+                    "cumulative_gain": -1.0,
+                    "avg_uplift_score": 0.035,
+                }
+            ],
+            "quality_gates": [{"name": "causal_outcome_available", "actual": "offline_history_replay", "operator": "==", "expected": "randomized_experiment_results", "passed": False}],
+        },
+    )
     write_json(cache_dir / "job.json", {"status": "idle"})
 
     app = create_app()
@@ -1197,6 +1399,44 @@ def test_summary_api_reads_cache(tmp_path):
     assert "request_id" in response.get_json()["meta"]
 
 
+def test_controlled_query_api_returns_chart_ready_payload(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.post("/api/v1/query/controlled", json={"query": "按月份统计销售额"})
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["code"] == 0
+    data = payload["data"]
+    assert data["matched"] is True
+    assert data["intent"]["metric_label"] == "成交额"
+    assert data["intent"]["dimension_label"] == "月份"
+    assert data["chart"]["title"] == "按月份统计成交额"
+    assert data["rows"] == [{"name": "2020-01", "raw_name": "2020-01", "value": 499.8, "share": 1.0}]
+    assert data["evidence"]["execution_engine"] == "dashboard_slice_cache"
+
+
+def test_controlled_query_api_returns_unsupported_without_500(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.post("/api/v1/query/controlled", json={"query": "随便写一段不在白名单里的问题"})
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["matched"] is False
+    assert data["status"] == "unsupported"
+    assert data["suggestions"]
+
+
+def test_controlled_query_api_rejects_empty_query(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.post("/api/v1/query/controlled", json={"query": ""})
+
+    assert response.status_code == 400
+    assert response.get_json()["message"] == "query is required"
+
+
 def test_api_contract_lists_stable_endpoints(tmp_path):
     client, _, _ = make_client(tmp_path)
 
@@ -1208,6 +1448,7 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert payload["version"] == "v1"
     assert "/api/v1/summary" in paths
     assert "/api/v1/openapi.json" in paths
+    assert "/api/v1/query/controlled" in paths
     assert "/api/v1/conversion/funnel" in paths
     assert "/api/v1/conversion/daily" in paths
     assert "/api/v1/conversion/products" in paths
@@ -1220,6 +1461,7 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "/api/v1/forecasting/series" in paths
     assert "/api/v1/forecasting/entities" in paths
     assert "/api/v1/forecasting/backtest" in paths
+    assert "/api/v1/forecasting/evaluation" in paths
     assert "/api/v1/forecasting/risks" in paths
     assert "/api/v1/forecasting/quality" in paths
     assert "/api/v1/affinity/summary" in paths
@@ -1227,6 +1469,7 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "/api/v1/affinity/edges" in paths
     assert "/api/v1/affinity/communities" in paths
     assert "/api/v1/affinity/opportunities" in paths
+    assert "/api/v1/affinity/centrality" in paths
     assert "/api/v1/affinity/quality" in paths
     assert "/api/v1/cohorts/summary" in paths
     assert "/api/v1/cohorts/retention" in paths
@@ -1256,16 +1499,22 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "/api/v1/jobs/{job_id}/lineage" in paths
     assert "/api/v1/jobs/{job_id}/quality" in paths
     assert "/api/v1/ops/evidence" in paths
+    assert "/api/v1/ops/optimization-impact" in paths
     assert "/api/v1/optimization/summary" in paths
     assert "/api/v1/optimization/plan" in paths
     assert "/api/v1/optimization/candidates" in paths
     assert "/api/v1/optimization/quality" in paths
     assert "/api/v1/recommendations/summary" in paths
     assert "/api/v1/recommendations/items" in paths
+    assert "/api/v1/recommendations/candidates" in paths
     assert "/api/v1/recommendations/quality" in paths
+    assert "/api/v1/recommendations/evaluation" in paths
     assert "/api/v1/recommendations/alerts" in paths
     assert "/api/v1/anomalies/summary" in paths
     assert "/api/v1/anomalies/alerts" in paths
+    assert "/api/v1/anomalies/incidents" in paths
+    assert "/api/v1/anomalies/root-cause" in paths
+    assert "/api/v1/anomalies/evaluation" in paths
     assert "/api/v1/anomalies/timeline" in paths
     assert "/api/v1/anomalies/rules" in paths
     assert "/api/v1/lifecycle/summary" in paths
@@ -1278,10 +1527,14 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "/api/v1/experiments/assignments" in paths
     assert "/api/v1/experiments/segments" in paths
     assert "/api/v1/experiments/guardrails" in paths
+    assert "/api/v1/experiments/results" in paths
+    assert "/api/v1/experiments/uplift" in paths
     assert "/api/v1/feature-mart/summary" in paths
     assert "/api/v1/feature-mart/freshness" in paths
     assert "/api/v1/feature-mart/quality" in paths
     assert "/api/v1/feature-mart/partitions" in paths
+    assert "/api/v1/feature-mart/features" in paths
+    assert "/api/v1/feature-mart/readiness" in paths
     assert "/api/v1/feature-mart/products" in paths
     assert "/api/v1/feature-mart/categories" in paths
     assert "/api/v1/feature-mart/users" in paths
@@ -1290,19 +1543,29 @@ def test_api_contract_lists_stable_endpoints(tmp_path):
     assert "ProductConversion" in payload["schemas"]
     assert "JourneySummary" in payload["schemas"]
     assert "ForecastingSummary" in payload["schemas"]
+    assert "ForecastingEvaluation" in payload["schemas"]
     assert "AffinitySummary" in payload["schemas"]
+    assert "AffinityCentrality" in payload["schemas"]
     assert "CohortSummary" in payload["schemas"]
     assert "PortfolioSummary" in payload["schemas"]
     assert "CartSummary" in payload["schemas"]
     assert "AttributionSummary" in payload["schemas"]
     assert "JobLineage" in payload["schemas"]
     assert "JobQuality" in payload["schemas"]
+    assert "OptimizationImpact" in payload["schemas"]
     assert "OptimizationSummary" in payload["schemas"]
     assert "RecommendationSummary" in payload["schemas"]
+    assert "RecommendationCandidate" in payload["schemas"]
+    assert "RecommendationEvaluation" in payload["schemas"]
     assert "AnomalySummary" in payload["schemas"]
+    assert "AnomalyIncident" in payload["schemas"]
     assert "LifecycleSummary" in payload["schemas"]
     assert "ExperimentSummary" in payload["schemas"]
+    assert "ExperimentResult" in payload["schemas"]
+    assert "ExperimentUplift" in payload["schemas"]
     assert "FeatureMartSummary" in payload["schemas"]
+    assert "FeatureMartReadiness" in payload["schemas"]
+    assert "ControlledQueryResult" in payload["schemas"]
     assert "request_id" in payload["schemas"]["ApiEnvelope"]["properties"]["meta"]["properties"]
 
 
@@ -1332,16 +1595,44 @@ def test_openapi_exposes_response_schemas(tmp_path):
 
     assert response.status_code == 200
     spec = response.get_json()["data"]
+    contract_paths = {
+        endpoint["path"]
+        for endpoint in client.get("/api/v1/contracts").get_json()["data"]["endpoints"]
+        if endpoint["method"] == "GET"
+    }
     assert spec["openapi"] == "3.1.0"
+    assert contract_paths <= set(spec["paths"])
+    assert "/api/v1/health" in spec["paths"]
+    assert "/api/v1/query/controlled" in spec["paths"]
+    assert "post" in spec["paths"]["/api/v1/query/controlled"]
+    assert "/api/v1/dashboard/slice" in spec["paths"]
+    dashboard_slice_parameters = {
+        parameter["name"]: parameter["schema"]
+        for parameter in spec["paths"]["/api/v1/dashboard/slice"]["get"]["parameters"]
+    }
+    assert dashboard_slice_parameters["event_type"]["enum"] == ["view", "cart", "remove_from_cart", "purchase"]
+    assert "category_level1" in dashboard_slice_parameters
+    assert "brand" in dashboard_slice_parameters
     assert "/api/v1/table" in spec["paths"]
+    table_parameters = {
+        parameter["name"]: parameter["schema"]
+        for parameter in spec["paths"]["/api/v1/table"]["get"]["parameters"]
+    }
+    assert table_parameters["page"]["minimum"] == 1
+    assert table_parameters["size"]["maximum"] == 100
+    assert table_parameters["event_type"]["enum"] == ["view", "cart", "remove_from_cart", "purchase"]
+    assert "category_level1" in table_parameters
+    assert "brand" in table_parameters
     assert "/api/v1/conversion/funnel" in spec["paths"]
     assert "/api/v1/conversion/products" in spec["paths"]
     assert "/api/v1/journey/summary" in spec["paths"]
     assert "/api/v1/journey/transitions" in spec["paths"]
     assert "/api/v1/forecasting/summary" in spec["paths"]
+    assert "/api/v1/forecasting/evaluation" in spec["paths"]
     assert "/api/v1/forecasting/risks" in spec["paths"]
     assert "/api/v1/affinity/summary" in spec["paths"]
     assert "/api/v1/affinity/opportunities" in spec["paths"]
+    assert "/api/v1/affinity/centrality" in spec["paths"]
     assert "/api/v1/cohorts/summary" in spec["paths"]
     assert "/api/v1/cohorts/retention" in spec["paths"]
     assert "/api/v1/portfolio/summary" in spec["paths"]
@@ -1354,17 +1645,24 @@ def test_openapi_exposes_response_schemas(tmp_path):
     assert "/api/v1/jobs/{job_id}/lineage" in spec["paths"]
     assert "/api/v1/jobs/{job_id}/quality" in spec["paths"]
     assert "/api/v1/ops/evidence" in spec["paths"]
+    assert "/api/v1/ops/optimization-impact" in spec["paths"]
     assert "/api/v1/optimization/summary" in spec["paths"]
     assert "/api/v1/optimization/quality" in spec["paths"]
     assert "/api/v1/recommendations/summary" in spec["paths"]
     assert "/api/v1/recommendations/items" in spec["paths"]
+    assert "/api/v1/recommendations/candidates" in spec["paths"]
+    assert "/api/v1/recommendations/evaluation" in spec["paths"]
     assert "/api/v1/anomalies/summary" in spec["paths"]
+    assert "/api/v1/anomalies/incidents" in spec["paths"]
     assert "/api/v1/anomalies/alerts" in spec["paths"]
     assert "/api/v1/lifecycle/summary" in spec["paths"]
     assert "/api/v1/lifecycle/risk-queue" in spec["paths"]
     assert "/api/v1/experiments/summary" in spec["paths"]
     assert "/api/v1/experiments/assignments" in spec["paths"]
+    assert "/api/v1/experiments/results" in spec["paths"]
+    assert "/api/v1/experiments/uplift" in spec["paths"]
     assert "/api/v1/feature-mart/summary" in spec["paths"]
+    assert "/api/v1/feature-mart/readiness" in spec["paths"]
     assert "/api/v1/feature-mart/products" in spec["paths"]
     assert "Summary" in spec["components"]["schemas"]
 
@@ -1391,6 +1689,7 @@ def test_openapi_exposes_response_schemas(tmp_path):
         "/api/v1/forecasting/series?scope=site&entity=all&metric=gmv",
         "/api/v1/forecasting/entities?limit=1",
         "/api/v1/forecasting/backtest?scope=site&entity=all",
+        "/api/v1/forecasting/evaluation",
         "/api/v1/forecasting/risks?severity=high&limit=1",
         "/api/v1/forecasting/quality",
         "/api/v1/affinity/summary",
@@ -1398,6 +1697,7 @@ def test_openapi_exposes_response_schemas(tmp_path):
         "/api/v1/affinity/edges?entity_id=1004856&relation_type=co_purchase&limit=1",
         "/api/v1/affinity/communities?limit=1",
         "/api/v1/affinity/opportunities?type=bundle&confidence=0.2&limit=1",
+        "/api/v1/affinity/centrality?community_id=category:electronics&limit=1",
         "/api/v1/affinity/quality",
         "/api/v1/cohorts/summary",
         "/api/v1/cohorts/retention?cohort=2020-01&metric=retention_rate",
@@ -1430,10 +1730,15 @@ def test_openapi_exposes_response_schemas(tmp_path):
         "/api/v1/optimization/quality",
         "/api/v1/recommendations/summary",
         "/api/v1/recommendations/items?limit=1",
+        "/api/v1/recommendations/candidates?source=category_recall&limit=1",
         "/api/v1/recommendations/quality",
+        "/api/v1/recommendations/evaluation",
         "/api/v1/recommendations/alerts",
         "/api/v1/anomalies/summary",
         "/api/v1/anomalies/alerts?limit=1",
+        "/api/v1/anomalies/incidents?limit=1",
+        "/api/v1/anomalies/root-cause",
+        "/api/v1/anomalies/evaluation",
         "/api/v1/anomalies/timeline",
         "/api/v1/anomalies/rules",
         "/api/v1/lifecycle/summary",
@@ -1446,15 +1751,20 @@ def test_openapi_exposes_response_schemas(tmp_path):
         "/api/v1/experiments/assignments?limit=1",
         "/api/v1/experiments/segments",
         "/api/v1/experiments/guardrails",
+        "/api/v1/experiments/results?experiment_key=lifecycle_reactivation",
+        "/api/v1/experiments/uplift?experiment_key=lifecycle_reactivation",
         "/api/v1/feature-mart/summary",
         "/api/v1/feature-mart/freshness",
         "/api/v1/feature-mart/quality",
         "/api/v1/feature-mart/partitions",
+        "/api/v1/feature-mart/features",
+        "/api/v1/feature-mart/readiness",
         "/api/v1/feature-mart/products?limit=1",
         "/api/v1/feature-mart/categories?limit=1",
         "/api/v1/feature-mart/users?limit=1",
         "/api/v1/job",
         "/api/v1/ops/evidence",
+        "/api/v1/ops/optimization-impact",
         "/api/v1/table?page=1&size=2",
     ],
 )
@@ -1514,6 +1824,30 @@ def test_ops_page_serves_react_dist_entry(tmp_path):
     assert b"react ops app" in response.data
 
 
+def test_table_page_serves_react_dist_entry_when_available(tmp_path):
+    dist = tmp_path / "frontend" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text("<main>react table app</main>", encoding="utf-8")
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    raw_path = tmp_path / "events.csv"
+    raw_path.write_text("event_type,brand\n", encoding="utf-8")
+    app = create_app()
+    app.config.update(
+        TESTING=True,
+        PROJECT_ROOT=tmp_path,
+        METRIC_CACHE_DIR=cache_dir,
+        RAW_DATA_PATH=raw_path,
+        JOB_DB_PATH=tmp_path / "platform.db",
+    )
+    client = app.test_client()
+
+    response = client.get("/table?event_type=purchase")
+
+    assert response.status_code == 200
+    assert b"react table app" in response.data
+
+
 def test_table_api_filters_and_paginates(tmp_path):
     client, _, _ = make_client(tmp_path)
 
@@ -1526,6 +1860,90 @@ def test_table_api_filters_and_paginates(tmp_path):
     assert data["total"] == 2
     assert len(data["rows"]) == 1
     assert data["rows"][0]["event_type"] == "purchase"
+    assert data["source_dataset"] == "raw_events_compatible_fallback"
+
+
+def test_table_api_filters_by_category_and_brand(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.get("/api/v1/table?page=1&size=10&event_type=purchase&category_level1=apparel&brand=nike")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["total"] == 1
+    assert data["rows"][0]["event_type"] == "purchase"
+    assert data["rows"][0]["category_level1"] == "apparel"
+    assert data["rows"][0]["brand"] == "nike"
+    assert data["source_dataset"] == "raw_events_compatible_fallback"
+    assert data["rows"][0]["source_dataset"] == "raw_events_compatible_fallback"
+
+
+def test_dashboard_slice_api_filters_and_returns_evidence(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.get("/api/v1/dashboard/slice?event_type=purchase&category_level1=apparel&brand=nike")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["summary"]["event_count"] == 1
+    assert data["summary"]["purchase_count"] == 1
+    assert data["summary"]["total_sales"] == 199.9
+    assert data["event_type_count"] == [{"name": "purchase", "value": 1}]
+    assert data["daily_events"] == [{"date": "2020-01-01", "value": 1}]
+    assert data["daily_sales"] == [{"date": "2020-01-01", "value": 199.9}]
+    assert data["top_categories"] == [{"name": "apparel", "value": 1}]
+    assert data["evidence"]["filtered_row_count"] == 1
+    assert data["evidence"]["total_row_count"] == 3
+    assert data["evidence"]["source_dataset"] == "raw_events_compatible_fallback"
+    assert data["evidence"]["cache_mode"] == "detail_scan"
+    assert data["evidence"]["cache_hit"] is False
+    assert data["evidence"]["fallback_reason"] == "dashboard_cube_missing"
+
+
+def test_table_api_prefers_cleaned_snapshot(tmp_path):
+    client, cache_dir, raw_path = make_client(tmp_path)
+    table_dir = cache_dir / "table_events"
+    table_dir.mkdir()
+    with (table_dir / "part-00000.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "event_time",
+                "event_type",
+                "product_id",
+                "category_id",
+                "category_code",
+                "category_level1",
+                "brand",
+                "price",
+                "user_id",
+                "user_session",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "event_time": "2020-01-01 00:01:00 UTC",
+                "event_type": "purchase",
+                "product_id": "cleaned-product",
+                "category_id": "11",
+                "category_code": "apparel.shoe",
+                "category_level1": "apparel",
+                "brand": "nike",
+                "price": "199.9",
+                "user_id": "102",
+                "user_session": "s2",
+            }
+        )
+    raw_path.unlink()
+
+    response = client.get("/api/v1/table?page=1&size=10&event_type=purchase&category_level1=apparel&brand=nike")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["total"] == 1
+    assert data["source_dataset"] == "cleaned_events"
+    assert data["rows"][0]["product_id"] == "cleaned-product"
 
 
 def test_ops_evidence_reads_compact_benchmark_results(tmp_path):
@@ -1598,6 +2016,27 @@ def test_ops_evidence_reads_compact_benchmark_results(tmp_path):
     assert data["cleanup_policy"]["raw_data_preserved"] is True
 
 
+def test_ops_optimization_impact_returns_frontend_visible_evidence(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.get("/api/v1/ops/optimization-impact")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["overall_status"] in {"healthy", "needs_attention"}
+    assert data["summary"]["visible_page_count"] == 4
+    assert {section["id"] for section in data["frontend_sections"]} == {
+        "dashboard",
+        "ops",
+        "recommendations",
+        "forecasting",
+    }
+    assert any(card["id"] == "feature-mart" for card in data["data_layers"])
+    assert any(card["id"] == "recommendation-gate" for card in data["quality_gates"])
+    assert any(card["id"] == "forecast-planning" for card in data["model_cards"])
+    assert any(card["id"] == "spark-task-health" for card in data["performance_cards"])
+
+
 def test_table_api_validates_page(tmp_path):
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
@@ -1615,6 +2054,17 @@ def test_table_api_validates_page(tmp_path):
     assert response.status_code == 400
     assert response.get_json()["code"] == 40001
     assert response.get_json()["message"] == "page must be greater than 0"
+
+
+@pytest.mark.parametrize(("query", "message"), [("page=abc", "page must be an integer"), ("size=abc", "size must be an integer")])
+def test_table_api_rejects_non_numeric_pagination(tmp_path, query, message):
+    client, _, _ = make_client(tmp_path)
+
+    response = client.get(f"/api/v1/table?{query}")
+
+    assert response.status_code == 400
+    assert response.get_json()["code"] == 40001
+    assert response.get_json()["message"] == message
 
 
 def test_conversion_products_validates_limit(tmp_path):
@@ -1696,6 +2146,70 @@ def test_recommendation_items_apply_limit(tmp_path):
     data = response.get_json()["data"]
     assert len(data) == 1
     assert data[0]["source"] == "personalized_category"
+
+
+def test_stage3_algorithm_evidence_endpoints_filter(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    candidates = client.get("/api/v1/recommendations/candidates?source=category_recall&limit=1")
+    centrality = client.get("/api/v1/affinity/centrality?community_id=category:electronics&limit=1")
+    results = client.get("/api/v1/experiments/results?experiment_key=lifecycle_reactivation")
+    uplift = client.get("/api/v1/experiments/uplift?experiment_key=lifecycle_reactivation")
+
+    assert candidates.status_code == 200
+    assert candidates.get_json()["data"][0]["recall_stage"] == "category_recall"
+    assert centrality.status_code == 200
+    assert centrality.get_json()["data"][0]["centrality_score"] == 0.964
+    assert results.status_code == 200
+    assert results.get_json()["data"][0]["srm_status"] == "passed"
+    assert uplift.status_code == 200
+    assert uplift.get_json()["data"]["causal_valid"] is False
+    assert uplift.get_json()["data"]["deciles"][0]["experiment_key"] == "lifecycle_reactivation"
+
+
+def test_recommendation_candidates_degrade_from_items_when_missing(tmp_path):
+    client, cache_dir, _ = make_client(tmp_path)
+    (cache_dir / "recommendation_candidates.json").unlink()
+
+    response = client.get("/api/v1/recommendations/candidates?source=category_recall&limit=1")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data[0]["candidate_source"] == "personalized_category"
+    assert data[0]["recall_stage"] == "category_recall"
+    assert data[0]["affinity_score"] == 0
+    assert data[0]["degraded_from_recommendation_items"] is True
+
+
+def test_recommendation_evaluation_degrades_when_missing(tmp_path):
+    client, cache_dir, _ = make_client(tmp_path)
+    (cache_dir / "recommendation_evaluation.json").unlink()
+
+    response = client.get("/api/v1/recommendations/evaluation")
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["split"]["strategy"] == "not_evaluated"
+    assert data["model_metrics"][0]["status"] == "skipped"
+    assert data["quality_gates"][0]["passed"] is False
+    assert data["degraded_from_summary"] is True
+
+
+def test_experiment_optional_evidence_endpoints_degrade_when_missing(tmp_path):
+    client, cache_dir, _ = make_client(tmp_path)
+    (cache_dir / "experiment_results.json").unlink()
+    (cache_dir / "experiment_uplift.json").unlink()
+
+    results = client.get("/api/v1/experiments/results")
+    uplift = client.get("/api/v1/experiments/uplift")
+
+    assert results.status_code == 200
+    assert results.get_json()["data"] == []
+    assert uplift.status_code == 200
+    payload = uplift.get_json()["data"]
+    assert payload["causal_valid"] is False
+    assert payload["deciles"] == []
+    assert payload["quality_gates"][0]["passed"] is False
 
 
 def test_feature_mart_preview_endpoints_apply_limit(tmp_path):
@@ -1840,7 +2354,9 @@ def test_refresh_conflict_returns_409(monkeypatch, tmp_path):
 
 
 def test_jobs_api_creates_and_lists_jobs(monkeypatch, tmp_path):
-    client, _, _ = make_client(tmp_path)
+    client, cache_dir, _ = make_client(tmp_path)
+    artifact_path = cache_dir / "run_manifest.json"
+    write_json(artifact_path, {"run_id": "run-1"})
     job = JobRecord(
         job_id="job-1",
         job_type="spark_refresh",
@@ -1855,7 +2371,7 @@ def test_jobs_api_creates_and_lists_jobs(monkeypatch, tmp_path):
         input_snapshot={"actual_input_path": "hdfs://master:9000/user/course/ecommerce_behavior/*.csv"},
         quality_status="passed",
         quality_report={"gate": {"status": "passed"}},
-        output_artifacts={"metrics_dir": "data/cache"},
+        output_artifacts={"run_manifest_path": str(artifact_path), "metrics_dir": "data/cache"},
     )
 
     class FakeJobService:
@@ -1883,10 +2399,16 @@ def test_jobs_api_creates_and_lists_jobs(monkeypatch, tmp_path):
     assert detail.status_code == 200
     assert detail.get_json()["data"]["status"] == "queued"
     assert detail.get_json()["data"]["run_id"] == "run-1"
+    assert detail.get_json()["data"]["governance"]["contract_version"] == "job-governance/v1"
+    assert detail.get_json()["data"]["governance"]["artifacts"][0]["status"] == "fresh"
+    assert listed.get_json()["data"]["rows"][0]["governance"]["active_stage"] == "queued"
 
 
 def test_job_lineage_and_quality_api(monkeypatch, tmp_path):
-    client, _, _ = make_client(tmp_path)
+    client, cache_dir, _ = make_client(tmp_path)
+    artifact_path = cache_dir / "runs" / "run-1" / "manifest.json"
+    artifact_path.parent.mkdir(parents=True)
+    write_json(artifact_path, {"run_id": "run-1"})
     job = JobRecord(
         job_id="job-1",
         job_type="spark_refresh",
@@ -1905,7 +2427,7 @@ def test_job_lineage_and_quality_api(monkeypatch, tmp_path):
         input_snapshot={"file_count": 2, "files": ["hdfs://master:9000/user/course/ecommerce_behavior/2019-Oct.csv"]},
         quality_status="passed",
         quality_report={"gate": {"status": "passed"}, "metrics": {"cleaned_rows": 100}},
-        output_artifacts={"run_manifest_path": "data/cache/runs/run-1/manifest.json"},
+        output_artifacts={"run_manifest_path": str(artifact_path)},
     )
 
     class FakeJobService:
@@ -1922,10 +2444,13 @@ def test_job_lineage_and_quality_api(monkeypatch, tmp_path):
     assert lineage.get_json()["data"]["input_snapshot"]["file_count"] == 2
     assert lineage.get_json()["data"]["spark_application_status"] == "SUCCEEDED"
     assert lineage.get_json()["data"]["output_artifacts"]["run_manifest_path"].endswith("manifest.json")
+    assert lineage.get_json()["data"]["governance"]["status"] == "published"
+    assert lineage.get_json()["data"]["governance"]["completion_ratio"] == 1
     assert quality.status_code == 200
     assert quality.get_json()["data"]["quality_status"] == "passed"
     assert quality.get_json()["data"]["quality_report"]["metrics"]["cleaned_rows"] == 100
     assert quality.get_json()["data"]["spark_history_metrics"]["failed_task_count"] == 0
+    assert quality.get_json()["data"]["governance"]["quality_summary"]["passed_check_count"] == 0
 
 
 def test_job_detail_returns_404_for_missing_job(monkeypatch, tmp_path):

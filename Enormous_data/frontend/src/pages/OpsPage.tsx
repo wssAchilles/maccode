@@ -1,19 +1,23 @@
 import { Activity, BarChart3, CheckCircle2, Database, FileJson, GitBranch, HardDrive, Play, ShieldCheck, XCircle } from 'lucide-react';
 import { useJob, useJobLineage, useJobQuality, useJobs, useOpsEvidence, useRefreshJob } from '../api/hooks';
+import { ChartPanel } from '../components/ChartPanel';
+import { OptimizationImpactPanel } from '../features/optimization/OptimizationImpactPanel';
+import { fieldLabel, statusLabel as localizedStatusLabel } from '../i18n/displayText';
+import { barOption } from '../lib/chartOptions';
 import { compactDate } from '../lib/format';
-import type { BenchmarkRun, EvidencePath, JobStatus, ModuleBenchmarkRun, QualityCheck } from '../types/api';
+import type { BenchmarkRun, EvidencePath, JobGovernanceArtifact, JobGovernanceStage, JobStatus, ModuleBenchmarkRun, QualityCheck, SparkHistoryMetrics } from '../types/api';
 
 const activeStatuses = new Set(['queued', 'running']);
 
 function statusLabel(status?: string) {
-  if (!status) return 'unknown';
+  if (!status) return 'pending';
   if (status === 'succeeded') return 'succeeded';
   if (status === 'success') return 'succeeded';
   return status;
 }
 
 function shortHash(hash?: string | null) {
-  return hash ? hash.slice(0, 12) : 'pending';
+  return hash ? hash.slice(0, 12) : '待生成';
 }
 
 function qualityTone(status?: string | null) {
@@ -23,19 +27,23 @@ function qualityTone(status?: string | null) {
 }
 
 function safeNumber(value?: number) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 function seconds(value?: number | null) {
-  return typeof value === 'number' ? `${value.toFixed(1)}s` : 'pending';
+  return typeof value === 'number' ? `${value.toFixed(1)}s` : '待生成';
 }
 
 function bytes(value?: number | null) {
-  if (typeof value !== 'number') return 'pending';
+  if (typeof value !== 'number') return '待生成';
   if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(1)} GB`;
   if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
   if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${value} B`;
+}
+
+function percent(value?: number | null) {
+  return typeof value === 'number' ? `${Math.round(value * 100)}%` : '待生成';
 }
 
 function metricNumber(value: unknown): number | undefined {
@@ -45,18 +53,106 @@ function metricNumber(value: unknown): number | undefined {
 function jobMessage(job?: JobStatus) {
   if (!job?.message) return '等待首次运行';
   const lines = job.message.split('\n').filter(Boolean);
-  return lines.at(-1) ?? job.message;
+  const lastLine = lines.at(-1) ?? job.message;
+  const finished = lastLine.match(/Spark job finished:\s*raw=(\d+)\s+cleaned=(\d+)\s+sales=([\d.]+)\s+elapsed=([\d.]+)s/);
+  if (finished) {
+    return `Spark 计算完成：原始 ${Number(finished[1]).toLocaleString()} 行，清洗后 ${Number(finished[2]).toLocaleString()} 行，成交额 ${Number(finished[3]).toLocaleString()}，耗时 ${Number(finished[4]).toFixed(1)} 秒`;
+  }
+  return lastLine.replace('Spark job finished', 'Spark 计算完成').replace('Spark refresh failed', 'Spark 刷新失败');
 }
 
 function variantLabel(variant: string) {
   const labels: Record<string, string> = {
-    baseline_local_csv: 'Local CSV baseline',
-    yarn_only_csv: 'YARN-only CSV',
-    yarn_aqe_csv: 'YARN + AQE',
-    yarn_algorithm_csv: 'YARN + algorithm',
-    yarn_parquet: 'YARN + Parquet',
+    baseline_local_csv: '本地 CSV 基线',
+    yarn_only_csv: '集群 CSV 基线',
+    yarn_aqe_csv: '集群自适应执行',
+    yarn_algorithm_csv: '集群算法优化',
+    yarn_parquet: '集群 Parquet',
   };
   return labels[variant] ?? variant;
+}
+
+function sampleLabel(sample?: string | null) {
+  const labels: Record<string, string> = {
+    '1pct': '1% 样本',
+    '5pct': '5% 样本',
+    smoke: '冒烟样本',
+    raw_oct: '10 月原始数据',
+    raw_nov: '11 月原始数据',
+  };
+  return sample ? labels[sample] ?? sample : '样本';
+}
+
+function moduleLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    affinity: '商品关系',
+    anomaly: '异常检测',
+    experimentation: '实验分析',
+    recommendation: '推荐模块',
+    affinity_pipeline: '商品关系流水线',
+    anomaly_pipeline: '异常检测流水线',
+    experimentation_pipeline: '实验分析流水线',
+    recommendation_pipeline: '推荐流水线',
+    module: '算法模块',
+    pipeline: '处理流水线',
+  };
+  return value ? labels[value] ?? value : '待生成';
+}
+
+function stageLabel(stage?: string | null) {
+  const labels: Record<string, string> = {
+    queued: '进入队列',
+    spark_execution: 'Spark 计算',
+    history_metrics: '运行指标采集',
+    quality_gate: '质量门禁',
+    artifact_publish: '产物发布',
+  };
+  return stage ? labels[stage] ?? stage : '待生成';
+}
+
+function artifactLabel(artifact?: string | null) {
+  const labels: Record<string, string> = {
+    run_manifest: '运行清单',
+    dashboard_cube_summary: '指标层摘要',
+    dashboard_cube_semantics: '指标语义',
+    dashboard_cube_total: '物化汇总层',
+    dashboard_cube_daily: '日级趋势层',
+    feature_mart_summary: '特征集市摘要',
+    feature_mart_freshness: '特征新鲜度',
+    recommendation_evaluation: '推荐评估',
+    forecasting_evaluation: '预测评估',
+    anomaly_incidents: '异常事件',
+    optimization_plan: '优化计划',
+  };
+  return artifact ? labels[artifact] ?? artifact : '产物';
+}
+
+function opsCopy(value?: string | null) {
+  const labels: Record<string, string> = {
+    'YARN-only increased scheduling overhead; AQE and algorithm guards made runtime and memory risk controllable.':
+      '集群 CSV 基线调度开销较高，自适应执行与算法护栏让耗时和内存风险更可控。',
+    'The experiment intentionally uses representative partial data instead of running the full Oct+Nov dataset.':
+      '本阶段采用代表性抽样数据验证，不运行 10 月与 11 月全量数据。',
+    typical_partial_only: '代表性抽样验证',
+    entrypoint_ready_not_default: '入口已就绪，默认未启用',
+    not_run_by_request: '按要求暂不运行',
+    csv_input: 'CSV 输入',
+    parquet_input: 'Parquet 输入',
+  };
+  return value ? labels[value] ?? value : '待生成';
+}
+
+function toneFromStatus(status?: string | null) {
+  if (['succeeded', 'success', 'passed', 'collected', 'published', 'fresh', 'SUCCEEDED'].includes(status ?? '')) return 'success';
+  if (['queued', 'running'].includes(status ?? '')) return 'running';
+  if (['warning', 'needs_review', 'degraded', 'stale', 'skipped', 'not_configured'].includes(status ?? '')) return 'warning';
+  if (['failed', 'rejected', 'missing', 'FAILED'].includes(status ?? '')) return 'danger';
+  return 'warning';
+}
+
+function barWidth(value?: number | null, max = 1) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || max <= 0) return '0%';
+  return `${Math.max(4, Math.min(100, (value / max) * 100))}%`;
 }
 
 export function OpsPage() {
@@ -76,6 +172,9 @@ export function OpsPage() {
   const sparkHistory = quality.data?.spark_history_metrics ?? lineage.data?.spark_history_metrics ?? latest?.spark_history_metrics;
   const sparkHistoryStatus =
     quality.data?.spark_history_metrics_status ?? lineage.data?.spark_history_metrics_status ?? latest?.spark_history_metrics_status ?? 'not_configured';
+  const governance = lineage.data?.governance ?? quality.data?.governance ?? latest?.governance;
+  const governanceArtifacts = governance?.artifacts ?? [];
+  const governanceStages = governance?.stages ?? [];
   const checks = qualityReport?.gate?.checks ?? [];
   const checksPassed = checks.filter((check) => check.passed).length;
   const failureStage = quality.data?.failure_stage ?? latest?.failure_stage ?? 'none';
@@ -86,18 +185,25 @@ export function OpsPage() {
   const benchmarkSummary = evidence.data?.benchmark_summary;
   const historySummary = evidence.data?.history_summary;
   const moduleRows = evidence.data?.module_benchmark_runs ?? [];
+  const freshArtifactCount = governanceArtifacts.filter((artifact) => artifact.status === 'fresh').length;
+  const benchmarkRuntimeRows = benchmarkRows
+    .filter((row) => typeof row.elapsed_seconds === 'number')
+    .map((row) => ({ name: `${sampleLabel(row.sample)} · ${variantLabel(row.variant)}`, value: row.elapsed_seconds ?? 0 }));
+  const benchmarkSpillRows = benchmarkRows
+    .filter((row) => typeof row.memory_spill_bytes === 'number')
+    .map((row) => ({ name: `${sampleLabel(row.sample)} · ${variantLabel(row.variant)}`, value: Math.round(((row.memory_spill_bytes ?? 0) / 1024 ** 3) * 10) / 10 }));
 
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Pipeline operations</span>
+        <span className="eyebrow">管道运维</span>
         <h1>作业治理与运行血缘</h1>
         <p>围绕真实 Kaggle 行为数据集跟踪 Spark 运行、HDFS 输入、质量门禁和缓存产物。</p>
       </section>
 
       <section className="ops-command-band">
         <div>
-          <span className={`status-pill tone-${statusLabel(latest?.status)}`}>{statusLabel(latest?.status)}</span>
+          <span className={`status-pill tone-${statusLabel(latest?.status)}`}>{localizedStatusLabel(statusLabel(latest?.status))}</span>
           <h2>{latest?.run_id ?? latest?.job_id ?? '尚未生成运行记录'}</h2>
           <p>{jobMessage(latest)}</p>
         </div>
@@ -107,31 +213,83 @@ export function OpsPage() {
         </button>
       </section>
 
+      <OptimizationImpactPanel compact />
+
       <section className="ops-triage-grid" aria-label="作业首屏判断">
         <article className={`triage-card tone-${statusLabel(latest?.status) === 'succeeded' ? 'success' : activeStatuses.has(latest?.status ?? '') ? 'running' : 'warning'}`}>
           <span>最新运行</span>
-          <strong>{statusLabel(latest?.status)}</strong>
+          <strong>{localizedStatusLabel(statusLabel(latest?.status))}</strong>
           <small>{latest?.elapsed_seconds ? `${latest.elapsed_seconds}s` : '等待耗时'}</small>
-          <p>{sparkAppId ?? 'waiting for application id'}</p>
+          <p>{sparkAppId ?? '等待 Spark 应用 ID'}</p>
         </article>
         <article className={`triage-card tone-${failureStage === 'none' ? 'success' : 'danger'}`}>
           <span>失败阶段</span>
-          <strong>{failureStage}</strong>
-          <small>{sparkHistoryStatus}</small>
+          <strong>{localizedStatusLabel(failureStage)}</strong>
+          <small>{localizedStatusLabel(sparkHistoryStatus)}</small>
           <p>{latest?.error ?? '当前没有失败阶段。'}</p>
         </article>
         <article className={`triage-card tone-${qualityTone(quality.data?.quality_status ?? latest?.quality_status)}`}>
           <span>质量门禁</span>
-          <strong>{quality.data?.quality_status ?? latest?.quality_status ?? 'pending'}</strong>
-          <small>{checks.length ? `${checksPassed}/${checks.length} checks passed` : '等待 Spark manifest'}</small>
-          <p>{qualityReport?.gate?.status ?? 'not evaluated'}</p>
+          <strong>{localizedStatusLabel(quality.data?.quality_status ?? latest?.quality_status)}</strong>
+          <small>{checks.length ? `${checksPassed}/${checks.length} 项检查通过` : '等待 Spark 清单'}</small>
+          <p>{localizedStatusLabel(qualityReport?.gate?.status ?? 'not evaluated')}</p>
         </article>
-        <article className="triage-card tone-success">
-          <span>运行证据</span>
-          <strong>{safeNumber((benchmarkSummary?.one_pct_run_count ?? 0) + (benchmarkSummary?.five_pct_run_count ?? 0))}</strong>
-          <small>benchmark groups</small>
-          <p>{benchmarkSummary?.interpretation ?? '等待 benchmark 汇总数据'}</p>
+        <article className={`triage-card tone-${toneFromStatus(governance?.status)}`}>
+          <span>发布状态</span>
+          <strong>{localizedStatusLabel(governance?.status)}</strong>
+          <small>{freshArtifactCount}/{governanceArtifacts.length || 0} 个产物新鲜</small>
+          <p>当前阶段：{stageLabel(governance?.active_stage)}</p>
         </article>
+      </section>
+
+      <section className="ops-visual-grid" aria-label="运行治理图">
+        <article className="data-panel ops-card ops-wide-card">
+          <div className="panel-title">
+            <div>
+              <h2>运行阶段时间轴</h2>
+              <p>按队列、计算、指标采集、质量门禁和产物发布追踪一次刷新。</p>
+            </div>
+            <Activity size={20} />
+          </div>
+          <RunStageTimeline stages={governanceStages} />
+        </article>
+
+        <article className="data-panel ops-card">
+          <div className="panel-title">
+            <div>
+              <h2>产物新鲜度</h2>
+              <p>物化层和算法产物按 24 小时服务承诺判定。</p>
+            </div>
+            <Database size={20} />
+          </div>
+          <ArtifactFreshnessList artifacts={governanceArtifacts} />
+        </article>
+
+        <article className="data-panel ops-card">
+          <div className="panel-title">
+            <div>
+              <h2>Spark 资源信号</h2>
+              <p>失败任务、重试、溢出和洗牌读写作为运行健康证据。</p>
+            </div>
+            <BarChart3 size={20} />
+          </div>
+          <SparkResourceBars summary={governance?.spark_summary ?? sparkHistory} />
+        </article>
+      </section>
+
+      <section className="ops-chart-grid" aria-label="基准运行图表">
+        <ChartPanel
+          title="基准耗时对比"
+          subtitle="不同运行方案的端到端耗时，越低越好。"
+          option={barOption(benchmarkRuntimeRows, '运行耗时（秒）', '#28d7c2', false)}
+          summary={opsCopy(benchmarkSummary?.interpretation ?? '等待基准汇总数据')}
+        />
+        <ChartPanel
+          title="内存溢出对比"
+          subtitle="Spark 内存溢出规模，越低代表执行更稳定。"
+          option={barOption(benchmarkSpillRows, '内存溢出（GB）', '#f59e0b', false)}
+          summary="结合耗时一起看，避免只追求速度而放大资源风险。"
+        />
       </section>
 
       <details className="ops-detail-disclosure">
@@ -140,37 +298,37 @@ export function OpsPage() {
           <article className="metric-card">
             <span>输入文件</span>
             <strong>{safeNumber(inputSnapshot?.file_count)}</strong>
-            <small>{inputSnapshot?.storage_mode ?? latest?.storage_mode ?? 'unknown storage'}</small>
+            <small>{inputSnapshot?.storage_mode ?? latest?.storage_mode ?? '未知存储'}</small>
           </article>
           <article className="metric-card">
             <span>清洗行数</span>
             <strong>{safeNumber(qualityReport?.metrics?.cleaned_rows)}</strong>
-            <small>removed ratio {qualityReport?.metrics?.removed_ratio ?? 'pending'}</small>
+            <small>剔除比例 {qualityReport?.metrics?.removed_ratio ?? '待生成'}</small>
           </article>
           <article className="metric-card">
             <span>配置指纹</span>
             <strong>{shortHash(lineage.data?.config_hash ?? latest?.config_hash)}</strong>
-            <small>{lineage.data?.contract_version ?? latest?.contract_version ?? 'contract pending'}</small>
+            <small>{lineage.data?.contract_version ?? latest?.contract_version ?? '契约待生成'}</small>
           </article>
           <article className="metric-card">
             <span>Spark 状态</span>
-            <strong>{sparkStatus ?? 'pending'}</strong>
-            <small>{sparkAppId ?? 'waiting for application id'}</small>
+            <strong>{localizedStatusLabel(sparkStatus)}</strong>
+            <small>{sparkAppId ?? '等待 Spark 应用 ID'}</small>
           </article>
           <article className="metric-card">
             <span>History 指标</span>
-            <strong>{sparkHistoryStatus}</strong>
-            <small>spill {safeNumber(metricNumber(sparkHistory?.memory_spill_bytes))}, failed {safeNumber(metricNumber(sparkHistory?.failed_task_count))}</small>
+            <strong>{localizedStatusLabel(sparkHistoryStatus)}</strong>
+            <small>内存溢出 {safeNumber(metricNumber(sparkHistory?.memory_spill_bytes))}，失败任务 {safeNumber(metricNumber(sparkHistory?.failed_task_count))}</small>
           </article>
           <article className="metric-card tone-success">
-            <span>AQE/算法加速</span>
-            <strong>{benchmarkSummary?.yarn_only_to_algorithm_speedup ? `${benchmarkSummary.yarn_only_to_algorithm_speedup}x` : 'pending'}</strong>
-            <small>相对 YARN-only CSV</small>
+            <span>自适应执行/算法加速</span>
+            <strong>{benchmarkSummary?.yarn_only_to_algorithm_speedup ? `${benchmarkSummary.yarn_only_to_algorithm_speedup}x` : '待生成'}</strong>
+            <small>相对集群 CSV 基线</small>
           </article>
           <article className="metric-card tone-success">
             <span>History 采集</span>
             <strong>{safeNumber(historySummary?.collected_run_count)}</strong>
-            <small>failed {safeNumber(historySummary?.failed_task_count)}, retried {safeNumber(historySummary?.retried_task_count)}</small>
+            <small>失败 {safeNumber(historySummary?.failed_task_count)}，重试 {safeNumber(historySummary?.retried_task_count)}</small>
           </article>
           <article className="metric-card">
             <span>模块基准</span>
@@ -190,18 +348,18 @@ export function OpsPage() {
             <Activity size={20} />
           </div>
           <dl>
-            <dt>Job ID</dt>
-            <dd>{latest?.job_id ?? 'pending'}</dd>
-            <dt>Run ID</dt>
-            <dd>{latest?.run_id ?? 'pending'}</dd>
+            <dt>作业编号</dt>
+            <dd>{latest?.job_id ?? '待生成'}</dd>
+            <dt>运行编号</dt>
+            <dd>{latest?.run_id ?? '待生成'}</dd>
             <dt>开始时间</dt>
             <dd>{compactDate(latest?.started_at)}</dd>
             <dt>完成时间</dt>
             <dd>{compactDate(latest?.finished_at)}</dd>
             <dt>耗时</dt>
-            <dd>{latest?.elapsed_seconds ? `${latest.elapsed_seconds}s` : 'pending'}</dd>
+            <dd>{latest?.elapsed_seconds ? `${latest.elapsed_seconds}s` : '待生成'}</dd>
             <dt>失败阶段</dt>
-            <dd>{quality.data?.failure_stage ?? latest?.failure_stage ?? 'none'}</dd>
+            <dd>{localizedStatusLabel(quality.data?.failure_stage ?? latest?.failure_stage ?? 'none')}</dd>
           </dl>
         </article>
 
@@ -209,19 +367,19 @@ export function OpsPage() {
           <div className="panel-title">
             <div>
               <h2>输入血缘</h2>
-              <p>HDFS 源文件和输出 manifest。</p>
+              <p>HDFS 源文件和输出运行清单。</p>
             </div>
             <GitBranch size={20} />
           </div>
           <dl>
             <dt>实际输入</dt>
-            <dd>{inputSnapshot?.actual_input_path ?? latest?.input_path ?? 'pending'}</dd>
+            <dd>{inputSnapshot?.actual_input_path ?? latest?.input_path ?? '待生成'}</dd>
             <dt>配置输入</dt>
-            <dd>{inputSnapshot?.configured_input_path ?? 'pending'}</dd>
-            <dt>Manifest</dt>
-            <dd>{outputArtifacts?.run_manifest_path ?? outputArtifacts?.manifest_path ?? 'pending'}</dd>
+            <dd>{inputSnapshot?.configured_input_path ?? '待生成'}</dd>
+            <dt>运行清单</dt>
+            <dd>{outputArtifacts?.run_manifest_path ?? outputArtifacts?.manifest_path ?? '待生成'}</dd>
             <dt>指标目录</dt>
-            <dd>{outputArtifacts?.metrics_dir ?? 'pending'}</dd>
+            <dd>{outputArtifacts?.metrics_dir ?? '待生成'}</dd>
           </dl>
         </article>
 
@@ -242,7 +400,7 @@ export function OpsPage() {
           <div className="panel-title">
             <div>
               <h2>输入文件快照</h2>
-              <p>从 Spark DataFrame inputFiles 采集。</p>
+              <p>从 Spark 输入文件清单采集。</p>
             </div>
             <Database size={20} />
           </div>
@@ -261,8 +419,8 @@ export function OpsPage() {
       <section className="data-panel jobs-panel">
         <div className="panel-title">
           <div>
-            <h2>Benchmark 证据</h2>
-            <p>{benchmarkSummary?.interpretation ?? '等待 benchmark 汇总数据'}</p>
+              <h2>基准证据</h2>
+              <p>{opsCopy(benchmarkSummary?.interpretation ?? '等待基准汇总数据')}</p>
           </div>
           <BarChart3 size={20} />
         </div>
@@ -274,9 +432,9 @@ export function OpsPage() {
                 <th>对照组</th>
                 <th>耗时</th>
                 <th>吞吐</th>
-                <th>YARN App</th>
+                <th>集群应用</th>
                 <th>任务</th>
-                <th>Memory spill</th>
+                <th>内存溢出</th>
                 <th>质量</th>
               </tr>
             </thead>
@@ -284,7 +442,7 @@ export function OpsPage() {
               {benchmarkRows.map((row) => <BenchmarkRow row={row} key={`${row.sample}-${row.variant}`} />)}
               {benchmarkRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>暂无 benchmark 证据</td>
+                  <td colSpan={8}>暂无基准证据</td>
                 </tr>
               ) : null}
             </tbody>
@@ -295,7 +453,7 @@ export function OpsPage() {
       <section className="data-panel jobs-panel">
         <div className="panel-title">
           <div>
-            <h2>典型模块 Benchmark</h2>
+            <h2>典型模块基准</h2>
             <p>使用 1% 样本中的 20 万行代表性数据，覆盖关联、推荐、异常和实验模块。</p>
           </div>
           <BarChart3 size={20} />
@@ -316,7 +474,7 @@ export function OpsPage() {
               {moduleRows.map((row) => <ModuleBenchmarkRow row={row} key={`${row.profile}-${row.task_name}`} />)}
               {moduleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>暂无模块 benchmark 证据</td>
+                  <td colSpan={6}>暂无模块基准证据</td>
                 </tr>
               ) : null}
             </tbody>
@@ -329,7 +487,7 @@ export function OpsPage() {
           <div className="panel-title">
             <div>
               <h2>实验 HDFS 输入</h2>
-              <p>正式 benchmark 使用的 CSV 与 Parquet 输入。</p>
+              <p>正式基准使用的 CSV 与 Parquet 输入。</p>
             </div>
             <Database size={20} />
           </div>
@@ -340,7 +498,7 @@ export function OpsPage() {
           <div className="panel-title">
             <div>
               <h2>数据清理与样本</h2>
-              <p>保留原始数据，清理旧 smoke/history 产物。</p>
+              <p>保留原始数据，清理旧试运行和运行日志产物。</p>
             </div>
             <HardDrive size={20} />
           </div>
@@ -355,20 +513,20 @@ export function OpsPage() {
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
-              <h2>规模与 Cluster Mode</h2>
-              <p>{evidence.data?.scale_boundary?.reason ?? '等待规模边界证据'}</p>
+              <h2>规模与集群模式</h2>
+              <p>{opsCopy(evidence.data?.scale_boundary?.reason ?? '等待规模边界证据')}</p>
             </div>
             <GitBranch size={20} />
           </div>
           <dl>
-            <dt>全量 Oct+Nov</dt>
-            <dd>{evidence.data?.scale_boundary?.full_oct_nov_status ?? 'pending'}</dd>
+            <dt>全量 10 月 + 11 月</dt>
+            <dd>{localizedStatusLabel(evidence.data?.scale_boundary?.full_oct_nov_status ?? 'pending')}</dd>
             <dt>实验策略</dt>
-            <dd>{evidence.data?.scale_boundary?.policy ?? 'pending'}</dd>
-            <dt>Cluster mode</dt>
-            <dd>{evidence.data?.cluster_mode?.status ?? 'pending'}</dd>
+            <dd>{opsCopy(evidence.data?.scale_boundary?.policy)}</dd>
+            <dt>集群模式</dt>
+            <dd>{localizedStatusLabel(evidence.data?.cluster_mode?.status ?? 'pending')}</dd>
             <dt>提交脚本</dt>
-            <dd>{evidence.data?.cluster_mode?.submit_script ?? 'pending'}</dd>
+            <dd>{evidence.data?.cluster_mode?.submit_script ?? '待生成'}</dd>
           </dl>
         </article>
       </section>
@@ -377,7 +535,7 @@ export function OpsPage() {
         <div className="panel-title">
           <div>
             <h2>最近运行</h2>
-            <p>SQLite 作业记录，按创建时间倒序。</p>
+            <p>本地作业记录，按创建时间倒序。</p>
           </div>
         </div>
         <div className="table-scroll">
@@ -385,7 +543,7 @@ export function OpsPage() {
             <thead>
               <tr>
                 <th>状态</th>
-                <th>Run ID</th>
+                <th>运行编号</th>
                 <th>质量</th>
                 <th>输入</th>
                 <th>完成时间</th>
@@ -394,10 +552,10 @@ export function OpsPage() {
             <tbody>
               {(jobs.data?.rows ?? []).map((row) => (
                 <tr key={row.job_id}>
-                  <td><span className={`status-pill tone-${statusLabel(row.status)}`}>{statusLabel(row.status)}</span></td>
+                  <td><span className={`status-pill tone-${statusLabel(row.status)}`}>{localizedStatusLabel(statusLabel(row.status))}</span></td>
                   <td>{row.run_id ?? row.job_id}</td>
-                  <td><span className={`quality-dot tone-${qualityTone(row.quality_status)}`} />{row.quality_status ?? 'pending'}</td>
-                  <td>{row.input_snapshot?.actual_input_path ?? row.input_path ?? 'pending'}</td>
+                  <td><span className={`quality-dot tone-${qualityTone(row.quality_status)}`} />{localizedStatusLabel(row.quality_status)}</td>
+                  <td>{row.input_snapshot?.actual_input_path ?? row.input_path ?? '待生成'}</td>
                   <td>{compactDate(row.finished_at)}</td>
                 </tr>
               ))}
@@ -414,19 +572,84 @@ export function OpsPage() {
   );
 }
 
+function RunStageTimeline({ stages }: { stages: JobGovernanceStage[] }) {
+  if (!stages.length) return <span className="empty-copy">等待运行阶段数据</span>;
+  return (
+    <ol className="ops-stage-timeline">
+      {stages.map((stage) => (
+        <li className={`tone-${toneFromStatus(stage.status)}`} key={stage.stage}>
+          <span>{stageLabel(stage.stage)}</span>
+          <strong>{localizedStatusLabel(stage.status)}</strong>
+          <small>{stage.duration_seconds ? seconds(stage.duration_seconds) : compactDate(stage.finished_at ?? stage.started_at)}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ArtifactFreshnessList({ artifacts }: { artifacts: JobGovernanceArtifact[] }) {
+  if (!artifacts.length) return <span className="empty-copy">等待产物清单</span>;
+  return (
+    <div className="ops-freshness-list">
+      {artifacts.slice(0, 7).map((artifact) => {
+        const elapsed = artifact.age_minutes ?? 0;
+        const sla = artifact.freshness_sla_minutes ?? 1;
+        return (
+          <div className="ops-freshness-row" key={artifact.artifact_id} title={artifact.path}>
+            <div>
+              <strong>{artifactLabel(artifact.artifact_id)}</strong>
+              <span className={`status-pill tone-${toneFromStatus(artifact.status)}`}>{localizedStatusLabel(artifact.status)}</span>
+            </div>
+            <div className="ops-freshness-track" aria-label={`${artifactLabel(artifact.artifact_id)}新鲜度`}>
+              <span className={`tone-${toneFromStatus(artifact.status)}`} style={{ width: artifact.exists ? barWidth(sla - elapsed, sla) : '0%' }} />
+            </div>
+            <small>{artifact.updated_at ? `${compactDate(artifact.updated_at)} 更新` : '等待发布'}</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SparkResourceBars({ summary }: { summary?: SparkHistoryMetrics | null }) {
+  const rows = [
+    { label: '失败任务', value: metricNumber(summary?.failed_task_count), format: safeNumber },
+    { label: '重试任务', value: metricNumber(summary?.retried_task_count), format: safeNumber },
+    { label: '内存溢出', value: metricNumber(summary?.memory_spill_bytes), format: bytes },
+    { label: '磁盘溢出', value: metricNumber(summary?.disk_spill_bytes), format: bytes },
+    { label: '洗牌读取', value: metricNumber(summary?.shuffle_read_bytes), format: bytes },
+    { label: '洗牌写入', value: metricNumber(summary?.shuffle_write_bytes), format: bytes },
+  ];
+  const maxValue = Math.max(1, ...rows.map((row) => row.value ?? 0));
+  return (
+    <div className="ops-resource-bars">
+      {rows.map((row) => (
+        <div className="ops-resource-row" key={row.label}>
+          <span>{row.label}</span>
+          <div className="ops-resource-track">
+            <strong style={{ width: barWidth(row.value, maxValue) }} />
+          </div>
+          <small>{row.format(row.value)}</small>
+        </div>
+      ))}
+      <p>采集状态：{localizedStatusLabel(summary?.history_metrics_status ?? 'not_configured')}</p>
+    </div>
+  );
+}
+
 function BenchmarkRow({ row }: { row: BenchmarkRun }) {
   return (
     <tr>
-      <td>{row.sample}</td>
+      <td>{sampleLabel(row.sample)}</td>
       <td>{variantLabel(row.variant)}</td>
       <td>{seconds(row.elapsed_seconds)}</td>
-      <td>{safeNumber(metricNumber(row.rows_per_second))} rows/s</td>
-      <td>{row.spark_application_id ?? 'local'}</td>
+      <td>{safeNumber(metricNumber(row.rows_per_second))} 行/秒</td>
+      <td>{row.spark_application_id ?? '本地'}</td>
       <td>{safeNumber(metricNumber(row.task_count))}</td>
       <td>{bytes(row.memory_spill_bytes)}</td>
       <td>
         <span className={`quality-dot tone-${qualityTone(row.quality_status)}`} />
-        {row.quality_status ?? row.spark_application_status ?? row.status}
+        {localizedStatusLabel(row.quality_status ?? row.spark_application_status ?? row.status)}
       </td>
     </tr>
   );
@@ -435,14 +658,14 @@ function BenchmarkRow({ row }: { row: BenchmarkRun }) {
 function ModuleBenchmarkRow({ row }: { row: ModuleBenchmarkRun }) {
   return (
     <tr>
-      <td>{row.profile ?? 'module'}</td>
-      <td>{row.task_name ?? 'pipeline'}</td>
+      <td>{moduleLabel(row.profile ?? 'module')}</td>
+      <td>{moduleLabel(row.task_name ?? 'pipeline')}</td>
       <td>{safeNumber(metricNumber(row.input_rows))}</td>
       <td>{safeNumber(metricNumber(row.output_rows))}</td>
       <td>{seconds(row.elapsed_seconds ?? row.duration_seconds)}</td>
       <td>
         <span className={`quality-dot tone-${row.success ? 'success' : 'danger'}`} />
-        {row.success ? 'passed' : 'failed'}
+        {localizedStatusLabel(row.success ? 'passed' : 'failed')}
       </td>
     </tr>
   );
@@ -454,8 +677,8 @@ function EvidencePathList({ rows, empty }: { rows: EvidencePath[]; empty: string
     <div className="evidence-path-list">
       {rows.map((row) => (
         <div key={`${row.sample ?? row.name}-${row.path}`}>
-          <strong>{row.sample ?? row.name ?? row.role}</strong>
-          <span>{row.size_label ?? row.role ?? 'ready'}</span>
+          <strong>{sampleLabel(row.sample ?? row.name ?? row.role)}</strong>
+          <span>{row.size_label ?? opsCopy(row.role) ?? '就绪'}</span>
           <p>{row.path}</p>
         </div>
       ))}
@@ -468,7 +691,7 @@ function QualityCheckRow({ check }: { check: QualityCheck }) {
   return (
     <div className={`quality-check tone-${check.passed ? 'success' : 'danger'}`}>
       <Icon size={16} />
-      <span>{check.name}</span>
+      <span>{fieldLabel(check.name)}</span>
       <strong>
         {check.actual} {check.operator} {check.expected}
       </strong>

@@ -75,6 +75,8 @@ def test_feature_mart_builds_deduped_daily_facts(spark):
     assert metrics["feature_mart_summary"]["contract_version"] == "behavior-feature-mart/v1"
     assert metrics["feature_mart_partitions"]["written"] == 2
     assert metrics["feature_mart_quality"]["invalid_event_type_rows"] == 1
+    assert metrics["feature_mart_features"][0]["chinese_name"]
+    assert metrics["feature_mart_readiness"]["total_features"] == len(metrics["feature_mart_features"])
 
 
 def test_event_key_is_stable_for_duplicate_events(spark):

@@ -8,9 +8,9 @@ describe('LifecyclePage', () => {
     renderWithProviders(<LifecyclePage />);
 
     expect(await screen.findByText('用户生命周期与价值分层')).toBeInTheDocument();
-    expect(await screen.findByText('customer-lifecycle-intelligence/v1')).toBeInTheDocument();
+    expect(await screen.findByText('生命周期契约 v1')).toBeInTheDocument();
     expect(await screen.findByText('536017300')).toBeInTheDocument();
-    expect((await screen.findAllByText('high_value')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('高价值')).length).toBeGreaterThan(0);
     expect(await screen.findByRole('table', { name: '用户生命周期运营动作队列' })).toBeInTheDocument();
   });
 });

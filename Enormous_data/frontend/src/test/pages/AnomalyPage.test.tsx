@@ -8,9 +8,12 @@ describe('AnomalyPage', () => {
     renderWithProviders(<AnomalyPage />);
 
     expect(await screen.findByText('运营异常雷达')).toBeInTheDocument();
-    expect(await screen.findByText('ops-anomaly-radar/v1')).toBeInTheDocument();
-    expect(await screen.findByText('category_revenue_spike')).toBeInTheDocument();
-    expect(await screen.findByText('critical_robust_z')).toBeInTheDocument();
+    expect(await screen.findByText('异常雷达契约 v1')).toBeInTheDocument();
+    expect(await screen.findByText('类目成交额突增')).toBeInTheDocument();
+    expect(await screen.findByText('严重稳健分数阈值')).toBeInTheDocument();
+    expect(await screen.findByText('异常日历热力图')).toBeInTheDocument();
+    expect(await screen.findByText('实际值与基线带')).toBeInTheDocument();
+    expect(await screen.findByText('根因贡献瀑布图')).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: '异常告警证据' })).toBeInTheDocument();
   });
 });

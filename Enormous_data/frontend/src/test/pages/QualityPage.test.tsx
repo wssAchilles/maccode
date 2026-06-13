@@ -13,8 +13,8 @@ describe('QualityPage', () => {
 
     expect(await screen.findByText('数据质量与清洗结果')).toBeInTheDocument();
     expect(await screen.findByText('实验质量证据')).toBeInTheDocument();
-    expect(await screen.findByText('yarn_only_csv')).toBeInTheDocument();
+    expect(await screen.findByText('集群 CSV 基线')).toBeInTheDocument();
     expect(await screen.findByText('典型模块质量')).toBeInTheDocument();
-    expect(await screen.findByText('recommendation')).toBeInTheDocument();
+    expect(await screen.findByText('推荐系统')).toBeInTheDocument();
   });
 });

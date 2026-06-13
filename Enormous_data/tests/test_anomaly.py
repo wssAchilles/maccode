@@ -6,7 +6,7 @@ import sys
 import pytest
 from pyspark.sql import SparkSession
 
-from spark_jobs.anomaly import ANOMALY_CONTRACT_VERSION, anomaly_config, build_anomaly_outputs, build_daily_signals
+from spark_jobs.anomaly import ANOMALY_CONTRACT_VERSION, anomaly_config, build_anomaly_outputs, build_daily_signals, score_daily_signals
 
 
 @pytest.fixture(scope="module")
@@ -53,7 +53,35 @@ def test_build_anomaly_outputs_detects_category_revenue_spike(spark):
     assert metrics["anomaly_summary"]["contract_version"] == ANOMALY_CONTRACT_VERSION
     assert metrics["anomaly_summary"]["alert_count"] >= 1
     assert any(alert["metric"] == "revenue" and alert["direction"] == "spike" for alert in metrics["anomaly_alerts"])
-    assert metrics["anomaly_rules"]["baseline"].startswith("median")
+    assert metrics["anomaly_incidents"]
+    assert metrics["anomaly_root_cause"]
+    assert metrics["anomaly_evaluation"]["incidents"]["incident_count"] >= 1
+    assert "weekday" in metrics["anomaly_rules"]["baseline"]
+
+
+def test_anomaly_baseline_excludes_current_point(spark):
+    signals = spark.createDataFrame(
+        [
+            {"dt": "2019-10-01", "entity_type": "category", "entity_id": "electronics", "entity_label": "electronics", "metric": "revenue", "value": 500.0},
+            {"dt": "2019-10-02", "entity_type": "category", "entity_id": "electronics", "entity_label": "electronics", "metric": "revenue", "value": 510.0},
+            {"dt": "2019-10-03", "entity_type": "category", "entity_id": "electronics", "entity_label": "electronics", "metric": "revenue", "value": 490.0},
+            {"dt": "2019-10-04", "entity_type": "category", "entity_id": "electronics", "entity_label": "electronics", "metric": "revenue", "value": 5000.0},
+        ]
+    )
+
+    spike = (
+        score_daily_signals(
+            signals,
+            anomaly_config({"warning_z": 2.0, "critical_z": 4.0, "min_baseline_points": 3}),
+            run_id="anomaly-trailing",
+        )
+        .filter("dt = '2019-10-04'")
+        .first()
+    )
+
+    assert spike["baseline_points"] == 3
+    assert spike["baseline_median"] <= 510
+    assert spike["severity"] == "critical"
 
 
 def test_build_anomaly_outputs_promotes_feature_mart_control_alerts(spark):

@@ -276,7 +276,22 @@ API_SCHEMAS: dict[str, Any] = {
             "forecast": {"type": "number"},
             "absolute_error": {"type": "number"},
             "error": {"type": "number"},
+            "horizon": {"type": "integer"},
             "model_name": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "ForecastingEvaluation": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "windows": {"type": "array", "items": {"type": "integer"}},
+            "model_metrics": {"type": "array", "items": {"type": "object"}},
+            "horizon_metrics": {"type": "array", "items": {"type": "object"}},
+            "window_metrics": {"type": "array", "items": {"type": "object"}},
+            "error_distribution": {"type": "object"},
+            "quality_gates": {"type": "array", "items": {"type": "object"}},
         },
         "additionalProperties": True,
     },
@@ -402,6 +417,28 @@ API_SCHEMAS: dict[str, Any] = {
             "support": {"type": "integer"},
             "risk_level": {"type": "string"},
             "action": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "AffinityCentrality": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "entity_id": {"type": "string"},
+            "entity_label": {"type": "string"},
+            "brand": {"type": "string"},
+            "category_level1": {"type": "string"},
+            "community_id": {"type": "string"},
+            "degree": {"type": "integer"},
+            "weighted_degree": {"type": "number"},
+            "normalized_weighted_degree": {"type": "number"},
+            "pagerank_score": {"type": "number"},
+            "centrality_score": {"type": "number"},
+            "community_size": {"type": "integer"},
+            "community_revenue": {"type": "number"},
+            "revenue": {"type": "number"},
+            "views": {"type": "integer"},
+            "purchases": {"type": "integer"},
         },
         "additionalProperties": True,
     },
@@ -972,6 +1009,33 @@ API_SCHEMAS: dict[str, Any] = {
         },
         "additionalProperties": True,
     },
+    "RecommendationCandidate": {
+        "type": "object",
+        "properties": {
+            "candidate_id": {"type": "string"},
+            "user_session": {"type": "string"},
+            "user_id": {"type": "string"},
+            "product_id": {"type": "string"},
+            "brand": {"type": "string"},
+            "category_level1": {"type": "string"},
+            "rank": {"type": "integer"},
+            "candidate_source": {"type": "string"},
+            "recall_stage": {"type": "string"},
+            "candidate_stage": {"type": "string"},
+            "score": {"type": "number"},
+            "ranker_score": {"type": "number"},
+            "source_score": {"type": "number"},
+            "conversion_score": {"type": "number"},
+            "freshness_score": {"type": "number"},
+            "affinity_score": {"type": "number"},
+            "confidence": {"type": "number"},
+            "ranker_model": {"type": "string"},
+            "calibration_bucket": {"type": "string"},
+            "reason_codes": {"type": "array", "items": {"type": "string"}},
+            "fallback_used": {"type": "boolean"},
+        },
+        "additionalProperties": True,
+    },
     "RecommendationQuality": {
         "type": "object",
         "properties": {
@@ -988,6 +1052,21 @@ API_SCHEMAS: dict[str, Any] = {
             "invalid_product_rate": {"type": "number"},
             "passed": {"type": "boolean"},
             "checks": {"type": "array"},
+        },
+        "additionalProperties": True,
+    },
+    "RecommendationEvaluation": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "top_k": {"type": "integer"},
+            "split": {"type": "object"},
+            "behavior_weights": {"type": "object"},
+            "model_metrics": {"type": "array", "items": {"type": "object"}},
+            "source_mix": {"type": "array", "items": {"type": "object"}},
+            "topk_matrix": {"type": "array", "items": {"type": "object"}},
+            "quality_gates": {"type": "array", "items": {"type": "object"}},
         },
         "additionalProperties": True,
     },
@@ -1059,6 +1138,56 @@ API_SCHEMAS: dict[str, Any] = {
             "direction": {"type": "string"},
             "message": {"type": "string"},
             "recommended_action": {"type": "string"},
+            "incident_id": {"type": ["string", "null"]},
+            "baseline_mode": {"type": ["string", "null"]},
+        },
+        "additionalProperties": True,
+    },
+    "AnomalyIncident": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "incident_id": {"type": "string"},
+            "run_id": {"type": "string"},
+            "dt": {"type": ["string", "null"]},
+            "severity": {"type": "string"},
+            "entity_type": {"type": "string"},
+            "entity_id": {"type": "string"},
+            "entity_label": {"type": "string"},
+            "metric": {"type": "string"},
+            "alert_count": {"type": "integer"},
+            "max_robust_z": {"type": "number"},
+            "impact_value": {"type": "number"},
+            "root_cause_contributions": {"type": "array", "items": {"type": "object"}},
+            "recommended_action": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "AnomalyRootCause": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "incident_id": {"type": "string"},
+            "dt": {"type": ["string", "null"]},
+            "severity": {"type": "string"},
+            "dimension": {"type": "string"},
+            "value": {"type": "string"},
+            "metric": {"type": "string"},
+            "contribution": {"type": "number"},
+            "contribution_share": {"type": "number"},
+            "direction": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "AnomalyEvaluation": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "baseline": {"type": "object"},
+            "incidents": {"type": "object"},
+            "alert_budget": {"type": "object"},
+            "quality_gates": {"type": "array", "items": {"type": "object"}},
         },
         "additionalProperties": True,
     },
@@ -1240,6 +1369,51 @@ API_SCHEMAS: dict[str, Any] = {
         },
         "additionalProperties": True,
     },
+    "ExperimentResult": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "experiment_key": {"type": "string"},
+            "name": {"type": "string"},
+            "primary_metric": {"type": "string"},
+            "measurement_status": {"type": "string"},
+            "oec_metric": {"type": "string"},
+            "treatment_users": {"type": "integer"},
+            "control_users": {"type": "integer"},
+            "expected_treatment_ratio": {"type": "number"},
+            "observed_treatment_ratio": {"type": "number"},
+            "srm_chi_square": {"type": "number"},
+            "srm_p_value": {"type": "number"},
+            "srm_status": {"type": "string"},
+            "control_mean": {"type": "number"},
+            "treatment_mean": {"type": "number"},
+            "absolute_lift": {"type": "number"},
+            "relative_lift": {"type": ["number", "null"]},
+            "standard_error": {"type": ["number", "null"]},
+            "ci_low": {"type": ["number", "null"]},
+            "ci_high": {"type": ["number", "null"]},
+            "p_value": {"type": ["number", "null"]},
+            "decision": {"type": "string"},
+            "variant_rows": {"type": "array", "items": {"type": "object"}},
+            "causal_caveat": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "ExperimentUplift": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "measurement_status": {"type": "string"},
+            "causal_valid": {"type": "boolean"},
+            "causal_caveat": {"type": "string"},
+            "summary": {"type": "array", "items": {"type": "object"}},
+            "deciles": {"type": "array", "items": {"type": "object"}},
+            "quality_gates": {"type": "array", "items": {"type": "object"}},
+        },
+        "additionalProperties": True,
+    },
     "FeatureMartFreshness": {
         "type": "object",
         "properties": {
@@ -1291,6 +1465,35 @@ API_SCHEMAS: dict[str, Any] = {
             "min_dt": {"type": ["string", "null"]},
             "max_dt": {"type": ["string", "null"]},
             "partitions": {"type": "array", "items": {"type": "object"}},
+        },
+        "additionalProperties": True,
+    },
+    "FeatureMartFeature": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "feature_name": {"type": "string"},
+            "chinese_name": {"type": "string"},
+            "grain": {"type": "string"},
+            "source": {"type": "string"},
+            "refresh_frequency": {"type": "string"},
+            "quality_assertions": {"type": "array", "items": {"type": "string"}},
+            "owner": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "FeatureMartReadiness": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "status": {"type": "string"},
+            "ready_features": {"type": "integer"},
+            "total_features": {"type": "integer"},
+            "checks": {"type": "array", "items": {"type": "object"}},
+            "features": {"type": "array", "items": {"type": "object"}},
+            "lineage": {"type": "array", "items": {"type": "object"}},
         },
         "additionalProperties": True,
     },
@@ -1346,6 +1549,150 @@ API_SCHEMAS: dict[str, Any] = {
         },
         "additionalProperties": True,
     },
+    "DashboardSliceEvidence": {
+        "type": "object",
+        "required": [
+            "source_dataset",
+            "filtered_row_count",
+            "total_row_count",
+            "coverage_rate",
+            "query_ms",
+            "run_id",
+            "contract_version",
+            "dataset_version",
+            "generated_at",
+            "filters",
+        ],
+        "properties": {
+            "source_dataset": {"type": "string"},
+            "filtered_row_count": {"type": "integer"},
+            "total_row_count": {"type": "integer"},
+            "coverage_rate": {"type": "number"},
+            "query_ms": {"type": "number"},
+            "run_id": {"type": "string"},
+            "contract_version": {"type": "string"},
+            "dataset_version": {"type": "string"},
+            "generated_at": {"type": "string"},
+            "refreshed_at": {"type": "string"},
+            "spark_duration": {"type": ["number", "null"]},
+            "filters": {"type": "object", "additionalProperties": True},
+            "cache_mode": {"type": "string"},
+            "cache_hit": {"type": "boolean"},
+            "fallback_reason": {"type": ["string", "null"]},
+            "cube_path": {"type": ["string", "null"]},
+            "cube_paths": {"type": ["object", "null"], "additionalProperties": True},
+            "cube_row_count": {"type": ["integer", "null"]},
+            "semantic_version": {"type": ["string", "null"]},
+            "metric_grain": {"type": ["string", "null"]},
+            "metric_definitions": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": True,
+    },
+    "DashboardSlice": {
+        "type": "object",
+        "required": ["summary", "event_type_count", "daily_events", "daily_sales", "top_categories", "evidence"],
+        "properties": {
+            "summary": {"type": "object", "additionalProperties": True},
+            "event_type_count": {"type": "array", "items": {"$ref": "#/components/schemas/NamedValue"}},
+            "daily_events": {"type": "array", "items": {"$ref": "#/components/schemas/DateValue"}},
+            "daily_sales": {"type": "array", "items": {"$ref": "#/components/schemas/DateValue"}},
+            "top_categories": {"type": "array", "items": {"$ref": "#/components/schemas/NamedValue"}},
+            "evidence": {"$ref": "#/components/schemas/DashboardSliceEvidence"},
+        },
+        "additionalProperties": True,
+    },
+    "ControlledQueryIntent": {
+        "type": ["object", "null"],
+        "properties": {
+            "metric": {"type": "string"},
+            "metric_label": {"type": "string"},
+            "dimension": {"type": "string"},
+            "dimension_label": {"type": "string"},
+            "aggregation": {"type": "string"},
+            "chart_type": {"type": "string"},
+            "limit": {"type": "integer"},
+            "time_grain": {"type": ["string", "null"]},
+            "event_type_filter": {"type": ["string", "null"]},
+            "event_type_filter_label": {"type": ["string", "null"]},
+        },
+        "additionalProperties": True,
+    },
+    "ControlledQueryRow": {
+        "type": "object",
+        "required": ["name", "value"],
+        "properties": {
+            "name": {"type": "string"},
+            "raw_name": {"type": ["string", "number", "null"]},
+            "value": {"type": "number"},
+            "share": {"type": "number"},
+        },
+        "additionalProperties": True,
+    },
+    "ControlledQueryChart": {
+        "type": "object",
+        "required": ["type", "title", "x_field", "y_field", "series_name", "dimension_label", "metric_label"],
+        "properties": {
+            "type": {"type": "string"},
+            "title": {"type": "string"},
+            "x_field": {"type": "string"},
+            "y_field": {"type": "string"},
+            "series_name": {"type": "string"},
+            "dimension_label": {"type": "string"},
+            "metric_label": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "ControlledQueryEvidence": {
+        "type": "object",
+        "required": ["source_dataset", "run_id", "contract_version", "dataset_version", "query_ms", "row_count", "execution_engine"],
+        "properties": {
+            "source_dataset": {"type": "string"},
+            "run_id": {"type": "string"},
+            "contract_version": {"type": "string"},
+            "dataset_version": {"type": "string"},
+            "generated_at": {"type": ["string", "null"]},
+            "query_ms": {"type": "number"},
+            "row_count": {"type": "integer"},
+            "execution_engine": {"type": "string"},
+            "cache_mode": {"type": ["string", "null"]},
+            "cache_hit": {"type": ["boolean", "null"]},
+            "semantic_version": {"type": ["string", "null"]},
+            "metric_grain": {"type": ["string", "null"]},
+        },
+        "additionalProperties": True,
+    },
+    "ControlledQueryResult": {
+        "type": "object",
+        "required": [
+            "contract_version",
+            "query",
+            "status",
+            "matched",
+            "message",
+            "confidence",
+            "intent",
+            "chart",
+            "rows",
+            "suggestions",
+            "insight",
+            "evidence",
+        ],
+        "properties": {
+            "contract_version": {"type": "string"},
+            "query": {"type": "string"},
+            "status": {"type": "string"},
+            "matched": {"type": "boolean"},
+            "message": {"type": "string"},
+            "confidence": {"type": "number"},
+            "intent": {"$ref": "#/components/schemas/ControlledQueryIntent"},
+            "chart": {"$ref": "#/components/schemas/ControlledQueryChart"},
+            "rows": {"type": "array", "items": {"$ref": "#/components/schemas/ControlledQueryRow"}},
+            "suggestions": {"type": "array", "items": {"type": "string"}},
+            "insight": {"type": "string"},
+            "evidence": {"$ref": "#/components/schemas/ControlledQueryEvidence"},
+        },
+        "additionalProperties": True,
+    },
     "TableRow": {
         "type": "object",
         "required": [
@@ -1354,10 +1701,12 @@ API_SCHEMAS: dict[str, Any] = {
             "product_id",
             "category_id",
             "category_code",
+            "category_level1",
             "brand",
             "price",
             "user_id",
             "user_session",
+            "source_dataset",
         ],
         "properties": {
             "event_time": {"type": "string"},
@@ -1365,19 +1714,22 @@ API_SCHEMAS: dict[str, Any] = {
             "product_id": {"type": "string"},
             "category_id": {"type": "string"},
             "category_code": {"type": "string"},
+            "category_level1": {"type": "string"},
             "brand": {"type": "string"},
             "price": {"type": "string"},
             "user_id": {"type": "string"},
             "user_session": {"type": "string"},
+            "source_dataset": {"type": "string"},
         },
     },
     "TableResult": {
         "type": "object",
-        "required": ["page", "size", "total", "rows"],
+        "required": ["page", "size", "total", "source_dataset", "rows"],
         "properties": {
             "page": {"type": "integer"},
             "size": {"type": "integer"},
             "total": {"type": "integer"},
+            "source_dataset": {"type": "string"},
             "rows": {"type": "array", "items": {"$ref": "#/components/schemas/TableRow"}},
         },
     },
@@ -1409,6 +1761,26 @@ API_SCHEMAS: dict[str, Any] = {
             "quality_report": {"type": ["object", "null"]},
             "output_artifacts": {"type": ["object", "null"]},
             "failure_stage": {"type": ["string", "null"]},
+            "governance": {"$ref": "#/components/schemas/JobGovernance"},
+        },
+        "additionalProperties": True,
+    },
+    "JobGovernance": {
+        "type": "object",
+        "properties": {
+            "contract_version": {"type": "string"},
+            "run_id": {"type": "string"},
+            "status": {"type": "string"},
+            "active_stage": {"type": "string"},
+            "completion_ratio": {"type": "number"},
+            "freshness_sla_minutes": {"type": "number"},
+            "freshness_warning_minutes": {"type": "number"},
+            "stage_counts": {"type": "object", "additionalProperties": True},
+            "artifact_counts": {"type": "object", "additionalProperties": True},
+            "stages": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "artifacts": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "spark_summary": {"type": "object", "additionalProperties": True},
+            "quality_summary": {"type": "object", "additionalProperties": True},
         },
         "additionalProperties": True,
     },
@@ -1426,6 +1798,7 @@ API_SCHEMAS: dict[str, Any] = {
             "spark_history_metrics": {"type": ["object", "null"]},
             "input_snapshot": {"type": ["object", "null"]},
             "output_artifacts": {"type": ["object", "null"]},
+            "governance": {"$ref": "#/components/schemas/JobGovernance"},
         },
     },
     "JobQuality": {
@@ -1441,6 +1814,7 @@ API_SCHEMAS: dict[str, Any] = {
             "quality_status": {"type": ["string", "null"]},
             "quality_report": {"type": ["object", "null"]},
             "failure_stage": {"type": ["string", "null"]},
+            "governance": {"$ref": "#/components/schemas/JobGovernance"},
         },
     },
     "JobList": {
@@ -1460,6 +1834,62 @@ API_SCHEMAS: dict[str, Any] = {
             "hdfs_inputs": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
             "local_samples": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
             "cleanup_policy": {"type": "object", "additionalProperties": True},
+        },
+        "additionalProperties": True,
+    },
+    "OptimizationImpactCard": {
+        "type": "object",
+        "required": ["id", "title", "status", "tone", "metric", "detail", "action"],
+        "properties": {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "status": {"type": "string"},
+            "tone": {"type": "string", "enum": ["success", "warning", "danger", "running"]},
+            "metric": {"type": "string"},
+            "detail": {"type": "string"},
+            "action": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "OptimizationFrontendSection": {
+        "type": "object",
+        "required": ["id", "page", "route", "tone", "status", "visible_result", "source_cards"],
+        "properties": {
+            "id": {"type": "string"},
+            "page": {"type": "string"},
+            "route": {"type": "string"},
+            "tone": {"type": "string", "enum": ["success", "warning", "danger", "running"]},
+            "status": {"type": "string"},
+            "visible_result": {"type": "string"},
+            "source_cards": {"type": "string"},
+        },
+        "additionalProperties": True,
+    },
+    "OptimizationImpact": {
+        "type": "object",
+        "required": [
+            "generated_at",
+            "overall_status",
+            "overall_tone",
+            "headline",
+            "summary",
+            "data_layers",
+            "quality_gates",
+            "model_cards",
+            "performance_cards",
+            "frontend_sections",
+        ],
+        "properties": {
+            "generated_at": {"type": "string"},
+            "overall_status": {"type": "string"},
+            "overall_tone": {"type": "string", "enum": ["success", "warning", "danger", "running"]},
+            "headline": {"type": "string"},
+            "summary": {"type": "object", "additionalProperties": True},
+            "data_layers": {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationImpactCard"}},
+            "quality_gates": {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationImpactCard"}},
+            "model_cards": {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationImpactCard"}},
+            "performance_cards": {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationImpactCard"}},
+            "frontend_sections": {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationFrontendSection"}},
         },
         "additionalProperties": True,
     },
@@ -1496,6 +1926,17 @@ ENDPOINTS: list[dict[str, Any]] = [
     {"method": "GET", "path": "/api/v1/trend/daily-sales", "response_schema": "ApiEnvelope<DateValue[]>"},
     {"method": "GET", "path": "/api/v1/ranking/categories", "response_schema": "ApiEnvelope<NamedValue[]>"},
     {"method": "GET", "path": "/api/v1/ranking/brands", "response_schema": "ApiEnvelope<NamedValue[]>"},
+    {
+        "method": "GET",
+        "path": "/api/v1/dashboard/slice",
+        "query": {
+            "event_type": {"type": "string", "required": False},
+            "category_level1": {"type": "string", "required": False},
+            "brand": {"type": "string", "required": False},
+        },
+        "response_schema": "ApiEnvelope<DashboardSlice>",
+    },
+    {"method": "POST", "path": "/api/v1/query/controlled", "response_schema": "ApiEnvelope<ControlledQueryResult>"},
     {"method": "GET", "path": "/api/v1/conversion/funnel", "response_schema": "ApiEnvelope<SessionFunnel>"},
     {"method": "GET", "path": "/api/v1/conversion/daily", "response_schema": "ApiEnvelope<DailyConversion[]>"},
     {
@@ -1548,6 +1989,7 @@ ENDPOINTS: list[dict[str, Any]] = [
         "query": {"scope": {"type": "string", "required": False}, "entity": {"type": "string", "required": False}},
         "response_schema": "ApiEnvelope<ForecastingBacktestPoint[]>",
     },
+    {"method": "GET", "path": "/api/v1/forecasting/evaluation", "response_schema": "ApiEnvelope<ForecastingEvaluation>"},
     {
         "method": "GET",
         "path": "/api/v1/forecasting/risks",
@@ -1591,6 +2033,15 @@ ENDPOINTS: list[dict[str, Any]] = [
             "limit": {"type": "integer", "default": 100, "minimum": 1, "maximum": 300},
         },
         "response_schema": "ApiEnvelope<AffinityOpportunity[]>",
+    },
+    {
+        "method": "GET",
+        "path": "/api/v1/affinity/centrality",
+        "query": {
+            "community_id": {"type": "string", "required": False},
+            "limit": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200},
+        },
+        "response_schema": "ApiEnvelope<AffinityCentrality[]>",
     },
     {"method": "GET", "path": "/api/v1/affinity/quality", "response_schema": "ApiEnvelope<AffinityQuality>"},
     {"method": "GET", "path": "/api/v1/cohorts/summary", "response_schema": "ApiEnvelope<CohortSummary>"},
@@ -1757,7 +2208,17 @@ ENDPOINTS: list[dict[str, Any]] = [
         "query": {"limit": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200}},
         "response_schema": "ApiEnvelope<RecommendationItem[]>",
     },
+    {
+        "method": "GET",
+        "path": "/api/v1/recommendations/candidates",
+        "query": {
+            "source": {"type": "string", "required": False},
+            "limit": {"type": "integer", "default": 100, "minimum": 1, "maximum": 300},
+        },
+        "response_schema": "ApiEnvelope<RecommendationCandidate[]>",
+    },
     {"method": "GET", "path": "/api/v1/recommendations/quality", "response_schema": "ApiEnvelope<RecommendationQuality>"},
+    {"method": "GET", "path": "/api/v1/recommendations/evaluation", "response_schema": "ApiEnvelope<RecommendationEvaluation>"},
     {"method": "GET", "path": "/api/v1/recommendations/alerts", "response_schema": "ApiEnvelope<RecommendationAlert[]>"},
     {"method": "GET", "path": "/api/v1/anomalies/summary", "response_schema": "ApiEnvelope<AnomalySummary>"},
     {
@@ -1766,6 +2227,19 @@ ENDPOINTS: list[dict[str, Any]] = [
         "query": {"limit": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200}},
         "response_schema": "ApiEnvelope<AnomalyAlert[]>",
     },
+    {
+        "method": "GET",
+        "path": "/api/v1/anomalies/incidents",
+        "query": {"limit": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200}},
+        "response_schema": "ApiEnvelope<AnomalyIncident[]>",
+    },
+    {
+        "method": "GET",
+        "path": "/api/v1/anomalies/root-cause",
+        "query": {"incident_id": {"type": "string", "required": False}},
+        "response_schema": "ApiEnvelope<AnomalyRootCause[]>",
+    },
+    {"method": "GET", "path": "/api/v1/anomalies/evaluation", "response_schema": "ApiEnvelope<AnomalyEvaluation>"},
     {"method": "GET", "path": "/api/v1/anomalies/timeline", "response_schema": "ApiEnvelope<AnomalyTimelinePoint[]>"},
     {"method": "GET", "path": "/api/v1/anomalies/rules", "response_schema": "ApiEnvelope<AnomalyRules>"},
     {"method": "GET", "path": "/api/v1/lifecycle/summary", "response_schema": "ApiEnvelope<LifecycleSummary>"},
@@ -1793,10 +2267,24 @@ ENDPOINTS: list[dict[str, Any]] = [
     },
     {"method": "GET", "path": "/api/v1/experiments/segments", "response_schema": "ApiEnvelope<ExperimentSegment[]>"},
     {"method": "GET", "path": "/api/v1/experiments/guardrails", "response_schema": "ApiEnvelope<ExperimentGuardrails>"},
+    {
+        "method": "GET",
+        "path": "/api/v1/experiments/results",
+        "query": {"experiment_key": {"type": "string", "required": False}},
+        "response_schema": "ApiEnvelope<ExperimentResult[]>",
+    },
+    {
+        "method": "GET",
+        "path": "/api/v1/experiments/uplift",
+        "query": {"experiment_key": {"type": "string", "required": False}},
+        "response_schema": "ApiEnvelope<ExperimentUplift>",
+    },
     {"method": "GET", "path": "/api/v1/feature-mart/summary", "response_schema": "ApiEnvelope<FeatureMartSummary>"},
     {"method": "GET", "path": "/api/v1/feature-mart/freshness", "response_schema": "ApiEnvelope<FeatureMartFreshness>"},
     {"method": "GET", "path": "/api/v1/feature-mart/quality", "response_schema": "ApiEnvelope<FeatureMartQuality>"},
     {"method": "GET", "path": "/api/v1/feature-mart/partitions", "response_schema": "ApiEnvelope<FeatureMartPartitionReport>"},
+    {"method": "GET", "path": "/api/v1/feature-mart/features", "response_schema": "ApiEnvelope<FeatureMartFeature[]>"},
+    {"method": "GET", "path": "/api/v1/feature-mart/readiness", "response_schema": "ApiEnvelope<FeatureMartReadiness>"},
     {
         "method": "GET",
         "path": "/api/v1/feature-mart/products",
@@ -1822,6 +2310,7 @@ ENDPOINTS: list[dict[str, Any]] = [
             "page": {"type": "integer", "default": 1, "minimum": 1},
             "size": {"type": "integer", "default": 20, "minimum": 1, "maximum": 100},
             "event_type": {"type": "string", "required": False},
+            "category_level1": {"type": "string", "required": False},
             "brand": {"type": "string", "required": False},
         },
         "response_schema": "ApiEnvelope<TableResult>",
@@ -1833,6 +2322,7 @@ ENDPOINTS: list[dict[str, Any]] = [
     {"method": "GET", "path": "/api/v1/jobs/{job_id}/lineage", "response_schema": "ApiEnvelope<JobLineage>"},
     {"method": "GET", "path": "/api/v1/jobs/{job_id}/quality", "response_schema": "ApiEnvelope<JobQuality>"},
     {"method": "GET", "path": "/api/v1/ops/evidence", "response_schema": "ApiEnvelope<OpsEvidence>"},
+    {"method": "GET", "path": "/api/v1/ops/optimization-impact", "response_schema": "ApiEnvelope<OptimizationImpact>"},
     {"method": "POST", "path": "/api/v1/refresh", "response_schema": "ApiEnvelope<{status:string,job_id:string}>", "status": 202},
 ]
 
@@ -1879,6 +2369,7 @@ def build_openapi() -> dict[str, Any]:
     array_affinity_edge = {"type": "array", "items": {"$ref": "#/components/schemas/AffinityEdge"}}
     array_affinity_community = {"type": "array", "items": {"$ref": "#/components/schemas/AffinityCommunity"}}
     array_affinity_opportunity = {"type": "array", "items": {"$ref": "#/components/schemas/AffinityOpportunity"}}
+    array_affinity_centrality = {"type": "array", "items": {"$ref": "#/components/schemas/AffinityCentrality"}}
     array_cohort_retention = {"type": "array", "items": {"$ref": "#/components/schemas/CohortRetentionCell"}}
     array_cohort_interval = {"type": "array", "items": {"$ref": "#/components/schemas/CohortRepurchaseInterval"}}
     array_cohort_value = {"type": "array", "items": {"$ref": "#/components/schemas/CohortValueCurve"}}
@@ -1898,8 +2389,11 @@ def build_openapi() -> dict[str, Any]:
     array_optimization_plan = {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationPlanItem"}}
     array_optimization_candidate = {"type": "array", "items": {"$ref": "#/components/schemas/OptimizationCandidate"}}
     array_recommendation_item = {"type": "array", "items": {"$ref": "#/components/schemas/RecommendationItem"}}
+    array_recommendation_candidate = {"type": "array", "items": {"$ref": "#/components/schemas/RecommendationCandidate"}}
     array_recommendation_alert = {"type": "array", "items": {"$ref": "#/components/schemas/RecommendationAlert"}}
     array_anomaly_alert = {"type": "array", "items": {"$ref": "#/components/schemas/AnomalyAlert"}}
+    array_anomaly_incident = {"type": "array", "items": {"$ref": "#/components/schemas/AnomalyIncident"}}
+    array_anomaly_root_cause = {"type": "array", "items": {"$ref": "#/components/schemas/AnomalyRootCause"}}
     array_anomaly_timeline = {"type": "array", "items": {"$ref": "#/components/schemas/AnomalyTimelinePoint"}}
     array_lifecycle_segment = {"type": "array", "items": {"$ref": "#/components/schemas/LifecycleSegment"}}
     array_lifecycle_user = {"type": "array", "items": {"$ref": "#/components/schemas/LifecycleUser"}}
@@ -1910,10 +2404,26 @@ def build_openapi() -> dict[str, Any]:
     array_experiment_catalog = {"type": "array", "items": {"$ref": "#/components/schemas/ExperimentCatalogItem"}}
     array_experiment_assignment = {"type": "array", "items": {"$ref": "#/components/schemas/ExperimentAssignment"}}
     array_experiment_segment = {"type": "array", "items": {"$ref": "#/components/schemas/ExperimentSegment"}}
+    array_experiment_result = {"type": "array", "items": {"$ref": "#/components/schemas/ExperimentResult"}}
     array_feature_mart_product = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartProduct"}}
     array_feature_mart_category = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartCategory"}}
     array_feature_mart_user = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartUser"}}
+    array_feature_mart_feature = {"type": "array", "items": {"$ref": "#/components/schemas/FeatureMartFeature"}}
     ops_evidence = {"$ref": "#/components/schemas/OpsEvidence"}
+    optimization_impact = {"$ref": "#/components/schemas/OptimizationImpact"}
+    controlled_query_result = {"$ref": "#/components/schemas/ControlledQueryResult"}
+    table_query_parameters = [
+        _query_parameter("page", {"type": "integer", "default": 1, "minimum": 1}),
+        _query_parameter("size", {"type": "integer", "default": 20, "minimum": 1, "maximum": 100}),
+        _query_parameter("event_type", {"type": "string", "enum": ["view", "cart", "remove_from_cart", "purchase"]}),
+        _query_parameter("category_level1", {"type": "string"}),
+        _query_parameter("brand", {"type": "string"}),
+    ]
+    dashboard_slice_query_parameters = [
+        _query_parameter("event_type", {"type": "string", "enum": ["view", "cart", "remove_from_cart", "purchase"]}),
+        _query_parameter("category_level1", {"type": "string"}),
+        _query_parameter("brand", {"type": "string"}),
+    ]
     return {
         "openapi": "3.1.0",
         "info": {
@@ -1922,12 +2432,18 @@ def build_openapi() -> dict[str, Any]:
             "description": "Spark powered ecommerce behavior analytics API.",
         },
         "paths": {
+            "/api/v1/health": _get_response(envelope_schema({"$ref": "#/components/schemas/HealthStatus"})),
             "/api/v1/summary": _get_response(envelope_schema({"$ref": "#/components/schemas/Summary"})),
             "/api/v1/events/distribution": _get_response(envelope_schema(array_named_value)),
             "/api/v1/trend/daily-events": _get_response(envelope_schema(array_date_value)),
             "/api/v1/trend/daily-sales": _get_response(envelope_schema(array_date_value)),
             "/api/v1/ranking/categories": _get_response(envelope_schema(array_named_value)),
             "/api/v1/ranking/brands": _get_response(envelope_schema(array_named_value)),
+            "/api/v1/dashboard/slice": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/DashboardSlice"}),
+                parameters=dashboard_slice_query_parameters,
+            ),
+            "/api/v1/query/controlled": _post_ok_response(envelope_schema(controlled_query_result)),
             "/api/v1/conversion/funnel": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/SessionFunnel"})
             ),
@@ -1946,6 +2462,9 @@ def build_openapi() -> dict[str, Any]:
             "/api/v1/forecasting/series": _get_response(envelope_schema(array_forecasting_series)),
             "/api/v1/forecasting/entities": _get_response(envelope_schema(array_forecasting_entity)),
             "/api/v1/forecasting/backtest": _get_response(envelope_schema(array_forecasting_backtest)),
+            "/api/v1/forecasting/evaluation": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/ForecastingEvaluation"})
+            ),
             "/api/v1/forecasting/risks": _get_response(envelope_schema(array_forecasting_risk)),
             "/api/v1/forecasting/quality": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/ForecastingQuality"})
@@ -1957,6 +2476,7 @@ def build_openapi() -> dict[str, Any]:
             "/api/v1/affinity/edges": _get_response(envelope_schema(array_affinity_edge)),
             "/api/v1/affinity/communities": _get_response(envelope_schema(array_affinity_community)),
             "/api/v1/affinity/opportunities": _get_response(envelope_schema(array_affinity_opportunity)),
+            "/api/v1/affinity/centrality": _get_response(envelope_schema(array_affinity_centrality)),
             "/api/v1/affinity/quality": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/AffinityQuality"})
             ),
@@ -2013,14 +2533,23 @@ def build_openapi() -> dict[str, Any]:
                 envelope_schema({"$ref": "#/components/schemas/RecommendationSummary"})
             ),
             "/api/v1/recommendations/items": _get_response(envelope_schema(array_recommendation_item)),
+            "/api/v1/recommendations/candidates": _get_response(envelope_schema(array_recommendation_candidate)),
             "/api/v1/recommendations/quality": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/RecommendationQuality"})
+            ),
+            "/api/v1/recommendations/evaluation": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/RecommendationEvaluation"})
             ),
             "/api/v1/recommendations/alerts": _get_response(envelope_schema(array_recommendation_alert)),
             "/api/v1/anomalies/summary": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/AnomalySummary"})
             ),
             "/api/v1/anomalies/alerts": _get_response(envelope_schema(array_anomaly_alert)),
+            "/api/v1/anomalies/incidents": _get_response(envelope_schema(array_anomaly_incident)),
+            "/api/v1/anomalies/root-cause": _get_response(envelope_schema(array_anomaly_root_cause)),
+            "/api/v1/anomalies/evaluation": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/AnomalyEvaluation"})
+            ),
             "/api/v1/anomalies/timeline": _get_response(envelope_schema(array_anomaly_timeline)),
             "/api/v1/anomalies/rules": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/AnomalyRules"})
@@ -2043,6 +2572,10 @@ def build_openapi() -> dict[str, Any]:
             "/api/v1/experiments/guardrails": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/ExperimentGuardrails"})
             ),
+            "/api/v1/experiments/results": _get_response(envelope_schema(array_experiment_result)),
+            "/api/v1/experiments/uplift": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/ExperimentUplift"})
+            ),
             "/api/v1/feature-mart/summary": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/FeatureMartSummary"})
             ),
@@ -2054,6 +2587,10 @@ def build_openapi() -> dict[str, Any]:
             ),
             "/api/v1/feature-mart/partitions": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/FeatureMartPartitionReport"})
+            ),
+            "/api/v1/feature-mart/features": _get_response(envelope_schema(array_feature_mart_feature)),
+            "/api/v1/feature-mart/readiness": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/FeatureMartReadiness"})
             ),
             "/api/v1/feature-mart/products": _get_response(envelope_schema(array_feature_mart_product)),
             "/api/v1/feature-mart/categories": _get_response(envelope_schema(array_feature_mart_category)),
@@ -2071,7 +2608,11 @@ def build_openapi() -> dict[str, Any]:
                 envelope_schema({"$ref": "#/components/schemas/JobQuality"})
             ),
             "/api/v1/ops/evidence": _get_response(envelope_schema(ops_evidence)),
-            "/api/v1/table": _get_response(envelope_schema({"$ref": "#/components/schemas/TableResult"})),
+            "/api/v1/ops/optimization-impact": _get_response(envelope_schema(optimization_impact)),
+            "/api/v1/table": _get_response(
+                envelope_schema({"$ref": "#/components/schemas/TableResult"}),
+                parameters=table_query_parameters,
+            ),
             "/api/v1/refresh": _post_response(
                 envelope_schema(
                     {
@@ -2089,12 +2630,30 @@ def build_openapi() -> dict[str, Any]:
     }
 
 
-def _get_response(schema: dict[str, Any]) -> dict[str, Any]:
-    return {"get": {"responses": {"200": _json_response(schema), "default": _json_response(API_SCHEMAS["ErrorEnvelope"])}}}
+def _get_response(schema: dict[str, Any], parameters: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    operation: dict[str, Any] = {
+        "responses": {"200": _json_response(schema), "default": _json_response(API_SCHEMAS["ErrorEnvelope"])}
+    }
+    if parameters:
+        operation["parameters"] = parameters
+    return {"get": operation}
+
+
+def _query_parameter(name: str, schema: dict[str, Any], required: bool = False) -> dict[str, Any]:
+    return {
+        "name": name,
+        "in": "query",
+        "required": required,
+        "schema": schema,
+    }
 
 
 def _post_response(schema: dict[str, Any]) -> dict[str, Any]:
     return {"post": {"responses": {"202": _json_response(schema), "default": _json_response(API_SCHEMAS["ErrorEnvelope"])}}}
+
+
+def _post_ok_response(schema: dict[str, Any]) -> dict[str, Any]:
+    return {"post": {"responses": {"200": _json_response(schema), "default": _json_response(API_SCHEMAS["ErrorEnvelope"])}}}
 
 
 def _get_post_response(get_schema: dict[str, Any], post_schema: dict[str, Any]) -> dict[str, Any]:

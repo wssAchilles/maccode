@@ -60,6 +60,10 @@ def test_affinity_outputs_edges_opportunities_and_quality(spark):
     assert any(check["name"] == "pair_rows_per_input_row" for check in metrics["affinity_quality"]["checks"])
     assert summary["pair_rows_per_input_row"] == metrics["affinity_quality"]["pair_rows_per_input_row"]
     assert frames["edges"].count() >= 2
+    assert metrics["affinity_centrality"]
+    assert metrics["affinity_centrality"][0]["pagerank_score"] >= 0
+    assert metrics["affinity_centrality"][0]["centrality_score"] >= 0
+    assert frames["centrality"].count() >= 1
 
 
 def test_affinity_sparse_graph_needs_review(spark):

@@ -9,23 +9,24 @@ import {
   useAttributionSummary,
 } from '../api/hooks';
 import { ChartPanel } from '../components/ChartPanel';
+import { displayValue, fieldLabel, label, listLabels, statusLabel } from '../i18n/displayText';
 import { barOption } from '../lib/chartOptions';
 import type { AttributionModel } from '../types/api';
 
 function money(value?: number | null) {
-  return typeof value === 'number' ? `¥${value.toLocaleString()}` : 'pending';
+  return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
 }
 
 function number(value?: number | null) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 function percent(value?: number | null) {
-  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : 'pending';
+  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '待生成';
 }
 
 function score(value?: number | null) {
-  return typeof value === 'number' ? value.toFixed(3) : 'pending';
+  return typeof value === 'number' ? value.toFixed(3) : '待生成';
 }
 
 function statusTone(status?: string) {
@@ -33,20 +34,11 @@ function statusTone(status?: string) {
 }
 
 function modelLabel(model: string) {
-  return {
-    first_touch: 'First touch',
-    last_touch: 'Last touch',
-    linear: 'Linear',
-    time_decay: 'Time decay',
-  }[model] ?? model;
+  return label('attributionModel', model);
 }
 
 function entityLabel(entityType: string) {
-  return {
-    category: '品类',
-    brand: '品牌',
-    product: '商品',
-  }[entityType] ?? entityType;
+  return label('entityType', entityType);
 }
 
 function modelRows(rows: AttributionModel[]) {
@@ -68,15 +60,17 @@ export function AttributionPage() {
   const hasError = summary.isError || models.isError || entities.isError || paths.isError || assists.isError || quality.isError;
   const topEntity = entities.data?.[0];
   const topAssist = assists.data?.[0];
-  const modelChart = useMemo(() => barOption(modelRows(models.data ?? []), 'Time decay assisted revenue', '#39d0c8'), [models.data]);
-  const warning = summary.data?.warnings?.length ? `归因质量需要复核：${summary.data.warnings.join(', ')}` : null;
+  const modelChart = useMemo(() => barOption(modelRows(models.data ?? []), '时间衰减辅助营收', '#39d0c8'), [models.data]);
+  const warning = summary.data?.warnings?.length
+    ? `归因质量需要复核：${summary.data.warnings.map(fieldLabel).join('、')}`
+    : null;
 
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Revenue attribution & assisted conversion intelligence</span>
+        <span className="eyebrow">营收归因与辅助转化</span>
         <h1>营收归因与辅助转化洞察</h1>
-        <p>基于同一 session 内 purchase 之前的 view、cart 和 remove_from_cart 触点，比较多种归因模型并识别辅助转化机会。</p>
+        <p>基于同一会话内购买之前的浏览、加购和移出购物车触点，比较多种归因模型并识别辅助转化机会。</p>
       </section>
 
       {hasError ? <div className="error-banner">营收归因缓存尚未完整生成，请先运行 Spark 刷新任务。</div> : null}
@@ -85,9 +79,9 @@ export function AttributionPage() {
       <section className="ops-command-band">
         <div>
           <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
-            {summary.data?.quality_status ?? 'pending'}
+            {statusLabel(summary.data?.quality_status)}
           </span>
-          <h2>{summary.data?.contract_version ?? 'revenue-attribution/v1'}</h2>
+          <h2>营收归因契约 v1</h2>
           <p>{summary.data?.actual_input_path ?? '等待真实 HDFS 输入快照'}</p>
         </div>
         <BadgeDollarSign size={22} />
@@ -97,22 +91,22 @@ export function AttributionPage() {
         <article className="metric-card tone-success">
           <span>可归因覆盖率</span>
           <strong>{percent(summary.data?.attribution_coverage_rate)}</strong>
-          <small>{number(summary.data?.attributable_sessions)} attributable sessions</small>
+          <small>{number(summary.data?.attributable_sessions)} 个可归因会话</small>
         </article>
         <article className="metric-card">
           <span>购买营收</span>
           <strong>{money(summary.data?.total_purchase_revenue)}</strong>
-          <small>{number(summary.data?.purchase_rows)} purchase rows</small>
+          <small>{number(summary.data?.purchase_rows)} 行购买记录</small>
         </article>
         <article className="metric-card tone-warning">
           <span>辅助营收</span>
           <strong>{money(summary.data?.assisted_revenue)}</strong>
-          <small>{percent(summary.data?.multi_touch_purchase_rate)} multi-touch</small>
+          <small>{percent(summary.data?.multi_touch_purchase_rate)} 多触点购买</small>
         </article>
         <article className="metric-card">
           <span>平均触点</span>
           <strong>{score(summary.data?.avg_touchpoints_before_purchase)}</strong>
-          <small>{score(summary.data?.avg_minutes_before_purchase)} minutes before purchase</small>
+          <small>购买前 {score(summary.data?.avg_minutes_before_purchase)} 分钟</small>
         </article>
       </section>
 
@@ -128,16 +122,16 @@ export function AttributionPage() {
         <label>
           <span>归因模型</span>
           <select value={model} onChange={(event) => setModel(event.target.value)}>
-            <option value="time_decay">Time decay</option>
-            <option value="linear">Linear</option>
-            <option value="last_touch">Last touch</option>
-            <option value="first_touch">First touch</option>
+            <option value="time_decay">时间衰减</option>
+            <option value="linear">线性归因</option>
+            <option value="last_touch">末次触点</option>
+            <option value="first_touch">首次触点</option>
           </select>
         </label>
       </section>
 
       <section className="content-grid">
-        <ChartPanel title="归因模型对比" subtitle="按对象类型汇总的 time decay assisted revenue" option={modelChart} />
+        <ChartPanel title="归因模型对比" subtitle="按对象类型汇总时间衰减辅助营收" option={modelChart} />
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
@@ -147,8 +141,8 @@ export function AttributionPage() {
             <Sparkles size={20} />
           </div>
           <dl>
-            <dt>Entity</dt>
-            <dd>{topEntity?.entity_label ?? 'pending'}</dd>
+            <dt>对象</dt>
+            <dd>{topEntity ? displayValue(topEntity.entity_label) : '待生成'}</dd>
             <dt>{modelLabel(model)}</dt>
             <dd>
               {money(
@@ -161,9 +155,9 @@ export function AttributionPage() {
                       : topEntity?.time_decay_assisted_revenue,
               )}
             </dd>
-            <dt>Assist / direct</dt>
+            <dt>辅助 / 直接</dt>
             <dd>{score(topEntity?.assist_to_direct_ratio)}</dd>
-            <dt>Confidence</dt>
+            <dt>置信度</dt>
             <dd>{percent(topEntity?.confidence)}</dd>
           </dl>
         </article>
@@ -179,13 +173,13 @@ export function AttributionPage() {
             <ShieldCheck size={20} />
           </div>
           <dl>
-            <dt>Purchase sessions</dt>
+            <dt>购买会话</dt>
             <dd>{number(quality.data?.purchase_sessions)}</dd>
-            <dt>Coverage</dt>
+            <dt>覆盖率</dt>
             <dd>{percent(quality.data?.attribution_coverage_rate)}</dd>
-            <dt>Valid price</dt>
+            <dt>有效价格</dt>
             <dd>{percent(quality.data?.valid_purchase_price_rate)}</dd>
-            <dt>History days</dt>
+            <dt>历史天数</dt>
             <dd>{number(quality.data?.history_days)}</dd>
           </dl>
         </article>
@@ -199,13 +193,13 @@ export function AttributionPage() {
             <GitCompareArrows size={20} />
           </div>
           <dl>
-            <dt>Entity</dt>
-            <dd>{topAssist?.entity_label ?? 'pending'}</dd>
-            <dt>Action</dt>
-            <dd>{topAssist?.suggested_action ?? 'pending'}</dd>
-            <dt>Priority</dt>
+            <dt>对象</dt>
+            <dd>{topAssist ? displayValue(topAssist.entity_label) : '待生成'}</dd>
+            <dt>动作</dt>
+            <dd>{topAssist ? label('action', topAssist.suggested_action) : '待生成'}</dd>
+            <dt>优先级</dt>
             <dd>{score(topAssist?.priority_score)}</dd>
-            <dt>Sessions</dt>
+            <dt>会话</dt>
             <dd>{number(topAssist?.assisted_purchase_sessions)}</dd>
           </dl>
         </article>
@@ -215,7 +209,7 @@ export function AttributionPage() {
         <div className="panel-title">
           <div>
             <h2>归因实体排行</h2>
-            <p>比较 first touch、last touch、linear 和 time decay 模型下的营收归因差异。</p>
+            <p>比较首次触点、末次触点、线性归因和时间衰减模型下的营收归因差异。</p>
           </div>
           <BadgeDollarSign size={20} />
         </div>
@@ -226,11 +220,11 @@ export function AttributionPage() {
                 <th>对象</th>
                 <th>触点会话</th>
                 <th>辅助购买</th>
-                <th>First</th>
-                <th>Last</th>
-                <th>Linear</th>
-                <th>Time decay</th>
-                <th>Assist / Direct</th>
+                <th>首次触点</th>
+                <th>末次触点</th>
+                <th>线性归因</th>
+                <th>时间衰减</th>
+                <th>辅助 / 直接</th>
                 <th>原因</th>
               </tr>
             </thead>
@@ -238,7 +232,7 @@ export function AttributionPage() {
               {(entities.data ?? []).map((row) => (
                 <tr key={`${row.entity_type}:${row.entity_id}`}>
                   <td>
-                    <strong>{row.entity_label}</strong>
+                    <strong>{displayValue(row.entity_label)}</strong>
                     <br />
                     <small>{entityLabel(row.entity_type)}</small>
                   </td>
@@ -249,7 +243,7 @@ export function AttributionPage() {
                   <td>{money(row.linear_assisted_revenue)}</td>
                   <td>{money(row.time_decay_assisted_revenue)}</td>
                   <td>{score(row.assist_to_direct_ratio)}</td>
-                  <td>{(row.reason_codes ?? []).join(', ') || 'multi_touch_driver'}</td>
+                  <td>{listLabels('reason', row.reason_codes?.length ? row.reason_codes : ['multi_touch_driver'])}</td>
                 </tr>
               ))}
             </tbody>
@@ -280,8 +274,8 @@ export function AttributionPage() {
               <tbody>
                 {(assists.data ?? []).slice(0, 12).map((row) => (
                   <tr key={`${row.entity_type}:${row.entity_id}:${row.suggested_action}`}>
-                    <td>{row.entity_label}</td>
-                    <td>{row.suggested_action}</td>
+                    <td>{displayValue(row.entity_label)}</td>
+                    <td>{label('action', row.suggested_action)}</td>
                     <td>{score(row.priority_score)}</td>
                     <td>{percent(row.confidence)}</td>
                     <td>{money(row.time_decay_assisted_revenue)}</td>
@@ -296,7 +290,7 @@ export function AttributionPage() {
           <div className="panel-title">
             <div>
               <h2>高频购买路径</h2>
-              <p>按购买收入排序的 session path pattern，辅助解释归因结果。</p>
+              <p>按购买收入排序的会话路径模式，辅助解释归因结果。</p>
             </div>
             <Route size={20} />
           </div>
@@ -305,7 +299,7 @@ export function AttributionPage() {
               <thead>
                 <tr>
                   <th>路径</th>
-                  <th>Session</th>
+                  <th>会话</th>
                   <th>购买</th>
                   <th>转化</th>
                   <th>营收</th>

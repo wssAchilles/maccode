@@ -19,6 +19,7 @@ class BaseConfig:
     RAW_DATA_PATH = Path(
         os.getenv("RAW_DATA_PATH", PROJECT_ROOT / "data" / "sample" / "ecommerce_user_sample_1pct.csv")
     )
+    CLEANED_TABLE_PATH = Path(os.getenv("CLEANED_TABLE_PATH")) if os.getenv("CLEANED_TABLE_PATH") else None
     SPARK_CONFIG_PATH = Path(os.getenv("SPARK_CONFIG_PATH", PROJECT_ROOT / "configs" / "local.yaml"))
     CORS_ALLOWED_ORIGINS = csv_env(
         "CORS_ALLOWED_ORIGINS",

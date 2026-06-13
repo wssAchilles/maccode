@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
+from pyspark.sql import Window
 
 
 EXPERIMENT_CONTRACT_VERSION = "growth-experimentation/v1"
@@ -16,6 +18,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "min_control_users": 20,
     "max_segment_imbalance": 0.2,
     "min_assignment_users": 50,
+    "srm_alpha": 0.001,
+    "significance_alpha": 0.05,
 }
 
 
@@ -41,6 +45,8 @@ def build_experiment_outputs(
     summary = build_summary(assignments, segment_readiness, experiments, recommendation_coverage, optimization_plan, config, run_id)
     guardrails = build_guardrails(summary, segment_preview, recommendation_coverage, config)
     catalog = build_catalog_payload(experiments, recommendation_coverage)
+    results = build_experiment_results(assignments, config, run_id=run_id)
+    uplift = build_uplift_results(assignments, config, run_id=run_id)
 
     frames = {
         "experiment_assignments": assignments,
@@ -52,6 +58,8 @@ def build_experiment_outputs(
         "experiment_assignments": assignment_preview,
         "experiment_segments": segment_preview,
         "experiment_guardrails": guardrails,
+        "experiment_results": results,
+        "experiment_uplift": uplift,
     }
     return frames, metrics
 
@@ -135,6 +143,15 @@ def build_assignments(user_lifecycle: DataFrame, experiments: list[dict[str, Any
                 2,
             ),
         )
+        .withColumn(
+            "uplift_score",
+            F.round(
+                F.col("expected_uplift_rate")
+                + F.least(F.col("carts") / F.greatest(F.col("views"), F.lit(1)), F.lit(1.0)) * F.lit(0.02)
+                + F.when(F.col("risk_band").isin("convert_intent", "at_risk"), F.lit(0.01)).otherwise(F.lit(0.0)),
+                6,
+            ),
+        )
         .withColumn("source_run_id", F.lit(run_id))
         .withColumn("contract_version", F.lit(EXPERIMENT_CONTRACT_VERSION))
         .select(
@@ -153,8 +170,10 @@ def build_assignments(user_lifecycle: DataFrame, experiments: list[dict[str, Any
             "carts",
             "purchases",
             "revenue",
+            "expected_uplift_rate",
             "expected_incremental_purchase_prob",
             "expected_incremental_gmv",
+            "uplift_score",
             "policy",
             "primary_metric",
         )
@@ -351,6 +370,247 @@ def build_catalog_payload(experiments: list[dict[str, Any]], recommendation_cove
         }
         for experiment in experiments
     ]
+
+
+def build_experiment_results(assignments: DataFrame, config: dict[str, Any], *, run_id: str) -> list[dict[str, Any]]:
+    aggregates = (
+        assignments.groupBy("experiment_key", "name", "primary_metric", "variant")
+        .agg(
+            F.countDistinct("user_id").alias("users"),
+            F.sum(F.when(F.col("purchases") > 0, 1).otherwise(0)).alias("conversions"),
+            F.sum("purchases").alias("purchases"),
+            F.sum("views").alias("views"),
+            F.sum("carts").alias("carts"),
+            F.round(F.sum("revenue"), 2).alias("revenue"),
+            F.round(F.sum("expected_incremental_gmv"), 2).alias("expected_incremental_gmv"),
+            F.round(F.avg("uplift_score"), 6).alias("avg_uplift_score"),
+        )
+        .collect()
+    )
+    by_experiment: dict[str, dict[str, Any]] = {}
+    for row in aggregates:
+        item = _json_safe(row.asDict())
+        current = by_experiment.setdefault(
+            str(item["experiment_key"]),
+            {
+                "experiment_key": str(item["experiment_key"]),
+                "name": item.get("name") or str(item["experiment_key"]),
+                "primary_metric": item.get("primary_metric") or "purchase_rate",
+                "variants": {},
+            },
+        )
+        current["variants"][str(item["variant"])] = item
+
+    result_rows = []
+    for experiment in sorted(by_experiment.values(), key=lambda row: row["experiment_key"]):
+        treatment = experiment["variants"].get("treatment", {})
+        control = experiment["variants"].get("control", {})
+        treatment_users = int(treatment.get("users") or 0)
+        control_users = int(control.get("users") or 0)
+        total_users = treatment_users + control_users
+        treatment_rate = _safe_rate(float(treatment.get("conversions") or 0), treatment_users)
+        control_rate = _safe_rate(float(control.get("conversions") or 0), control_users)
+        absolute_lift = round(treatment_rate - control_rate, 6)
+        relative_lift = round(absolute_lift / control_rate, 6) if control_rate else None
+        standard_error = _two_proportion_standard_error(treatment_rate, treatment_users, control_rate, control_users)
+        p_value = _normal_two_sided_p_value(absolute_lift, standard_error) if standard_error else None
+        ci_low = round(absolute_lift - 1.96 * standard_error, 6) if standard_error else None
+        ci_high = round(absolute_lift + 1.96 * standard_error, 6) if standard_error else None
+        srm = _srm_stats(treatment_users, control_users, float(config["treatment_split"]))
+        srm_passed = srm["srm_p_value"] >= float(config["srm_alpha"])
+        decision = _experiment_decision(
+            total_users=total_users,
+            srm_passed=srm_passed,
+            p_value=p_value,
+            absolute_lift=absolute_lift,
+            config=config,
+        )
+        result_rows.append(
+            {
+                "contract_version": EXPERIMENT_CONTRACT_VERSION,
+                "run_id": run_id,
+                "experiment_key": experiment["experiment_key"],
+                "name": experiment["name"],
+                "primary_metric": experiment["primary_metric"],
+                "measurement_status": "offline_history_replay",
+                "oec_metric": "purchase_rate",
+                "treatment_users": treatment_users,
+                "control_users": control_users,
+                "expected_treatment_ratio": float(config["treatment_split"]),
+                "observed_treatment_ratio": _safe_rate(treatment_users, total_users),
+                "srm_chi_square": srm["srm_chi_square"],
+                "srm_p_value": srm["srm_p_value"],
+                "srm_status": "passed" if srm_passed else "failed",
+                "control_mean": control_rate,
+                "treatment_mean": treatment_rate,
+                "absolute_lift": absolute_lift,
+                "relative_lift": relative_lift,
+                "standard_error": round(standard_error, 6) if standard_error else None,
+                "ci_low": ci_low,
+                "ci_high": ci_high,
+                "p_value": p_value,
+                "decision": decision,
+                "variant_rows": [
+                    _variant_result("treatment", treatment),
+                    _variant_result("control", control),
+                ],
+                "causal_caveat": "offline_history_replay_not_causal",
+            }
+        )
+    return result_rows
+
+
+def build_uplift_results(assignments: DataFrame, config: dict[str, Any], *, run_id: str) -> dict[str, Any]:
+    ranked = assignments.withColumn(
+        "uplift_decile",
+        F.ntile(10).over(Window.partitionBy("experiment_key").orderBy(F.desc("uplift_score"), F.asc("user_id"))),
+    )
+    rows = (
+        ranked.groupBy("experiment_key", "uplift_decile", "variant")
+        .agg(
+            F.countDistinct("user_id").alias("users"),
+            F.sum(F.when(F.col("purchases") > 0, 1).otherwise(0)).alias("conversions"),
+            F.round(F.sum("revenue"), 2).alias("revenue"),
+            F.round(F.avg("uplift_score"), 6).alias("avg_uplift_score"),
+        )
+        .collect()
+    )
+    by_decile: dict[tuple[str, int], dict[str, Any]] = {}
+    for row in rows:
+        item = _json_safe(row.asDict())
+        key = (str(item["experiment_key"]), int(item["uplift_decile"]))
+        current = by_decile.setdefault(
+            key,
+            {"experiment_key": key[0], "decile": key[1], "variants": {}},
+        )
+        current["variants"][str(item["variant"])] = item
+
+    deciles = []
+    cumulative_gain: dict[str, float] = {}
+    auuc_by_experiment: dict[str, float] = {}
+    for (experiment_key, decile), item in sorted(by_decile.items()):
+        treatment = item["variants"].get("treatment", {})
+        control = item["variants"].get("control", {})
+        treatment_users = int(treatment.get("users") or 0)
+        control_users = int(control.get("users") or 0)
+        treatment_rate = _safe_rate(float(treatment.get("conversions") or 0), treatment_users)
+        control_rate = _safe_rate(float(control.get("conversions") or 0), control_users)
+        uplift = round(treatment_rate - control_rate, 6)
+        gain = uplift * max(treatment_users, 1)
+        cumulative_gain[experiment_key] = round(cumulative_gain.get(experiment_key, 0.0) + gain, 6)
+        auuc_by_experiment[experiment_key] = round(auuc_by_experiment.get(experiment_key, 0.0) + cumulative_gain[experiment_key], 6)
+        deciles.append(
+            {
+                "experiment_key": experiment_key,
+                "decile": decile,
+                "treatment_users": treatment_users,
+                "control_users": control_users,
+                "treatment_conversion_rate": treatment_rate,
+                "control_conversion_rate": control_rate,
+                "uplift": uplift,
+                "cumulative_gain": cumulative_gain[experiment_key],
+                "avg_uplift_score": round(
+                    max(float(treatment.get("avg_uplift_score") or 0), float(control.get("avg_uplift_score") or 0)),
+                    6,
+                ),
+            }
+        )
+    return {
+        "contract_version": EXPERIMENT_CONTRACT_VERSION,
+        "run_id": run_id,
+        "measurement_status": "offline_history_replay",
+        "causal_valid": False,
+        "causal_caveat": "randomized_exposure_and_outcome_required_for_true_uplift",
+        "summary": [
+            {
+                "experiment_key": experiment_key,
+                "auuc": round(auuc, 6),
+                "qini_auc": round(auuc, 6),
+                "decile_count": sum(1 for row in deciles if row["experiment_key"] == experiment_key),
+            }
+            for experiment_key, auuc in sorted(auuc_by_experiment.items())
+        ],
+        "deciles": deciles,
+        "quality_gates": [
+            {
+                "name": "causal_outcome_available",
+                "actual": "offline_history_replay",
+                "operator": "==",
+                "expected": "randomized_experiment_results",
+                "passed": False,
+            }
+        ],
+    }
+
+
+def _variant_result(variant: str, row: dict[str, Any]) -> dict[str, Any]:
+    users = int(row.get("users") or 0)
+    conversions = int(row.get("conversions") or 0)
+    return {
+        "variant": variant,
+        "users": users,
+        "conversions": conversions,
+        "conversion_rate": _safe_rate(conversions, users),
+        "purchases": int(row.get("purchases") or 0),
+        "views": int(row.get("views") or 0),
+        "carts": int(row.get("carts") or 0),
+        "revenue": float(row.get("revenue") or 0),
+        "expected_incremental_gmv": float(row.get("expected_incremental_gmv") or 0),
+        "avg_uplift_score": float(row.get("avg_uplift_score") or 0),
+    }
+
+
+def _srm_stats(treatment_users: int, control_users: int, treatment_split: float) -> dict[str, float]:
+    total = treatment_users + control_users
+    if not total:
+        return {"srm_chi_square": 0.0, "srm_p_value": 1.0}
+    expected_treatment = total * treatment_split
+    expected_control = total * (1.0 - treatment_split)
+    chi_square = 0.0
+    if expected_treatment:
+        chi_square += ((treatment_users - expected_treatment) ** 2) / expected_treatment
+    if expected_control:
+        chi_square += ((control_users - expected_control) ** 2) / expected_control
+    return {"srm_chi_square": round(chi_square, 6), "srm_p_value": round(math.erfc(math.sqrt(chi_square / 2)), 6)}
+
+
+def _two_proportion_standard_error(treatment_rate: float, treatment_users: int, control_rate: float, control_users: int) -> float:
+    if treatment_users <= 0 or control_users <= 0:
+        return 0.0
+    return math.sqrt((treatment_rate * (1 - treatment_rate) / treatment_users) + (control_rate * (1 - control_rate) / control_users))
+
+
+def _normal_two_sided_p_value(effect: float, standard_error: float) -> float | None:
+    if standard_error <= 0:
+        return None
+    return round(math.erfc(abs(effect / standard_error) / math.sqrt(2)), 6)
+
+
+def _experiment_decision(
+    *,
+    total_users: int,
+    srm_passed: bool,
+    p_value: float | None,
+    absolute_lift: float,
+    config: dict[str, Any],
+) -> str:
+    if total_users < int(config["min_assignment_users"]):
+        return "needs_more_sample"
+    if not srm_passed:
+        return "blocked_by_srm"
+    if p_value is None:
+        return "not_measurable"
+    if p_value <= float(config["significance_alpha"]) and absolute_lift > 0:
+        return "positive_significant"
+    if p_value <= float(config["significance_alpha"]) and absolute_lift < 0:
+        return "negative_significant"
+    return "not_significant"
+
+
+def _safe_rate(numerator: float | int, denominator: float | int) -> float:
+    if not denominator:
+        return 0.0
+    return round(float(numerator) / float(denominator), 6)
 
 
 def _json_safe(row: dict[str, Any]) -> dict[str, Any]:

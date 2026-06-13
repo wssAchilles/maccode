@@ -7,6 +7,13 @@ const state = {
   eventType: ''
 };
 
+const eventTypeLabels = {
+  view: '浏览',
+  cart: '加购',
+  remove_from_cart: '移出购物车',
+  purchase: '购买'
+};
+
 async function loadTable() {
   const { data } = await api.table({
     page: state.page,
@@ -17,10 +24,10 @@ async function loadTable() {
   document.getElementById('table-body').innerHTML = data.rows.map((row) => `
     <tr>
       <td>${row.event_time}</td>
-      <td>${row.event_type}</td>
+      <td>${eventTypeLabels[row.event_type] || row.event_type || '未知'}</td>
       <td>${row.product_id}</td>
       <td>${row.category_code}</td>
-      <td>${row.brand || 'unknown'}</td>
+      <td>${row.brand || '未知'}</td>
       <td>${row.price}</td>
       <td>${row.user_id}</td>
     </tr>

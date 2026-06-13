@@ -6,13 +6,14 @@ import {
   useLifecycleSegments,
   useLifecycleSummary,
 } from '../api/hooks';
+import { algorithmCopy, displayValue, label } from '../i18n/displayText';
 
 function number(value?: number | null) {
-  return typeof value === 'number' ? value.toLocaleString() : 'pending';
+  return typeof value === 'number' ? value.toLocaleString() : '待生成';
 }
 
 function money(value?: number | null) {
-  return typeof value === 'number' ? `¥${value.toLocaleString()}` : 'pending';
+  return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
 }
 
 function segmentTone(segment?: string) {
@@ -32,9 +33,9 @@ export function LifecyclePage() {
   return (
     <>
       <section className="page-heading">
-        <span className="eyebrow">Customer lifecycle intelligence</span>
+        <span className="eyebrow">用户生命周期智能</span>
         <h1>用户生命周期与价值分层</h1>
-        <p>基于 Feature Mart 用户日级事实构建 RFM、活跃度、偏好类目和运营动作队列。</p>
+        <p>基于特征集市用户日级事实构建最近活跃、频次、价值、活跃度、偏好类目和运营动作队列。</p>
       </section>
 
       {hasError ? (
@@ -45,9 +46,9 @@ export function LifecyclePage() {
 
       <section className="ops-command-band">
         <div>
-          <span className="status-pill tone-success">{summary.data?.contract_version ?? 'customer-lifecycle-intelligence/v1'}</span>
-          <h2>{summary.data?.run_id ?? 'waiting for lifecycle run'}</h2>
-          <p>Snapshot {summary.data?.snapshot_dt ?? 'pending'} · {number(summary.data?.user_count)} monitored users</p>
+          <span className="status-pill tone-success">生命周期契约 v1</span>
+          <h2>{summary.data?.run_id ? `运行 ${summary.data.run_id}` : '等待生命周期运行'}</h2>
+          <p>快照 {summary.data?.snapshot_dt ?? '待生成'} · 监控用户 {number(summary.data?.user_count)}</p>
         </div>
         <UsersRound size={22} />
       </section>
@@ -56,22 +57,22 @@ export function LifecyclePage() {
         <article className="metric-card tone-success">
           <span>高价值用户</span>
           <strong>{number(summary.data?.high_value_users)}</strong>
-          <small>{money(summary.data?.revenue)} lifecycle revenue</small>
+          <small>生命周期收入 {money(summary.data?.revenue)}</small>
         </article>
         <article className="metric-card tone-warning">
           <span>转化意图</span>
           <strong>{number(summary.data?.convert_intent_users)}</strong>
-          <small>cart recovery candidates</small>
+          <small>购物车召回候选</small>
         </article>
         <article className="metric-card tone-danger">
           <span>流失风险</span>
           <strong>{number(summary.data?.at_risk_users)}</strong>
-          <small>{number(summary.data?.avg_recency_days)} avg recency days</small>
+          <small>平均最近活跃 {number(summary.data?.avg_recency_days)} 天</small>
         </article>
         <article className="metric-card">
           <span>购买次数</span>
           <strong>{number(summary.data?.purchase_count)}</strong>
-          <small>{number(summary.data?.segment_count)} lifecycle segments</small>
+          <small>{number(summary.data?.segment_count)} 个生命周期分层</small>
         </article>
       </section>
 
@@ -87,8 +88,8 @@ export function LifecyclePage() {
           <div className="quality-checks">
             {(segments.data ?? []).map((segment) => (
               <div className={`quality-check tone-${segmentTone(segment.lifecycle_segment)}`} key={segment.lifecycle_segment}>
-                <span>{segment.lifecycle_segment}</span>
-                <strong>{number(segment.users)} users · {money(segment.revenue)}</strong>
+                <span>{label('segment', segment.lifecycle_segment)}</span>
+                <strong>{number(segment.users)} 个用户 · {money(segment.revenue)}</strong>
               </div>
             ))}
           </div>
@@ -98,14 +99,14 @@ export function LifecyclePage() {
           <div className="panel-title">
             <div>
               <h2>规则解释</h2>
-              <p>{rules.data?.model ?? '等待规则报告'}</p>
+              <p>{algorithmCopy(rules.data?.model ?? '等待规则报告')}</p>
             </div>
             <HeartPulse size={20} />
           </div>
           <div className="quality-checks">
             {(rules.data?.rules ?? []).map((rule) => (
               <div className="quality-check tone-success" key={rule.name}>
-                <span>{rule.name}</span>
+                <span>{label('segment', rule.name, { fallback: rule.name })}</span>
                 <strong>{rule.threshold}</strong>
               </div>
             ))}
@@ -129,7 +130,7 @@ export function LifecyclePage() {
                 <th>分层</th>
                 <th>风险</th>
                 <th>偏好类目</th>
-                <th>Session</th>
+                <th>会话</th>
                 <th>浏览</th>
                 <th>加购</th>
                 <th>购买</th>
@@ -141,15 +142,15 @@ export function LifecyclePage() {
               {(riskQueue.data ?? []).map((user) => (
                 <tr key={user.user_id}>
                   <td>{user.user_id}</td>
-                  <td><span className={`status-pill tone-${segmentTone(user.lifecycle_segment)}`}>{user.lifecycle_segment}</span></td>
-                  <td>{user.risk_band}</td>
-                  <td>{user.preferred_category_level1 ?? 'unknown'}</td>
+                  <td><span className={`status-pill tone-${segmentTone(user.lifecycle_segment)}`}>{label('segment', user.lifecycle_segment)}</span></td>
+                  <td>{label('risk', user.risk_band)}</td>
+                  <td>{displayValue(user.preferred_category_level1)}</td>
                   <td>{number(user.sessions)}</td>
                   <td>{number(user.views)}</td>
                   <td>{number(user.carts)}</td>
                   <td>{number(user.purchases)}</td>
                   <td>{money(user.revenue)}</td>
-                  <td>{user.recommended_action}</td>
+                  <td>{algorithmCopy(user.recommended_action)}</td>
                 </tr>
               ))}
             </tbody>
@@ -179,7 +180,7 @@ export function LifecyclePage() {
             <tbody>
               {(affinity.data ?? []).map((row) => (
                 <tr key={row.category_level1 ?? 'unknown'}>
-                  <td>{row.category_level1 ?? 'unknown'}</td>
+                  <td>{displayValue(row.category_level1)}</td>
                   <td>{number(row.users)}</td>
                   <td>{money(row.user_revenue)}</td>
                   <td>{number(row.user_purchases)}</td>

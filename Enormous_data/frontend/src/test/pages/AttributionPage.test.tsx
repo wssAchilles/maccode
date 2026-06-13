@@ -13,7 +13,7 @@ describe('AttributionPage', () => {
     renderWithProviders(<AttributionPage />);
 
     expect(await screen.findByText('营收归因与辅助转化洞察')).toBeInTheDocument();
-    expect(await screen.findByText('revenue-attribution/v1')).toBeInTheDocument();
+    expect(await screen.findByText('营收归因契约 v1')).toBeInTheDocument();
     expect(await screen.findByText(/归因质量需要复核/)).toBeInTheDocument();
     expect((await screen.findAllByText('electronics')).length).toBeGreaterThan(0);
     expect(await screen.findByRole('table', { name: '营收归因实体排行' })).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe('AttributionPage', () => {
     await user.selectOptions(screen.getByLabelText('归因模型'), 'linear');
     await user.selectOptions(screen.getByLabelText('归因对象'), 'category');
 
-    expect((await screen.findAllByText('Linear')).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText('monitor_assist_entity')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('线性归因')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('监控辅助转化对象')).length).toBeGreaterThan(0);
   });
 });

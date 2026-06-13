@@ -6,11 +6,17 @@ RUN_ID="${2:-}"
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 PYFILES_PATH="$PROJECT_ROOT/build/spark_jobs.zip"
 DRIVER_HOST="${SPARK_DRIVER_HOST:-$(hostname -f 2>/dev/null || hostname)}"
+PYTHON_BIN="${PYTHON_BIN:-$PROJECT_ROOT/.venv/bin/python}"
+
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "Python virtual environment not found at $PYTHON_BIN. Create .venv or set PYTHON_BIN." >&2
+  exit 1
+fi
 
 mkdir -p "$PROJECT_ROOT/build"
 cd "$PROJECT_ROOT"
 
-python - <<'PY'
+"$PYTHON_BIN" - <<'PY'
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -22,7 +28,7 @@ PY
 
 spark-class org.apache.hadoop.fs.FsShell -mkdir -p /spark-history /user/course/ecommerce_behavior_processed || true
 
-SPARK_SUBMIT_CONF_ARGS="$(CONFIG_PATH="$CONFIG_PATH" python - <<'PY'
+SPARK_SUBMIT_CONF_ARGS="$(CONFIG_PATH="$CONFIG_PATH" "$PYTHON_BIN" - <<'PY'
 import os
 
 import yaml
