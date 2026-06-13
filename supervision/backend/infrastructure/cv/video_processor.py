@@ -39,6 +39,7 @@ from domain.speed.ground_contact import GroundContactCorrector, GroundContactPoi
 from domain.speed.models import SpeedRecord
 from domain.speed.nis_diagnostics import NISDiagnosticsAnalyzer
 from domain.speed.pedestrian_admission import assess_pedestrian_metric_admission
+from domain.speed.pedestrian_quality import annotate_pedestrian_speed_reports
 from domain.speed.posterior import SpeedPosteriorAnalyzer
 from domain.speed.trajectory_reconstruction import TrajectoryReconstructor
 from domain.speed.vehicle_diagnostics import annotate_vehicle_speed_reports, source_commit
@@ -427,6 +428,7 @@ class SupervisionVideoProcessor:
                     reconstruction_applied=reconstruction_applied,
                     source_commit_value=source_commit(Path(__file__).resolve().parents[3]),
                 )
+                self.frame_reports = annotate_pedestrian_speed_reports(self.frame_reports)
                 latest_report = self.frame_reports[-1]
             if self._renderer is not None:
                 for frame_image, frame_report in zip(

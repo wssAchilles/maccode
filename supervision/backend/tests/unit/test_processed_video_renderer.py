@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from domain.speed.pedestrian_quality import annotate_pedestrian_speed_reports
 from infrastructure.cv.processed_video_renderer import ProcessedVideoRenderer
 
 
@@ -27,9 +28,10 @@ def test_renderer_accepts_numeric_pixel_box() -> None:
     assert ProcessedVideoRenderer._track_box(track) == (1, 2, 11, 12)
 
 
-def test_renderer_does_not_print_invalid_frozen_speed_as_metric_speed() -> None:
+def test_renderer_hides_invalid_person_speed_instead_of_na_stable() -> None:
     track = {
         "tracker_id": 30,
+        "class_id": 0,
         "class_name": "person",
         "speed_kmh": 15.5,
         "physics_valid": False,
@@ -40,8 +42,37 @@ def test_renderer_does_not_print_invalid_frozen_speed_as_metric_speed() -> None:
     label = ProcessedVideoRenderer._track_label(track, 30)
 
     assert "15.5 km/h" not in label
-    assert "N/A" in label
-    assert "geometry_invalid" in label
+    assert label == "#30 person"
+    assert "N/A" not in label
+    assert "geometry_invalid" not in label
+
+
+def test_pedestrian_annotation_hides_high_id_switch_risk_speed() -> None:
+    reports = [
+        {
+            "active_tracks": [
+                {
+                    "tracker_id": 31,
+                    "class_id": 0,
+                    "class_name": "person",
+                    "speed_kmh": 12.0,
+                    "physics_valid": True,
+                    "id_switch_risk": 0.82,
+                    "xyxy": [1, 2, 10, 20],
+                },
+            ],
+        },
+    ]
+
+    annotate_pedestrian_speed_reports(reports)
+    track = reports[0]["active_tracks"][0]
+    label = ProcessedVideoRenderer._track_label(track, 31)
+
+    assert track["physics_valid"] is False
+    assert track["speed_display_hidden"] is True
+    assert track["pedestrian_speed_display_state"] == "id_switch_hidden"
+    assert label == "#31 person"
+    assert "12.0 km/h" not in label
 
 
 def test_renderer_omits_speed_text_for_static_infrastructure() -> None:

@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from domain.speed.pedestrian_quality import annotate_pedestrian_speed_reports  # noqa: E402
+from domain.speed.representative_diagnostics import (  # noqa: E402
+    build_pedestrian_speed_audit,
+    build_representative_speed_benchmark,
+    render_representative_markdown,
+)
+from shared.configs.settings import Settings  # noqa: E402
+
+from scripts.analyze_real_videos import (  # noqa: E402
+    CalibrationPresetCatalog,
+    analyze_clip,
+    load_calibration_presets,
+    load_camera_profiles,
+    resolve_device,
+    summarize,
+)
+
+
+def load_representative_set(path: Path, set_name: str | None) -> dict[str, Any]:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    selected = set_name or str(payload.get("default_set") or "")
+    sets = payload.get("sets") or {}
+    if not selected or selected not in sets:
+        raise ValueError(f"unknown representative speed regression set: {selected}")
+    entry = sets[selected]
+    if not isinstance(entry, dict):
+        raise ValueError(f"invalid representative speed regression set: {selected}")
+    return {"name": selected, **entry}
+
+
+def available_clips(input_dir: Path, clip_names: list[str]) -> tuple[list[Path], list[str]]:
+    by_name = {path.name: path for path in input_dir.glob("*.mp4")}
+    selected = [by_name[name] for name in clip_names if name in by_name]
+    missing = [name for name in clip_names if name not in by_name]
+    return selected, missing
+
+
+def selected_clip_names(regression_clips: list[str], requested: list[str] | None) -> list[str]:
+    if requested is None:
+        return regression_clips
+    allowed = set(regression_clips)
+    unknown = [name for name in requested if name not in allowed]
+    if unknown:
+        raise ValueError(
+            "requested clips are not in the representative speed regression set: "
+            + ", ".join(unknown),
+        )
+    return requested
+
+
+def run_regression(args: argparse.Namespace) -> dict[str, Any]:
+    settings = Settings()
+    representative_set = load_representative_set(Path(args.regression_config), args.set)
+    requested_clips = selected_clip_names(
+        [str(name) for name in representative_set.get("clips", [])],
+        args.clips,
+    )
+    input_dir = Path(args.input_dir)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    clips, missing = available_clips(input_dir, requested_clips)
+    if not clips and not args.allow_empty:
+        raise ValueError("no requested representative speed regression clips were found")
+
+    presets = load_calibration_presets(Path(args.calibration_presets))
+    presets = CalibrationPresetCatalog(
+        scene_profiles=presets.scene_profiles,
+        video_calibrations=presets.video_calibrations,
+        camera_profiles=load_camera_profiles(Path(args.camera_profiles)),
+    )
+    device = resolve_device(args.device)
+    model_path = args.model or settings.cv.yolo_model
+    max_frames = args.max_frames if args.max_frames > 0 else None
+    results: list[dict[str, Any]] = []
+    for path in clips:
+        try:
+            result = analyze_clip(
+                path=path,
+                model_path=model_path,
+                device=device,
+                confidence=args.confidence,
+                frame_stride=args.frame_stride,
+                max_frames=max_frames,
+                presets=presets,
+                processed_output_dir=output_dir / "processed_videos",
+                speed_ground_truth_dir=Path(args.speed_ground_truth_dir),
+            )
+            frame_reports = annotate_pedestrian_speed_reports(
+                result.get("frame_reports", []),
+            )
+            result["frame_reports"] = frame_reports
+            result["pedestrian_speed_audit"] = build_pedestrian_speed_audit(
+                frame_reports,
+                clip=path.name,
+                clip_acceptance_min_coverage=float(
+                    representative_set.get("pedestrian_clip_min_coverage", 0.995),
+                ),
+                pedestrian_max_speed_kmh=float(
+                    representative_set.get("pedestrian_max_speed_kmh", 18.0),
+                ),
+            )
+            result["status"] = "ok"
+        except Exception as exc:  # noqa: BLE001
+            result = {"clip": path.name, "status": "failed", "error": str(exc)}
+        results.append(result)
+        (output_dir / f"{path.stem}.json").write_text(
+            json.dumps(result, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    summary_payload = {
+        "regression_set": representative_set,
+        "missing_clips": missing,
+        "summary": summarize(results),
+        "results": results,
+    }
+    summary_payload["representative_speed_benchmark"] = (
+        build_representative_speed_benchmark(summary_payload)
+    )
+    (output_dir / "summary.json").write_text(
+        json.dumps(summary_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    benchmark = summary_payload["representative_speed_benchmark"]
+    (output_dir / "benchmark_summary.json").write_text(
+        json.dumps(benchmark, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (output_dir / "benchmark_report.md").write_text(
+        render_representative_markdown(benchmark),
+        encoding="utf-8",
+    )
+    return summary_payload
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run representative fixed-camera vehicle and pedestrian speed regression.",
+    )
+    parser.add_argument(
+        "--regression-config",
+        default="data/tests/representative_speed_regression.yaml",
+    )
+    parser.add_argument("--set", default=None)
+    parser.add_argument("--input-dir", default="data/tests/real_video_clips")
+    parser.add_argument(
+        "--output-dir",
+        default="data/outputs/representative_speed_regression",
+    )
+    parser.add_argument("--calibration-presets", default="data/tests/calibration_presets.yaml")
+    parser.add_argument("--camera-profiles", default="data/tests/camera_profiles.yaml")
+    parser.add_argument("--max-frames", type=int, default=0)
+    parser.add_argument("--frame-stride", type=int, default=1)
+    parser.add_argument("--confidence", type=float, default=0.45)
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--speed-ground-truth-dir",
+        default="data/tests/speed_ground_truth",
+        help="Optional CSV directory for vehicle speed GT metrics.",
+    )
+    parser.add_argument(
+        "--clips",
+        nargs="*",
+        default=None,
+        help="Exact MP4 filenames from the representative set to run in order.",
+    )
+    parser.add_argument("--allow-empty", action="store_true")
+    return parser.parse_args()
+
+
+def main() -> None:
+    payload = run_regression(parse_args())
+    print(
+        json.dumps(
+            payload["representative_speed_benchmark"],
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+
+if __name__ == "__main__":
+    main()

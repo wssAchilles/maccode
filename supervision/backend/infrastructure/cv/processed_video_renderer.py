@@ -136,20 +136,9 @@ class ProcessedVideoRenderer:
             return f"#{tracker_id} {class_name}"
         speed = track.get("speed_kmh")
         physics_valid = bool(track.get("physics_valid", True))
-        if class_id in ProcessedVideoRenderer.VEHICLE_CLASS_IDS and (
-            speed is None
-            or not physics_valid
-            or bool(track.get("speed_display_hidden", False))
-        ):
+        if speed is None or not physics_valid or bool(track.get("speed_display_hidden", False)):
             return f"#{tracker_id} {class_name}"
-        if speed is None or not physics_valid:
-            speed_text = "N/A"
-        else:
-            speed_text = f"{float(speed):.1f} km/h"
-        quality = None if physics_valid else str(track.get("quality_label") or "invalid")
-        return f"#{tracker_id} {class_name} {speed_text}" + (
-            f" {quality}" if quality else ""
-        )
+        return f"#{tracker_id} {class_name} {float(speed):.1f} km/h"
 
     @staticmethod
     def _track_box(track: dict[str, Any]) -> tuple[int, int, int, int] | None:
