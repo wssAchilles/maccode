@@ -1,2 +1,0 @@
-"""Automatic calibration candidate diagnostics."""
-
