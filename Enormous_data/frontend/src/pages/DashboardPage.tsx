@@ -169,7 +169,8 @@ export function DashboardPage() {
       : anomaly.data?.warning_count
         ? 'warning'
         : statusTone(anomaly.data?.radar_status);
-    const forecastTone = forecasting.data?.risk_count ? 'warning' : statusTone(forecasting.data ? 'passed' : 'pending');
+    // 预测窗口门禁状态：以后端质量门禁结果 quality_status 为准，与需求预测页面保持一致
+    const forecastTone = statusTone(forecasting.data?.quality_status ?? 'pending');
     return [
       {
         name: 'Spark 作业',

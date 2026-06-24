@@ -1,9 +1,700 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{致谢}
+\chapter{业务分析与智能决策模块实现}
 
-本课程设计能够完成，首先感谢任课老师在大数据与云计算课程中对 Hadoop、Spark、分布式存储和集群实验方法的讲解，使本项目能够从普通本地数据分析扩展到 Hadoop YARN 实验环境。老师在课程中强调实验证据、运行截图和结果解释的重要性，也促使本项目不只停留在功能演示，而是进一步补充 benchmark、质量门禁和 Ops 展示。
+\section{深度业务预测与需求估计}
 
-感谢同学们在调试 Docker、HDFS、YARN、Spark submit、前端页面和实验报告过程中提供的交流与帮助。尤其是在 ARM Mac 架构、Docker 镜像选择、端口冲突、Spark History 日志异常和前端展示问题上，同学之间的讨论帮助我更快定位了问题边界。
+\subsection{双尺度需求预测与 WAPE 精度度量}
 
-同时感谢开源社区提供的 Hadoop、Spark、Docker、Flask、React、Vite、TanStack Query、Matplotlib 等工具。没有这些成熟工具，本课程设计很难在本机环境中完成从原始数据、分布式计算、后端 API 到前端运维展示的完整闭环。
+需求预测模块（\texttt{forecasting.py}）实现了全站大盘与热门分类的双尺度未来 7 天销量预测。为避免引入外部深度学习运行时的复杂性，项目在 Driver 侧基于 Pure NumPy 独立实现了一个自回归多层感知机（Global AR-MLP）时序模型。
+
+\subsubsection{16维特征向量与GlobalAR-MLP模型}
+
+神经网络模型在隐藏层采用 ReLU 激活函数，输出层采用线性激活。模型输入的特征向量为 16 维，其组成如下：
+\begin{equation}
+    X_t = [G_{t-1}, G_{t-2}, G_{t-3}, G_{t-7}, O_{t-1}, O_{t-2}, O_{t-3}, O_{t-7}, W_0, W_1, W_2, W_3, W_4, W_5, W_6, \gamma]
+\end{equation}
+其中，$G$ 为过去滑窗的销售额（GMV），$O$ 为历史订单数，$W$ 为星期周期的 7 维 One-Hot 编码，$\gamma$ 为外生协变量修正因子（反映目标日浏览量与历史平均浏览量的比例，作为流量的趋势传导）。
+
+\subsubsection{前向传播与动量SGD训练}
+
+神经网络的前向传播逻辑如下：
+\begin{equation}
+    h = \max(0, X \cdot W_1 + b_1)
+\end{equation}
+\begin{equation}
+    \hat{Y} = h \cdot W_2 + b_2
+\end{equation}
+其中，权重矩阵采用 Kaiming Normal（He 初始化）方式实例化以保障深层传导，反向传播采用基于均方误差（MSE）梯度的动量 SGD（Momentum SGD）优化算法更新参数：
+\begin{equation}
+    v_{W} \leftarrow \beta v_{W} + \eta \nabla_{W} \mathcal{L}
+\end{equation}
+\begin{equation}
+    W \leftarrow W - v_{W}
+\end{equation}
+其中，$\beta=0.9$ 为动量因子，初始学习率 $\eta=0.05$，并采用指数衰减调度策略（每 20 个 epoch 乘以衰减因子 0.95）以平衡收敛速度与稳定性。
+
+\subsubsection{滑动多步预测与层次时序协调}
+
+在预测未来的 7 天时，采用滑动多步预测（Sliding-window Multi-step Forecasting）流程：将前一天生成的预测值作为下一天输入的 lag1 项滚入特征向量，实现迭代预测。
+
+模型采用加权绝对百分比误差（WAPE，Weighted Absolute Percentage Error）进行回测评估精度：
+\begin{equation}
+    \text{WAPE} = \frac{\sum_d |Y_d - \hat{Y}_d|}{\sum_d Y_d}
+\end{equation}
+对于独立的实体时序预测结果，大盘预测（自上而下）与各大品类预测（自下而上）会出现数学上的不一致。系统执行层次时序协调对齐：首先计算大盘与所有类目预测之和的偏差 $\delta = \hat{Y}_{\text{site}} - \sum_c \hat{Y}_c$，然后依据历史 28 天各大品类在对应指标（GMV 或销量）上的归一化均值比率作为权重 $w_c$：
+\begin{equation}
+    w_c = \frac{\bar{Y}_{c, \text{hist}}}{\sum_{c'} \bar{Y}_{c', \text{hist}}}
+\end{equation}
+其中 $\bar{Y}_{c, \text{hist}}$ 为品类 $c$ 在历史 28 天内对应评估指标（GMV 或销量）的平均值。系统将偏差加权分配给各个品类以确保层级对齐：
+\begin{equation}
+    \hat{Y}'_c = \hat{Y}_c + w_c \cdot \delta
+\end{equation}
+若历史样本天数太少（少于 7 天），模型将自动降级为滚动均值平滑回归算法。
+
+\subsection{商品关联图谱挖掘与置信度评价}
+
+关联分析（\texttt{spark\_jobs/affinity.py}）旨在识别会话内频繁共同加购或购买的商品对。
+
+\subsubsection{支持度-置信度-Lift评价体系}
+
+在经过会话长度拦截器过滤后，系统构建商品共现矩阵。对任意商品对 $(A, B)$，其核心评价指标定义如下：
+\begin{equation}
+    \text{Support}(A, B) = \text{Sessions}(A \cap B)
+\end{equation}
+Support 为绝对共现频次，表示同时出现在 $A$ 与 $B$ 中的独立会话数，未做归一化处理。
+
+\begin{equation}
+    \text{Confidence}(A \to B) = \frac{\text{Support}(A, B)}{\text{Support}(A)}
+\end{equation}
+\begin{equation}
+    \text{Lift}(A, B) = \frac{\text{Support}(A, B) \cdot N_{\text{total}}}{\text{Support}(A) \cdot \text{Support}(B)}
+\end{equation}
+其中 $N_{\text{total}}$ 为样本中的总独立会话数。由于支持度使用绝对频次定义，Lift 公式需要乘以 $N_{\text{total}}$ 以反映共现概率与边缘概率乘积的比值。
+
+\subsubsection{共现图谱与会话长度防御}
+
+关联结果以前端力导向关系图（Force-Directed Graph）展示，并严格记录共现产生的特征行数以防范内存组合爆炸。会话长度拦截器（Session Length Guard）以会话内不同商品数（distinct product\_count）为守卫指标，过滤掉商品数超过阈值（默认 $\leq 20$）的会话后再执行自连接，从源头将共现组合的笛卡尔积规模控制在安全范围内，防止极端长会话导致的 $O(n^2)$ 共现矩阵爆炸。
+
+\section{用户生命周期与留存分析}
+
+\subsection{Cohort 留存分析与购物车挽回}
+
+\subsubsection{Cohort 留存分析与复购价值曲线}
+
+\subsubsection{月级步长计算}
+
+留存分析仅提取购买事件，寻找每个用户的首次消费月份作为 Cohort 分群标识，并按月级步长计算其活跃生存期。系统分别统计活跃留存率与复购留存率：
+\begin{equation}
+    \text{RetentionRate}_{c, p} = \frac{\text{ActiveUsers}_{c, p}}{\text{CohortUsers}_c}
+\end{equation}
+其中 $c$ 为 Cohort 标识（首购月份），$p$ 为距首购的月级步长。
+
+\subsubsection{累计生命周期价值}
+
+复购价值曲线则在留存矩阵的纵轴上执行窗口累加，计算累计生命周期价值（LTV），为用户长期价值提供科学研判：
+\begin{equation}
+    \text{LTV}_{c, p} = \sum_{k=0}^{p} \frac{\text{Revenue}_{c, k}}{\text{PurchaseUsers}_{c, k}}
+\end{equation}
+其中，$\text{PurchaseUsers}_{c, k}$ 为 Cohort $c$ 在第 $k$ 个周期内实际产生购买行为的用户数（非 Cohort 总人数），从而使 LTV 的累积含义为"平均每个活跃购买用户的累计消费额"，而非"平均每个留存用户的累计消费额"。
+
+\subsection{RFM 生命周期分群模型}
+
+客户生命周期模块（\texttt{spark\_jobs/lifecycle.py}）基于 RFM（Recency, Frequency, Monetary）分析框架，对全量用户进行自动化分群与风险评级。其目标是为下游的推荐个性化、实验分组和运营决策提供用户级的行为画像标签。模块采用确定性规则引擎而非聚类算法，以确保分群结果在每次运行中完全可复现，便于实验对照与策略审计。
+
+\subsubsection{三维评分体系（近因-频率-消费力）}
+
+系统对每个用户在全量历史数据上聚合三个核心维度的评分：
+
+\textbf{Recency（近因度）。}以数据快照中最新日期 $d_{\max}$ 为基准，计算用户最近一次活跃距今的天数 $R$：
+\begin{equation}
+    R = d_{\max} - d_{\text{last\_active}}
+    \label{eq:recency}
+\end{equation}
+评分规则为：
+\begin{equation}
+    S_R = \begin{cases} 3 & R \leq 1 \\ 2 & R \leq 7 \\ 1 & R > 7 \end{cases}
+    \label{eq:recency-score}
+\end{equation}
+
+\textbf{Frequency（频率度）。}统计用户在不同日期产生购买行为的天数 $F_{\text{days}}$：
+\begin{equation}
+    S_F = \begin{cases} 3 & F_{\text{days}} \geq 2 \\ 2 & \text{purchases} > 0 \\ 1 & \text{otherwise} \end{cases}
+    \label{eq:frequency-score}
+\end{equation}
+
+\textbf{Monetary（消费力）。}统计用户历史累计消费金额 $M$：
+\begin{equation}
+    S_M = \begin{cases} 3 & M \geq 500 \\ 2 & M > 0 \\ 1 & M = 0 \end{cases}
+    \label{eq:monetary-score}
+\end{equation}
+
+\subsubsection{七段确定性分类}
+
+在 RFM 评分的基础上，系统通过优先级规则链将用户分为七个生命周期段：
+
+\begin{lstlisting}[style=codexcode]
+.withColumn("lifecycle_segment",
+    F.when(
+        (F.col("revenue") >= 1000.0) & (F.col("purchase_days") >= 2),
+        F.lit("champion"))
+    .when(
+        (F.col("revenue") >= 500.0) & (F.col("purchases") > 0),
+        F.lit("high_value"))
+    .when(F.col("purchase_days") >= 2, F.lit("loyal"))
+    .when(F.col("purchases") > 0, F.lit("buyer"))
+    .when(F.col("carts") > 0, F.lit("cart_intent"))
+    .when(F.col("views") > 0, F.lit("browser"))
+    .otherwise(F.lit("unknown")))
+\end{lstlisting}
+
+七段分类按优先级从高到低依次为：\textbf{Champion}（冠军用户，累计消费 $\geq 1000$ 且多日复购）、\textbf{High Value}（高价值用户，消费 $\geq 500$ 且有购买记录）、\textbf{Loyal}（忠诚用户，跨日购买天数 $\geq 2$）、\textbf{Buyer}（普通购买者，有至少一次购买）、\textbf{Cart Intent}（加购意向，仅有加购行为）、\textbf{Browser}（纯浏览者，仅有浏览行为）、\textbf{Unknown}（无有效行为数据）。该分类采用规则链的短路求值逻辑，每个用户仅匹配第一个满足条件的段，确保分群结果的互斥性与完备性。
+
+\subsubsection{风险带评级与建议动作}
+
+风险带（Risk Band）是面向运营干预的二级标签，用于标识用户的流失风险与转化机会：
+
+\begin{equation}
+    \text{RiskBand} = \begin{cases}
+        \text{at\_risk}        & R \geq 14                                    \\
+        \text{convert\_intent} & \text{purchases} = 0 \wedge \text{carts} > 0 \\
+        \text{active\_value}   & \text{purchases} > 0                         \\
+        \text{observe}         & \text{otherwise}
+    \end{cases}
+    \label{eq:risk-band}
+\end{equation}
+
+其中，\texttt{at\_risk} 表示用户已超过 14 天未活跃，存在流失风险；\texttt{convert\_intent} 表示有加购但未购买，存在转化机会；\texttt{active\_value} 表示有购买行为的活跃用户；\texttt{observe} 表示低优先级的观察对象。每个风险带自动匹配推荐动作，如 \texttt{at\_risk} 用户建议"通过品类个性化优惠券进行再激活"，\texttt{convert\_intent} 用户建议"优先处理购物车恢复并排查价格或库存摩擦"。
+
+生命周期模块的输入为用户级别的日聚合特征表（\texttt{daily\_user}）和品类日聚合特征表（\texttt{daily\_category}），输出的用户分群标签（\texttt{lifecycle\_segment}、\texttt{risk\_band}）是下游实验平台与推荐系统的核心分组变量。风险带标签直接流入决策引擎（\texttt{decision\_maker.py}），用于触发差异化的运营干预策略。
+
+\subsubsection{购物车漏斗挽回与优先级评分机制}
+
+\subsubsection{放弃判定逻辑}
+
+购物车挽回模块针对加购而未购买的用户行为进行评估。在会话-商品粒度下，若用户执行了加购却在会话期内无对应的购买记录，判定为放弃；若购买时间晚于加购时间，判定为成功挽回。
+
+\subsubsection{优先级评分公式}
+
+系统依据商品的流失量级与转化特征，设计了用于排程挽回短信或优惠券的挽回优先级评级评分机制：
+\begin{equation}
+    \text{PriorityScore}_i = \text{AbandonedValue}_i \times \text{AbandonmentRate}_i
+\end{equation}
+其中，$\text{AbandonmentRate}_i$ 为商品 $i$ 的放弃率（含用户主动移除场景），该指标比 $(1-\text{RecoveryRate})$ 更精确，因为存在用户主动移除购物车商品（explicit\_remove）这一独立状态。优先级高的商品将被推入挽回队列的前列。
+
+在商品级挽回动作之外，系统还在品类维度上定义了三种类目级运营动作：当品类移除率过高时触发 \texttt{category\_merchandising\_review}（品类陈列审查）；当品类放弃率超过阈值时触发 \texttt{category\_recovery\_campaign}（品类级挽回活动）；其他情况标记为 \texttt{category\_watch}（品类观察），帮助运营团队从品类结构层面排查流失根因。
+
+\section{归因、优化与推荐决策}
+
+\subsection{收入归因与运营优化}
+
+\subsubsection{多触点收入归因}
+
+多触点收入归因模块（\texttt{attribution.py}）将用户的消费额科学地分摊给在购买事件前发生的各个交互触点（Views, Carts）。
+
+\subsubsection{Linear均分模型}
+
+将购买总额 $R$ 均匀分配给会话内的 $N$ 个触点：
+\begin{equation}
+    CR(t_k) = \frac{R}{N}
+\end{equation}
+
+\subsubsection{Time-Decay时间衰减模型}
+
+依据触点距离购买发生的时间距离进行指数级分配。权重随逆时序反向递减：
+\begin{equation}
+    W(t_k) = d^{N-k}
+\end{equation}
+\begin{equation}
+    CR(t_k) = R \times \frac{W(t_k)}{\sum_{j=1}^N W(t_j)}
+\end{equation}
+其中，时间衰减常数设为 $d = 0.7$。在 Spark 侧，该算法通过开窗排序与列矩阵相乘算子实现全分布式的高吞吐运行，代码实现口径如下：
+\begin{lstlisting}[style=codexcode]
+weighted = (
+    joined
+    .withColumn("touch_count", F.count("*").over(by_purchase))
+    .withColumn("position_before_purchase", F.row_number().over(asc))
+    .withColumn("reverse_position_before_purchase", F.row_number().over(desc))
+    .withColumn("linear_credit", F.col("purchase_revenue") / F.col("touch_count"))
+    .withColumn("first_touch_credit", F.when(F.col("position_before_purchase") == 1, F.col("purchase_revenue")).otherwise(0.0))
+    .withColumn("last_touch_credit", F.when(F.col("reverse_position_before_purchase") == 1, F.col("purchase_revenue")).otherwise(0.0))
+    .withColumn("time_decay_weight", F.pow(F.lit(decay_base), F.col("reverse_position_before_purchase") - 1))
+    .withColumn("time_decay_credit", F.col("purchase_revenue") * F.col("time_decay_weight") / F.sum("time_decay_weight").over(by_purchase))
+)
+\end{lstlisting}
+
+\subsubsection{双层稳健化运营优化}
+
+运营优化决策模块（\texttt{optimization.py}）旨在受限营销预算和推荐位容量下，为候选商品寻找最佳的促销手段以最大化增量收益。
+
+\subsubsection{Bayes先验平滑}
+
+为规避冷启动商品因小样本带来的高估误差，候选商品的购买率通过先验平滑收缩购买率（Bayes Shrunk Rate）进行第一层稳健化处理：
+\begin{equation}
+    \theta_i = \frac{P_i + \alpha \cdot \bar{P}_{\text{global}}}{V_i + \alpha}
+\end{equation}
+其中，$P_i, V_i$ 分别为商品的购买量与浏览量，$\bar{P}_{\text{global}}$ 为全站平均转化率，先验置信权重常数设为 $\alpha = 50$。
+
+\subsubsection{Wilson置信下界}
+
+第二层稳健化采用置信下界度量（Wilson Score Interval Lower Bound），对商品的真实转化概率给出保守的下界估计：
+\begin{equation}
+    \theta^{\text{wilson}}_i = \frac{\hat{p}_i + \frac{z^2}{2V_i} - z \sqrt{\frac{\hat{p}_i(1-\hat{p}_i)}{V_i} + \frac{z^2}{4V_i^2}}}{1 + \frac{z^2}{V_i}}
+\end{equation}
+其中 $\hat{p}_i = P_i / V_i$ 为商品 $i$ 的经验购买率，置信水平选定为 95\%（即 $z = 1.96$），以此保守估计该商品的转化底线。
+
+为了综合评估样本规模和置信下界表现，系统进一步定义了商品的置信度权重 $c_i$：
+\begin{equation}
+    c_i = \min\left(1.0, \sqrt{\frac{V_i}{500}}\right) \times \left(0.5 + 0.5 \times \min\left(1.0, \frac{\theta^{\text{wilson}}_i}{\bar{P}_{\text{global}}}\right)\right)
+\end{equation}
+该权重既惩罚低曝光商品的置信度（通过样本量折价），又拉近了低转化商品的权重。并以此计算风险偏离度（或称风险得分） $R_i = 1 - c_i$。
+
+\subsubsection{MILP数学模型与Gurobi/贪心求解}
+
+随后，系统构建了混合整数线性规划（MILP）数学决策模型：
+\begin{equation}
+    \max_{x_{i,a}} \sum_{i \in \mathcal{C}} \sum_{a \in \mathcal{A}} x_{i,a} \cdot \left[ \text{BaselineGMV}_i \cdot \Delta_a \cdot c_i - \lambda \cdot R_i \cdot \text{BaselineGMV}_i \cdot \Delta_a \cdot c_i \right]
+\end{equation}
+其中，$\text{BaselineGMV}_i = V_i \cdot \theta_i \cdot \bar{p}_i$ 为基线 GMV（浏览量 $V_i$ $\times$ 收缩转化率 $\theta_i$ $\times$ 均价 $\bar{p}_i$），$\Delta_a$ 为动作 $a$ 的预期提升系数，$c_i$ 为置信度权重，$R_i$ 为风险偏离度。风险惩罚项作用于增量 GMV 本身而非外部成本，体现了保守型决策偏好。
+
+\begin{equation}
+    \text{s.t.} \quad \sum_{a \in \mathcal{A}} x_{i,a} \le 1, \quad \forall i \in \mathcal{C}
+\end{equation}
+\begin{equation}
+    \sum_{i \in \mathcal{C}} \sum_{a \in \mathcal{A}} x_{i,a} \cdot \text{Cost}(i,a) \le B
+\end{equation}
+\begin{equation}
+    \sum_{i \in \mathcal{C}} \sum_{a \in \mathcal{A}_{\text{slot}}} x_{i,a} \le S
+\end{equation}
+\begin{equation}
+    \sum_{i \in \mathcal{C}_g} \sum_{a \in \mathcal{A}} x_{i,a} \le C_{\text{cap}}, \quad \forall g \in \mathcal{G}_{\text{category}}
+\end{equation}
+\begin{equation}
+    \sum_{i \in \mathcal{C}_b} \sum_{a \in \mathcal{A}} x_{i,a} \le B_{\text{cap}}, \quad \forall b \in \mathcal{B}_{\text{brand}}
+\end{equation}
+其中，$x_{i, a} \in \{0, 1\}$ 为是否对商品 $i$ 选择动作 $a$ 的二进制变量；$B$ 为营销总预算；$S$ 为展示插槽上限；$C_{\text{cap}}, B_{\text{cap}}$ 分别为类目与品牌的决策次数天花板。
+
+求解层首先寻找 Gurobi 求解器（\texttt{gurobipy}）进行全局整数规划迭代。若宿主机没有安装授权证书，系统会自动降级触发基于边际 ROI 降序排列的贪心放置算法（\texttt{solve\_with\_greedy}），输出局部最优的分配方案并标记求解状态为 \texttt{degraded\_greedy}。
+
+\subsection{多路召回与轻量排序推荐系统}
+
+推荐系统模块（\texttt{spark\_jobs/recommendation.py}）是平台的核心业务输出模块之一，其目标是在 Spark 分布式计算框架下，为每个活跃用户会话生成一个高质量的 Top-K 商品推荐列表。与传统离线推荐系统不同，本模块采用"近线（nearline）"架构模式：以当前清洗后的事件数据为输入，在每次 Pipeline 运行时动态生成推荐结果，并通过自动质量门禁与降级回滚机制保障推荐结果的可靠性。
+
+模块设计遵循三个核心原则：第一，多路召回（Multi-channel Recall）确保候选商品来源的多样性与覆盖率；第二，轻量级排序器（Lightweight Ranker）在不引入外部模型服务的前提下，通过规则评分与 Spark ML 逻辑回归模型的混合打分实现候选精排；第三，自动化质量门禁与提升/降级（Promote/Degrade）回滚机制确保不达标结果不会污染线上推荐快照。
+
+\subsubsection{个性化类目召回}
+
+该通道首先构建商品特征矩阵，对每个商品计算加权转化评分：
+\begin{equation}
+    S_{\text{product}} = 0.55 \times R_{\text{v2p}} + 0.25 \times R_{\text{v2c}} + 0.20 \times \min\left(\frac{\text{RPV}}{500}, 1\right)
+    \label{eq:product-score}
+\end{equation}
+其中，$R_{\text{v2p}}$ 为浏览-购买转化率，$R_{\text{v2c}}$ 为浏览-加购转化率，$\text{RPV}$ 为单次浏览收入（Revenue per View）。置信度则通过曝光量进行贝叶斯收缩：
+\begin{equation}
+    C_{\text{product}} = \min\left(1.0,\ \sqrt{\frac{V}{500}}\right)
+    \label{eq:product-confidence}
+\end{equation}
+其中 $V$ 为商品累计浏览量。该置信度因子使得低曝光商品的评分自然向均值收缩，避免小样本高估。在每个一级类目内，按 $S_{\text{product}}$ 降序取 Top-$N_{\text{pool}}$ 作为候选池（默认 $N_{\text{pool}}=80$）。
+
+目标会话的提取则通过统计每个会话在各类目下的事件频次，取事件最多且最新的类目作为该会话的偏好类目。最终，候选商品按偏好类目与会话进行内连接（\texttt{inner join}），并通过 \texttt{left\_anti} 连接排除用户已交互过的商品，得到个性化候选集。商品特征矩阵构建代码如下：
+\begin{lstlisting}[style=codexcode]
+product_features = (
+    cleaned_df.groupBy("product_id", "brand", "category_level1")
+    .agg(
+        views.alias("views"),
+        carts.alias("carts"),
+        purchases.alias("purchases"),
+        revenue.alias("revenue"),
+    )
+    .withColumn("view_to_cart_rate", F.col("carts") / F.col("views"))
+    .withColumn("view_to_purchase_rate", F.col("purchases") / F.col("views"))
+    .withColumn("revenue_per_view", F.col("revenue") / F.col("views"))
+    .withColumn("product_score", F.col("view_to_purchase_rate") * 0.55
+        + F.col("view_to_cart_rate") * 0.25
+        + F.least(F.col("revenue_per_view") / 500.0, F.lit(1.0)) * 0.20)
+)
+\end{lstlisting}
+
+\subsubsection{共现图谱邻居召回}
+
+该通道基于商品共现关联构建有向推荐图谱。对同一会话内出现的不同商品对 $(A \to B)$ 统计共现频次，并计算有向置信度与提升度：
+\begin{equation}
+    \text{Confidence}(A \to B) = \frac{\text{Support}(A \cap B)}{\text{Sessions}(A)}
+    \label{eq:edge-confidence}
+\end{equation}
+\begin{equation}
+    \text{Lift}(A \to B) = \frac{\text{Confidence}(A \to B)}{\text{Prior}(B)} = \frac{\text{Confidence}(A \to B)}{\text{Sessions}(B) / N_{\text{total}}}
+    \label{eq:edge-lift}
+\end{equation}
+其中 $\text{Prior}(B)$ 为目标商品 $B$ 的全局先验概率。仅保留满足最小共现支持度（默认 $\geq 2$）且提升度 $\geq 1.01$ 的边。对于目标会话中已浏览的商品，查找其图谱邻居作为推荐候选。候选综合评分融合了商品基础分、图谱置信度和亲和力分数：
+\begin{equation}
+    S_{\text{graph}} = 0.75 \times S_{\text{product}} + 0.05 \times C_{\text{candidate}} + 0.25 \times A_{\text{affinity}}
+    \label{eq:graph-candidate-score}
+\end{equation}
+\begin{equation}
+    \begin{aligned}
+        A_{\text{affinity}} = \min\bigg(1.0,\  & 0.65 \times \frac{\log(1 + \text{Lift})}{\log(11)} \\
+                                               & + 0.25 \times \text{Confidence}
+        + 0.10 \times \min\Big(\frac{\text{Support}}{20},\, 1\Big)\bigg)
+    \end{aligned}
+    \label{eq:affinity-score}
+\end{equation}
+其中 $C_{\text{candidate}}$ 为融合了商品置信度与边置信度的复合置信度：
+\begin{equation}
+    C_{\text{candidate}} = \min\left(1.0,\ 0.65 \times C_{\text{product}} + 0.35 \times \text{Confidence}(A \to B)\right)
+    \label{eq:candidate-confidence}
+\end{equation}
+
+\subsubsection{全局优化兜底召回}
+
+当个性化召回与图谱召回的覆盖率不足时，兜底通道从全站热门商品池中选取 Top-40 商品作为保底候选。若上游优化模块（\texttt{optimization.py}）提供了促销计划，则对计划中的商品施加 $+0.04$ 的分数加成，以确保运营策略在推荐结果中得到体现。
+
+\subsubsection{LR/GBT混合排序器}
+
+三路候选合并后，系统首先通过基于规则的排序器进行初排，然后在训练数据充足时启用 Spark ML 排序模型进行精排。排序器的特征空间包含 7 维：
+
+\begin{lstlisting}[style=codexcode]
+RANKER_FEATURE_COLUMNS = [
+    "ranker_rule_score",         # 规则评分
+    "ranker_confidence",         # 商品置信度
+    "ranker_affinity_score",     # 图谱亲和力
+    "ranker_fallback_flag",      # 是否兜底候选
+    "ranker_graph_source_flag",  # 是否图谱召回
+    "ranker_personalized_source_flag",  # 是否个性化召回
+    "ranker_fallback_source_flag",      # 是否优化兜底
+]
+\end{lstlisting}
+
+训练标签基于历史交互：若用户会话对某商品存在购买行为，则 $y=1$，否则 $y=0$。模型默认采用 Logistic Regression（逻辑回归），亦可切换为 GBT（梯度提升树）。在训练行数不足（默认 $<50$）或正负样本极端不平衡时，自动降级为纯规则排序器。
+
+混合打分公式如下：
+\begin{equation}
+    S_{\text{final}} = w \times P_{\text{ranker}} + (1 - w) \times \min\left(\max(S_{\text{rule}}, 0), 1\right)
+    \label{eq:blended-score}
+\end{equation}
+其中 $P_{\text{ranker}}$ 为排序模型输出的正类概率，$S_{\text{rule}}$ 为规则评分，$w$ 为混合权重（默认 $w=0.7$）。最终每个会话按 $S_{\text{final}}$ 降序取 Top-$K$（默认 $K=5$）输出。排序窗口函数代码如下：
+\begin{lstlisting}[style=codexcode]
+rank_window = Window.partitionBy("user_session").orderBy(F.desc("score"), F.desc("confidence"))
+recommendations = candidates.withColumn("rank", F.row_number().over(rank_window)).filter(F.col("rank") <= top_k)
+\end{lstlisting}
+
+\subsubsection{ALS隐式反馈基线与离线评估}
+
+为提供无偏的基线对照，模块实现了基于 Spark MLlib ALS（Alternating Least Squares）的隐式协同过滤推荐。交互权重按行为类型赋值：浏览 = 1、加购 = 3、购买 = 8。ALS 模型参数为 $\text{rank}=8$，$\text{maxIter}=5$，$\text{regParam}=0.08$，$\alpha=20.0$。
+
+离线评估采用"留一法（Leave-One-Out）"切分策略：对每个会话，将其时间最近的一条交互作为测试集（holdout），其余作为训练集（train）。为防止信息泄漏，在生成评估候选时，显式地将 holdout 商品对从训练数据中移除后再执行召回。评估指标包括：
+
+\begin{equation}
+    \text{Precision@}K = \frac{1}{|U|} \sum_{u \in U} \frac{|\hat{R}_u \cap R_u^*|}{K}
+    \label{eq:precision-at-k}
+\end{equation}
+\begin{equation}
+    \text{Recall@}K = \frac{1}{|U|} \sum_{u \in U} \frac{|\hat{R}_u \cap R_u^*|}{|R_u^*|}
+    \label{eq:recall-at-k}
+\end{equation}
+\begin{equation}
+    \text{NDCG@}K = \frac{1}{|U|} \sum_{u \in U} \frac{\text{DCG}_u}{\text{IDCG}_u}, \quad \text{DCG}_u = \sum_{i=1}^{K} \frac{\text{hit}_i}{\log_2(i + 1)}
+    \label{eq:ndcg-at-k}
+\end{equation}
+其中 $\hat{R}_u$ 为推荐列表，$R_u^*$ 为 holdout 真实集合，$\text{IDCG}_u$ 为理想排序下的折扣累计增益。
+
+\subsubsection{质量门禁与提升/降级回滚}
+
+每次推荐生成后，系统执行 6 项质量门禁检查：
+
+\begin{lstlisting}[style=codexcode]
+checks = [
+    ("coverage_rate",    coverage_rate,   ">=", 0.75),  # 会话覆盖率
+    ("fallback_rate",    fallback_rate,   "<=", 0.80),  # 兜底占比上限
+    ("avg_confidence",   avg_confidence,  ">=", 0.03),  # 平均置信度下限
+    ("freshness_lag",    freshness_lag,   "<=", 5300000),# 新鲜度延迟
+    ("duplicate_rate",   duplicate_rate,  "<=", 0.0),   # 重复推荐率
+    ("invalid_prod_rate", invalid_rate,   "<=", 0.0),   # 无效商品率
+]
+\end{lstlisting}
+
+当所有门禁通过时，新推荐快照被提升（Promote）为活跃快照，旧快照自动归档为回滚快照。当门禁失败时，系统自动执行降级（Degrade）操作：加载上一次已通过的快照作为当前推荐结果，并在 manifest 中记录 \texttt{"degraded\_previous\_snapshot"} 状态。该机制确保推荐服务不会因单次异常计算而输出低质量结果。
+
+推荐系统的输入直接依赖数据清洗模块输出的 \texttt{cleaned\_df}，以及运营优化模块（\texttt{optimization.py}）输出的促销计划。
+
+推荐结果被增长实验模块（\texttt{experimentation.py}）消费，用于评估个性化推荐策略在对照实验中的提升效果。
+
+推荐覆盖指标（覆盖率、兜底率、平均置信度）被实验护栏模块实时监控。
+
+\section{商品组合智能与用户旅程分析}
+
+\subsection{HHI集中度与品类结构健康度}
+
+商品组合模块（\texttt{spark\_jobs/portfolio.py}）从品类结构、品牌混合、价格带分布和单品集中度四个维度评估平台商品组合的健康度。其核心目标是识别结构风险（如过度依赖单一品类或头部单品）和增长机会（如高流量低转化的价格带缺口），为商品运营策略提供数据驱动的决策依据。
+
+\subsubsection{赫芬达尔-赫希曼指数}
+
+系统采用赫芬达尔-赫希曼指数（Herfindahl-Hirschman Index, HHI）衡量收入在单品层面的集中度。对商品集合 $\{p_1, p_2, \ldots, p_n\}$，每个商品的收入份额为 $s_i$，HHI 计算公式为：
+\begin{equation}
+    \text{HHI} = \sum_{i=1}^{n} s_i^2 = \sum_{i=1}^{n} \left(\frac{\text{Revenue}_i}{\text{Revenue}_{\text{total}}}\right)^2
+    \label{eq:hhi}
+\end{equation}
+HHI 的取值范围为 $(0, 1]$：当收入完全集中在单一商品时 $\text{HHI} = 1$；当收入均匀分布在 $n$ 个商品时 $\text{HHI} = 1/n$。HHI 越高表示品类结构越脆弱，头部单品波动可能导致整体收入剧烈起伏。在 Spark 实现中，先计算每个商品的收入份额平方，再通过聚合函数求和：
+
+\begin{lstlisting}[style=codexcode]
+scored = (
+    product.crossJoin(totals)
+    .withColumn("revenue_share",
+        F.col("revenue") / F.col("_total_revenue"))
+    .withColumn("hhi_contribution",
+        F.round(F.col("revenue_share") * F.col("revenue_share"), 8))
+)
+\end{lstlisting}
+
+\subsubsection{价格带分析}
+
+系统将购买事件按价格区间划分为四个标准价格带：
+
+\begin{equation}
+    \text{PriceBand}(p) = \begin{cases}
+        \text{budget}  & p < 50            \\
+        \text{mass}    & 50 \leq p < 200   \\
+        \text{premium} & 200 \leq p < 1000 \\
+        \text{luxury}  & p \geq 1000
+    \end{cases}
+    \label{eq:price-band}
+\end{equation}
+
+在每个品类 $\times$ 价格带的交叉维度上，系统统计购买量、收入、均价和份额占比。价格带分布的集中程度反映了品类的定价策略多样性：若某品类 $>35\%$ 的收入集中在单一价格带，则标记为 \texttt{concentration\_risk}（集中风险）。
+
+\subsubsection{品类混合与机会识别}
+
+品类混合分析以一级品类为粒度，聚合浏览、加购、购买和收入指标，并计算各品类的收入份额和购买份额。系统在品类维度上自动识别三类运营机会：
+
+\begin{enumerate}
+    \item \textbf{流量转化缺口}（\texttt{traffic\_conversion\_gap}）：浏览量 $\geq 100$ 但浏览-购买转化率 $< 2\%$ 的品类，表明存在流量浪费，需优化详情页或推荐策略。机会影响力评分为：
+          \begin{equation}
+              I_{\text{gap}} = \text{Revenue} \times \max\left(0.02 - R_{\text{v2p}},\ 0.001\right)
+              \label{eq:traffic-gap-score}
+          \end{equation}
+
+    \item \textbf{品类集中风险}（\texttt{concentration\_risk}）：收入份额 $\geq 35\%$ 的品类，表明平台对该品类过度依赖。
+
+    \item \textbf{价格带结构机会}（\texttt{price\_band\_mix}）：基于品类 $\times$ 价格带交叉维度的收入池分布，识别未充分开发的价格区间。
+\end{enumerate}
+
+\subsubsection{质量门禁}
+
+模块内置四项质量检查：最小购买行数（$\geq 100$）、最小历史跨度（$\geq 7$ 天）、有效价格购买率（$\geq 98\%$）和价格带覆盖数（$\geq 2$）。任一检查未通过则标记为 \texttt{needs\_review}，提醒分析结果可能存在偏差。
+
+商品组合模块的输入为清洗后的事件流（\texttt{cleaned\_df}）。输出的品类结构分析和价格带缺口为运营优化模块（\texttt{optimization.py}）的候选商品选择提供结构化依据。HHI 集中度指标可与异常监控模块联动，当头部商品出现异常波动时自动评估其对整体收入的影响范围。
+
+\subsection{用户旅程与转移矩阵}
+
+用户旅程模块（\texttt{spark\_jobs/journey.py}）从原始事件流中还原用户在单一会话内的完整行为路径，并通过转移概率分析与退出事件统计为体验优化提供数据支撑。与前述"高频行为路径提取"侧重路径签名统计不同，本模块进一步构建了转移事实表（Transition Facts），将相邻行为转换为有向边并统计转化率，从而识别用户流失的关键节点。
+
+\subsubsection{会话路径构建}
+
+系统对每个 \texttt{user\_session} 聚合其所有事件，按时间戳升序排序生成行为序列。核心实现使用 Spark 的 \texttt{collect\_list} 与 \texttt{sort\_array} 组合算子：
+
+\begin{lstlisting}[style=codexcode]
+event_struct = F.struct(
+    F.col("event_timestamp").alias("ts"),
+    F.col("event_type").alias("event_type"),
+    F.col("product_id").cast("string").alias("product_id"),
+    F.col("category_level1").alias("category_level1"),
+)
+base = (
+    cleaned_df.filter(F.col("user_session") != "unknown")
+    .groupBy("user_session")
+    .agg(
+        F.sort_array(F.collect_list(event_struct)).alias("event_structs"),
+        F.max(F.when(F.col("event_type") == "purchase", F.lit(1))
+              .otherwise(F.lit(0))).alias("has_purchase"),
+    )
+    .withColumn("events", F.expr(
+        "transform(event_structs, x -> x.event_type)"))
+    .withColumn("path_signature",
+        F.concat_ws(" -> ", F.expr("slice(events, 1, 8)")))
+)
+\end{lstlisting}
+
+每个会话同时提取以下衍生特征：路径签名（前 8 个事件的类型序列）、首事件与末事件类型、总步数、会话时长（秒）、是否包含购买和加购行为。
+
+\subsubsection{转移事实矩阵与转化率}
+
+转移事实表通过将每个会话的事件序列按相邻位置拆分为 $(e_i, e_{i+1})$ 有序对来构建。使用 Spark 的 \texttt{arrays\_zip} 函数实现高效分布式拆分：
+\begin{equation}
+    T(e_i, e_{i+1}) = \sum_{\text{sessions}} \mathbb{1}[\text{session contains transition } e_i \to e_{i+1}]
+    \label{eq:transition-count}
+\end{equation}
+对每条转移边，系统额外统计会话数、含购买会话数和关联收入，计算转移级转化率：
+\begin{equation}
+    R_{\text{conv}}(e_i \to e_{i+1}) = \frac{\text{PurchaseSessions}(e_i \to e_{i+1})}{\text{Sessions}(e_i \to e_{i+1})}
+    \label{eq:transition-conversion}
+\end{equation}
+当目标事件为 \texttt{remove\_from\_cart} 或转化率低于 2\% 时，系统自动标记该转移为 \texttt{"inspect friction"}（摩擦点排查），提示运营团队关注。
+
+\subsubsection{退出事件分析}
+
+退出事件分析以每个会话的最后行为（\texttt{last\_event}）为分组维度，统计各退出类型的会话占比、购买率和关联收入：
+\begin{equation}
+    \text{ExitShare}(e) = \frac{\text{Sessions ending with } e}{\text{Total Sessions}}
+    \label{eq:exit-share}
+\end{equation}
+高占比但低购买率的退出类型（如 \texttt{view} 退出）是用户流失的关键信号，应优先进行体验优化。
+
+旅程模块的输入为清洗后的事件流（\texttt{cleaned\_df}），输出的转移事实表和路径统计被前端桑基图和漏斗图渲染。退出事件分析结果可与异常模块联动，当特定退出类型的占比出现异常波动时触发告警。购买路径统计为推荐系统的候选质量评估提供间接验证依据。
+
+\section{增长实验平台与因果推断框架}
+
+增长实验模块（\texttt{spark\_jobs/experimentation.py}）是平台的决策科学基础设施，旨在为推荐策略、生命周期运营策略和商品运营位策略提供可控的 A/B 实验分组与效果评估框架。与生产级在线实验平台不同，本模块在课程实验环境下采用"离线历史回放（Offline History Replay）"模式：基于已有的用户行为数据，通过哈希分桶确定性分组模拟随机化实验，并使用历史指标作为实验结果的代理变量。尽管如此，模块在统计方法论上严格遵循在线实验的工程规范，包括样本比例失配检验（SRM）、双比例 $z$ 检验、置信区间估计和分位提升分析（AUUC）。
+
+\subsection{确定性哈希分桶与样本比例检验}
+
+\subsubsection{哈希分桶与实验分组}
+
+系统对每个实验定义了一个独立的分桶空间。用户的实验组分配由用户 ID 与实验键的联合哈希值决定：
+\begin{equation}
+    B(u, e) = \frac{|\text{hash}(\text{user\_id}, \text{experiment\_key})| \bmod 10000}{10000}
+    \label{eq:hash-bucket}
+\end{equation}
+其中 $B(u, e) \in [0, 1)$ 为均匀分布的分桶值。分配规则为：
+\begin{equation}
+    \text{Variant}(u, e) = \begin{cases} \text{treatment} & \text{if } B(u, e) < \tau \\ \text{control} & \text{otherwise} \end{cases}
+    \label{eq:variant-assignment}
+\end{equation}
+其中 $\tau$ 为实验流量分割比（默认 $\tau=0.5$）。该哈希分配方式具有确定性（同一用户在同一次运行中始终分配到同一组）和跨实验独立性（不同实验键的哈希空间互不干扰）。
+
+\subsubsection{样本比例失配检验（SRM）}
+
+在评估实验结果之前，系统首先检验分组是否符合预期比例。SRM 检验使用卡方统计量：
+\begin{equation}
+    \chi^2_{\text{SRM}} = \frac{(N_T - E_T)^2}{E_T} + \frac{(N_C - E_C)^2}{E_C}
+    \label{eq:srm-chi-square}
+\end{equation}
+其中 $N_T$ 和 $N_C$ 分别为实验组和对照组的实际用户数，$E_T = N \cdot \tau$ 和 $E_C = N \cdot (1-\tau)$ 为期望值。$p$ 值通过互补误差函数计算：
+\begin{equation}
+    p_{\text{SRM}} = \text{erfc}\left(\sqrt{\frac{\chi^2_{\text{SRM}}}{2}}\right)
+    \label{eq:srm-p-value}
+\end{equation}
+当 $p_{\text{SRM}} < \alpha_{\text{SRM}}$（默认 $\alpha_{\text{SRM}} = 0.001$）时，SRM 检验失败，表明分组存在严重失衡，实验结果不可信。对应代码实现如下：
+
+\begin{lstlisting}[style=codexcode]
+expected_treatment = total * treatment_split
+expected_control = total * (1.0 - treatment_split)
+chi_square = 0.0
+if expected_treatment:
+    chi_square += ((treatment_users - expected_treatment) ** 2) / expected_treatment
+if expected_control:
+    chi_square += ((control_users - expected_control) ** 2) / expected_control
+srm_p_value = math.erfc(math.sqrt(chi_square / 2))
+\end{lstlisting}
+
+\subsubsection{假设检验与分位提升分析}
+
+\subsubsection{双比例假设检验与提升估计}
+
+在 SRM 通过后，系统对每个实验的主要指标（如购买率）执行双比例 $z$ 检验。绝对提升定义为：
+\begin{equation}
+    \Delta = \hat{p}_T - \hat{p}_C
+    \label{eq:absolute-lift}
+\end{equation}
+标准误由两独立比例的方差之和计算：
+\begin{equation}
+    \text{SE} = \sqrt{\frac{\hat{p}_T(1 - \hat{p}_T)}{N_T} + \frac{\hat{p}_C(1 - \hat{p}_C)}{N_C}}
+    \label{eq:standard-error}
+\end{equation}
+$z$ 统计量对应的双尾 $p$ 值为：
+\begin{equation}
+    p = \text{erfc}\left(\frac{|\Delta|}{\text{SE} \cdot \sqrt{2}}\right)
+    \label{eq:z-test-p-value}
+\end{equation}
+95\% 置信区间为：
+\begin{equation}
+    \text{CI}_{95\%} = \left[\Delta - 1.96 \cdot \text{SE},\ \Delta + 1.96 \cdot \text{SE}\right]
+    \label{eq:confidence-interval}
+\end{equation}
+实验决策规则按优先级依次为：样本不足则返回 \texttt{needs\_more\_sample}；SRM 失败则返回 \texttt{blocked\_by\_srm}；标准误非正值导致 $p$ 值不可计算时返回 \texttt{not\_measurable}；$p \leq 0.05$ 且 $\Delta > 0$ 则返回 \texttt{positive\_significant}；$p \leq 0.05$ 且 $\Delta < 0$ 则返回 \texttt{negative\_significant}；否则返回 \texttt{not\_significant}。
+
+\subsubsection{分位提升分析与 AUUC 估计}
+
+为评估实验在不同用户分群上的异质性效果，系统将用户按 \texttt{uplift\_score} 降序分为 10 个分位桶（decile），分别计算每个桶内实验组与对照组的转化率之差：
+\begin{equation}
+    \text{Uplift}_d = \hat{p}_{T,d} - \hat{p}_{C,d}
+    \label{eq:decile-uplift}
+\end{equation}
+累计增益为：
+\begin{equation}
+    \text{Gain}_d = \sum_{j=1}^{d} \text{Uplift}_j \cdot N_{T,j}
+    \label{eq:cumulative-gain}
+\end{equation}
+AUUC（Area Under Uplift Curve）作为提升曲线下的面积，通过对所有分位的累计增益求和近似：
+\begin{equation}
+    \text{AUUC} = \sum_{d=1}^{10} \text{Gain}_d
+    \label{eq:auuc}
+\end{equation}
+AUUC 值越高，说明实验对高潜力用户的提升效果越显著。需注意的是，由于本模块使用离线历史回放而非随机化暴露，AUUC 的因果解释性受限，因此系统在输出中明确标注 \texttt{causal\_valid: False}。
+
+\subsubsection{实验护栏机制与上下游关系}
+
+\subsubsection{五项护栏检查}
+
+系统内置五项护栏检查以确保实验质量：最小分组用户数（默认 $\geq 50$）、最小实验组用户数（$\geq 20$）、最小对照组用户数（$\geq 20$）、推荐平均置信度（$\geq 0.01$），以及分段变体不平衡度（$\leq 0.2$）。不平衡度按生命周期分段计算：
+\begin{equation}
+    \text{Imbalance}_s = \frac{|N_{T,s} - N_{C,s}|}{N_{T,s} + N_{C,s}}
+    \label{eq:segment-imbalance}
+\end{equation}
+任一护栏检查失败，整体护栏状态标记为 \texttt{needs\_review}。
+
+\subsubsection{与上下游模块的关系}
+
+实验平台的输入依赖客户生命周期模块（\texttt{lifecycle.py}）输出的用户分群标签（生命周期段与风险带），以及推荐系统模块（\texttt{recommendation.py}）输出的推荐覆盖指标。实验结果（包括分组分配、提升估计和 AUUC）被前端面板渲染为实验报告，为运营决策提供统计学依据。
+
+\section{自动决策引擎与受控查询}
+
+自动决策引擎（\texttt{spark\_jobs/decision\_maker.py}）是平台的顶层治理模块，其职责是将异常监控模块（\texttt{anomaly.py}）和运营优化模块（\texttt{optimization.py}）的输出转化为可执行的自动干预决策与补货工单。该模块的核心设计理念是"异常驱动干预、预测驱动补货"：当异常雷达检测到严重的销量或收入崩塌时，自动触发防御性拦截；当预测模块发现未来需求将超出当前库存水位时，自动发起预测性补货建议。
+
+\subsection{异常驱动的自动干预决策}
+
+\subsubsection{三级干预分流规则}
+
+干预决策逻辑按异常告警的严重程度（severity）、方向（direction）和指标类型（metric）进行分级分流。仅当告警级别为 \texttt{critical} 且方向为 \texttt{drop}（暴跌）时触发自动干预。决策分流规则如下：
+
+\begin{enumerate}
+    \item \textbf{商品级销量/收入暴跌} $\rightarrow$ \texttt{emergency\_suspend}（紧急挂起）。当异常实体类型为 \texttt{product} 且指标为 \texttt{revenue} 或 \texttt{purchases} 时，触发商品下架或暂挂决策，防止因标错价、系统缺陷或缺货导致的持续性损失。证据强度由稳健 $z$ 分数 $z_{\text{robust}}$ 量化。
+
+    \item \textbf{品类级收入崩塌} $\rightarrow$ \texttt{price\_audit}（价格审计）。当异常实体类型为 \texttt{category} 时，触发整条品类的价格配置与支付漏斗安全排查，排除推荐引擎失效或全局支付故障。
+
+    \item \textbf{转化率异常突降} $\rightarrow$ \texttt{funnel\_check}（漏斗诊断）。当指标为 \texttt{conversion\_rate} 或 \texttt{view\_to\_purchase\_rate} 时，触发详情页加载与结算流程的灰度验证。
+\end{enumerate}
+
+\subsubsection{决策证据量化}
+
+每条干预决策附带结构化的证据载荷（evidence payload），包含触发异常的实体 ID、稳健 $z$ 分数绝对值、观测期间的指标均值与标准差，以及建议的排查优先级。决策清单写入运行 Manifest，供前端决策面板展示和后续审计。
+
+\subsubsection{预测驱动的智能补货}
+
+\subsubsection{需求预测与库存水位}
+
+补货决策综合考虑运营优化模块的促销计划和预测模块的品类增长系数。对每个促销候选商品，系统计算未来 7 天的预期总需求量：
+\begin{equation}
+    D_{\text{forecast}} = D_{\text{baseline}} + \Delta D_{\text{incremental}}
+    \label{eq:forecast-demand}
+\end{equation}
+其中 $D_{\text{baseline}}$ 为无促销条件下的基准预测销量（由基准 GMV 除以均价得到），$\Delta D_{\text{incremental}}$ 为促销活动带来的增量销量。当前库存水位以历史购买量的 1.0 倍模拟。
+
+\subsubsection{补货量与成本估算}
+
+当预期需求超出当前库存时，触发补货决策，补货量计算公式为：
+\begin{equation}
+    Q_{\text{restock}} = \max\left(1,\ \left\lceil D_{\text{forecast}} \times 1.5 - S_{\text{current}} \right\rceil\right)
+    \label{eq:restock-qty}
+\end{equation}
+其中 $S_{\text{current}}$ 为当前周转库存，$1.5$ 为安全库存系数。补货成本估算为：
+\begin{equation}
+    C_{\text{restock}} = Q_{\text{restock}} \times P_{\text{avg}} \times 0.6
+    \label{eq:restock-cost}
+\end{equation}
+其中 $P_{\text{avg}}$ 为商品均价，$0.6$ 为进货成本占售价的比例系数。系统根据品类特征分配不同的到货周期（lead time）与供应商：电子品类 4 天、快时尚品类 2 天、美妆品类 3 天。当检测到销量突增信号（is\_spike）时，安全库存系数自动上调至 2.5 以防止断货。此外，突增场景下到货周期自动缩短 1 天（$\text{lead\_time} = \max(1, \text{lead\_time} - 1)$），实现紧急加急补货。补货工单按成本从高到低排序，帮助采购团队确定轻重缓急。
+
+决策引擎不直接执行 Spark 计算，而是作为纯逻辑聚合层，消费异常模块的 \texttt{critical} 告警和优化模块的促销计划。输出的决策清单（\texttt{intervention\_decisions} 和 \texttt{restock\_decisions}）被写入运行 Manifest，供前端决策面板展示和后续审计。
+
+\subsubsection{受控自然语言查询}
+
+受控自然语言查询模块允许运营人员以结构化的自然语言模板（如"查询某品类近 7 天转化率"）向系统发起查询，系统将其翻译为受控的 Spark SQL 语句执行。查询模板经过参数白名单校验与 SQL 关键字过滤，确保查询安全可控，避免任意 SQL 注入风险。该模块降低了非技术运营人员使用数据平台的门槛，同时维护了数据访问的治理边界。

@@ -15,6 +15,7 @@ class BaseConfig:
     API_VERSION = "v1"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret")
     METRIC_CACHE_DIR = Path(os.getenv("METRIC_CACHE_DIR", PROJECT_ROOT / "data" / "cache"))
+    LIVE_DATA_DIR = Path(os.getenv("LIVE_DATA_DIR", PROJECT_ROOT / "data" / "live"))
     JOB_DB_PATH = Path(os.getenv("JOB_DB_PATH", PROJECT_ROOT / "data" / "platform.db"))
     RAW_DATA_PATH = Path(
         os.getenv("RAW_DATA_PATH", PROJECT_ROOT / "data" / "sample" / "ecommerce_user_sample_1pct.csv")

@@ -1,4 +1,5 @@
-import { Boxes, Clock3, DatabaseZap, GitBranch, ShieldCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Boxes, Clock3, DatabaseZap, Eye, GitBranch, Layers3, PackageSearch, ShieldCheck, Users } from 'lucide-react';
 import {
   useFeatureMartCategories,
   useFeatureMartFeatures,
@@ -12,8 +13,7 @@ import {
 } from '../api/hooks';
 import { ChartPanel, type DashboardChartOption } from '../components/ChartPanel';
 import { fieldLabel, label, statusLabel } from '../i18n/displayText';
-import { donutOption, horizontalBarOption } from '../lib/chartOptions';
-import type { FeatureMartReadiness, NamedValue } from '../types/api';
+import type { FeatureMartCategory, FeatureMartFeature, FeatureMartProduct, FeatureMartReadiness, FeatureMartUser, NamedValue } from '../types/api';
 
 function number(value?: number | null) {
   return typeof value === 'number' ? value.toLocaleString() : '待生成';
@@ -49,17 +49,185 @@ function grainLabel(value: string) {
     .replace(/\+/g, ' + ');
 }
 
-function readinessRows(data?: FeatureMartReadiness): NamedValue[] {
-  const ready = data?.ready_features ?? 0;
-  const total = data?.total_features ?? 0;
-  return [
-    { name: '已就绪特征', value: ready },
-    { name: '待修复特征', value: Math.max(0, total - ready) },
-  ].filter((row) => row.value > 0);
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
 }
 
-function checkRows(data?: FeatureMartReadiness): NamedValue[] {
-  return (data?.checks ?? []).map((check) => ({ name: fieldLabel(check.name), value: check.passed ? 1 : 0 }));
+function featureGrainBucket(grain: string) {
+  if (grain.includes('product_id')) return '商品粒度字段';
+  if (grain.includes('category_level1')) return '类目粒度字段';
+  if (grain.includes('user_id')) return '用户粒度字段';
+  return '运行审计字段';
+}
+
+function readinessRows(data?: FeatureMartReadiness, features: FeatureMartFeature[] = []): NamedValue[] {
+  const readinessFeatures =
+    features.length >= (data?.features.length ?? 0)
+      ? features.map((feature) => ({ grain: feature.grain, status: 'ready' }))
+      : data?.features ?? [];
+  const byGrain = new Map<string, number>();
+  readinessFeatures
+    .filter((feature) => feature.status === 'ready')
+    .forEach((feature) => {
+      const bucket = featureGrainBucket(feature.grain);
+      byGrain.set(bucket, (byGrain.get(bucket) ?? 0) + 1);
+    });
+
+  return Array.from(byGrain.entries())
+    .map(([name, value]) => ({ name, value }))
+    .filter((row) => row.value > 0);
+}
+
+function qualityScoreRows({
+  readyFeatures,
+  totalFeatures,
+  writtenPartitions,
+  expectedPartitions,
+  lateRate,
+  freshnessLagHours,
+  maxFreshnessLagHours,
+  quarantinedRate,
+}: {
+  readyFeatures: number;
+  totalFeatures: number;
+  writtenPartitions?: number;
+  expectedPartitions?: number;
+  lateRate?: number | null;
+  freshnessLagHours?: number | null;
+  maxFreshnessLagHours?: number | null;
+  quarantinedRate?: number | null;
+}): NamedValue[] {
+  return [
+    {
+      name: '字段就绪率',
+      value: totalFeatures > 0 ? readyFeatures / totalFeatures : 0,
+    },
+    {
+      name: '分区覆盖率',
+      value: expectedPartitions && expectedPartitions > 0 ? (writtenPartitions ?? 0) / expectedPartitions : 0,
+    },
+    {
+      name: '迟到控制',
+      value: typeof lateRate === 'number' ? 1 - lateRate : 0,
+    },
+    {
+      name: '新鲜度余量',
+      value:
+        typeof freshnessLagHours === 'number' && typeof maxFreshnessLagHours === 'number' && maxFreshnessLagHours > 0
+          ? 1 - freshnessLagHours / maxFreshnessLagHours
+          : 0,
+    },
+    {
+      name: '隔离控制',
+      value: typeof quarantinedRate === 'number' ? 1 - quarantinedRate : 0,
+    },
+  ].map((row) => ({ ...row, value: clamp01(row.value) }));
+}
+
+const featureChartTextStyle = {
+  fontFamily: 'Inter, "Microsoft YaHei", system-ui, sans-serif',
+  color: '#dbe5ee',
+};
+
+function featureReadinessOption(rows: NamedValue[]): DashboardChartOption {
+  return {
+    color: ['#39d0c8', '#65b8ff', '#a78bfa', '#f59e0b'],
+    textStyle: featureChartTextStyle,
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} 个 ({d}%)',
+    },
+    legend: {
+      bottom: 0,
+      left: 'center',
+      itemWidth: 12,
+      itemHeight: 12,
+      textStyle: { color: '#9aa7b7', fontSize: 12 },
+    },
+    series: [
+      {
+        name: '字段粒度',
+        type: 'pie',
+        radius: ['56%', '72%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: true,
+        label: {
+          show: true,
+          color: '#dbe5ee',
+          fontSize: 12,
+          formatter: '{b}\n{d}%',
+        },
+        labelLine: {
+          length: 8,
+          length2: 8,
+        },
+        data: rows,
+      },
+    ],
+  };
+}
+
+function featureQualityOption(rows: NamedValue[]): DashboardChartOption {
+  const reversedRows = [...rows].reverse();
+  return {
+    color: ['#56d27b', '#f59e0b', '#fb7185'],
+    textStyle: featureChartTextStyle,
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (rawParams) => {
+        const params = Array.isArray(rawParams) ? rawParams[0] : rawParams;
+        const item = params as { name?: string; value?: number } | undefined;
+        return `${item?.name ?? '质量健康度'}：${((Number(item?.value ?? 0)) * 100).toFixed(1)}%`;
+      },
+    },
+    grid: { left: 118, right: 48, top: 18, bottom: 28 },
+    xAxis: {
+      type: 'value',
+      min: 0,
+      max: 1,
+      splitNumber: 2,
+      axisLabel: {
+        color: '#8fa1b4',
+        formatter: (value: number) => `${Math.round(value * 100)}%`,
+      },
+      splitLine: { lineStyle: { color: 'rgba(101, 184, 255, 0.18)' } },
+    },
+    yAxis: {
+      type: 'category',
+      data: reversedRows.map((row) => row.name),
+      axisLabel: {
+        color: '#b8c4d4',
+        width: 108,
+        overflow: 'truncate',
+      },
+      axisLine: { lineStyle: { color: 'rgba(101, 184, 255, 0.22)' } },
+      axisTick: { show: false },
+    },
+    series: [
+      {
+        name: '健康度',
+        type: 'bar',
+        barWidth: 16,
+        data: reversedRows.map((row) => ({
+          value: row.value,
+          itemStyle: {
+            color: row.value >= 0.9 ? '#56d27b' : row.value >= 0.6 ? '#f59e0b' : '#fb7185',
+            borderRadius: [0, 8, 8, 0],
+          },
+          label: {
+            formatter: `${(row.value * 100).toFixed(1)}%`,
+          },
+        })),
+        label: {
+          show: true,
+          position: 'right',
+          color: '#dbe5ee',
+          fontWeight: 700,
+        },
+      },
+    ],
+  };
 }
 
 const lineageLayer: Record<string, number> = {
@@ -82,13 +250,13 @@ function featureLineageOption(lineage: FeatureMartReadiness['lineage'] = []): Da
     const layer = lineageLayer[nodeId] ?? 2;
     const peers = layers.get(layer) ?? [nodeId];
     const peerIndex = peers.indexOf(nodeId);
-    const yOffset = peers.length === 1 ? 0 : (peerIndex - (peers.length - 1) / 2) * 70;
+    const yOffset = peers.length === 1 ? 0 : (peerIndex - (peers.length - 1) / 2) * 56;
     return {
       id: nodeId,
       name: label('lineage', nodeId, { fallback: nodeId }),
-      x: layer * 170,
-      y: 120 + yOffset,
-      symbolSize: layer === 0 || layer >= 3 ? 54 : 48,
+      x: 58 + layer * 128,
+      y: 116 + yOffset,
+      symbolSize: layer === 0 || layer >= 3 ? 42 : 38,
       value: layer,
       itemStyle: {
         color: ['#39d0c8', '#65b8ff', '#f59e0b', '#a78bfa', '#56d27b'][Math.min(layer, 4)],
@@ -126,20 +294,21 @@ function featureLineageOption(lineage: FeatureMartReadiness['lineage'] = []): Da
         layout: 'none',
         data: nodes,
         links,
-        roam: false,
+        roam: true,
+        draggable: true,
         edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [0, 9],
+        edgeSymbolSize: [0, 8],
         label: {
           show: true,
           position: 'bottom',
           color: '#dbe5ee',
-          fontSize: 12,
-          width: 96,
-          overflow: 'break',
+          fontSize: 11,
+          width: 82,
+          overflow: 'truncate',
         },
         lineStyle: {
           color: '#8fb3cf',
-          width: 2,
+          width: 1.8,
           curveness: 0.12,
         },
         emphasis: {
@@ -151,7 +320,135 @@ function featureLineageOption(lineage: FeatureMartReadiness['lineage'] = []): Da
   };
 }
 
+type FeatureMartView = 'product' | 'category' | 'user';
+
+type FeatureCoverageCard = {
+  view: FeatureMartView;
+  title: string;
+  subtitle: string;
+  rows: number;
+  entityCount: number;
+  revenue: number;
+  purchases: number;
+  featureCount: number;
+};
+
+const viewCopy: Record<FeatureMartView, { title: string; unit: string; icon: typeof Boxes; empty: string }> = {
+  product: {
+    title: '商品粒度',
+    unit: '商品',
+    icon: Boxes,
+    empty: '当前筛选下没有商品特征样本。',
+  },
+  category: {
+    title: '类目粒度',
+    unit: '类目',
+    icon: Layers3,
+    empty: '当前筛选下没有类目聚合样本。',
+  },
+  user: {
+    title: '用户粒度',
+    unit: '用户',
+    icon: Users,
+    empty: '当前筛选下没有用户特征样本。',
+  },
+};
+
+function sum<T>(rows: T[], pick: (row: T) => number | null | undefined) {
+  return rows.reduce((total, row) => total + (pick(row) ?? 0), 0);
+}
+
+function uniqueCount<T>(rows: T[], pick: (row: T) => string | number | null | undefined) {
+  return new Set(rows.map((row) => pick(row)).filter(Boolean)).size;
+}
+
+function featureBelongsToView(feature: FeatureMartFeature, view: FeatureMartView) {
+  if (view === 'product') return feature.grain.includes('product_id') || feature.feature_name.includes('product');
+  if (view === 'category') return feature.grain.includes('category_level1') || feature.feature_name.includes('category');
+  return feature.grain.includes('user_id') || feature.feature_name.includes('user');
+}
+
+function productCategory(row: FeatureMartProduct | FeatureMartCategory | FeatureMartUser) {
+  if ('category_level1' in row) return row.category_level1 || '未知';
+  return row.preferred_category_level1 || '未知';
+}
+
+function buildCoverageCards(
+  products: FeatureMartProduct[],
+  categories: FeatureMartCategory[],
+  users: FeatureMartUser[],
+  features: FeatureMartFeature[],
+): FeatureCoverageCard[] {
+  return [
+    {
+      view: 'product',
+      title: '商品特征层',
+      subtitle: '按日期 x 商品聚合浏览、加购、购买、价格和转化率。',
+      rows: products.length,
+      entityCount: uniqueCount(products, (row) => row.product_id),
+      revenue: sum(products, (row) => row.revenue),
+      purchases: sum(products, (row) => row.purchases),
+      featureCount: features.filter((feature) => featureBelongsToView(feature, 'product')).length,
+    },
+    {
+      view: 'category',
+      title: '类目特征层',
+      subtitle: '按日期 x 一级类目聚合需求规模、成交额和转化率。',
+      rows: categories.length,
+      entityCount: uniqueCount(categories, (row) => row.category_level1),
+      revenue: sum(categories, (row) => row.revenue),
+      purchases: sum(categories, (row) => row.purchases),
+      featureCount: features.filter((feature) => featureBelongsToView(feature, 'category')).length,
+    },
+    {
+      view: 'user',
+      title: '用户特征层',
+      subtitle: '按日期 x 用户聚合活跃、兴趣偏好、购买和价值信号。',
+      rows: users.length,
+      entityCount: uniqueCount(users, (row) => row.user_id),
+      revenue: sum(users, (row) => row.revenue),
+      purchases: sum(users, (row) => row.purchases),
+      featureCount: features.filter((feature) => featureBelongsToView(feature, 'user')).length,
+    },
+  ];
+}
+
+function buildCategoryCoverage(
+  rows: Array<FeatureMartProduct | FeatureMartCategory | FeatureMartUser>,
+) {
+  const map = new Map<string, { name: string; rows: number; revenue: number; purchases: number; users: number }>();
+  rows.forEach((row) => {
+    const name = productCategory(row);
+    const current = map.get(name) ?? { name, rows: 0, revenue: 0, purchases: 0, users: 0 };
+    current.rows += 1;
+    current.revenue += 'revenue' in row ? row.revenue : 0;
+    current.purchases += 'purchases' in row ? row.purchases : 0;
+    current.users += 'unique_users' in row ? row.unique_users : 'user_id' in row ? 1 : 0;
+    map.set(name, current);
+  });
+  return Array.from(map.values()).sort((a, b) => b.rows - a.rows || b.revenue - a.revenue);
+}
+
+function filterByCategory<T extends FeatureMartProduct | FeatureMartCategory | FeatureMartUser>(rows: T[], category: string) {
+  return category === 'all' ? rows : rows.filter((row) => productCategory(row) === category);
+}
+
+function aggregateRows(rows: Array<FeatureMartProduct | FeatureMartCategory | FeatureMartUser>) {
+  return {
+    rows: rows.length,
+    revenue: sum(rows, (row) => row.revenue),
+    purchases: sum(rows, (row) => row.purchases),
+  };
+}
+
+function TablePreviewIcon({ view }: { view: FeatureMartView }) {
+  const Icon = viewCopy[view].icon;
+  return <Icon size={19} />;
+}
+
 export function FeatureMartPage() {
+  const [selectedView, setSelectedView] = useState<FeatureMartView>('product');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const summary = useFeatureMartSummary();
   const freshness = useFeatureMartFreshness();
   const quality = useFeatureMartQuality();
@@ -170,9 +467,47 @@ export function FeatureMartPage() {
     categories.isError ||
     users.isError;
   const featureRows = features.data ?? [];
-  const readinessChartRows = readinessRows(readiness.data);
-  const readinessCheckRows = checkRows(readiness.data);
+  const productRows = products.data ?? [];
+  const categoryRows = categories.data ?? [];
+  const userRows = users.data ?? [];
+  const readyFeatureCount = readiness.data?.ready_features ?? 0;
+  const totalFeatureCount = readiness.data?.total_features ?? featureRows.length;
+  const readinessChartRows = readinessRows(readiness.data, featureRows);
+  const readinessCheckRows = qualityScoreRows({
+    readyFeatures: readyFeatureCount,
+    totalFeatures: totalFeatureCount,
+    writtenPartitions: summary.data?.partitions.written,
+    expectedPartitions: summary.data?.partitions.expected,
+    lateRate: freshness.data?.late_rate,
+    freshnessLagHours: freshness.data?.freshness_lag_hours ?? summary.data?.freshness.freshness_lag_hours,
+    maxFreshnessLagHours: freshness.data?.max_freshness_lag_hours,
+    quarantinedRate: quality.data?.quarantined_rate,
+  });
   const lineageRows = readiness.data?.lineage ?? [];
+  const coverageCards = useMemo(
+    () => buildCoverageCards(productRows, categoryRows, userRows, featureRows),
+    [categoryRows, featureRows, productRows, userRows],
+  );
+  const activeRows = selectedView === 'product' ? productRows : selectedView === 'category' ? categoryRows : userRows;
+  const allLayerRows = useMemo(
+    () => [...productRows, ...categoryRows, ...userRows],
+    [categoryRows, productRows, userRows],
+  );
+  const categoryCoverage = useMemo(() => buildCategoryCoverage(activeRows), [activeRows]);
+  const allLayerCategoryCoverage = useMemo(() => buildCategoryCoverage(allLayerRows), [allLayerRows]);
+  const maxCategoryRows = Math.max(1, ...categoryCoverage.map((item) => item.rows));
+  const filteredProducts = useMemo(() => filterByCategory(productRows, selectedCategory), [productRows, selectedCategory]);
+  const filteredCategories = useMemo(() => filterByCategory(categoryRows, selectedCategory), [categoryRows, selectedCategory]);
+  const filteredUsers = useMemo(() => filterByCategory(userRows, selectedCategory), [userRows, selectedCategory]);
+  const selectedFeatures = featureRows.filter((feature) => featureBelongsToView(feature, selectedView));
+  const selectedRows =
+    selectedView === 'product' ? filteredProducts : selectedView === 'category' ? filteredCategories : filteredUsers;
+  const selectedSampleMetrics = aggregateRows(selectedRows);
+  const allLayerSelectedCoverage = allLayerCategoryCoverage.find((item) => item.name === selectedCategory);
+  const topCategory = categoryCoverage[0]?.name ?? '待生成';
+  const failedCheckCount = (readiness.data?.checks ?? []).filter((check) => !check.passed).length;
+  const lowestQualityScore = readinessCheckRows.length ? Math.min(...readinessCheckRows.map((row) => row.value)) : 0;
+  const featureGrainCount = new Set(featureRows.map((feature) => feature.grain)).size;
 
   return (
     <>
@@ -225,48 +560,342 @@ export function FeatureMartPage() {
         </article>
       </section>
 
-      <section className="content-grid visual-first-grid">
-        <ChartPanel
-          title="特征就绪结构"
-          subtitle="用就绪特征和待修复特征判断下游算法可用性"
-          option={donutOption(readinessChartRows, '特征数')}
-          isEmpty={!readinessChartRows.length}
-          summary={`当前 ${number(readiness.data?.ready_features)} / ${number(readiness.data?.total_features)} 个特征就绪。`}
-        />
-        <ChartPanel
-          title="质量检查矩阵"
-          subtitle="用通过/未通过条形图替代长检查清单"
-          option={horizontalBarOption(readinessCheckRows, '通过状态', '#56d27b')}
-          isEmpty={!readinessCheckRows.length}
-          summary={readiness.data ? `集市状态为 ${statusLabel(readiness.data.status)}。` : '等待就绪度评估。'}
-        />
-        <article className="data-panel ops-card">
-          <div className="panel-title">
-            <div>
-              <h2>特征字典</h2>
-              <p>用户可见字段只展示中文名、粒度、刷新频率和质量断言。</p>
-            </div>
-            <Boxes size={20} />
+      <section className="feature-mart-workbench" aria-label="特征集市覆盖工作台">
+        <div className="feature-mart-workbench-head">
+          <div>
+            <span className="eyebrow">Category Coverage Workbench</span>
+            <h2>每种特征层都有入口，点击后联动类目、字典和样本</h2>
+            <p>先看商品、类目、用户三类可复用特征产物，再按业务类目钻取代表样本，不把全量明细直接堆到页面。</p>
           </div>
-          <div className="feature-dictionary-grid">
-            {featureRows.slice(0, 6).map((feature) => (
-              <div className="feature-dictionary-item" key={feature.feature_name}>
-                <strong>{feature.chinese_name}</strong>
-                <span>{grainLabel(feature.grain)} · {label('frequency', feature.refresh_frequency)}</span>
-                <small>{feature.quality_assertions.map((item) => fieldLabel(item)).join('、')}</small>
+          <div className="feature-mart-scope-card">
+            <span>当前解释对象</span>
+            <strong>{viewCopy[selectedView].title}</strong>
+            <small>{selectedCategory === 'all' ? '全部业务类目' : selectedCategory}</small>
+          </div>
+        </div>
+
+        <div className="feature-coverage-grid">
+          {coverageCards.map((card) => {
+            const meta = viewCopy[card.view];
+            const Icon = meta.icon;
+            return (
+              <button
+                className={`feature-coverage-card ${selectedView === card.view ? 'is-active' : ''}`}
+                key={card.view}
+                type="button"
+                onClick={() => setSelectedView(card.view)}
+              >
+                <span className="feature-card-icon">
+                  <Icon size={19} />
+                </span>
+                <span className="feature-card-copy">
+                  <strong>{card.title}</strong>
+                  <small>{card.subtitle}</small>
+                </span>
+                <span className="feature-card-metrics">
+                  <span>
+                    {number(card.entityCount)}
+                    <small>{meta.unit}</small>
+                  </span>
+                  <span>
+                    {number(card.rows)}
+                    <small>样本行</small>
+                  </span>
+                  <span>
+                    {number(card.featureCount)}
+                    <small>字段</small>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="feature-category-workspace">
+          <article className="feature-category-panel">
+            <div className="panel-title compact">
+              <div>
+                <h2>业务类目覆盖</h2>
+                <p>卡片按当前选中的特征粒度统计，点击后下方代表样本表使用同一口径。</p>
               </div>
-            ))}
-            {featureRows.length === 0 ? <p className="empty-copy">等待特征字典。</p> : null}
+              <PackageSearch size={20} />
+            </div>
+            <div className="feature-category-strip" role="list" aria-label="业务类目筛选">
+              <button
+                className={`feature-category-chip ${selectedCategory === 'all' ? 'is-active' : ''}`}
+                type="button"
+                onClick={() => setSelectedCategory('all')}
+              >
+                <strong>全部类目</strong>
+                <span>{viewCopy[selectedView].title} · {number(categoryCoverage.length)} 个类目入口</span>
+                <i style={{ width: '100%' }} />
+              </button>
+              {categoryCoverage.map((item) => (
+                <button
+                  className={`feature-category-chip ${selectedCategory === item.name ? 'is-active' : ''}`}
+                  key={item.name}
+                  type="button"
+                  onClick={() => setSelectedCategory(item.name)}
+                >
+                  <strong>{item.name}</strong>
+                  <span>
+                    当前层 {number(item.rows)} 行 · {number(item.purchases)} 次购买
+                  </span>
+                  <i style={{ width: `${Math.max(6, (item.rows / maxCategoryRows) * 100)}%` }} />
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <aside className="feature-explain-panel">
+            <div className="panel-title compact">
+              <div>
+                <h2>当前钻取解释</h2>
+                <p>点击左侧粒度或类目，这里同步说明你正在查看哪种特征产物。</p>
+              </div>
+              <Eye size={19} />
+            </div>
+            <div className="feature-explain-metrics">
+              <span>
+                <small>当前样本</small>
+                <strong>{number(selectedSampleMetrics.rows)}</strong>
+              </span>
+              <span>
+                <small>成交额</small>
+                <strong>{money(selectedSampleMetrics.revenue)}</strong>
+              </span>
+              <span>
+                <small>购买量</small>
+                <strong>{number(selectedSampleMetrics.purchases)}</strong>
+              </span>
+            </div>
+            <div className="feature-explain-copy">
+              <strong>{selectedCategory === 'all' ? `最高覆盖类目：${topCategory}` : `当前类目：${selectedCategory}`}</strong>
+              <p>
+                {viewCopy[selectedView].title}用于把原始行为日志转成下游可复用字段；当前类目卡片、右侧解释和下方样本表现在都使用同一粒度口径。
+                {selectedCategory !== 'all' && allLayerSelectedCoverage
+                  ? ` 该类目全特征层合计为 ${number(allLayerSelectedCoverage.rows)} 行、${number(allLayerSelectedCoverage.purchases)} 次购买，仅作为背景参考。`
+                  : ''}
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        <div className="feature-preview-grid">
+          <article className="feature-preview-panel">
+            <div className="panel-title compact">
+              <div>
+                <h2>{viewCopy[selectedView].title}代表样本</h2>
+                <p>只展示当前筛选的前 12 行，完整缓存仍可在下方折叠表查看。</p>
+              </div>
+              <TablePreviewIcon view={selectedView} />
+            </div>
+            <div className="table-scroll feature-sample-scroll">
+              {selectedView === 'product' ? (
+                <table aria-label="商品粒度代表样本">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th>商品</th>
+                      <th>类目</th>
+                      <th>品牌</th>
+                      <th>浏览</th>
+                      <th>购买</th>
+                      <th>成交额</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.slice(0, 12).map((row) => (
+                      <tr key={`${row.dt}-${row.product_id}`}>
+                        <td>{row.dt}</td>
+                        <td>{row.product_id}</td>
+                        <td>{row.category_level1}</td>
+                        <td>{row.brand}</td>
+                        <td>{number(row.views)}</td>
+                        <td>{number(row.purchases)}</td>
+                        <td>{money(row.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : selectedView === 'category' ? (
+                <table aria-label="类目粒度代表样本">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th>类目</th>
+                      <th>浏览</th>
+                      <th>购买</th>
+                      <th>成交额</th>
+                      <th>转化率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCategories.slice(0, 12).map((row) => (
+                      <tr key={`${row.dt}-${row.category_level1}`}>
+                        <td>{row.dt}</td>
+                        <td>{row.category_level1}</td>
+                        <td>{number(row.views)}</td>
+                        <td>{number(row.purchases)}</td>
+                        <td>{money(row.revenue)}</td>
+                        <td>{percent(row.conversion_rate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table aria-label="用户粒度代表样本">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th>用户</th>
+                      <th>偏好类目</th>
+                      <th>会话</th>
+                      <th>浏览</th>
+                      <th>购买</th>
+                      <th>成交额</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.slice(0, 12).map((row) => (
+                      <tr key={`${row.dt}-${row.user_id}`}>
+                        <td>{row.dt}</td>
+                        <td>{row.user_id}</td>
+                        <td>{row.preferred_category_level1 ?? '未知'}</td>
+                        <td>{number(row.sessions)}</td>
+                        <td>{number(row.views)}</td>
+                        <td>{number(row.purchases)}</td>
+                        <td>{money(row.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {selectedRows.length === 0 ? <p className="empty-copy">{viewCopy[selectedView].empty}</p> : null}
+            </div>
+          </article>
+
+          <article className="feature-preview-panel">
+            <div className="panel-title compact">
+              <div>
+                <h2>字段字典联动</h2>
+                <p>只显示当前粒度相关字段，避免老师把字段表和样本表混在一起。</p>
+              </div>
+              <Boxes size={19} />
+            </div>
+            <div className="feature-dictionary-grid feature-dictionary-scroll">
+              {selectedFeatures.map((feature) => (
+                <div className="feature-dictionary-item" key={feature.feature_name}>
+                  <strong>{feature.chinese_name}</strong>
+                  <span>{grainLabel(feature.grain)} · {label('frequency', feature.refresh_frequency)}</span>
+                  <small>{feature.source}</small>
+                </div>
+              ))}
+              {selectedFeatures.length === 0 ? <p className="empty-copy">当前粒度暂无独立字段字典，使用通用质量与血缘证据。</p> : null}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="feature-evidence-section" aria-label="特征集市底层证据图">
+        <div className="feature-evidence-head">
+          <div>
+            <span className="eyebrow">Evidence Graphs</span>
+            <h2>底层数据图回答 4 个问题</h2>
+            <p>先看能不能用，再看质量是否过线，最后追溯字段定义和产物流向。</p>
           </div>
-        </article>
-        <ChartPanel
-          title="特征血缘图"
-          subtitle="从原始行为日志到下游算法的产物流向。"
-          chartId="feature-mart-lineage-dag"
-          option={featureLineageOption(lineageRows)}
-          isEmpty={!lineageRows.length}
-          summary={lineageRows.length ? `当前血缘图覆盖 ${lineageRows.length} 条产物依赖边。` : '等待血缘数据。'}
-        />
+          <div className="feature-evidence-mini">
+            <span>
+              <strong>{number(totalFeatureCount)}</strong>
+              特征字段
+            </span>
+            <span>
+              <strong>{number(readinessCheckRows.length)}</strong>
+              质量检查
+            </span>
+            <span>
+              <strong>{number(lineageRows.length)}</strong>
+              血缘边
+            </span>
+          </div>
+        </div>
+
+        <div className="feature-evidence-grid">
+          <ChartPanel
+            title="1. 特征就绪结构"
+            subtitle="回答：可用字段分别落在哪些业务粒度，而不是只看一个全局 100%。"
+            option={featureReadinessOption(readinessChartRows)}
+            isEmpty={!readinessChartRows.length}
+            annotations={[
+              { label: '就绪字段', value: `${number(readyFeatureCount)} / ${number(totalFeatureCount)}`, tone: 'success' },
+              { label: '粒度分组', value: number(readinessChartRows.length), tone: 'info' },
+            ]}
+            summary={`当前 ${number(readyFeatureCount)} / ${number(totalFeatureCount)} 个字段已就绪；圆环按商品、类目、用户和运行审计粒度拆分字段数量。`}
+          />
+          <ChartPanel
+            title="2. 质量健康度矩阵"
+            subtitle="回答：即使门禁都通过，各维度距离满分还有多少差异。"
+            option={featureQualityOption(readinessCheckRows)}
+            isEmpty={!readinessCheckRows.length}
+            annotations={[
+              { label: '最低健康度', value: `${(lowestQualityScore * 100).toFixed(1)}%`, tone: lowestQualityScore >= 0.9 ? 'success' : lowestQualityScore >= 0.6 ? 'warning' : 'danger' },
+              { label: '失败项', value: number(failedCheckCount), tone: failedCheckCount ? 'danger' : 'success' },
+            ]}
+            summary={
+              readiness.data
+                ? `集市状态为 ${statusLabel(readiness.data.status)}；条长由字段就绪率、分区覆盖率、迟到控制、新鲜度余量和隔离控制的真实比例计算。`
+                : '等待就绪度评估。'
+            }
+          />
+          <article className="data-panel ops-card feature-dictionary-panel">
+            <div className="panel-title">
+              <div>
+                <h2>3. 特征字典</h2>
+                <p>回答：每个字段是什么、按什么粒度刷新、有哪些质量断言。</p>
+              </div>
+              <Boxes size={20} />
+            </div>
+            <div className="feature-dictionary-summary">
+              <span>
+                <strong>{number(featureRows.length)}</strong>
+                字段
+              </span>
+              <span>
+                <strong>{number(featureGrainCount)}</strong>
+                粒度
+              </span>
+              <span>
+                <strong>{number(selectedFeatures.length)}</strong>
+                当前层相关
+              </span>
+            </div>
+            <div className="feature-dictionary-grid feature-dictionary-scroll">
+              {featureRows.map((feature) => (
+                <div className="feature-dictionary-item" key={feature.feature_name}>
+                  <strong>{feature.chinese_name}</strong>
+                  <span>{grainLabel(feature.grain)} · {label('frequency', feature.refresh_frequency)}</span>
+                  <small>{feature.quality_assertions.map((item) => fieldLabel(item)).join('、')}</small>
+                </div>
+              ))}
+              {featureRows.length === 0 ? <p className="empty-copy">等待特征字典。</p> : null}
+            </div>
+          </article>
+          <div className="feature-lineage-panel">
+            <ChartPanel
+              title="4. 特征血缘图"
+              subtitle="回答：原始行为日志如何加工成下游算法可用的特征产物。"
+              chartId="feature-mart-lineage-dag"
+              option={featureLineageOption(lineageRows)}
+              isEmpty={!lineageRows.length}
+              annotations={[
+                { label: '节点可拖动', value: '可交互', tone: 'info' },
+                { label: '依赖边', value: number(lineageRows.length), tone: 'success' },
+              ]}
+              actionHint="拖动节点或滚轮缩放，可查看原始日志到算法产物的路径。"
+              summary={lineageRows.length ? `当前血缘图覆盖 ${lineageRows.length} 条产物依赖边；节点大小和颜色表示产物层级。` : '等待血缘数据。'}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="ops-grid">

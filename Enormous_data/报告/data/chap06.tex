@@ -1,0 +1,152 @@
+% !TeX root = ../thuthesis-example.tex
+
+\chapter{运维风险控制与 Benchmark 评估}
+
+\section{异常检测与实时预警}
+
+\subsection{Robust Z-Score 异常检测}
+
+为防范促销恶意刷量或流量瞬时爆降等行为对分析大盘产生的严重偏离误导，系统设计了稳健化（Robust）异常监控逻辑。传统的均值-标准差方法易受大幅离群值的影响，从而把阈值反向拉宽导致漏报。系统引入了绝对中位数偏差（MAD，Median Absolute Deviation）统计量：
+\begin{equation}
+    \text{MAD}(X) = \text{median}\left(\left| x_i - \text{median}(X) \right|\right)
+\end{equation}
+\begin{equation}
+    z_{\text{robust}} = \frac{\left| x_i - \text{median}(X) \right|}{1.4826 \cdot \text{MAD}(X)}
+\end{equation}
+其中，常数因子 $1.4826$ 使 MAD 在正态分布下对齐标准差。当 $z_{\text{robust}} > 6.0$ 时判定为 critical 严重异常，当 $z_{\text{robust}} \in (3.5, 6.0]$ 判定为 warning，当 $z_{\text{robust}} \in (2.5, 3.5]$ 判定为 watch。实际判定还需满足显著性门槛：例如收入指标需 $R \geq 500$ 才触发 critical，$R \geq 150$ 才触发 warning；转化率指标需浏览量 $\geq 30$ 且购买量 $\geq 3$。
+
+\subsubsection{多机制融合的异常判定策略}
+
+系统在基础 Robust Z-Score 之上融合了五项增强机制以降低误报率。第一，\textbf{工作日季节性中位数基线}：按星期几分区计算历史同期中位数，消除周末/工作日周期性波动对阈值的干扰。第二，\textbf{预测增强时序对齐}：当需求预测模块输出有效预测值时，以预测值替代历史中位数作为期望基线，并使用预测置信区间判定越界，使异常判定具备前瞻性。第三，\textbf{全站大盘动态放大因子}（site\_factor）：在大促期间全站指标整体抬升时，动态放大阈值以消除假阳性。第四，\textbf{MAD 分指标动态下限钳位}：针对不同指标类型设置差异化 MAD 下限（收入 $\geq 100$、浏览量 $\geq 20$、购买量 $\geq 2$、比率 $\geq 0.01$），防止稀疏商品的 MAD 过小导致 z-score 爆炸。第五，\textbf{归零检测}：当历史基线超过最小观变量（baseline $\geq$ min\_volume）而当日值为零时，直接触发告警，无须经过 z-score 计算。
+
+\section{生命周期分层与实验分流}
+
+在运维风险控制中，用户的生命周期分层与实验分流起到了核心的流量隔离和质量监控作用。具体的分流算法与统计学假设检验（包括确定性哈希分桶、样本比例失配检验、双比例假设检验及分位提升分析等）已在第 5 章中详细阐述。本节重点从系统运行稳定性、自动风控和实验护栏的角度讨论其在运维中的风险防控与干预机制。
+
+\subsection{生命周期分层与运维干预}
+
+生命周期管理基于用户单日特征表，统计活跃天数、消费频次和最近访问距今日期（Recency），应用确定性规则链将用户划分为 Champion（冠军用户）、Loyal（忠诚用户）、Browser（纯浏览者）等类别，并基于最近活跃天数和加购记录计算风险带（Risk Band）。这些生命周期段与风险带标签不仅是业务上的分组依据，也是运维自动决策引擎（第 5.5 节）触发差异化自动干预决策与预测性补货工单的核心控制变量。
+
+\subsection{实验分流的运维稳定机制与护栏监控}
+
+对于离线历史回放实验，如何在分布式环境中保持分流的幂等性以及如何控制统计学评估中的假阳性风险，是系统运维保障的核心挑战：
+\begin{enumerate}
+    \item \textbf{流量单调稳定性控制}：用户的实验组分配由用户 ID 与实验键的联合哈希分桶值（参见公式\eqref{eq:hash-bucket}）决定。该分配方法具有完全确定性，即同一用户在多次计算管道运行中始终被分配到同一组，从物理上避免了用户在页面交互中因分组漂移导致体验错乱，并且在 Executor 侧以纯哈希算子无状态并行运算，消除了集中式分流服务的单点瓶颈。
+    \item \textbf{SRM 卡方检验防护}：系统在离线回放模块运行结束后，会自动执行样本比例失配检验（SRM）（参见公式\eqref{eq:srm-chi-square}）。若检验 $p$ 值小于设定门限（默认 $0.001$），表明实验流量分桶发生偏斜（如因部分数据丢失或哈希碰撞引发比例偏离），系统将在前端 Ops 页面突出展示 SRM 拦截警报，并强行阻断本次实验结果快照的提拔，保障分析证据链的可靠性。
+    \item \textbf{实验护栏与不平衡监控}：为防范小样本或稀疏特征条件下的统计估计失真，系统内置了五项护栏检查（包含最小样本数、置信度下限及基于公式\eqref{eq:segment-imbalance}的分段变体不平衡度）。一旦护栏状态标记为 \texttt{needs\_review}，或在离线回放中由于非随机暴露导致因果有效性不可靠时（输出 \texttt{causal\_valid: False}），系统会自动向自动决策引擎发出警告，并拒绝将新计算 of 推荐参数提升为线上活跃状态，由运维人员介入审计。
+\end{enumerate}
+
+\section{可追溯 Ops 证据链}
+
+\subsection{Ops 证据看板与运行元数据}
+
+可追溯（Ops）证据看板提取运行产生的指标元数据。它不重新对数据行执行分布式运算，而是流式拼接运行 manifest 中的输入快照 MD5、HDFS Parquet 写入信息与 YARN 任务记录，为答辩演示提供科学证据。
+
+\subsubsection{旧数据治理策略}
+
+在旧数据治理上，项目实行"保留输入快照及最后 event log，定时清洗中间产物"的精简策略，规定保留 1\%/5\% 样本 CSV 文件及最终 benchmark 的 6 个 event log，早期重复烟雾测试日志由清理脚本强制物理清除，以此保障容器运行环境的空间健康水位。存储快照如图\ref{fig:storage-cleanup}所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{storage\_cleanup\_snapshot.png}
+    \caption{旧数据清理后的存储治理示意图}
+    \label{fig:storage-cleanup}
+\end{figure}
+
+\section{多维度 Benchmark 实验结果与对比分析}
+
+\subsection{多配置对照实验结果}
+
+系统在 1\% 样本下执行了五组对照实验，并在 5\% 数据集下进行了压力扩展性验证。所有 YARN 提报作业最终均返回 \texttt{SUCCEEDED}。实验结果汇总如表\ref{tab:benchmark-results}所示。
+
+\begin{table}[htbp]
+    \centering
+    \caption{1\% 与 5\% benchmark 实验结果}
+    \label{tab:benchmark-results}
+    \scriptsize
+    \begin{tabularx}{0.98\textwidth}{l l r r r X}
+        \toprule
+        \textbf{样本} & \textbf{对照组}         & \textbf{耗时(s)} & \textbf{输入行} & \textbf{输出行} & \textbf{Application ID}                   \\
+        \midrule
+        1\%         & Baseline local CSV   & 198.843        & 1,104,709    & 1,103,488    & \texttt{local-1781015058333}              \\
+        1\%         & YARN-only CSV        & 964.889        & 1,104,709    & 1,103,488    & \texttt{application\_1780991452919\_0016} \\
+        1\%         & YARN + AQE CSV       & 538.657        & 1,104,709    & 1,103,488    & \texttt{application\_1780991452919\_0017} \\
+        1\%         & YARN + algorithm CSV & 535.804        & 1,104,709    & 1,103,488    & \texttt{application\_1780991452919\_0018} \\
+        1\%         & YARN + Parquet       & 573.183        & 1,103,488    & 1,103,488    & \texttt{application\_1780991452919\_0019} \\
+        5\%         & YARN + algorithm CSV & 1875.099       & 5,412,207    & 5,405,748    & \texttt{application\_1780991452919\_0020} \\
+        5\%         & YARN + Parquet       & 1828.329       & 5,405,748    & 5,405,748    & \texttt{application\_1780991452919\_0021} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+如图\ref{fig:ops-evidence-panel}与图\ref{fig:experiment-matrix}所示，比对 YARN-only（964.889s）和 YARN+AQE（538.657s），耗时缩短近 44\%，验证了 AQE 调优的关键作用。
+
+上述结果有力地支持了以下论点：如果不配置执行计划优化，仅加入分布式 YARN 进行资源调度，反而会由于任务拉起的开销而降低系统整体吞吐率。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{ops\_evidence\_panel.png}
+    \caption{前端 Ops 证据面板集成示意图}
+    \label{fig:ops-evidence-panel}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{experiment\_matrix\_methodology.png}
+    \caption{YARN + Spark 实验对照矩阵}
+    \label{fig:experiment-matrix}
+\end{figure}
+
+\subsubsection{基于 HDFS rolling event log 的 Spark 运行指标补采集}
+
+由于 Spark History Server 内置的 API 在读取部分极其庞大的复杂 Stage 记录时偶发异常，项目开发了 rolling event log 补采集脚本。该脚本绕过 History API，直接在 HDFS 中解压并流式扫描 \texttt{.zstd} event log 日志，从而补采集了真实的 Shuffle 读写与 Spill 数据，汇总如表\ref{tab:history-results}所示。
+
+\begin{table}[H]
+    \centering
+    \caption{Spark event log 指标补采集结果}
+    \label{tab:history-results}
+    \scriptsize
+    \begin{tabular}{l r r r r r}
+        \toprule
+        \textbf{Application ID}                   & \textbf{Tasks} & \textbf{Failed} & \textbf{Retried} & \textbf{Shuffle Read} & \textbf{Memory Spill} \\
+        \midrule
+        \texttt{application\_1780991452919\_0016} & 6,290          & 0               & 0                & 9.4GB                 & 2.1GB                 \\
+        \texttt{application\_1780991452919\_0017} & 4,526          & 0               & 0                & 9.4GB                 & 728.0MB               \\
+        \texttt{application\_1780991452919\_0018} & 4,526          & 0               & 0                & 9.4GB                 & 728.0MB               \\
+        \texttt{application\_1780991452919\_0019} & 5,057          & 0               & 0                & 9.4GB                 & 792.5MB               \\
+        \texttt{application\_1780991452919\_0020} & 5,149          & 0               & 0                & 44.9GB                & 89.6GB                \\
+        \texttt{application\_1780991452919\_0021} & 5,815          & 0               & 0                & 44.9GB                & 89.4GB                \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
+\subsubsection{典型模块计算效能 Benchmark 评估与结论}
+
+为验证特定算法的局部耗时表现，系统使用 1\% 样本中的 200,000 行典型数据，对关联分析、推荐召回、异常监控和实验分流四个计算密集型 Pipeline 进行了局部效能压测，结果如表\ref{tab:module-results}所示。
+
+\begin{table}[htbp]
+    \centering
+    \caption{典型部分数据模块 benchmark 结果}
+    \label{tab:module-results}
+    \scriptsize
+    \begin{tabular}{l l r r r}
+        \toprule
+        \textbf{模块}     & \textbf{任务}                        & \textbf{输入行} & \textbf{输出行} & \textbf{耗时(s)} \\
+        \midrule
+        Affinity        & \texttt{affinity\_pipeline}        & 199,895      & 80           & 3.852          \\
+        Recommendation  & \texttt{recommendation\_pipeline}  & 199,895      & 1,000        & 1.740          \\
+        Anomaly         & \texttt{anomaly\_pipeline}         & 199,895      & 644          & 7.865          \\
+        Experimentation & \texttt{experimentation\_pipeline} & 199,895      & 21,716       & 8.703          \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{benchmark\_evidence\_summary.png}
+    \caption{Benchmark 证据概览（精确数值见表\ref{tab:benchmark-results}）}
+    \label{fig:benchmark-evidence}
+\end{figure}
+
+如图\ref{fig:benchmark-evidence}所示，综上所述，本实验对照研究得出以下核心结论：第一，将分布式提报作业交付 YARN 不会自动化解性能与物理溢出瓶颈，甚至会引入非必要的网络开销，因此执行层调优与算法上限控制必不可少；第二，AQE 对倾斜连接的动态优化可显著缩短计算长尾；第三，Parquet 列式布局可在更大数据样本下显著加快读取。本系统已在本机资源约束内最大化消除了 OOM 崩溃，完全达到了设计预期。

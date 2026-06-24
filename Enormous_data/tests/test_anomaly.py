@@ -140,3 +140,80 @@ def test_daily_signals_can_disable_product_entities(spark):
 
     assert rows
     assert {row["entity_type"] for row in rows} == {"category"}
+
+
+def test_cleaning_bot_fraud_filter(spark):
+    from spark_jobs.cleaning import clean_events
+    rows = []
+    # 正常 Session（7 天）
+    for day in range(1, 8):
+        dt = f"2019-10-{day:02d}"
+        rows.append({"event_time": f"{dt} 10:00:00", "event_type": "view", "product_id": 1, "category_code": "electronics", "brand": "apple", "price": 100.0, "user_id": 1, "user_session": "normal-session"})
+        rows.append({"event_time": f"{dt} 10:05:00", "event_type": "purchase", "product_id": 1, "category_code": "electronics", "brand": "apple", "price": 100.0, "user_id": 1, "user_session": "normal-session"})
+
+    # 恶意高频 Session（同一秒内触发 20 次事件，不同商品以防止去重）
+    dt_bot = "2019-10-01"
+    for s in range(20):
+        rows.append({
+            "event_time": f"{dt_bot} 12:00:00", 
+            "event_type": "view", 
+            "product_id": s, 
+            "category_code": "electronics", 
+            "brand": "apple", 
+            "price": 100.0, 
+            "user_id": 999, 
+            "user_session": "bot-session"
+        })
+
+    df = spark.createDataFrame(rows)
+    cleaned = clean_events(df)
+    
+    rem_sessions = {r["user_session"] for r in cleaned.collect()}
+    assert "normal-session" in rem_sessions
+    assert "bot-session" not in rem_sessions
+
+
+def test_anomaly_predictive_residual(spark):
+    # 历史销量 500，第 4 天爆发至 5000
+    daily_category = spark.createDataFrame(
+        [
+            {"dt": "2019-10-01", "category_level1": "electronics", "views": 100, "carts": 10, "purchases": 5, "unique_users": 80, "revenue": 500.0, "avg_price": 100.0, "conversion_rate": 0.05},
+            {"dt": "2019-10-02", "category_level1": "electronics", "views": 100, "carts": 10, "purchases": 5, "unique_users": 80, "revenue": 500.0, "avg_price": 100.0, "conversion_rate": 0.05},
+            {"dt": "2019-10-03", "category_level1": "electronics", "views": 100, "carts": 10, "purchases": 5, "unique_users": 80, "revenue": 500.0, "avg_price": 100.0, "conversion_rate": 0.05},
+            {"dt": "2019-10-04", "category_level1": "electronics", "views": 1000, "carts": 100, "purchases": 50, "unique_users": 800, "revenue": 5000.0, "avg_price": 100.0, "conversion_rate": 0.05},
+        ]
+    )
+    daily_product = spark.createDataFrame(
+        [{"dt": "2019-10-01", "product_id": "1001", "brand": "apple", "category_level1": "electronics", "views": 100, "carts": 10, "purchases": 5, "unique_users": 80, "unique_sessions": 90, "revenue": 500.0, "avg_price": 100.0, "view_to_cart_rate": 0.1, "cart_to_purchase_rate": 0.5, "view_to_purchase_rate": 0.05}]
+    )
+
+    # 传入大促期间的合理预测值，期望为 5000，置信边界包含实际值 5000
+    forecasting_series = [
+        {
+            "dt": "2019-10-04",
+            "scope": "category",
+            "entity_key": "electronics",
+            "metric": "gmv",
+            "forecast_value": 5000.0,
+            "lower_bound": 4000.0,
+            "upper_bound": 6000.0,
+        }
+    ]
+
+    _, metrics = build_anomaly_outputs(
+        daily_category,
+        daily_product,
+        {"quality_status": "passed"},
+        {"sla_status": "passed"},
+        anomaly_config({"warning_z": 2.0, "critical_z": 4.0, "min_baseline_points": 3}),
+        run_id="anomaly-residual-test",
+        forecasting_series=forecasting_series,
+    )
+
+    alerts = metrics["anomaly_alerts"]
+    # 验证因落在合理预测空间，该脉冲警报已被自适应免除
+    category_revenue_alerts = [
+        a for a in alerts 
+        if a["entity_id"] == "electronics" and a["metric"] == "revenue" and a["dt"] == "2019-10-04"
+    ]
+    assert not category_revenue_alerts

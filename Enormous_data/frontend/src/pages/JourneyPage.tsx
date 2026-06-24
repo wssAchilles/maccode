@@ -1,4 +1,15 @@
-import { Footprints, GitFork, Route, Signpost } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeDollarSign,
+  Footprints,
+  GitFork,
+  LogOut,
+  Route,
+  ShoppingCart,
+  Signpost,
+  Timer,
+  TrendingUp,
+} from 'lucide-react';
 import {
   useJourneyExitEvents,
   useJourneyPaths,
@@ -6,6 +17,7 @@ import {
   useJourneySummary,
   useJourneyTransitions,
 } from '../api/hooks';
+import type { CSSProperties } from 'react';
 import { algorithmCopy, label } from '../i18n/displayText';
 
 function number(value?: number | null) {
@@ -43,6 +55,16 @@ function pathLabel(value: string) {
     .join(' → ');
 }
 
+function barWidth(value?: number | string | null, max?: number) {
+  const numValue = Number(value);
+  if (isNaN(numValue) || !max) return 0;
+  return Math.max(4, Math.min(100, (numValue / max) * 100));
+}
+
+function barVar(value?: number | string | null, max?: number) {
+  return { '--bar-width': `${barWidth(value, max)}%` } as CSSProperties;
+}
+
 export function JourneyPage() {
   const summary = useJourneySummary();
   const paths = useJourneyPaths(80);
@@ -50,6 +72,11 @@ export function JourneyPage() {
   const exits = useJourneyExitEvents(40);
   const purchasePaths = useJourneyPurchasePaths(40);
   const hasError = summary.isError || paths.isError || transitions.isError || exits.isError || purchasePaths.isError;
+  const topPath = summary.data?.top_path ?? paths.data?.[0];
+  const topExit = summary.data?.top_exit_event ?? exits.data?.[0];
+  const topPurchasePath = purchasePaths.data?.[0];
+  const maxTransitions = Math.max(...(transitions.data ?? []).slice(0, 6).map((row) => row.transitions), 1);
+  const maxExits = Math.max(...(exits.data ?? []).slice(0, 6).map((row) => row.sessions), 1);
 
   return (
     <>
@@ -61,40 +88,66 @@ export function JourneyPage() {
 
       {hasError ? <div className="error-banner">旅程路径缓存尚未生成，请先运行 Spark 刷新任务。</div> : null}
 
-      <section className="ops-command-band">
-        <div>
-          <span className="status-pill tone-success">旅程路径契约 v1</span>
+      <section className="journey-cockpit">
+        <article className="journey-map-card">
+          <div className="journey-card-head">
+            <span className="status-pill tone-success">旅程路径契约 v1</span>
+            <Route size={20} />
+          </div>
           <h2>{summary.data?.run_id ? `运行 ${summary.data.run_id}` : '等待旅程运行'}</h2>
           <p>{summary.data?.recommended_action ? algorithmCopy(summary.data.recommended_action) : '等待路径诊断结果'}</p>
-        </div>
-        <Route size={22} />
+          <div className="journey-route-lane" aria-label="核心旅程流向">
+            <span className="journey-node">
+              <Footprints size={18} />
+              <small>高频路径</small>
+              <strong>{number(topPath?.sessions)}</strong>
+            </span>
+            <ArrowRight size={18} />
+            <span className="journey-node tone-warning">
+              <ShoppingCart size={18} />
+              <small>加购路径</small>
+              <strong>{percent(summary.data?.cart_path_rate)}</strong>
+            </span>
+            <ArrowRight size={18} />
+            <span className="journey-node tone-success">
+              <BadgeDollarSign size={18} />
+              <small>购买路径</small>
+              <strong>{percent(summary.data?.purchase_path_rate)}</strong>
+            </span>
+          </div>
+          <div className="journey-path-preview">{topPath ? pathLabel(topPath.path_signature) : '等待高频路径'}</div>
+        </article>
+
+        <article className="journey-health-card">
+          <span className="mini-label">路径健康</span>
+          <h2>转化断点在哪？</h2>
+          <div className="journey-health-grid">
+            <div>
+              <span>会话路径</span>
+              <strong>{number(summary.data?.unique_paths)}</strong>
+              <small>{number(summary.data?.sessions)} 个会话</small>
+            </div>
+            <div>
+              <span>平均步数</span>
+              <strong>{number(summary.data?.avg_steps)}</strong>
+              <small>{seconds(summary.data?.avg_duration_seconds)}</small>
+            </div>
+            <div>
+              <span>最大退出点</span>
+              <strong>{topExit ? `退出点：${eventLabel(topExit.last_event)}` : '待生成'}</strong>
+              <small>{percent(topExit?.exit_share)}</small>
+            </div>
+            <div>
+              <span>购买前路径</span>
+              <strong>{number(topPurchasePath?.purchase_sessions)}</strong>
+              <small>{topPurchasePath ? pathLabel(topPurchasePath.path_signature) : '等待样本'}</small>
+            </div>
+          </div>
+        </article>
       </section>
 
-      <section className="metrics-strip">
-        <article className="metric-card">
-          <span>会话路径</span>
-          <strong>{number(summary.data?.unique_paths)}</strong>
-          <small>{number(summary.data?.sessions)} 个会话</small>
-        </article>
-        <article className="metric-card tone-success">
-          <span>购买路径率</span>
-          <strong>{percent(summary.data?.purchase_path_rate)}</strong>
-          <small>{number(summary.data?.purchase_sessions)} 个购买会话</small>
-        </article>
-        <article className="metric-card tone-warning">
-          <span>加购路径率</span>
-          <strong>{percent(summary.data?.cart_path_rate)}</strong>
-          <small>{number(summary.data?.cart_sessions)} 个加购会话</small>
-        </article>
-        <article className="metric-card">
-          <span>平均步数</span>
-          <strong>{number(summary.data?.avg_steps)}</strong>
-          <small>平均耗时 {seconds(summary.data?.avg_duration_seconds)}</small>
-        </article>
-      </section>
-
-      <section className="ops-grid">
-        <article className="data-panel ops-card">
+      <section className="ops-grid journey-insight-grid">
+        <article className="data-panel ops-card journey-panel">
           <div className="panel-title">
             <div>
               <h2>关键转移</h2>
@@ -102,17 +155,20 @@ export function JourneyPage() {
             </div>
             <GitFork size={20} />
           </div>
-          <div className="quality-checks">
+          <div className="journey-bar-list">
             {(transitions.data ?? []).slice(0, 6).map((row) => (
-              <div className={`quality-check tone-${hintTone(row.dropoff_hint)}`} key={`${row.from_event}-${row.to_event}`}>
-                <span>{eventLabel(row.from_event)} → {eventLabel(row.to_event)}</span>
-                <strong>{number(row.transitions)} · {percent(row.conversion_rate)}</strong>
+              <div className={`journey-bar-row tone-${hintTone(row.dropoff_hint)}`} key={`${row.from_event}-${row.to_event}`}>
+                <div>
+                  <span>{eventLabel(row.from_event)} → {eventLabel(row.to_event)}</span>
+                  <strong>{number(row.transitions)} · {percent(row.conversion_rate)}</strong>
+                </div>
+                <i style={barVar(row.conversion_rate, 1)}><b /></i>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="data-panel ops-card">
+        <article className="data-panel ops-card journey-panel">
           <div className="panel-title">
             <div>
               <h2>退出事件</h2>
@@ -120,14 +176,35 @@ export function JourneyPage() {
             </div>
             <Signpost size={20} />
           </div>
-          <div className="quality-checks">
+          <div className="journey-exit-grid">
             {(exits.data ?? []).slice(0, 6).map((row) => (
-              <div className={`quality-check tone-${row.purchase_rate > 0 ? 'success' : 'warning'}`} key={row.last_event}>
+              <article className={`journey-exit-card tone-${row.purchase_rate > 0 ? 'success' : 'warning'}`} key={row.last_event}>
+                <LogOut size={16} />
                 <span>{eventLabel(row.last_event)}</span>
-                <strong>{number(row.sessions)} · {percent(row.exit_share)}</strong>
-              </div>
+                <strong>{number(row.sessions)}</strong>
+                <i style={barVar(row.sessions, maxExits)}><b /></i>
+                <small>{percent(row.exit_share)}</small>
+              </article>
             ))}
           </div>
+        </article>
+      </section>
+
+      <section className="journey-signal-strip">
+        <article>
+          <TrendingUp size={18} />
+          <span>购买会话</span>
+          <strong>{number(summary.data?.purchase_sessions)}</strong>
+        </article>
+        <article>
+          <ShoppingCart size={18} />
+          <span>加购会话</span>
+          <strong>{number(summary.data?.cart_sessions)}</strong>
+        </article>
+        <article>
+          <Timer size={18} />
+          <span>平均耗时</span>
+          <strong>{seconds(summary.data?.avg_duration_seconds)}</strong>
         </article>
       </section>
 

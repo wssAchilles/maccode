@@ -1,75 +1,63 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{需求分析（设计目标）}
+\chapter{需求分析与实验对照设计}
 
-\section{总体目标}
+\section{系统总体目标与工程验收指标}
 
-系统的总体目标是构建一套可运行、可复现、可对比的电商行为大数据分析实验平台。平台既要能处理真实 Kaggle Oct/Nov 行为数据，又要适合本机 Docker Desktop 环境，不能为了追求形式上的“集群”而频繁 OOM 或占满磁盘。最终交付应包含四类成果：第一，ARM64 Docker Hadoop YARN 实验集群；第二，Spark 分析 pipeline 与内存优化实现；第三，1\% 和 5\% benchmark 对照结果；第四，前端 Ops 页面和 LaTeX 报告中的实验图表。
+系统的总体目标是构建一套可运行、可复现、可对比的电商行为大数据分析实验平台。平台既要能处理真实 Kaggle 电商用户行为数据，又要适合本机 Docker 容器环境，不能为了追求形式上的“分布式集群”而频繁触发物理内存 OOM 或占满磁盘空间。最终的工程交付应包含四类成果：第一，支持自适应降级的 ARM64 Docker Hadoop YARN 实验集群；第二，基于 PySpark 的分布式数据分析 Pipeline 与全链路内存优化控制实现；第三，1\% 和 5\% 多梯度样本下的性能 Benchmark 对照评估证据；第四，前端 Ops 运维证据面板和 LaTeX 报告中的实验图表。
 
-\section{功能需求}
+在工程验收指标上，系统必须通过以下硬性门槛：首先，执行 \texttt{docker compose --profile yarn-lab up -d} 后，NameNode、ResourceManager、NodeManager、Spark Client 和 Spark History Server 等集群基础容器能够正常拉起；其次，\texttt{start-dev.sh} 脚本能一键在宿主机 \texttt{5051} 和 \texttt{5173} 端口启动 Flask 后端与 Vite 前端，并正确关闭占用冲突端口的陈旧进程；第三，Spark 作业的提交能够顺利生成 \texttt{SUCCEEDED} application；最后，前端 Ops 面板能够完整显示每次运行的输入快照、YARN application id、质量状态以及多维性能 Benchmark 数据。
 
-\subsection{数据处理功能}
+在实验验收指标上，系统需要对每个模块的运行状态进行定量评估。记录的指标包括纯计算耗时（Elapsed Seconds）、数据吞吐率（Cleaned Rows/Sec）、输入输出行数、Driver 侧 RSS 物理内存峰值、Executor 侧 Shuffle 读写与 Spill 磁盘溢写字节数、任务失败/重试次数以及质量门禁通过状态。其中最关键的性能结论指标如下：
+\begin{enumerate}
+    \item 无论何种数据规模，Driver 进程均不会因为明细数据的 \texttt{collect()} 收集操作或大体积 JSON 的载入而触发 OOM 崩溃。
+    \item 商品推荐、用户留存等计算模块在 Executor 侧执行时，其明细收集行数必须固定在预览阈值（Preview Limit）内，质量指标的统计分析改由 Spark 聚合算子分布式处理。
+    \item 关联分析中的候选 Key 组合数必须受控，不能出现失控的二次级组合膨胀。
+    \item 5\% 样本相较 1\% 样本的整体 Pipeline 运行时间增长应接近线性，无因执行计划不合理导致的长尾 Task 拖延。
+    \item Spark History Server 能够正常查看 event log 物理计划，通过限制执行计划 plan 字符串的保存长度，控制日志体积不触发 History 服务的处理崩溃。
+\end{enumerate}
 
-数据处理链路需要支持从原始 CSV 到清洗缓存的完整闭环。原始数据来自 Kaggle 电商行为数据集，字段包含 \texttt{event\_time}、\texttt{event\_type}、\texttt{product\_id}、\texttt{category\_id}、\texttt{category\_code}、\texttt{brand}、\texttt{price}、\texttt{user\_id} 和 \texttt{user\_session}。系统需要完成字段类型转换、异常价格过滤、重复事件处理、会话事实表生成、日趋势、转化漏斗、商品推荐、关联图谱、异常信号、cohort、forecasting、experimentation 和 feature mart 等分析模块。
+\section{系统功能与非功能性需求分析}
 
-\subsection{集群运行功能}
+在系统功能需求方面，数据处理链路需要实现从原始半结构化 CSV 事件流到分析层指标缓存的完整闭环。原始数据字段包含 \texttt{event\_time}、\texttt{event\_type}、\texttt{product\_id}、\texttt{category\_id}、\texttt{category\_code}、\texttt{brand}、\texttt{price}、\texttt{user\_id} 和 \texttt{user\_session}。系统需要分布式计算会话事实表、多维指标看板立方体、日趋势、转化漏斗、商品推荐、关联图谱、异常信号、留存矩阵、销量预测以及多触点收入归因等模块。集群运行功能需要支持 Spark 提交流水线在 YARN client mode 下的稳定分配，各组件 UI 必须使用偏移后的安全端口以规避本地端口冲突。运维展示功能则要求 React 前端不仅能展示业务数据，还需支持手动触发异步 Spark 作业刷新、查询 SQLite 作业元数据并实时跟踪清洗质量门禁状态。
 
-系统需要通过 Docker Compose 启动 Hadoop YARN 实验集群，并支持 Spark submit 在 YARN client mode 下运行。NameNode、ResourceManager 和 Spark History Server 必须提供可访问 UI，便于答辩时展示 HDFS 文件、YARN application 和 Spark event log。由于已有 \texttt{master} 容器占用默认端口，新集群必须使用偏移端口，避免端口冲突。
+在非功能需求方面，首先，系统在容器镜像构建上必须具备高度的架构兼容性。针对 ARM Mac 设备，所有 Hadoop 与 Spark 底层基础镜像必须使用 ARM64 架构进行编译，拒绝下载 amd64 镜像触发跨架构模拟带来的超额性能损耗。其次，内存稳定性是本系统的核心考量。系统并不承诺任意无界规模数据下均不出现内存问题，而是要求在受限物理资源下合理控制 Shuffle partition、在 DataFrame 链式聚合时于合适位置 persit 指标并在结束后 unpersist，将 driver 收集与 JSON 构建限制在有界 summary 中。最后，证据可追溯性（Lineage \& Provenance）要求每次计算作业均需将当前的配置快照、输入文件校验和、清理策略和 YARN application id 持久化写入数据库与运行 Manifest，由 Flask 指标检索服务进行血缘一致性证明，拒绝任何人工硬编码数据的混入。
 
-\subsection{运维展示功能}
+\section{1\% 与 5\% 多配置梯度实验对照设计}
 
-前端 Ops 页面需要展示当前 Spark 作业状态、质量门禁、HDFS 输入快照、Spark application id、Spark History 指标状态、最近运行记录和 benchmark 证据。新增 benchmark 展示应覆盖 1\% 五组、5\% 两组实验结果，并突出 YARN-only、AQE、算法优化和 Parquet 输入之间的差异。
+为深入定量评估系统在分布式环境下的性能特征、网络 Shuffle 开销以及调优机制的实际增益，本项目在需求分析阶段设计了多配置梯度实验。其中，1\% 样本用于执行五组多配置对照实验，以此排查性能瓶颈并验证特定优化算子的作用；5\% 样本则用于执行大压力极限跑通，用以评估系统在数据量扩大 5 倍时的可扩展性。
 
-\section{非功能需求}
+实验对照组的详细参数设计如表\ref{tab:experiment-groups}所示：
 
-\subsection{架构兼容性}
-
-本项目必须兼容 ARM Mac。所有 Hadoop/Spark 相关镜像必须使用 ARM64 架构，不能下载 amd64 镜像，也不能依赖 \texttt{linux/amd64} 平台模拟。最终镜像不采用 \texttt{docker commit master} 这种粗暴方式，而是构建只包含 Java、Hadoop、必要配置和启动脚本的精简镜像。
-
-\subsection{内存稳定性}
-
-系统目标不是承诺任意数据规模都不会 OOM，而是在本机资源范围内显著降低 OOM 风险，并通过实验给出证据。driver 端不得收集完整明细；大输出应落地为 Parquet；JSON 只保留 summary、quality、manifest 和 preview；模块缓存必须使用 \texttt{MEMORY\_AND\_DISK}，并在模块结束后释放。对于关联分析、推荐和异常检测，应设置候选上界，避免二次级组合膨胀。
-
-\subsection{证据可追溯性}
-
-每次运行应保留 run manifest、配置 hash、input snapshot、quality report、Spark application id 和 output artifact row counts。Benchmark 结果应保存到 \texttt{data/benchmarks}，报告图表保存到 \texttt{报告/figures}。前端展示的数据不应依赖人工复制终端输出，而应由 API 自动读取正式 benchmark 文件。
-
-\section{实验设计}
-
-实验规模分为 1\% 用户级样本和 5\% 用户级样本。1\% 样本用于五组对照，5\% 样本用于压力验证。对照组设计如表\ref{tab:experiment-groups}所示。
-
+\renewcommand{\tabularxcolumn}[1]{m{#1}}
 \begin{table}[htbp]
 \centering
-\caption{实验对照组设计}
+\caption{多配置对照实验设计矩阵}
 \label{tab:experiment-groups}
-\begin{tabularx}{0.95\textwidth}{lX}
+\begin{tabularx}{\textwidth}{l c c c c>{\small}X}
 \toprule
-\textbf{对照组} & \textbf{实验目的} \\
+\textbf{对照组名称} & \textbf{计算核数} & \textbf{数据源} & \textbf{开启 AQE} & \textbf{算法限流} & \textbf{实验验证目的} \\
 \midrule
-Baseline local CSV & 观察单机 local Spark 在 1\% 样本上的基线耗时和 driver 内存。 \\
-YARN-only CSV & 只切换到 YARN client mode，不做算法优化，验证“只加 YARN”是否有效。 \\
-YARN + AQE CSV & 启用 AQE、skew join 和合理 shuffle partitions，验证执行计划优化收益。 \\
-YARN + algorithm CSV & 在 AQE 基础上限制 collect、关联组合和 preview 输出，验证算法层优化收益。 \\
-YARN + Parquet & 使用清洗后的 Parquet 输入，验证列式数据布局收益。 \\
+Baseline local & 4 核 & 本地 CSV & 否 & 否 & 评估本地 Spark 的纯单机基准性能。 \\
+YARN-only CSV & 1 实例 & HDFS CSV & 否 & 否 & 评估仅迁移至 YARN 时的网络与分布式开销。 \\
+YARN + AQE CSV & 1 实例 & HDFS CSV & 是 & 否 & 评估自适应查询执行对物理 Shuffle 的调优。 \\
+YARN + AQE + Algo & 1 实例 & HDFS CSV & 是 & 是 & 评估 Driver 侧数据限流与组合防膨胀的收益。 \\
+YARN + Parquet & 1 实例 & HDFS Parquet & 是 & 是 & 评估列式存储布局对于 I/O 和过滤的增益。 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{验收指标}
+通过这一系列对照组的设置，我们能够剥离出不同物理层级的性能贡献：
+\begin{itemize}
+    \item \textbf{YARN 分布式开销评估}：通过对比 Baseline local 与 YARN-only CSV，我们可以量化在单机多容器环境下，因加入 HDFS 分布式存储读取以及 YARN ResourceManager/NodeManager 容器资源申请和序列化所引入的基础开销。
+    \item \textbf{执行计划优化评估}：对比 YARN-only CSV 和 YARN + AQE CSV，能够证明仅通过增加分布式节点并不会自然带来性能提升；在倾斜数据下，AQE 优化器的分区合并与数据倾斜 Join 处理对于整体耗时下降具有决定性作用。
+    \item \textbf{算法与内存优化评估}：通过第四组实验，验证在 Driver 侧设立数据预览阈值、在推荐模块中限制排序集大小，以及限制 SQL plan 长度对控制内存泄漏与避免 OOM 的实际价值。
+    \item \textbf{存储布局评估}：通过 YARN + Parquet 对照组，量化相较于纯文本 CSV，Parquet 压缩、谓词下推与列裁剪对物理 I/O 和清洗流水线执行的加速比。
 
-系统验收指标包括工程指标和实验指标两类。工程指标要求 \texttt{docker compose --profile yarn-lab up -d} 后，NameNode、ResourceManager、NodeManager、Spark client 和 Spark History Server 能够启动；\texttt{start-dev.sh} 能在 \texttt{5051/5173} 启动后端与前端；HDFS 能保存样本数据；Spark submit 能产生 \texttt{SUCCEEDED} application；前端 Ops 页能显示 benchmark、HDFS 输入、YARN app id 和质量状态。
+\end{itemize}
 
-实验指标要求记录 elapsed seconds、cleaned rows/sec、input rows、output rows、Spark application status、driver peak memory、shuffle/spill 状态、failed/retried task count、output artifact row counts 和 quality gate status。其中最关键的结论阈值如下：
+\section{数据清理与存储安全需求}
 
-\begin{enumerate}
-    \item YARN application 最终状态为 \texttt{SUCCEEDED}。
-    \item driver 不再因为 full result \texttt{collect()} 或大 JSON payload OOM。
-    \item recommendation 明细收集行数固定为 preview limit，质量统计由 Spark 聚合完成。
-    \item \texttt{pair\_base\_rows / cleaned\_rows} 保持在可解释范围内，不能出现未受控的二次级组合膨胀。
-    \item 5\% 样本相较 1\% 样本运行时间增长应接近线性，不能出现失控长尾。
-    \item Spark History Server 能查看最终实验 event log；旧 event log 若触发 JSON 限制，应清理或用限制 plan string 后的日志替代。
-\end{enumerate}
+在大数据实验中，计算任务执行产生的 event log、临时中间结果、清洗后 Parquet 目录以及旧的 Benchmark 数据会快速膨胀，占满 Docker 虚拟磁盘和 HDFS 的 Block 块存储，导致 NameNode 无法分配新的块而导致后续提报作业失败。因此，系统必须具备严格的数据清理需求。
 
-\section{数据清理需求}
-
-旧数据集和旧实验日志会快速占用 Docker 与 HDFS 空间，因此系统需要及时清理冗余产物。清理策略是：保留原始 Kaggle Oct/Nov CSV；保留 1\% 与 5\% 本地样本；保留正式 benchmark 目录；保留最终 6 个 Spark History event log；删除早期 smoke、retry、history recheck benchmark 目录和旧的大 History 日志。清理后的存储快照见第 4 章图\ref{fig:storage-cleanup}。
+清理策略规定：系统需保留原始 Kaggle 电商 CSV 文件与 1\%/5\% 本地样本以供数据可溯源性校验；保留最终完成的 6 个 Spark History event log 供页面展示；而对于在此之前的测试、失败重试、中间临时临时输出以及冗余的 application log，必须在每次新 Benchmark 任务启动前由清理脚本执行物理删除。这既能维持课程实验展示证据的完整性，又可将宿主机 Docker 磁盘总占用控制在安全水位内。

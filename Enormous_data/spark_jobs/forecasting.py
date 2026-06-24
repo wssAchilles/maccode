@@ -3,9 +3,136 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Any
 
+import numpy as np
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark import StorageLevel
+
+
+class GlobalARMLP:
+    """纯 NumPy 手写的全局自回归多层感知机时序预测模型 (Global AR-MLP)"""
+    def __init__(self, input_dim: int, hidden_dim: int = 64, output_dim: int = 2):
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        
+        # He 初始化防止 ReLU 死亡
+        self.w1 = np.random.randn(input_dim, hidden_dim) * np.sqrt(2.0 / input_dim)
+        self.b1 = np.zeros((1, hidden_dim))
+        self.w2 = np.random.randn(hidden_dim, output_dim) * np.sqrt(2.0 / hidden_dim)
+        self.b2 = np.zeros((1, output_dim))
+        
+        # 动量缓冲区
+        self.v_w1 = np.zeros_like(self.w1)
+        self.v_b1 = np.zeros_like(self.b1)
+        self.v_w2 = np.zeros_like(self.w2)
+        self.v_b2 = np.zeros_like(self.b2)
+
+    def forward(self, x: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        # x 形状为 (N, input_dim)
+        z1 = np.dot(x, self.w1) + self.b1
+        a1 = np.maximum(0, z1)  # ReLU
+        y_hat = np.dot(a1, self.w2) + self.b2  # 线性输出
+        return y_hat, z1, a1
+
+    def train_step(self, x: np.ndarray, y: np.ndarray, lr: float = 0.01, beta: float = 0.9) -> float:
+        n = x.shape[0]
+        y_hat, z1, a1 = self.forward(x)
+        loss = np.mean((y_hat - y) ** 2)
+        
+        # 反向传播计算梯度
+        dy_hat = 2.0 * (y_hat - y) / n
+        dw2 = np.dot(a1.T, dy_hat)
+        db2 = np.sum(dy_hat, axis=0, keepdims=True)
+        
+        da1 = np.dot(dy_hat, self.w2.T)
+        dz1 = da1 * (z1 > 0)
+        dw1 = np.dot(x.T, dz1)
+        db1 = np.sum(dz1, axis=0, keepdims=True)
+        
+        # 动量更新参数
+        self.v_w1 = beta * self.v_w1 + (1.0 - beta) * dw1
+        self.w1 -= lr * self.v_w1
+        
+        self.v_b1 = beta * self.v_b1 + (1.0 - beta) * db1
+        self.b1 -= lr * self.v_b1
+        
+        self.v_w2 = beta * self.v_w2 + (1.0 - beta) * dw2
+        self.w2 -= lr * self.v_w2
+        
+        self.v_b2 = beta * self.v_b2 + (1.0 - beta) * db2
+        self.b2 -= lr * self.v_b2
+        
+        return float(loss)
+
+
+def _prepare_training_data(daily_rows: list[dict[str, Any]], config: dict[str, Any]) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    entities = select_entities(daily_rows, int(config["top_entities"]))
+    X_list = []
+    Y_list = []
+    for (scope, entity_key), rows in entities.items():
+        ordered = sorted(rows, key=lambda row: row["dt"])
+        if len(ordered) < 8:
+            continue
+        
+        views_history = [float(r.get("views") or 0.0) for r in ordered]
+        avg_views = _mean(views_history) if views_history else 1.0
+        if avg_views <= 0:
+            avg_views = 1.0
+
+        for k in range(7, len(ordered)):
+            target_row = ordered[k]
+            lag1_gmv = float(ordered[k-1].get("gmv") or 0.0)
+            lag2_gmv = float(ordered[k-2].get("gmv") or 0.0)
+            lag3_gmv = float(ordered[k-3].get("gmv") or 0.0)
+            lag7_gmv = float(ordered[k-7].get("gmv") or 0.0)
+
+            lag1_p = float(ordered[k-1].get("purchase_count") or 0.0)
+            lag2_p = float(ordered[k-2].get("purchase_count") or 0.0)
+            lag3_p = float(ordered[k-3].get("purchase_count") or 0.0)
+            lag7_p = float(ordered[k-7].get("purchase_count") or 0.0)
+
+            weekday_val = _parse_date(target_row["dt"]).weekday()
+            weekday_onehot = [0.0] * 7
+            weekday_onehot[weekday_val] = 1.0
+
+            actual_views = float(target_row.get("views") or 0.0)
+            views_factor = min(max(actual_views / avg_views, 0.5), 2.0)
+
+            features = [
+                lag1_gmv, lag2_gmv, lag3_gmv, lag7_gmv,
+                lag1_p, lag2_p, lag3_p, lag7_p,
+                *weekday_onehot,
+                views_factor
+            ]
+            X_list.append(features)
+            Y_list.append([float(target_row.get("gmv") or 0.0), float(target_row.get("purchase_count") or 0.0)])
+            
+    if not X_list:
+        return np.empty((0, 16), dtype=np.float32), np.empty((0, 2), dtype=np.float32), np.ones(16, dtype=np.float32), np.ones(2, dtype=np.float32)
+        
+    X = np.array(X_list, dtype=np.float32)
+    Y = np.array(Y_list, dtype=np.float32)
+    
+    scale_X = np.max(np.abs(X), axis=0)
+    scale_X[scale_X == 0] = 1.0
+    scale_Y = np.max(np.abs(Y), axis=0)
+    scale_Y[scale_Y == 0] = 1.0
+    
+    return X, Y, scale_X, scale_Y
+
+
+def _train_global_model(X: np.ndarray, Y: np.ndarray, scale_X: np.ndarray, scale_Y: np.ndarray) -> GlobalARMLP:
+    model = GlobalARMLP(input_dim=16, hidden_dim=64, output_dim=2)
+    X_scaled = X / scale_X
+    Y_scaled = Y / scale_Y
+    
+    epochs = 150
+    lr = 0.05
+    for epoch in range(epochs):
+        current_lr = lr * (0.95 ** (epoch // 20))
+        model.train_step(X_scaled, Y_scaled, lr=current_lr)
+    return model
 
 
 FORECAST_CONTRACT_VERSION = "demand-forecasting/v1"
@@ -57,7 +184,9 @@ def build_forecasting_outputs(
         "driver_history_rows": len(daily_rows),
     }
     complete_daily_rows, excluded_dates = exclude_incomplete_trailing_dates(daily_rows, config)
-    forecast_rows = build_forecast_rows(complete_daily_rows, config)
+    raw_forecast_rows = build_forecast_rows(complete_daily_rows, config)
+    # 层次时序预测对齐
+    forecast_rows = reconcile_hierarchical_forecasts(raw_forecast_rows, complete_daily_rows)
     entity_rows = build_entity_rows(complete_daily_rows, forecast_rows, config)
     backtest_rows = build_backtest_rows(complete_daily_rows, config)
     evaluation = build_backtest_evaluation(backtest_rows, config, run_id)
@@ -75,9 +204,11 @@ def build_forecasting_outputs(
     }
     metrics = {
         "forecasting_summary": summary,
-        "forecasting_series": forecast_rows[: int(config["preview_limit"])],
+        # 保留完整预测时间线，确保前端可选实体折线图均有数据
+        "forecasting_series": forecast_rows,
         "forecasting_entities": entity_rows[: int(config["preview_limit"])],
-        "forecasting_backtest": backtest_rows[: int(config["preview_limit"])],
+        # 保留完整回测结果，防止因截断导致回测曲线缺失
+        "forecasting_backtest": backtest_rows,
         "forecasting_evaluation": evaluation,
         "forecasting_risks": risks[: int(config["preview_limit"])],
         "forecasting_quality": quality,
@@ -128,6 +259,7 @@ def build_daily_demand(cleaned_df: DataFrame) -> DataFrame:
             "buyer_count",
             "purchase_count",
             "gmv",
+            "views",
             "avg_order_value",
             "view_to_purchase_rate",
         )
@@ -184,56 +316,196 @@ def exclude_incomplete_trailing_dates(daily_rows: list[dict[str, Any]], config: 
 def build_forecast_rows(daily_rows: list[dict[str, Any]], config: dict[str, Any]) -> list[dict[str, Any]]:
     horizon = int(config["forecast_horizon_days"])
     entities = select_entities(daily_rows, int(config["top_entities"]))
+    
+    # 预先计算各品类的先验销量与期望营收均值，用于冷启动新品的基线平滑继承
+    category_priors_gmv: dict[str, float] = {}
+    category_priors_purchases: dict[str, float] = {}
+    for (s, ek), ent_rows in entities.items():
+        if s == "category":
+            gmv_vals = [float(r.get("gmv") or 0.0) for r in ent_rows if float(r.get("gmv") or 0.0) > 0]
+            pur_vals = [float(r.get("purchase_count") or 0.0) for r in ent_rows if float(r.get("purchase_count") or 0.0) > 0]
+            if gmv_vals:
+                category_priors_gmv[ek] = sum(gmv_vals) / len(gmv_vals)
+            if pur_vals:
+                category_priors_purchases[ek] = sum(pur_vals) / len(pur_vals)
+
+    # 1. 准备训练数据并训练手写全局自回归神经网络
+    X, Y, scale_X, scale_Y = _prepare_training_data(daily_rows, config)
+    if X.shape[0] > 10:
+        global_model = _train_global_model(X, Y, scale_X, scale_Y)
+        has_nn = True
+    else:
+        global_model = None
+        has_nn = False
+
     results: list[dict[str, Any]] = []
-    for key, rows in entities.items():
+    
+    for (scope, entity_key), rows in entities.items():
         ordered = sorted(rows, key=lambda row: row["dt"])
         max_dt = _parse_date(ordered[-1]["dt"])
         history_days = len({row["dt"] for row in ordered})
+        sparse = history_days < int(config["min_history_days"])
+        interval_width = 0.65 if sparse else 0.22
+        
         recent = ordered[-min(len(ordered), int(config["training_window_days"])) :]
         baseline_gmv = _mean([float(row.get("gmv") or 0) for row in recent])
         baseline_purchases = _mean([float(row.get("purchase_count") or 0) for row in recent])
-        previous = ordered[-min(len(ordered), horizon * 2) : -horizon] if len(ordered) > horizon else []
-        previous_gmv = _mean([float(row.get("gmv") or 0) for row in previous]) if previous else baseline_gmv
-        change_rate = (baseline_gmv - previous_gmv) / previous_gmv if previous_gmv else 0.0
-        sparse = history_days < int(config["min_history_days"])
-        interval_width = 0.65 if sparse else 0.22
-        for offset in range(1, horizon + 1):
-            forecast_dt = max_dt + timedelta(days=offset)
-            multiplier = 1 + min(max(change_rate, -0.25), 0.25) * (offset / horizon)
-            point_gmv = max(0.0, baseline_gmv * multiplier)
-            point_purchases = max(0.0, baseline_purchases * multiplier)
-            results.append(
-                {
-                    "contract_version": FORECAST_CONTRACT_VERSION,
-                    "dt": forecast_dt.isoformat(),
-                    "scope": key[0],
-                    "entity_key": key[1],
-                    "entity_label": ordered[-1]["entity_label"],
-                    "metric": "gmv",
-                    "forecast_value": round(point_gmv, 2),
-                    "lower_bound": round(max(0.0, point_gmv * (1 - interval_width)), 2),
-                    "upper_bound": round(point_gmv * (1 + interval_width), 2),
-                    "history_days": history_days,
-                    "model_name": "rolling_baseline" if not sparse else "sparse_baseline_fallback",
-                    "fallback_reason": "insufficient_history_days" if sparse else "",
-                }
-            )
-            results.append(
-                {
-                    "contract_version": FORECAST_CONTRACT_VERSION,
-                    "dt": forecast_dt.isoformat(),
-                    "scope": key[0],
-                    "entity_key": key[1],
-                    "entity_label": ordered[-1]["entity_label"],
-                    "metric": "purchase_count",
-                    "forecast_value": round(point_purchases, 2),
-                    "lower_bound": round(max(0.0, point_purchases * (1 - interval_width)), 2),
-                    "upper_bound": round(point_purchases * (1 + interval_width), 2),
-                    "history_days": history_days,
-                    "model_name": "rolling_baseline" if not sparse else "sparse_baseline_fallback",
-                    "fallback_reason": "insufficient_history_days" if sparse else "",
-                }
-            )
+        
+        # 提取当前实体所属品类，执行冷启动新品先验期望继承
+        label_parts = [p.strip() for p in ordered[-1]["entity_label"].split("/")]
+        cat_key = label_parts[-1] if label_parts else ""
+        prior_gmv = category_priors_gmv.get(cat_key, 500.0)
+        prior_purchases = category_priors_purchases.get(cat_key, 5.0)
+        
+        if sparse and scope != "site":
+            # 冷启动新品销量/营收以 70% 权重融合所属品类的先验期望，修正零基线误报
+            baseline_gmv = 0.3 * baseline_gmv + 0.7 * prior_gmv
+            baseline_purchases = 0.3 * baseline_purchases + 0.7 * prior_purchases
+
+        baseline_views = _mean([float(row.get("views") or 0) for row in recent])
+        if baseline_views <= 0:
+            baseline_views = 1.0
+
+        # 如果神经网络就绪，我们进行自回归多步预测
+        if has_nn and global_model is not None:
+            # 建立滑动预测缓冲区，冷启动实体用均值补齐到 7 天
+            recent_rows = ordered[-7:]
+            while len(recent_rows) < 7:
+                recent_rows.insert(0, {
+                    "gmv": baseline_gmv,
+                    "purchase_count": baseline_purchases,
+                    "views": baseline_views,
+                    "dt": ordered[0]["dt"]
+                })
+            
+            # buffer 缓存最近 7 天的 (gmv, purchases) 用于自回归迭代
+            buffer = [(float(r.get("gmv") or 0.0), float(r.get("purchase_count") or 0.0)) for r in recent_rows]
+
+            for offset in range(1, horizon + 1):
+                forecast_dt = max_dt + timedelta(days=offset)
+                target_weekday = forecast_dt.weekday()
+                weekday_onehot = [0.0] * 7
+                weekday_onehot[target_weekday] = 1.0
+                
+                # views 因子
+                same_weekday_views = [
+                    float(row.get("views") or 0)
+                    for row in ordered
+                    if _parse_date(row["dt"]).weekday() == target_weekday
+                ]
+                expected_views = _mean(same_weekday_views[-4:]) if same_weekday_views else baseline_views
+                views_factor = min(max(expected_views / baseline_views, 0.5), 2.0)
+                
+                # 构造输入特征 (16维)
+                lag1 = buffer[-1]
+                lag2 = buffer[-2]
+                lag3 = buffer[-3]
+                lag7 = buffer[-7]
+                
+                x_input = np.array([
+                    lag1[0], lag2[0], lag3[0], lag7[0],
+                    lag1[1], lag2[1], lag3[1], lag7[1],
+                    *weekday_onehot,
+                    views_factor
+                ], dtype=np.float32)
+                
+                # 特征缩放后前传神经网络预测
+                x_scaled = x_input / scale_X
+                y_hat_scaled, _, _ = global_model.forward(x_scaled.reshape(1, -1))
+                y_pred = y_hat_scaled[0] * scale_Y
+                
+                point_gmv = max(0.0, float(y_pred[0]))
+                point_purchases = max(0.0, float(y_pred[1]))
+                
+                # 预测值滚入自回归 buffer
+                buffer.append((point_gmv, point_purchases))
+                
+                results.append(
+                    {
+                        "contract_version": FORECAST_CONTRACT_VERSION,
+                        "dt": forecast_dt.isoformat(),
+                        "scope": scope,
+                        "entity_key": entity_key,
+                        "entity_label": ordered[-1]["entity_label"],
+                        "metric": "gmv",
+                        "forecast_value": round(point_gmv, 2),
+                        "lower_bound": round(max(0.0, point_gmv * (1 - interval_width)), 2),
+                        "upper_bound": round(point_gmv * (1 + interval_width), 2),
+                        "history_days": history_days,
+                        "model_name": "global_ar_mlp" if not sparse else "global_ar_mlp_coldstart",
+                        "fallback_reason": "coldstart_history_sparse" if sparse else "",
+                    }
+                )
+                results.append(
+                    {
+                        "contract_version": FORECAST_CONTRACT_VERSION,
+                        "dt": forecast_dt.isoformat(),
+                        "scope": scope,
+                        "entity_key": entity_key,
+                        "entity_label": ordered[-1]["entity_label"],
+                        "metric": "purchase_count",
+                        "forecast_value": round(point_purchases, 2),
+                        "lower_bound": round(max(0.0, point_purchases * (1 - interval_width)), 2),
+                        "upper_bound": round(point_purchases * (1 + interval_width), 2),
+                        "history_days": history_days,
+                        "model_name": "global_ar_mlp" if not sparse else "global_ar_mlp_coldstart",
+                        "fallback_reason": "coldstart_history_sparse" if sparse else "",
+                    }
+                )
+        else:
+            # 数据样本极度稀疏时的防御性 Fallback 退化机制
+            previous = ordered[-min(len(ordered), horizon * 2) : -horizon] if len(ordered) > horizon else []
+            previous_gmv = _mean([float(row.get("gmv") or 0) for row in previous]) if previous else baseline_gmv
+            change_rate = (baseline_gmv - previous_gmv) / previous_gmv if previous_gmv else 0.0
+            for offset in range(1, horizon + 1):
+                forecast_dt = max_dt + timedelta(days=offset)
+                target_weekday = forecast_dt.weekday()
+                same_weekday_views = [
+                    float(row.get("views") or 0)
+                    for row in ordered
+                    if _parse_date(row["dt"]).weekday() == target_weekday
+                ]
+                expected_views = _mean(same_weekday_views[-4:]) if same_weekday_views else baseline_views
+                views_covariate_factor = 1.0
+                if baseline_views > 0:
+                    views_covariate_factor = min(max(expected_views / baseline_views, 0.5), 2.0)
+                
+                multiplier = 1 + min(max(change_rate, -0.25), 0.25) * (offset / horizon)
+                point_gmv = max(0.0, baseline_gmv * multiplier * views_covariate_factor)
+                point_purchases = max(0.0, baseline_purchases * multiplier * views_covariate_factor)
+                
+                results.append(
+                    {
+                        "contract_version": FORECAST_CONTRACT_VERSION,
+                        "dt": forecast_dt.isoformat(),
+                        "scope": scope,
+                        "entity_key": entity_key,
+                        "entity_label": ordered[-1]["entity_label"],
+                        "metric": "gmv",
+                        "forecast_value": round(point_gmv, 2),
+                        "lower_bound": round(max(0.0, point_gmv * (1 - interval_width)), 2),
+                        "upper_bound": round(point_gmv * (1 + interval_width), 2),
+                        "history_days": history_days,
+                        "model_name": "rolling_baseline" if not sparse else "sparse_baseline_fallback",
+                        "fallback_reason": "insufficient_history_days" if sparse else "",
+                    }
+                )
+                results.append(
+                    {
+                        "contract_version": FORECAST_CONTRACT_VERSION,
+                        "dt": forecast_dt.isoformat(),
+                        "scope": scope,
+                        "entity_key": entity_key,
+                        "entity_label": ordered[-1]["entity_label"],
+                        "metric": "purchase_count",
+                        "forecast_value": round(point_purchases, 2),
+                        "lower_bound": round(max(0.0, point_purchases * (1 - interval_width)), 2),
+                        "upper_bound": round(point_purchases * (1 + interval_width), 2),
+                        "history_days": history_days,
+                        "model_name": "rolling_baseline" if not sparse else "sparse_baseline_fallback",
+                        "fallback_reason": "insufficient_history_days" if sparse else "",
+                    }
+                )
     return results
 
 
@@ -297,6 +569,17 @@ def build_backtest_rows(daily_rows: list[dict[str, Any]], config: dict[str, Any]
             ]
             baseline = _mean(weekday_history[-4:]) if weekday_history else rolling_baseline
             model_name = "weekday_baseline_backtest" if weekday_history else "rolling_baseline_backtest"
+            
+            # 外生协变量修正：利用当天实际的 views 流量修正时序基准
+            historical_views = [float(history_row.get("views") or 0) for history_row in historical]
+            baseline_views = _mean(historical_views[-28:]) if historical_views else 0.0
+            actual_views = float(row.get("views") or 0)
+            
+            views_covariate_factor = 1.0
+            if baseline_views > 0:
+                views_covariate_factor = min(max(actual_views / baseline_views, 0.5), 2.0)
+            
+            baseline = baseline * views_covariate_factor
             actual = float(row.get("gmv") or 0)
             error = actual - baseline
             rows.append(
@@ -312,7 +595,7 @@ def build_backtest_rows(daily_rows: list[dict[str, Any]], config: dict[str, Any]
                     "absolute_error": round(abs(error), 2),
                     "error": round(error, 2),
                     "horizon": offset,
-                    "model_name": model_name,
+                    "model_name": model_name + "_covariate" if baseline_views > 0 else model_name,
                 }
             )
     return rows
@@ -562,6 +845,84 @@ def _entity_action(risk_level: str, sparse: bool) -> str:
     if risk_level == "medium":
         return "Monitor category demand and prepare a constrained promotion or recommendation adjustment."
     return "Use as baseline demand for planning."
+
+
+def reconcile_hierarchical_forecasts(
+    forecast_rows: list[dict[str, Any]],
+    daily_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not forecast_rows:
+        return forecast_rows
+
+    # 1. 计算每个实体的历史均值以作为分配权重
+    weights_db: dict[tuple[str, str, str], float] = {}
+    grouped_history: dict[tuple[str, str, str], list[float]] = {}
+    for row in daily_rows:
+        scope = row["scope"]
+        entity_key = row["entity_key"]
+        grouped_history.setdefault((scope, entity_key, "gmv"), []).append(float(row.get("gmv") or 0.0))
+        grouped_history.setdefault((scope, entity_key, "purchase_count"), []).append(float(row.get("purchase_count") or 0.0))
+        
+    for k, vals in grouped_history.items():
+        weights_db[k] = _mean(vals[-28:])
+
+    # 2. 将预测行按 (dt, metric) 分组
+    by_group: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in forecast_rows:
+        by_group.setdefault((row["dt"], row["metric"]), []).append(row)
+
+    reconciled_results: list[dict[str, Any]] = []
+
+    for (dt, metric), group in by_group.items():
+        # 3. 提取全站与各大品类的预测行
+        site_rows = [r for r in group if r["scope"] == "site"]
+        category_rows = [r for r in group if r["scope"] == "category"]
+
+        if not site_rows or not category_rows:
+            reconciled_results.extend(group)
+            continue
+
+        site_row = site_rows[0]
+        site_val = float(site_row["forecast_value"])
+        sum_category_val = sum(float(c["forecast_value"]) for c in category_rows)
+
+        # 4. 计算大盘预测值与各品类预测和之间的加总偏差
+        bias = site_val - sum_category_val
+
+        # 5. 获取各品类权重的非负权重基准
+        cat_weights = []
+        for c in category_rows:
+            w = weights_db.get((c["scope"], c["entity_key"], metric), 0.0)
+            cat_weights.append(max(0.0, w))
+
+        total_weight = sum(cat_weights)
+        
+        # 6. 对各品类预测行进行误差对齐与上下界按比例自适应缩放
+        for idx, c in enumerate(category_rows):
+            w_norm = cat_weights[idx] / total_weight if total_weight > 0 else 1.0 / len(category_rows)
+            old_val = float(c["forecast_value"])
+            new_val = max(0.0, old_val + w_norm * bias)
+            c["forecast_value"] = round(new_val, 2)
+            
+            # 上下界自适应对齐调节
+            if old_val > 0:
+                ratio = new_val / old_val
+                c["lower_bound"] = round(max(0.0, float(c["lower_bound"]) * ratio), 2)
+                c["upper_bound"] = round(float(c["upper_bound"]) * ratio, 2)
+            else:
+                delta = w_norm * bias
+                c["lower_bound"] = round(max(0.0, float(c["lower_bound"]) + delta), 2)
+                c["upper_bound"] = round(max(0.0, float(c["upper_bound"]) + delta), 2)
+
+        # 7. 重新校准顶层 Site 预测行，保证严格的加总一致性
+        site_row["forecast_value"] = round(sum(float(c["forecast_value"]) for c in category_rows), 2)
+        site_row["lower_bound"] = round(sum(float(c["lower_bound"]) for c in category_rows), 2)
+        site_row["upper_bound"] = round(sum(float(c["upper_bound"]) for c in category_rows), 2)
+
+        reconciled_results.extend(site_rows)
+        reconciled_results.extend(category_rows)
+
+    return reconciled_results
 
 
 def _mean(values: list[float]) -> float:

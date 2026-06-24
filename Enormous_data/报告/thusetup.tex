@@ -2,6 +2,10 @@
 
 % 论文基本信息配置
 
+% 全局排版松弛参数：减少中英混排段落的 underfull hbox 警告
+\emergencystretch=4em
+\tolerance=2000
+
 % 技术方案基本信息配置（简化版）
 
 % 修复 TimesNewRoman 不支持小型大写字母 (small caps) 的警告
@@ -61,31 +65,31 @@
 \definecolor{codeaccent}{RGB}{14,116,144}
 
 \lstdefinestyle{codexcode}{
-    language=bash,
-    basicstyle=\ttfamily\footnotesize\color{codetext},
-    keywordstyle=\bfseries\color{codekeyword},
-    commentstyle=\itshape\color{codecomment},
-    stringstyle=\color{codestring},
-    backgroundcolor=\color{codebg},
-    frame=single,
-    rulecolor=\color{codeframe},
-    framerule=0.6pt,
-    framesep=6pt,
-    xleftmargin=1em,
-    xrightmargin=1em,
-    aboveskip=0.9em,
-    belowskip=0.9em,
-    breaklines=true,
-    breakatwhitespace=false,
-    postbreak=\mbox{\textcolor{codecomment}{\(\hookrightarrow\)\space}},
-    columns=fullflexible,
-    keepspaces=true,
-    showstringspaces=false,
-    numbers=none,
-    tabsize=2,
-    literate={~}{{\textasciitilde}}1
-             {_}{{\_}}1
-             {$}{{\$}}1
+language=bash,
+basicstyle=\ttfamily\footnotesize\color{codetext},
+keywordstyle=\bfseries\color{codekeyword},
+commentstyle=\itshape\color{codecomment},
+stringstyle=\color{codestring},
+backgroundcolor=\color{codebg},
+frame=single,
+rulecolor=\color{codeframe},
+framerule=0.6pt,
+framesep=6pt,
+xleftmargin=1em,
+xrightmargin=1em,
+aboveskip=0.9em,
+belowskip=0.9em,
+breaklines=true,
+breakatwhitespace=false,
+postbreak=\mbox{\textcolor{codecomment}{\(\hookrightarrow\)\space}},
+columns=fullflexible,
+keepspaces=true,
+showstringspaces=false,
+numbers=none,
+tabsize=2,
+literate={~}{{\textasciitilde}}1
+{_}{{\_}}1
+{$}{{\$}}1
 }
 \lstset{style=codexcode}
 
@@ -93,29 +97,29 @@
 % 该方案不依赖 shell-escape，避免 minted 在普通 LaTeX 环境下无法编译。
 \usepackage[most]{tcolorbox}
 \newtcblisting{sparkcode}[2][]{%
-    enhanced,
-    breakable,
-    listing only,
-    title={#2},
-    colback=codebg,
-    colframe=codeaccent,
-    coltitle=white,
-    fonttitle=\bfseries\small,
-    boxed title style={colback=codeaccent, sharp corners},
-    sharp corners,
-    boxrule=0.7pt,
-    left=1mm,
-    right=1mm,
-    top=1mm,
-    bottom=1mm,
-    listing options={
-        style=codexcode,
-        language=Python,
-        frame=none,
-        numbers=left,
-        numberstyle=\tiny\color{codecomment},
-        numbersep=8pt,
-        #1
+  enhanced,
+  breakable,
+  listing only,
+  title={#2},
+  colback=codebg,
+  colframe=codeaccent,
+  coltitle=white,
+  fonttitle=\bfseries\small,
+  boxed title style={colback=codeaccent, sharp corners},
+  sharp corners,
+  boxrule=0.7pt,
+  left=1mm,
+  right=1mm,
+  top=1mm,
+  bottom=1mm,
+  listing options={
+      style=codexcode,
+      language=Python,
+      frame=none,
+      numbers=left,
+      numberstyle=\tiny\color{codecomment},
+      numbersep=8pt,
+      #1
     }
 }
 
@@ -127,9 +131,11 @@
 \usepackage[sort]{natbib}
 \bibliographystyle{thuthesis-numeric}
 \usepackage{titlesec}
+\usepackage{etoolbox}
 
 % 让 \paragraph 参与编号（段级别=4）
 \setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{2}
 
 % 定义 \paragraph 的编号样式为纯阿拉伯数字：1, 2, 3, ...
 \makeatletter
@@ -141,14 +147,14 @@
 
 % 把 \paragraph 改成块级标题（标题后换行）
 \titleformat{\paragraph}[block]
-  {\normalfont\normalsize\bfseries}% 样式
-  {\theparagraph}%                  % 显示的编号（比如 1, 2, 3）
-  {0.8em}%                          % 编号与标题的间距
-  {}                                % 标题前置代码
+{\normalfont\normalsize\bfseries}% 样式
+{\theparagraph}%                  % 显示的编号（比如 1, 2, 3）
+{0.8em}%                          % 编号与标题的间距
+{}                                % 标题前置代码
 
 % 调整段前段后间距（可按需修改）
 \titlespacing*{\paragraph}
-  {0pt}{3.25ex plus 1ex minus .2ex}{1ex plus .2ex}
+{0pt}{3.25ex plus 1ex minus .2ex}{1ex plus .2ex}
 \usepackage{indentfirst}  % 首行缩进
 
 % 著者-出版年制
@@ -177,10 +183,37 @@
 \makeatother
 
 % 课程大作业封面字段样式，按 Word 模板的字号、下划线和排布单独定义。
+\newcommand\courseprojecttitle{基于 Hadoop-Spark 的电商行为智能分析系统}
+\newcommand\courseschoolheader{计算机信息工程学院课程大作业说明书}
+\newcommand\coursepageheader{%
+  \ifodd\value{page}%
+    \courseschoolheader
+  \else
+    \courseprojecttitle
+  \fi
+}
+
 \newcommand\coverfield[3][8.0cm]{%
   {\songti\bfseries\fontsize{15pt}{22pt}\selectfont #2}%
   \hspace{0.25cm}%
   \underline{\makebox[#1][c]{\songti\fontsize{15pt}{22pt}\selectfont #3}}%
+}
+\newcommand\covertitleline[2][14.0cm]{%
+  \underline{\makebox[#1][c]{\songti\bfseries\fontsize{20pt}{28pt}\selectfont #2}}%
+}
+\newcommand\coverformtwocol[4]{%
+  \makebox[6.35cm][l]{%
+    {\songti\fontsize{15pt}{22pt}\selectfont #1}%
+    \underline{\makebox[2.7cm][c]{\songti\fontsize{15pt}{22pt}\selectfont #2}}%
+  }%
+  \hspace{0.65cm}%
+  \makebox[5.6cm][l]{%
+    {\songti\fontsize{15pt}{22pt}\selectfont #3}%
+    \underline{\makebox[2.8cm][c]{\songti\fontsize{15pt}{22pt}\selectfont #4}}%
+  }%
+}
+\newcommand\coverstudentrow[2]{%
+  \coverformtwocol{学生姓名：}{#1}{学号：}{#2}%
 }
 \newcommand\coverblankline[1][6.8cm]{%
   \underline{\makebox[#1][c]{\strut}}%
@@ -194,6 +227,64 @@
 }
 
 \titleformat{\section}[block]{\Large\bfseries}{\thesection}{1em}{}
+
+\makeatletter
+\fancypagestyle{coursepage}{%
+  \fancyhf{}%
+  \renewcommand\headrulewidth{0.75bp}%
+  \renewcommand\footrulewidth{0pt}%
+  \fancyhead[C]{\songti\fontsize{12bp}{16bp}\selectfont\coursepageheader}%
+  \fancyfoot[C]{\wuhao\thepage}%
+}
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \renewcommand\headrulewidth{0.75bp}%
+  \renewcommand\footrulewidth{0pt}%
+  \fancyhead[C]{\songti\fontsize{12bp}{16bp}\selectfont\coursepageheader}%
+  \fancyfoot[C]{\wuhao\thepage}%
+}
+\fancypagestyle{chapter}{%
+  \fancyhf{}%
+  \renewcommand\headrulewidth{0.75bp}%
+  \renewcommand\footrulewidth{0pt}%
+  \fancyhead[C]{\songti\fontsize{12bp}{16bp}\selectfont\coursepageheader}%
+  \fancyfoot[C]{\wuhao\thepage}%
+}
+\fancypagestyle{courseabstract}{%
+  \fancyhf{}%
+  \renewcommand\headrulewidth{0.75bp}%
+  \renewcommand\footrulewidth{0pt}%
+  \fancyhead[C]{\songti\fontsize{12bp}{16bp}\selectfont\courseschoolheader}%
+}
+\pagestyle{coursepage}
+
+\renewenvironment{abstract}{%
+  \clearpage
+  \thusetup{language = chinese}%
+  \pagestyle{courseabstract}%
+  \thispagestyle{courseabstract}%
+  \vspace*{0.05cm}
+  \begingroup
+    \centering
+    {\songti\fontsize{16bp}{22bp}\selectfont\courseprojecttitle\par}
+    \vspace{0.5cm}
+    {\heiti\fontsize{16bp}{22bp}\selectfont 摘要\par}
+  \endgroup
+  \par
+  \vspace{0.5cm}
+  \noindent\hspace*{2em}%
+}{%
+  \par
+  \vspace{0.4cm}
+  \noindent\textbf{关键词：}\thu@clist@use{\thu@keywords}{；}\par
+  \gdef\thu@keywords{}%
+  \thispagestyle{courseabstract}%
+  \clearpage
+  \pagestyle{coursepage}%
+  \thu@reset@main@language
+}
+\makeatother
+
 % 定义所有的图片文件在 figures 子目录下
 \graphicspath{{figures/}}
 
@@ -222,13 +313,13 @@
     showstringspaces=false,            % 不显示字符串中的空格
     caption={C++},                     % 设置标题为 "C++"
     captionpos=t                       % 标题位置在顶部
-}}
+  }}
 
 % 定义C++环境
 \lstnewenvironment{cpp}[1][]
 {
-    \cppstyle
-    \lstset{#1}
+  \cppstyle
+  \lstset{#1}
 }
 {}
 

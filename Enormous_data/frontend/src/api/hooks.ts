@@ -450,6 +450,34 @@ export function useOptimizationImpact() {
   return useQuery({ queryKey: queryKeys.optimizationImpact, queryFn: api.optimizationImpact });
 }
 
+export function useLiveWeatherCurrent() {
+  return useQuery({ queryKey: queryKeys.liveWeatherCurrent, queryFn: api.liveWeatherCurrent, refetchInterval: 5_000 });
+}
+
+export function useLiveWeatherForecast() {
+  return useQuery({ queryKey: queryKeys.liveWeatherForecast, queryFn: api.liveWeatherForecast, refetchInterval: 10_000 });
+}
+
+export function useLiveWeatherSummary() {
+  return useQuery({ queryKey: queryKeys.liveWeatherSummary, queryFn: api.liveWeatherSummary });
+}
+
+export function useLiveTrainingStatus() {
+  return useQuery({ queryKey: queryKeys.liveTrainingStatus, queryFn: api.liveTrainingStatus, refetchInterval: 3_000 });
+}
+
+export function useLiveTrainingMetrics() {
+  return useQuery({ queryKey: queryKeys.liveTrainingMetrics, queryFn: api.liveTrainingMetrics });
+}
+
+export function useLiveTrainingImpact() {
+  return useQuery({ queryKey: queryKeys.liveTrainingImpact, queryFn: api.liveTrainingImpact, refetchInterval: 5_000 });
+}
+
+export function useLiveTrainingForecastImpact() {
+  return useQuery({ queryKey: queryKeys.liveTrainingForecastImpact, queryFn: api.liveTrainingForecastImpact, refetchInterval: 10_000 });
+}
+
 export function useTable(params: { page: number; size: number; event_type?: string; category_level1?: string; brand?: string }) {
   return useQuery({
     queryKey: queryKeys.table(params),
@@ -464,6 +492,24 @@ export function useRefreshJob() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.job });
       await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+}
+
+export function useLiveTrainingRefresh() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.liveTrainingRefresh,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveTrainingStatus }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveWeatherCurrent }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveWeatherForecast }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveWeatherSummary }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveTrainingMetrics }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveTrainingImpact }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.liveTrainingForecastImpact }),
+      ]);
     },
   });
 }

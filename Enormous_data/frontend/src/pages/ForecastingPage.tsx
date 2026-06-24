@@ -1,4 +1,4 @@
-import { AlertTriangle, AreaChart, Gauge, ShieldCheck, TrendingDown } from 'lucide-react';
+import { AlertTriangle, AreaChart, BookOpen, Gauge, LineChart, ShieldCheck, Target, TrendingDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
   useForecastingBacktest,
@@ -107,6 +107,65 @@ function checkValue(value: unknown) {
   return value == null ? '待生成' : String(value);
 }
 
+const forecastMetricGuides = [
+  {
+    id: 'forecast_gmv',
+    label: '未来成交额',
+    formula: '未来窗口内每天预测成交额求和',
+    meaning: '回答未来 7 天大概会产生多少销售额，只能作为计划信号，不是确定收入承诺。',
+  },
+  {
+    id: 'forecast_purchase_count',
+    label: '预测购买量',
+    formula: '未来窗口内预测购买事件数求和',
+    meaning: '回答未来可能有多少次购买，用来估算运营、库存和推荐位承载压力。',
+  },
+  {
+    id: 'history_coverage',
+    label: '历史覆盖',
+    formula: '可用于训练和回测的历史天数',
+    meaning: '历史越短，预测越容易退化为兜底基线；这里是判断可信度的第一入口。',
+  },
+  {
+    id: 'wape',
+    label: 'WAPE',
+    formula: '绝对误差总和 / 实际值总和',
+    meaning: '衡量预测整体偏离实际多少，越低越好；它比单日误差更适合看总体可靠性。',
+  },
+  {
+    id: 'bias',
+    label: 'Bias',
+    formula: '(实际值 - 预测值) / 实际值',
+    meaning: '判断模型是系统性高估还是低估。正数偏保守，负数代表预测偏高。',
+  },
+  {
+    id: 'risk_entity',
+    label: '高风险实体',
+    formula: '历史不足、误差高或变化异常的预测对象数量',
+    meaning: '告诉你哪些预测不该直接拿去做预算或补货，需要先看风险证据。',
+  },
+];
+
+function forecastTrustCopy(sparse: boolean, qualityStatus?: string) {
+  if (sparse) return '可信度偏低：历史窗口不足，当前结果主要是稀疏基线兜底。';
+  if (qualityStatus === 'passed') return '可信度可用：质量门禁通过，可作为计划参考。';
+  return '需要复核：请先查看质量门禁和回测误差。';
+}
+
+function riskPlainCopy(level?: string) {
+  if (level === 'high') return '高风险';
+  if (level === 'medium') return '中风险';
+  if (level === 'low') return '低风险';
+  return '全部风险';
+}
+
+function modelPlainCopy(model?: string) {
+  if (model === 'sparse_baseline_fallback') return '稀疏基线兜底';
+  if (model === 'rolling_baseline_backtest') return '滚动基线回测';
+  if (model === 'weekday_baseline_backtest') return '星期季节性基线';
+  return model ? label('model', model, { fallback: fieldLabel(model) }) : '待生成';
+}
+
 function forecastAria(metric: string) {
   return {
     show: true,
@@ -193,6 +252,7 @@ export function ForecastingPage() {
   const [metric, setMetric] = useState('gmv');
   const [severity, setSeverity] = useState('');
   const [selectedEntityKey, setSelectedEntityKey] = useState('site:all');
+  const [activeGuide, setActiveGuide] = useState('forecast_gmv');
   const summary = useForecastingSummary();
   const entities = useForecastingEntities(80);
   const selectedEntity =
@@ -229,6 +289,19 @@ export function ForecastingPage() {
   const topForecastEntity = forecastGmvRows[0];
   const topRiskLevel = riskMix[0];
   const bestBacktestModel = modelWapeRows.slice().sort((a, b) => a.value - b.value)[0];
+  const activeMetricGuide = forecastMetricGuides.find((item) => item.id === activeGuide) ?? forecastMetricGuides[0];
+  const selectedEntityLabel = selectedEntity ? `${scopeLabel(selectedEntity.scope)} · ${displayValue(selectedEntity.entity_label)}` : '等待预测实体';
+  const selectedMetricLabel = metricLabel(metric);
+  const selectedRiskLabel = severity ? riskPlainCopy(severity) : '全部风险';
+  const selectedForecastValue = metric === 'purchase_count' ? number(selectedEntity?.forecast_purchase_count) : money(selectedEntity?.forecast_gmv);
+  const selectedRecentValue = metric === 'purchase_count' ? '近期购买量未单独输出' : money(selectedEntity?.recent_gmv);
+  const confidenceCopy = forecastTrustCopy(sparse, summary.data?.quality_status);
+  const nextAction =
+    sparse || selectedEntity?.fallback_reason
+      ? '先看质量门禁和回测误差，确认这条预测能否进入计划。'
+      : selectedRisk?.severity === 'high'
+        ? '先看风险证据和风险队列，避免直接把高风险预测用于预算。'
+        : '可以继续查看预测序列，确认未来每天的变化节奏。';
 
   return (
     <>
@@ -244,6 +317,174 @@ export function ForecastingPage() {
           历史窗口不足，仅展示稀疏基线兜底；该结果只能用于方向性复核，不应用作预算承诺或自动补货依据。
         </div>
       ) : null}
+
+      <section className="forecast-workbench" aria-label="需求预测首屏解释工作台">
+        <div className="forecast-workbench-head">
+          <div>
+            <span className="eyebrow">预测读图工作台</span>
+            <h2>先判断能不能信，再看预测多少钱</h2>
+            <p>把普通人最容易误解的预测卡片改成“选择对象、查看结果、解释可信度、跳到证据”的工作流。</p>
+          </div>
+          <div className={`forecast-trust-badge tone-${statusTone(summary.data?.quality_status)}`}>
+            <span>预测可信度</span>
+            <strong>{sparse ? '需复核' : statusLabel(summary.data?.quality_status)}</strong>
+          </div>
+        </div>
+
+        <div className="forecast-question-strip" aria-label="普通读者预测问题导览">
+          <div>
+            <strong>我现在预测谁？</strong>
+            <span>{selectedEntityLabel}</span>
+          </div>
+          <div>
+            <strong>预测的是哪项业务量？</strong>
+            <span>{selectedMetricLabel}，未来 {number(summary.data?.forecast_horizon_days)} 天窗口。</span>
+          </div>
+          <div>
+            <strong>这个结果能直接用吗？</strong>
+            <span>{confidenceCopy}</span>
+          </div>
+          <div>
+            <strong>下一步点哪里？</strong>
+            <span>{nextAction}</span>
+          </div>
+        </div>
+
+        <div className="forecast-decision-grid">
+          <article className="forecast-selector-panel">
+            <div className="forecast-step-title">
+              <span>第 1 步</span>
+              <h3>选择预测对象</h3>
+              <p>先确定你看的预测是全站、类目还是具体实体。</p>
+            </div>
+            <div className="forecast-entity-picker">
+              {(entities.data ?? []).map((entity) => {
+                const key = `${entity.scope}:${entity.entity_key}`;
+                return (
+                  <button
+                    type="button"
+                    className={selectedEntityKey === key ? 'is-active' : ''}
+                    key={key}
+                    onClick={() => setSelectedEntityKey(key)}
+                  >
+                    <span>{scopeLabel(entity.scope)} · {displayValue(entity.entity_label)}</span>
+                    <strong>{money(entity.forecast_gmv)}</strong>
+                    <small>{riskPlainCopy(entity.risk_level)} · {modelPlainCopy(entity.model_name)}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+
+          <article className="forecast-selector-panel">
+            <div className="forecast-step-title">
+              <span>第 2 步</span>
+              <h3>选择预测指标</h3>
+              <p>成交额用于预算，购买量用于运营承载。</p>
+            </div>
+            <div className="forecast-toggle-grid">
+              <button type="button" className={metric === 'gmv' ? 'is-active' : ''} onClick={() => setMetric('gmv')}>
+                <span>成交额</span>
+                <strong>{money(selectedEntity?.forecast_gmv)}</strong>
+                <small>未来销售规模</small>
+              </button>
+              <button type="button" className={metric === 'purchase_count' ? 'is-active' : ''} onClick={() => setMetric('purchase_count')}>
+                <span>购买量</span>
+                <strong>{number(selectedEntity?.forecast_purchase_count)}</strong>
+                <small>未来购买事件</small>
+              </button>
+            </div>
+            <div className="forecast-step-title is-secondary">
+              <span>第 3 步</span>
+              <h3>选择风险范围</h3>
+              <p>风险筛选会联动风险队列和当前风险解释。</p>
+            </div>
+            <div className="forecast-risk-buttons">
+              {[
+                { value: '', label: '全部风险' },
+                { value: 'high', label: '高风险' },
+                { value: 'medium', label: '中风险' },
+              ].map((item) => (
+                <button
+                  type="button"
+                  className={severity === item.value ? 'is-active' : ''}
+                  key={item.value || 'all'}
+                  onClick={() => setSeverity(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="forecast-insight-panel">
+            <div className="panel-title">
+              <div>
+                <h2>{selectedEntityLabel} 预测解释器</h2>
+                <p>把预测值、历史覆盖和风险证据翻译成计划动作。</p>
+              </div>
+              <Target size={20} />
+            </div>
+            <dl className="forecast-insight-metrics">
+              <div>
+                <dt>当前预测</dt>
+                <dd>{selectedForecastValue}</dd>
+              </div>
+              <div>
+                <dt>近期基准</dt>
+                <dd>{selectedRecentValue}</dd>
+              </div>
+              <div>
+                <dt>历史覆盖</dt>
+                <dd>{number(selectedEntity?.history_days ?? summary.data?.history_days)} 天</dd>
+              </div>
+              <div>
+                <dt>风险范围</dt>
+                <dd>{selectedRiskLabel}</dd>
+              </div>
+            </dl>
+            <div className="forecast-action-note">
+              <strong>当前解释</strong>
+              <p>{confidenceCopy} {selectedRisk?.recommended_action ? algorithmCopy(selectedRisk.recommended_action) : '当前筛选未发现显著风险。'}</p>
+            </div>
+            <div className="forecast-evidence-links" aria-label="证据跳转说明">
+              <span><LineChart size={16} /> 预测序列会更新为当前实体和指标</span>
+              <span><Gauge size={16} /> 回测误差说明预测偏离历史多少</span>
+              <span><AlertTriangle size={16} /> 风险队列解释为什么需复核</span>
+              <span><ShieldCheck size={16} /> 质量门禁决定能否用于计划</span>
+            </div>
+          </article>
+        </div>
+
+        <div className="forecast-glossary" aria-label="预测指标说明">
+          <div className="forecast-glossary-head">
+            <BookOpen size={18} />
+            <div>
+              <h3>这些预测卡片到底代表什么？</h3>
+              <p>点击指标名查看来源、公式和普通业务解释。</p>
+            </div>
+          </div>
+          <div className="forecast-glossary-tabs" role="tablist" aria-label="预测指标释义">
+            {forecastMetricGuides.map((item) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeGuide === item.id}
+                className={activeGuide === item.id ? 'is-active' : ''}
+                key={item.id}
+                onClick={() => setActiveGuide(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="forecast-glossary-card">
+            <span>{activeMetricGuide.label}</span>
+            <strong>{activeMetricGuide.formula}</strong>
+            <p>{activeMetricGuide.meaning}</p>
+          </div>
+        </div>
+      </section>
 
       <OptimizationModuleStrip moduleId="forecast-planning" title="预测优化影响" />
 

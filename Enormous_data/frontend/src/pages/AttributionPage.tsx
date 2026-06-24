@@ -1,5 +1,15 @@
-import { BadgeDollarSign, GitCompareArrows, Route, ShieldCheck, Sparkles } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  BadgeDollarSign,
+  GitCompareArrows,
+  MousePointerClick,
+  Route,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  TrendingUp,
+} from 'lucide-react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import {
   useAttributionAssists,
   useAttributionEntities,
@@ -11,7 +21,13 @@ import {
 import { ChartPanel } from '../components/ChartPanel';
 import { displayValue, fieldLabel, label, listLabels, statusLabel } from '../i18n/displayText';
 import { barOption } from '../lib/chartOptions';
-import type { AttributionModel } from '../types/api';
+
+type AttributionRevenueFields = {
+  first_touch_revenue?: number | null;
+  last_touch_revenue?: number | null;
+  linear_assisted_revenue?: number | null;
+  time_decay_assisted_revenue?: number | null;
+};
 
 function money(value?: number | null) {
   return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
@@ -41,12 +57,48 @@ function entityLabel(entityType: string) {
   return label('entityType', entityType);
 }
 
-function modelRows(rows: AttributionModel[]) {
-  return rows.map((row) => ({
-    name: entityLabel(row.entity_type),
-    value: Number(row.time_decay_assisted_revenue.toFixed(2)),
+function modelRevenue(row: AttributionRevenueFields | null | undefined, model: string) {
+  if (!row) return null;
+  if (model === 'first_touch') return row.first_touch_revenue;
+  if (model === 'last_touch') return row.last_touch_revenue;
+  if (model === 'linear') return row.linear_assisted_revenue;
+  return row.time_decay_assisted_revenue;
+}
+
+function modelRows(row: AttributionRevenueFields | null | undefined) {
+  if (!row) return [];
+  const values = modelOptions.map((option) => ({
+    name: option.label,
+    raw: modelRevenue(row, option.value) ?? 0,
+  }));
+  const minValue = Math.min(...values.map((item) => item.raw));
+  return values.map((item) => ({
+    name: item.name,
+    value: Number(Math.max(0, item.raw - minValue).toFixed(2)),
   }));
 }
+
+function pct(value?: number | null) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, value * 100));
+}
+
+function barVar(value?: number | null) {
+  return { '--bar-width': `${pct(value)}%` } as CSSProperties;
+}
+
+const entityOptions = [
+  { value: 'category', label: '品类' },
+  { value: 'brand', label: '品牌' },
+  { value: 'product', label: '商品' },
+];
+
+const modelOptions = [
+  { value: 'time_decay', label: '时间衰减', hint: '越接近购买越重要' },
+  { value: 'linear', label: '线性归因', hint: '每个触点平均分摊' },
+  { value: 'last_touch', label: '末次触点', hint: '购买前最后一步' },
+  { value: 'first_touch', label: '首次触点', hint: '首次发现来源' },
+];
 
 export function AttributionPage() {
   const [entityType, setEntityType] = useState('category');
@@ -60,7 +112,9 @@ export function AttributionPage() {
   const hasError = summary.isError || models.isError || entities.isError || paths.isError || assists.isError || quality.isError;
   const topEntity = entities.data?.[0];
   const topAssist = assists.data?.[0];
-  const modelChart = useMemo(() => barOption(modelRows(models.data ?? []), '时间衰减辅助营收', '#39d0c8'), [models.data]);
+  const topPath = paths.data?.[0];
+  const selectedRevenue = modelRevenue(topEntity, model);
+  const modelChart = useMemo(() => barOption(modelRows(topEntity), '相对最低模型差额', '#39d0c8'), [topEntity]);
   const warning = summary.data?.warnings?.length
     ? `归因质量需要复核：${summary.data.warnings.map(fieldLabel).join('、')}`
     : null;
@@ -76,62 +130,139 @@ export function AttributionPage() {
       {hasError ? <div className="error-banner">营收归因缓存尚未完整生成，请先运行 Spark 刷新任务。</div> : null}
       {warning ? <div className="error-banner">{warning}</div> : null}
 
-      <section className="ops-command-band">
-        <div>
-          <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
-            {statusLabel(summary.data?.quality_status)}
-          </span>
-          <h2>营收归因契约 v1</h2>
+      <section className="attribution-cockpit">
+        <article className="attribution-hero-card">
+          <div className="attribution-card-head">
+            <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
+              {statusLabel(summary.data?.quality_status)}
+            </span>
+            <BadgeDollarSign size={20} />
+          </div>
+          <span className="mini-label">营收归因契约 v1</span>
+          <h2>哪些触点真的帮成交？</h2>
+          <div className="attribution-big-number">{money(summary.data?.assisted_revenue)}</div>
+          <div className="attribution-flow">
+            <span><MousePointerClick size={16} />浏览</span>
+            <ArrowRight size={16} />
+            <span><ShoppingCart size={16} />加购</span>
+            <ArrowRight size={16} />
+            <span><BadgeDollarSign size={16} />购买</span>
+          </div>
           <p>{summary.data?.actual_input_path ?? '等待真实 HDFS 输入快照'}</p>
-        </div>
-        <BadgeDollarSign size={22} />
+        </article>
+
+        <article className="attribution-lens-card">
+          <div className="attribution-card-head">
+            <div>
+              <span className="mini-label">当前镜头</span>
+              <h2>{entityLabel(entityType)} · {modelLabel(model)}</h2>
+            </div>
+            <Sparkles size={20} />
+          </div>
+          <div className="attribution-focus-object">
+            <span>{topEntity ? displayValue(topEntity.entity_label) : '待生成对象'}</span>
+            <strong>{money(selectedRevenue)}</strong>
+          </div>
+          <div className="signal-stack">
+            <div>
+              <span>可归因覆盖</span>
+              <i style={barVar(summary.data?.attribution_coverage_rate)}><b /></i>
+              <strong>{percent(summary.data?.attribution_coverage_rate)}</strong>
+            </div>
+            <div>
+              <span>多触点购买</span>
+              <i style={barVar(summary.data?.multi_touch_purchase_rate)}><b /></i>
+              <strong>{percent(summary.data?.multi_touch_purchase_rate)}</strong>
+            </div>
+            <div>
+              <span>有效价格</span>
+              <i style={barVar(quality.data?.valid_purchase_price_rate)}><b /></i>
+              <strong>{percent(quality.data?.valid_purchase_price_rate)}</strong>
+            </div>
+          </div>
+        </article>
       </section>
 
-      <section className="metrics-strip">
-        <article className="metric-card tone-success">
-          <span>可归因覆盖率</span>
-          <strong>{percent(summary.data?.attribution_coverage_rate)}</strong>
-          <small>{number(summary.data?.attributable_sessions)} 个可归因会话</small>
-        </article>
-        <article className="metric-card">
+      <section className="visual-filter-board" aria-label="营收归因筛选">
+        <div className="segment-block">
+          <span>归因对象</span>
+          <div className="segment-control" role="group" aria-label="归因对象快捷切换">
+            {entityOptions.map((option) => (
+              <button
+                className={entityType === option.value ? 'is-active' : ''}
+                type="button"
+                key={option.value}
+                onClick={() => setEntityType(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <label className="compact-select-label">
+            <span>归因对象</span>
+            <select value={entityType} onChange={(event) => setEntityType(event.target.value)}>
+              <option value="category">品类</option>
+              <option value="brand">品牌</option>
+              <option value="product">商品</option>
+            </select>
+          </label>
+        </div>
+        <div className="segment-block is-wide">
+          <span>归因模型</span>
+          <div className="segment-control attribution-model-control" role="group" aria-label="归因模型快捷切换">
+            {modelOptions.map((option) => (
+              <button
+                className={model === option.value ? 'is-active' : ''}
+                type="button"
+                key={option.value}
+                onClick={() => setModel(option.value)}
+              >
+                <strong>{option.label}</strong>
+                <small>{option.hint}</small>
+              </button>
+            ))}
+          </div>
+          <label className="compact-select-label">
+            <span>归因模型</span>
+            <select value={model} onChange={(event) => setModel(event.target.value)}>
+              <option value="time_decay">时间衰减</option>
+              <option value="linear">线性归因</option>
+              <option value="last_touch">末次触点</option>
+              <option value="first_touch">首次触点</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="attribution-signal-grid">
+        <article className="attribution-signal">
           <span>购买营收</span>
           <strong>{money(summary.data?.total_purchase_revenue)}</strong>
           <small>{number(summary.data?.purchase_rows)} 行购买记录</small>
         </article>
-        <article className="metric-card tone-warning">
-          <span>辅助营收</span>
-          <strong>{money(summary.data?.assisted_revenue)}</strong>
-          <small>{percent(summary.data?.multi_touch_purchase_rate)} 多触点购买</small>
+        <article className="attribution-signal">
+          <span>首要机会</span>
+          <strong>{topAssist ? displayValue(topAssist.entity_label) : '待生成'}</strong>
+          <small>{topAssist ? label('action', topAssist.suggested_action) : '等待辅助转化对象'}</small>
         </article>
-        <article className="metric-card">
+        <article className="attribution-signal">
+          <span>高频路径</span>
+          <strong>{topPath ? `${number(topPath.purchase_sessions)} 次购买` : '待生成'}</strong>
+          <small>{topPath?.path_pattern ?? '等待路径证据'}</small>
+        </article>
+        <article className="attribution-signal">
           <span>平均触点</span>
           <strong>{score(summary.data?.avg_touchpoints_before_purchase)}</strong>
           <small>购买前 {score(summary.data?.avg_minutes_before_purchase)} 分钟</small>
         </article>
       </section>
 
-      <section className="toolbar forecast-toolbar" aria-label="营收归因筛选">
-        <label>
-          <span>归因对象</span>
-          <select value={entityType} onChange={(event) => setEntityType(event.target.value)}>
-            <option value="category">品类</option>
-            <option value="brand">品牌</option>
-            <option value="product">商品</option>
-          </select>
-        </label>
-        <label>
-          <span>归因模型</span>
-          <select value={model} onChange={(event) => setModel(event.target.value)}>
-            <option value="time_decay">时间衰减</option>
-            <option value="linear">线性归因</option>
-            <option value="last_touch">末次触点</option>
-            <option value="first_touch">首次触点</option>
-          </select>
-        </label>
-      </section>
-
-      <section className="content-grid">
-        <ChartPanel title="归因模型对比" subtitle="按对象类型汇总时间衰减辅助营收" option={modelChart} />
+      <section className="content-grid attribution-chart-grid">
+        <ChartPanel
+          title="归因模型差异"
+          subtitle={`${topEntity ? displayValue(topEntity.entity_label) : entityLabel(entityType)}：四种模型相对最低归因值的差额`}
+          option={modelChart}
+        />
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
@@ -144,17 +275,7 @@ export function AttributionPage() {
             <dt>对象</dt>
             <dd>{topEntity ? displayValue(topEntity.entity_label) : '待生成'}</dd>
             <dt>{modelLabel(model)}</dt>
-            <dd>
-              {money(
-                model === 'first_touch'
-                  ? topEntity?.first_touch_revenue
-                  : model === 'last_touch'
-                    ? topEntity?.last_touch_revenue
-                    : model === 'linear'
-                      ? topEntity?.linear_assisted_revenue
-                      : topEntity?.time_decay_assisted_revenue,
-              )}
-            </dd>
+            <dd>{money(selectedRevenue)}</dd>
             <dt>辅助 / 直接</dt>
             <dd>{score(topEntity?.assist_to_direct_ratio)}</dd>
             <dt>置信度</dt>

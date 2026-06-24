@@ -310,6 +310,9 @@ const dictionaries: Record<LabelDomain, Record<string, LabelEntry>> = {
   },
   status: {
     blocked_by_srm: { label: 'SRM 阻断' },
+    critical: { label: '严重异常' },
+    warning: { label: '警告异常' },
+    insufficient_baseline: { label: '基线不足' },
     degraded_previous_snapshot: { label: '已回退到上一快照' },
     failed: { label: '失败' },
     feasible: { label: '可满足' },

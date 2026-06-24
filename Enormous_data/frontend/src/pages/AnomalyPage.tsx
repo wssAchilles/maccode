@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AlertTriangle, BellRing, Crosshair, Radar, ShieldCheck } from 'lucide-react';
 import {
   useAnomalyAlerts,
@@ -118,7 +119,7 @@ function baselineBandOption(alerts: AnomalyAlert[]): DashboardChartOption {
     .filter((row) => row.dt && typeof row.actual === 'number' && typeof row.baseline === 'number')
     .slice()
     .sort((a, b) => String(a.dt).localeCompare(String(b.dt)))
-    .slice(0, 12);
+    .slice(0, 30);
   const axis = rows.map((row) => row.dt ?? '');
   const actual = rows.map((row) => Number(row.actual ?? 0));
   const baseline = rows.map((row) => Number(row.baseline ?? 0));
@@ -163,6 +164,7 @@ function baselineBandOption(alerts: AnomalyAlert[]): DashboardChartOption {
         type: 'line',
         data: actual,
         symbolSize: 7,
+        showAllSymbol: true,
         lineStyle: { width: 3, color: '#fb7185' },
       },
       {
@@ -170,6 +172,7 @@ function baselineBandOption(alerts: AnomalyAlert[]): DashboardChartOption {
         type: 'line',
         data: baseline,
         symbolSize: 5,
+        showAllSymbol: true,
         lineStyle: { width: 2, color: '#39d0c8' },
       },
       {
@@ -177,6 +180,7 @@ function baselineBandOption(alerts: AnomalyAlert[]): DashboardChartOption {
         type: 'line',
         data: upper,
         symbol: 'none',
+        showAllSymbol: true,
         lineStyle: { width: 1, color: '#64748b', type: 'dashed' },
       },
       {
@@ -184,6 +188,7 @@ function baselineBandOption(alerts: AnomalyAlert[]): DashboardChartOption {
         type: 'line',
         data: lower,
         symbol: 'none',
+        showAllSymbol: true,
         lineStyle: { width: 1, color: '#64748b', type: 'dashed' },
       },
     ],
@@ -267,8 +272,29 @@ export function AnomalyPage() {
     rules.isError;
   const causeRows = rootCauseRows(rootCause.data ?? []);
   const alertRows = alerts.data ?? [];
+  // 仅保留真实触发严重（critical）或警告（warning）的警报行，用于表格明细和详情卡片的默认选择展示
+  const activeAlertRows = alertRows.filter(
+    (a) => a.severity === 'critical' || a.severity === 'warning'
+  );
   const latestTimeline = (timeline.data ?? []).slice().sort((a, b) => a.dt.localeCompare(b.dt)).at(-1);
-  const baselineBandRows = alertRows.filter((row) => row.dt && typeof row.actual === 'number' && typeof row.baseline === 'number');
+
+  // 状态绑定：保存用户当前点击/选中的具体告警行
+  const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
+  // 若未手动选择，则默认采用真实告警列表中最高优先级的告警（评分排序排首位）
+  const activeAlert = selectedAlert || activeAlertRows[0];
+
+  // 筛选出与 activeAlert 属于同一实体且属于同一指标的告警点集合
+  const filteredBandRows = alertRows.filter(
+    (row) =>
+      activeAlert &&
+      row.entity_id === activeAlert.entity_id &&
+      row.entity_type === activeAlert.entity_type &&
+      row.metric === activeAlert.metric &&
+      row.dt &&
+      typeof row.actual === 'number' &&
+      typeof row.baseline === 'number'
+  );
+
   const seasonalSignals = evaluation.data?.baseline.seasonal_signal_count ?? 0;
   const totalSignals = evaluation.data?.alert_budget.signal_count ?? 0;
   const baselineRows = [
@@ -338,9 +364,9 @@ export function AnomalyPage() {
         <ChartPanel
           title="实际值与基线带"
           subtitle="对比告警日期的实际值、稳健基线和偏移范围"
-          option={baselineBandOption(alertRows)}
-          isEmpty={!baselineBandRows.length}
-          summary={baselineBandRows[0] ? `${displayValue(baselineBandRows[0].entity_label)} 的 ${fieldLabel(baselineBandRows[0].metric)} 偏离基线。` : '等待告警基线数据。'}
+          option={baselineBandOption(filteredBandRows)}
+          isEmpty={!filteredBandRows.length}
+          summary={activeAlert ? `${displayValue(activeAlert.entity_label)} 的 ${fieldLabel(activeAlert.metric)} 偏离基线。` : '等待告警基线数据。'}
         />
         <ChartPanel
           title="基线覆盖结构"
@@ -362,25 +388,43 @@ export function AnomalyPage() {
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
-              <h2>最高优先级异常</h2>
-              <p>展示最需要人工复核的异常对象和建议动作。</p>
+              <h2>{selectedAlert ? '选中异常详情' : '最高优先级异常'}</h2>
+              <p>{selectedAlert ? '在下方告警明细中点击任意行可查看其他实体详情。' : '当前最需关注的异动对象，在下方明细点击行可切换。'}</p>
             </div>
-            <BellRing size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {selectedAlert && (
+                <button
+                  onClick={() => setSelectedAlert(null)}
+                  style={{
+                    fontSize: '12px',
+                    padding: '4px 8px',
+                    backgroundColor: 'rgba(57, 208, 200, 0.15)',
+                    color: '#39d0c8',
+                    border: '1px solid #39d0c8',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  重置为最高优先级
+                </button>
+              )}
+              <BellRing size={20} />
+            </div>
           </div>
-          {summary.data?.top_alert ? (
+          {activeAlert ? (
             <dl>
               <dt>告警类型</dt>
-              <dd>{fieldLabel(summary.data.top_alert.alert_code)}</dd>
+              <dd>{fieldLabel(activeAlert.alert_code)}</dd>
               <dt>影响对象</dt>
-              <dd>{summary.data.top_alert.entity_label}</dd>
+              <dd>{activeAlert.entity_label}</dd>
               <dt>指标</dt>
-              <dd>{fieldLabel(summary.data.top_alert.metric)}</dd>
+              <dd>{fieldLabel(activeAlert.metric)}</dd>
               <dt>方向</dt>
-              <dd>{label('direction', summary.data.top_alert.direction)}</dd>
+              <dd>{label('direction', activeAlert.direction)}</dd>
               <dt>基线模式</dt>
-              <dd>{summary.data.top_alert.baseline_mode ? label('model', summary.data.top_alert.baseline_mode) : '待生成'}</dd>
+              <dd>{activeAlert.baseline_mode ? label('model', activeAlert.baseline_mode) : '待生成'}</dd>
               <dt>建议动作</dt>
-              <dd>{algorithmCopy(summary.data.top_alert.recommended_action)}</dd>
+              <dd>{algorithmCopy(activeAlert.recommended_action)}</dd>
             </dl>
           ) : (
             <p className="empty-copy">当前没有异常告警。</p>
@@ -479,23 +523,33 @@ export function AnomalyPage() {
                 </tr>
               </thead>
               <tbody>
-                {(alerts.data ?? []).map((alert, index) => (
-                  <tr key={`${alert.alert_code}-${alert.entity_id}-${alert.metric}-${alert.dt ?? 'control'}-${index}`}>
-                    <td>
-                      <span className={`status-pill tone-${statusTone(alert.severity)}`}>{label('risk', alert.severity)}</span>
-                    </td>
-                    <td>{alert.dt ?? '对照样本'}</td>
-                    <td>{alert.entity_label}</td>
-                    <td>{label('entityType', alert.entity_type)}</td>
-                    <td>{fieldLabel(alert.metric)}</td>
-                    <td>{label('direction', alert.direction)}</td>
-                    <td>{number(alert.actual)}</td>
-                    <td>{number(alert.baseline)}</td>
-                    <td>{percent(alert.delta_rate)}</td>
-                    <td>{score(alert.robust_z)}</td>
-                    <td>{algorithmCopy(alert.recommended_action)}</td>
-                  </tr>
-                ))}
+                {activeAlertRows.map((alert, index) => {
+                  const isSelected = activeAlert &&
+                    alert.entity_id === activeAlert.entity_id &&
+                    alert.metric === activeAlert.metric;
+                  return (
+                    <tr 
+                      key={`${alert.alert_code}-${alert.entity_id}-${alert.metric}-${alert.dt ?? 'control'}-${index}`}
+                      onClick={() => setSelectedAlert(alert)}
+                      className={isSelected ? 'selected-row' : ''}
+                      style={{ cursor: 'pointer', backgroundColor: isSelected ? 'rgba(57, 208, 200, 0.15)' : undefined }}
+                    >
+                      <td>
+                        <span className={`status-pill tone-${statusTone(alert.severity)}`}>{label('risk', alert.severity)}</span>
+                      </td>
+                      <td>{alert.dt ?? '对照样本'}</td>
+                      <td>{alert.entity_label}</td>
+                      <td>{label('entityType', alert.entity_type)}</td>
+                      <td>{fieldLabel(alert.metric)}</td>
+                      <td>{label('direction', alert.direction)}</td>
+                      <td>{number(alert.actual)}</td>
+                      <td>{number(alert.baseline)}</td>
+                      <td>{percent(alert.delta_rate)}</td>
+                      <td>{score(alert.robust_z)}</td>
+                      <td>{algorithmCopy(alert.recommended_action)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

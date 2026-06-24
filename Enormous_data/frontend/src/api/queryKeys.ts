@@ -108,5 +108,12 @@ export const queryKeys = {
   jobQuality: (jobId: string) => ['jobs', jobId, 'quality'] as const,
   opsEvidence: ['ops-evidence'] as const,
   optimizationImpact: ['optimization-impact'] as const,
+  liveWeatherCurrent: ['live-weather-current'] as const,
+  liveWeatherForecast: ['live-weather-forecast'] as const,
+  liveWeatherSummary: ['live-weather-summary'] as const,
+  liveTrainingStatus: ['live-training-status'] as const,
+  liveTrainingMetrics: ['live-training-metrics'] as const,
+  liveTrainingImpact: ['live-training-impact'] as const,
+  liveTrainingForecastImpact: ['live-training-forecast-impact'] as const,
   table: (params: { page: number; size: number; event_type?: string; category_level1?: string; brand?: string }) => ['table', params] as const,
 };

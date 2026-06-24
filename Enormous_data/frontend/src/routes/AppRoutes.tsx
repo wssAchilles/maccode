@@ -14,6 +14,7 @@ import { FeatureMartPage } from '../pages/FeatureMartPage';
 import { ForecastingPage } from '../pages/ForecastingPage';
 import { JourneyPage } from '../pages/JourneyPage';
 import { LifecyclePage } from '../pages/LifecyclePage';
+import { LiveTrainingPage } from '../pages/LiveTrainingPage';
 import { OpsPage } from '../pages/OpsPage';
 import { OptimizationPage } from '../pages/OptimizationPage';
 import { PortfolioPage } from '../pages/PortfolioPage';
@@ -39,6 +40,7 @@ export const appRoutes = [
   { path: '/portfolio', element: <PortfolioPage /> },
   { path: '/experiments', element: <ExperimentsPage /> },
   { path: '/forecasting', element: <ForecastingPage /> },
+  { path: '/live-training', element: <LiveTrainingPage /> },
   { path: '/affinity', element: <AffinityPage /> },
   { path: '/feature-mart', element: <FeatureMartPage /> },
   { path: '/quality', element: <QualityPage /> },

@@ -67,6 +67,7 @@ from spark_jobs.recommendation import (
 from spark_jobs.readers import read_events
 from spark_jobs.session import build_spark
 from spark_jobs.writers import write_json_atomic, write_metric_files
+from spark_jobs.decision_maker import build_decision_manifest
 
 
 CONTRACT_VERSION = "pipeline-run-governance/v1"
@@ -266,6 +267,8 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             feature_mart_metrics["feature_mart_freshness"],
             anomaly_settings,
             run_id=run_id,
+            forecasting_backtest=metrics.get("forecasting_backtest", []),
+            forecasting_series=metrics.get("forecasting_series", []),
         )
         metrics.update(anomaly_metrics)
         lifecycle_frames, lifecycle_metrics = build_lifecycle_outputs(
@@ -304,6 +307,13 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             run_id=run_id,
         )
         metrics.update(experiment_metrics)
+        decision_metrics = build_decision_manifest(
+            anomaly_alerts=metrics.get("anomaly_alerts", []),
+            optimization_plan=metrics.get("optimization_plan", []),
+            forecasting_entities=metrics.get("forecasting_entities", []),
+            run_id=run_id,
+        )
+        metrics["decision_manifest"] = decision_metrics
         _unpersist_frames(
             feature_mart_frames,
             affinity_frames,
@@ -337,6 +347,9 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
         output_artifacts = {
             "metrics_dir": output_dir,
             "table_events": str(Path(output_dir) / "table_events"),
+            "decision_artifacts": {
+                "manifest": str(Path(output_dir) / "decision_manifest.json"),
+            },
             "dashboard_cube_artifacts": {
                 "summary": str(Path(output_dir) / "dashboard_cube_summary.json"),
                 "semantic_metrics": str(Path(output_dir) / "dashboard_semantic_metrics.json"),
@@ -577,6 +590,10 @@ def run_job(config: dict[str, Any], run_id: str | None = None) -> dict[str, obje
             "recommendation_quality_status": metrics["recommendation_summary"]["quality_status"],
             "recommendation_count": metrics["recommendation_summary"]["recommendation_count"],
             "dashboard_cube_rows": metrics["dashboard_cube_summary"]["cube_row_count"],
+            "decision_status": "succeeded",
+            "decision_intervention_count": decision_metrics["summary"]["intervention_count"],
+            "decision_restock_order_count": decision_metrics["summary"]["restock_order_count"],
+            "decision_total_restock_cost": decision_metrics["summary"]["total_estimated_restock_cost"],
             "failure_stage": metrics["job"]["failure_stage"],
         }
 

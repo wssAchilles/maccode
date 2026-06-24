@@ -76,6 +76,13 @@ import {
   lifecycleRulesFixture,
   lifecycleSegmentsFixture,
   lifecycleSummaryFixture,
+  liveTrainingMetricsFixture,
+  liveTrainingStatusFixture,
+  liveWeatherCurrentFixture,
+  liveWeatherForecastFixture,
+  liveWeatherForecastImpactFixture,
+  liveWeatherImpactFixture,
+  liveWeatherSummaryFixture,
   optimizationCandidatesFixture,
   optimizationImpactFixture,
   optimizationPlanFixture,
@@ -509,6 +516,14 @@ export const handlers = [
   http.get('/api/v1/jobs/:jobId/lineage', () => HttpResponse.json(envelope(jobLineageFixture))),
   http.get('/api/v1/jobs/:jobId/quality', () => HttpResponse.json(envelope(jobQualityFixture))),
   http.get('/api/v1/ops/evidence', () => HttpResponse.json(envelope(opsEvidenceFixture))),
+  http.get('/api/v1/live-weather/current', () => HttpResponse.json(envelope(liveWeatherCurrentFixture))),
+  http.get('/api/v1/live-weather/forecast', () => HttpResponse.json(envelope(liveWeatherForecastFixture))),
+  http.get('/api/v1/live-weather/summary', () => HttpResponse.json(envelope(liveWeatherSummaryFixture))),
+  http.get('/api/v1/live-training/status', () => HttpResponse.json(envelope(liveTrainingStatusFixture))),
+  http.post('/api/v1/live-training/refresh', () => HttpResponse.json(envelope({ status: 'queued', run_id: 'live-weather-next' }, 'live training queued'), { status: 202 })),
+  http.get('/api/v1/live-training/metrics', () => HttpResponse.json(envelope(liveTrainingMetricsFixture))),
+  http.get('/api/v1/live-training/impact', () => HttpResponse.json(envelope(liveWeatherImpactFixture))),
+  http.get('/api/v1/live-training/forecast-impact', () => HttpResponse.json(envelope(liveWeatherForecastImpactFixture))),
   http.get('/api/v1/table', ({ request }) => {
     const url = new URL(request.url);
     const requestedPage = Number(url.searchParams.get('page') ?? tableFixture.page);

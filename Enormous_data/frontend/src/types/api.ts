@@ -1554,6 +1554,167 @@ export type TableResult = {
   rows: TableRow[];
 };
 
+export type LiveWeatherCurrent = {
+  city: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  fetched_at: string;
+  source_status: string;
+  current: {
+    time?: string;
+    temperature_2m?: number | null;
+    relative_humidity_2m?: number | null;
+    precipitation?: number | null;
+    rain?: number | null;
+    weather_code?: number | null;
+    wind_speed_10m?: number | null;
+  };
+  current_units?: Record<string, string>;
+};
+
+export type LiveWeatherHourlyForecastRow = {
+  time: string;
+  temperature_2m?: number | null;
+  relative_humidity_2m?: number | null;
+  precipitation?: number | null;
+  rain?: number | null;
+  weather_code?: number | null;
+  wind_speed_10m?: number | null;
+};
+
+export type LiveWeatherForecast = {
+  city: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  fetched_at: string;
+  source_status: string;
+  horizon_hours: number;
+  forecast_window_start?: string | null;
+  forecast_window_end?: string | null;
+  hourly: LiveWeatherHourlyForecastRow[];
+  hourly_units?: Record<string, string>;
+};
+
+export type LiveWeatherSummary = {
+  contract_version: string;
+  run_id: string;
+  city: string;
+  time_grain: string;
+  quality_status: string;
+  source_status: string;
+  weather_rows: number;
+  ecommerce_agg_rows: number;
+  joined_rows: number;
+  join_coverage_rate: number;
+  missing_weather_rate: number;
+  ecommerce_date_range: { min: string | null; max: string | null };
+  weather_date_range: { min: string | null; max: string | null };
+  current_weather_used_for_training: boolean;
+  warnings: string[];
+  generated_at: string;
+};
+
+export type LiveTrainingStatus = {
+  run_id: string;
+  job_type: string;
+  status: string;
+  quality_status?: string;
+  created_at?: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  elapsed_seconds?: number | null;
+  message?: string;
+};
+
+export type LiveTrainingMetricRow = {
+  model_name: string;
+  rows: number;
+  wape: number | null;
+  mae: number | null;
+  actual_sum: number;
+  absolute_error_sum: number;
+};
+
+export type LiveTrainingMetrics = {
+  contract_version: string;
+  run_id: string;
+  generated_at: string;
+  comparison_status: string;
+  interpretation: string;
+  model_metrics: LiveTrainingMetricRow[];
+  lift: {
+    wape_reduction: number | null;
+    mae_reduction: number | null;
+    improved: boolean;
+  };
+  quality_gates: QualityCheck[];
+};
+
+export type LiveWeatherImpactItem = {
+  scope: string;
+  entity_key: string;
+  entity_label: string;
+  impact_score: number;
+  demand_multiplier: number;
+  recommendation_weight: number;
+  direction: string;
+  reason: string;
+};
+
+export type LiveWeatherImpact = {
+  contract_version: string;
+  run_id: string;
+  city: string;
+  source_status: string;
+  current_weather_time?: string;
+  training_uses_current_weather: boolean;
+  comparison_status?: string;
+  current_weather: Record<string, number | null>;
+  generated_at: string;
+  items: LiveWeatherImpactItem[];
+};
+
+export type LiveWeatherForecastImpactCategory = {
+  entity_key: string;
+  entity_label: string;
+  impact_score: number;
+  demand_multiplier: number;
+  direction: string;
+  impact_components?: Record<string, number>;
+  reason: string;
+};
+
+export type LiveWeatherForecastImpactRow = LiveWeatherHourlyForecastRow & {
+  avg_impact_score: number;
+  strongest_category?: string | null;
+  strongest_impact_score?: number | null;
+  category_impacts: LiveWeatherForecastImpactCategory[];
+};
+
+export type LiveWeatherForecastImpact = {
+  contract_version: string;
+  run_id: string;
+  city: string;
+  source_status: string;
+  horizon_hours: number;
+  generated_at: string;
+  training_uses_forecast_weather: boolean;
+  forecast_weather_time_range: { min: string | null; max: string | null };
+  summary: {
+    max_negative_hour?: string | null;
+    max_negative_avg_impact_score?: number | null;
+    max_positive_hour?: string | null;
+    max_positive_avg_impact_score?: number | null;
+    peak_abs_hour?: string | null;
+    peak_abs_category?: string | null;
+    peak_abs_impact_score?: number | null;
+    dominant_driver?: string | null;
+  };
+  items: LiveWeatherForecastImpactRow[];
+};
+
 export type InputSnapshot = {
   configured_input_path?: string;
   actual_input_path?: string;

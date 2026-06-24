@@ -10,6 +10,7 @@ from app.responses import api_ok
 from app.pipeline.runner import SparkPipelineRunner
 from app.services.benchmark_evidence import BenchmarkEvidenceService
 from app.services.controlled_query import run_controlled_query
+from app.services.live_weather_service import LiveWeatherService
 from app.services.metric_cache import CacheNotReadyError
 from app.services.metric_cache import MetricCache
 from app.services.optimization_impact import OptimizationImpactService
@@ -50,6 +51,15 @@ def benchmark_evidence() -> BenchmarkEvidenceService:
 
 def optimization_impact() -> OptimizationImpactService:
     return OptimizationImpactService(current_app.config["PROJECT_ROOT"], current_app.config["METRIC_CACHE_DIR"])
+
+
+def live_weather_service() -> LiveWeatherService:
+    return LiveWeatherService(
+        project_root=current_app.config["PROJECT_ROOT"],
+        config_path=current_app.config["SPARK_CONFIG_PATH"],
+        cache_dir=current_app.config["METRIC_CACHE_DIR"],
+        live_dir=current_app.config.get("LIVE_DATA_DIR"),
+    )
 
 
 def _job_payload(record):
@@ -747,6 +757,59 @@ def recommendation_evaluation():
 @api_bp.get("/recommendations/alerts")
 def recommendation_alerts():
     return api_ok(cache().load_metric("recommendation_alerts"))
+
+
+@api_bp.get("/live-weather/current")
+def live_weather_current():
+    service = live_weather_service()
+    if not service.current_weather_path.exists():
+        raise CacheNotReadyError("live weather cache not found: current_weather.json")
+    import json
+
+    with service.current_weather_path.open("r", encoding="utf-8") as handle:
+        return api_ok(json.load(handle))
+
+
+@api_bp.get("/live-weather/forecast")
+def live_weather_forecast():
+    service = live_weather_service()
+    if not service.forecast_weather_path.exists():
+        raise CacheNotReadyError("live weather forecast cache not found: forecast_weather_24h.json")
+    import json
+
+    with service.forecast_weather_path.open("r", encoding="utf-8") as handle:
+        return api_ok(json.load(handle))
+
+
+@api_bp.get("/live-weather/summary")
+def live_weather_summary():
+    return api_ok(cache().load_metric("live_weather_summary"))
+
+
+@api_bp.get("/live-training/status")
+def live_training_status():
+    return api_ok(live_weather_service().load_status())
+
+
+@api_bp.post("/live-training/refresh")
+def live_training_refresh():
+    status = live_weather_service().enqueue_refresh()
+    return api_ok({"status": status["status"], "run_id": status["run_id"]}), 202
+
+
+@api_bp.get("/live-training/metrics")
+def live_training_metrics():
+    return api_ok(cache().load_metric("live_training_metrics"))
+
+
+@api_bp.get("/live-training/impact")
+def live_training_impact():
+    return api_ok(cache().load_metric("live_weather_impact"))
+
+
+@api_bp.get("/live-training/forecast-impact")
+def live_training_forecast_impact():
+    return api_ok(cache().load_metric("live_weather_forecast_impact"))
 
 
 @api_bp.get("/anomalies/summary")

@@ -1,4 +1,4 @@
-import { Boxes, ChartNoAxesCombined, Layers3, ShieldCheck } from 'lucide-react';
+import { Boxes, ChartNoAxesCombined, Gauge, Layers3, PackageSearch, ShieldCheck, Tags, Target } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
   usePortfolioBrands,
@@ -35,10 +35,6 @@ function statusTone(status?: string) {
   return 'failed';
 }
 
-function categoryOptions(rows: PortfolioCategoryMix[]) {
-  return Array.from(new Set(rows.map((row) => row.category_level1))).sort();
-}
-
 function priceBandMatrix(rows: PortfolioPriceBand[]) {
   const categories = Array.from(new Set(rows.map((row) => row.category_level1))).sort();
   const bands = Array.from(new Set(rows.map((row) => row.price_band))).sort();
@@ -64,12 +60,40 @@ function warningCopy(warnings?: string[]) {
   return `当前组合经营质量门禁需要复核：${warnings.map(fieldLabel).join('、')}`;
 }
 
+function categoryHealth(row?: PortfolioCategoryMix | null) {
+  if (!row) return { label: '待选择', tone: 'queued', copy: '选择左侧类别后查看组合解释。' };
+  if ((row.revenue_share ?? 0) >= 0.45) {
+    return { label: '头部集中', tone: 'warning', copy: '成交额占比较高，需要检查是否依赖单一品类。' };
+  }
+  if ((row.view_to_purchase_rate ?? 0) < 0.01 && row.views > 0) {
+    return { label: '转化偏弱', tone: 'danger', copy: '浏览量存在，但购买转化偏低，适合检查价格带或推荐入口。' };
+  }
+  return { label: '结构健康', tone: 'success', copy: '成交贡献和转化没有明显异常，可作为稳定经营类目。' };
+}
+
+function opportunityCopy(type?: string) {
+  if (type === 'price_band_mix') return '检查这个类别的价格带是否过度偏向高端、低端或缺少中端承接。';
+  if (type === 'concentration_risk') return '检查成交额是否集中在少数品类、品牌或商品，避免组合抗风险能力过弱。';
+  if (type === 'traffic_conversion_gap') return '检查有流量但转化弱的类别，适合优化商品、价格或推荐入口。';
+  if (type === 'portfolio_watch') return '保留观察，不直接行动，用于样本不足或信号不稳定的类别。';
+  return '综合展示价格带结构、集中度风险、流量转化缺口和观察队列。';
+}
+
+function opportunityAction(type?: string) {
+  if (type === 'price_band_mix') return '调整价格带';
+  if (type === 'concentration_risk') return '分散集中度';
+  if (type === 'traffic_conversion_gap') return '修复转化';
+  if (type === 'portfolio_watch') return '继续观察';
+  return '综合复核';
+}
+
 export function PortfolioPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [opportunityType, setOpportunityType] = useState('');
   const summary = usePortfolioSummary();
   const categories = usePortfolioCategories(80);
   const brands = usePortfolioBrands({ category: selectedCategory || undefined, limit: 80 });
+  const allPriceBands = usePortfolioPriceBands();
   const priceBands = usePortfolioPriceBands({ category: selectedCategory || undefined });
   const products = usePortfolioProducts({ category: selectedCategory || undefined, limit: 80 });
   const concentration = usePortfolioConcentration();
@@ -78,16 +102,30 @@ export function PortfolioPage() {
   const hasError =
     summary.isError ||
     categories.isError ||
+    allPriceBands.isError ||
     brands.isError ||
     priceBands.isError ||
     products.isError ||
     concentration.isError ||
     opportunities.isError ||
     quality.isError;
-  const options = useMemo(() => categoryOptions(categories.data ?? []), [categories.data]);
-  const matrix = useMemo(() => priceBandMatrix(priceBands.data ?? []), [priceBands.data]);
+  const matrix = useMemo(() => priceBandMatrix(allPriceBands.data ?? []), [allPriceBands.data]);
   const warning = warningCopy(summary.data?.warnings ?? quality.data?.warnings);
   const topCategory = summary.data?.top_category;
+  const categoryRows = categories.data ?? [];
+  const selectedCategoryRow =
+    categoryRows.find((row) => row.category_level1 === selectedCategory) ??
+    topCategory ??
+    categoryRows[0] ??
+    null;
+  const activeCategory = selectedCategoryRow?.category_level1 ?? '';
+  const selectedHealth = categoryHealth(selectedCategoryRow);
+  const selectedPriceBands = (allPriceBands.data ?? []).filter((row) => row.category_level1 === activeCategory);
+  const maxCategoryRevenueShare = Math.max(...categoryRows.map((row) => row.revenue_share ?? 0), 0.001);
+  const maxBandRevenue = Math.max(...selectedPriceBands.map((row) => row.revenue), 1);
+  const opportunityRows = opportunities.data ?? [];
+  const selectedCategoryOpportunityCount = opportunityRows.filter((row) => row.entity_id === activeCategory).length;
+  const topOpportunity = opportunityRows.find((row) => row.entity_id === activeCategory) ?? opportunityRows[0];
 
   return (
     <>
@@ -134,32 +172,141 @@ export function PortfolioPage() {
         </article>
       </section>
 
-      <section className="toolbar forecast-toolbar" aria-label="组合经营筛选">
-        <label>
-          <span>品类</span>
-          <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
-            <option value="">全部</option>
-            {options.map((category) => (
-              <option key={category} value={category}>
-                {displayValue(category)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>机会类型</span>
-          <select value={opportunityType} onChange={(event) => setOpportunityType(event.target.value)}>
-            <option value="">全部</option>
-            <option value="price_band_mix">价格带结构</option>
-            <option value="concentration_risk">集中度风险</option>
-            <option value="traffic_conversion_gap">流量转化缺口</option>
-            <option value="portfolio_watch">观察队列</option>
-          </select>
-        </label>
+      <section className="portfolio-workbench" aria-label="组合经营类别覆盖工作台">
+        <div className="portfolio-workbench-head">
+          <div>
+            <span className="eyebrow">Category Coverage Matrix</span>
+            <h2>每个品类都有入口，点击后联动价格带、品牌和机会解释</h2>
+            <p>这里展示的是品类级摘要，不把所有明细铺满页面；卡片越长表示成交额占比越高，状态表示当前经营风险。</p>
+          </div>
+          <label htmlFor="portfolio-opportunity-lens" className="portfolio-lens-select">
+            <span><Target size={15} /> 机会视角</span>
+            <select id="portfolio-opportunity-lens" value={opportunityType} onChange={(event) => setOpportunityType(event.target.value)}>
+              <option value="">全部机会</option>
+              <option value="price_band_mix">价格带结构</option>
+              <option value="concentration_risk">集中度风险</option>
+              <option value="traffic_conversion_gap">流量转化缺口</option>
+              <option value="portfolio_watch">观察队列</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="portfolio-workbench-grid">
+          <article className="portfolio-category-matrix" aria-label="品类覆盖矩阵">
+            <div className="panel-title">
+              <div>
+                <h2>类别覆盖矩阵</h2>
+                <p>覆盖当前缓存中的所有品类，点击类别查看右侧解释。</p>
+              </div>
+              <Layers3 size={20} />
+            </div>
+            <div className="portfolio-category-grid">
+              <button
+                type="button"
+                className={!selectedCategory ? 'is-active' : ''}
+                onClick={() => setSelectedCategory('')}
+              >
+                <span>全部品类</span>
+                <strong>{number(summary.data?.category_count)}</strong>
+                <small>查看全局组合结构</small>
+                <i style={{ width: '100%' }} />
+              </button>
+              {categoryRows.map((row) => {
+                const health = categoryHealth(row);
+                const width = `${Math.max(6, ((row.revenue_share ?? 0) / maxCategoryRevenueShare) * 100)}%`;
+                return (
+                  <button
+                    type="button"
+                    className={`${selectedCategory === row.category_level1 ? 'is-active' : ''} tone-${health.tone}`}
+                    key={row.category_level1}
+                    onClick={() => setSelectedCategory(row.category_level1)}
+                  >
+                    <span>{displayValue(row.category_level1)}</span>
+                    <strong>{percent(row.revenue_share)}</strong>
+                    <small>{number(row.purchases)} 次购买 · {percent(row.view_to_purchase_rate)} 转化</small>
+                    <i style={{ width }} />
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+
+          <aside className="portfolio-category-explainer" aria-label="选中品类经营解释器">
+            <div className="panel-title">
+              <div>
+                <h2>{activeCategory ? `${displayValue(activeCategory)} 经营解释器` : '全局经营解释器'}</h2>
+                <p>把品类、价格带和机会队列翻译成可复核动作。</p>
+              </div>
+              <Gauge size={20} />
+            </div>
+            <div className={`portfolio-health-card tone-${selectedHealth.tone}`}>
+              <span>{selectedHealth.label}</span>
+              <strong>{money(selectedCategoryRow?.revenue)}</strong>
+              <small>{selectedHealth.copy}</small>
+            </div>
+            <dl className="portfolio-explainer-grid">
+              <div>
+                <dt>成交额占比</dt>
+                <dd>{percent(selectedCategoryRow?.revenue_share)}</dd>
+              </div>
+              <div>
+                <dt>购买占比</dt>
+                <dd>{percent(selectedCategoryRow?.purchase_share)}</dd>
+              </div>
+              <div>
+                <dt>平均价格</dt>
+                <dd>{money(selectedCategoryRow?.avg_price)}</dd>
+              </div>
+              <div>
+                <dt>浏览到购买</dt>
+                <dd>{percent(selectedCategoryRow?.view_to_purchase_rate)}</dd>
+              </div>
+            </dl>
+            <div className="portfolio-lens-note">
+              <span>{opportunityAction(opportunityType)}</span>
+              <p>{opportunityCopy(opportunityType)}</p>
+              <strong>{selectedCategoryOpportunityCount ? `${selectedCategoryOpportunityCount} 条命中当前品类` : '当前品类暂无直接命中，查看全局机会'}</strong>
+            </div>
+          </aside>
+        </div>
+
+        <div className="portfolio-band-strip" aria-label="选中品类价格带分布">
+          <div className="panel-title">
+            <div>
+              <h2>价格带分布</h2>
+              <p>{activeCategory ? `${displayValue(activeCategory)} 的价格带成交结构。` : '先选择一个品类查看价格带结构。'}</p>
+            </div>
+            <Tags size={20} />
+          </div>
+          <div className="portfolio-band-grid">
+            {selectedPriceBands.length ? selectedPriceBands.map((band) => (
+              <article key={`${band.category_level1}-${band.price_band}`}>
+                <span>{priceBandLabel(band.price_band)}</span>
+                <strong>{money(band.revenue)}</strong>
+                <small>{number(band.purchases)} 次购买 · {percent(band.revenue_share)} 全局占比</small>
+                <i style={{ width: `${Math.max(8, (band.revenue / maxBandRevenue) * 100)}%` }} />
+              </article>
+            )) : (
+              <article>
+                <span>等待价格带</span>
+                <strong>待生成</strong>
+                <small>选择左侧品类或运行 Spark 刷新。</small>
+                <i style={{ width: '8%' }} />
+              </article>
+            )}
+          </div>
+        </div>
+
+        <div className="portfolio-opportunity-rail" aria-label="组合经营机会摘要">
+          <PackageSearch size={18} />
+          <span>当前机会</span>
+          <strong>{topOpportunity ? `${displayValue(topOpportunity.entity_id)} · ${label('action', topOpportunity.opportunity_type)}` : '待生成'}</strong>
+          <small>{topOpportunity ? `${priceBandLabel(topOpportunity.price_band ?? '全部')} · 影响分 ${score(topOpportunity.impact_score)} · ${listLabels('reason', topOpportunity.reason_codes)}` : '暂无机会证据'}</small>
+        </div>
       </section>
 
-      <section className="forecast-main-grid">
-        <article className="data-panel ops-card">
+      <section className="forecast-main-grid portfolio-equal-grid">
+        <article className="data-panel ops-card portfolio-scroll-card">
           <div className="panel-title">
             <div>
               <h2>价格带矩阵</h2>
@@ -185,9 +332,19 @@ export function PortfolioPage() {
                       const cell = matrix.byKey.get(`${category}:${band}`);
                       return (
                         <td key={band} aria-label={`${displayValue(category)} ${priceBandLabel(band)}`}>
-                          <strong>{percent(cell?.revenue_share)}</strong>
-                          <br />
-                          <small>{number(cell?.purchases)} 次购买</small>
+                          {cell ? (
+                            <>
+                              <strong>{percent(cell.revenue_share)}</strong>
+                              <br />
+                              <small>{number(cell.purchases)} 次购买</small>
+                            </>
+                          ) : (
+                            <>
+                              <strong>无数据</strong>
+                              <br />
+                              <small>无价格带购买记录</small>
+                            </>
+                          )}
                         </td>
                       );
                     })}
@@ -198,7 +355,7 @@ export function PortfolioPage() {
           </div>
         </article>
 
-        <article className="data-panel ops-card">
+        <article className="data-panel ops-card portfolio-scroll-card">
           <div className="panel-title">
             <div>
               <h2>质量门禁</h2>
@@ -261,8 +418,8 @@ export function PortfolioPage() {
         </div>
       </section>
 
-      <section className="forecast-main-grid">
-        <article className="data-panel jobs-panel">
+      <section className="forecast-main-grid portfolio-equal-grid">
+        <article className="data-panel jobs-panel portfolio-scroll-card">
           <div className="panel-title">
             <div>
               <h2>品牌贡献</h2>
@@ -295,7 +452,7 @@ export function PortfolioPage() {
           </div>
         </article>
 
-        <article className="data-panel jobs-panel">
+        <article className="data-panel jobs-panel portfolio-scroll-card">
           <div className="panel-title">
             <div>
               <h2>商品集中度</h2>
@@ -331,11 +488,11 @@ export function PortfolioPage() {
         </article>
       </section>
 
-      <section className="data-panel jobs-panel">
+      <section className="data-panel jobs-panel portfolio-scroll-card portfolio-wide-scroll">
         <div className="panel-title">
           <div>
             <h2>组合机会队列</h2>
-            <p>所有建议只代表结构性优先级，不宣称因果效果。</p>
+            <p>一行代表一个品类对象在某个价格带或全局维度上的机会信号；同一品类可以命中多个价格带。</p>
           </div>
         </div>
         <div className="table-scroll">
@@ -343,8 +500,8 @@ export function PortfolioPage() {
             <thead>
               <tr>
                 <th>类型</th>
-                <th>实体</th>
-                <th>价格带</th>
+                <th>品类对象</th>
+                <th>触发价格带</th>
                 <th>影响分</th>
                 <th>置信度</th>
                 <th>证据</th>

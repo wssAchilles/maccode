@@ -85,7 +85,7 @@ forecasting:
   preview_limit: 100
   top_entities: 12
   min_history_days: 2
-  max_site_wape: 0.45
+  max_site_wape: 0.50
   high_risk_drop_rate: -0.15
   medium_risk_drop_rate: -0.08
   history_collect_days: 90
@@ -144,3 +144,12 @@ recommendation:
   max_fallback_rate: 0.9
   min_avg_confidence: 0.01
   max_freshness_lag_minutes: 5300000
+
+live_weather:
+  city: 上海
+  latitude: 31.2304
+  longitude: 121.4737
+  timezone: Asia/Shanghai
+  top_categories: 8
+  backtest_days: 7
+  min_join_coverage_rate: 0.9

@@ -1,4 +1,18 @@
-import { RotateCcw, ShieldCheck, ShoppingCart } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeDollarSign,
+  BellRing,
+  Boxes,
+  CheckCircle2,
+  Filter,
+  PackageSearch,
+  RotateCcw,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Target,
+  TrendingDown,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   useCartCategories,
@@ -14,6 +28,12 @@ import type { CartCategorySegment, CartProductSegment, CartRecoveryQueueItem, Na
 
 function money(value?: number | null) {
   return typeof value === 'number' ? `¥${value.toLocaleString()}` : '待生成';
+}
+
+function compactMoney(value?: number | null) {
+  if (typeof value !== 'number') return '待生成';
+  if (value >= 10000) return `¥${(value / 10000).toFixed(1)}万`;
+  return money(value);
 }
 
 function number(value?: number | null) {
@@ -33,9 +53,10 @@ function categoryOptions(rows: CartCategorySegment[]) {
 }
 
 const actionLabels: Record<string, string> = {
+  category_merchandising_review: '品类陈列复核',
   category_recovery_campaign: '品类召回活动',
   category_watch: '品类观察',
-  recovery_offer_or_reminder: '优惠或提醒',
+  recovery_offer_or_reminder: '优惠或提醒召回',
   watch_cart_followup: '观察跟进',
 };
 
@@ -80,6 +101,27 @@ function statusTone(status?: string) {
   return status === 'passed' ? 'success' : status === 'needs_review' ? 'queued' : 'failed';
 }
 
+function barWidth(value: number, max: number) {
+  if (value <= 0 || max <= 0) return '0%';
+  return `${Math.max(8, Math.min(100, (value / max) * 100))}%`;
+}
+
+function actionIcon(action: string) {
+  if (action.includes('offer')) return <BadgeDollarSign size={18} />;
+  if (action.includes('campaign')) return <BellRing size={18} />;
+  if (action.includes('category')) return <Boxes size={18} />;
+  if (action.includes('watch')) return <Target size={18} />;
+  return <Sparkles size={18} />;
+}
+
+function categoryVisualRows(rows: CartCategorySegment[]) {
+  const maxValue = Math.max(...rows.map((row) => row.abandoned_value), 1);
+  return rows.slice(0, 8).map((row) => ({
+    ...row,
+    width: barWidth(row.abandoned_value, maxValue),
+  }));
+}
+
 export function CartRecoveryPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAction, setSelectedAction] = useState('');
@@ -93,9 +135,19 @@ export function CartRecoveryPage() {
   const options = useMemo(() => categoryOptions(categories.data ?? []), [categories.data]);
   const actionOptions = useMemo(() => recoveryActionOptions(allQueue.data ?? []), [allQueue.data]);
   const warning = warningCopy(summary.data?.warnings ?? quality.data?.warnings);
-  const queueRows = queue.data ?? [];
+  const queueRows = useMemo(() => {
+    const rows = queue.data ?? [];
+    if (!selectedCategory) return rows;
+    return rows.filter(
+      (row) =>
+        row.entity_id === selectedCategory ||
+        row.entity_label.includes(selectedCategory) ||
+        row.reason_codes.includes(`${selectedCategory}_cart_abandonment`),
+    );
+  }, [queue.data, selectedCategory]);
   const productRows = products.data ?? [];
   const categoryRows = categories.data ?? [];
+  const visibleCategories = useMemo(() => categoryVisualRows(categoryRows), [categoryRows]);
   const actionMix = useMemo(
     () => sumBy(allQueue.data ?? [], (row) => actionLabels[row.recovery_action] ?? row.recovery_action, () => 1),
     [allQueue.data],
@@ -109,6 +161,9 @@ export function CartRecoveryPage() {
   const topQueue = queueRows[0];
   const topProduct = productRows[0];
   const topCategory = categoryRows[0];
+  const filteredLabel = selectedCategory ? displayValue(selectedCategory) : '全部品类';
+  const filteredAction = selectedAction ? actionLabels[selectedAction] ?? selectedAction : '全部动作';
+  const publishable = summary.data?.quality_status === 'passed' && !(summary.data?.warnings?.length ?? 0);
 
   useEffect(() => {
     if (selectedAction && actionOptions.length && !actionOptions.includes(selectedAction)) {
@@ -118,110 +173,230 @@ export function CartRecoveryPage() {
 
   return (
     <>
-      <section className="page-heading">
+      <section className="page-heading cart-page-heading">
         <span className="eyebrow">购物车流失与召回智能</span>
         <h1>购物车流失与召回机会</h1>
-        <p>基于真实加购、移出购物车和购买行为识别可召回价值池，按商品和品类沉淀运营优先级。</p>
+        <p>看清谁在流失、值多少钱、该用什么动作召回。</p>
       </section>
 
       {hasError ? <div className="error-banner">购物车流失缓存尚未完整生成，请先运行 Spark 刷新任务。</div> : null}
       {warning ? <div className="error-banner">{warning}</div> : null}
 
-      <section className="ops-command-band">
-        <div>
-          <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
-            {statusLabel(summary.data?.quality_status)}
-          </span>
-          <h2>购物车召回契约 v1</h2>
-          <p>{summary.data?.actual_input_path ?? '等待真实 HDFS 输入快照'}</p>
+      <section className="cart-control-surface">
+        <div className="cart-command-center">
+          <article className={`cart-decision-card tone-${statusTone(summary.data?.quality_status)}`}>
+            <div className="cart-decision-copy">
+              <span className={`status-pill tone-${statusTone(summary.data?.quality_status)}`}>
+                {statusLabel(summary.data?.quality_status)}
+              </span>
+              <small className="cart-contract-label">购物车召回契约 v1</small>
+              <h2>{publishable ? '当前快照可发布' : '当前快照需观察'}</h2>
+              <p>{publishable ? '质量门禁允许进入前端召回策略。' : '先作为运营诊断，不直接承诺增量效果。'}</p>
+            </div>
+            <strong>{compactMoney(summary.data?.abandoned_value)}</strong>
+          </article>
+
+          <article className="cart-funnel-card" aria-label="购物车召回价值漏斗">
+            <div className="cart-funnel-step">
+              <ShoppingCart size={18} />
+              <span>加购</span>
+              <strong>{number(summary.data?.cart_product_sessions)}</strong>
+            </div>
+            <ArrowRight size={18} />
+            <div className="cart-funnel-step is-warning">
+              <TrendingDown size={18} />
+              <span>流失</span>
+              <strong>{number(summary.data?.abandoned_sessions)}</strong>
+            </div>
+            <ArrowRight size={18} />
+            <div className="cart-funnel-step is-success">
+              <CheckCircle2 size={18} />
+              <span>恢复</span>
+              <strong>{percent(summary.data?.recovery_rate)}</strong>
+            </div>
+          </article>
         </div>
-        <ShoppingCart size={22} />
-      </section>
 
-      <section className="metrics-strip">
-        <article className="metric-card tone-warning">
-          <span>可召回价值池</span>
-          <strong>{money(summary.data?.abandoned_value)}</strong>
-          <small>{number(summary.data?.abandoned_sessions)} 个流失会话</small>
-        </article>
-        <article className="metric-card">
-          <span>购物车会话</span>
-          <strong>{number(summary.data?.cart_product_sessions)}</strong>
-          <small>购物车金额 {money(summary.data?.cart_value)}</small>
-        </article>
-        <article className="metric-card tone-success">
-          <span>已恢复</span>
-          <strong>{percent(summary.data?.recovery_rate)}</strong>
-          <small>{number(summary.data?.recovered_sessions)} 个已恢复会话</small>
-        </article>
-        <article className="metric-card">
-          <span>显式移除</span>
-          <strong>{percent(summary.data?.remove_rate)}</strong>
-          <small>{number(summary.data?.explicit_remove_sessions)} 个移出信号</small>
-        </article>
-      </section>
+        <div className="cart-kpi-grid">
+          <article className="cart-kpi-card is-hot">
+            <span>可召回价值池</span>
+            <strong title={money(summary.data?.abandoned_value)}>{compactMoney(summary.data?.abandoned_value)}</strong>
+            <small>{number(summary.data?.abandoned_sessions)} 个流失会话</small>
+          </article>
+          <article className="cart-kpi-card">
+            <span>购物车会话</span>
+            <strong>{number(summary.data?.cart_product_sessions)}</strong>
+            <small>{money(summary.data?.cart_value)} 加购金额</small>
+          </article>
+          <article className="cart-kpi-card is-good">
+            <span>已恢复</span>
+            <strong>{percent(summary.data?.recovery_rate)}</strong>
+            <small>{number(summary.data?.recovered_sessions)} 个会话</small>
+          </article>
+          <article className="cart-kpi-card">
+            <span>显式移除</span>
+            <strong>{percent(summary.data?.remove_rate)}</strong>
+            <small>{number(summary.data?.explicit_remove_sessions)} 个移出信号</small>
+          </article>
+        </div>
 
-      <section className="toolbar forecast-toolbar" aria-label="购物车召回筛选">
-        <label>
-          <span>品类</span>
-          <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
-            <option value="">全部</option>
-            {options.map((category) => (
-              <option key={category} value={category}>
+        <div className="cart-filter-board" aria-label="购物车召回筛选">
+          <div className="cart-filter-head">
+            <div>
+              <Filter size={18} />
+              <strong>{filteredLabel}</strong>
+              <span>{filteredAction}</span>
+            </div>
+            <small>{number(queueRows.length)} 条当前机会</small>
+          </div>
+          <div className="cart-chip-row" aria-label="品类快捷筛选">
+            <button className={selectedCategory ? 'cart-chip' : 'cart-chip is-active'} type="button" onClick={() => setSelectedCategory('')}>
+              全部品类
+            </button>
+            {options.slice(0, 8).map((category) => (
+              <button
+                className={selectedCategory === category ? 'cart-chip is-active' : 'cart-chip'}
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+              >
                 {displayValue(category)}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
-        <label>
-          <span>召回动作</span>
-          <select value={selectedAction} onChange={(event) => setSelectedAction(event.target.value)}>
-            <option value="">全部</option>
+          </div>
+          <div className="cart-chip-row" aria-label="召回动作快捷筛选">
+            <button className={selectedAction ? 'cart-chip' : 'cart-chip is-active'} type="button" onClick={() => setSelectedAction('')}>
+              全部动作
+            </button>
             {actionOptions.map((action) => (
-              <option key={action} value={action}>
+              <button
+                className={selectedAction === action ? 'cart-chip is-active' : 'cart-chip'}
+                key={action}
+                type="button"
+                onClick={() => setSelectedAction(action)}
+              >
+                {actionIcon(action)}
                 {actionLabels[action] ?? action}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+          <div className="cart-native-filters">
+            <label>
+              <span>品类</span>
+              <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+                <option value="">全部</option>
+                {options.map((category) => (
+                  <option key={category} value={category}>
+                    {displayValue(category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>召回动作</span>
+              <select value={selectedAction} onChange={(event) => setSelectedAction(event.target.value)}>
+                <option value="">全部</option>
+                {actionOptions.map((action) => (
+                  <option key={action} value={action}>
+                    {actionLabels[action] ?? action}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
       </section>
 
-      <section className="forecast-main-grid">
+      <section className="cart-visual-grid">
+        <article className="cart-opportunity-panel">
+          <div className="panel-title">
+            <div>
+              <h2>召回机会地图</h2>
+              <p>圆点越大，流失价值越高。</p>
+            </div>
+            <PackageSearch size={20} />
+          </div>
+          <div className="cart-category-cloud">
+            {visibleCategories.map((row) => (
+              <button
+                className={selectedCategory === row.category_level1 ? 'cart-category-bubble is-active' : 'cart-category-bubble'}
+                key={row.category_level1}
+                type="button"
+                onClick={() => setSelectedCategory(row.category_level1)}
+              >
+                <span>{displayValue(row.category_level1)}</span>
+                <strong>{compactMoney(row.abandoned_value)}</strong>
+                <i style={{ width: row.width }} />
+              </button>
+            ))}
+          </div>
+        </article>
+
+        <article className="cart-top-opportunity">
+          <div className="panel-title">
+            <div>
+              <h2>当前首要机会</h2>
+              <p>随筛选实时变化。</p>
+            </div>
+            <Target size={20} />
+          </div>
+          {topQueue ? (
+            <div className="cart-priority-card">
+              <span>{label('entityType', topQueue.entity_type)}</span>
+              <strong>{displayValue(topQueue.entity_label)}</strong>
+              <div className="cart-priority-metrics">
+                <small>流失 {money(topQueue.abandoned_value)}</small>
+                <small>置信 {percent(topQueue.confidence)}</small>
+                <small>得分 {score(topQueue.priority_score)}</small>
+              </div>
+              <div className="cart-reason-row">
+                {topQueue.reason_codes.slice(0, 3).map((reason) => (
+                  <em key={reason}>{actionLabels[reason] ?? label('reason', reason)}</em>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-panel">当前筛选下没有机会。</div>
+          )}
+        </article>
+      </section>
+
+      <section className="forecast-main-grid cart-chart-grid">
         <ChartPanel
           title="召回动作结构"
-          subtitle="按真实队列动作聚合，先判断运营动作构成"
+          subtitle="动作构成"
           option={donutOption(actionMix, '召回动作')}
-          summary={actionMix[0] ? `${actionMix[0].name} 占比最高，共 ${number(actionMix[0].value)} 条机会。` : '等待召回动作数据。'}
+          summary={actionMix[0] ? `${actionMix[0].name} ${number(actionMix[0].value)} 条。` : '等待召回动作数据。'}
         />
         <ChartPanel
           title="流失价值前列机会"
-          subtitle="按流失金额排序，优先看最值得召回的对象"
+          subtitle="最高价值对象"
           option={horizontalBarOption(queueValue, '流失价值', '#f59e0b')}
-          summary={topQueue ? `${displayValue(topQueue.entity_label)} 当前流失价值最高，为 ${money(topQueue.abandoned_value)}。` : '等待召回机会队列。'}
+          summary={topQueue ? `${displayValue(topQueue.entity_label)}：${money(topQueue.abandoned_value)}` : '等待召回机会队列。'}
         />
       </section>
 
-      <section className="content-grid visual-first-grid">
+      <section className="content-grid visual-first-grid cart-chart-grid">
         <ChartPanel
           title="商品流失优先级"
-          subtitle="商品流失价值前列，替代逐行阅读商品明细"
+          subtitle="商品层"
           option={horizontalBarOption(productValue, '流失价值', '#65b8ff')}
-          summary={topProduct ? `${displayValue(topProduct.brand)} ${topProduct.product_id} 是当前最高商品机会。` : '等待商品召回数据。'}
+          summary={topProduct ? `${displayValue(topProduct.brand)} ${topProduct.product_id}` : '等待商品召回数据。'}
         />
         <ChartPanel
           title="品类流失结构"
-          subtitle="按品类比较购物车流失金额"
+          subtitle="品类层"
           option={horizontalBarOption(categoryValue, '流失价值', '#56d27b')}
-          summary={topCategory ? `${displayValue(topCategory.category_level1)} 是最高流失品类，流失价值 ${money(topCategory.abandoned_value)}。` : '等待品类召回数据。'}
+          summary={topCategory ? `${displayValue(topCategory.category_level1)}：${money(topCategory.abandoned_value)}` : '等待品类召回数据。'}
         />
       </section>
 
-      <section className="forecast-main-grid">
+      <section className="cart-gate-grid">
         <article className="data-panel ops-card">
           <div className="panel-title">
             <div>
               <h2>质量门禁</h2>
-              <p>校验购物车样本量、remove 信号、历史窗口和召回队列可信度。</p>
+              <p>能不能用。</p>
             </div>
             <ShieldCheck size={20} />
           </div>
@@ -241,7 +416,7 @@ export function CartRecoveryPage() {
           <div className="panel-title">
             <div>
               <h2>召回队列摘要</h2>
-              <p>按优先级得分排序，聚焦高价值流失池。</p>
+              <p>召回池规模。</p>
             </div>
             <RotateCcw size={20} />
           </div>
@@ -258,7 +433,7 @@ export function CartRecoveryPage() {
         </article>
       </section>
 
-      <details className="detail-table-disclosure">
+      <details className="detail-table-disclosure cart-disclosure">
         <summary>查看召回机会队列明细</summary>
         <section className="data-panel jobs-panel">
           <div className="panel-title">
@@ -299,7 +474,7 @@ export function CartRecoveryPage() {
                     <td>{listLabels('reason', row.reason_codes)}</td>
                   </tr>
                 ))}
-                {queue.data?.length === 0 ? (
+                {queueRows.length === 0 ? (
                   <tr>
                     <td colSpan={8}>当前筛选条件下没有召回机会，请切换为全部或选择已有动作。</td>
                   </tr>
@@ -310,7 +485,7 @@ export function CartRecoveryPage() {
         </section>
       </details>
 
-      <details className="detail-table-disclosure">
+      <details className="detail-table-disclosure cart-disclosure">
         <summary>查看商品流失明细</summary>
         <section className="data-panel jobs-panel">
           <div className="panel-title">
@@ -353,7 +528,7 @@ export function CartRecoveryPage() {
         </section>
       </details>
 
-      <details className="detail-table-disclosure">
+      <details className="detail-table-disclosure cart-disclosure">
         <summary>查看品类流失明细</summary>
         <section className="data-panel jobs-panel">
           <div className="panel-title">

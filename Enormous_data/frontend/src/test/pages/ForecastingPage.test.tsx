@@ -18,9 +18,13 @@ describe('ForecastingPage', () => {
     renderWithProviders(<ForecastingPage />);
 
     expect(await screen.findByText('需求预测与营收风险')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: '需求预测首屏解释工作台' })).toBeInTheDocument();
+    expect(await screen.findByText('预测读图工作台')).toBeInTheDocument();
+    expect(await screen.findByText('先判断能不能信，再看预测多少钱')).toBeInTheDocument();
+    expect(await screen.findByText('这些预测卡片到底代表什么？')).toBeInTheDocument();
     expect(await screen.findByText('需求预测契约 v1')).toBeInTheDocument();
-    expect(await screen.findAllByText('需复核')).toHaveLength(1);
-    expect(await screen.findByText(/稀疏基线兜底/)).toBeInTheDocument();
+    expect((await screen.findAllByText('需复核')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/稀疏基线兜底/)).length).toBeGreaterThan(0);
     expect(await screen.findByText('最小历史天数')).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: '实体预测与风险队列' })).toBeInTheDocument();
     expect((await screen.findAllByText('稀疏基线回退')).length).toBeGreaterThan(0);
@@ -34,6 +38,6 @@ describe('ForecastingPage', () => {
     await user.click(await screen.findByRole('button', { name: '类目 · electronics' }));
 
     expect((await screen.findAllByText('类目 · electronics')).length).toBeGreaterThan(0);
-    expect(await screen.findByText('¥1,176,000')).toBeInTheDocument();
+    expect((await screen.findAllByText('¥1,176,000')).length).toBeGreaterThan(0);
   });
 });

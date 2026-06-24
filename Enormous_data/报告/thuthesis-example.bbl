@@ -1,4 +1,4 @@
-\begin{thebibliography}{15}
+\begin{thebibliography}{9}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{#1}
 \expandafter\ifx\csname urlstyle\endcsname\relax\else
@@ -47,10 +47,9 @@ Zaharia M, Xin R~S, Wendell P, et~al.
 \bibitem[Armbrust et~al.(2015)Armbrust, Xin, Lian, Huai, Liu, Bradley, Meng,
   Kaftan, Franklin, Ghodsi, and Zaharia]{armbrust2015spark}
 Armbrust M, Xin R~S, Lian C, et~al.
-\newblock Spark sql: Relational data processing in
-  spark\allowbreak[C]//\allowbreak
-Proceedings of the 2015 ACM SIGMOD International Conference on Management of
-  Data.
+\newblock Spark sql: Relational\allowbreak{} data\allowbreak{}
+  processing\allowbreak{} in\allowbreak{} spark\allowbreak[C]//\allowbreak
+Proceedings of the 2015 ACM SIGMOD.
 \newblock 2015: 1383-1394.
 
 \bibitem[Herodotou et~al.(2011)Herodotou, Lim, Luo, Borisov, Dong, Cetin, and
@@ -81,44 +80,5 @@ Proceedings of the Third ACM Symposium on Cloud Computing.
 \newblock Docker compose documentation\allowbreak[EB/OL].
 \newblock 2026.
 \newblock \url{https://docs.docker.com/compose/}.
-
-\bibitem[{Apache Hadoop Project}(2026)]{hadoop_hdfs_architecture}
-{Apache Hadoop Project}.
-\newblock Hdfs architecture\allowbreak[EB/OL].
-\newblock 2026.
-\newblock
-  \url{https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html}.
-
-\bibitem[{Apache Hadoop Project}(2026)]{hadoop_yarn_overview}
-{Apache Hadoop Project}.
-\newblock Apache hadoop yarn\allowbreak[EB/OL].
-\newblock 2026.
-\newblock
-  \url{https://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html}.
-
-\bibitem[{Apache Spark Project}(2026)]{spark_yarn_docs}
-{Apache Spark Project}.
-\newblock Running spark on yarn\allowbreak[EB/OL].
-\newblock 2026.
-\newblock \url{https://spark.apache.org/docs/3.5.5/running-on-yarn.html}.
-
-\bibitem[{Apache Spark Project}(2026)]{spark_sql_performance}
-{Apache Spark Project}.
-\newblock Spark sql performance tuning\allowbreak[EB/OL].
-\newblock 2026.
-\newblock
-  \url{https://spark.apache.org/docs/3.5.5/sql-performance-tuning.html}.
-
-\bibitem[{Apache Parquet Project}(2026)]{parquet_docs}
-{Apache Parquet Project}.
-\newblock Apache parquet documentation\allowbreak[EB/OL].
-\newblock 2026.
-\newblock \url{https://parquet.apache.org/docs/}.
-
-\bibitem[{Apache Spark Project}(2026)]{spark_configuration}
-{Apache Spark Project}.
-\newblock Spark configuration\allowbreak[EB/OL].
-\newblock 2026.
-\newblock \url{https://spark.apache.org/docs/3.5.5/configuration.html}.
 
 \end{thebibliography}

@@ -1,184 +1,131 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{相关技术（系统使用技术介绍）}
+\chapter{相关技术}
 
-\section{Docker ARM64 实验环境}
+\section{大数据基础设施技术}
 
-本项目的实验环境不是直接在宿主机上安装 Hadoop 与 Spark，而是使用 Docker Compose 组织一套可重复启动、可清理、可展示的本机实验集群。这样设计的原因有三点。第一，Hadoop、Spark、Java、Python、Flask 和前端 Node 环境依赖较多，如果全部安装在宿主机上，版本冲突和路径污染会影响复现。第二，课程答辩需要展示 HDFS、YARN、Spark History 等服务的运行状态，容器化可以把这些服务固定在明确的网络和端口上。第三，本机为 ARM Mac，很多网上现成 Hadoop 镜像只支持 amd64，直接使用会触发跨架构模拟，启动慢且不稳定。
+\subsection{Docker 容器化与 ARM64 集群编排}
 
-因此，项目采用自建 ARM64 Hadoop 镜像，而不是使用 \texttt{bde2020/hadoop-*} 这类常见 amd64 镜像。镜像构建时只保留 Hadoop 运行所需的 Java、SSH、rsync、bash、procps、curl 和精简后的 \texttt{/opt/hadoop}，避免把旧容器里的 HBase、Hive、日志、HDFS 数据目录和 apt 缓存一起打包。早期如果使用 \texttt{docker commit master}，镜像会把运行时垃圾和历史数据也固化进去，体积可能膨胀到数十 GB；最终方案改为 Dockerfile 构建，使镜像来源更清楚，也更符合课程报告中的可复现实验要求。
+本项目的实验环境使用 Docker Compose 组织一套可重复启动、可清理、可展示的本机实验集群\cite{docker_compose_overview}。采用容器化方案的原因有三。第一，Hadoop、Spark、Java、Python、Flask 和前端 Node 环境依赖较多，全部安装在宿主机上容易出现版本冲突和路径污染，影响实验复现。第二，课程答辩需要展示 HDFS、YARN、Spark History 等服务的运行状态，容器化可以将这些服务固定在明确的网络拓扑上。第三，本机为 ARM 架构 Mac，现成的 Hadoop 镜像大多仅支持 amd64 架构，直接使用会触发跨架构模拟，启动缓慢且不稳定。
 
-Docker Compose 使用 \texttt{yarn-lab} profile 组织 Hadoop 与 Spark 服务\cite{docker_compose_overview}。该 profile 下包含 NameNode、DataNode、SecondaryNameNode、ResourceManager、NodeManager、spark-client 和 Spark History Server。它们在同一个 Compose 网络中通过服务名互相访问，例如 Spark 作业通过 \texttt{hdfs://} 路径访问 NameNode，通过 YARN ResourceManager 申请 executor 容器。项目还保留 \texttt{local-lab} profile 和本地 \texttt{start-dev.sh}，用于不启动完整 YARN 时进行 Flask/React 页面开发。
+因此，项目采用自建 ARM64 Hadoop 镜像，而非常见的 amd64 镜像。镜像构建时只保留 Hadoop 运行所需的 Java、SSH、rsync、bash、procps、curl 以及精简后的 \texttt{/opt/hadoop}，避免将旧容器中的 HBase、Hive、日志和 HDFS 数据目录等一并打包。最终方案采用 Dockerfile 构建，使镜像来源可追溯，也更符合课程实验中可复现性的要求。
 
-在端口规划上，本项目没有使用 Hadoop 默认宿主机端口，而是将 HDFS NameNode UI、YARN ResourceManager UI 和 Spark History UI 映射到 \texttt{19870}、\texttt{18088} 和 \texttt{28080}。这样做是因为宿主机上可能已经有旧的 \texttt{master} 容器占用 \texttt{9870}、\texttt{8088} 等端口。前后端开发则由 \texttt{start-dev.sh} 统一启动：Flask 后端默认监听 \texttt{5051}，Vite 前端监听 \texttt{5173}。脚本启动前会检查端口，如果对应端口已经被旧进程占用，会先终止旧进程再启动新服务，避免演示时手动查杀端口。
-
-\subsection{Docker、HDFS、YARN 与 Spark 的协同关系}
-
-答辩时可以把本项目的技术栈理解为三层协同。第一层是 Docker Compose，它负责把多个服务编排成一套可重复启动的本机实验集群；第二层是 Hadoop，其中 HDFS 负责存储输入样本、Parquet 结果和 Spark History 日志，YARN 负责分配 Spark executor 资源；第三层是业务系统，Spark 负责离线计算，Flask 负责读取计算结果并提供 API，React 负责展示业务指标和运行证据。
-
-具体到容器角色，\texttt{enormous-data-hadoop-arm64:slim-hadoop} 是统一的 Hadoop 基础镜像，但它并不只启动成一个容器，而是由 \texttt{scripts/yarn\_lab\_role.sh} 根据参数分别启动为 NameNode、DataNode、SecondaryNameNode、ResourceManager 和 NodeManager。这样做的好处是镜像来源一致，运行角色清晰：NameNode 管理 HDFS 元数据，两个 DataNode 保存数据块，ResourceManager 负责全局资源调度，两个 NodeManager 承载 YARN container。Spark 相关容器则来自项目主 Dockerfile：\texttt{spark-client} 用于提交作业，\texttt{spark-history-server} 用于回放 event log，\texttt{web-yarn} 用于启动 Flask API。
+Docker Compose 使用 \texttt{yarn-lab} profile 组织 Hadoop 与 Spark 服务。该 profile 下包含 NameNode、DataNode、SecondaryNameNode、ResourceManager、NodeManager、Spark Client 和 Spark History Server。它们在同一个 Compose 网络中通过服务名互相访问，例如 Spark 作业通过 \texttt{hdfs://} 协议访问 NameNode，通过 YARN ResourceManager 申请 Executor 容器。项目同时保留 \texttt{local-lab} profile，用于不启动完整 YARN 时进行 Flask 与 React 的前端开发调试。
 
 \begin{table}[htbp]
-\centering
-\caption{Docker YARN 实验栈中的容器分工}
-\label{tab:docker-yarn-roles}
-\begin{tabularx}{0.96\textwidth}{l l X}
-\toprule
-\textbf{容器或服务} & \textbf{所属层} & \textbf{作用} \\
-\midrule
-\texttt{yarn-namenode} & HDFS & 保存 HDFS 目录树、文件元数据和 block 位置信息，对外提供 NameNode UI 与 RPC。 \\
-\texttt{yarn-datanode-1/2} & HDFS & 保存实际数据块，模拟分布式文件系统中的多个存储节点。 \\
-\texttt{secondarynamenode} & HDFS & 定期辅助 NameNode 做 checkpoint，降低元数据恢复压力。 \\
-\texttt{resourcemanager} & YARN & 管理集群资源、队列和 application 生命周期，答辩时可在 UI 中查看 Spark 应用。 \\
-\texttt{nodemanager-1/2} & YARN & 在节点侧启动 executor container，向 ResourceManager 汇报资源与运行状态。 \\
-\texttt{spark-client} & Spark & 作为提交入口运行 \texttt{spark-submit}，在 client mode 下也承载 Spark driver。 \\
-\texttt{spark-history-server} & Spark & 从 \texttt{hdfs:///spark-history} 读取 event log，展示 stage、task、shuffle 和 executor 证据。 \\
-\texttt{web-yarn} & 服务层 & 启动 Flask 后端，读取 \texttt{data/cache/*.json} 与 SQLite 作业记录，对外提供 \texttt{/api/v1}。 \\
-\bottomrule
-\end{tabularx}
+  \centering
+  \caption{Docker YARN 实验栈中的容器分工}
+  \label{tab:docker-yarn-roles}
+  \begin{tabularx}{0.96\textwidth}{l l X}
+    \toprule
+    \textbf{容器或服务}                & \textbf{所属层} & \textbf{作用}                                                                        \\
+    \midrule
+    \texttt{yarn-namenode}        & HDFS         & 保存 HDFS 目录树、文件元数据和 block 位置信息，对外提供 NameNode UI 与 RPC。                              \\
+    \texttt{yarn-datanode-1/2}    & HDFS         & 保存实际数据块，模拟分布式文件系统中的多个存储节点。                                                         \\
+    \texttt{secondarynamenode}    & HDFS         & 定期辅助 NameNode 做 checkpoint，降低元数据恢复压力。                                              \\
+    \texttt{resourcemanager}      & YARN         & 管理集群资源、队列和 application 生命周期。                                                         \\
+    \texttt{nodemanager-1/2}      & YARN         & 在节点侧启动 Executor container，向 ResourceManager 汇报资源与运行状态。                             \\
+    \texttt{spark-client}         & Spark        & 作为提交入口运行 \texttt{spark-submit}，在 Client Mode 下也承载 Spark Driver。                    \\
+    \texttt{spark-history-server} & Spark        & 从 \texttt{hdfs:///spark-history} 读取 event log，展示 stage、task、shuffle 和 executor 证据。 \\
+    \texttt{web-yarn}             & 服务层          & 启动 Flask 后端，读取缓存与 SQLite 作业记录，对外提供 RESTful 接口。                                        \\
+    \bottomrule
+  \end{tabularx}
 \end{table}
 
-一次完整的 YARN 模式运行可以分为六步。首先，Docker Compose 创建 \texttt{yarn-lab-net} 网络并启动 Hadoop/YARN/Spark/Flask 容器；其次，初始化脚本在 HDFS 中创建 \texttt{/user/course} 和 \texttt{/spark-history}；然后，样本 CSV 被上传到 HDFS 输入目录；接着，\texttt{spark-client} 或 \texttt{web-yarn} 调用 \texttt{submit\_yarn\_client.sh}，通过 ResourceManager 申请 executor；随后，Spark executor 从 HDFS 读取 CSV 或 Parquet，并把 event log 写回 \texttt{/spark-history}；最后，Spark driver 把前端需要的 JSON 指标写入 \texttt{data/cache}，Flask API 读取这些缓存供 React 展示。这个链路说明本项目不是让前端直接访问 HDFS，也不是让 Flask 在线计算百万级数据，而是采用“Spark 离线生产指标、Flask 在线读取缓存”的方式。
+在本项目中，Docker 的作用不仅是"打包运行环境"，更重要的是提供一个可控的课程实验边界：哪些服务启动、数据写到哪里、日志如何清理，都能在 Compose 配置中明确说明。
 
-需要注意的是，本机 Docker YARN 是实验集群，不等同于真实多物理节点集群。所有容器仍然共享同一台 Mac 的 CPU、内存和磁盘，因此 YARN 模式主要证明分布式存储、资源调度和运行证据链路，而不保证在 1\% 小样本上比 local Spark 更快。答辩演示可以使用 local 模式快速展示页面，再展示 YARN 相关 UI 和 benchmark 结果说明系统具备 Hadoop/YARN 扩展能力。
+\subsection{HDFS 分布式存储与 Parquet 列式格式}
 
+HDFS 是 Hadoop 生态的分布式文件系统，适合存储大规模结构化与半结构化数据。在本项目中，HDFS 主要承担三类数据的存储。第一类是输入数据，即从真实 Kaggle 原始 CSV 中抽样得到的用户级样本。样本上传到 HDFS 的 \texttt{/user/course/} 目录下，Spark 作业通过配置文件读取这些路径。第二类是清洗后的中间结果，例如 Parquet 分区目录。相比反复扫描 CSV，Parquet 可以保存列类型、压缩信息和分区结构，更适合作为后续实验输入。第三类是 Spark History event log，保存在 \texttt{/spark-history}，供 Spark History Server 回放作业执行过程。
+
+从物理存储角度看，CSV 格式是典型的行式文本。当需要进行多维过滤（例如仅筛选特定商品品牌）或执行统计指标（例如计算总 GMV）时，Spark 必须读取整行文本并对所有无用列执行序列化与反序列化，极大浪费了 I/O 吞吐和计算资源。与之对应，Parquet 列式存储提供了强类型 Schema 固化和高效的压缩机制。通过列裁剪（Column Projection）与谓词下推（Predicate Pushdown），Spark 在读取 Parquet 文件时可以直接跳过无关列的物理读取，并利用文件头中的元数据过滤掉不符合条件的行组（Row Groups），从而成倍降低网络传输与内存压力。
+
+在代码层面，Spark 对文件存储格式的抽象非常彻底。无论是本地路径还是 \texttt{hdfs://} 路径，Spark 均通过统一的 DataFrame Reader API 进行读取。项目只需在配置文件中修改输入路径，即可实现从本地到分布式存储的无缝切换，大幅降低了工程迁移与验证成本。
+
+\subsection{YARN 资源管理与 Spark 部署模式}
+
+YARN（Yet Another Resource Negotiator）是 Hadoop 的分布式资源管理器，在 Spark 体系结构中，YARN 凭借对集群资源的弹性调度、应用队列隔离以及与 Hadoop 存储层的天然契合，成为最主流的大数据生产环境部署方案。
+
+\subsubsection{ResourceManager 与 NodeManager 协同}
+
+YARN 通过 ResourceManager 统一协调集群的计算资源。ResourceManager 维护全局资源视图，负责接收应用提交请求并将资源以 Container 形式分配给各个应用。NodeManager 运行在每个工作节点上，负责启动和管理本节点的 Container，定期向 ResourceManager 汇报资源使用与健康状态。二者协同构成了 YARN 的主从式资源管理架构：ResourceManager 作为主控节点做出全局调度决策，NodeManager 作为执行节点承载实际计算任务。
+
+\subsubsection{Client Mode 与 Cluster Mode 对比}
+
+本项目采用 YARN Client Mode 作为实验模式。在 Client Mode 下，控制整个作业生命周期的 Spark Driver 进程运行在提交任务的 Spark Client 容器中，而实际负责数据读取与运算的 Spark Executor 则分配在 YARN 各个 NodeManager 的 Container 内。这种设计在方便开发调试的同时，保证了后端服务能够直接检索 Driver 写入的指标缓存文件。
+
+若切换至 YARN Cluster Mode，Driver 进程将直接运行在 YARN 的 ApplicationMaster 内部，解除 Driver 对本地物理节点的绑定，实现完全的分布式容错。两种模式的选择取决于应用场景：Client Mode 适合交互式调试与课程实验，Cluster Mode 适合生产环境的长时间批处理作业。
+
+\section{分布式计算引擎与查询优化}
+
+\subsection{Spark SQL 与 Catalyst 优化器}
+
+Spark SQL 的核心计算效率得益于 Catalyst 优化器。Catalyst 基于 Scala 的函数式编程特性，为结构化查询语言提供了一个可扩展的执行计划优化框架。
+
+\subsubsection{四阶段优化流程}
+
+Catalyst 的工作流可以划分为四个阶段：
+\begin{enumerate}
+  \item \textbf{分析阶段（Analysis）}：将抽象语法树（AST）转换为包含字段类型与表结构的未解析逻辑计划（Unresolved Logical Plan），并通过 Catalog 进行元数据绑定。
+  \item \textbf{逻辑计划优化（Logical Optimization）}：应用一系列基于规则的优化方法（RBO，Rule-Based Optimization），包括常量折叠（Constant Folding）、算子下推（Operator Pushdown）、投影剪裁（Projection Pruning）和表达式简化。
+  \item \textbf{物理计划生成（Physical Planning）}：在基于成本的优化（CBO，Cost-Based Optimization）指导下，生成多个可行的物理计划，并根据数据分布与算子开销模型选出最优的物理执行计划。
+  \item \textbf{代码生成（Code Generation）}：利用 Java 字节码技术（Janino 编译器），将选中的物理算子动态编译成紧凑的 Java 代码，从而减少虚函数调用开销，提高 CPU 执行效率。
+\end{enumerate}
+
+\subsubsection{谓词下推与列裁剪}
+
+谓词下推是 Catalyst 优化器中最核心的规则之一。当用户编写如下 Spark 语句：
 \begin{lstlisting}[style=codexcode]
-docker compose --profile yarn-lab up -d
-docker compose --profile yarn-lab ps
-docker compose --profile yarn-lab exec spark-client /app/scripts/init_yarn_lab.sh
-docker compose --profile yarn-lab exec spark-client \
-  /app/scripts/submit_yarn_client.sh /app/configs/yarn-client.yaml yarn-demo
+df.filter(F.col("brand") == "apple").select("user_id", "price")
 \end{lstlisting}
+Catalyst 不会在读取全部数据后再过滤品牌，而是将 \texttt{Filter} 算子直接"下推"到数据源端。在使用 Parquet 等列式存储文件时，该规则允许 Spark 底层读取器在读取阶段只加载 \texttt{brand}、\texttt{user\_id} 和 \texttt{price} 三列，并根据行组的元数据统计信息直接跳过非 \texttt{apple} 品牌的行组，使得网络传输数据量大幅降低。
 
-在本项目中，Docker 的作用不只是“打包运行环境”，更重要的是提供一个可控的课程实验边界：哪些服务启动、哪些端口开放、数据写到哪里、日志如何清理，都能在 Compose 配置和报告中明确说明。
+\subsection{AQE 自适应查询执行}
 
-\section{HDFS 分布式存储}
+在大数据计算中，数据倾斜（Data Skew）是影响系统并行效能的主要瓶颈。电商行为数据具有典型的幂律分布特征，即少数热门品牌和头部类目的事件总数远超长尾类别。当执行分布式连接（Join）或按品牌分组聚合（GroupBy）时，相同的 Key 必须通过 Shuffle 汇总到同一个 Executor 节点上进行处理，导致该节点内存占用飙升、CPU 满载，形成典型的"长尾 Task"，严重拖慢整体计算流程。
 
-HDFS 是 Hadoop 的分布式文件系统，适合存储大文件和顺序扫描型数据。它由 NameNode 和 DataNode 组成：NameNode 保存文件目录、block 分布和权限等元数据，DataNode 保存实际数据块。大数据分析中，HDFS 的价值在于把输入数据从单机文件系统抽象为分布式存储路径，计算任务可以通过统一的 \texttt{hdfs://} 路径读取数据，并由集群负责数据块管理与容错\cite{hadoop_hdfs_architecture}。
+Spark SQL 引入的自适应查询执行（AQE，Adaptive Query Execution）改变了传统的静态查询计划优化方式。AQE 在每个 Shuffle Map 阶段结束时插入"栅栏（Barrier）"，实时收集物理分区的数据大小、记录行数等统计特征，动态地在运行时优化后续执行计划：
 
-本项目中，HDFS 主要承担三类数据的存储。第一类是输入数据，即从真实 Kaggle Oct/Nov 原始 CSV 中抽样得到的 1\% 和 5\% 用户级样本。样本上传到 \texttt{/user/course/ecommerce\_behavior\_user\_sample\_1pct/} 和 \texttt{/user/course/ecommerce\_behavior\_user\_sample\_5pct/}，Spark 作业通过配置文件读取这些路径。第二类是清洗后的中间结果，例如 Parquet 分区目录。相比反复扫描 CSV，Parquet 可以保存列类型、压缩信息和分区结构，更适合作为后续实验输入。第三类是 Spark History event log，保存在 \texttt{/spark-history}，供 Spark History Server 回放作业执行过程。
+\subsubsection{小分区合并}
 
-HDFS 在项目中的使用遵循“原始层保留、计算层分区、日志层可追溯”的原则。原始 CSV 不直接覆盖；清洗后结果以 Parquet 目录保存；Spark event log 只保留最终实验需要的应用，删除早期 smoke、retry 和无效大日志。这样既能保留课程设计所需的 HDFS 截图和运行证据，也能控制本机 Docker 磁盘占用。
+根据 Shuffle 写入的实际数据量，AQE 自动将细碎的、小数据量分区合并为更合理的大分区，避免产生大量小 Task 导致的任务调度开销。
 
-\begin{lstlisting}[style=codexcode]
-hdfs dfs -mkdir -p /user/course
-hdfs dfs -mkdir -p /spark-history
-hdfs dfs -put -f data/sample/ecommerce_user_sample_1pct.csv \
-  /user/course/ecommerce_behavior_user_sample_1pct/
-\end{lstlisting}
+\subsubsection{Join 转换优化}
 
-从代码角度看，项目并不为本地文件和 HDFS 文件分别写两套读取逻辑。Spark 的 \texttt{spark.read.csv}、\texttt{spark.read.json} 和 \texttt{spark.read.parquet} 能同时处理本地路径和 HDFS 路径，因此项目只需要在 \texttt{configs/local.yaml}、\texttt{configs/hdfs.yaml}、\texttt{configs/yarn-client.yaml} 中切换 \texttt{data.input\_path} 即可。这个设计降低了本地开发和 YARN 实验之间的迁移成本。
+如果运行时发现原本需要执行昂贵 Shuffle 的一侧 DataFrame 经过清洗过滤后实际体积小于广播阈值，AQE 会自动将 SortMergeJoin 转换为轻量级的 BroadcastHashJoin，减少不必要的 Shuffle 操作。
 
-\section{YARN 资源调度}
+\subsubsection{数据倾斜处理}
 
-YARN 是 Hadoop 生态中的资源管理层，核心组件包括 ResourceManager、NodeManager 和 ApplicationMaster\cite{hadoop_yarn_overview}。ResourceManager 负责全局资源调度，NodeManager 负责每台节点上的容器启动和资源上报，ApplicationMaster 负责某个具体应用的生命周期。在 Spark on YARN 模式下，Spark 不再只是在本地进程中运行，而是向 YARN 申请资源，由 YARN 分配 executor 容器执行任务\cite{spark_yarn_docs}。
+当检测到某个 Shuffle 分区的数据量远大于其他分区均值时，AQE 会自动将倾斜分区拆分为若干子分区，同时将 Join 另一侧的对应数据进行复制关联，实现倾斜数据的分布式并行处理，有效规避 Executor 端的内存溢出。
 
-本项目采用 YARN client mode 作为第一阶段实验模式。client mode 的特点是 driver 仍运行在提交作业的 spark-client 容器中，executor 由 YARN 调度到 NodeManager 上。这个选择与项目架构有关：Flask 和 React 前端仍读取 spark-client 可见的 \texttt{data/cache/*.json}，如果一开始就切到 cluster mode，driver 会运行在 NodeManager 容器中，输出缓存不一定自然落回 Flask 可读目录。因此，client mode 保留了本地缓存发布的便利性，同时让 executor 调度、YARN application 状态和 Spark History 日志进入课程实验范围。
+\section{服务层与展示层技术选型}
 
-YARN 在本项目中主要提供四类证据。第一，ResourceManager UI 能展示 application id、运行状态、开始时间和结束时间，证明 Spark 作业确实提交到 YARN。第二，NodeManager 参与执行 executor 容器，说明计算不只是 Flask 本地函数调用。第三，YARN application id 会写入 run manifest 和 SQLite 作业记录，前端 Ops 页可以直接展示。第四，失败或成功状态可以作为质量门禁的一部分，避免只看前端图表而忽略后端任务是否真正完成。
+\subsection{Flask 异步架构与 SQLite 持久化}
 
-项目同时提供 \texttt{yarn-cluster.yaml} 和 \texttt{submit\_yarn\_cluster.sh} 作为后续扩展入口。cluster mode 会把 driver 交给 YARN 管理，更接近真实生产集群；但在当前课程设计中，client mode 更适合保证 Flask 缓存路径、前端展示和实验报告之间的一致性。
+Flask 在项目中承担服务层角色，负责将 Spark 离线计算产出的指标、作业日志和运行证据封装成标准 RESTful 接口。每个接口返回统一的 \texttt{ApiEnvelope} 结构，包含状态码、提示语和数据体。为保证 Web 后端的吞吐和可用性，计算层与接口响应采用异步解耦的设计方案。
 
-\section{Spark SQL 与 DataFrame API}
+\subsubsection{JobService 异步解耦}
 
-Spark 是本项目的数据计算核心。Spark 的 RDD 模型提供了分布式数据集、lineage 容错和内存复用能力\cite{zaharia2012rdd,zaharia2016spark}，但项目业务代码主要使用 Spark SQL/DataFrame API，而不是直接操作 RDD。原因是电商行为分析天然是结构化数据处理：字段类型固定，计算内容包括过滤、分组、聚合、窗口排序、join、去重和统计，这些操作更适合交给 DataFrame 和 Catalyst 优化器处理\cite{armbrust2015spark}。
+当用户通过前端发出数据刷新请求时，Flask 并不在主进程中同步执行 Spark 管道，而是将计算作业封装为一个后台 Job，通过 \texttt{JobService} 将作业的元数据（包括任务标识、创建时间、当前状态等）持久化至 SQLite 本地数据库中。后台单独运行的 \texttt{SparkPipelineRunner} 进程异步被唤醒执行。计算完成后，更新 SQLite 中的作业状态，并将质量门禁指标、Spark 运行证据以及计算结果路径写入 SQLite 供后续检索。
 
-项目中所有原始事件会先进入 \texttt{read\_events}，再经过 \texttt{clean\_events} 生成 \texttt{cleaned\_df}。清洗后 DataFrame 派生出三个关键中间结果：基础质量报告、会话事实表 \texttt{session\_facts}、特征集市表。后续模块如转化漏斗、行为路径、推荐、异常检测、生命周期、实验分流都复用这些中间结果。这样避免了每个模块重复解析时间、重复处理空值、重复去重，也保证同一字段在不同页面中的含义一致。
+\subsubsection{MetricCache 两阶段退化检索}
 
-Spark SQL 在各模块中的应用非常具体。例如：
+在数据读取上，Flask 后端引入了 \texttt{MetricCache}（指标多维缓存）以提供毫秒级的客户端响应。为了处理各种极端情况，\texttt{MetricCache} 设计了两阶段退化检索机制：
+\begin{enumerate}
+  \item \textbf{第一阶段：多维立方体优先检索}——
+        离线计算管道运行时，会在 PySpark 端预先对数据按照多维属性组合 \texttt{(event\_type, category\_level1, brand)} 进行 GroupBy 预聚合，生成包含全维度交叉统计特征的立方体文件（Dashboard Cube）。后端收到多属性联合筛选的 API 请求后，直接对预计算的立方体进行定位并执行流式检索，毫秒级快速匹配并返回结果，避开了明细行扫描。
+  \item \textbf{第二阶段：明细数据扫描兜底}——
+        若由于硬件故障或路径异常导致多维立方体缓存文件缺失或解析损坏，缓存系统会自动触发降级兜底。后端会直接读取清洗后的明细事件表，在本地内存中对数据进行多属性联合过滤，并重新计算去重后的独立用户数与独立会话数。这确保了在计算文件异常时系统仍具有高可用性，但查询耗时会退化至秒级。
+\end{enumerate}
 
-\begin{itemize}
-    \item 数据清洗使用 \texttt{withColumn}、\texttt{to\_timestamp}、\texttt{coalesce}、\texttt{filter} 和 \texttt{dropDuplicates}。
-    \item 基础看板使用 \texttt{groupBy}、\texttt{count}、\texttt{sum}、\texttt{avg} 和 \texttt{countDistinct}。
-    \item 转化分析按 \texttt{user\_session} 聚合首次浏览、首次加购、首次购买时间，再计算合法路径。
-    \item 归因模块用 window function 计算触点在一次购买前的 first-touch、last-touch、linear 和 time-decay credit。
-    \item 推荐模块用窗口函数按会话排序，保留每个会话 top-k 商品。
-    \item 异常检测使用 \texttt{percentile\_approx} 计算 median 和 MAD，再得到 robust z-score。
-\end{itemize}
+\subsection{React 前端与 Ops 证据面板}
 
-\begin{lstlisting}[style=codexcode]
-cleaned_df = clean_events(raw_df).persist(StorageLevel.MEMORY_AND_DISK)
-session_facts = build_session_facts(cleaned_df).persist(StorageLevel.MEMORY_AND_DISK)
-metrics = {
-    **build_metrics(cleaned_df, quality, top_n),
-    **build_conversion_metrics(cleaned_df, session_facts, top_n),
-}
-\end{lstlisting}
+\subsubsection{TanStack Query 生命周期托管}
 
-在本项目中，Spark 不是单独存在的计算脚本，而是整个系统的生产者：它负责把原始行为日志转换为前端能直接展示的结构化 JSON、Parquet 和运行 manifest。
+本系统的用户界面使用 React 与 Vite 构建，利用 TanStack Query 对数据交互请求进行生命周期托管，利用 ECharts 渲染关系图、转化漏斗、时序波动等复杂图表。前后端通过定义的路由和代理机制保持松耦合。前端页面按照分析主题组织，包含 Dashboard、Behavior、Conversion 等多个独立页面。
 
-\section{Spark AQE 与执行计划优化}
+\subsubsection{BenchmarkEvidenceService 证据链路}
 
-Spark SQL 的 Adaptive Query Execution（AQE）能够在运行时根据真实 shuffle 统计信息调整执行计划，例如合并小 shuffle 分区、处理倾斜 join 和选择更合适的 join 策略\cite{spark_sql_performance}。这对本项目很重要，因为电商行为数据存在天然倾斜：少数热门类目、热门品牌和热门商品会拥有远高于普通商品的浏览和购买次数；同时推荐、关联图谱、归因等模块会产生较多 join 和 window 操作。
+为了向开发与运维人员展示大数据处理流水线的物理执行细节，项目设计了专门的运维（Ops）证据看板。传统的 Web 看板通常隐蔽了后端基础设施的存在，而本项目的 Ops 看板能够将底层的 YARN Application 状态、Spark History 执行画像以及 HDFS 数据读写信息进行前台闭环展示。
 
-项目在 \texttt{configs/yarn-client.yaml} 中启用 AQE、skew join 和合理的 shuffle partitions。1\% 样本 benchmark 中，YARN-only CSV 用时明显高于 YARN + AQE 组，说明只把作业交给 YARN 并不会自动优化 SQL 执行计划；AQE 介入后，shuffle 分区和倾斜处理更合理，整体耗时明显下降。这个实验结果也是报告第 4 章“YARN 不是性能优化本身”的证据来源。
-
-除了 AQE，本项目还做了一个与 Spark History 相关的配置：将 \texttt{spark.sql.maxPlanStringLength} 限制为 8192。原因是 Spark History Server 会回放 event log，如果 SQL plan 字符串过长，History API 可能在解析 stages 或 jobs 时返回 500。限制 plan 字符串不会改变计算结果，但能降低 event log 体积和 History Server 解析风险。这属于工程稳定性优化，直接服务于前端 Ops 页和报告截图。
-
-\begin{lstlisting}[style=codexcode]
-spark.sql.adaptive.enabled: true
-spark.sql.adaptive.skewJoin.enabled: true
-spark.sql.shuffle.partitions: 64
-spark.sql.maxPlanStringLength: 8192
-spark.eventLog.enabled: true
-spark.eventLog.dir: hdfs:///spark-history
-\end{lstlisting}
-
-\section{Parquet 与数据布局}
-
-CSV 是本项目的原始输入格式，因为 Kaggle 数据集本身以 CSV 提供，字段直观，便于检查和抽样。但 CSV 不适合作为反复分析的中间层：它没有列式编码，不保存强类型信息，不能有效做列裁剪和谓词下推，每次读取都需要重新解析文本。随着数据量从小样本扩大到 1\%、5\% 用户级样本，重复扫描 CSV 会成为明显开销。
-
-Parquet 是列式存储格式，适合 Spark SQL 的分析型读取，支持压缩、列裁剪和谓词下推\cite{parquet_docs}。本项目采用“CSV 原始层 + Parquet 清洗层”的布局：原始 Kaggle CSV 保留在 \texttt{data/raw/kaggle/ecommerce\_behavior}；用户级样本上传 HDFS 作为实验输入；Spark 清洗完成后，将标准化事件写成 HDFS Parquet 分区目录；Parquet 对照组再从该目录读取数据，跳过部分 CSV 解析和清洗成本。
-
-在报告实验中，Parquet 的意义不只是“更快”。它还提供了更清楚的数据分层：CSV 代表外部原始数据，Parquet 代表经过清洗、类型统一和质量校验后的分析层。后续如果要把 cluster mode 设为默认路径，或者把 Flask 从本地 JSON cache 改为读取 HDFS 产物，Parquet 清洗层就是更合适的接口。
-
-\section{内存优化与数据倾斜控制}
-
-Spark 作业出现 OOM 通常有两类原因：一类是 executor 端 shuffle、join 或聚合压力过大；另一类是 driver 端把太多结果 \texttt{collect()} 到本地。本项目最初的小样本演示可以把明细直接收集成 JSON，但当数据量扩大后，推荐明细、cohort 明细、forecasting 历史和 experimentation 分流行数都会增长，driver 端内存风险很高。
-
-因此，项目把优化分成执行层和算法层两部分。执行层优化包括启用 AQE、设置合理 shuffle partitions、使用 \texttt{MEMORY\_AND\_DISK} 缓存、模块结束后 \texttt{unpersist()}、限制 Spark History plan 字符串。算法层优化包括：推荐模块只 collect preview limit 行，质量指标改由 Spark 聚合计算；forecasting 模块只把全站和 top 类目的有限历史带到 driver；关联图谱限制 top nodes 和单会话最大商品数；experimentation 只返回前端展示所需 preview，完整分流结果保留为 DataFrame。
-
-这些做法与 Starfish、SkewTune 和 Themis 的思想一致。Starfish 强调通过运行画像调优，而不是凭经验猜参数\cite{herodotou2011starfish}；SkewTune 指出数据倾斜和长尾 task 会拖慢整个作业\cite{kwon2012skewtune}；Themis 说明系统不应盲目追求全内存，合理 spill 和磁盘中间结果反而更稳定\cite{rasmussen2012themis}。本项目没有重新实现这些研究系统，而是在 Spark 工程中落地为 AQE、Parquet、预聚合、限流、质量报告和 benchmark 证据。
-
-\section{Flask API 服务层}
-
-Flask 在项目中承担服务层角色，负责把 Spark 产出的 JSON 缓存、作业记录和 benchmark 证据封装成前端可调用接口。后端以 Blueprint 组织路由，统一挂载在 \texttt{/api/v1} 下。每个 API 返回统一的 \texttt{ApiEnvelope} 结构，包含 \texttt{code}、\texttt{message}、\texttt{data} 和 \texttt{meta.request\_id}。这种结构让前端无需为每个接口单独判断错误格式，也便于 Ops 页展示失败信息。
-
-Flask 服务并不在用户访问页面时同步跑完整 Spark 作业。常规页面读取 \texttt{data/cache/*.json} 中的指标缓存，例如 \texttt{summary.json}、\texttt{daily\_events.json}、\texttt{recommendation\_items.json}。当用户触发刷新时，后端通过 JobService 创建作业记录，再调用 SparkPipelineRunner 提交 Spark 作业。作业完成后，系统读取 run manifest，把输入快照、输出文件、质量报告、Spark application id 和 History 指标写入 SQLite 作业表。
-
-这种设计把“计算”和“接口响应”拆开了。前端访问页面时得到的是轻量 JSON，不会等待 Spark 长任务；Spark 作业的状态、失败阶段和质量门禁由作业 API 查询。对于课程设计来说，这比在 Flask 路由中直接调用 Spark 计算更稳定，也更容易解释系统架构。
-
-\begin{lstlisting}[style=codexcode]
-@api_bp.get("/summary")
-def summary():
-    return api_ok(cache().load_metric("summary"))
-
-@api_bp.post("/refresh")
-def refresh():
-    job_record = job_service().enqueue_refresh()
-    return api_ok({"status": "queued", "job_id": job_record.job_id}, "refresh queued"), 202
-\end{lstlisting}
-
-\section{React、ECharts 与前端可视化}
-
-前端使用 React + Vite 构建，ECharts 负责图表渲染，TanStack Query 负责接口请求和缓存。React 的作用是把业务页面拆成可维护的组件，例如指标卡片、图表面板、数据表格、布局导航和错误状态；ECharts 的作用是将 Spark 聚合结果展示为折线图、柱状图、饼图、漏斗图和关系图；TanStack Query 则负责加载状态、错误状态和重复请求缓存。
-
-项目页面按照分析主题组织，而不是只做一个简单首页。路由包括 Dashboard、Behavior、Conversion、Journey、Forecasting、Affinity、Cohorts、Portfolio、Cart Recovery、Attribution、Optimization、Recommendations、Anomaly、Lifecycle、Experiments、Feature Mart、Quality、Table 和 Ops。每个页面对应后端若干 API，例如转化页读取 \texttt{/conversion/funnel}、\texttt{/conversion/daily} 和 \texttt{/conversion/products}；推荐页读取 \texttt{/recommendations/items}、\texttt{/recommendations/quality} 和 \texttt{/recommendations/alerts}。
-
-前端可视化不是直接处理原始大数据，而是展示 Spark 预聚合后的指标。这样做有两个好处：第一，浏览器不需要加载百万级原始行，页面响应更快；第二，图表口径由 Spark 统一计算，避免前端重复实现统计逻辑。对于表格页面，后端提供分页和筛选参数，前端只请求当前页所需数据。
-
-\section{Ops 证据面板与可追溯性}
-
-Ops 页面是本项目区别于普通可视化大作业的重要部分。普通看板只回答“业务指标是什么”，Ops 页面回答“这些指标从哪里来、Spark 是否跑完、输入数据是什么、质量是否通过、benchmark 结果如何”。它读取的不是业务分析接口，而是 \texttt{/api/v1/ops/evidence}、\texttt{/api/v1/job}、\texttt{/api/v1/jobs}、\texttt{/api/v1/jobs/<job\_id>/lineage} 等运行证据接口。
-
-后端的 BenchmarkEvidenceService 会读取正式 benchmark 目录，只返回精简字段：样本、对照组、耗时、吞吐、YARN application id、质量状态、HDFS 输入路径和清理策略。它不会把 Spark stderr 或完整 event log 返回给浏览器，避免长日志造成前端卡顿。Spark History 指标则通过 History API 或 event log 解析脚本补采集，最后形成可展示的 shuffle、spill、failed task 和 retried task 证据。
-
-在课程报告中，Ops 面板承担“证据汇总”的角色。它把 HDFS 输入、YARN application、Spark History、质量门禁、benchmark 和清理策略放在一个页面，答辩时不需要在多个终端窗口之间来回切换。这个设计也让报告中的实验结论更可信：不是只写“系统可以运行”，而是能展示每次运行的输入、输出、作业状态和指标结果。
-
-\section{SQLite 作业记录与缓存文件}
-
-项目使用 SQLite 保存刷新作业的元信息，使用 \texttt{data/cache/*.json} 保存前端展示指标。SQLite 适合本课程设计的原因是它不需要单独部署数据库服务，文件可随项目一起备份和检查，同时足够保存 job id、run id、状态、失败阶段、Spark application id、质量报告和 artifact 信息。对于本机演示和课程验收来说，SQLite 比引入 MySQL 或 PostgreSQL 更轻量。
-
-JSON 缓存则是 Spark 与 Flask/React 之间的交付格式。Spark 作业完成后，\texttt{write\_metric\_files} 将 summary、event distribution、daily trend、recommendations、quality、ops evidence 等指标写入 \texttt{data/cache}。Flask 的 MetricCache 只负责读取这些文件并做分页、过滤或字段裁剪。这样一来，Spark 作业可以独立运行，Flask 服务也可以独立重启；只要缓存存在，前端页面就能展示最近一次成功运行的结果。
-
-需要注意的是，本项目并没有把所有明细都写成 JSON。大规模明细适合放在 Parquet 或 Spark DataFrame 中，JSON 只保存 summary、quality、manifest 和 preview。这个取舍贯穿整个系统：前端要的是可解释、可交互、响应快的指标，不是把分布式计算结果原样塞进浏览器。
+后端的 \texttt{BenchmarkEvidenceService} 提取 SQLite 和运行 Manifest 中的数据血缘证据，同时调用 Python-Hadoop API 以及 Spark History Server REST API，采集物理执行参数。这些参数包括每个 Stage 的运行耗时、网络 Shuffle 读写字节数、任务失败与重试率以及 Executor 内存溢写字节数。前端 Ops 页通过拉取这些证据，在单一界面中展现端到端的数据流动关系，帮助评审人员快速验证报告中实验结论的可信度。

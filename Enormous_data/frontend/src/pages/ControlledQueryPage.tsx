@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Search, SendHorizontal } from 'lucide-react';
+import { BarChart3, CheckCircle2, Database, GitBranch, Loader2, MousePointer2, Search, SendHorizontal, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useControlledQuery } from '../api/hooks';
 import { ChartPanel, type DashboardChartOption } from '../components/ChartPanel';
@@ -17,6 +17,11 @@ import type { ControlledQueryResult, ControlledQueryRow, NamedValue } from '../t
 
 const DEFAULT_QUERY = '按月份统计销售额';
 const DEFAULT_SUGGESTIONS = ['按月份统计销售额', '按日期统计事件量', '按类目统计购买数', '按品牌统计销售额', '按行为类型统计事件量'];
+const SUGGESTION_GROUPS = [
+  { name: '销售分析', items: ['按月份统计销售额', '按品牌统计销售额'] },
+  { name: '行为分析', items: ['按日期统计事件量', '按行为类型统计事件量'] },
+  { name: '类目诊断', items: ['按类目统计购买数'] },
+];
 
 function queryChartOption(result: ControlledQueryResult | undefined): DashboardChartOption {
   if (!result?.matched || !result.rows.length) {
@@ -75,6 +80,22 @@ function formatPercent(value: number | undefined) {
   return `${((value ?? 0) * 100).toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%`;
 }
 
+function queryModeLabel(queryText: string) {
+  if (/类目|品牌|行为/.test(queryText)) return '维度对比';
+  if (/日期|月份|趋势/.test(queryText)) return '时间趋势';
+  return '指标查询';
+}
+
+function flowSteps(result: ControlledQueryResult | undefined, isPending: boolean) {
+  return [
+    { key: 'input', label: '输入识别', detail: result?.query ?? '等待中文问题', done: Boolean(result) || isPending },
+    { key: 'intent', label: '语义解析', detail: result?.intent?.metric_label ?? '匹配白名单指标', done: Boolean(result?.intent) },
+    { key: 'metric', label: '指标提取', detail: result?.intent?.dimension_label ?? '确认聚合维度', done: Boolean(result?.matched) },
+    { key: 'execute', label: '缓存执行', detail: engineLabel(result?.evidence.execution_engine), done: Boolean(result) && !isPending },
+    { key: 'output', label: '结果输出', detail: result ? `${result.rows.length} 行` : '图表 + 明细', done: Boolean(result?.rows.length) },
+  ];
+}
+
 function resultRows(result: ControlledQueryResult | undefined): ControlledQueryRow[] {
   return result?.rows ?? [];
 }
@@ -109,10 +130,18 @@ export function ControlledQueryPage() {
   const { setFilter } = useChartFilter();
   const result = activeResult;
   const suggestions = result?.suggestions?.length ? result.suggestions : DEFAULT_SUGGESTIONS;
+  const suggestionGroups = SUGGESTION_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => suggestions.includes(item)),
+  })).filter((group) => group.items.length);
   const option = useMemo(() => queryChartOption(result), [result]);
   const rows = resultRows(result);
   const filterActions = useMemo(() => resultFilterActions(result), [result]);
   const panelEmpty = Boolean(result && (!result.matched || rows.length === 0));
+  const steps = useMemo(() => flowSteps(result, isSubmitting), [isSubmitting, result]);
+  const completedSteps = steps.filter((step) => step.done).length;
+  const queryMode = queryModeLabel(query);
+  const drillActionCount = filterActions.length * 2;
 
   const submitQuery = useCallback(async (nextQuery = query) => {
     const normalized = nextQuery.trim();
@@ -146,10 +175,21 @@ export function ControlledQueryPage() {
       <section className="page-heading query-heading">
         <span className="eyebrow">智能查询</span>
         <h1>中文受控查询工作台</h1>
-        <p>用中文问题触发白名单指标查询，结果优先以图表展示。</p>
+        <p>输入中文问题后，系统会展示“识别意图 → 指标匹配 → 缓存执行 → 图表输出”的完整交互反馈。</p>
       </section>
 
       <section className="query-console" aria-label="智能查询输入区">
+        <div className="query-command-head">
+          <div>
+            <span className="query-mode-chip"><Sparkles size={14} />{queryMode}</span>
+            <h2>自然语言命令中心</h2>
+            <p>建议先点一个命令，再微调中文问题；受控查询只执行白名单指标。</p>
+          </div>
+          <div className="query-shortcuts" aria-label="键盘提示">
+            <kbd>Enter</kbd>
+            <span>提交</span>
+          </div>
+        </div>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -157,7 +197,7 @@ export function ControlledQueryPage() {
           }}
         >
           <label htmlFor="controlled-query-input">中文问题</label>
-          <div className="query-input-row">
+          <div className={`query-input-row${isSubmitting ? ' is-loading' : ''}`}>
             <Search size={18} aria-hidden="true" />
             <input
               id="controlled-query-input"
@@ -166,16 +206,33 @@ export function ControlledQueryPage() {
               placeholder="例如：按月份统计销售额"
             />
             <button type="submit" disabled={isSubmitting || !query.trim()}>
-              <SendHorizontal size={16} aria-hidden="true" />
-              查询
+              {isSubmitting ? <Loader2 size={16} aria-hidden="true" /> : <SendHorizontal size={16} aria-hidden="true" />}
+              {isSubmitting ? '识别中' : '查询'}
             </button>
           </div>
         </form>
-        <div className="query-suggestion-chips" aria-label="建议问题">
-          {suggestions.map((item) => (
-            <button type="button" key={item} onClick={() => submitQuery(item)}>
-              {item}
-            </button>
+        <div className="query-suggestion-board" aria-label="建议问题">
+          {suggestionGroups.map((group) => (
+            <div className="query-suggestion-group" key={group.name}>
+              <span>{group.name}</span>
+              <div className="query-suggestion-chips">
+                {group.items.map((item) => (
+                  <button type="button" key={item} onClick={() => submitQuery(item)} aria-pressed={query === item}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="query-flow" aria-label="查询流转状态">
+          <div className="query-flow-track" style={{ width: `${Math.max(0, ((completedSteps - 1) / Math.max(steps.length - 1, 1)) * 100)}%` }} />
+          {steps.map((step, index) => (
+            <div className={`query-flow-step${step.done ? ' is-done' : ''}${isSubmitting && index === completedSteps ? ' is-active' : ''}`} key={step.key}>
+              <span>{step.done ? <CheckCircle2 size={15} /> : <span>{index + 1}</span>}</span>
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
+            </div>
           ))}
         </div>
       </section>
@@ -184,7 +241,7 @@ export function ControlledQueryPage() {
         <article className="metric-card">
           <span>识别状态</span>
           <strong>{statusLabel(result, isSubmitting)}</strong>
-          <small>{result?.message ?? '正在使用默认问题生成首张图。'}</small>
+          <small>{result ? `置信度 ${formatPercent(result.confidence)}` : '正在使用默认问题生成首张图。'}</small>
         </article>
         <article className="metric-card">
           <span>指标</span>
@@ -199,7 +256,31 @@ export function ControlledQueryPage() {
         <article className="metric-card">
           <span>执行来源</span>
           <strong>{engineLabel(result?.evidence.execution_engine)}</strong>
-          <small>{sourceLabel(result?.evidence.source_dataset)}</small>
+          <small>{result ? `${sourceLabel(result.evidence.source_dataset)} · ${formatNumber(result.evidence.query_ms, 'ms')}` : '等待查询'}</small>
+        </article>
+      </section>
+
+      <section className="query-action-strip" aria-label="查询结果操作">
+        <article>
+          <MousePointer2 size={18} />
+          <div>
+            <span>可交互结果</span>
+            <strong>{filterActions.length ? `${filterActions.length} 个结果项 · ${drillActionCount} 个操作` : '当前结果不支持筛选联动'}</strong>
+          </div>
+        </article>
+        <article>
+          <GitBranch size={18} />
+          <div>
+            <span>查询路径</span>
+            <strong>{result?.matched ? `${result.intent?.metric_label} × ${result.intent?.dimension_label}` : '等待语义解析'}</strong>
+          </div>
+        </article>
+        <article>
+          <Database size={18} />
+          <div>
+            <span>缓存证据</span>
+            <strong>{result?.evidence.cache_hit ? '命中缓存' : result ? '实时读取' : '待生成'}</strong>
+          </div>
         </article>
       </section>
 
@@ -225,8 +306,9 @@ export function ControlledQueryPage() {
           <div className="panel-title">
             <div>
               <h2>结果明细</h2>
-              <p>图表同源数据，列名已中文化。</p>
+              <p>图表同源数据，支持跳转驾驶舱或明细表。</p>
             </div>
+            <BarChart3 size={20} />
           </div>
           {filterActions.length ? (
             <div className="query-drill-actions" aria-label="查询联动操作">

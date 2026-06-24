@@ -2323,6 +2323,14 @@ ENDPOINTS: list[dict[str, Any]] = [
     {"method": "GET", "path": "/api/v1/jobs/{job_id}/quality", "response_schema": "ApiEnvelope<JobQuality>"},
     {"method": "GET", "path": "/api/v1/ops/evidence", "response_schema": "ApiEnvelope<OpsEvidence>"},
     {"method": "GET", "path": "/api/v1/ops/optimization-impact", "response_schema": "ApiEnvelope<OptimizationImpact>"},
+    {"method": "GET", "path": "/api/v1/live-weather/current", "response_schema": "ApiEnvelope<LiveWeatherCurrent>"},
+    {"method": "GET", "path": "/api/v1/live-weather/forecast", "response_schema": "ApiEnvelope<LiveWeatherForecast>"},
+    {"method": "GET", "path": "/api/v1/live-weather/summary", "response_schema": "ApiEnvelope<LiveWeatherSummary>"},
+    {"method": "GET", "path": "/api/v1/live-training/status", "response_schema": "ApiEnvelope<LiveTrainingStatus>"},
+    {"method": "POST", "path": "/api/v1/live-training/refresh", "response_schema": "ApiEnvelope<{status:string,run_id:string}>", "status": 202},
+    {"method": "GET", "path": "/api/v1/live-training/metrics", "response_schema": "ApiEnvelope<LiveTrainingMetrics>"},
+    {"method": "GET", "path": "/api/v1/live-training/impact", "response_schema": "ApiEnvelope<LiveWeatherImpact>"},
+    {"method": "GET", "path": "/api/v1/live-training/forecast-impact", "response_schema": "ApiEnvelope<LiveWeatherForecastImpact>"},
     {"method": "POST", "path": "/api/v1/refresh", "response_schema": "ApiEnvelope<{status:string,job_id:string}>", "status": 202},
 ]
 
@@ -2609,6 +2617,21 @@ def build_openapi() -> dict[str, Any]:
             ),
             "/api/v1/ops/evidence": _get_response(envelope_schema(ops_evidence)),
             "/api/v1/ops/optimization-impact": _get_response(envelope_schema(optimization_impact)),
+            "/api/v1/live-weather/current": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-weather/forecast": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-weather/summary": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-training/status": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-training/refresh": _post_response(
+                envelope_schema(
+                    {
+                        "type": "object",
+                        "properties": {"status": {"type": "string"}, "run_id": {"type": "string"}},
+                    }
+                )
+            ),
+            "/api/v1/live-training/metrics": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-training/impact": _get_response(envelope_schema({"type": "object"})),
+            "/api/v1/live-training/forecast-impact": _get_response(envelope_schema({"type": "object"})),
             "/api/v1/table": _get_response(
                 envelope_schema({"$ref": "#/components/schemas/TableResult"}),
                 parameters=table_query_parameters,

@@ -90,6 +90,7 @@ describe('ControlledQueryPage', () => {
     );
 
     expect(await screen.findByText('按类目统计购买数')).toBeInTheDocument();
+    expect(await screen.findByText('2 个结果项 · 4 个操作')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '查看electronics明细' })).toHaveAttribute(
       'href',
       '/table?category_level1=electronics&source=query&sourceChart=controlled-query-result',

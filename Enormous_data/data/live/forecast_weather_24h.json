@@ -1,0 +1,238 @@
+{
+  "city": "上海",
+  "latitude": 31.2304,
+  "longitude": 121.4737,
+  "timezone": "Asia/Shanghai",
+  "fetched_at": "2026-06-22T10:48:16.703523+00:00",
+  "source_status": "network",
+  "horizon_hours": 24,
+  "forecast_window_start": "2026-06-22T19:00",
+  "forecast_window_end": "2026-06-23T18:00",
+  "hourly": [
+    {
+      "time": "2026-06-22T19:00",
+      "temperature_2m": 25.6,
+      "relative_humidity_2m": 97,
+      "precipitation": 0.5,
+      "rain": 0.2,
+      "weather_code": 95,
+      "wind_speed_10m": 10.3
+    },
+    {
+      "time": "2026-06-22T20:00",
+      "temperature_2m": 25.6,
+      "relative_humidity_2m": 95,
+      "precipitation": 0.0,
+      "rain": 0.0,
+      "weather_code": 3,
+      "wind_speed_10m": 12.4
+    },
+    {
+      "time": "2026-06-22T21:00",
+      "temperature_2m": 25.4,
+      "relative_humidity_2m": 94,
+      "precipitation": 0.0,
+      "rain": 0.0,
+      "weather_code": 3,
+      "wind_speed_10m": 8.0
+    },
+    {
+      "time": "2026-06-22T22:00",
+      "temperature_2m": 24.5,
+      "relative_humidity_2m": 99,
+      "precipitation": 0.6,
+      "rain": 0.6,
+      "weather_code": 53,
+      "wind_speed_10m": 3.8
+    },
+    {
+      "time": "2026-06-22T23:00",
+      "temperature_2m": 23.6,
+      "relative_humidity_2m": 99,
+      "precipitation": 0.3,
+      "rain": 0.3,
+      "weather_code": 51,
+      "wind_speed_10m": 5.7
+    },
+    {
+      "time": "2026-06-23T00:00",
+      "temperature_2m": 23.0,
+      "relative_humidity_2m": 98,
+      "precipitation": 0.6,
+      "rain": 0.6,
+      "weather_code": 53,
+      "wind_speed_10m": 7.4
+    },
+    {
+      "time": "2026-06-23T01:00",
+      "temperature_2m": 22.7,
+      "relative_humidity_2m": 98,
+      "precipitation": 0.4,
+      "rain": 0.2,
+      "weather_code": 51,
+      "wind_speed_10m": 8.3
+    },
+    {
+      "time": "2026-06-23T02:00",
+      "temperature_2m": 22.7,
+      "relative_humidity_2m": 97,
+      "precipitation": 0.0,
+      "rain": 0.0,
+      "weather_code": 3,
+      "wind_speed_10m": 9.2
+    },
+    {
+      "time": "2026-06-23T03:00",
+      "temperature_2m": 22.7,
+      "relative_humidity_2m": 96,
+      "precipitation": 0.1,
+      "rain": 0.1,
+      "weather_code": 51,
+      "wind_speed_10m": 8.6
+    },
+    {
+      "time": "2026-06-23T04:00",
+      "temperature_2m": 22.3,
+      "relative_humidity_2m": 96,
+      "precipitation": 0.6,
+      "rain": 0.6,
+      "weather_code": 53,
+      "wind_speed_10m": 8.8
+    },
+    {
+      "time": "2026-06-23T05:00",
+      "temperature_2m": 22.1,
+      "relative_humidity_2m": 96,
+      "precipitation": 0.3,
+      "rain": 0.3,
+      "weather_code": 51,
+      "wind_speed_10m": 10.1
+    },
+    {
+      "time": "2026-06-23T06:00",
+      "temperature_2m": 22.3,
+      "relative_humidity_2m": 94,
+      "precipitation": 0.1,
+      "rain": 0.1,
+      "weather_code": 51,
+      "wind_speed_10m": 10.7
+    },
+    {
+      "time": "2026-06-23T07:00",
+      "temperature_2m": 23.0,
+      "relative_humidity_2m": 89,
+      "precipitation": 0.0,
+      "rain": 0.0,
+      "weather_code": 3,
+      "wind_speed_10m": 12.0
+    },
+    {
+      "time": "2026-06-23T08:00",
+      "temperature_2m": 23.6,
+      "relative_humidity_2m": 85,
+      "precipitation": 0.1,
+      "rain": 0.1,
+      "weather_code": 51,
+      "wind_speed_10m": 11.0
+    },
+    {
+      "time": "2026-06-23T09:00",
+      "temperature_2m": 23.5,
+      "relative_humidity_2m": 87,
+      "precipitation": 0.8,
+      "rain": 0.6,
+      "weather_code": 53,
+      "wind_speed_10m": 9.0
+    },
+    {
+      "time": "2026-06-23T10:00",
+      "temperature_2m": 23.0,
+      "relative_humidity_2m": 92,
+      "precipitation": 2.4,
+      "rain": 1.8,
+      "weather_code": 80,
+      "wind_speed_10m": 10.7
+    },
+    {
+      "time": "2026-06-23T11:00",
+      "temperature_2m": 22.6,
+      "relative_humidity_2m": 94,
+      "precipitation": 2.1,
+      "rain": 1.8,
+      "weather_code": 80,
+      "wind_speed_10m": 11.6
+    },
+    {
+      "time": "2026-06-23T12:00",
+      "temperature_2m": 22.8,
+      "relative_humidity_2m": 93,
+      "precipitation": 2.1,
+      "rain": 0.8,
+      "weather_code": 80,
+      "wind_speed_10m": 10.7
+    },
+    {
+      "time": "2026-06-23T13:00",
+      "temperature_2m": 22.4,
+      "relative_humidity_2m": 95,
+      "precipitation": 2.0,
+      "rain": 1.2,
+      "weather_code": 80,
+      "wind_speed_10m": 13.0
+    },
+    {
+      "time": "2026-06-23T14:00",
+      "temperature_2m": 22.6,
+      "relative_humidity_2m": 93,
+      "precipitation": 1.5,
+      "rain": 1.4,
+      "weather_code": 80,
+      "wind_speed_10m": 12.9
+    },
+    {
+      "time": "2026-06-23T15:00",
+      "temperature_2m": 23.1,
+      "relative_humidity_2m": 89,
+      "precipitation": 1.2,
+      "rain": 1.2,
+      "weather_code": 55,
+      "wind_speed_10m": 12.7
+    },
+    {
+      "time": "2026-06-23T16:00",
+      "temperature_2m": 22.9,
+      "relative_humidity_2m": 89,
+      "precipitation": 0.5,
+      "rain": 0.5,
+      "weather_code": 53,
+      "wind_speed_10m": 11.1
+    },
+    {
+      "time": "2026-06-23T17:00",
+      "temperature_2m": 22.9,
+      "relative_humidity_2m": 89,
+      "precipitation": 1.1,
+      "rain": 0.5,
+      "weather_code": 55,
+      "wind_speed_10m": 9.7
+    },
+    {
+      "time": "2026-06-23T18:00",
+      "temperature_2m": 22.6,
+      "relative_humidity_2m": 92,
+      "precipitation": 0.6,
+      "rain": 0.4,
+      "weather_code": 53,
+      "wind_speed_10m": 9.0
+    }
+  ],
+  "hourly_units": {
+    "time": "iso8601",
+    "temperature_2m": "°C",
+    "relative_humidity_2m": "%",
+    "precipitation": "mm",
+    "rain": "mm",
+    "weather_code": "wmo code",
+    "wind_speed_10m": "km/h"
+  }
+}
